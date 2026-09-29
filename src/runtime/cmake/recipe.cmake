@@ -4,11 +4,7 @@
 # alone. Included by the top-level CMakeLists.txt after the vulpen and gates targets.
 find_program(GLSLANG glslangValidator REQUIRED)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(live_default ON)
-else()
-  set(live_default OFF)
-endif()
+string(COMPARE EQUAL "${CMAKE_BUILD_TYPE}" Debug live_default)
 option(VULPEN_LIVE "Swap recipe C++ and GLSL while vulpen runs" ${live_default})
 
 # Every engine header, hashed into a module's entry name: a module built against other

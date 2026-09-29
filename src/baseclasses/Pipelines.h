@@ -31,6 +31,7 @@ struct Field {
   bool buffer() const {
     return stride != 0;
   }
+  bool operator==(const Field &) const = default;
 };
 
 // Compiled GLSL, reflected when it loads: C++ takes the pass block's offsets from here,

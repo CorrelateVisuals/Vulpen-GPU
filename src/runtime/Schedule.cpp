@@ -57,13 +57,6 @@ bool is_draw(const Node &node) {
   return count_stage(node, vertex_stage) != 0;
 }
 
-// Whether two shaders' pass blocks hold the same field at the same bytes, used alike.
-bool same_field(const Field &one, const Field &other) {
-  return one.name == other.name && one.type == other.type &&
-         one.offset == other.offset && one.stride == other.stride &&
-         one.access == other.access;
-}
-
 // Views own their copies of recipes (V03), so the build names a recipe "view/recipe".
 std::string recipe_of(const View &view, const Node &node) {
   return std::format("{}/{}", view.name, node.recipe);
@@ -381,7 +374,7 @@ void Schedule::make_pipeline(Bound &bound) const {
     if (bound.fields.empty()) {
       bound.fields = shader.fields();
       bound.block_size = shader.block_size();
-    } else if (!std::ranges::equal(bound.fields, shader.fields(), same_field)) {
+    } else if (bound.fields != shader.fields()) {
       throw std::runtime_error("its shaders declare different pass blocks; declare it "
                                "once, in a file both include");
     }

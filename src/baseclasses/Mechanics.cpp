@@ -20,8 +20,8 @@ constexpr const char *validation_layer = "VK_LAYER_KHRONOS_validation";
 #ifdef NDEBUG
 constexpr bool validate = false;
 #else
-constexpr bool validate =
-    true; // debug runs are checked when the layer is installed (RVK00)
+// Debug runs are checked when the layer is installed (RVK00).
+constexpr bool validate = true;
 #endif
 
 // Best first: the fastest device that meets the floor runs the view (C03).

@@ -167,7 +167,6 @@ int Runtime::run() {
   if constexpr (VP_LIVE)
     _live = std::make_unique<Live>(_view->file.parent_path(), build);
   loop();
-  _engine->wait();
   return _schedule->ok() ? 0 : 1;
 }
 
