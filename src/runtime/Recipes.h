@@ -38,7 +38,6 @@ public:
   // The next make() loads the rebuilt module. The caller has destroyed the recipe's
   // operators first: their code is in the module.
   void unload(const std::string &recipe);
-  void add(std::string_view name, Make make) override;
 
 private:
   struct Module {
@@ -48,6 +47,7 @@ private:
     std::optional<Library> library;
   };
 
+  void add(std::string_view name, Make make) override;
   void enter(const std::string &recipe, const std::filesystem::path &folder);
   void load(Module &module);
   void run(const std::string &recipe, void (*entry)(Registry &));

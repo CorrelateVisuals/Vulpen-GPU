@@ -141,15 +141,17 @@ class FilePort {};
 // Where a recipe registers its operators, by the names a manifest's operator word uses.
 class Registry {
 public:
-  using Make = std::unique_ptr<Operator> (*)();
-
   template <class T> void add(std::string_view name) {
     add(name, []() -> std::unique_ptr<Operator> { return std::make_unique<T>(); });
   }
-  virtual void add(std::string_view name, Make make) = 0;
 
 protected:
+  using Make = std::unique_ptr<Operator> (*)();
+
   ~Registry() = default;
+
+private:
+  virtual void add(std::string_view name, Make make) = 0;
 };
 
 } // namespace VP

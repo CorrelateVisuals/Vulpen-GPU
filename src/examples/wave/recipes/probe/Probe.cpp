@@ -10,7 +10,6 @@ constexpr std::size_t line_capacity = 256;
 
 // Prints what the GPU wrote every so many frames: a headless view is seen through it.
 class Probe final : public VP::Operator {
-public:
   void bind(VP::Bind &node) override {
     _samples = node.readback<float>("samples");
     _every = node.param<std::uint32_t>("every");
@@ -27,7 +26,6 @@ public:
     frame.log(VP::Level::info, {line.data(), end});
   }
 
-private:
   VP::Readback<float> _samples;
   std::uint32_t _every = 0;
 };

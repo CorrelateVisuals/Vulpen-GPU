@@ -196,14 +196,13 @@ public:
   Cooker(const Schedule &schedule, Bound &bound, std::uint64_t frame)
       : _schedule(schedule), _bound(bound), _frame(frame) {}
 
+private:
   std::uint64_t index() const override {
     return _frame;
   }
   void log(Level level, std::string_view text) const override {
     _schedule._log.write(level, _bound.log, text);
   }
-
-private:
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }

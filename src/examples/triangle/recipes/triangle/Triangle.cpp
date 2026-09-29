@@ -17,7 +17,6 @@ float swing(float angle) {
 // The triangle lives on the CPU: C++ writes its corners and its tint, and the shaders
 // only draw them.
 class Triangle final : public VP::Operator {
-public:
   void bind(VP::Bind &node) override {
     _corners = node.upload<glm::vec2>("corners");
     _tint = node.value<glm::vec4>("tint");
@@ -36,7 +35,6 @@ public:
         glm::vec4(swing(_angle), swing(_angle + step), swing(_angle - step), opaque));
   }
 
-private:
   VP::Upload<glm::vec2> _corners;
   VP::Value<glm::vec4> _tint;
   float _speed = 0;
