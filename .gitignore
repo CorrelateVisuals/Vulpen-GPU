@@ -1,0 +1,15 @@
+# Build output: the CMake presets build under out/, an ad-hoc `cmake -B build` under build/.
+/out/
+/build/
+# A developer's own presets; CMakePresets.json holds the shared ones.
+CMakeUserPresets.json
+
+# Editor state: clangd's index and compile-database link, Visual Studio's folder cache.
+/.cache/
+/compile_commands.json
+/.vs/
+
+__pycache__/
+
+# Archi leaves a .bak beside the model it saves; git history is the backup.
+*.bak

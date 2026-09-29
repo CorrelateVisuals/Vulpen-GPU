@@ -1,2 +1,23 @@
-# Auto detect text files and perform LF normalization
+# LF in the repository, whatever a contributor's core.autocrlf says.
 * text=auto
+
+# LF in the working copy too: shell scripts run under a Unix shell even on
+# Windows, and Vulpen reads manifests and shaders line by line, where a CR
+# would ride into every value and #include path.
+*.sh   text eol=lf
+*.vlp  text eol=lf
+*.glsl text eol=lf
+*.vert text eol=lf
+*.tesc text eol=lf
+*.tese text eol=lf
+*.geom text eol=lf
+*.frag text eol=lf
+*.comp text eol=lf
+
+# GitHub would count .h files as C.
+*.h linguist-language=C++
+
+# Not our code, for GitHub's language bar and src/tools/fetch-statistics.py
+# alike. Vendored files also skip line-ending conversion, so they stay
+# byte-identical to the pinned upstream release.
+src/external-libraries/** -text linguist-vendored
