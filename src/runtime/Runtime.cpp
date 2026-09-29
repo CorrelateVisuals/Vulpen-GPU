@@ -19,6 +19,7 @@ namespace {
 constexpr const char *usage =
     "usage: vulpen <view.vlp> [--frames N] [--fps N] [--log error|warn|info|debug]";
 constexpr std::uint32_t default_fps = 60;
+constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 constexpr auto scan_interval = std::chrono::milliseconds(100);
 constexpr const char *build_log = "live-build.log";
 
@@ -98,9 +99,9 @@ private:
     return newest;
   }
 
-  std::filesystem::path _folder;
-  std::filesystem::path _log_file;
-  std::string _command;
+  const std::filesystem::path _folder;
+  const std::filesystem::path _log_file;
+  const std::string _command;
   std::filesystem::file_time_type _built_from;
   std::filesystem::file_time_type _pending;
   std::chrono::steady_clock::time_point _next_scan{};
@@ -155,8 +156,11 @@ int Runtime::run() {
   }
   const std::filesystem::path build = Files::executable().parent_path();
   _views = build / "views";
-  _engine.emplace(_log);
   _view = std::make_unique<View>(Manifest::load(_options.manifest));
+  // Only a view that draws opens a window; every other view runs headless (V07).
+  if (Schedule::draws(*_view))
+    _window.emplace(std::format("{} - vulpen", _view->name), window_size);
+  _engine.emplace(_log, _window ? &*_window : nullptr);
   _schedule = std::make_unique<Schedule>(*_engine, _recipes, *_view, _views, _log);
   if (!_schedule->ok())
     return 1;
@@ -175,6 +179,8 @@ void Runtime::loop() {
   auto next = std::chrono::steady_clock::now();
   for (std::uint64_t frame = 0; _options.frames == 0 || frame < _options.frames;
        ++frame) {
+    if (_window && !_window->poll())
+      break;
     _engine->wait();
     switch (_live ? _live->poll() : Live::Build::none) {
       case Live::Build::succeeded:

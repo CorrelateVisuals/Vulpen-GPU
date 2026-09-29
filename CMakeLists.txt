@@ -18,6 +18,7 @@ add_executable(vulpen
   src/baseclasses/Pipelines.cpp
   src/baseclasses/Platform.cpp
   src/baseclasses/Resources.cpp
+  src/baseclasses/Swapchain.cpp
   src/runtime/Manifest.cpp
   src/runtime/Recipes.cpp
   src/runtime/Runtime.cpp
@@ -26,7 +27,14 @@ target_compile_options(vulpen PRIVATE "${warnings}")
 target_include_directories(vulpen PRIVATE src)
 # Vendored code is not ours to warn about (RA02).
 target_include_directories(vulpen SYSTEM PRIVATE src/external-libraries)
-target_link_libraries(vulpen PRIVATE Vulkan::Vulkan ${CMAKE_DL_LIBS})
+# GLFW builds from its pinned source; the vendored copy leaves out its docs, tests and
+# examples, so they must stay off.
+set(GLFW_BUILD_DOCS OFF)
+set(GLFW_BUILD_TESTS OFF)
+set(GLFW_BUILD_EXAMPLES OFF)
+set(GLFW_INSTALL OFF)
+add_subdirectory(src/external-libraries/glfw EXCLUDE_FROM_ALL)
+target_link_libraries(vulpen PRIVATE Vulkan::Vulkan glfw ${CMAKE_DL_LIBS})
 # The $<0:> stops multi-config generators (Visual Studio) from adding a Debug/ or
 # Release/ folder, so the run scripts find the binary at out/build/<preset>/.
 set_target_properties(vulpen PROPERTIES COMPILE_WARNING_AS_ERROR ON
@@ -70,3 +78,6 @@ enable_testing()
 add_test(NAME vulpen COMMAND vulpen)
 add_test(NAME wave COMMAND vulpen ${PROJECT_SOURCE_DIR}/src/examples/wave/view.vlp
                            --frames 120 --fps 0)
+# Opens a window, so it needs a display.
+add_test(NAME triangle COMMAND vulpen ${PROJECT_SOURCE_DIR}/src/examples/triangle/view.vlp
+                               --frames 120 --fps 0)

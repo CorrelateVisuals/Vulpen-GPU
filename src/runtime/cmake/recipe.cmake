@@ -87,6 +87,9 @@ function(vulpen_recipe view folder)
     set_property(GLOBAL APPEND PROPERTY vulpen_linked "${view}/${recipe}=vp_recipe_${target}")
   endif()
   target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src)
+  # runtime/Operator.h takes GLSL's vectors from glm.
+  target_include_directories(${target} SYSTEM PRIVATE
+                             ${PROJECT_SOURCE_DIR}/src/external-libraries)
   target_compile_options(${target} PRIVATE "${warnings}")
   set_target_properties(${target} PROPERTIES COMPILE_WARNING_AS_ERROR ON)
   add_dependencies(vulpen_recipes ${target})

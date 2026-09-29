@@ -43,6 +43,7 @@ public:
   // Empty when the shader declares no pass block.
   const std::vector<Field> &fields() const;
   std::uint32_t block_size() const;
+  // Zero for any stage but compute.
   const std::array<std::uint32_t, 3> &workgroup_size() const;
 
 private:
@@ -67,7 +68,7 @@ private:
   friend class Pipeline;
   friend class PassBlock;
 
-  VkDevice _device;
+  const VkDevice _device;
   const Resources &_resources;
   VkDescriptorSetLayout _images = VK_NULL_HANDLE; // set 0; gains its arrays with a user
   VkDescriptorSetLayout _pass = VK_NULL_HANDLE;
@@ -75,9 +76,14 @@ private:
   VkDescriptorPool _pool = VK_NULL_HANDLE;
 };
 
+// A dispatch's pipeline, or a draw's for a render pass.
 class Pipeline {
 public:
-  Pipeline(const Pipelines &pipelines, const Shader &shader);
+  Pipeline(const Pipelines &pipelines, const Shader &compute);
+  Pipeline(const Pipelines &pipelines,
+           const Shader &vertex,
+           const Shader &fragment,
+           VkRenderPass render_pass);
   Pipeline(Pipeline &&other) noexcept;
   Pipeline &operator=(Pipeline &&other) noexcept;
   ~Pipeline();

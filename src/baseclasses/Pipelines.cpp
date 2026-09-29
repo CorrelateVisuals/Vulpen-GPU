@@ -45,6 +45,7 @@ constexpr std::uint32_t scalar_bytes = 4;
 constexpr std::uint32_t address_bytes = sizeof(VkDeviceAddress);
 constexpr std::uint32_t std140_block_alignment = 16;
 constexpr std::uint32_t max_passes = 1024;
+constexpr float line_width = 1.0f; // the only width without the wideLines feature
 
 struct Member {
   std::string name;
@@ -182,6 +183,18 @@ std::string glsl_name(const Module &module, std::uint32_t type_id) {
   return {};
 }
 
+// Bytes of a value C++ can set: a 32-bit scalar or a vector of them; 0 for any other.
+std::uint32_t value_bytes(const Module &module, std::uint32_t type_id) {
+  const auto found = module.types.find(type_id);
+  if (found == module.types.end())
+    return 0;
+  const std::vector<std::uint32_t> &type = found->second;
+  if (type[0] == spirv::op_type_vector)
+    return type.at(2) * value_bytes(module, type.at(1));
+  const bool scalar = type[0] == spirv::op_type_int || type[0] == spirv::op_type_float;
+  return scalar && type.at(1) == CHAR_BIT * scalar_bytes ? scalar_bytes : 0;
+}
+
 // A buffer is a pointer to a block whose first member is a runtime array: the array's
 // stride is the element size, and the member's qualifier says how the shader uses it.
 Field describe_buffer(const Module &module, Field field, std::uint32_t block) {
@@ -204,14 +217,13 @@ Field describe(const Module &module, const Member &member, std::uint32_t type_id
       type.at(1) == spirv::storage_physical_storage_buffer)
     return describe_buffer(
         module, {.name = member.name, .offset = member.offset}, type.at(2));
-  Field field{
-      .name = member.name, .type = glsl_name(module, type_id), .offset = member.offset};
-  if (field.type != "float" && field.type != "int" && field.type != "uint")
+  if (value_bytes(module, type_id) == 0)
     throw std::runtime_error(
-        std::format("pass block field {} has a type this build cannot "
-                    "set yet: use float, int, uint or a buffer",
+        std::format("pass block field {} has a type this build cannot set yet: use "
+                    "float, int, uint, a vector of them, or a buffer",
                     member.name));
-  return field;
+  return {
+      .name = member.name, .type = glsl_name(module, type_id), .offset = member.offset};
 }
 
 // The pass block's fields, and its size rounded up to a whole std140 block.
@@ -230,8 +242,9 @@ std::pair<std::vector<Field>, std::uint32_t> pass_block(const Module &module) {
       fields.push_back(
           describe(module, module.members.at(block).at(index - 1), members[index]));
       end = std::max(end,
-                     fields.back().offset +
-                         (fields.back().buffer() ? address_bytes : scalar_bytes));
+                     fields.back().offset + (fields.back().buffer()
+                                                 ? address_bytes
+                                                 : value_bytes(module, members[index])));
     }
     const std::uint32_t size = (end + std140_block_alignment - 1) /
                                std140_block_alignment * std140_block_alignment;
@@ -251,6 +264,33 @@ std::vector<std::uint32_t> read_words(const std::filesystem::path &spirv) {
             static_cast<std::streamsize>(words.size() * sizeof(std::uint32_t)));
   return words;
 }
+
+// A shader module lives only until the pipeline made from it exists.
+class ShaderModule {
+public:
+  ShaderModule(VkDevice device, const Shader &shader) : _device(device) {
+    const std::span<const std::uint32_t> words = shader.words();
+    const VkShaderModuleCreateInfo code{.sType =
+                                            VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                        .codeSize = words.size_bytes(),
+                                        .pCode = words.data()};
+    check(vkCreateShaderModule(_device, &code, nullptr, &_module),
+          "vkCreateShaderModule");
+  }
+  ~ShaderModule() {
+    vkDestroyShaderModule(_device, _module, nullptr);
+  }
+  ShaderModule(const ShaderModule &) = delete;
+  ShaderModule &operator=(const ShaderModule &) = delete;
+
+  VkShaderModule handle() const {
+    return _module;
+  }
+
+private:
+  const VkDevice _device;
+  VkShaderModule _module = VK_NULL_HANDLE;
+};
 
 } // namespace
 
@@ -334,26 +374,86 @@ VkPipelineLayout Pipelines::layout() const {
   return _layout;
 }
 
-Pipeline::Pipeline(const Pipelines &pipelines, const Shader &shader)
+Pipeline::Pipeline(const Pipelines &pipelines, const Shader &compute)
     : _device(pipelines._device) {
-  const std::span<const std::uint32_t> words = shader.words();
-  const VkShaderModuleCreateInfo code{.sType =
-                                          VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                                      .codeSize = words.size_bytes(),
-                                      .pCode = words.data()};
-  VkShaderModule module = VK_NULL_HANDLE;
-  check(vkCreateShaderModule(_device, &code, nullptr, &module), "vkCreateShaderModule");
+  const ShaderModule module(_device, compute);
   const VkComputePipelineCreateInfo info{
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
       .stage = {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-                .module = module,
+                .module = module.handle(),
                 .pName = "main"},
       .layout = pipelines.layout()};
-  const VkResult result =
-      vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline);
-  vkDestroyShaderModule(_device, module, nullptr);
-  check(result, "vkCreateComputePipelines");
+  check(vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline),
+        "vkCreateComputePipelines");
+}
+
+// The vertex shader pulls its vertices from buffers by address (RV02), so the pipeline
+// takes no vertex input; the viewport follows the window, so it is set per frame.
+Pipeline::Pipeline(const Pipelines &pipelines,
+                   const Shader &vertex,
+                   const Shader &fragment,
+                   VkRenderPass render_pass)
+    : _device(pipelines._device) {
+  const ShaderModule vertex_module(_device, vertex);
+  const ShaderModule fragment_module(_device, fragment);
+  const std::array stages{
+      VkPipelineShaderStageCreateInfo{
+          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+          .stage = VK_SHADER_STAGE_VERTEX_BIT,
+          .module = vertex_module.handle(),
+          .pName = "main"},
+      VkPipelineShaderStageCreateInfo{
+          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+          .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+          .module = fragment_module.handle(),
+          .pName = "main"}};
+  const VkPipelineVertexInputStateCreateInfo input{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+  const VkPipelineInputAssemblyStateCreateInfo assembly{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+      .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST};
+  const VkPipelineViewportStateCreateInfo viewport{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+      .viewportCount = 1,
+      .scissorCount = 1};
+  const VkPipelineRasterizationStateCreateInfo rasterization{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+      .polygonMode = VK_POLYGON_MODE_FILL,
+      .cullMode = VK_CULL_MODE_NONE,
+      .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+      .lineWidth = line_width};
+  const VkPipelineMultisampleStateCreateInfo multisample{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+      .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT};
+  const VkPipelineColorBlendAttachmentState color{
+      .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
+  const VkPipelineColorBlendStateCreateInfo blend{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      .attachmentCount = 1,
+      .pAttachments = &color};
+  const std::array dynamic{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+  const VkPipelineDynamicStateCreateInfo dynamic_state{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+      .dynamicStateCount = static_cast<std::uint32_t>(dynamic.size()),
+      .pDynamicStates = dynamic.data()};
+  const VkGraphicsPipelineCreateInfo info{
+      .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+      .stageCount = static_cast<std::uint32_t>(stages.size()),
+      .pStages = stages.data(),
+      .pVertexInputState = &input,
+      .pInputAssemblyState = &assembly,
+      .pViewportState = &viewport,
+      .pRasterizationState = &rasterization,
+      .pMultisampleState = &multisample,
+      .pColorBlendState = &blend,
+      .pDynamicState = &dynamic_state,
+      .layout = pipelines.layout(),
+      .renderPass = render_pass};
+  check(
+      vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline),
+      "vkCreateGraphicsPipelines");
 }
 
 Pipeline::Pipeline(Pipeline &&other) noexcept

@@ -40,9 +40,10 @@ private:
   void loop();
   void swap();
 
-  Options _options;
-  Log _log;
+  const Options _options;
+  const Log _log;
   std::filesystem::path _views;
+  std::optional<Window> _window; // outlives the engine, which draws into it
   std::optional<Engine> _engine;
   Recipes _recipes; // outlives the schedule, whose operators run its modules' code
   std::unique_ptr<View> _view;

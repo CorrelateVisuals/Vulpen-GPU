@@ -22,10 +22,21 @@ bool contains(const std::vector<VkBuffer> &buffers, VkBuffer buffer) {
   return std::ranges::find(buffers, buffer) != buffers.end();
 }
 
+void bind(VkCommandBuffer commands, VkPipelineLayout layout, const Pass &pass) {
+  vkCmdBindPipeline(commands, pass.bind_point, pass.pipeline);
+  if (pass.block)
+    vkCmdBindDescriptorSets(
+        commands, pass.bind_point, layout, pass_set, 1, &pass.block, 0, nullptr);
+}
+
 } // namespace
 
-Engine::Engine(const Log &log)
-    : _mechanics(log), _resources(_mechanics), _pipelines(_mechanics, _resources) {}
+Engine::Engine(const Log &log, const Window *window)
+    : _mechanics(log, window), _resources(_mechanics),
+      _pipelines(_mechanics, _resources) {
+  if (window)
+    _swapchain.emplace(_mechanics, *window);
+}
 
 Engine::~Engine() {
   _mechanics.wait_idle();
@@ -37,6 +48,10 @@ const Resources &Engine::resources() const {
 
 const Pipelines &Engine::pipelines() const {
   return _pipelines;
+}
+
+VkRenderPass Engine::render_pass() const {
+  return _swapchain ? _swapchain->render_pass() : VK_NULL_HANDLE;
 }
 
 void Engine::wait() const {
@@ -63,9 +78,31 @@ void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes)
             VK_ACCESS_TRANSFER_WRITE_BIT,
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+  dispatch(commands, passes);
+  const std::optional<Target> target =
+      _swapchain ? _swapchain->acquire() : std::optional<Target>{};
+  if (target)
+    draw(commands, *target, passes);
+  // Readbacks: the CPU reads this frame's writes after its fence (VK03).
+  barrier(commands,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          VK_ACCESS_SHADER_WRITE_BIT,
+          VK_PIPELINE_STAGE_HOST_BIT,
+          VK_ACCESS_HOST_READ_BIT);
+  if (!target) {
+    _mechanics.submit();
+    return;
+  }
+  _mechanics.submit(target->acquired, target->rendered);
+  _swapchain->present(*target);
+}
+
+void Engine::dispatch(VkCommandBuffer commands, std::span<const Pass> passes) {
   _written.clear();
   _read.clear();
   for (const Pass &pass : passes) {
+    if (pass.bind_point != VK_PIPELINE_BIND_POINT_COMPUTE)
+      continue;
     if (hazard(pass)) {
       barrier(commands,
               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -77,25 +114,28 @@ void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes)
     }
     _written.insert(_written.end(), pass.writes.begin(), pass.writes.end());
     _read.insert(_read.end(), pass.reads.begin(), pass.reads.end());
-    vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_COMPUTE, pass.pipeline);
-    if (pass.block)
-      vkCmdBindDescriptorSets(commands,
-                              VK_PIPELINE_BIND_POINT_COMPUTE,
-                              _pipelines.layout(),
-                              pass_set,
-                              1,
-                              &pass.block,
-                              0,
-                              nullptr);
+    bind(commands, _pipelines.layout(), pass);
     vkCmdDispatch(commands, pass.groups, 1, 1);
   }
-  // Readbacks: the CPU reads this frame's writes after its fence (VK03).
+}
+
+// Draws read what the clears and dispatches wrote; the CPU's uploads are visible to the
+// GPU once the frame is submitted.
+void Engine::draw(VkCommandBuffer commands,
+                  const Target &target,
+                  std::span<const Pass> passes) const {
   barrier(commands,
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-          VK_ACCESS_SHADER_WRITE_BIT,
-          VK_PIPELINE_STAGE_HOST_BIT,
-          VK_ACCESS_HOST_READ_BIT);
-  _mechanics.submit();
+          VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+          VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+          VK_ACCESS_SHADER_READ_BIT);
+  _swapchain->begin(commands, target);
+  for (const Pass &pass : passes)
+    if (pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      bind(commands, _pipelines.layout(), pass);
+      vkCmdDraw(commands, pass.vertex_count, 1, 0, 0);
+    }
+  vkCmdEndRenderPass(commands);
 }
 
 } // namespace VP

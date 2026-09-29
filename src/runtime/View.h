@@ -12,13 +12,13 @@ struct Param {
   std::string value;
 };
 
-// One manifest entry: the recipe it comes from, the C++ class and shader it runs, and
+// One manifest entry: the recipe it comes from, the C++ class and shaders it runs, and
 // the params they read.
 struct Node {
   std::string name;
   std::string recipe;
   std::string operator_name;
-  std::string shader;
+  std::vector<std::string> shaders; // one compute shader, or a vertex and a fragment one
   std::uint32_t invocations = 0;
   std::vector<Param> params;
   std::string log;

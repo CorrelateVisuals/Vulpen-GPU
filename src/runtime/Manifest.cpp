@@ -43,7 +43,7 @@ private:
   std::uint32_t number(std::string_view text) const;
   void check() const;
 
-  std::filesystem::path _file;
+  const std::filesystem::path _file;
   View _view;
   Section _section = Section::none;
   std::size_t _line = 0;
@@ -131,7 +131,7 @@ void Reader::node_word(Node &node, std::string_view key, std::string_view value)
   } else if (key == "operator") {
     once(node.operator_name, key, value);
   } else if (key == "shader") {
-    once(node.shader, key, value);
+    node.shaders.emplace_back(value);
   } else if (key == "log") {
     once(node.log, key, value);
   } else if (key == "invocations") {
@@ -201,12 +201,12 @@ void Reader::check() const {
   for (const Node &node : _view.nodes) {
     if (named(node.name) > 1)
       fail(std::format("two nodes are named {}", node.name));
-    if (node.operator_name.empty() && node.shader.empty())
+    if (node.operator_name.empty() && node.shaders.empty())
       fail(std::format("node {} runs nothing: give it an operator, a shader or both",
                        node.name));
     if (node.recipe.empty())
       fail(std::format("node {} names no recipe to find its C++ and GLSL in", node.name));
-    if (!node.shader.empty() && node.invocations == 0)
+    if (!node.shaders.empty() && node.invocations == 0)
       fail(std::format("node {} runs a shader, so it needs invocations", node.name));
   }
   for (const Connection &connection : _view.connections) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "baseclasses/Log.h"
+#include "baseclasses/Platform.h"
 
 #include <vulkan/vulkan.h>
 
@@ -11,11 +12,11 @@ namespace VP {
 // Throws with the call's name, so a Vulkan error names its cause (A02).
 void check(VkResult result, const char *call);
 
-// The GPU machine: instance, device and queues. It knows no window, so a headless run
-// needs nothing else.
+// The GPU machine: instance, device and queues. A window is optional, so a headless run
+// needs nothing else; with one, the device is one that presents to it.
 class Mechanics {
 public:
-  explicit Mechanics(const Log &log);
+  Mechanics(const Log &log, const Window *window);
   ~Mechanics();
   Mechanics(const Mechanics &) = delete;
   Mechanics &operator=(const Mechanics &) = delete;
@@ -23,18 +24,27 @@ public:
   VkInstance instance() const;
   VkPhysicalDevice physical_device() const;
   VkDevice device() const;
+  // Null without a window.
+  VkSurfaceKHR surface() const;
 
   // One frame in flight: the frame loop waits on nothing but this fence (VK02).
   void wait() const;
   void wait_idle() const;
   VkCommandBuffer record() const;
-  void submit() const;
+  // With a window image: waits for it to be acquired before writing it, and signals
+  // once it is rendered.
+  void submit(VkSemaphore acquired = VK_NULL_HANDLE,
+              VkSemaphore rendered = VK_NULL_HANDLE) const;
+  // The result, so the swapchain can tell when to remake itself.
+  VkResult
+  present(VkSwapchainKHR swapchain, std::uint32_t image, VkSemaphore rendered) const;
 
 private:
-  VkInstance _instance = VK_NULL_HANDLE;
-  VkPhysicalDevice _physical_device = VK_NULL_HANDLE;
-  std::uint32_t _queue_family = 0;
-  VkDevice _device = VK_NULL_HANDLE;
+  const VkInstance _instance;
+  const VkSurfaceKHR _surface;
+  const VkPhysicalDevice _physical_device;
+  const std::uint32_t _queue_family;
+  const VkDevice _device;
   VkQueue _queue = VK_NULL_HANDLE;
   VkCommandPool _command_pool = VK_NULL_HANDLE;
   VkCommandBuffer _commands = VK_NULL_HANDLE;

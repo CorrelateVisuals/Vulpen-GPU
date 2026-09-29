@@ -1,0 +1,15 @@
+# A window with one triangle. C++ turns its corners and tints it every frame; the
+# shaders draw what C++ wrote. Run ./run.sh src/examples/triangle/view.vlp, then save
+# any file of this view while it runs.
+
+[manifest]
+version = 1
+
+# Two shaders make a draw; invocations counts its vertices.
+[node "triangle"]
+recipe      = triangle
+operator    = Triangle
+shader      = Triangle.vert
+shader      = Triangle.frag
+invocations = 3
+param       = speed=0.01

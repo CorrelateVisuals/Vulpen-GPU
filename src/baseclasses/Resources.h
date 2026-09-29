@@ -53,7 +53,7 @@ public:
   Buffer buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const;
 
 private:
-  VkDevice _device;
+  const VkDevice _device;
   VmaAllocator_T *_allocator = nullptr;
 };
 

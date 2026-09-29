@@ -1,6 +1,12 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include <filesystem>
+#include <span>
+#include <string>
+
+struct GLFWwindow;
 
 namespace VP {
 
@@ -29,7 +35,28 @@ private:
   void *_handle;
 };
 
-class Window {};
+// A desktop window through GLFW. Only a view that draws opens one (V07).
+class Window {
+public:
+  // Throws, naming why, when no display can hold a window.
+  Window(const std::string &title, VkExtent2D size);
+  ~Window();
+  Window(const Window &) = delete;
+  Window &operator=(const Window &) = delete;
+
+  // Takes the events since the last call; false once the window was asked to close.
+  bool poll() const;
+  // In pixels; zero while the window is minimized.
+  VkExtent2D size() const;
+  // What a Vulkan instance enables to present to this window.
+  std::span<const char *const> vulkan_extensions() const;
+  // The caller owns the surface and destroys it before the instance.
+  VkSurfaceKHR surface(VkInstance instance) const;
+
+private:
+  GLFWwindow *_window = nullptr;
+};
+
 class Terminal {};
 
 } // namespace VP

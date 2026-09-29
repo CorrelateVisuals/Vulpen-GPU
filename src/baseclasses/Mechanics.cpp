@@ -6,6 +6,7 @@
 #include <format>
 #include <limits>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -39,15 +40,20 @@ bool layer_installed(const char *name) {
   });
 }
 
-VkInstance create_instance(const Log &log) {
+VkInstance create_instance(const Log &log, const Window *window) {
   const VkApplicationInfo application{.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
                                       .pApplicationName = "vulpen",
                                       .apiVersion = VK_API_VERSION_1_2};
   const bool validated = validate && layer_installed(validation_layer);
-  const VkInstanceCreateInfo info{.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-                                  .pApplicationInfo = &application,
-                                  .enabledLayerCount = validated ? 1u : 0u,
-                                  .ppEnabledLayerNames = &validation_layer};
+  const std::span<const char *const> extensions =
+      window ? window->vulkan_extensions() : std::span<const char *const>{};
+  const VkInstanceCreateInfo info{
+      .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+      .pApplicationInfo = &application,
+      .enabledLayerCount = validated ? 1u : 0u,
+      .ppEnabledLayerNames = &validation_layer,
+      .enabledExtensionCount = static_cast<std::uint32_t>(extensions.size()),
+      .ppEnabledExtensionNames = extensions.data()};
   VkInstance instance = VK_NULL_HANDLE;
   check(vkCreateInstance(&info, nullptr, &instance), "vkCreateInstance");
   if (validated)
@@ -68,14 +74,31 @@ bool meets_floor(VkPhysicalDevice device) {
          features12.bufferDeviceAddress;
 }
 
-std::optional<std::uint32_t> compute_family(VkPhysicalDevice device) {
+bool presents(VkPhysicalDevice device) {
+  std::uint32_t count = 0;
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+  std::vector<VkExtensionProperties> extensions(count);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
+  return std::ranges::any_of(extensions, [](const VkExtensionProperties &extension) {
+    return std::strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
+  });
+}
+
+// One queue runs everything: compute, and with a window also draws and presents.
+std::optional<std::uint32_t> queue_family(VkPhysicalDevice device, VkSurfaceKHR surface) {
+  const VkQueueFlags needed =
+      surface ? VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT : VK_QUEUE_COMPUTE_BIT;
   std::uint32_t count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
   std::vector<VkQueueFamilyProperties> families(count);
   vkGetPhysicalDeviceQueueFamilyProperties(device, &count, families.data());
-  for (std::uint32_t index = 0; index < count; ++index)
-    if (families[index].queueFlags & VK_QUEUE_COMPUTE_BIT)
+  for (std::uint32_t index = 0; index < count; ++index) {
+    VkBool32 present = VK_TRUE;
+    if (surface)
+      vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface, &present);
+    if ((families[index].queueFlags & needed) == needed && present)
       return index;
+  }
   return std::nullopt;
 }
 
@@ -86,17 +109,20 @@ std::size_t rank(VkPhysicalDevice device) {
                                   preference.begin());
 }
 
-VkPhysicalDevice pick_device(VkInstance instance, const Log &log) {
+VkPhysicalDevice pick_device(VkInstance instance, VkSurfaceKHR surface, const Log &log) {
   std::uint32_t count = 0;
   vkEnumeratePhysicalDevices(instance, &count, nullptr);
   std::vector<VkPhysicalDevice> devices(count);
   vkEnumeratePhysicalDevices(instance, &count, devices.data());
-  std::erase_if(devices, [](VkPhysicalDevice device) {
-    return !meets_floor(device) || !compute_family(device);
+  std::erase_if(devices, [&](VkPhysicalDevice device) {
+    return !meets_floor(device) || (surface && !presents(device)) ||
+           !queue_family(device, surface);
   });
   if (devices.empty())
-    throw std::runtime_error("no GPU meets the Vulkan floor: 1.2 with buffer device "
-                             "address and descriptor indexing (RV01)");
+    throw std::runtime_error(
+        std::format("no GPU meets the Vulkan floor: 1.2 with buffer device address and "
+                    "descriptor indexing (RV01){}",
+                    surface ? ", and presents to the window" : ""));
   const VkPhysicalDevice best = *std::ranges::min_element(devices, {}, rank);
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(best, &properties);
@@ -104,7 +130,9 @@ VkPhysicalDevice pick_device(VkInstance instance, const Log &log) {
   return best;
 }
 
-VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
+VkDevice create_device(VkPhysicalDevice physical_device,
+                       std::uint32_t family,
+                       VkSurfaceKHR surface) {
   const VkDeviceQueueCreateInfo queue{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                       .queueFamilyIndex = family,
                                       .queueCount = 1,
@@ -113,10 +141,13 @@ VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       .descriptorIndexing = VK_TRUE,
       .bufferDeviceAddress = VK_TRUE};
+  const char *const swapchain = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
   const VkDeviceCreateInfo info{.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
                                 .pNext = &features12,
                                 .queueCreateInfoCount = 1,
-                                .pQueueCreateInfos = &queue};
+                                .pQueueCreateInfos = &queue,
+                                .enabledExtensionCount = surface ? 1u : 0u,
+                                .ppEnabledExtensionNames = &swapchain};
   VkDevice device = VK_NULL_HANDLE;
   check(vkCreateDevice(physical_device, &info, nullptr, &device), "vkCreateDevice");
   return device;
@@ -129,10 +160,12 @@ void check(VkResult result, const char *call) {
     throw std::runtime_error(std::format("{} failed: VkResult {}", call, int{result}));
 }
 
-Mechanics::Mechanics(const Log &log)
-    : _instance(create_instance(log)), _physical_device(pick_device(_instance, log)),
-      _queue_family(*compute_family(_physical_device)),
-      _device(create_device(_physical_device, _queue_family)) {
+Mechanics::Mechanics(const Log &log, const Window *window)
+    : _instance(create_instance(log, window)),
+      _surface(window ? window->surface(_instance) : VK_NULL_HANDLE),
+      _physical_device(pick_device(_instance, _surface, log)),
+      _queue_family(*queue_family(_physical_device, _surface)),
+      _device(create_device(_physical_device, _queue_family, _surface)) {
   vkGetDeviceQueue(_device, _queue_family, 0, &_queue);
   const VkCommandPoolCreateInfo pool{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                      .flags =
@@ -158,6 +191,9 @@ Mechanics::~Mechanics() {
   vkDestroyFence(_device, _fence, nullptr);
   vkDestroyCommandPool(_device, _command_pool, nullptr);
   vkDestroyDevice(_device, nullptr);
+  // Headless, the instance lacks VK_KHR_surface, so even a null surface is not passed.
+  if (_surface)
+    vkDestroySurfaceKHR(_instance, _surface, nullptr);
   vkDestroyInstance(_instance, nullptr);
 }
 
@@ -171,6 +207,10 @@ VkPhysicalDevice Mechanics::physical_device() const {
 
 VkDevice Mechanics::device() const {
   return _device;
+}
+
+VkSurfaceKHR Mechanics::surface() const {
+  return _surface;
 }
 
 void Mechanics::wait() const {
@@ -190,13 +230,31 @@ VkCommandBuffer Mechanics::record() const {
   return _commands;
 }
 
-void Mechanics::submit() const {
+void Mechanics::submit(VkSemaphore acquired, VkSemaphore rendered) const {
   check(vkEndCommandBuffer(_commands), "vkEndCommandBuffer");
   check(vkResetFences(_device, 1, &_fence), "vkResetFences");
+  const VkPipelineStageFlags written = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   const VkSubmitInfo submit{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                            .waitSemaphoreCount = acquired ? 1u : 0u,
+                            .pWaitSemaphores = &acquired,
+                            .pWaitDstStageMask = &written,
                             .commandBufferCount = 1,
-                            .pCommandBuffers = &_commands};
+                            .pCommandBuffers = &_commands,
+                            .signalSemaphoreCount = rendered ? 1u : 0u,
+                            .pSignalSemaphores = &rendered};
   check(vkQueueSubmit(_queue, 1, &submit, _fence), "vkQueueSubmit");
+}
+
+VkResult Mechanics::present(VkSwapchainKHR swapchain,
+                            std::uint32_t image,
+                            VkSemaphore rendered) const {
+  const VkPresentInfoKHR present{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                                 .waitSemaphoreCount = 1,
+                                 .pWaitSemaphores = &rendered,
+                                 .swapchainCount = 1,
+                                 .pSwapchains = &swapchain,
+                                 .pImageIndices = &image};
+  return vkQueuePresentKHR(_queue, &present);
 }
 
 } // namespace VP

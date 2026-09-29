@@ -11,14 +11,19 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/GpuLayout.glsl` | — |
 | `baseclasses/Log.h` | — |
 | `baseclasses/Mechanics.cpp` | `baseclasses/Mechanics.h` |
-| `baseclasses/Mechanics.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` |
+| `baseclasses/Mechanics.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Platform.h` |
 | `baseclasses/Pipelines.cpp` | `baseclasses/Pipelines.h` |
 | `baseclasses/Pipelines.h` | `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
-| `baseclasses/Platform.cpp` | `<dlfcn.h>` `baseclasses/Platform.h` |
-| `baseclasses/Platform.h` | — |
+| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<dlfcn.h>` `baseclasses/Platform.h` |
+| `baseclasses/Platform.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Resources.h` |
 | `baseclasses/Resources.h` | `baseclasses/Mechanics.h` |
+| `baseclasses/Swapchain.cpp` | `baseclasses/Swapchain.h` |
 | `baseclasses/Swapchain.h` | `baseclasses/Mechanics.h` `baseclasses/Platform.h` |
+| `examples/triangle/recipes/triangle/Triangle.cpp` | `runtime/Operator.h` |
+| `examples/triangle/recipes/triangle/Triangle.frag` | `examples/triangle/recipes/triangle/Triangle.glsl` |
+| `examples/triangle/recipes/triangle/Triangle.glsl` | `baseclasses/GpuLayout.glsl` |
+| `examples/triangle/recipes/triangle/Triangle.vert` | `examples/triangle/recipes/triangle/Triangle.glsl` |
 | `examples/wave/recipes/probe/Probe.comp` | `baseclasses/GpuLayout.glsl` |
 | `examples/wave/recipes/probe/Probe.cpp` | `runtime/Operator.h` |
 | `examples/wave/recipes/wave/Wave.comp` | `baseclasses/GpuLayout.glsl` |
@@ -46,7 +51,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Commands.h` | — |
 | `runtime/Manifest.cpp` | `runtime/Manifest.h` |
 | `runtime/Manifest.h` | `runtime/View.h` |
-| `runtime/Operator.h` | `baseclasses/Log.h` |
+| `runtime/Operator.h` | `<glm/vec2.hpp>` `<glm/vec3.hpp>` `<glm/vec4.hpp>` `baseclasses/Log.h` |
 | `runtime/Recipes.cpp` | `linked-recipes.h` `runtime/Recipes.h` |
 | `runtime/Recipes.h` | `baseclasses/Platform.h` `runtime/Operator.h` |
 | `runtime/Runtime.cpp` | `runtime/Runtime.h` |

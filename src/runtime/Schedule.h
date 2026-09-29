@@ -20,6 +20,8 @@ class Schedule {
 public:
   // Writers before their readers. Throws when the connections form a cycle.
   static std::vector<const Node *> order(const View &view);
+  // Whether a node of the view draws, so the view needs a window to draw into.
+  static bool draws(const View &view);
 
   // views: the build tree's mirror of the views, where modules and SPIR-V land.
   // Binds every node and checks each name that joins its manifest entry, shader and C++
@@ -54,7 +56,9 @@ private:
              Recipes &recipes,
              const std::filesystem::path &folder,
              Schedule *replaced);
-  void load_shader(Bound &bound, const std::filesystem::path &folder, Bound *old);
+  void load_shaders(Bound &bound, const std::filesystem::path &folder, Bound *old);
+  void make_pipeline(Bound &bound) const;
+  void check_stages(Bound &bound) const;
   void check_fields(Bound &bound) const;
   void check_connections();
   void make_buffers(Schedule *replaced);
