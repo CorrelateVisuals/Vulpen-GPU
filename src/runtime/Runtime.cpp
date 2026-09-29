@@ -156,9 +156,8 @@ int Runtime::run() {
   const std::filesystem::path build = Files::executable().parent_path();
   _views = build / "views";
   _engine.emplace(_log);
-  _recipes.emplace(_views);
   _view = std::make_unique<View>(Manifest::load(_options.manifest));
-  _schedule = std::make_unique<Schedule>(*_engine, *_recipes, *_view, _views, _log);
+  _schedule = std::make_unique<Schedule>(*_engine, _recipes, *_view, _views, _log);
   if (!_schedule->ok())
     return 1;
   if constexpr (VP_LIVE)
@@ -198,10 +197,10 @@ void Runtime::loop() {
 
 // Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest.
 void Runtime::swap() {
-  const std::vector<std::string> rewritten = _recipes->rewritten();
+  const std::vector<std::string> rewritten = _recipes.rewritten();
   _schedule->drop_operators(rewritten);
   for (const std::string &recipe : rewritten)
-    _recipes->unload(recipe);
+    _recipes.unload(recipe);
   std::unique_ptr<View> view;
   try {
     view = std::make_unique<View>(Manifest::load(_options.manifest));
@@ -211,7 +210,7 @@ void Runtime::swap() {
     _log.write(Level::error, std::format("{}; the running graph stays", failure.what()));
   }
   _schedule = std::make_unique<Schedule>(
-      *_engine, *_recipes, view ? *view : *_view, _views, _log, _schedule.get());
+      *_engine, _recipes, view ? *view : *_view, _views, _log, _schedule.get());
   if (view)
     _view = std::move(view);
   _log.write(Level::info,

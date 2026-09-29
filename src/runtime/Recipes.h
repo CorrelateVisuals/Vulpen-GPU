@@ -1,10 +1,7 @@
 #pragma once
 
 #include "baseclasses/Platform.h"
-#include "runtime/Commands.h"
-#include "runtime/Manifest.h"
 #include "runtime/Operator.h"
-#include "runtime/View.h"
 
 #include <array>
 #include <filesystem>
@@ -31,11 +28,11 @@ struct LinkedRecipe {
 // finds the same code linked in.
 class Recipes final : public Registry {
 public:
-  // views: the build tree's mirror of the views, where modules and SPIR-V land.
-  explicit Recipes(std::filesystem::path views);
-
-  // Throws naming what the recipe does register when it lacks the class (A02).
-  std::unique_ptr<Operator> make(const View &view, const Node &node);
+  // recipe: "view/recipe"; folder: where the build put its module. Throws naming what
+  // the recipe does register when it lacks the class (A02).
+  std::unique_ptr<Operator> make(const std::string &recipe,
+                                 const std::filesystem::path &folder,
+                                 std::string_view name);
   // Recipes, as "view/recipe", whose module the build rewrote since it loaded.
   std::vector<std::string> rewritten() const;
   // The next make() loads the rebuilt module. The caller has destroyed the recipe's
@@ -55,7 +52,6 @@ private:
   void load(Module &module);
   void run(const std::string &recipe, void (*entry)(Registry &));
 
-  std::filesystem::path _views;
   std::vector<Module> _modules;
   std::map<std::string, std::map<std::string, Make, std::less<>>, std::less<>> _operators;
   std::string _entering;

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "baseclasses/Log.h"
-
 #include <filesystem>
 
 namespace VP {

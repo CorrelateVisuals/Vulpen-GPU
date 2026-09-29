@@ -42,6 +42,11 @@ bool writes(Access access) {
   return access != Access::read;
 }
 
+// Views own their copies of recipes (V03), so the build names a recipe "view/recipe".
+std::string recipe_of(const View &view, const Node &node) {
+  return std::format("{}/{}", view.name, node.recipe);
+}
+
 } // namespace
 
 struct Schedule::Bound {
@@ -240,7 +245,7 @@ Schedule::Bound Schedule::bind(const Node &node,
     bound.op = std::move(old->op);
   } else if (!node.operator_name.empty()) {
     try {
-      bound.op = recipes.make(_view, node);
+      bound.op = recipes.make(recipe_of(_view, node), folder, node.operator_name);
       _log.write(Level::info,
                  std::format("{}: new {} operator", node.name, node.operator_name));
     } catch (const std::exception &failure) {
@@ -474,9 +479,7 @@ bool Schedule::ok() const {
 
 void Schedule::drop_operators(const std::vector<std::string> &recipes) {
   for (Bound &bound : _bound)
-    if (std::ranges::find(recipes,
-                          std::format("{}/{}", _view.name, bound.node->recipe)) !=
-        recipes.end())
+    if (std::ranges::find(recipes, recipe_of(_view, *bound.node)) != recipes.end())
       bound.op.reset();
 }
 

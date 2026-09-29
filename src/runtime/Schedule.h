@@ -21,6 +21,7 @@ public:
   // Writers before their readers. Throws when the connections form a cycle.
   static std::vector<const Node *> order(const View &view);
 
+  // views: the build tree's mirror of the views, where modules and SPIR-V land.
   // Binds every node and checks each name that joins its manifest entry, shader and C++
   // (A02); a node with a mistake is left out, with its errors. From the schedule it
   // replaces, it takes what the build left alone: operators of recipes whose module

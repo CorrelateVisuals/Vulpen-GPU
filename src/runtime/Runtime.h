@@ -2,7 +2,6 @@
 
 #include "baseclasses/Engine.h"
 #include "baseclasses/Platform.h"
-#include "runtime/Commands.h"
 #include "runtime/Manifest.h"
 #include "runtime/Recipes.h"
 #include "runtime/Schedule.h"
@@ -45,7 +44,7 @@ private:
   Log _log;
   std::filesystem::path _views;
   std::optional<Engine> _engine;
-  std::optional<Recipes> _recipes;
+  Recipes _recipes; // outlives the schedule, whose operators run its modules' code
   std::unique_ptr<View> _view;
   std::unique_ptr<Schedule> _schedule;
   std::unique_ptr<Live> _live;

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "runtime/View.h"
-
 namespace VP {
 
 // Every change to a view is a command through this one port, so the CLI, a GUI, a

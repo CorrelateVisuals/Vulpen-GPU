@@ -6,7 +6,6 @@
 #include <cstring>
 #include <format>
 #include <stdexcept>
-#include <utility>
 
 namespace VP {
 
@@ -22,14 +21,13 @@ constexpr const char *module_file = "recipe" VP_MODULE_SUFFIX;
 
 } // namespace
 
-Recipes::Recipes(std::filesystem::path views) : _views(std::move(views)) {}
-
-std::unique_ptr<Operator> Recipes::make(const View &view, const Node &node) {
-  const std::string recipe = std::format("{}/{}", view.name, node.recipe);
+std::unique_ptr<Operator> Recipes::make(const std::string &recipe,
+                                        const std::filesystem::path &folder,
+                                        std::string_view name) {
   if (!_operators.contains(recipe))
-    enter(recipe, _views / view.name / "recipes" / node.recipe);
+    enter(recipe, folder);
   const auto &registered = _operators.at(recipe);
-  const auto found = registered.find(node.operator_name);
+  const auto found = registered.find(name);
   if (found != registered.end())
     return found->second();
   std::string names;
@@ -38,7 +36,7 @@ std::unique_ptr<Operator> Recipes::make(const View &view, const Node &node) {
   throw std::runtime_error(
       std::format("recipe {} registers no operator {}; it registers:{}",
                   recipe,
-                  node.operator_name,
+                  name,
                   names.empty() ? " nothing" : names));
 }
 

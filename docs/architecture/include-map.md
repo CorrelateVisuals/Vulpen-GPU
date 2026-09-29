@@ -15,7 +15,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Pipelines.cpp` | `baseclasses/Pipelines.h` |
 | `baseclasses/Pipelines.h` | `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
 | `baseclasses/Platform.cpp` | `<dlfcn.h>` `baseclasses/Platform.h` |
-| `baseclasses/Platform.h` | `baseclasses/Log.h` |
+| `baseclasses/Platform.h` | — |
 | `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Resources.h` |
 | `baseclasses/Resources.h` | `baseclasses/Mechanics.h` |
 | `baseclasses/Swapchain.h` | `baseclasses/Mechanics.h` `baseclasses/Platform.h` |
@@ -43,14 +43,14 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `recipes/parts/relations/Relations.h` | `runtime/Operator.h` |
 | `recipes/parts/split/Split.h` | `runtime/Operator.h` |
 | `recipes/parts/text/Text.h` | `runtime/Operator.h` |
-| `runtime/Commands.h` | `runtime/View.h` |
+| `runtime/Commands.h` | — |
 | `runtime/Manifest.cpp` | `runtime/Manifest.h` |
-| `runtime/Manifest.h` | `runtime/Commands.h` `runtime/View.h` |
-| `runtime/Operator.h` | `baseclasses/Log.h` `runtime/Commands.h` |
+| `runtime/Manifest.h` | `runtime/View.h` |
+| `runtime/Operator.h` | `baseclasses/Log.h` |
 | `runtime/Recipes.cpp` | `linked-recipes.h` `runtime/Recipes.h` |
-| `runtime/Recipes.h` | `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Operator.h` `runtime/View.h` |
+| `runtime/Recipes.h` | `baseclasses/Platform.h` `runtime/Operator.h` |
 | `runtime/Runtime.cpp` | `runtime/Runtime.h` |
-| `runtime/Runtime.h` | `baseclasses/Engine.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Recipes.h` `runtime/Schedule.h` `runtime/View.h` |
+| `runtime/Runtime.h` | `baseclasses/Engine.h` `baseclasses/Platform.h` `runtime/Manifest.h` `runtime/Recipes.h` `runtime/Schedule.h` `runtime/View.h` |
 | `runtime/Schedule.cpp` | `runtime/Schedule.h` |
 | `runtime/Schedule.h` | `baseclasses/Engine.h` `runtime/Operator.h` `runtime/Recipes.h` `runtime/View.h` |
 | `runtime/View.h` | — |
