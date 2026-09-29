@@ -15,6 +15,25 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Resources.h` | `baseclasses/Mechanics.h` |
 | `baseclasses/Swapchain.h` | `baseclasses/Mechanics.h` `baseclasses/Platform.h` |
 | `main.cpp` | `commit.h` |
+| `recipes/contracts/Curve.glsl` | — |
+| `recipes/contracts/Font.glsl` | — |
+| `recipes/contracts/Item.glsl` | — |
+| `recipes/contracts/Label.glsl` | — |
+| `recipes/contracts/Palette.glsl` | — |
+| `recipes/contracts/Rect.glsl` | — |
+| `recipes/contracts/Relation.glsl` | — |
+| `recipes/parts/command-items/CommandItems.h` | `runtime/Operator.h` |
+| `recipes/parts/command-line/CommandLine.h` | `runtime/Operator.h` |
+| `recipes/parts/font/Font.h` | `runtime/Operator.h` |
+| `recipes/parts/graph/Graph.h` | `runtime/Operator.h` |
+| `recipes/parts/hit/Hit.h` | `runtime/Operator.h` |
+| `recipes/parts/keys/Keys.h` | `runtime/Operator.h` |
+| `recipes/parts/list/List.h` | `runtime/Operator.h` |
+| `recipes/parts/modes/Modes.h` | `runtime/Operator.h` |
+| `recipes/parts/palette/Palette.h` | `runtime/Operator.h` |
+| `recipes/parts/relations/Relations.h` | `runtime/Operator.h` |
+| `recipes/parts/split/Split.h` | `runtime/Operator.h` |
+| `recipes/parts/text/Text.h` | `runtime/Operator.h` |
 | `runtime/Commands.h` | `runtime/View.h` |
 | `runtime/Manifest.h` | `runtime/Commands.h` `runtime/View.h` |
 | `runtime/Operator.h` | `baseclasses/Log.h` `runtime/Commands.h` |
@@ -22,4 +41,3 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Runtime.h` | `baseclasses/Engine.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Recipes.h` `runtime/Schedule.h` `runtime/View.h` |
 | `runtime/Schedule.h` | `baseclasses/Engine.h` `runtime/Operator.h` `runtime/View.h` |
 | `runtime/View.h` | — |
-| `runtime/recipes/cli/CommandLine.h` | `runtime/Operator.h` |

@@ -6,8 +6,9 @@
 
 namespace VP {
 
-// The recipe library. Deploying copies a recipe into the view, which owns that copy
-// from then on; a later library edit never reaches it.
+// The recipe library. Deploying copies a recipe into the view with every recipe it
+// deploys and every contract it includes, and the view owns those copies from then on;
+// a later library edit never reaches them.
 class Recipes {};
 
 } // namespace VP

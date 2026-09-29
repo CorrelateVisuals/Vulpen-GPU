@@ -1,0 +1,3 @@
+# The tooltip component: list, rects and glyphs showing the help of the Item under the
+# pointer. An overlay, not a panel: a tip covers what it floats over, so the dock never
+# seats it.

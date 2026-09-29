@@ -1,0 +1,2 @@
+# The menu component: command-items, list, hit, rects and glyphs. The menubar is a menu in
+# a row and the context menu a menu in a column at the pointer, so both are one recipe.

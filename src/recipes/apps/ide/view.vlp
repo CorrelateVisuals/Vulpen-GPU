@@ -1,0 +1,15 @@
+# The IDE app: Vulpen editing Vulpen. Only child recipes and the wires between them, built
+# by addition: each row is recipes placed side by side and connected, never a bigger
+# recipe with nodes removed.
+#
+#   Look       palette + font         one theme and one atlas for every drawing part
+#   Keys       keys                   keymap chords to commands, other keys to the focus
+#   Dock       dock                   seats the menubar and the panels
+#   Editor     panel + text-area + find-bar
+#   Terminal   panel + terminal
+#   Graph      panel + graph-editor
+#   Perform    panel + image          the output of the node being watched
+#   Menubar    menu                   a row at the top
+#   Popup      menu                   a column at the pointer
+#   Tooltip    tooltip
+#   Modes      modes                  edit or perform: which node reaches the screen

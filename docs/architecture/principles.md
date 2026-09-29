@@ -28,6 +28,10 @@ Principles are must-haves that leave room for interpretation; they may pull agai
 
 - **V10** Barriers come from the graph: each node declares what it reads and writes, and Vulpen places the barriers. V00 already knows the edges, and hand-placed barriers are the most common Vulkan bug.
 
+### Recipes
+
+- **V11 Recipes grow by addition.** In the library, a bigger recipe deploys smaller ones and connects them; it never copies their code, or deploys a bigger one and removes nodes. Two recipes share only the contract on the connection between them, so every recipe stays whole on its own, any recipe that honors the same contracts can replace it, and a fix to a part reaches every library recipe built on it.
+
 ## Architecture
 
 - **A00 Human agency.** A person oversees and steers the code: the modules, and which includes which, fit on one page; every change is small enough to read before it lands; tools and agents propose while a human decides, above all on structure (a new module or include edge). Code grown faster than it is read ends up steered by nobody.

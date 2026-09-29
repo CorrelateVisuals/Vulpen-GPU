@@ -1,0 +1,2 @@
+# The dock component: split, hit and rects. Seating panels is a recipe, not the runtime:
+# the dock moves a seam only through a command, so a layout is rebuilt by replaying the log.

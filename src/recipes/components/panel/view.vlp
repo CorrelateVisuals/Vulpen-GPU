@@ -1,0 +1,2 @@
+# The panel component: list, hit, rects and glyphs draw a titled frame with a tab strip,
+# and the content fills the Rect it leaves, so any recipe can sit in a panel.

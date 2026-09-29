@@ -1,0 +1,2 @@
+# The find-bar component: a command-line whose lines are find commands to its host's text,
+# with rects and glyphs. Its own component, so a text area without find carries none of it.
