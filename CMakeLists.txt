@@ -5,8 +5,28 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(vulpen src/main.cpp)
-target_compile_options(vulpen PRIVATE "$<IF:$<BOOL:${MSVC}>,/W4,-Wall;-Wextra;-Wpedantic>")
+find_package(Vulkan REQUIRED)
+# CPP11 fills Vulkan structs with designated initializers and leaves the zero fields out,
+# which GCC's -Wextra would flag in every one of them.
+set(warnings
+    "$<IF:$<BOOL:${MSVC}>,/W4,-Wall;-Wextra;-Wpedantic;-Wno-missing-field-initializers>")
+
+add_executable(vulpen
+  src/main.cpp
+  src/baseclasses/Engine.cpp
+  src/baseclasses/Mechanics.cpp
+  src/baseclasses/Pipelines.cpp
+  src/baseclasses/Platform.cpp
+  src/baseclasses/Resources.cpp
+  src/runtime/Manifest.cpp
+  src/runtime/Recipes.cpp
+  src/runtime/Runtime.cpp
+  src/runtime/Schedule.cpp)
+target_compile_options(vulpen PRIVATE "${warnings}")
+target_include_directories(vulpen PRIVATE src)
+# Vendored code is not ours to warn about (RA02).
+target_include_directories(vulpen SYSTEM PRIVATE src/external-libraries)
+target_link_libraries(vulpen PRIVATE Vulkan::Vulkan ${CMAKE_DL_LIBS})
 # The $<0:> stops multi-config generators (Visual Studio) from adding a Debug/ or
 # Release/ folder, so the run scripts find the binary at out/build/<preset>/.
 set_target_properties(vulpen PROPERTIES COMPILE_WARNING_AS_ERROR ON
@@ -36,5 +56,17 @@ add_custom_target(statistics ALL
   COMMAND_EXPAND_LISTS VERBATIM)
 add_dependencies(statistics vulpen)
 
+# Every folder under src/examples/ with a view.vlp is a view the build compiles.
+include(src/runtime/cmake/recipe.cmake)
+file(GLOB examples LIST_DIRECTORIES true CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/examples/*)
+foreach(example IN LISTS examples)
+  if(EXISTS ${example}/view.vlp)
+    vulpen_view(${example})
+  endif()
+endforeach()
+vulpen_link_recipes(${generated}/linked-recipes.h)
+
 enable_testing()
 add_test(NAME vulpen COMMAND vulpen)
+add_test(NAME wave COMMAND vulpen ${PROJECT_SOURCE_DIR}/src/examples/wave/view.vlp
+                           --frames 120 --fps 0)

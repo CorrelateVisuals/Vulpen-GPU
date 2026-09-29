@@ -1,0 +1,26 @@
+# Headless compute: wave fills a buffer, probe samples it back to the CPU and prints it.
+# Run ./run.sh src/examples/wave/view.vlp, then save any file of this view while it runs.
+
+[manifest]
+version = 1
+
+[node "wave"]
+recipe      = wave
+operator    = Wave
+shader      = Wave.comp
+invocations = 1024
+param       = amplitude=1.0
+param       = speed=0.02
+
+[node "probe"]
+recipe      = probe
+operator    = Probe
+shader      = Probe.comp
+invocations = 8
+param       = step=128
+param       = every=60
+log         = info
+
+[connection "values"]
+from = wave.values
+to   = probe.values
