@@ -222,9 +222,10 @@ void Swapchain::make() {
       .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
       .preTransform = capabilities.currentTransform,
       // Opaque where offered; otherwise the lowest mode the surface offers.
-      .compositeAlpha = (alphas & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
-                            ? VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
-                            : static_cast<VkCompositeAlphaFlagBitsKHR>(alphas & -alphas),
+      .compositeAlpha =
+          (alphas & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+              ? VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+              : static_cast<VkCompositeAlphaFlagBitsKHR>(alphas & (~alphas + 1)),
       .presentMode = _present_mode,
       .clipped = VK_TRUE,
       .oldSwapchain = old};

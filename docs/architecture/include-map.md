@@ -17,7 +17,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Passes.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Pipelines.cpp` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` |
 | `baseclasses/Pipelines.h` | `baseclasses/Resources.h` |
-| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<dlfcn.h>` `<time.h>` `<unistd.h>` `baseclasses/Platform.h` |
+| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<dlfcn.h>` `<time.h>` `<unistd.h>` `<windows.h>` `baseclasses/Platform.h` |
 | `baseclasses/Platform.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
 | `baseclasses/Resources.h` | `<vulkan/vulkan.h>` |

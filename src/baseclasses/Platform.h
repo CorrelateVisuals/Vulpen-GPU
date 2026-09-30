@@ -36,7 +36,17 @@ public:
   static bool mapped(const std::filesystem::path &file);
 
 private:
-  void *_handle;
+  void *_handle = nullptr;
+  // Windows locks a loaded DLL, and the build must replace the file (rule 7 of
+  // docs/plans/live-code.md), so there the OS maps this copy of it instead; else empty.
+  std::filesystem::path _copy;
+};
+
+// The shell that runs a command line, as std::system does.
+class Shell {
+public:
+  // Waits for the command; 0 when it succeeded.
+  static int run(const std::string &command);
 };
 
 // A desktop window through GLFW. Only a view that draws opens one (V07).

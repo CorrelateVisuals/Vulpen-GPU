@@ -1,14 +1,22 @@
 #include "baseclasses/Platform.h"
 
 #include <GLFW/glfw3.h>
-#include <dlfcn.h>
 #include <time.h>
+
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <dlfcn.h>
 #include <unistd.h>
+#endif
 
 #include <cstdlib>
 #include <format>
 #include <stdexcept>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
 namespace VP {
@@ -23,6 +31,87 @@ namespace {
 }
 
 } // namespace
+
+#ifdef _WIN32
+
+namespace {
+
+constexpr DWORD longest_path = 32767; // in UTF-16 units, with long paths enabled
+
+std::system_error last_error(const std::string &what) {
+  return {static_cast<int>(GetLastError()), std::system_category(), what};
+}
+
+// One per process and module, so two runs of one build never share a copy.
+std::filesystem::path loaded_copy(const std::filesystem::path &file) {
+  return std::filesystem::temp_directory_path() /
+         std::format("vulpen-{}-{:016x}{}",
+                     GetCurrentProcessId(),
+                     std::filesystem::hash_value(file),
+                     file.extension().string());
+}
+
+} // namespace
+
+std::filesystem::path Files::executable() {
+  std::wstring file(longest_path, L'\0');
+  const DWORD length = GetModuleFileNameW(nullptr, file.data(), longest_path);
+  if (length == 0)
+    throw last_error("GetModuleFileNameW");
+  file.resize(length);
+  return file;
+}
+
+std::tm local_time(std::time_t time) {
+  std::tm local{};
+  localtime_s(&local, &time);
+  return local;
+}
+
+// A console shows ANSI colors once asked to; a pipe or a file has no console mode.
+bool Terminal::colors() {
+  const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD mode = 0;
+  return GetEnvironmentVariableW(L"NO_COLOR", nullptr, 0) <= 1 && // unset or empty
+         GetConsoleMode(out, &mode) &&
+         SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
+
+Library::Library(const std::filesystem::path &file) : _copy(loaded_copy(file)) {
+  std::filesystem::copy_file(
+      file, _copy, std::filesystem::copy_options::overwrite_existing);
+  _handle = LoadLibraryW(_copy.c_str());
+  if (!_handle) {
+    const std::system_error failure = last_error(file.string());
+    std::error_code ignored; // the load's error is the one to report
+    std::filesystem::remove(_copy, ignored);
+    throw failure;
+  }
+}
+
+Library::~Library() {
+  if (!_handle)
+    return;
+  FreeLibrary(static_cast<HMODULE>(_handle));
+  // Fails while the OS still maps the copy, which the next load of the module reports.
+  std::error_code mapped;
+  std::filesystem::remove(_copy, mapped);
+}
+
+void *Library::symbol(const char *name) const {
+  return reinterpret_cast<void *>(GetProcAddress(static_cast<HMODULE>(_handle), name));
+}
+
+bool Library::mapped(const std::filesystem::path &file) {
+  return GetModuleHandleW(loaded_copy(file).c_str()) != nullptr;
+}
+
+// cmd /c strips the first and the last quote from a line that starts with one.
+int Shell::run(const std::string &command) {
+  return std::system(std::format("\"{}\"", command).c_str());
+}
+
+#else
 
 std::filesystem::path Files::executable() {
   return std::filesystem::read_symlink("/proc/self/exe");
@@ -47,14 +136,6 @@ Library::Library(const std::filesystem::path &file)
     throw std::runtime_error(dlerror());
 }
 
-Library::Library(Library &&other) noexcept
-    : _handle(std::exchange(other._handle, nullptr)) {}
-
-Library &Library::operator=(Library &&other) noexcept {
-  std::swap(_handle, other._handle);
-  return *this;
-}
-
 Library::~Library() {
   if (_handle)
     dlclose(_handle);
@@ -69,6 +150,21 @@ bool Library::mapped(const std::filesystem::path &file) {
   if (handle)
     dlclose(handle);
   return handle != nullptr;
+}
+
+int Shell::run(const std::string &command) {
+  return std::system(command.c_str());
+}
+
+#endif
+
+Library::Library(Library &&other) noexcept
+    : _handle(std::exchange(other._handle, nullptr)), _copy(std::move(other._copy)) {}
+
+Library &Library::operator=(Library &&other) noexcept {
+  std::swap(_handle, other._handle);
+  std::swap(_copy, other._copy);
+  return *this;
 }
 
 // GLFW keeps process-wide state, so the one Window owns its init and termination.
