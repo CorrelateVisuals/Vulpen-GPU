@@ -2,9 +2,13 @@
 
 #include <GLFW/glfw3.h>
 #include <dlfcn.h>
+#include <time.h>
+#include <unistd.h>
 
+#include <cstdlib>
 #include <format>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 namespace VP {
@@ -22,6 +26,19 @@ namespace {
 
 std::filesystem::path Files::executable() {
   return std::filesystem::read_symlink("/proc/self/exe");
+}
+
+std::tm local_time(std::time_t time) {
+  std::tm local{};
+  localtime_r(&time, &local);
+  return local;
+}
+
+bool Terminal::colors() {
+  const char *const no_color = std::getenv("NO_COLOR");
+  const char *const term = std::getenv("TERM");
+  return isatty(STDOUT_FILENO) == 1 && !(no_color && *no_color) &&
+         !(term && std::string_view(term) == "dumb");
 }
 
 Library::Library(const std::filesystem::path &file)

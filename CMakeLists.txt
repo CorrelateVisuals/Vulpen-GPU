@@ -14,6 +14,7 @@ set(warnings
 add_executable(vulpen
   src/main.cpp
   src/baseclasses/Engine.cpp
+  src/baseclasses/Log.cpp
   src/baseclasses/Mechanics.cpp
   src/baseclasses/Pipelines.cpp
   src/baseclasses/Platform.cpp

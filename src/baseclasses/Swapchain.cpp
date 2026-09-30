@@ -3,6 +3,7 @@
 #include "baseclasses/Mechanics.h"
 
 #include <algorithm>
+#include <format>
 #include <limits>
 #include <stdexcept>
 
@@ -11,6 +12,9 @@ namespace VP {
 namespace {
 
 constexpr auto no_timeout = std::numeric_limits<std::uint64_t>::max();
+// sRGB, so shaders write linear color and the display gets it encoded.
+constexpr VkSurfaceFormatKHR srgb{.format = VK_FORMAT_B8G8R8A8_SRGB,
+                                  .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
 // One image more than the minimum, so acquiring one rarely waits for the display.
 constexpr std::uint32_t spare_images = 1;
 constexpr VkClearColorValue clear_color{.float32 = {0.0f, 0.0f, 0.0f, 1.0f}};
@@ -18,7 +22,6 @@ constexpr float far_depth = 1.0f;
 // The width a surface reports when the swapchain picks its size (VK_KHR_surface).
 constexpr std::uint32_t size_from_swapchain = std::numeric_limits<std::uint32_t>::max();
 
-// sRGB, so shaders write linear color and the display gets it encoded.
 VkSurfaceFormatKHR pick_format(VkPhysicalDevice device, VkSurfaceKHR surface) {
   std::uint32_t count = 0;
   vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
@@ -26,11 +29,10 @@ VkSurfaceFormatKHR pick_format(VkPhysicalDevice device, VkSurfaceKHR surface) {
   vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
   if (formats.empty())
     throw std::runtime_error("the window's surface offers no image format");
-  const auto srgb = std::ranges::find_if(formats, [](const VkSurfaceFormatKHR &format) {
-    return format.format == VK_FORMAT_B8G8R8A8_SRGB &&
-           format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+  const auto found = std::ranges::find_if(formats, [](const VkSurfaceFormatKHR &format) {
+    return format.format == srgb.format && format.colorSpace == srgb.colorSpace;
   });
-  return srgb != formats.end() ? *srgb : formats.front();
+  return found != formats.end() ? *found : formats.front();
 }
 
 // Mailbox never holds the frame loop for the display (VK02); FIFO, which every device
@@ -88,17 +90,32 @@ VkSemaphore make_semaphore(VkDevice device) {
 
 } // namespace
 
-Swapchain::Swapchain(VkPhysicalDevice physical_device,
+Swapchain::Swapchain(const Log &log,
+                     VkPhysicalDevice physical_device,
                      VkDevice device,
                      VkQueue queue,
                      VkSurfaceKHR surface,
                      const Window &window)
-    : _window(window), _physical_device(physical_device), _device(device), _queue(queue),
-      _surface(surface), _format(pick_format(physical_device, surface)),
+    : _log(log), _window(window), _physical_device(physical_device), _device(device),
+      _queue(queue), _surface(surface), _format(pick_format(physical_device, surface)),
       _present_mode(pick_present_mode(physical_device, surface)),
       _render_pass(make_render_pass(_device, _format.format)),
       _acquired(make_semaphore(_device)) {
+  if (_format.format != srgb.format || _format.colorSpace != srgb.colorSpace)
+    _log.write(Level::warn,
+               Tag::swp,
+               std::format("the window takes no B8G8R8A8_SRGB images, so its colors may "
+                           "look off; it takes VkFormat {}",
+                           static_cast<int>(_format.format)));
   make();
+  _log.write(
+      Level::info,
+      Tag::swp,
+      std::format("presents {} images of {}x{} in {} mode",
+                  _views.size(),
+                  _extent.width,
+                  _extent.height,
+                  _present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "FIFO"));
 }
 
 Swapchain::~Swapchain() {
@@ -121,6 +138,9 @@ std::optional<Target> Swapchain::acquire() {
     check(vkDeviceWaitIdle(_device), "vkDeviceWaitIdle");
     release();
     make();
+    _log.write(Level::debug,
+               Tag::swp,
+               std::format("remade for {}x{}", _extent.width, _extent.height));
   }
   std::uint32_t image = 0;
   const VkResult result = vkAcquireNextImageKHR(

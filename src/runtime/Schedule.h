@@ -61,12 +61,14 @@ private:
   void check_fields(Bound &bound) const;
   void check_connections();
   void make_buffers(Schedule *replaced);
-  void make_buffer(const std::string &name,
+  void make_buffer(const Bound &writer,
+                   const std::string &name,
                    VkDeviceSize size,
                    Memory memory,
                    Schedule *replaced);
   void make_blocks();
   void make_passes();
+  void log(Level level, Tag tag, const Bound &bound, std::string_view text) const;
   Bound *find(std::string_view node);
   const Connection *connection_of(std::string_view node, std::string_view port) const;
   std::string buffer_name(std::string_view node, std::string_view port) const;

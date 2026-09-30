@@ -53,7 +53,7 @@ std::string joined(const std::vector<std::string> &names) {
 // build, not the runtime, knows how C++ and GLSL compile (C02): nothing compiles here.
 class Runtime::Live {
 public:
-  enum class Build { none, succeeded, failed };
+  enum class Build { none, started, succeeded, failed };
 
   Live(std::filesystem::path folder, const std::filesystem::path &build)
       : _folder(std::move(folder)), _log_file(build / build_log),
@@ -68,27 +68,34 @@ public:
   // builds.
   Build poll() {
     const auto now = std::chrono::steady_clock::now();
+    Build build = Build::none;
     if (now >= _next_scan && !_building) {
       _next_scan = now + scan_interval;
       const auto seen = newest();
       if (seen != _built_from && seen == _pending) {
         _built_from = seen;
         _building = true;
+        _started = now;
         _build = std::jthread([this] {
           _status = std::system(_command.c_str());
           _finished = true;
           _building = false;
         });
+        build = Build::started;
       }
       _pending = seen;
     }
-    if (!_finished.exchange(false))
-      return Build::none;
-    return _status == 0 ? Build::succeeded : Build::failed;
+    if (_finished.exchange(false))
+      build = _status == 0 ? Build::succeeded : Build::failed;
+    return build;
   }
 
   const std::filesystem::path &log_file() const {
     return _log_file;
+  }
+  // Since the last build started.
+  std::chrono::duration<double> took() const {
+    return std::chrono::steady_clock::now() - _started;
   }
 
 private:
@@ -107,14 +114,15 @@ private:
   std::filesystem::file_time_type _built_from;
   std::filesystem::file_time_type _pending;
   std::chrono::steady_clock::time_point _next_scan{};
+  std::chrono::steady_clock::time_point _started{};
   std::atomic<bool> _building{false};
   std::atomic<bool> _finished{false};
   std::atomic<int> _status{0};
   std::jthread _build;
 };
 
-Runtime::Runtime(std::span<char *const> arguments)
-    : _options(parse(arguments)), _log(_options.log) {}
+Runtime::Runtime(std::span<char *const> arguments, std::string_view build)
+    : _options(parse(arguments)), _log(_options.log, build) {}
 
 Runtime::~Runtime() {
   if (_engine)
@@ -156,20 +164,46 @@ int Runtime::run() {
     std::puts(usage);
     return 0;
   }
+  // A failure that ends the run is a log line like any other error (RC04).
+  try {
+    if (!start())
+      return 1;
+    loop();
+  } catch (const std::exception &failure) {
+    _log.write(Level::error, Tag::run, failure.what());
+    return 1;
+  }
+  return _schedule->ok() ? 0 : 1;
+}
+
+// False when a node is in error.
+bool Runtime::start() {
   const std::filesystem::path build = Files::executable().parent_path();
   _views = build / "views";
   _view = std::make_unique<View>(Manifest::load(_options.manifest));
   // Only a view that draws opens a window; every other view runs headless (V07).
-  if (Schedule::draws(*_view))
+  const bool draws = Schedule::draws(*_view);
+  _log.write(Level::info,
+             Tag::run,
+             std::format("view {} from {}: {}",
+                         _view->name,
+                         _view->file.string(),
+                         draws ? "a node draws, so it opens a window"
+                               : "no node draws, so it runs headless"));
+  if (draws)
     _window.emplace(std::format("{} - vulpen", _view->name), window_size);
   _engine.emplace(_log, _window ? &*_window : nullptr);
   _schedule = std::make_unique<Schedule>(*_engine, _recipes, *_view, _views, _log);
   if (!_schedule->ok())
-    return 1;
-  if constexpr (VP_LIVE)
+    return false;
+  if constexpr (VP_LIVE) {
     _live = std::make_unique<Live>(_view->file.parent_path(), build);
-  loop();
-  return _schedule->ok() ? 0 : 1;
+    _log.write(Level::info,
+               Tag::mod,
+               std::format("live code: a save under {} swaps in",
+                           _view->file.parent_path().string()));
+  }
+  return true;
 }
 
 void Runtime::loop() {
@@ -177,28 +211,42 @@ void Runtime::loop() {
       _options.fps == 0
           ? std::chrono::nanoseconds::zero()
           : std::chrono::nanoseconds(std::chrono::seconds(1)) / _options.fps;
-  auto next = std::chrono::steady_clock::now();
-  for (std::uint64_t frame = 0; _options.frames == 0 || frame < _options.frames;
-       ++frame) {
+  const auto started = std::chrono::steady_clock::now();
+  auto next = started;
+  std::uint64_t frame = 0;
+  for (; _options.frames == 0 || frame < _options.frames; ++frame) {
     if (_window && !_window->poll())
       break;
     _engine->wait();
-    switch (_live ? _live->poll() : Live::Build::none) {
-      case Live::Build::succeeded:
-        swap();
-        break;
-      case Live::Build::failed:
-        _log.write(Level::error,
-                   "live: the build failed, so the running code stays\n" +
-                       text_of(_live->log_file()));
-        break;
-      case Live::Build::none:
-        break;
-    }
+    if (_live)
+      watch();
     _schedule->cook(frame);
     _engine->run(_schedule->take_clears(), _schedule->passes());
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
+  }
+  const std::chrono::duration<double> ran = std::chrono::steady_clock::now() - started;
+  _log.write(Level::info,
+             Tag::run,
+             std::format("ran {} frames in {:.2f} s", frame, ran.count()));
+}
+
+void Runtime::watch() {
+  switch (_live->poll()) {
+    case Live::Build::started:
+      _log.write(Level::debug, Tag::mod, "a file changed; building its recipes");
+      break;
+    case Live::Build::succeeded:
+      swap();
+      break;
+    case Live::Build::failed:
+      _log.write(Level::error,
+                 Tag::mod,
+                 "live: the build failed, so the running code stays\n" +
+                     text_of(_live->log_file()));
+      break;
+    case Live::Build::none:
+      break;
   }
 }
 
@@ -214,16 +262,20 @@ void Runtime::swap() {
     Schedule::order(*view);
   } catch (const std::exception &failure) {
     view.reset();
-    _log.write(Level::error, std::format("{}; the running graph stays", failure.what()));
+    _log.write(Level::error,
+               Tag::mod,
+               std::format("{}; the running graph stays", failure.what()));
   }
   _schedule = std::make_unique<Schedule>(
       *_engine, _recipes, view ? *view : *_view, _views, _log, _schedule.get());
   if (view)
     _view = std::move(view);
   _log.write(Level::info,
-             rewritten.empty()
-                 ? std::string("live: swapped")
-                 : std::format("live: swapped, new modules: {}", joined(rewritten)));
+             Tag::mod,
+             std::format("built in {:.2f} s and swapped{}{}",
+                         _live->took().count(),
+                         rewritten.empty() ? "" : "; new modules: ",
+                         joined(rewritten)));
 }
 
 } // namespace VP

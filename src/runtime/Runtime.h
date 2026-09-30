@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <string_view>
 
 namespace VP {
 
@@ -18,7 +19,8 @@ namespace VP {
 // and a test can build one without a window.
 class Runtime {
 public:
-  explicit Runtime(std::span<char *const> arguments);
+  // build: what this binary is, which the log names first (RC07).
+  Runtime(std::span<char *const> arguments, std::string_view build);
   ~Runtime();
   Runtime(const Runtime &) = delete;
   Runtime &operator=(const Runtime &) = delete;
@@ -36,7 +38,9 @@ private:
   class Live;
 
   static Options parse(std::span<char *const> arguments);
+  bool start();
   void loop();
+  void watch();
   void swap();
 
   const Options _options;

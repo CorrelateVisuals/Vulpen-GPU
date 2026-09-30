@@ -9,17 +9,18 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Engine.cpp` | `baseclasses/Engine.h` |
 | `baseclasses/Engine.h` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` `baseclasses/Resources.h` `baseclasses/Swapchain.h` |
 | `baseclasses/GpuLayout.glsl` | — |
+| `baseclasses/Log.cpp` | `baseclasses/Log.h` `baseclasses/Platform.h` |
 | `baseclasses/Log.h` | — |
 | `baseclasses/Mechanics.cpp` | `baseclasses/Mechanics.h` |
 | `baseclasses/Mechanics.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Platform.h` |
 | `baseclasses/Pipelines.cpp` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` |
 | `baseclasses/Pipelines.h` | `baseclasses/Resources.h` |
-| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<dlfcn.h>` `baseclasses/Platform.h` |
+| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<dlfcn.h>` `<time.h>` `<unistd.h>` `baseclasses/Platform.h` |
 | `baseclasses/Platform.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
 | `baseclasses/Resources.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Swapchain.cpp` | `baseclasses/Mechanics.h` `baseclasses/Swapchain.h` |
-| `baseclasses/Swapchain.h` | `baseclasses/Platform.h` |
+| `baseclasses/Swapchain.h` | `baseclasses/Log.h` `baseclasses/Platform.h` |
 | `examples/triangle/recipes/triangle/Triangle.cpp` | `runtime/Operator.h` |
 | `examples/triangle/recipes/triangle/Triangle.frag` | `examples/triangle/recipes/triangle/Triangle.glsl` |
 | `examples/triangle/recipes/triangle/Triangle.glsl` | `baseclasses/GpuLayout.glsl` |

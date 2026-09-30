@@ -6,12 +6,14 @@
 #include <span>
 
 int main(int argc, char **argv) {
-  std::puts("vulpen " VULPEN_COMMIT);
+  constexpr const char *build = "vulpen " VULPEN_COMMIT;
   try {
-    VP::Runtime runtime(std::span<char *const>(argv, static_cast<std::size_t>(argc)));
+    VP::Runtime runtime(std::span<char *const>(argv, static_cast<std::size_t>(argc)),
+                        build);
     return runtime.run();
   } catch (const std::exception &error) {
-    std::fprintf(stderr, "error: %s\n", error.what());
+    // Only arguments vulpen cannot run with reach here; the runtime logs the rest.
+    std::fprintf(stderr, "%s: %s\n", build, error.what());
     return 1;
   }
 }

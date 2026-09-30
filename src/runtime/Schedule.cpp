@@ -64,6 +64,28 @@ std::string recipe_of(const View &view, const Node &node) {
   return std::format("{}/{}", view.name, node.recipe);
 }
 
+// By Access and by Memory, in the words a log line uses.
+constexpr std::array access_words{
+    std::string_view{"readonly "}, std::string_view{"writeonly "}, std::string_view{}};
+constexpr std::array memory_words{std::string_view{"on the GPU"},
+                                  std::string_view{"written by the CPU"},
+                                  std::string_view{"read back by the CPU"}};
+
+// A pass block as reflection finds it, each field declared as GLSL would.
+std::string pass_block(const std::vector<Field> &fields, std::uint32_t size) {
+  std::string text = std::format("pass block of {} bytes:", size);
+  for (const Field &field : fields)
+    text += std::format(
+        "{} {}{}{} {} at {}",
+        &field == &fields.front() ? "" : ",",
+        field.buffer() ? access_words[static_cast<std::size_t>(field.access)] : "",
+        field.type,
+        field.buffer() ? "[]" : "",
+        field.name,
+        field.offset);
+  return text;
+}
+
 } // namespace
 
 struct Schedule::Bound {
@@ -203,7 +225,7 @@ private:
     return _frame;
   }
   void log(Level level, std::string_view text) const override {
-    _schedule._log.write(level, _bound.log, text);
+    _schedule.log(level, Tag::out, _bound, text);
   }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
@@ -277,6 +299,7 @@ Schedule::Schedule(Engine &engine,
     for (const std::string &error : bound.errors)
       _log.write(
           Level::error,
+          Tag::nod,
           std::format(
               "{} node {}: {}", view.file.filename().string(), bound.node->name, error));
 }
@@ -300,11 +323,11 @@ Schedule::Bound Schedule::bind(const Node &node,
   if (old && old->op && old->node->recipe == node.recipe &&
       old->node->operator_name == node.operator_name) {
     bound.op = std::move(old->op);
+    log(Level::debug, Tag::nod, bound, "keeps its operator " + node.operator_name);
   } else if (!node.operator_name.empty()) {
     try {
       bound.op = recipes.make(recipe_of(_view, node), folder, node.operator_name);
-      _log.write(Level::info,
-                 std::format("{}: new {} operator", node.name, node.operator_name));
+      log(Level::info, Tag::nod, bound, "new operator " + node.operator_name);
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
     }
@@ -351,6 +374,7 @@ void Schedule::load_shaders(Bound &bound,
     bound.fields = std::move(old->fields);
     bound.block_size = old->block_size;
     bound.pipeline = std::move(old->pipeline);
+    log(Level::debug, Tag::nod, bound, "keeps its pipeline");
   } else {
     try {
       make_pipeline(bound);
@@ -395,7 +419,9 @@ void Schedule::make_pipeline(Bound &bound) const {
   std::string names;
   for (const std::string &shader : node.shaders)
     names += (names.empty() ? "" : " and ") + shader;
-  _log.write(Level::info, std::format("{}: pipeline from {}", node.name, names));
+  log(Level::info, Tag::nod, bound, "pipeline from " + names);
+  if (!bound.fields.empty())
+    log(Level::debug, Tag::nod, bound, pass_block(bound.fields, bound.block_size));
 }
 
 // A draw's shaders only read buffers: storing from them needs features beyond the
@@ -520,8 +546,11 @@ void Schedule::make_buffers(Schedule *replaced) {
       const Memory memory = uploaded                   ? Memory::upload
                             : read_back.contains(name) ? Memory::readback
                                                        : Memory::device;
-      make_buffer(
-          name, VkDeviceSize{bound.node->invocations} * field.stride, memory, replaced);
+      make_buffer(bound,
+                  name,
+                  VkDeviceSize{bound.node->invocations} * field.stride,
+                  memory,
+                  replaced);
     }
   const auto buffers_of = [&](const Bound &bound, const std::vector<std::string> &ports) {
     std::vector<const Buffer *> buffers;
@@ -537,7 +566,9 @@ void Schedule::make_buffers(Schedule *replaced) {
   }
 }
 
-void Schedule::make_buffer(const std::string &name,
+// The node that writes the buffer speaks for it, at that node's log level (V09).
+void Schedule::make_buffer(const Bound &writer,
+                           const std::string &name,
                            VkDeviceSize size,
                            Memory memory,
                            Schedule *replaced) {
@@ -547,6 +578,7 @@ void Schedule::make_buffer(const std::string &name,
     auto kept = replaced->_buffers.extract(name);
     if (kept && kept.mapped().size() == size && kept.mapped().memory() == memory) {
       _buffers.insert(std::move(kept));
+      log(Level::debug, Tag::mem, writer, "keeps " + name + " and what it holds");
       return;
     }
   }
@@ -563,7 +595,8 @@ void Schedule::make_buffer(const std::string &name,
   const auto placed = _buffers.emplace(name, std::move(made)).first;
   if (memory != Memory::upload)
     _fresh.push_back(&placed->second);
-  _log.write(Level::info, std::format("{}: new buffer of {} bytes", name, size));
+  const std::string_view where = memory_words[static_cast<std::size_t>(memory)];
+  log(Level::info, Tag::mem, writer, std::format("{} of {} bytes {}", name, size, where));
 }
 
 // Params and buffer addresses are written once; the operator writes its values each
@@ -638,6 +671,7 @@ void Schedule::cook(std::uint64_t frame) {
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
       _log.write(Level::error,
+                 Tag::nod,
                  std::format("node {}: {}; its operator stops",
                              bound.node->name,
                              failure.what()));
@@ -659,6 +693,14 @@ std::vector<VkBuffer> Schedule::take_clears() {
 
 const std::vector<Pass> &Schedule::passes() const {
   return _passes;
+}
+
+// A node's own log level covers every line about it (V09).
+void Schedule::log(Level level,
+                   Tag tag,
+                   const Bound &bound,
+                   std::string_view text) const {
+  _log.write(level, bound.log, tag, bound.node->name, text);
 }
 
 Schedule::Bound *Schedule::find(std::string_view node) {

@@ -11,4 +11,6 @@ Vulpen is a fractal basis for anything that benefits from high performance compu
 
 Configures, builds and runs the `debug` preset, or `release` with `--release`; the binary lands in `out/build/<preset>/`.
 
+`--log error|warn|info|debug` sets how much the run says, the build included. The default, `warn`, prints only problems and keeps a build that succeeds silent; `debug` prints the build's output too. [`src/baseclasses/Log.h`](src/baseclasses/Log.h) lists what each level adds and what each `{tag}` marks, and a node's `log` word in the manifest sets the level of the lines about that node.
+
 `./run.sh src/examples/wave/view.vlp --log info` runs the example view headless; `./run.sh src/examples/triangle/view.vlp` opens a window and draws a triangle whose corners and color come from C++. In the `debug` preset, save any C++ or GLSL of a view while it runs and the running view swaps in the change; see [docs/plans/live-code.md](docs/plans/live-code.md).

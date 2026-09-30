@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace VP {
@@ -29,6 +30,12 @@ constexpr std::array preference{VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
                                 VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
                                 VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU,
                                 VK_PHYSICAL_DEVICE_TYPE_CPU};
+// VkPhysicalDeviceType's names, by value.
+constexpr std::array device_types{std::string_view{"other"},
+                                  std::string_view{"integrated"},
+                                  std::string_view{"discrete"},
+                                  std::string_view{"virtual"},
+                                  std::string_view{"cpu"}};
 
 bool layer_installed(const char *name) {
   std::uint32_t count = 0;
@@ -56,8 +63,12 @@ VkInstance create_instance(const Log &log, const Window *window) {
       .ppEnabledExtensionNames = extensions.data()};
   VkInstance instance = VK_NULL_HANDLE;
   check(vkCreateInstance(&info, nullptr, &instance), "vkCreateInstance");
-  if (validated)
-    log.write(Level::info, "Vulkan validation is on");
+  if constexpr (validate)
+    log.write(Level::info,
+              Tag::gpu,
+              validated ? std::string("Vulkan validation is on")
+                        : std::format("Vulkan validation is off: {} is not installed",
+                                      validation_layer));
   return instance;
 }
 
@@ -102,6 +113,30 @@ std::optional<std::uint32_t> queue_family(VkPhysicalDevice device, VkSurfaceKHR 
   return std::nullopt;
 }
 
+// Why a device cannot run the view; null when it can.
+const char *unfit(VkPhysicalDevice device, VkSurfaceKHR surface) {
+  if (!meets_floor(device))
+    return "is below the Vulkan floor";
+  if (surface && !presents(device))
+    return "cannot present to the window";
+  if (!queue_family(device, surface))
+    return "has no queue that runs the view";
+  return nullptr;
+}
+
+// As the log names a device: "name: type, Vulkan 1.3.280".
+std::string describe(VkPhysicalDevice device) {
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(device, &properties);
+  const auto type = static_cast<std::size_t>(properties.deviceType);
+  return std::format("{}: {}, Vulkan {}.{}.{}",
+                     properties.deviceName,
+                     type < device_types.size() ? device_types[type] : device_types[0],
+                     VK_API_VERSION_MAJOR(properties.apiVersion),
+                     VK_API_VERSION_MINOR(properties.apiVersion),
+                     VK_API_VERSION_PATCH(properties.apiVersion));
+}
+
 std::size_t rank(VkPhysicalDevice device) {
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(device, &properties);
@@ -115,18 +150,20 @@ VkPhysicalDevice pick_device(VkInstance instance, VkSurfaceKHR surface, const Lo
   std::vector<VkPhysicalDevice> devices(count);
   vkEnumeratePhysicalDevices(instance, &count, devices.data());
   std::erase_if(devices, [&](VkPhysicalDevice device) {
-    return !meets_floor(device) || (surface && !presents(device)) ||
-           !queue_family(device, surface);
+    const char *const reason = unfit(device, surface);
+    log.write(
+        Level::debug,
+        Tag::gpu,
+        std::format("{}; {}", describe(device), reason ? reason : "meets the floor"));
+    return reason != nullptr;
   });
   if (devices.empty())
     throw std::runtime_error(
         std::format("no GPU meets the Vulkan floor: 1.2 with buffer device address and "
-                    "descriptor indexing (RV01){}",
+                    "descriptor indexing (RV01){}; --log debug says why for each GPU",
                     surface ? ", and presents to the window" : ""));
   const VkPhysicalDevice best = *std::ranges::min_element(devices, {}, rank);
-  VkPhysicalDeviceProperties properties{};
-  vkGetPhysicalDeviceProperties(best, &properties);
-  log.write(Level::info, std::format("GPU: {}", properties.deviceName));
+  log.write(Level::info, Tag::gpu, "runs on " + describe(best));
   return best;
 }
 

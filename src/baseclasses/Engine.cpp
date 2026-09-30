@@ -37,7 +37,8 @@ Engine::Engine(const Log &log, const Window *window)
           _mechanics.instance(), _mechanics.physical_device(), _mechanics.device()),
       _pipelines(_mechanics.device(), _resources) {
   if (window)
-    _swapchain.emplace(_mechanics.physical_device(),
+    _swapchain.emplace(log,
+                       _mechanics.physical_device(),
                        _mechanics.device(),
                        _mechanics.queue(),
                        _mechanics.surface(),

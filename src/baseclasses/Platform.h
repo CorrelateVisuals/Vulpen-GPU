@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <ctime>
 #include <filesystem>
 #include <span>
 #include <string>
@@ -16,6 +17,9 @@ public:
   // Build outputs resolve against it, never against the working directory (RP02).
   static std::filesystem::path executable();
 };
+
+// The wall clock in the machine's time zone, for the people who read the log.
+std::tm local_time(std::time_t time);
 
 // Machine code loaded while running. Only a dev build loads recipe C++ this way; a
 // release build links the same code in.
@@ -57,6 +61,12 @@ private:
   GLFWwindow *_window = nullptr;
 };
 
-class Terminal {};
+// The terminal vulpen writes to, when it runs in one.
+class Terminal {
+public:
+  // Whether standard output shows color: a terminal that is not dumb, with no NO_COLOR
+  // set (no-color.org).
+  static bool colors();
+};
 
 } // namespace VP

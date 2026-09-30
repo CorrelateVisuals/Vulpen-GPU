@@ -1,5 +1,6 @@
 #pragma once
 
+#include "baseclasses/Log.h"
 #include "baseclasses/Platform.h"
 
 #include <cstdint>
@@ -22,7 +23,8 @@ struct Target {
 // draws' pipelines stay too.
 class Swapchain {
 public:
-  Swapchain(VkPhysicalDevice physical_device,
+  Swapchain(const Log &log,
+            VkPhysicalDevice physical_device,
             VkDevice device,
             VkQueue queue,
             VkSurfaceKHR surface,
@@ -43,6 +45,7 @@ private:
   void make_images();
   void release();
 
+  const Log &_log;
   const Window &_window;
   const VkPhysicalDevice _physical_device;
   const VkDevice _device;

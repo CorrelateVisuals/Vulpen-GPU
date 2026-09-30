@@ -154,7 +154,9 @@ def cpu_model() -> str:
 # Peak memory is left out: a child's ru_maxrss starts at the RSS of the Python
 # process that spawned it, so for a small binary it measures Python.
 def write_performance(binary: Path) -> None:
-    build = run(str(binary)).splitlines()[0]  # the warm-up run; its first line names the commit
+    # The warm-up run; the log's first {run} line, below its header, names the commit.
+    build = next(line for line in run(str(binary)).splitlines()
+                 if "{run} " in line).partition("{run} ")[2]
     times = [timed_run(binary) * MS_PER_S for _ in range(RUNS)]
     save("performance.md", ["# Performance", "",
                             f"{GENERATED} Times run from spawn to exit, over {RUNS} runs of the "
