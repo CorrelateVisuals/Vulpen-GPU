@@ -1,5 +1,7 @@
 #include "runtime/Schedule.h"
 
+#include "runtime/Operator.h"
+
 #include <algorithm>
 #include <charconv>
 #include <cstring>

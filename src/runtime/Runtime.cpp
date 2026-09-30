@@ -1,5 +1,7 @@
 #include "runtime/Runtime.h"
 
+#include "runtime/Manifest.h"
+
 #include <atomic>
 #include <charconv>
 #include <chrono>

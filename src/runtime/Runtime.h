@@ -2,7 +2,6 @@
 
 #include "baseclasses/Engine.h"
 #include "baseclasses/Platform.h"
-#include "runtime/Manifest.h"
 #include "runtime/Recipes.h"
 #include "runtime/Schedule.h"
 #include "runtime/View.h"

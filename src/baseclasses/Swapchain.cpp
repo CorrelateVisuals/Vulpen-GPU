@@ -1,5 +1,7 @@
 #include "baseclasses/Swapchain.h"
 
+#include "baseclasses/Mechanics.h"
+
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -86,17 +88,21 @@ VkSemaphore make_semaphore(VkDevice device) {
 
 } // namespace
 
-Swapchain::Swapchain(const Mechanics &mechanics, const Window &window)
-    : _mechanics(mechanics), _window(window), _device(mechanics.device()),
-      _format(pick_format(mechanics.physical_device(), mechanics.surface())),
-      _present_mode(pick_present_mode(mechanics.physical_device(), mechanics.surface())),
+Swapchain::Swapchain(VkPhysicalDevice physical_device,
+                     VkDevice device,
+                     VkQueue queue,
+                     VkSurfaceKHR surface,
+                     const Window &window)
+    : _window(window), _physical_device(physical_device), _device(device), _queue(queue),
+      _surface(surface), _format(pick_format(physical_device, surface)),
+      _present_mode(pick_present_mode(physical_device, surface)),
       _render_pass(make_render_pass(_device, _format.format)),
       _acquired(make_semaphore(_device)) {
   make();
 }
 
 Swapchain::~Swapchain() {
-  _mechanics.wait_idle();
+  check(vkDeviceWaitIdle(_device), "vkDeviceWaitIdle");
   release();
   vkDestroySwapchainKHR(_device, _swapchain, nullptr);
   vkDestroySemaphore(_device, _acquired, nullptr);
@@ -112,7 +118,7 @@ std::optional<Target> Swapchain::acquire() {
   if (size.width == 0 || size.height == 0)
     return std::nullopt;
   if (_stale || size.width != _made_for.width || size.height != _made_for.height) {
-    _mechanics.wait_idle();
+    check(vkDeviceWaitIdle(_device), "vkDeviceWaitIdle");
     release();
     make();
   }
@@ -150,7 +156,13 @@ void Swapchain::begin(VkCommandBuffer commands, const Target &target) const {
 }
 
 void Swapchain::present(const Target &target) {
-  const VkResult result = _mechanics.present(_swapchain, target.image, target.rendered);
+  const VkPresentInfoKHR info{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                              .waitSemaphoreCount = 1,
+                              .pWaitSemaphores = &target.rendered,
+                              .swapchainCount = 1,
+                              .pSwapchains = &_swapchain,
+                              .pImageIndices = &target.image};
+  const VkResult result = vkQueuePresentKHR(_queue, &info);
   if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
     _stale = true;
   else
@@ -161,7 +173,7 @@ void Swapchain::present(const Target &target) {
 void Swapchain::make() {
   VkSurfaceCapabilitiesKHR capabilities{};
   check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-            _mechanics.physical_device(), _mechanics.surface(), &capabilities),
+            _physical_device, _surface, &capabilities),
         "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
   _made_for = _window.size();
   _extent = capabilities.currentExtent;
@@ -180,7 +192,7 @@ void Swapchain::make() {
   const VkSwapchainKHR old = _swapchain;
   const VkSwapchainCreateInfoKHR info{
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-      .surface = _mechanics.surface(),
+      .surface = _surface,
       .minImageCount = images,
       .imageFormat = _format.format,
       .imageColorSpace = _format.colorSpace,

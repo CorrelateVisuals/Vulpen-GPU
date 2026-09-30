@@ -209,6 +209,10 @@ VkDevice Mechanics::device() const {
   return _device;
 }
 
+VkQueue Mechanics::queue() const {
+  return _queue;
+}
+
 VkSurfaceKHR Mechanics::surface() const {
   return _surface;
 }
@@ -243,18 +247,6 @@ void Mechanics::submit(VkSemaphore acquired, VkSemaphore rendered) const {
                             .signalSemaphoreCount = rendered ? 1u : 0u,
                             .pSignalSemaphores = &rendered};
   check(vkQueueSubmit(_queue, 1, &submit, _fence), "vkQueueSubmit");
-}
-
-VkResult Mechanics::present(VkSwapchainKHR swapchain,
-                            std::uint32_t image,
-                            VkSemaphore rendered) const {
-  const VkPresentInfoKHR present{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-                                 .waitSemaphoreCount = 1,
-                                 .pWaitSemaphores = &rendered,
-                                 .swapchainCount = 1,
-                                 .pSwapchains = &swapchain,
-                                 .pImageIndices = &image};
-  return vkQueuePresentKHR(_queue, &present);
 }
 
 } // namespace VP

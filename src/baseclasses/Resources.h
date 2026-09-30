@@ -1,6 +1,6 @@
 #pragma once
 
-#include "baseclasses/Mechanics.h"
+#include <vulkan/vulkan.h>
 
 #include <cstddef>
 #include <span>
@@ -44,7 +44,7 @@ private:
 
 class Resources {
 public:
-  explicit Resources(const Mechanics &mechanics);
+  Resources(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device);
   ~Resources();
   Resources(const Resources &) = delete;
   Resources &operator=(const Resources &) = delete;

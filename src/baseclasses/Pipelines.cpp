@@ -1,5 +1,7 @@
 #include "baseclasses/Pipelines.h"
 
+#include "baseclasses/Mechanics.h"
+
 #include <algorithm>
 #include <climits>
 #include <format>
@@ -327,8 +329,8 @@ const std::array<std::uint32_t, 3> &Shader::workgroup_size() const {
   return _workgroup_size;
 }
 
-Pipelines::Pipelines(const Mechanics &mechanics, const Resources &resources)
-    : _device(mechanics.device()), _resources(resources) {
+Pipelines::Pipelines(VkDevice device, const Resources &resources)
+    : _device(device), _resources(resources) {
   const VkDescriptorSetLayoutCreateInfo images{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
   check(vkCreateDescriptorSetLayout(_device, &images, nullptr, &_images),

@@ -12,14 +12,14 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Log.h` | — |
 | `baseclasses/Mechanics.cpp` | `baseclasses/Mechanics.h` |
 | `baseclasses/Mechanics.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Platform.h` |
-| `baseclasses/Pipelines.cpp` | `baseclasses/Pipelines.h` |
-| `baseclasses/Pipelines.h` | `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
+| `baseclasses/Pipelines.cpp` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` |
+| `baseclasses/Pipelines.h` | `baseclasses/Resources.h` |
 | `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<dlfcn.h>` `baseclasses/Platform.h` |
 | `baseclasses/Platform.h` | `<vulkan/vulkan.h>` |
-| `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Resources.h` |
-| `baseclasses/Resources.h` | `baseclasses/Mechanics.h` |
-| `baseclasses/Swapchain.cpp` | `baseclasses/Swapchain.h` |
-| `baseclasses/Swapchain.h` | `baseclasses/Mechanics.h` `baseclasses/Platform.h` |
+| `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
+| `baseclasses/Resources.h` | `<vulkan/vulkan.h>` |
+| `baseclasses/Swapchain.cpp` | `baseclasses/Mechanics.h` `baseclasses/Swapchain.h` |
+| `baseclasses/Swapchain.h` | `baseclasses/Platform.h` |
 | `examples/triangle/recipes/triangle/Triangle.cpp` | `runtime/Operator.h` |
 | `examples/triangle/recipes/triangle/Triangle.frag` | `examples/triangle/recipes/triangle/Triangle.glsl` |
 | `examples/triangle/recipes/triangle/Triangle.glsl` | `baseclasses/GpuLayout.glsl` |
@@ -54,8 +54,8 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Operator.h` | `<glm/vec2.hpp>` `<glm/vec3.hpp>` `<glm/vec4.hpp>` `baseclasses/Log.h` |
 | `runtime/Recipes.cpp` | `linked-recipes.h` `runtime/Recipes.h` |
 | `runtime/Recipes.h` | `baseclasses/Platform.h` `runtime/Operator.h` |
-| `runtime/Runtime.cpp` | `runtime/Runtime.h` |
-| `runtime/Runtime.h` | `baseclasses/Engine.h` `baseclasses/Platform.h` `runtime/Manifest.h` `runtime/Recipes.h` `runtime/Schedule.h` `runtime/View.h` |
-| `runtime/Schedule.cpp` | `runtime/Schedule.h` |
-| `runtime/Schedule.h` | `baseclasses/Engine.h` `runtime/Operator.h` `runtime/Recipes.h` `runtime/View.h` |
+| `runtime/Runtime.cpp` | `runtime/Manifest.h` `runtime/Runtime.h` |
+| `runtime/Runtime.h` | `baseclasses/Engine.h` `baseclasses/Platform.h` `runtime/Recipes.h` `runtime/Schedule.h` `runtime/View.h` |
+| `runtime/Schedule.cpp` | `runtime/Operator.h` `runtime/Schedule.h` |
+| `runtime/Schedule.h` | `baseclasses/Engine.h` `runtime/Recipes.h` `runtime/View.h` |
 | `runtime/View.h` | — |

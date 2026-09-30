@@ -32,10 +32,16 @@ void bind(VkCommandBuffer commands, VkPipelineLayout layout, const Pass &pass) {
 } // namespace
 
 Engine::Engine(const Log &log, const Window *window)
-    : _mechanics(log, window), _resources(_mechanics),
-      _pipelines(_mechanics, _resources) {
+    : _mechanics(log, window),
+      _resources(
+          _mechanics.instance(), _mechanics.physical_device(), _mechanics.device()),
+      _pipelines(_mechanics.device(), _resources) {
   if (window)
-    _swapchain.emplace(_mechanics, *window);
+    _swapchain.emplace(_mechanics.physical_device(),
+                       _mechanics.device(),
+                       _mechanics.queue(),
+                       _mechanics.surface(),
+                       *window);
 }
 
 Engine::~Engine() {

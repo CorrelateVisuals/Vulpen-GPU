@@ -24,6 +24,7 @@ public:
   VkInstance instance() const;
   VkPhysicalDevice physical_device() const;
   VkDevice device() const;
+  VkQueue queue() const;
   // Null without a window.
   VkSurfaceKHR surface() const;
 
@@ -35,9 +36,6 @@ public:
   // once it is rendered.
   void submit(VkSemaphore acquired = VK_NULL_HANDLE,
               VkSemaphore rendered = VK_NULL_HANDLE) const;
-  // The result, so the swapchain can tell when to remake itself.
-  VkResult
-  present(VkSwapchainKHR swapchain, std::uint32_t image, VkSemaphore rendered) const;
 
 private:
   const VkInstance _instance;

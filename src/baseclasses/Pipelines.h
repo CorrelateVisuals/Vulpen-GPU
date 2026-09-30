@@ -1,6 +1,5 @@
 #pragma once
 
-#include "baseclasses/Mechanics.h"
 #include "baseclasses/Resources.h"
 
 #include <array>
@@ -58,7 +57,7 @@ private:
 // C++ its offsets and bindings.
 class Pipelines {
 public:
-  Pipelines(const Mechanics &mechanics, const Resources &resources);
+  Pipelines(VkDevice device, const Resources &resources);
   ~Pipelines();
   Pipelines(const Pipelines &) = delete;
   Pipelines &operator=(const Pipelines &) = delete;

@@ -1,5 +1,7 @@
 #include "baseclasses/Resources.h"
 
+#include "baseclasses/Mechanics.h"
+
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
@@ -77,12 +79,15 @@ void Buffer::invalidate() const {
         "vmaInvalidateAllocation");
 }
 
-Resources::Resources(const Mechanics &mechanics) : _device(mechanics.device()) {
+Resources::Resources(VkInstance instance,
+                     VkPhysicalDevice physical_device,
+                     VkDevice device)
+    : _device(device) {
   const VmaAllocatorCreateInfo info{.flags =
                                         VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
-                                    .physicalDevice = mechanics.physical_device(),
-                                    .device = mechanics.device(),
-                                    .instance = mechanics.instance(),
+                                    .physicalDevice = physical_device,
+                                    .device = device,
+                                    .instance = instance,
                                     .vulkanApiVersion = VK_API_VERSION_1_2};
   check(vmaCreateAllocator(&info, &_allocator), "vmaCreateAllocator");
 }
