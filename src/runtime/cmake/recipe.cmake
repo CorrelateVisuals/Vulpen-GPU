@@ -21,6 +21,14 @@ endforeach()
 string(SHA256 stamp "${hashes}")
 string(SUBSTRING ${stamp} 0 16 recipe_stamp)
 
+# How a module marks its entry exported: a DLL exports only what is marked so, and GCC
+# and Clang, told to hide every symbol, export what is marked visible.
+if(WIN32)
+  set(recipe_export "__declspec(dllexport)")
+else()
+  set(recipe_export "[[gnu::visibility(\"default\")]]")
+endif()
+
 # What a live build rebuilds; the include map guards it like every build (A00).
 add_custom_target(vulpen_recipes)
 add_dependencies(vulpen_recipes gates)
@@ -74,14 +82,15 @@ function(vulpen_recipe view folder)
     add_library(${target} MODULE ${sources})
     # Every module exports one entry name, each in its own symbol scope. Without
     # -fno-gnu-unique, GCC's unique symbols keep a module mapped after dlclose, and a
-    # swap would silently run the old code.
+    # swap would silently run the old code. Every module is named recipe, so the import
+    # library a DLL comes with lands in its own folder too, not in one all of them share.
     set_target_properties(${target} PROPERTIES
       PREFIX "" OUTPUT_NAME recipe LIBRARY_OUTPUT_DIRECTORY ${out}$<0:>
+      ARCHIVE_OUTPUT_DIRECTORY ${out}$<0:>
       CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
     target_compile_options(${target} PRIVATE $<$<CXX_COMPILER_ID:GNU>:-fno-gnu-unique>)
     target_compile_definitions(${target} PRIVATE
-      VP_RECIPE_ENTRY=vp_recipe_${recipe_stamp}
-      "VP_RECIPE_EXPORT=[[gnu::visibility(\"default\")]]")
+      VP_RECIPE_ENTRY=vp_recipe_${recipe_stamp} "VP_RECIPE_EXPORT=${recipe_export}")
   else()
     add_library(${target} OBJECT ${sources})
     target_link_libraries(vulpen PRIVATE ${target})

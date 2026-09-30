@@ -6,7 +6,6 @@
 #include <charconv>
 #include <chrono>
 #include <cstdio>
-#include <cstdlib>
 #include <format>
 #include <fstream>
 #include <iterator>
@@ -78,7 +77,7 @@ public:
         _building = true;
         _started = now;
         _build = std::jthread([this] {
-          _status = std::system(_command.c_str());
+          _status = Shell::run(_command);
           _finished = true;
           _building = false;
         });
