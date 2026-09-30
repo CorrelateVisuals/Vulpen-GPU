@@ -1,5 +1,8 @@
-# The tests (docs/plans/tests.md). Included by the top-level CMakeLists.txt once vulpen
-# and every view are defined.
+# The tests (docs/plans/tests.md), all in this folder: the Python that runs vulpen and
+# judges it (harness.py and one script per test), the barrier test's C++, the golden, the
+# sanitizer suppressions and layer settings the presets name, the fixture view mistakes/,
+# and nightly.sh. Included by the top-level CMakeLists.txt once vulpen and every view are
+# defined.
 #
 # Headless runs take the driver VULPEN_TEST_DRIVER names: lavapipe where it is installed,
 # so a machine without a GPU runs them (V07), and the Mesa build pinned beside the repo
@@ -28,7 +31,7 @@ if(VULPEN_SANITIZERS MATCHES thread)
 endif()
 set(vulpen_file $<TARGET_FILE:vulpen>)
 set(python ${launch} ${Python3_EXECUTABLE})
-set(harness ${tools}/tests)
+set(tests ${CMAKE_CURRENT_LIST_DIR})
 set(examples ${PROJECT_SOURCE_DIR}/src/examples)
 
 # A window under TSan reports only noise: GTK, which draws its decorations, takes locks
@@ -45,10 +48,10 @@ function(vulpen_test name)
 endfunction()
 
 vulpen_test(vulpen ${launch} ${vulpen_file})
-vulpen_test(wave ${python} ${harness}/golden.py ${vulpen_file})
+vulpen_test(wave ${python} ${tests}/golden.py ${vulpen_file})
 if(VULPEN_TEST_DRIVER AND NOT VULPEN_SANITIZERS)
   # The same goldens on this machine's own GPU, within the tolerance between drivers.
-  vulpen_test(wave-gpu ${python} ${harness}/golden.py ${vulpen_file} --own-gpu)
+  vulpen_test(wave-gpu ${python} ${tests}/golden.py ${vulpen_file} --own-gpu)
 endif()
 vulpen_test(triangle ${launch} ${vulpen_file} ${examples}/triangle/view.vlp
             --frames 120 --fps 0)
@@ -58,8 +61,7 @@ set_tests_properties(triangle PROPERTIES SKIP_REGULAR_EXPRESSION "glfwInit faile
 set_tests_properties(vulpen triangle PROPERTIES
   FAIL_REGULAR_EXPRESSION "Validation (Error|Warning|Performance Warning):")
 
-add_executable(barriers ${PROJECT_SOURCE_DIR}/src/tests/Barriers.cpp
-                        ${PROJECT_SOURCE_DIR}/src/baseclasses/Passes.cpp)
+add_executable(barriers ${tests}/Barriers.cpp ${PROJECT_SOURCE_DIR}/src/baseclasses/Passes.cpp)
 target_include_directories(barriers PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(barriers PRIVATE Vulkan::Headers)
 target_compile_options(barriers PRIVATE "${warnings}")
@@ -69,33 +71,25 @@ vulpen_test(barriers ${launch} $<TARGET_FILE:barriers>)
 
 # Its recipes build only as modules.
 if(VULPEN_LIVE)
-  vulpen_test(fail-loud ${python} ${harness}/fail-loud.py ${vulpen_file})
+  vulpen_test(fail-loud ${python} ${tests}/fail-loud.py ${vulpen_file})
 endif()
 if(VULPEN_SANITIZERS MATCHES address)
-  vulpen_test(fuzz ${python} ${harness}/fuzz.py ${vulpen_file} --count 300)
-  vulpen_test(fuzz-nightly ${python} ${harness}/fuzz.py ${vulpen_file} --count 10000
+  vulpen_test(fuzz ${python} ${tests}/fuzz.py ${vulpen_file} --count 300)
+  vulpen_test(fuzz-nightly ${python} ${tests}/fuzz.py ${vulpen_file} --count 10000
               --seed today)
   set_tests_properties(fuzz-nightly PROPERTIES LABELS nightly TIMEOUT 7200)
 endif()
 # Live swaps are where a second thread runs, so the tsan preset swaps too (A01).
 if(VULPEN_SANITIZERS MATCHES thread)
-  vulpen_test(swaps ${python} ${harness}/soak.py ${vulpen_file} --swaps 6 --races-only)
+  vulpen_test(swaps ${python} ${tests}/soak.py ${vulpen_file} --swaps 6 --races-only)
   set_tests_properties(swaps PROPERTIES TIMEOUT 600)
 endif()
 # Sanitizers hold freed memory back, so a soak under them would read as growth.
 if(NOT VULPEN_SANITIZERS)
-  vulpen_test(soak ${python} ${harness}/soak.py ${vulpen_file} --minutes 10)
+  vulpen_test(soak ${python} ${tests}/soak.py ${vulpen_file} --minutes 10)
   set_tests_properties(soak PROPERTIES LABELS nightly TIMEOUT 900)
   if(VULPEN_LIVE)
-    vulpen_test(swap-soak ${python} ${harness}/soak.py ${vulpen_file} --swaps 500)
+    vulpen_test(swap-soak ${python} ${tests}/soak.py ${vulpen_file} --swaps 500)
     set_tests_properties(swap-soak PROPERTIES LABELS nightly TIMEOUT 7200)
   endif()
-endif()
-
-# Every writable object in the code built from src/ (C13); runs after every link, like
-# the statistics.
-if(NOT MSVC)
-  add_custom_target(globals ALL
-    COMMAND ${Python3_EXECUTABLE} ${tools}/mutable-globals.py ${CMAKE_BINARY_DIR} VERBATIM)
-  add_dependencies(globals vulpen barriers)
 endif()

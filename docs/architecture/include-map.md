@@ -62,11 +62,11 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Schedule.cpp` | `runtime/Operator.h` `runtime/Schedule.h` |
 | `runtime/Schedule.h` | `baseclasses/Engine.h` `runtime/Recipes.h` `runtime/View.h` |
 | `runtime/View.h` | — |
-| `tests/Barriers.cpp` | `baseclasses/Passes.h` |
-| `tests/mistakes/recipes/connect/Pairs.comp` | `baseclasses/GpuLayout.glsl` |
-| `tests/mistakes/recipes/connect/Sum.comp` | `baseclasses/GpuLayout.glsl` |
-| `tests/mistakes/recipes/draw/Draw.frag` | `tests/mistakes/recipes/draw/Draw.glsl` |
-| `tests/mistakes/recipes/draw/Draw.glsl` | `baseclasses/GpuLayout.glsl` |
-| `tests/mistakes/recipes/draw/Draw.vert` | `tests/mistakes/recipes/draw/Draw.glsl` |
-| `tests/mistakes/recipes/fill/Fill.comp` | `baseclasses/GpuLayout.glsl` |
-| `tests/mistakes/recipes/fill/Fill.cpp` | `runtime/Operator.h` |
+| `tools/tests/Barriers.cpp` | `baseclasses/Passes.h` |
+| `tools/tests/mistakes/recipes/connect/Pairs.comp` | `baseclasses/GpuLayout.glsl` |
+| `tools/tests/mistakes/recipes/connect/Sum.comp` | `baseclasses/GpuLayout.glsl` |
+| `tools/tests/mistakes/recipes/draw/Draw.frag` | `tools/tests/mistakes/recipes/draw/Draw.glsl` |
+| `tools/tests/mistakes/recipes/draw/Draw.glsl` | `baseclasses/GpuLayout.glsl` |
+| `tools/tests/mistakes/recipes/draw/Draw.vert` | `tools/tests/mistakes/recipes/draw/Draw.glsl` |
+| `tools/tests/mistakes/recipes/fill/Fill.comp` | `baseclasses/GpuLayout.glsl` |
+| `tools/tests/mistakes/recipes/fill/Fill.cpp` | `runtime/Operator.h` |

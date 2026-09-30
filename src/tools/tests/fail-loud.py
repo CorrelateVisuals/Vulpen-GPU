@@ -6,7 +6,7 @@ disagree, a dispatch that leaves a workgroup part full, a draw that writes, and 
 passes than the build holds.
 
 The views are written into a folder named mistakes, so they find the recipes the build
-compiles from src/tests/mistakes/, which get these things wrong on purpose.
+compiles from mistakes/ beside this script, which get these things wrong on purpose.
 
 Usage: python3 src/tools/tests/fail-loud.py VULPEN
 """

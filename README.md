@@ -19,7 +19,7 @@ Configures, builds and runs the `debug` preset, or `release` with `--release`; t
 
 ```bash
 ctest --preset debug                 # after a build; also release, asan, tsan, gpu-validation
-src/tools/nightly.sh                 # every preset, the soaks and the long fuzz
+src/tools/tests/nightly.sh           # every preset, the soaks and the long fuzz
 ```
 
 [docs/plans/tests.md](docs/plans/tests.md) says what each test proves and what each preset runs.

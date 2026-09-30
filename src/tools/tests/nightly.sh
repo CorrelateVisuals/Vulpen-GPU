@@ -3,7 +3,7 @@
 # (docs/plans/tests.md). Runs everything, then exits 1 if anything failed.
 set -uo pipefail
 
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/../../.."
 status=0
 run() { "$@" || status=1; }
 for preset in debug release asan tsan; do

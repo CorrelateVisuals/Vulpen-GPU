@@ -14,10 +14,11 @@ Usage: python3 src/tools/tests/golden.py VULPEN [--own-gpu] [--update]
 import argparse
 import re
 import sys
+from pathlib import Path
 
 from harness import DEVICE, EXAMPLES, OUT, ROOT, matches, problems, run
 
-GOLDEN = ROOT / "src" / "tests" / "wave.golden"
+GOLDEN = Path(__file__).resolve().parent / "wave.golden"
 VIEW = EXAMPLES / "wave" / "view.vlp"
 # At 60 fps: now, a day, a year and a century. A 32-bit frame count wraps before the last.
 FIRST_FRAMES = (0, 5_184_000, 1_892_160_000, 189_216_000_000)

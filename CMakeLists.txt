@@ -69,13 +69,19 @@ add_dependencies(vulpen commit)
 target_include_directories(vulpen PRIVATE ${generated})
 
 # Gates run before the compile, so a broken rule fails the build before any object is
-# built. Statistics run after the link at every build, so docs/statistics/ never goes
-# stale; only a release build is timed, since debug timings say nothing about what ships.
+# built; mutable-globals reads the objects, so it runs after the link (C13). Statistics run
+# after the link at every build, so docs/statistics/ never goes stale; only a release
+# build is timed, since debug timings say nothing about what ships.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(tools ${PROJECT_SOURCE_DIR}/src/tools)
 add_custom_target(gates COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py ${CMAKE_BINARY_DIR}
                   VERBATIM)
 add_dependencies(vulpen gates)
+if(NOT MSVC) # it reads the objects with objdump
+  add_custom_target(globals ALL
+    COMMAND ${Python3_EXECUTABLE} ${tools}/mutable-globals.py ${CMAKE_BINARY_DIR} VERBATIM)
+  add_dependencies(globals vulpen barriers) # barriers: src/tools/tests/tests.cmake
+endif()
 add_custom_target(statistics ALL
   COMMAND ${Python3_EXECUTABLE} ${tools}/fetch-statistics.py
           "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
@@ -93,8 +99,8 @@ endforeach()
 # The recipes the fail-loud test gets wrong on purpose. They build only as modules, so no
 # test code links into a release binary.
 if(VULPEN_LIVE)
-  vulpen_view(${PROJECT_SOURCE_DIR}/src/tests/mistakes)
+  vulpen_view(${PROJECT_SOURCE_DIR}/src/tools/tests/mistakes)
 endif()
 vulpen_link_recipes(${generated}/linked-recipes.h)
 
-include(src/tests/tests.cmake)
+include(src/tools/tests/tests.cmake)
