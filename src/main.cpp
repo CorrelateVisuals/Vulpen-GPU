@@ -8,9 +8,7 @@
 int main(int argc, char **argv) {
   constexpr const char *build = "vulpen " VULPEN_COMMIT;
   try {
-    VP::Runtime runtime(std::span<char *const>(argv, static_cast<std::size_t>(argc)),
-                        build);
-    return runtime.run();
+    return VP::run(std::span<char *const>(argv, static_cast<std::size_t>(argc)), build);
   } catch (const std::exception &error) {
     // Only arguments vulpen cannot run with reach here; the runtime logs the rest.
     std::fprintf(stderr, "%s: %s\n", build, error.what());

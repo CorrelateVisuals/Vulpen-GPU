@@ -1,2 +1,2 @@
-# The CLI app: a command-line on the terminal and no window, so everything a GUI does can
-# be typed or scripted headless.
+# The CLI app: a command-line on the terminal, with inspect and library, and no window, so
+# everything a GUI does can be typed or scripted headless.

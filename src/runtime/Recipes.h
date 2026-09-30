@@ -1,13 +1,11 @@
 #pragma once
 
-#include "baseclasses/Platform.h"
 #include "runtime/Operator.h"
 
 #include <array>
 #include <filesystem>
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -28,6 +26,11 @@ struct LinkedRecipe {
 // finds the same code linked in.
 class Recipes final : public Registry {
 public:
+  Recipes();
+  ~Recipes();
+  Recipes(const Recipes &) = delete;
+  Recipes &operator=(const Recipes &) = delete;
+
   // recipe: "view/recipe"; folder: where the build put its module. Throws naming what
   // the recipe does register when it lacks the class (A02).
   std::unique_ptr<Operator> make(const std::string &recipe,
@@ -40,12 +43,9 @@ public:
   void unload(const std::string &recipe);
 
 private:
-  struct Module {
-    std::string recipe;
-    std::filesystem::path file;
-    std::filesystem::file_time_type built;
-    std::optional<Library> library;
-  };
+  // A recipe's module in a dev build. It holds the platform's Library, so Recipes.cpp
+  // defines it and this header includes no platform code.
+  struct Module;
 
   void add(std::string_view name, Make make) override;
   void enter(const std::string &recipe, const std::filesystem::path &folder);

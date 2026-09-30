@@ -1,6 +1,8 @@
 #include "baseclasses/Swapchain.h"
 
+#include "baseclasses/Log.h"
 #include "baseclasses/Mechanics.h"
+#include "baseclasses/Platform.h"
 
 #include <algorithm>
 #include <format>

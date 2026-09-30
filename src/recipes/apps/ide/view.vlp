@@ -13,3 +13,4 @@
 #   Popup      menu                   a column at the pointer
 #   Tooltip    tooltip
 #   Modes      modes                  edit or perform: which node reaches the screen
+#   Library    inspect + library      reads the graph; lists, drops and starts recipes

@@ -1,0 +1,57 @@
+#include "runtime/Operator.h"
+
+namespace {
+
+// Why the Name operator exists, in a line or two.
+class Name final : public VP::Operator {
+  // VP::Value<float> _scale;       // a value in the pass block
+  // VP::Upload<glm::vec2> _points; // a buffer C++ writes and the shader reads
+  // VP::Readback<float> _samples;  // a buffer the shader writes, read a frame later
+  // float _speed = 0;              // a param
+  // VP::Texture _atlas;            // an image C++ fills once
+  // VP::Command _reset;            // a command the node answers
+  // VP::File _settings;            // a file the node reads, watches or saves
+
+  // At load, and again after every swap: names in, handles out.
+  // void bind(VP::Bind &node) override {
+  //   _scale = node.value<float>("scale");
+  //   _points = node.upload<glm::vec2>("points");
+  //   _samples = node.readback<float>("samples");
+  //   _speed = node.param<float>("speed");
+  //   _atlas = node.texture("atlas");
+  //   _reset = node.command("reset", "turns the node back to its start");
+  //   _settings = node.files().open("settings.ini");
+  // }
+
+  // Every frame, before the node's pass runs.
+  // void cook(VP::Cook &frame) override {
+  //   frame.set(_scale, 1.0f);
+  //   const std::span<glm::vec2> points = frame.write(_points);
+  //   const std::span<glm::vec2> used = frame.write(_points, count); // used length
+  //   const std::span<const float> samples = frame.read(_samples);
+  //   frame.upload(_atlas, pixels, size);
+  //   const std::uint64_t index = frame.index(); // frames since the view loaded
+  //   frame.log(VP::Level::info, "a line at the node's log level");
+  //   frame.commands().send("param set name speed 0.02");
+  //   for (const VP::Event &event : frame.input().events()) {}
+  //   for (const std::string_view line : frame.terminal().lines()) {}
+  //   frame.terminal().print("text");
+  //   const std::string_view settings = frame.files().text(_settings);
+  //   frame.files().save(_settings, "text");
+  //   const VP::View &view = frame.view(); // with #include "runtime/View.h"
+  // }
+
+  // When a command the node registered runs.
+  // void command(VP::Call &call) override {
+  //   if (call.is(_reset)) {}
+  //   const std::span<const std::string_view> arguments = call.arguments();
+  //   call.reply("text");
+  //   call.send("param set name speed 0");
+  // }
+};
+
+} // namespace
+
+VP_RECIPE(registry) {
+  registry.add<Name>("Name");
+}

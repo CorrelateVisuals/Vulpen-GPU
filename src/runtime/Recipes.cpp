@@ -1,10 +1,12 @@
 #include "runtime/Recipes.h"
 
+#include "baseclasses/Platform.h"
 #include "linked-recipes.h"
 
 #include <algorithm>
 #include <cstring>
 #include <format>
+#include <optional>
 #include <stdexcept>
 
 namespace VP {
@@ -20,6 +22,17 @@ constexpr const char *module_entry = "vp_recipe_" VP_RECIPE_STAMP;
 constexpr const char *module_file = "recipe" VP_MODULE_SUFFIX;
 
 } // namespace
+
+struct Recipes::Module {
+  std::string recipe;
+  std::filesystem::path file;
+  std::filesystem::file_time_type built;
+  std::optional<Library> library;
+};
+
+Recipes::Recipes() = default;
+
+Recipes::~Recipes() = default;
 
 std::unique_ptr<Operator> Recipes::make(const std::string &recipe,
                                         const std::filesystem::path &folder,

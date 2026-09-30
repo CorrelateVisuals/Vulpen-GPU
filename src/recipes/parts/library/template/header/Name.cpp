@@ -1,0 +1,43 @@
+#include "Name.h"
+
+namespace {
+
+// void Name::bind(VP::Bind &node) {
+//   _scale = node.value<float>("scale");
+//   _points = node.upload<glm::vec2>("points");
+//   _samples = node.readback<float>("samples");
+//   _speed = node.param<float>("speed");
+//   _atlas = node.texture("atlas");
+//   _reset = node.command("reset", "turns the node back to its start");
+//   _settings = node.files().open("settings.ini");
+// }
+
+// void Name::cook(VP::Cook &frame) {
+//   frame.set(_scale, 1.0f);
+//   const std::span<glm::vec2> points = frame.write(_points);
+//   const std::span<glm::vec2> used = frame.write(_points, count); // used length
+//   const std::span<const float> samples = frame.read(_samples);
+//   frame.upload(_atlas, pixels, size);
+//   const std::uint64_t index = frame.index(); // frames since the view loaded
+//   frame.log(VP::Level::info, "a line at the node's log level");
+//   frame.commands().send("param set name speed 0.02");
+//   for (const VP::Event &event : frame.input().events()) {}
+//   for (const std::string_view line : frame.terminal().lines()) {}
+//   frame.terminal().print("text");
+//   const std::string_view settings = frame.files().text(_settings);
+//   frame.files().save(_settings, "text");
+//   const VP::View &view = frame.view(); // with #include "runtime/View.h"
+// }
+
+// void Name::command(VP::Call &call) {
+//   if (call.is(_reset)) {}
+//   const std::span<const std::string_view> arguments = call.arguments();
+//   call.reply("text");
+//   call.send("param set name speed 0");
+// }
+
+} // namespace
+
+VP_RECIPE(registry) {
+  registry.add<Name>("Name");
+}

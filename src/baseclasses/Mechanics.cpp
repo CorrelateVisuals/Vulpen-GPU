@@ -1,5 +1,8 @@
 #include "baseclasses/Mechanics.h"
 
+#include "baseclasses/Log.h"
+#include "baseclasses/Platform.h"
+
 #include <algorithm>
 #include <array>
 #include <cstring>

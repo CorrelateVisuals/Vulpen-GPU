@@ -1,6 +1,11 @@
 #include "runtime/Schedule.h"
 
+#include "baseclasses/Engine.h"
+#include "baseclasses/Passes.h"
+#include "baseclasses/Pipelines.h"
 #include "runtime/Operator.h"
+#include "runtime/Recipes.h"
+#include "runtime/View.h"
 
 #include <algorithm>
 #include <charconv>

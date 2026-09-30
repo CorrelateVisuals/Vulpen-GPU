@@ -4,7 +4,8 @@
 - RC03: ownership is std::unique_ptr or by value, so no std::shared_ptr, and no naked new
   or delete;
 - RA01: OS APIs and OS conditionals live only in the platform files, so no other file
-  includes a header beyond the standard library, Vulkan, glm and VMA, or tests for an OS.
+  includes a header beyond the standard library, Vulkan, glm, VMA and stb_truetype, or
+  tests for an OS.
 
 Comments and string literals are left out, so prose and log text never trip a rule.
 
@@ -18,7 +19,8 @@ ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / "src"
 VENDORED = SOURCE / "external-libraries"  # not our code, so not our rules
 PLATFORM = {"baseclasses/Platform.h", "baseclasses/Platform.cpp"}
-LIBRARIES = ("vulkan/", "glm/", "vk_mem_alloc.h")  # what any file may include
+# What any file may include; the include map says which files do.
+LIBRARIES = ("vulkan/", "glm/", "vk_mem_alloc.h", "stb_truetype.h")
 
 # Raw strings first: their text may hold quotes.
 LITERALS = re.compile(r'R"([^(\s]*)\(.*?\)\1"|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\''

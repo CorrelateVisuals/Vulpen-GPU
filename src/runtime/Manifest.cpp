@@ -1,5 +1,9 @@
 #include "runtime/Manifest.h"
 
+#include "baseclasses/Platform.h"
+#include "runtime/Edits.h"
+#include "runtime/View.h"
+
 #include <algorithm>
 #include <charconv>
 #include <format>

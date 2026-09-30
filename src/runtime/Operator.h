@@ -15,8 +15,8 @@
 #include <string_view>
 #include <type_traits>
 
-// The one runtime header a recipe's C++ includes: a node's behaviour and the general
-// ports (input, commands, files). Nothing here reaches Vulkan or the OS.
+// The runtime header every recipe's C++ includes: a node's behaviour and the general
+// ports (commands, input, files, the terminal). Nothing here reaches Vulkan or the OS.
 //
 // A recipe gets names in and handles out, never an object that owns the GPU, so its
 // module needs no engine symbol and links the same way into a release binary.
@@ -53,6 +53,47 @@ template <class T> struct Readback {
 template <class T> struct Upload {
   std::uint32_t index = 0;
 };
+
+// One of the node's images, which the CPU fills once and shaders then sample.
+struct Texture {
+  std::uint32_t index = 0;
+};
+
+// A command the node registered; its runs reach the node's command hook.
+struct Command {
+  std::uint32_t index = 0;
+};
+
+// A file the node opened through the file port.
+struct File {
+  std::uint32_t index = 0;
+};
+
+// One member of a struct a buffer holds. C++ names each member once and the loader
+// checks it against the shader, so a C++ struct cannot drift from its contract.
+struct Member {};
+
+// Where every change goes, as text: a node sends commands as a person types them, so no
+// recipe has a private way in.
+class CommandPort {};
+
+// A key, text, the pointer, the wheel or focus. The input command makes the same events
+// without a window, so a headless test types as a person does.
+struct Event {};
+
+// The events of a frame, for the nodes that read keys, text or the pointer.
+class InputPort {};
+
+// Files a node reads, watches and saves. A save writes a temp file and renames it over
+// the old one, so a killed run never leaves half a file.
+class FilePort {};
+
+// Lines typed on standard input and text for standard output, so a CLI needs no window.
+class TerminalPort {};
+
+// The graph a node reads. Only a recipe that reads it includes runtime/View.h, so the
+// others compile without its headers.
+struct View;
 
 // What a node's C++ gets while it binds: names in, handles out. The loader checks each
 // name against the node's shader and manifest entry before a frame runs (A02), so a
@@ -127,16 +168,20 @@ private:
   virtual std::span<std::byte> upload_bytes(std::uint32_t index) = 0;
 };
 
+// One run of a command the node registered: its arguments, the text it answers, and the
+// commands it sends, which the log keeps in one group with it.
+class Call {};
+
 // A node's behaviour. State in its members lasts until its recipe's module is swapped;
-// bind runs at load and again after every swap.
+// bind runs at load and again after every swap. A key, a click or a typed line reaches
+// a node as a command or as input cook reads, so no other hook is needed.
 class Operator {
 public:
   virtual ~Operator() = default;
   virtual void bind(Bind &) {}
   virtual void cook(Cook &) {}
+  virtual void command(Call &) {}
 };
-class InputPort {};
-class FilePort {};
 
 // Where a recipe registers its operators, by the names a manifest's operator word uses.
 class Registry {

@@ -1,8 +1,9 @@
 #pragma once
 
-#include "baseclasses/Engine.h"
-#include "runtime/Recipes.h"
-#include "runtime/View.h"
+#include "baseclasses/Log.h"
+#include "baseclasses/Resources.h"
+
+#include <vulkan/vulkan.h>
 
 #include <cstdint>
 #include <filesystem>
@@ -12,6 +13,13 @@
 #include <vector>
 
 namespace VP {
+
+class Engine;
+class Recipes;
+struct Connection;
+struct Node;
+struct Pass;
+struct View;
 
 // Where the graph meets the GPU: runs each node's operator in graph order and turns
 // the view into passes that declare what they read and write.

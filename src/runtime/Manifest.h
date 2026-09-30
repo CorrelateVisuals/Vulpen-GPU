@@ -1,10 +1,10 @@
 #pragma once
 
-#include "runtime/View.h"
-
 #include <filesystem>
 
 namespace VP {
+
+struct View;
 
 // The .vlp text of a view, both ways. Load, save and migrate are its own commands, so
 // they land in the command log like any edit.

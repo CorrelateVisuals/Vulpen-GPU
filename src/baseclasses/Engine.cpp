@@ -1,5 +1,13 @@
 #include "baseclasses/Engine.h"
 
+#include "baseclasses/Mechanics.h"
+#include "baseclasses/Offscreen.h"
+#include "baseclasses/Pipelines.h"
+#include "baseclasses/Resources.h"
+#include "baseclasses/Swapchain.h"
+
+#include <optional>
+
 namespace VP {
 
 namespace {
@@ -25,42 +33,59 @@ void bind(VkCommandBuffer commands, VkPipelineLayout layout, const Pass &pass) {
 
 } // namespace
 
+// Each part borrows the ones made before it, so they are destroyed in reverse.
+struct Engine::Gpu {
+  Gpu(const Log &log, const Window *window)
+      : mechanics(log, window),
+        resources(mechanics.instance(), mechanics.physical_device(), mechanics.device()),
+        pipelines(mechanics.device(), resources) {
+    if (window)
+      swapchain.emplace(log,
+                        mechanics.physical_device(),
+                        mechanics.device(),
+                        mechanics.queue(),
+                        mechanics.surface(),
+                        *window);
+  }
+
+  void dispatch(VkCommandBuffer commands, std::span<const Pass> passes);
+  void draw(VkCommandBuffer commands,
+            const Target &target,
+            std::span<const Pass> passes) const;
+
+  Mechanics mechanics;
+  Resources resources;
+  Pipelines pipelines;
+  std::optional<Swapchain> swapchain;
+  Hazards hazards;
+};
+
 Engine::Engine(const Log &log, const Window *window)
-    : _mechanics(log, window),
-      _resources(
-          _mechanics.instance(), _mechanics.physical_device(), _mechanics.device()),
-      _pipelines(_mechanics.device(), _resources) {
-  if (window)
-    _swapchain.emplace(log,
-                       _mechanics.physical_device(),
-                       _mechanics.device(),
-                       _mechanics.queue(),
-                       _mechanics.surface(),
-                       *window);
-}
+    : _gpu(std::make_unique<Gpu>(log, window)) {}
 
 Engine::~Engine() {
-  _mechanics.wait_idle();
+  _gpu->mechanics.wait_idle();
 }
 
 const Resources &Engine::resources() const {
-  return _resources;
+  return _gpu->resources;
 }
 
 const Pipelines &Engine::pipelines() const {
-  return _pipelines;
+  return _gpu->pipelines;
 }
 
 VkRenderPass Engine::render_pass() const {
-  return _swapchain ? _swapchain->render_pass() : VK_NULL_HANDLE;
+  return _gpu->swapchain ? _gpu->swapchain->render_pass() : VK_NULL_HANDLE;
 }
 
 void Engine::wait() const {
-  _mechanics.wait();
+  _gpu->mechanics.wait();
 }
 
 void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes) {
-  const VkCommandBuffer commands = _mechanics.record();
+  Mechanics &mechanics = _gpu->mechanics;
+  const VkCommandBuffer commands = mechanics.record();
   for (const VkBuffer buffer : clears)
     vkCmdFillBuffer(commands, buffer, 0, VK_WHOLE_SIZE, 0);
   if (!clears.empty())
@@ -69,11 +94,12 @@ void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes)
             VK_ACCESS_TRANSFER_WRITE_BIT,
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-  dispatch(commands, passes);
+  _gpu->dispatch(commands, passes);
+  std::optional<Swapchain> &swapchain = _gpu->swapchain;
   const std::optional<Target> target =
-      _swapchain ? _swapchain->acquire() : std::optional<Target>{};
+      swapchain ? swapchain->acquire() : std::optional<Target>{};
   if (target)
-    draw(commands, *target, passes);
+    _gpu->draw(commands, *target, passes);
   // Readbacks: the CPU reads this frame's writes after its fence (VK03).
   barrier(commands,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -81,43 +107,43 @@ void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes)
           VK_PIPELINE_STAGE_HOST_BIT,
           VK_ACCESS_HOST_READ_BIT);
   if (!target) {
-    _mechanics.submit();
+    mechanics.submit();
     return;
   }
-  _mechanics.submit(target->acquired, target->rendered);
-  _swapchain->present(*target);
+  mechanics.submit(target->acquired, target->rendered);
+  swapchain->present(*target);
 }
 
-void Engine::dispatch(VkCommandBuffer commands, std::span<const Pass> passes) {
-  _hazards.clear();
+void Engine::Gpu::dispatch(VkCommandBuffer commands, std::span<const Pass> passes) {
+  hazards.clear();
   for (const Pass &pass : passes) {
     if (pass.bind_point != VK_PIPELINE_BIND_POINT_COMPUTE)
       continue;
-    if (_hazards.before(pass))
+    if (hazards.before(pass))
       barrier(commands,
               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
               VK_ACCESS_SHADER_WRITE_BIT,
               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
               VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-    bind(commands, _pipelines.layout(), pass);
+    bind(commands, pipelines.layout(), pass);
     vkCmdDispatch(commands, pass.groups, 1, 1);
   }
 }
 
 // Draws read what the clears and dispatches wrote; the CPU's uploads are visible to the
 // GPU once the frame is submitted.
-void Engine::draw(VkCommandBuffer commands,
-                  const Target &target,
-                  std::span<const Pass> passes) const {
+void Engine::Gpu::draw(VkCommandBuffer commands,
+                       const Target &target,
+                       std::span<const Pass> passes) const {
   barrier(commands,
           VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
           VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
           VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT);
-  _swapchain->begin(commands, target);
+  swapchain->begin(commands, target);
   for (const Pass &pass : passes)
     if (pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-      bind(commands, _pipelines.layout(), pass);
+      bind(commands, pipelines.layout(), pass);
       vkCmdDraw(commands, pass.vertex_count, 1, 0, 0);
     }
   vkCmdEndRenderPass(commands);

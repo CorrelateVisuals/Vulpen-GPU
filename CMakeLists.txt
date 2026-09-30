@@ -31,15 +31,20 @@ add_executable(vulpen
   src/baseclasses/Engine.cpp
   src/baseclasses/Log.cpp
   src/baseclasses/Mechanics.cpp
+  src/baseclasses/Offscreen.cpp
   src/baseclasses/Passes.cpp
   src/baseclasses/Pipelines.cpp
   src/baseclasses/Platform.cpp
   src/baseclasses/Resources.cpp
   src/baseclasses/Swapchain.cpp
+  src/runtime/Commands.cpp
+  src/runtime/Edits.cpp
   src/runtime/Manifest.cpp
+  src/runtime/Ports.cpp
   src/runtime/Recipes.cpp
   src/runtime/Runtime.cpp
-  src/runtime/Schedule.cpp)
+  src/runtime/Schedule.cpp
+  src/runtime/Views.cpp)
 target_compile_options(vulpen PRIVATE "${warnings}")
 target_include_directories(vulpen PRIVATE src)
 # Vendored code is not ours to warn about (RA02).

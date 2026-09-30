@@ -1,13 +1,15 @@
 #pragma once
 
-#include "baseclasses/Log.h"
-#include "baseclasses/Platform.h"
+#include <vulkan/vulkan.h>
 
 #include <cstdint>
 #include <optional>
 #include <vector>
 
 namespace VP {
+
+class Log;
+class Window;
 
 // The window image one frame renders into, and what orders the frame around it.
 struct Target {

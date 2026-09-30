@@ -1,0 +1,24 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 64) in; // the node's invocations fill whole workgroups of 64
+
+// layout(buffer_reference, std430) readonly buffer Points {
+//   vec2 at[];
+// };
+// layout(buffer_reference, std430) writeonly buffer Samples {
+//   float at[];
+// };
+
+// layout(set = 1, binding = 0) uniform Pass {
+//   float scale;     // C++: node.value<float>("scale"), or a param
+//   Points points;   // C++: node.upload<glm::vec2>("points"), or a connection
+//   Samples samples; // C++: node.readback<float>("samples"), or a connection
+//   Texture atlas;   // a connection, or C++: node.texture("atlas")
+// } pass;
+
+void main() {
+  // const uint i = gl_GlobalInvocationID.x;
+  // pass.samples.at[i] = pass.scale * pass.points.at[i].x;
+}

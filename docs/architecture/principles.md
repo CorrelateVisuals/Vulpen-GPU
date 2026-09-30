@@ -40,6 +40,7 @@ Principles are must-haves that leave room for interpretation; they may pull agai
 - **A03 Runs for years.** Memory stays bounded and nothing leaks, and a long soak run proves both, so the code can grow into a safety-critical system.
 - **A04 The bootstrap stays tiny.** `main()` is at most 30 lines and only wires modules together; all behaviour lives in the modules, where tests and other programs can reach it.
 - **A05 Fit the architecture in place.** New or important code is shaped to attach at the seams that already exist and to use the modules, ports and types already there, never to grow a parallel path beside them. When it cannot fit, the architecture changes first, as its own step (A00), and the code then lands on it. Code that fits reads like the rest, and the one-page map stays true.
+- **A06 Includes flow.** The include graph is layered, so a change flows one way through it. No file is both included by many files and includes many itself: that hub turns a flow into a web. Wide fan-out belongs at the top, and wide fan-in at the bottom.
 
 ## Coding
 
@@ -73,6 +74,7 @@ Principles are must-haves that leave room for interpretation; they may pull agai
 - **CPP10** No heap allocation on the hot path.
 - **CPP11** Vulkan structs are filled with designated initializers (`.sType = …, .size = …`); fields left out are zero. This keeps CPP05's exception blocks flat and shaped like the spec.
 - **CPP12** A file stays small enough to read whole (about 800 lines); a longer one says why at its top.
+- **CPP13** A header includes less than its `.cpp`. It only declares what it borrows by reference or pointer, keeps what it owns but its users never touch behind a pointer (pimpl), and leaves the includes to the `.cpp`. A header-to-header edge costs the included header's whole include tree, in every file that includes the header; a `.cpp`-to-header edge costs one file.
 
 ### GLSL
 

@@ -1,15 +1,18 @@
 #pragma once
 
-#include "baseclasses/Mechanics.h"
 #include "baseclasses/Passes.h"
-#include "baseclasses/Pipelines.h"
-#include "baseclasses/Resources.h"
-#include "baseclasses/Swapchain.h"
 
-#include <optional>
+#include <vulkan/vulkan.h>
+
+#include <memory>
 #include <span>
 
 namespace VP {
+
+class Log;
+class Pipelines;
+class Resources;
+class Window;
 
 // The top of baseclasses: owns the GPU and runs one frame of passes. Barriers follow
 // from what each pass declares it reads and writes, so nobody places them by hand.
@@ -19,6 +22,8 @@ public:
   // into the window and presents.
   Engine(const Log &log, const Window *window);
   ~Engine();
+  Engine(const Engine &) = delete;
+  Engine &operator=(const Engine &) = delete;
 
   const Resources &resources() const;
   const Pipelines &pipelines() const;
@@ -30,16 +35,10 @@ public:
   void run(std::span<const VkBuffer> clears, std::span<const Pass> passes);
 
 private:
-  void dispatch(VkCommandBuffer commands, std::span<const Pass> passes);
-  void draw(VkCommandBuffer commands,
-            const Target &target,
-            std::span<const Pass> passes) const;
-
-  Mechanics _mechanics;
-  Resources _resources;
-  Pipelines _pipelines;
-  std::optional<Swapchain> _swapchain;
-  Hazards _hazards;
+  // What the engine owns, behind a pointer, so a file that includes this header
+  // compiles none of the rest of baseclasses.
+  struct Gpu;
+  std::unique_ptr<Gpu> _gpu;
 };
 
 } // namespace VP

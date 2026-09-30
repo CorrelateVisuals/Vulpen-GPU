@@ -1,6 +1,15 @@
 #include "runtime/Runtime.h"
 
+#include "baseclasses/Engine.h"
+#include "baseclasses/Log.h"
+#include "baseclasses/Platform.h"
+#include "runtime/Commands.h"
 #include "runtime/Manifest.h"
+#include "runtime/Ports.h"
+#include "runtime/Recipes.h"
+#include "runtime/Schedule.h"
+#include "runtime/View.h"
+#include "runtime/Views.h"
 
 #include <atomic>
 #include <charconv>
@@ -9,6 +18,8 @@
 #include <format>
 #include <fstream>
 #include <iterator>
+#include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -46,6 +57,44 @@ std::string joined(const std::vector<std::string> &names) {
     text += (text.empty() ? "" : ", ") + name;
   return text;
 }
+
+// Owns every module and runs the loop.
+class Runtime {
+public:
+  Runtime(std::span<char *const> arguments, std::string_view build);
+  ~Runtime();
+  Runtime(const Runtime &) = delete;
+  Runtime &operator=(const Runtime &) = delete;
+
+  int run();
+
+private:
+  struct Options {
+    std::filesystem::path manifest;
+    std::uint64_t frames = 0; // 0 runs until stopped
+    // Where the frame count starts, so a test reaches years of frames in a moment (A03).
+    std::uint64_t first_frame = 0;
+    std::uint32_t fps = 0;    // 0 runs unpaced
+    Level log = Level::warn;
+  };
+  class Live;
+
+  static Options parse(std::span<char *const> arguments);
+  bool start();
+  void loop();
+  void watch();
+  void swap();
+
+  const Options _options;
+  const Log _log;
+  std::filesystem::path _views;
+  std::optional<Window> _window; // outlives the engine, which draws into it
+  std::optional<Engine> _engine;
+  Recipes _recipes; // outlives the schedule, whose operators run its modules' code
+  std::unique_ptr<View> _view;
+  std::unique_ptr<Schedule> _schedule;
+  std::unique_ptr<Live> _live;
+};
 
 } // namespace
 
@@ -278,6 +327,11 @@ void Runtime::swap() {
                          _live->took().count(),
                          rewritten.empty() ? "" : "; new modules: ",
                          joined(rewritten)));
+}
+
+int run(std::span<char *const> arguments, std::string_view build) {
+  Runtime runtime(arguments, build);
+  return runtime.run();
 }
 
 } // namespace VP

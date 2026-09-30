@@ -36,6 +36,10 @@ struct Connection {
   std::vector<Endpoint> to;
 };
 
+// A recipe the view deploys under a name, with the params it sets on the recipe's
+// nodes. The loader flattens it, so the schedule sees only nodes and connections.
+struct Deploy {};
+
 // A view is a project: its nodes, their connections, and the child views it hosts.
 // The model includes nothing, so it can hold no GPU or OS type.
 struct View {

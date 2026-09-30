@@ -1,13 +1,13 @@
 #pragma once
 
-#include "baseclasses/Log.h"
-#include "baseclasses/Platform.h"
-
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
 
 namespace VP {
+
+class Log;
+class Window;
 
 // Throws with the call's name, so a Vulkan error names its cause (A02).
 void check(VkResult result, const char *call);
