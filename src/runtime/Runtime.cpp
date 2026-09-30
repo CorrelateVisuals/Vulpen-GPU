@@ -19,7 +19,8 @@ namespace VP {
 namespace {
 
 constexpr const char *usage =
-    "usage: vulpen <view.vlp> [--frames N] [--fps N] [--log error|warn|info|debug]";
+    "usage: vulpen <view.vlp> [--frames N] [--first-frame N] [--fps N]\n"
+    "              [--log error|warn|info|debug]";
 constexpr std::uint32_t default_fps = 60;
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 constexpr auto scan_interval = std::chrono::milliseconds(100);
@@ -145,6 +146,8 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
     const std::string_view value = arguments[++index];
     if (argument == "--frames") {
       options.frames = number<std::uint64_t>(argument, value);
+    } else if (argument == "--first-frame") {
+      options.first_frame = number<std::uint64_t>(argument, value);
     } else if (argument == "--fps") {
       options.fps = number<std::uint32_t>(argument, value);
     } else if (argument == "--log") {
@@ -213,14 +216,14 @@ void Runtime::loop() {
           : std::chrono::nanoseconds(std::chrono::seconds(1)) / _options.fps;
   const auto started = std::chrono::steady_clock::now();
   auto next = started;
-  std::uint64_t frame = 0;
-  for (; _options.frames == 0 || frame < _options.frames; ++frame) {
+  std::uint64_t frames = 0;
+  for (; _options.frames == 0 || frames < _options.frames; ++frames) {
     if (_window && !_window->poll())
       break;
     _engine->wait();
     if (_live)
       watch();
-    _schedule->cook(frame);
+    _schedule->cook(_options.first_frame + frames);
     _engine->run(_schedule->take_clears(), _schedule->passes());
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
@@ -228,7 +231,7 @@ void Runtime::loop() {
   const std::chrono::duration<double> ran = std::chrono::steady_clock::now() - started;
   _log.write(Level::info,
              Tag::run,
-             std::format("ran {} frames in {:.2f} s", frame, ran.count()));
+             std::format("ran {} frames in {:.2f} s", frames, ran.count()));
 }
 
 void Runtime::watch() {

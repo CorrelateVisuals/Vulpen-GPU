@@ -13,24 +13,70 @@
       "name": "release",
       "inherits": "debug",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "asan",
+      "inherits": "debug",
+      "cacheVariables": { "VULPEN_SANITIZERS": "address,undefined" }
+    },
+    {
+      "name": "tsan",
+      "inherits": "debug",
+      "cacheVariables": { "VULPEN_SANITIZERS": "thread" }
     }
   ],
   "buildPresets": [
     { "name": "debug", "configurePreset": "debug", "configuration": "Debug" },
-    { "name": "release", "configurePreset": "release", "configuration": "Release" }
+    { "name": "release", "configurePreset": "release", "configuration": "Release" },
+    { "name": "asan", "configurePreset": "asan", "configuration": "Debug" },
+    { "name": "tsan", "configurePreset": "tsan", "configuration": "Debug" }
   ],
   "testPresets": [
+    { "name": "tests", "hidden": true, "output": { "outputOnFailure": true } },
     {
       "name": "debug",
+      "inherits": "tests",
       "configurePreset": "debug",
       "configuration": "Debug",
-      "output": { "outputOnFailure": true }
+      "filter": { "exclude": { "label": "nightly" } }
     },
     {
       "name": "release",
+      "inherits": "debug",
       "configurePreset": "release",
-      "configuration": "Release",
-      "output": { "outputOnFailure": true }
+      "configuration": "Release"
+    },
+    {
+      "name": "sanitizers",
+      "hidden": true,
+      "environment": {
+        "LSAN_OPTIONS": "suppressions=${sourceDir}/src/tests/lsan.supp:print_suppressions=0",
+        "UBSAN_OPTIONS": "print_stacktrace=1",
+        "TSAN_OPTIONS": "suppressions=${sourceDir}/src/tests/tsan.supp"
+      }
+    },
+    { "name": "asan", "inherits": ["debug", "sanitizers"], "configurePreset": "asan" },
+    { "name": "tsan", "inherits": ["debug", "sanitizers"], "configurePreset": "tsan" },
+    {
+      "name": "gpu-validation",
+      "inherits": "debug",
+      "environment": {
+        "VK_LAYER_SETTINGS_PATH": "${sourceDir}/src/tests/vk_layer_settings.txt",
+        "VULPEN_OWN_GPU": "1"
+      },
+      "filter": { "exclude": { "label": "nightly", "name": "fail-loud" } }
+    },
+    {
+      "name": "nightly",
+      "inherits": "tests",
+      "configurePreset": "debug",
+      "configuration": "Debug",
+      "filter": { "include": { "label": "nightly" } }
+    },
+    {
+      "name": "asan-nightly",
+      "inherits": ["nightly", "sanitizers"],
+      "configurePreset": "asan"
     }
   ]
 }

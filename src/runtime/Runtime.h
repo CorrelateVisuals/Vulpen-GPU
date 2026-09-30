@@ -32,6 +32,8 @@ private:
   struct Options {
     std::filesystem::path manifest;
     std::uint64_t frames = 0; // 0 runs until stopped
+    // Where the frame count starts, so a test reaches years of frames in a moment (A03).
+    std::uint64_t first_frame = 0;
     std::uint32_t fps = 0;    // 0 runs unpaced
     Level log = Level::warn;
   };

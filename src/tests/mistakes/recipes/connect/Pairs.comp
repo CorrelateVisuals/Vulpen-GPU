@@ -1,0 +1,17 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(buffer_reference, std430) writeonly buffer PairsOut {
+  vec2 at[];
+};
+
+layout(set = 1, binding = 0) uniform Pass {
+  PairsOut pairs;
+} pass;
+
+void main() {
+  pass.pairs.at[gl_GlobalInvocationID.x] = vec2(0.0);
+}

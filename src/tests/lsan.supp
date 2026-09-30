@@ -1,0 +1,8 @@
+# Leaks LeakSanitizer reports inside libraries, for the asan test presets. Each line names
+# a library or a vendored library's function, never a function of ours, so a leak in our
+# code always fails (A03).
+# A window opens through GLFW and libdecor, whose fonts leak:
+leak:libfontconfig.so
+# Where no display answers, GLFW unloads libX11 after XInitThreads and XrmInitialize
+# allocated its state, so the leak shows under GLFW's function, in an unknown module:
+leak:_glfwConnectX11

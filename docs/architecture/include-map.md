@@ -7,12 +7,14 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | File | Includes |
 | --- | --- |
 | `baseclasses/Engine.cpp` | `baseclasses/Engine.h` |
-| `baseclasses/Engine.h` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` `baseclasses/Resources.h` `baseclasses/Swapchain.h` |
+| `baseclasses/Engine.h` | `baseclasses/Mechanics.h` `baseclasses/Passes.h` `baseclasses/Pipelines.h` `baseclasses/Resources.h` `baseclasses/Swapchain.h` |
 | `baseclasses/GpuLayout.glsl` | — |
 | `baseclasses/Log.cpp` | `baseclasses/Log.h` `baseclasses/Platform.h` |
 | `baseclasses/Log.h` | — |
 | `baseclasses/Mechanics.cpp` | `baseclasses/Mechanics.h` |
 | `baseclasses/Mechanics.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Platform.h` |
+| `baseclasses/Passes.cpp` | `baseclasses/Passes.h` |
+| `baseclasses/Passes.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Pipelines.cpp` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` |
 | `baseclasses/Pipelines.h` | `baseclasses/Resources.h` |
 | `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<dlfcn.h>` `<time.h>` `<unistd.h>` `baseclasses/Platform.h` |
@@ -60,3 +62,11 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Schedule.cpp` | `runtime/Operator.h` `runtime/Schedule.h` |
 | `runtime/Schedule.h` | `baseclasses/Engine.h` `runtime/Recipes.h` `runtime/View.h` |
 | `runtime/View.h` | — |
+| `tests/Barriers.cpp` | `baseclasses/Passes.h` |
+| `tests/mistakes/recipes/connect/Pairs.comp` | `baseclasses/GpuLayout.glsl` |
+| `tests/mistakes/recipes/connect/Sum.comp` | `baseclasses/GpuLayout.glsl` |
+| `tests/mistakes/recipes/draw/Draw.frag` | `tests/mistakes/recipes/draw/Draw.glsl` |
+| `tests/mistakes/recipes/draw/Draw.glsl` | `baseclasses/GpuLayout.glsl` |
+| `tests/mistakes/recipes/draw/Draw.vert` | `tests/mistakes/recipes/draw/Draw.glsl` |
+| `tests/mistakes/recipes/fill/Fill.comp` | `baseclasses/GpuLayout.glsl` |
+| `tests/mistakes/recipes/fill/Fill.cpp` | `runtime/Operator.h` |

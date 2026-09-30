@@ -74,6 +74,8 @@ private:
   VkDescriptorSetLayout _pass = VK_NULL_HANDLE;
   VkPipelineLayout _layout = VK_NULL_HANDLE;
   VkDescriptorPool _pool = VK_NULL_HANDLE;
+  // Pass blocks allocated from the pool; each block counts itself in and out.
+  mutable std::uint32_t _blocks = 0;
 };
 
 // A dispatch's pipeline, or a draw's for a render pass.

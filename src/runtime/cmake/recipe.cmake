@@ -3,6 +3,7 @@
 # at paths that mirror the view under <build>/views/, so the runtime finds them by path
 # alone. Included by the top-level CMakeLists.txt after the vulpen and gates targets.
 find_program(GLSLANG glslangValidator REQUIRED)
+find_program(SPIRV_VAL spirv-val REQUIRED)
 
 string(COMPARE EQUAL "${CMAKE_BUILD_TYPE}" Debug live_default)
 option(VULPEN_LIVE "Swap recipe C++ and GLSL while vulpen runs" ${live_default})
@@ -54,7 +55,13 @@ function(vulpen_recipe view folder)
       COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet -I${PROJECT_SOURCE_DIR}/src
               --depfile ${out}/${name}.d -o ${out}/${name}.spv ${shader}
       DEPENDS ${shader} DEPFILE ${out}/${name}.d VERBATIM)
-    list(APPEND spirv ${out}/${name}.spv)
+    # A driver may take invalid SPIR-V without a word, or crash on it. The stamp exists
+    # only once spirv-val passed, so the build fails while any shader does not (RV02).
+    add_custom_command(OUTPUT ${out}/${name}.spv.valid
+      COMMAND ${SPIRV_VAL} --target-env vulkan1.2 ${out}/${name}.spv
+      COMMAND ${CMAKE_COMMAND} -E touch ${out}/${name}.spv.valid
+      DEPENDS ${out}/${name}.spv VERBATIM)
+    list(APPEND spirv ${out}/${name}.spv.valid)
   endforeach()
   add_custom_target(${target}_spirv DEPENDS ${spirv})
   add_dependencies(vulpen_recipes ${target}_spirv)

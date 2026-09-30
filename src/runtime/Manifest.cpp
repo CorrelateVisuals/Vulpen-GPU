@@ -4,6 +4,8 @@
 #include <charconv>
 #include <format>
 #include <fstream>
+#include <optional>
+#include <set>
 #include <stdexcept>
 #include <string_view>
 
@@ -47,7 +49,8 @@ private:
   View _view;
   Section _section = Section::none;
   std::size_t _line = 0;
-  std::uint32_t _version = 0;
+  bool _manifest = false;
+  std::optional<std::uint32_t> _version;
 };
 
 void Reader::fail(std::string_view message) const {
@@ -94,6 +97,9 @@ void Reader::header(std::string_view text) {
   else if (!name.empty())
     fail("a section's name is quoted: [node \"name\"]");
   if (kind == "manifest" && name.empty()) {
+    if (_manifest)
+      fail("[manifest] is given twice");
+    _manifest = true;
     _section = Section::manifest;
   } else if (kind == "node" && !name.empty()) {
     _view.nodes.push_back({.name = std::string(name)});
@@ -114,6 +120,8 @@ void Reader::word(std::string_view key, std::string_view value) {
     case Section::manifest:
       if (key != "version")
         fail(std::format("unknown word {} in [manifest]; its one word is version", key));
+      if (_version)
+        fail("version is set twice");
       _version = number(value);
       return;
     case Section::node:
@@ -142,8 +150,11 @@ void Reader::node_word(Node &node, std::string_view key, std::string_view value)
     const std::size_t equals = value.find('=');
     if (equals == std::string_view::npos)
       fail("a param is written `param = name=value`");
-    node.params.push_back({std::string(trim(value.substr(0, equals))),
-                           std::string(trim(value.substr(equals + 1)))});
+    const std::string_view name = trim(value.substr(0, equals));
+    if (std::ranges::find(node.params, name, &Param::key) != node.params.end())
+      fail(std::format("param {} is set twice", name));
+    node.params.push_back(
+        {std::string(name), std::string(trim(value.substr(equals + 1)))});
   } else {
     fail(std::format("unknown word {} in a node; its words are recipe, operator, shader, "
                      "invocations, param and log",
@@ -193,7 +204,7 @@ void Reader::check() const {
     fail(
         std::format("version {} is not one this build reads; it reads version {}, and no "
                     "migrate command exists yet (RV03)",
-                    _version,
+                    _version.value_or(0),
                     manifest_version));
   const auto named = [&](std::string_view name) {
     return std::ranges::count(_view.nodes, name, &Node::name);
@@ -209,7 +220,16 @@ void Reader::check() const {
     if (!node.shaders.empty() && node.invocations == 0)
       fail(std::format("node {} runs a shader, so it needs invocations", node.name));
   }
+  // A port holds one buffer, so it joins one connection; a second would be ignored.
+  std::set<std::string, std::less<>> connections;
+  std::set<std::string, std::less<>> ports;
+  const auto join = [&](const Endpoint &end) {
+    if (!ports.insert(end.node + "." + end.port).second)
+      fail(std::format("{}.{} joins two connections, or one twice", end.node, end.port));
+  };
   for (const Connection &connection : _view.connections) {
+    if (!connections.insert(connection.name).second)
+      fail(std::format("two connections are named {}", connection.name));
     if (connection.from.node.empty() || connection.to.empty())
       fail(
           std::format("connection {} needs a from and at least one to", connection.name));
@@ -217,10 +237,13 @@ void Reader::check() const {
       fail(std::format("connection {} is from {}, which is no node",
                        connection.name,
                        connection.from.node));
-    for (const Endpoint &to : connection.to)
+    join(connection.from);
+    for (const Endpoint &to : connection.to) {
       if (named(to.node) == 0)
         fail(std::format(
             "connection {} is to {}, which is no node", connection.name, to.node));
+      join(to);
+    }
   }
 }
 

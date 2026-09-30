@@ -10,12 +10,28 @@ find_package(Vulkan REQUIRED)
 # which GCC's -Wextra would flag in every one of them.
 set(warnings
     "$<IF:$<BOOL:${MSVC}>,/W4,-Wall;-Wextra;-Wpedantic;-Wno-missing-field-initializers>")
+# The same input gives the same bits on every machine (C01, C10). GCC fuses a*b+c into
+# one rounding wherever the CPU has FMA, as ARM64 always does, so release would differ
+# from debug and from x86; MSVC does not fuse by default.
+if(NOT MSVC)
+  add_compile_options(-ffp-contract=off)
+endif()
+# Standard containers check their bounds in a debug build (A02).
+add_compile_definitions($<$<CONFIG:Debug>:_GLIBCXX_ASSERTIONS>)
+# The asan and tsan presets (docs/plans/tests.md): a sanitizer report ends the run.
+set(VULPEN_SANITIZERS "" CACHE STRING "Sanitizers to build with, as -fsanitize names them")
+if(VULPEN_SANITIZERS)
+  add_compile_options(-fsanitize=${VULPEN_SANITIZERS} -fno-sanitize-recover=all
+                      -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=${VULPEN_SANITIZERS})
+endif()
 
 add_executable(vulpen
   src/main.cpp
   src/baseclasses/Engine.cpp
   src/baseclasses/Log.cpp
   src/baseclasses/Mechanics.cpp
+  src/baseclasses/Passes.cpp
   src/baseclasses/Pipelines.cpp
   src/baseclasses/Platform.cpp
   src/baseclasses/Resources.cpp
@@ -57,7 +73,8 @@ target_include_directories(vulpen PRIVATE ${generated})
 # stale; only a release build is timed, since debug timings say nothing about what ships.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(tools ${PROJECT_SOURCE_DIR}/src/tools)
-add_custom_target(gates COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py VERBATIM)
+add_custom_target(gates COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py ${CMAKE_BINARY_DIR}
+                  VERBATIM)
 add_dependencies(vulpen gates)
 add_custom_target(statistics ALL
   COMMAND ${Python3_EXECUTABLE} ${tools}/fetch-statistics.py
@@ -73,12 +90,11 @@ foreach(example IN LISTS examples)
     vulpen_view(${example})
   endif()
 endforeach()
+# The recipes the fail-loud test gets wrong on purpose. They build only as modules, so no
+# test code links into a release binary.
+if(VULPEN_LIVE)
+  vulpen_view(${PROJECT_SOURCE_DIR}/src/tests/mistakes)
+endif()
 vulpen_link_recipes(${generated}/linked-recipes.h)
 
-enable_testing()
-add_test(NAME vulpen COMMAND vulpen)
-add_test(NAME wave COMMAND vulpen ${PROJECT_SOURCE_DIR}/src/examples/wave/view.vlp
-                           --frames 120 --fps 0)
-# Opens a window, so it needs a display.
-add_test(NAME triangle COMMAND vulpen ${PROJECT_SOURCE_DIR}/src/examples/triangle/view.vlp
-                               --frames 120 --fps 0)
+include(src/tests/tests.cmake)

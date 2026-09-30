@@ -1,7 +1,5 @@
 #include "baseclasses/Engine.h"
 
-#include <algorithm>
-
 namespace VP {
 
 namespace {
@@ -16,10 +14,6 @@ void barrier(VkCommandBuffer commands,
                                .dstAccessMask = target};
   vkCmdPipelineBarrier(
       commands, source_stage, target_stage, 0, 1, &memory, 0, nullptr, 0, nullptr);
-}
-
-bool contains(const std::vector<VkBuffer> &buffers, VkBuffer buffer) {
-  return std::ranges::find(buffers, buffer) != buffers.end();
 }
 
 void bind(VkCommandBuffer commands, VkPipelineLayout layout, const Pass &pass) {
@@ -65,16 +59,6 @@ void Engine::wait() const {
   _mechanics.wait();
 }
 
-// A pass waits for what an earlier pass wrote, and for earlier reads of what it writes.
-bool Engine::hazard(const Pass &pass) const {
-  const auto written = [&](VkBuffer buffer) { return contains(_written, buffer); };
-  const auto touched = [&](VkBuffer buffer) {
-    return written(buffer) || contains(_read, buffer);
-  };
-  return std::ranges::any_of(pass.reads, written) ||
-         std::ranges::any_of(pass.writes, touched);
-}
-
 void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes) {
   const VkCommandBuffer commands = _mechanics.record();
   for (const VkBuffer buffer : clears)
@@ -105,22 +89,16 @@ void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes)
 }
 
 void Engine::dispatch(VkCommandBuffer commands, std::span<const Pass> passes) {
-  _written.clear();
-  _read.clear();
+  _hazards.clear();
   for (const Pass &pass : passes) {
     if (pass.bind_point != VK_PIPELINE_BIND_POINT_COMPUTE)
       continue;
-    if (hazard(pass)) {
+    if (_hazards.before(pass))
       barrier(commands,
               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
               VK_ACCESS_SHADER_WRITE_BIT,
               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
               VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-      _written.clear();
-      _read.clear();
-    }
-    _written.insert(_written.end(), pass.writes.begin(), pass.writes.end());
-    _read.insert(_read.end(), pass.reads.begin(), pass.reads.end());
     bind(commands, _pipelines.layout(), pass);
     vkCmdDispatch(commands, pass.groups, 1, 1);
   }

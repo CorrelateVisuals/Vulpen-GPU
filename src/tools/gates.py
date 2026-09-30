@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Run every gate in src/tools/gates/; any failing gate fails the build.
 
-Usage: python3 src/tools/gates.py
+A gate that reads the build (its compile commands) takes the build folder; the build
+passes it, and each gate gets the same arguments.
+
+Usage: python3 src/tools/gates.py [BUILD_DIR]
 """
 import subprocess
 import sys
@@ -15,7 +18,8 @@ def main() -> None:
     if not gates:  # a moved or emptied folder must not pass as "all green"
         sys.exit(f"no gates in {GATES}")
     # Every gate runs, so one build reports every broken rule, not only the first.
-    failed = [gate.stem for gate in gates if subprocess.call([sys.executable, gate]) != 0]
+    failed = [gate.stem for gate in gates
+              if subprocess.call([sys.executable, gate, *sys.argv[1:]]) != 0]
     if failed:
         sys.exit(f"gates failed: {', '.join(failed)}")
 

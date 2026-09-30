@@ -1,0 +1,6 @@
+# Races ThreadSanitizer reports from inside libraries, for the tsan test preset. The
+# libraries are not built with it, so it sees their locks and atomics only in part. Each
+# line mutes what a library calls itself, so a race with our code still fails (A01).
+# lavapipe, the driver the tests run on, and the LLVM it compiles shaders with:
+called_from_lib:libvulkan_lvp.so
+called_from_lib:libLLVM.so

@@ -480,6 +480,13 @@ PassBlock::PassBlock(const Pipelines &pipelines, std::uint32_t size)
     : _pipelines(&pipelines),
       _buffer(pipelines._resources.buffer(
           size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, Memory::upload)) {
+  // Counted here, not left to the pool: past maxSets a driver may fail, or may not, and
+  // either way the error would not name the limit (A02, C01).
+  if (pipelines._blocks == max_passes)
+    throw std::runtime_error(std::format(
+        "the view needs more than {} pass blocks at once, the most this build holds; "
+        "during a live swap, the old blocks count too",
+        max_passes));
   const VkDescriptorSetAllocateInfo allocate{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool = pipelines._pool,
@@ -495,6 +502,7 @@ PassBlock::PassBlock(const Pipelines &pipelines, std::uint32_t size)
                                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                    .pBufferInfo = &buffer};
   vkUpdateDescriptorSets(pipelines._device, 1, &write, 0, nullptr);
+  ++pipelines._blocks;
 }
 
 PassBlock::PassBlock(PassBlock &&other) noexcept
@@ -509,8 +517,10 @@ PassBlock &PassBlock::operator=(PassBlock &&other) noexcept {
 }
 
 PassBlock::~PassBlock() {
-  if (_set)
-    vkFreeDescriptorSets(_pipelines->_device, _pipelines->_pool, 1, &_set);
+  if (!_set)
+    return;
+  vkFreeDescriptorSets(_pipelines->_device, _pipelines->_pool, 1, &_set);
+  --_pipelines->_blocks;
 }
 
 VkDescriptorSet PassBlock::set() const {

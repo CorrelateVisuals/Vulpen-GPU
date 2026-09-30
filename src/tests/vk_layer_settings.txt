@@ -1,0 +1,7 @@
+# Read by the validation layer in the gpu-validation test preset (docs/plans/tests.md).
+# GPU-assisted validation sees reads and writes through buffer addresses, which the layer
+# cannot check from the CPU: an index out of range is caught here (GLSL02). The preset
+# runs on the machine's own GPU: this layer's instrumented shaders crash lavapipe.
+khronos_validation.validate_gpu_based = GPU_BASED_GPU_ASSISTED
+khronos_validation.report_flags = error,warn
+khronos_validation.debug_action = VK_DBG_LAYER_ACTION_LOG_MSG
