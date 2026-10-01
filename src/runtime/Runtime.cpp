@@ -30,7 +30,7 @@ namespace {
 
 constexpr const char *usage =
     "usage: vulpen <view.vlp> [--frames N] [--first-frame N] [--fps N]\n"
-    "              [--log error|warn|info|debug]";
+    "              [--log error|warn|info|debug] [--source FILE]";
 constexpr std::uint32_t default_fps = 60;
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 constexpr auto scan_interval = std::chrono::milliseconds(100);
@@ -76,6 +76,8 @@ private:
     std::uint64_t first_frame = 0;
     std::uint32_t fps = 0;    // 0 runs unpaced
     Level log = Level::warn;
+    // A file of commands, one a line, that the port runs before the first frame.
+    std::filesystem::path source;
   };
   class Live;
 
@@ -174,7 +176,7 @@ private:
 };
 
 Runtime::Runtime(std::span<char *const> arguments, std::string_view build)
-    : _options(parse(arguments)), _log(_options.log, build) {}
+    : _options(parse(arguments)), _log(_options.log, build), _commands(_log) {}
 
 Runtime::~Runtime() {
   if (_engine)
@@ -201,6 +203,8 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
       options.first_frame = number<std::uint64_t>(argument, value);
     } else if (argument == "--fps") {
       options.fps = number<std::uint32_t>(argument, value);
+    } else if (argument == "--source") {
+      options.source = value;
     } else if (argument == "--log") {
       const std::optional<Level> level = level_named(value);
       if (!level)
@@ -222,6 +226,8 @@ int Runtime::run() {
   try {
     if (!start())
       return 1;
+    if (!_options.source.empty())
+      _commands.source(_options.source);
     loop();
   } catch (const std::exception &failure) {
     _log.write(Level::error, Tag::run, failure.what());
@@ -278,7 +284,8 @@ void Runtime::loop() {
   const auto started = std::chrono::steady_clock::now();
   auto next = started;
   std::uint64_t frames = 0;
-  for (; _options.frames == 0 || frames < _options.frames; ++frames) {
+  for (; !_commands.quitting() && (_options.frames == 0 || frames < _options.frames);
+       ++frames) {
     if (_window && !_window->poll())
       break;
     _engine->wait();

@@ -170,7 +170,14 @@ private:
 
 // One run of a command the node registered: its arguments, the text it answers, and the
 // commands it sends, which the log keeps in one group with it.
-class Call {};
+class Call {
+public:
+  // Which command runs, for a handler that registered several.
+  virtual bool is(Command command) const = 0;
+
+protected:
+  ~Call() = default;
+};
 
 // What answers a command: an operator for the commands its node registered, and an
 // engine module for its own. The command port runs every command the same way (V06).

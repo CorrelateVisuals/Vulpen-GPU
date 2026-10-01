@@ -75,6 +75,9 @@ if(VULPEN_LIVE)
 endif()
 if(VULPEN_SANITIZERS MATCHES address)
   vulpen_test(fuzz ${python} ${tests}/fuzz.py ${vulpen_file} --count 300)
+  # Each script runs on a started engine, which costs five times a refused manifest.
+  vulpen_test(fuzz-commands ${python} ${tests}/fuzz.py ${vulpen_file} --commands
+              --count 60)
   vulpen_test(fuzz-nightly ${python} ${tests}/fuzz.py ${vulpen_file} --count 10000
               --seed today)
   set_tests_properties(fuzz-nightly PROPERTIES LABELS nightly TIMEOUT 7200)

@@ -4,10 +4,13 @@ build. Each run either works, or ends with exit 1 and an error that names its ca
 (A02). A crash, a hang, a sanitizer report or a validation message fails the test, and so
 does a refusal that only repeats what the standard library threw (A03).
 
-The mutations follow a seed, so a failure repeats (C01): the output names the seed, the
-run and its manifest. "--seed today" takes the date, so each night tries new manifests.
+With --commands, the manifest stays whole and a script of commands is mutated instead,
+which the wave view runs through the command port before its first frame (RV04).
 
-Usage: python3 src/tools/tests/fuzz.py VULPEN [--count N] [--seed N|today]
+The mutations follow a seed, so a failure repeats (C01): the output names the seed, the
+run and its input. "--seed today" takes the date, so each night tries new input.
+
+Usage: python3 src/tools/tests/fuzz.py VULPEN [--commands] [--count N] [--seed N|today]
 """
 import argparse
 import random
@@ -21,11 +24,15 @@ from pathlib import Path
 from harness import EXAMPLES, environment, problems, run
 
 SEED_VIEW = EXAMPLES / "wave" / "view.vlp"
+# A script of every command the engine registers, so each is fuzzed from the step it
+# lands in.
+SEED_SCRIPT = "quit\n"
 FRAMES = 3
 TIMEOUT = 60  # seconds; a sanitizer build of a small view starts in about one
 TOKENS = ["", "0", "1", "-1", "64", "65", "4294967295", "4294967296", "1e9", "0.5", "nan",
           "inf", "9" * 40, "x" * 4000, '"', "[", "]", "=", ".", "#", "é", "\t",
           "wave", "probe", "values", "samples", "Wave.comp", "Probe.comp", "Wave.vert",
+          "quit",
           "[node \"wave\"]", "[connection \"values\"]", "[manifest]", "version = 1"]
 # What std::exception::what() says for the standard library's own throws: a message that
 # names no file, node or key of the view.
@@ -61,13 +68,14 @@ def mutate(text: str, chance: random.Random) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("vulpen")
+    parser.add_argument("--commands", action="store_true")
     parser.add_argument("--count", type=int, default=300)
     parser.add_argument("--seed", default="1")
     options = parser.parse_args()
     if options.seed == "today":
         options.seed = time.strftime("%Y%m%d")
     chance = random.Random(int(options.seed))
-    seed = SEED_VIEW.read_text(encoding="utf-8")
+    seed = SEED_SCRIPT if options.commands else SEED_VIEW.read_text(encoding="utf-8")
     # A mutation may make a node draw; with no display it fails loud instead of flashing
     # a window.
     env = {key: value for key, value in environment().items()
@@ -76,11 +84,15 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         view = Path(temporary) / "wave" / "view.vlp"  # named wave, so it finds its recipes
         view.parent.mkdir()
+        script = Path(temporary) / "script.txt"
+        mutated, arguments = ((script, [SEED_VIEW, "--source", script]) if options.commands
+                              else (view, [view]))
         for index in range(options.count):
             text = mutate(seed, chance)
-            view.write_text(text, encoding="utf-8", errors="replace")
+            mutated.write_text(text, encoding="utf-8", errors="replace")
             try:
-                code, output = run(options.vulpen, [view, "--frames", FRAMES, "--fps", 0],
+                code, output = run(options.vulpen,
+                                   [*arguments, "--frames", FRAMES, "--fps", 0],
                                    timeout=TIMEOUT, env=env)
             except subprocess.TimeoutExpired:
                 code, output = None, f"no end after {TIMEOUT} s"
@@ -88,7 +100,8 @@ def main() -> None:
             if code not in (0, 1) or problems(output) or BARE.search(output) or (
                     code == 1 and "{!!!}" not in output):
                 sys.exit(f"run {index} of seed {options.seed} failed with exit {code}.\n"
-                         f"The manifest:\n{text}\nThe output:\n{output}")
+                         f"The {'script' if options.commands else 'manifest'}:\n{text}\n"
+                         f"The output:\n{output}")
     print(f"{options.count} runs: {refused} refused, naming their cause; "
           f"{options.count - refused} ran")
 
