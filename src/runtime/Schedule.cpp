@@ -1,6 +1,5 @@
 #include "runtime/Schedule.h"
 
-#include "baseclasses/Engine.h"
 #include "baseclasses/Passes.h"
 #include "baseclasses/Pipelines.h"
 #include "runtime/Operator.h"
@@ -284,25 +283,20 @@ bool Schedule::draws(const View &view) {
   return std::ranges::any_of(view.nodes, is_draw);
 }
 
-Schedule::Schedule(Engine &engine,
-                   Recipes &recipes,
-                   const View &view,
-                   const std::filesystem::path &views,
-                   const Log &log,
-                   Schedule *replaced)
-    : _engine(engine), _log(log), _view(view) {
+Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
+    : _wiring(wiring), _view(view) {
   const std::vector<const Node *> nodes = order(view);
   _bound.reserve(nodes.size());
   for (const Node *const node : nodes)
     _bound.push_back(
-        bind(*node, recipes, views / view.name / "recipes" / node->recipe, replaced));
+        bind(*node, wiring.views / view.name / "recipes" / node->recipe, replaced));
   check_connections();
   make_buffers(replaced);
   make_blocks();
   make_passes();
   for (const Bound &bound : _bound)
     for (const std::string &error : bound.errors)
-      _log.write(
+      _wiring.log.write(
           Level::error,
           Tag::nod,
           std::format(
@@ -312,10 +306,9 @@ Schedule::Schedule(Engine &engine,
 Schedule::~Schedule() = default;
 
 Schedule::Bound Schedule::bind(const Node &node,
-                               Recipes &recipes,
                                const std::filesystem::path &folder,
                                Schedule *replaced) {
-  Bound bound{.node = &node, .log = _log.level()};
+  Bound bound{.node = &node, .log = _wiring.log.level()};
   if (!node.log.empty()) {
     if (const std::optional<Level> level = level_named(node.log))
       bound.log = *level;
@@ -331,7 +324,8 @@ Schedule::Bound Schedule::bind(const Node &node,
     log(Level::debug, Tag::nod, bound, "keeps its operator " + node.operator_name);
   } else if (!node.operator_name.empty()) {
     try {
-      bound.op = recipes.make(recipe_of(_view, node), folder, node.operator_name);
+      bound.op =
+          _wiring.recipes.make(recipe_of(_view, node), folder, node.operator_name);
       log(Level::info, Tag::nod, bound, "new operator " + node.operator_name);
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
@@ -410,16 +404,16 @@ void Schedule::make_pipeline(Bound &bound) const {
     }
   }
   if (!is_draw(node)) {
-    bound.pipeline.emplace(_engine.pipelines(), bound.shaders.front());
-  } else if (!_engine.render_pass()) {
+    bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
+  } else if (!_wiring.render_pass) {
     throw std::runtime_error("it draws, but vulpen opened no window for this view; "
                              "restart vulpen to open one");
   } else {
     const std::size_t vertex = node.shaders.front().ends_with(vertex_stage) ? 0 : 1;
-    bound.pipeline.emplace(_engine.pipelines(),
+    bound.pipeline.emplace(_wiring.pipelines,
                            bound.shaders[vertex],
                            bound.shaders[1 - vertex],
-                           _engine.render_pass());
+                           _wiring.render_pass);
   }
   std::string names;
   for (const std::string &shader : node.shaders)
@@ -587,7 +581,7 @@ void Schedule::make_buffer(const Bound &writer,
       return;
     }
   }
-  Buffer made = _engine.resources().buffer(
+  Buffer made = _wiring.resources.buffer(
       size,
       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
       memory);
@@ -610,7 +604,7 @@ void Schedule::make_blocks() {
   for (Bound &bound : _bound) {
     if (!bound.errors.empty() || bound.block_size == 0)
       continue;
-    bound.block.emplace(_engine.pipelines(), bound.block_size);
+    bound.block.emplace(_wiring.pipelines, bound.block_size);
     std::byte *const bytes = bound.block->bytes().data();
     for (const Field &field : bound.fields) {
       if (field.buffer()) {
@@ -675,11 +669,11 @@ void Schedule::cook(std::uint64_t frame) {
       bound.op->cook(cooker);
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
-      _log.write(Level::error,
-                 Tag::nod,
-                 std::format("node {}: {}; its operator stops",
-                             bound.node->name,
-                             failure.what()));
+      _wiring.log.write(Level::error,
+                        Tag::nod,
+                        std::format("node {}: {}; its operator stops",
+                                    bound.node->name,
+                                    failure.what()));
     }
     if (bound.block)
       bound.block->flush();
@@ -705,7 +699,7 @@ void Schedule::log(Level level,
                    Tag tag,
                    const Bound &bound,
                    std::string_view text) const {
-  _log.write(level, bound.log, tag, bound.node->name, text);
+  _wiring.log.write(level, bound.log, tag, bound.node->name, text);
 }
 
 Schedule::Bound *Schedule::find(std::string_view node) {

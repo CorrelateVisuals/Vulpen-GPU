@@ -91,6 +91,9 @@ private:
   std::optional<Window> _window; // outlives the engine, which draws into it
   std::optional<Engine> _engine;
   Recipes _recipes; // outlives the schedule, whose operators run its modules' code
+  Commands _commands;
+  Ports _ports;
+  std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
   std::unique_ptr<View> _view;
   std::unique_ptr<Schedule> _schedule;
   std::unique_ptr<Live> _live;
@@ -244,7 +247,17 @@ bool Runtime::start() {
   if (draws)
     _window.emplace(std::format("{} - vulpen", _view->name), window_size);
   _engine.emplace(_log, _window ? &*_window : nullptr);
-  _schedule = std::make_unique<Schedule>(*_engine, _recipes, *_view, _views, _log);
+  _wiring.emplace(Wiring{.pipelines = _engine->pipelines(),
+                         .resources = _engine->resources(),
+                         .render_pass = _engine->render_pass(),
+                         .recipes = _recipes,
+                         .log = _log,
+                         .views = _views,
+                         .commands = _commands,
+                         .input = _ports,
+                         .files = _ports,
+                         .terminal = _ports});
+  _schedule = std::make_unique<Schedule>(*_wiring, *_view);
   if (!_schedule->ok())
     return false;
   if constexpr (VP_LIVE) {
@@ -317,8 +330,8 @@ void Runtime::swap() {
                Tag::mod,
                std::format("{}; the running graph stays", failure.what()));
   }
-  _schedule = std::make_unique<Schedule>(
-      *_engine, _recipes, view ? *view : *_view, _views, _log, _schedule.get());
+  _schedule =
+      std::make_unique<Schedule>(*_wiring, view ? *view : *_view, _schedule.get());
   if (view)
     _view = std::move(view);
   _log.write(Level::info,

@@ -172,15 +172,25 @@ private:
 // commands it sends, which the log keeps in one group with it.
 class Call {};
 
+// What answers a command: an operator for the commands its node registered, and an
+// engine module for its own. The command port runs every command the same way (V06).
+class CommandHandler {
+public:
+  virtual void command(Call &call) = 0;
+
+protected:
+  ~CommandHandler() = default;
+};
+
 // A node's behaviour. State in its members lasts until its recipe's module is swapped;
 // bind runs at load and again after every swap. A key, a click or a typed line reaches
 // a node as a command or as input cook reads, so no other hook is needed.
-class Operator {
+class Operator : public CommandHandler {
 public:
   virtual ~Operator() = default;
   virtual void bind(Bind &) {}
   virtual void cook(Cook &) {}
-  virtual void command(Call &) {}
+  void command(Call &) override {}
 };
 
 // Where a recipe registers its operators, by the names a manifest's operator word uses.
