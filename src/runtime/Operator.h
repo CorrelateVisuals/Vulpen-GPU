@@ -174,6 +174,8 @@ class Call {
 public:
   // Which command runs, for a handler that registered several.
   virtual bool is(Command command) const = 0;
+  // The words after the command's name, as many as its usage takes.
+  virtual std::span<const std::string_view> arguments() const = 0;
 
 protected:
   ~Call() = default;

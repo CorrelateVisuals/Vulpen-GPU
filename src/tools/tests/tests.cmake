@@ -80,7 +80,10 @@ if(VULPEN_SANITIZERS MATCHES address)
               --count 60)
   vulpen_test(fuzz-nightly ${python} ${tests}/fuzz.py ${vulpen_file} --count 10000
               --seed today)
-  set_tests_properties(fuzz-nightly PROPERTIES LABELS nightly TIMEOUT 7200)
+  vulpen_test(fuzz-commands-nightly ${python} ${tests}/fuzz.py ${vulpen_file} --commands
+              --count 2000 --seed today)
+  set_tests_properties(fuzz-nightly fuzz-commands-nightly PROPERTIES LABELS nightly
+                                                                     TIMEOUT 7200)
 endif()
 # Live swaps are where a second thread runs, so the tsan preset swaps too (A01).
 if(VULPEN_SANITIZERS MATCHES thread)

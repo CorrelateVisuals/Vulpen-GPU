@@ -576,6 +576,9 @@ void Schedule::make_buffer(const Bound &writer,
   if (replaced) {
     auto kept = replaced->_buffers.extract(name);
     if (kept && kept.mapped().size() == size && kept.mapped().memory() == memory) {
+      // Edits rebuild with no frame between, so one no frame has zeroed yet stays fresh.
+      if (std::ranges::find(replaced->_fresh, &kept.mapped()) != replaced->_fresh.end())
+        _fresh.push_back(&kept.mapped());
       _buffers.insert(std::move(kept));
       log(Level::debug, Tag::mem, writer, "keeps " + name + " and what it holds");
       return;

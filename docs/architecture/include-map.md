@@ -39,7 +39,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Ports.h` | `runtime/Operator.h` |
 | `runtime/Recipes.cpp` | `baseclasses/Platform.h` `linked-recipes.h` `runtime/Recipes.h` |
 | `runtime/Recipes.h` | `runtime/Operator.h` |
-| `runtime/Runtime.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Ports.h` `runtime/Recipes.h` `runtime/Runtime.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |
+| `runtime/Runtime.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Edits.h` `runtime/Manifest.h` `runtime/Ports.h` `runtime/Recipes.h` `runtime/Runtime.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |
 | `runtime/Runtime.h` | — |
 | `runtime/Schedule.cpp` | `baseclasses/Passes.h` `baseclasses/Pipelines.h` `runtime/Operator.h` `runtime/Recipes.h` `runtime/Schedule.h` `runtime/View.h` |
 | `runtime/Schedule.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Resources.h` |

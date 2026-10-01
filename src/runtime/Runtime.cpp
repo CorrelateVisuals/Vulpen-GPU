@@ -4,6 +4,7 @@
 #include "baseclasses/Log.h"
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
+#include "runtime/Edits.h"
 #include "runtime/Manifest.h"
 #include "runtime/Ports.h"
 #include "runtime/Recipes.h"
@@ -89,15 +90,15 @@ private:
 
   const Options _options;
   const Log _log;
-  std::filesystem::path _views;
+  std::filesystem::path _mirror; // the build tree's views, where the schedules look
   std::optional<Window> _window; // outlives the engine, which draws into it
   std::optional<Engine> _engine;
-  Recipes _recipes; // outlives the schedule, whose operators run its modules' code
+  Recipes _recipes; // outlives the schedules, whose operators run its modules' code
   Commands _commands;
   Ports _ports;
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
-  std::unique_ptr<View> _view;
-  std::unique_ptr<Schedule> _schedule;
+  std::optional<Views> _views;
+  std::optional<Edits> _edits; // goes before the views it changes
   std::unique_ptr<Live> _live;
 };
 
@@ -233,45 +234,46 @@ int Runtime::run() {
     _log.write(Level::error, Tag::run, failure.what());
     return 1;
   }
-  return _schedule->ok() ? 0 : 1;
+  return _views->schedule().ok() ? 0 : 1;
 }
 
 // False when a node is in error.
 bool Runtime::start() {
   const std::filesystem::path build = Files::executable().parent_path();
-  _views = build / "views";
-  _view = std::make_unique<View>(Manifest::load(_options.manifest));
+  _mirror = build / "views";
+  View view = Manifest::load(_options.manifest);
+  const std::filesystem::path folder = view.file.parent_path();
   // Only a view that draws opens a window; every other view runs headless (V07).
-  const bool draws = Schedule::draws(*_view);
+  const bool draws = Schedule::draws(view);
   _log.write(Level::info,
              Tag::run,
              std::format("view {} from {}: {}",
-                         _view->name,
-                         _view->file.string(),
+                         view.name,
+                         view.file.string(),
                          draws ? "a node draws, so it opens a window"
                                : "no node draws, so it runs headless"));
   if (draws)
-    _window.emplace(std::format("{} - vulpen", _view->name), window_size);
+    _window.emplace(std::format("{} - vulpen", view.name), window_size);
   _engine.emplace(_log, _window ? &*_window : nullptr);
   _wiring.emplace(Wiring{.pipelines = _engine->pipelines(),
                          .resources = _engine->resources(),
                          .render_pass = _engine->render_pass(),
                          .recipes = _recipes,
                          .log = _log,
-                         .views = _views,
+                         .views = _mirror,
                          .commands = _commands,
                          .input = _ports,
                          .files = _ports,
                          .terminal = _ports});
-  _schedule = std::make_unique<Schedule>(*_wiring, *_view);
-  if (!_schedule->ok())
+  _views.emplace(*_wiring, std::move(view));
+  _edits.emplace(_commands, *_views);
+  if (!_views->schedule().ok())
     return false;
   if constexpr (VP_LIVE) {
-    _live = std::make_unique<Live>(_view->file.parent_path(), build);
+    _live = std::make_unique<Live>(folder, build);
     _log.write(Level::info,
                Tag::mod,
-               std::format("live code: a save under {} swaps in",
-                           _view->file.parent_path().string()));
+               std::format("live code: a save under {} swaps in", folder.string()));
   }
   return true;
 }
@@ -291,8 +293,9 @@ void Runtime::loop() {
     _engine->wait();
     if (_live)
       watch();
-    _schedule->cook(_options.first_frame + frames);
-    _engine->run(_schedule->take_clears(), _schedule->passes());
+    Schedule &schedule = _views->schedule();
+    schedule.cook(_options.first_frame + frames);
+    _engine->run(schedule.take_clears(), schedule.passes());
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
   }
@@ -324,23 +327,10 @@ void Runtime::watch() {
 // Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest.
 void Runtime::swap() {
   const std::vector<std::string> rewritten = _recipes.rewritten();
-  _schedule->drop_operators(rewritten);
+  _views->schedule().drop_operators(rewritten);
   for (const std::string &recipe : rewritten)
     _recipes.unload(recipe);
-  std::unique_ptr<View> view;
-  try {
-    view = std::make_unique<View>(Manifest::load(_options.manifest));
-    Schedule::order(*view);
-  } catch (const std::exception &failure) {
-    view.reset();
-    _log.write(Level::error,
-               Tag::mod,
-               std::format("{}; the running graph stays", failure.what()));
-  }
-  _schedule =
-      std::make_unique<Schedule>(*_wiring, view ? *view : *_view, _schedule.get());
-  if (view)
-    _view = std::move(view);
+  _views->reload();
   _log.write(Level::info,
              Tag::mod,
              std::format("built in {:.2f} s and swapped{}{}",

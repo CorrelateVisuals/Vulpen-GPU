@@ -24,15 +24,26 @@ from pathlib import Path
 from harness import EXAMPLES, environment, problems, run
 
 SEED_VIEW = EXAMPLES / "wave" / "view.vlp"
-# A script of every command the engine registers, so each is fuzzed from the step it
-# lands in.
-SEED_SCRIPT = "quit\n"
+# A script of every edit, which leaves the wave graph whole. quit comes in through the
+# tokens, so most runs go on to cook their frames on the edited graph.
+SEED_SCRIPT = """\
+param set wave amplitude 0.5
+param set wave spare 1
+param unset wave spare
+node set wave invocations=1024
+disconnect values
+node remove probe
+node add probe recipe=probe operator=Probe shader=Probe.comp invocations=8 param=step=64
+param set probe every 30
+connect values wave.values probe.values
+"""
 FRAMES = 3
 TIMEOUT = 60  # seconds; a sanitizer build of a small view starts in about one
 TOKENS = ["", "0", "1", "-1", "64", "65", "4294967295", "4294967296", "1e9", "0.5", "nan",
           "inf", "9" * 40, "x" * 4000, '"', "[", "]", "=", ".", "#", "é", "\t",
           "wave", "probe", "values", "samples", "Wave.comp", "Probe.comp", "Wave.vert",
-          "quit",
+          "quit", "node", "add", "remove", "set", "unset", "param", "connect", "disconnect",
+          "operator", "shader", "invocations", "log",
           "[node \"wave\"]", "[connection \"values\"]", "[manifest]", "version = 1"]
 # What std::exception::what() says for the standard library's own throws: a message that
 # names no file, node or key of the view.

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Check what the wave example prints against its golden (C01, GLSL02): from frame 0, and
 from a day, a year and a century of frames in, where time must still be exact (A03).
+Edits that take the graph apart and put it back before the first frame must print the
+golden too: every buffer the rebuilds make starts zeroed, whatever memory it reuses.
 
 On the device that made the golden, every value matches bit for bit, in every build: the
 probe prints each value as the shortest text that reads back to the same bits. On any
@@ -14,6 +16,7 @@ Usage: python3 src/tools/tests/golden.py VULPEN [--own-gpu] [--update]
 import argparse
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 from harness import DEVICE, EXAMPLES, OUT, ROOT, matches, problems, run
@@ -26,24 +29,28 @@ FRAMES = 121  # the probe prints every 60th frame, so each run prints three line
 # GLSL's sin may be off by 2^-11 within [-pi, pi]; this view's angles go past it.
 TOLERANCE = 1e-3
 NUMBER = re.compile(r"[-+]?\d[\d.e+-]*")
+# Each line reruns the schedule, and the graph ends as the manifest has it.
+EDITS = """\
+disconnect values
+node remove probe
+node add probe recipe=probe operator=Probe shader=Probe.comp invocations=8 param=step=128 \
+param=every=60 log=info
+connect values wave.values probe.values
+param set wave amplitude 1.0
+"""
 HEADER = f"""\
 # What {VIEW.relative_to(ROOT).as_posix()} prints, bit for bit, on the device below.
 # Only a change meant to move it rewrites it: python3 src/tools/tests/golden.py VULPEN --update
 """
 
 
-def record(vulpen: str, own_gpu: bool) -> tuple[str, dict[int, list[str]]]:
-    """The device the runs took, and what each printed, by its first frame."""
-    device, printed = "", {}
-    for first in FIRST_FRAMES:
-        code, output = run(vulpen, [VIEW, "--frames", FRAMES, "--fps", 0,
-                                    "--first-frame", first, "--log", "info"],
-                           headless=not own_gpu)
-        if code != 0 or problems(output):
-            sys.exit(f"the run from frame {first} failed with exit {code}:\n{output}")
-        device = matches(DEVICE, output)[0]
-        printed[first] = matches(OUT, output)
-    return device, printed
+def record(vulpen: str, own_gpu: bool, arguments: list) -> tuple[str, list[str]]:
+    """The device the run took, and what it printed."""
+    code, output = run(vulpen, [VIEW, "--frames", FRAMES, "--fps", 0, "--log", "info",
+                                *arguments], headless=not own_gpu)
+    if code != 0 or problems(output):
+        sys.exit(f"the run with {arguments} failed with exit {code}:\n{output}")
+    return matches(DEVICE, output)[0], matches(OUT, output)
 
 
 def read() -> tuple[str, float, dict[int, list[str]]]:
@@ -85,21 +92,30 @@ def main() -> None:
     parser.add_argument("--own-gpu", action="store_true")
     parser.add_argument("--update", action="store_true")
     options = parser.parse_args()
-    device, printed = record(options.vulpen, options.own_gpu)
+    printed = {}
+    for first in FIRST_FRAMES:
+        device, printed[first] = record(options.vulpen, options.own_gpu,
+                                        ["--first-frame", first])
     if options.update:
         write(device, printed)
         return
+    with tempfile.TemporaryDirectory() as temporary:
+        script = Path(temporary) / "edits.txt"
+        script.write_text(EDITS, encoding="utf-8")
+        _, edited = record(options.vulpen, options.own_gpu, ["--source", script])
     golden_device, tolerance, golden = read()
     exact = device == golden_device
     print(f"on {device}: " + ("bit for bit" if exact else
           f"within {tolerance}, since the golden is from {golden_device}"))
-    for first in FIRST_FRAMES:
-        expected, got = golden.get(first, []), printed[first]
+    for what, first, got in [*((f"from frame {first}", first, printed[first])
+                               for first in FIRST_FRAMES),
+                             ("after the edits", 0, edited)]:
+        expected = golden.get(first, [])
         same = expected == got if exact else (
             len(expected) == len(got) and all(map(close, expected, got,
                                                   [tolerance] * len(got))))
         if not same:
-            sys.exit(f"from frame {first}, expected\n  " + "\n  ".join(expected) +
+            sys.exit(f"{what}, expected\n  " + "\n  ".join(expected) +
                      "\nbut got\n  " + "\n  ".join(got))
 
 

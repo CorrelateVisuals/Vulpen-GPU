@@ -13,8 +13,12 @@ namespace VP {
 // implements it, so the port reaches a view without including its owner.
 class ViewLookup {
 public:
-  // Null when no view has the name.
-  virtual View *find(std::string_view name) = 0;
+  // An empty name finds the view vulpen started with; null when no view has the name.
+  virtual const View *find(std::string_view name) = 0;
+  // Swaps in a changed copy of the view, with a schedule built on the path a live swap
+  // takes, so it keeps what the change left alone. The running schedule points into the
+  // old view until then, so a change never edits a view in place.
+  virtual void replace(std::string_view name, View view) = 0;
 
 protected:
   ~ViewLookup() = default;

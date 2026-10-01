@@ -4,14 +4,14 @@
 #include "runtime/Edits.h"
 #include "runtime/View.h"
 
-#include <algorithm>
 #include <charconv>
 #include <format>
 #include <fstream>
 #include <optional>
-#include <set>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace VP {
 
@@ -27,8 +27,10 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
-// Reads one manifest line by line; every mistake names its line (A02). Each section has
-// a closed set of words (V04), so an unknown word is a mistake, never ignored.
+// Reads one manifest line by line, and runs what it describes through the edits, so a
+// loaded view and a typed one pass the same checks. Every mistake names its line (A02).
+// Each section has a closed set of words (V04), so an unknown word is a mistake, never
+// ignored.
 class Reader {
 public:
   explicit Reader(const std::filesystem::path &file)
@@ -39,20 +41,23 @@ private:
   enum class Section { none, manifest, node, connection };
 
   [[noreturn]] void fail(std::string_view message) const;
+  // Runs an edit; its refusal names the given line.
+  template <class Edit> void edit(std::size_t line, Edit &&change);
   void header(std::string_view text);
   void word(std::string_view key, std::string_view value);
-  void node_word(Node &node, std::string_view key, std::string_view value);
-  void
-  connection_word(Connection &connection, std::string_view key, std::string_view value);
-  void once(std::string &slot, std::string_view key, std::string_view value) const;
-  Endpoint endpoint(std::string_view text) const;
+  void connection_word(std::string_view key, std::string_view value);
+  void add_node();
   std::uint32_t number(std::string_view text) const;
-  void check() const;
 
   const std::filesystem::path _file;
   View _view;
   Section _section = Section::none;
   std::size_t _line = 0;
+  // The node a section describes, added once its section ends, from the section's line.
+  std::optional<Node> _node;
+  std::size_t _node_line = 0;
+  // Joined once every node is in, so a connection may come before the nodes it joins.
+  std::vector<std::pair<Connection, std::size_t>> _connections;
   bool _manifest = false;
   std::optional<std::uint32_t> _version;
 };
@@ -61,6 +66,15 @@ void Reader::fail(std::string_view message) const {
   if (_line == 0)
     throw std::runtime_error(std::format("{}: {}", _file.string(), message));
   throw std::runtime_error(std::format("{}:{}: {}", _file.string(), _line, message));
+}
+
+template <class Edit> void Reader::edit(std::size_t line, Edit &&change) {
+  try {
+    change();
+  } catch (const std::runtime_error &refused) {
+    _line = line;
+    fail(refused.what());
+  }
 }
 
 View Reader::read() {
@@ -84,13 +98,22 @@ View Reader::read() {
     word(trim(text.substr(0, equals)), trim(text.substr(equals + 1)));
   }
   _line = 0;
-  check();
+  if (_version != manifest_version)
+    fail(
+        std::format("version {} is not one this build reads; it reads version {}, and no "
+                    "migrate command exists yet (RV03)",
+                    _version.value_or(0),
+                    manifest_version));
+  add_node();
+  for (auto &[connection, line] : _connections)
+    edit(line, [&] { Edits::connect(_view, std::move(connection)); });
   return std::move(_view);
 }
 
 void Reader::header(std::string_view text) {
   if (text.back() != ']')
     fail("a section header ends in ]");
+  add_node();
   const std::string_view inside = trim(text.substr(1, text.size() - 2));
   const std::size_t space = inside.find_first_of(blanks);
   const std::string_view kind = inside.substr(0, space);
@@ -106,10 +129,11 @@ void Reader::header(std::string_view text) {
     _manifest = true;
     _section = Section::manifest;
   } else if (kind == "node" && !name.empty()) {
-    _view.nodes.push_back({.name = std::string(name)});
+    _node.emplace(Node{.name = std::string(name)});
+    _node_line = _line;
     _section = Section::node;
   } else if (kind == "connection" && !name.empty()) {
-    _view.connections.push_back({.name = std::string(name)});
+    _connections.emplace_back(Connection{.name = std::string(name)}, _line);
     _section = Section::connection;
   } else {
     fail(std::format(
@@ -129,68 +153,31 @@ void Reader::word(std::string_view key, std::string_view value) {
       _version = number(value);
       return;
     case Section::node:
-      return node_word(_view.nodes.back(), key, value);
+      return edit(_line, [&] { Edits::word(*_node, key, value); });
     case Section::connection:
-      return connection_word(_view.connections.back(), key, value);
+      return connection_word(key, value);
     case Section::none:
       fail("a word before any section; a manifest starts with [manifest]");
   }
 }
 
-void Reader::node_word(Node &node, std::string_view key, std::string_view value) {
-  if (key == "recipe") {
-    once(node.recipe, key, value);
-  } else if (key == "operator") {
-    once(node.operator_name, key, value);
-  } else if (key == "shader") {
-    node.shaders.emplace_back(value);
-  } else if (key == "log") {
-    once(node.log, key, value);
-  } else if (key == "invocations") {
-    if (node.invocations != 0)
-      fail("invocations is set twice");
-    node.invocations = number(value);
-  } else if (key == "param") {
-    const std::size_t equals = value.find('=');
-    if (equals == std::string_view::npos)
-      fail("a param is written `param = name=value`");
-    const std::string_view name = trim(value.substr(0, equals));
-    if (std::ranges::find(node.params, name, &Param::key) != node.params.end())
-      fail(std::format("param {} is set twice", name));
-    node.params.push_back(
-        {std::string(name), std::string(trim(value.substr(equals + 1)))});
-  } else {
-    fail(std::format("unknown word {} in a node; its words are recipe, operator, shader, "
-                     "invocations, param and log",
-                     key));
-  }
-}
-
-void Reader::connection_word(Connection &connection,
-                             std::string_view key,
-                             std::string_view value) {
+void Reader::connection_word(std::string_view key, std::string_view value) {
+  Connection &connection = _connections.back().first;
   if (key == "from") {
     if (!connection.from.node.empty())
       fail("from is set twice");
-    connection.from = endpoint(value);
+    edit(_line, [&] { connection.from = Edits::endpoint(value); });
   } else if (key == "to") {
-    connection.to.push_back(endpoint(value));
+    edit(_line, [&] { connection.to.push_back(Edits::endpoint(value)); });
   } else {
     fail(std::format("unknown word {} in a connection; its words are from and to", key));
   }
 }
 
-void Reader::once(std::string &slot, std::string_view key, std::string_view value) const {
-  if (!slot.empty())
-    fail(std::format("{} is set twice", key));
-  slot = value;
-}
-
-Endpoint Reader::endpoint(std::string_view text) const {
-  const std::size_t dot = text.find('.');
-  if (dot == std::string_view::npos || dot == 0 || dot + 1 == text.size())
-    fail(std::format("{} is not node.port", text));
-  return {std::string(text.substr(0, dot)), std::string(text.substr(dot + 1))};
+void Reader::add_node() {
+  if (_node)
+    edit(_node_line, [&] { Edits::add(_view, std::move(*_node)); });
+  _node.reset();
 }
 
 std::uint32_t Reader::number(std::string_view text) const {
@@ -200,55 +187,6 @@ std::uint32_t Reader::number(std::string_view text) const {
   if (error != std::errc{} || end != text.data() + text.size())
     fail(std::format("{} is not a whole number", text));
   return value;
-}
-
-// What no single line can show: the version, and names that must match across entries.
-void Reader::check() const {
-  if (_version != manifest_version)
-    fail(
-        std::format("version {} is not one this build reads; it reads version {}, and no "
-                    "migrate command exists yet (RV03)",
-                    _version.value_or(0),
-                    manifest_version));
-  const auto named = [&](std::string_view name) {
-    return std::ranges::count(_view.nodes, name, &Node::name);
-  };
-  for (const Node &node : _view.nodes) {
-    if (named(node.name) > 1)
-      fail(std::format("two nodes are named {}", node.name));
-    if (node.operator_name.empty() && node.shaders.empty())
-      fail(std::format("node {} runs nothing: give it an operator, a shader or both",
-                       node.name));
-    if (node.recipe.empty())
-      fail(std::format("node {} names no recipe to find its C++ and GLSL in", node.name));
-    if (!node.shaders.empty() && node.invocations == 0)
-      fail(std::format("node {} runs a shader, so it needs invocations", node.name));
-  }
-  // A port holds one buffer, so it joins one connection; a second would be ignored.
-  std::set<std::string, std::less<>> connections;
-  std::set<std::string, std::less<>> ports;
-  const auto join = [&](const Endpoint &end) {
-    if (!ports.insert(end.node + "." + end.port).second)
-      fail(std::format("{}.{} joins two connections, or one twice", end.node, end.port));
-  };
-  for (const Connection &connection : _view.connections) {
-    if (!connections.insert(connection.name).second)
-      fail(std::format("two connections are named {}", connection.name));
-    if (connection.from.node.empty() || connection.to.empty())
-      fail(
-          std::format("connection {} needs a from and at least one to", connection.name));
-    if (named(connection.from.node) == 0)
-      fail(std::format("connection {} is from {}, which is no node",
-                       connection.name,
-                       connection.from.node));
-    join(connection.from);
-    for (const Endpoint &to : connection.to) {
-      if (named(to.node) == 0)
-        fail(std::format(
-            "connection {} is to {}, which is no node", connection.name, to.node));
-      join(to);
-    }
-  }
 }
 
 } // namespace
