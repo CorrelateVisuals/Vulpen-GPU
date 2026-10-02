@@ -326,6 +326,9 @@ Schedule::Bound Schedule::bind(const Node &node,
   }
   Bound *const old = replaced ? replaced->find(node.name) : nullptr;
   load_shaders(bound, folder, old);
+  // So an edit makes blocks only for the nodes it changed.
+  if (old && old->block && old->block_size == bound.block_size)
+    bound.block = std::move(old->block);
   if (old && old->op && old->node->recipe == node.recipe &&
       old->node->operator_name == node.operator_name) {
     bound.op = std::move(old->op);
@@ -610,12 +613,17 @@ void Schedule::make_buffer(const Bound &writer,
 }
 
 // Params and buffer addresses are written once; the operator writes its values each
-// frame.
+// frame. A kept block starts zeroed like a new one, so what a pass reads never depends
+// on what its block held before (C01).
 void Schedule::make_blocks() {
   for (Bound &bound : _bound) {
-    if (!bound.errors.empty() || bound.block_size == 0)
+    if (!bound.errors.empty() || bound.block_size == 0) {
+      bound.block.reset();
       continue;
-    bound.block.emplace(_wiring.pipelines, bound.block_size);
+    }
+    if (!bound.block)
+      bound.block.emplace(_wiring.pipelines, bound.block_size);
+    std::ranges::fill(bound.block->bytes(), std::byte{});
     std::byte *const bytes = bound.block->bytes().data();
     for (const Field &field : bound.fields) {
       if (field.buffer()) {

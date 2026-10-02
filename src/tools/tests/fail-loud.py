@@ -2,8 +2,9 @@
 """Every broken view ends the run with exit 1 and an error that names its cause (A02,
 RV03), before anything wrong reaches the GPU: a manifest that says a thing twice, SPIR-V
 cut short, C++ and a shader that disagree on a name or a type, a connection whose ends
-disagree, a dispatch that leaves a workgroup part full, a draw that writes, and more
-passes than the build holds.
+disagree, a dispatch that leaves a workgroup part full, and a draw that writes. A view
+with more pass blocks than one pool holds is no mistake: it runs, and so does an edit
+on it.
 
 The views are written into a folder named mistakes, so they find the recipes the build
 compiles from mistakes/ beside this script, which get these things wrong on purpose.
@@ -22,7 +23,7 @@ PAIRS = '[node "pairs"]\nrecipe = connect\nshader = Pairs.comp\ninvocations = 64
 SUM = '[node "sum"]\nrecipe = connect\nshader = Sum.comp\ninvocations = 64\n'
 DRAW = ('[node "draw"]\nrecipe = draw\nshader = Draw.vert\nshader = Draw.frag\n'
         'invocations = 3\n')
-PASSES = 1025  # one past what Pipelines.cpp holds
+PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 
 
 def connection(name: str, source: str, *targets: str) -> str:
@@ -62,9 +63,6 @@ CASES = {
     "workgroups": (HEAD + FILL.replace("= 64", "= 100"),
                    "invocations = 100 is not a multiple of local_size_x = 64"),
     "draw-writes": (HEAD + DRAW, "a draw's shaders only read buffers"),
-    "passes": (HEAD + "".join(FILL.replace('"fill"', f'"fill{index}"')
-                              for index in range(PASSES)),
-               "more than 1024 pass blocks"),
 }
 WINDOWED = {"draw-writes"}
 
@@ -92,6 +90,20 @@ def check(vulpen: str, folder: Path, name: str, text: str, cause: str) -> str | 
     return None
 
 
+def no_limit(vulpen: str, folder: Path) -> str | None:
+    """Why a view past one pool of pass blocks, or an edit on it, failed, or None."""
+    view = folder / "passes.vlp"
+    view.write_text(HEAD + "".join(FILL.replace('"fill"', f'"fill{index}"')
+                                   for index in range(PASSES)), encoding="utf-8")
+    edit = folder / "edit.txt"
+    edit.write_text("param set fill0 amount 2\n", encoding="utf-8")
+    code, output = run(vulpen, [view, "--frames", 1, "--fps", 0, "--source", edit])
+    if code != 0 or problems(output):
+        return (f"passes: expected {PASSES} passes and an edit on them to run, got exit "
+                f"{code}:\n{output}")
+    return None
+
+
 def main() -> None:
     vulpen = sys.argv[1]
     cut = cut_spirv(vulpen)
@@ -102,6 +114,8 @@ def main() -> None:
             failed = [problem for name, (text, cause) in CASES.items()
                       if name not in WINDOWED or display()
                       if (problem := check(vulpen, folder, name, text, cause))]
+            if problem := no_limit(vulpen, folder):
+                failed.append(problem)
     finally:
         for file in cut:
             file.unlink()

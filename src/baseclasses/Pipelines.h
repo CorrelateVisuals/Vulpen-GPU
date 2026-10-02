@@ -68,14 +68,22 @@ private:
   friend class Pipeline;
   friend class PassBlock;
 
+  // Pass blocks come from these; each block counts itself in and out of its pool.
+  struct Pool {
+    VkDescriptorPool handle = VK_NULL_HANDLE;
+    std::uint32_t blocks = 0;
+  };
+
+  // A pool with room for a block, made when every pool is full, so a view's blocks are
+  // bounded by memory alone.
+  std::size_t pool() const;
+
   const VkDevice _device;
   const Resources &_resources;
   VkDescriptorSetLayout _images = VK_NULL_HANDLE; // set 0; gains its arrays with a user
   VkDescriptorSetLayout _pass = VK_NULL_HANDLE;
   VkPipelineLayout _layout = VK_NULL_HANDLE;
-  VkDescriptorPool _pool = VK_NULL_HANDLE;
-  // Pass blocks allocated from the pool; each block counts itself in and out.
-  mutable std::uint32_t _blocks = 0;
+  mutable std::vector<Pool> _pools;
 };
 
 // A dispatch's pipeline, or a draw's for a render pass.
@@ -112,6 +120,7 @@ public:
 private:
   const Pipelines *_pipelines;
   Buffer _buffer;
+  std::size_t _pool = 0; // of the pipelines' pools, the one the set came from
   VkDescriptorSet _set = VK_NULL_HANDLE;
 };
 

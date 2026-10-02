@@ -46,7 +46,7 @@ constexpr std::uint32_t storage_physical_storage_buffer = 5349;
 constexpr std::uint32_t scalar_bytes = 4;
 constexpr std::uint32_t address_bytes = sizeof(VkDeviceAddress);
 constexpr std::uint32_t std140_block_alignment = 16;
-constexpr std::uint32_t max_passes = 1024;
+constexpr std::uint32_t blocks_per_pool = 1024;
 constexpr float line_width = 1.0f; // the only width without the wideLines feature
 
 struct Member {
@@ -353,20 +353,11 @@ Pipelines::Pipelines(VkDevice device, const Resources &resources)
       .pSetLayouts = sets.data()};
   check(vkCreatePipelineLayout(_device, &layout, nullptr, &_layout),
         "vkCreatePipelineLayout");
-  const VkDescriptorPoolSize blocks{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                    .descriptorCount = max_passes};
-  const VkDescriptorPoolCreateInfo pool{
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-      .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-      .maxSets = max_passes,
-      .poolSizeCount = 1,
-      .pPoolSizes = &blocks};
-  check(vkCreateDescriptorPool(_device, &pool, nullptr, &_pool),
-        "vkCreateDescriptorPool");
 }
 
 Pipelines::~Pipelines() {
-  vkDestroyDescriptorPool(_device, _pool, nullptr);
+  for (const Pool &pool : _pools)
+    vkDestroyDescriptorPool(_device, pool.handle, nullptr);
   vkDestroyPipelineLayout(_device, _layout, nullptr);
   vkDestroyDescriptorSetLayout(_device, _pass, nullptr);
   vkDestroyDescriptorSetLayout(_device, _images, nullptr);
@@ -374,6 +365,28 @@ Pipelines::~Pipelines() {
 
 VkPipelineLayout Pipelines::layout() const {
   return _layout;
+}
+
+// Counted, not left to the pool: past maxSets one driver fails and another does not
+// (C01). Every set is one block's descriptor, which Vulkan guarantees never fragments a
+// pool, so a count below maxSets always allocates.
+std::size_t Pipelines::pool() const {
+  const auto room = std::ranges::find_if(
+      _pools, [](const Pool &pool) { return pool.blocks < blocks_per_pool; });
+  if (room != _pools.end())
+    return static_cast<std::size_t>(room - _pools.begin());
+  const VkDescriptorPoolSize blocks{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                    .descriptorCount = blocks_per_pool};
+  const VkDescriptorPoolCreateInfo info{
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+      .maxSets = blocks_per_pool,
+      .poolSizeCount = 1,
+      .pPoolSizes = &blocks};
+  VkDescriptorPool made = VK_NULL_HANDLE;
+  check(vkCreateDescriptorPool(_device, &info, nullptr, &made), "vkCreateDescriptorPool");
+  _pools.push_back({.handle = made});
+  return _pools.size() - 1;
 }
 
 Pipeline::Pipeline(const Pipelines &pipelines, const Shader &compute)
@@ -479,17 +492,11 @@ VkPipeline Pipeline::handle() const {
 PassBlock::PassBlock(const Pipelines &pipelines, std::uint32_t size)
     : _pipelines(&pipelines),
       _buffer(pipelines._resources.buffer(
-          size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, Memory::upload)) {
-  // Counted here, not left to the pool: past maxSets a driver may fail, or may not, and
-  // either way the error would not name the limit (A02, C01).
-  if (pipelines._blocks == max_passes)
-    throw std::runtime_error(std::format(
-        "the view needs more than {} pass blocks at once, the most this build holds; "
-        "during a live swap, the old blocks count too",
-        max_passes));
+          size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, Memory::upload)),
+      _pool(pipelines.pool()) {
   const VkDescriptorSetAllocateInfo allocate{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = pipelines._pool,
+      .descriptorPool = pipelines._pools[_pool].handle,
       .descriptorSetCount = 1,
       .pSetLayouts = &pipelines._pass};
   check(vkAllocateDescriptorSets(pipelines._device, &allocate, &_set),
@@ -502,16 +509,17 @@ PassBlock::PassBlock(const Pipelines &pipelines, std::uint32_t size)
                                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                    .pBufferInfo = &buffer};
   vkUpdateDescriptorSets(pipelines._device, 1, &write, 0, nullptr);
-  ++pipelines._blocks;
+  ++pipelines._pools[_pool].blocks;
 }
 
 PassBlock::PassBlock(PassBlock &&other) noexcept
-    : _pipelines(other._pipelines), _buffer(std::move(other._buffer)),
+    : _pipelines(other._pipelines), _buffer(std::move(other._buffer)), _pool(other._pool),
       _set(std::exchange(other._set, VK_NULL_HANDLE)) {}
 
 PassBlock &PassBlock::operator=(PassBlock &&other) noexcept {
   std::swap(_pipelines, other._pipelines);
   std::swap(_buffer, other._buffer);
+  std::swap(_pool, other._pool);
   std::swap(_set, other._set);
   return *this;
 }
@@ -519,8 +527,9 @@ PassBlock &PassBlock::operator=(PassBlock &&other) noexcept {
 PassBlock::~PassBlock() {
   if (!_set)
     return;
-  vkFreeDescriptorSets(_pipelines->_device, _pipelines->_pool, 1, &_set);
-  --_pipelines->_blocks;
+  Pipelines::Pool &pool = _pipelines->_pools[_pool];
+  vkFreeDescriptorSets(_pipelines->_device, pool.handle, 1, &_set);
+  --pool.blocks;
 }
 
 VkDescriptorSet PassBlock::set() const {
