@@ -78,6 +78,8 @@ public:
   // Throws naming the file and line of the first that fails, and runs none after it, so
   // a script never goes on from a state it did not expect.
   void source(const std::filesystem::path &file);
+  // Where a command finds the view it addresses, once the views exist.
+  void look_in(ViewLookup &views);
   // Whether quit ran, so the run ends before its next frame.
   bool quitting() const;
   // The file and line running, as `script.txt:7`; empty for a line typed or sent.
@@ -97,6 +99,7 @@ private:
   const Log &_log;
   std::vector<Spec> _specs;
   std::uint32_t _added = 0; // so a removed command's id is never handed out again
+  ViewLookup *_views = nullptr;
   CommandLog _session;
   std::vector<Source> _sourcing; // the files running, innermost last
   const Command _quit;

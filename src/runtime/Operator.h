@@ -217,6 +217,9 @@ public:
   virtual void reply(std::string_view text) = 0;
   // The port the line came through.
   virtual CommandPort &commands() = 0;
+  // The view the command addresses, as the changes so far left it: what a save would
+  // write. Read it while the command runs; a later change replaces it.
+  virtual const View &view() const = 0;
 
 protected:
   ~Call() = default;

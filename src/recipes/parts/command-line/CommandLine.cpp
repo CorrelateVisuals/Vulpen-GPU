@@ -1,4 +1,5 @@
 #include "runtime/Operator.h"
+#include "runtime/View.h"
 
 #include <algorithm>
 #include <set>
@@ -25,6 +26,33 @@ std::vector<std::string_view> words_of(std::string_view text) {
 
 bool placeholder(std::string_view word) {
   return word.starts_with('<');
+}
+
+// What a placeholder stands for in the view: its nodes, connections or deploys, or the
+// params of the node named just before a key. Any other answers as itself.
+std::vector<std::string> names(std::string_view kind,
+                               const VP::View &view,
+                               std::span<const std::string_view> typed) {
+  std::vector<std::string> names;
+  if (kind == "<node>") {
+    for (const VP::Node &node : view.nodes)
+      names.push_back(node.name);
+  } else if (kind == "<connection>") {
+    for (const VP::Connection &connection : view.connections)
+      names.push_back(connection.name);
+  } else if (kind == "<deploy>") {
+    for (const VP::Deploy &deploy : view.deploys)
+      names.push_back(deploy.name);
+  } else if (kind == "<key>" && typed.size() > 1) {
+    const auto node =
+        std::ranges::find(view.nodes, typed[typed.size() - 2], &VP::Node::name);
+    if (node != view.nodes.end())
+      for (const VP::Param &param : node->params)
+        names.push_back(param.key);
+  } else {
+    names.emplace_back(kind);
+  }
+  return names;
 }
 
 // One line of input with history and completion, sent to the command port. The CLI, the
@@ -71,10 +99,9 @@ class CommandLine final : public VP::Operator {
                      .append(usage.help));
   }
 
-  // A placeholder answers as itself, such as <node>, until the part reads the graph.
   static void complete(VP::Call &call) {
     const std::span<const std::string_view> typed = call.arguments();
-    std::set<std::string_view> found; // sorted, and each once
+    std::set<std::string> found; // sorted, and each once
     for (const VP::Usage &usage : call.commands().usages()) {
       const std::vector<std::string_view> words = words_of(usage.usage);
       if (words.size() < typed.size())
@@ -86,10 +113,14 @@ class CommandLine final : public VP::Operator {
                                return placeholder(word) || given == word;
                              });
       const std::string_view next = words[typed.size() - 1];
-      if (fits && (placeholder(next) || next.starts_with(typed.back())))
-        found.insert(next);
+      if (!fits)
+        continue;
+      for (const std::string &word : placeholder(next) ? names(next, call.view(), typed)
+                                                       : std::vector{std::string(next)})
+        if (word.starts_with(typed.back()) || placeholder(word))
+          found.insert(word);
     }
-    for (const std::string_view word : found)
+    for (const std::string &word : found)
       call.reply(word);
   }
 

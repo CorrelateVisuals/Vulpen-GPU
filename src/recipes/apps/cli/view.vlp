@@ -5,3 +5,6 @@ version = 1
 
 [deploy "command-line"]
 recipe = command-line
+
+[deploy "inspect"]
+recipe = inspect

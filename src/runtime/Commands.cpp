@@ -69,8 +69,11 @@ bool placeholder(std::string_view word) {
 
 class Run final : public Call {
 public:
-  Run(CommandPort &port, Command command, std::span<const std::string_view> arguments)
-      : _port(port), _command(command), _arguments(arguments) {}
+  Run(CommandPort &port,
+      ViewLookup *views,
+      Command command,
+      std::span<const std::string_view> arguments)
+      : _port(port), _views(views), _command(command), _arguments(arguments) {}
   // Every line the command answered.
   std::string answer() && {
     return std::move(_reply);
@@ -91,8 +94,16 @@ private:
   CommandPort &commands() override {
     return _port;
   }
+  // Found anew each time, since a command this one sends may replace the view.
+  const View &view() const override {
+    const View *const view = _views ? _views->find({}) : nullptr;
+    if (!view)
+      throw std::runtime_error("no view to read yet");
+    return *view;
+  }
 
   CommandPort &_port;
+  ViewLookup *const _views;
   const Command _command;
   const std::span<const std::string_view> _arguments;
   std::string _reply;
@@ -197,7 +208,7 @@ std::string Commands::run(std::string_view line) {
     throw std::runtime_error(
         std::format("{} does not fit the usage `{}`", typed, spec->usage));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
-  Run call(*this, spec->command, arguments);
+  Run call(*this, _views, spec->command, arguments);
   // Read first: a handler that rebuilds a view binds operators, which may register
   // commands and so move the specs.
   const Primitive primitive = spec->primitive;
@@ -251,6 +262,10 @@ void Commands::source(const std::filesystem::path &file) {
     }
   }
   _sourcing.pop_back();
+}
+
+void Commands::look_in(ViewLookup &views) {
+  _views = &views;
 }
 
 bool Commands::quitting() const {

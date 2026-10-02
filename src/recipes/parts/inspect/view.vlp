@@ -1,1 +1,7 @@
 # The inspect part: one node whose operator is Inspect; it reads the graph and draws nothing.
+[manifest]
+version = 1
+
+[node "inspect"]
+recipe   = inspect
+operator = Inspect
