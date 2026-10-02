@@ -251,8 +251,8 @@ private:
 
 // Of the nodes whose writers are all placed, the first in the manifest goes next, so
 // nodes the connections leave unordered, such as two draws, run as the manifest lists
-// them. Every edit reorders the view, so the connections are indexed once, not searched
-// for each node placed.
+// them. Every rebuild reorders the view, so the connections are indexed once, not
+// searched for each node placed.
 std::vector<const Node *> Schedule::order(const View &view) {
   std::map<std::string_view, std::size_t> index; // into view.nodes, by name
   for (const Node &node : view.nodes)
