@@ -3,6 +3,8 @@
 from a day, a year and a century of frames in, where time must still be exact (A03).
 Edits that take the graph apart and put it back before the first frame must print the
 golden too: every buffer the rebuilds make starts zeroed, whatever memory it reuses.
+The log they save holds each edit as typed, and replaying it prints the golden as well
+(V08).
 
 On the device that made the golden, every value matches bit for bit, in every build: the
 probe prints each value as the shortest text that reads back to the same bits. On any
@@ -38,6 +40,7 @@ param=every=60 log=info
 connect values wave.values probe.values
 param set wave amplitude 1.0
 """
+SAVE = "log save session.log\n"  # beside the script that runs it (RP02)
 HEADER = f"""\
 # What {VIEW.relative_to(ROOT).as_posix()} prints, bit for bit, on the device below.
 # Only a change meant to move it rewrites it: python3 src/tools/tests/golden.py VULPEN --update
@@ -101,15 +104,21 @@ def main() -> None:
         return
     with tempfile.TemporaryDirectory() as temporary:
         script = Path(temporary) / "edits.txt"
-        script.write_text(EDITS, encoding="utf-8")
+        script.write_text(EDITS + SAVE, encoding="utf-8")
         _, edited = record(options.vulpen, options.own_gpu, ["--source", script])
+        log = script.with_name("session.log")
+        if log.read_text(encoding="utf-8") != EDITS:
+            sys.exit(f"the log kept\n{log.read_text(encoding='utf-8')}but the edits were\n"
+                     f"{EDITS}")
+        _, replayed = record(options.vulpen, options.own_gpu, ["--source", log])
     golden_device, tolerance, golden = read()
     exact = device == golden_device
     print(f"on {device}: " + ("bit for bit" if exact else
           f"within {tolerance}, since the golden is from {golden_device}"))
     for what, first, got in [*((f"from frame {first}", first, printed[first])
                                for first in FIRST_FRAMES),
-                             ("after the edits", 0, edited)]:
+                             ("after the edits", 0, edited),
+                             ("after replaying their log", 0, replayed)]:
         expected = golden.get(first, [])
         same = expected == got if exact else (
             len(expected) == len(got) and all(map(close, expected, got,

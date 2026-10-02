@@ -14,6 +14,7 @@
 
 #include <cstdlib>
 #include <format>
+#include <fstream>
 #include <stdexcept>
 #include <string_view>
 #include <system_error>
@@ -157,6 +158,23 @@ int Shell::run(const std::string &command) {
 }
 
 #endif
+
+void Files::save(const std::filesystem::path &file, std::string_view text) {
+  std::filesystem::path temp = file;
+  temp += ".tmp";
+  std::ofstream out(temp, std::ios::binary);
+  out.write(text.data(), static_cast<std::streamsize>(text.size()));
+  out.close();
+  std::error_code failed;
+  if (out)
+    std::filesystem::rename(temp, file, failed);
+  if (!out || failed) {
+    std::error_code gone; // the temp file may never have been made
+    std::filesystem::remove(temp, gone);
+    throw std::runtime_error(std::format(
+        "{}: cannot be written{}", file.string(), failed ? ": " + failed.message() : ""));
+  }
+}
 
 Library::Library(Library &&other) noexcept
     : _handle(std::exchange(other._handle, nullptr)), _copy(std::move(other._copy)) {}

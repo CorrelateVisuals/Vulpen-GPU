@@ -264,7 +264,7 @@ constexpr std::array edits{
 
 Edits::Edits(Commands &commands, ViewLookup &views) : _views(views) {
   for (const Edit &edit : edits)
-    _commands.push_back(commands.add(edit.usage, edit.help, *this));
+    _commands.push_back(commands.add(edit.usage, edit.help, *this, Primitive::yes));
 }
 
 void Edits::word(Node &node, std::string_view key, std::string_view value) {

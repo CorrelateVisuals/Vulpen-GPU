@@ -1,5 +1,7 @@
 #include "runtime/Commands.h"
 
+#include "baseclasses/Platform.h"
+
 #include <algorithm>
 #include <array>
 #include <format>
@@ -25,6 +27,7 @@ constexpr std::array kinds{
     std::string_view{"word=value"}, // the node words, then each word's values
     std::string_view{"key"},        // the node's params
     std::string_view{"value"},      // any word: nothing to complete
+    std::string_view{"file"},       // the folders and files where the path resolves
 };
 // After the last placeholder: one argument or more.
 constexpr std::string_view one_or_more = "...";
@@ -39,11 +42,12 @@ std::vector<std::string_view> words_of(std::string_view line) {
   return words;
 }
 
-// Names one after another, as an error lists them.
-template <class Names> std::string joined(const Names &names) {
+// Names one after another, as an error lists them, or words as the log keeps them.
+template <class Names>
+std::string joined(const Names &names, std::string_view between = ", ") {
   std::string text;
   for (const std::string_view name : names)
-    text.append(text.empty() ? "" : ", ").append(name);
+    text.append(text.empty() ? "" : between).append(name);
   return text;
 }
 
@@ -78,6 +82,22 @@ private:
 
 } // namespace
 
+void CommandLog::open() {
+  if (_groups.empty() || !_groups.back().empty())
+    _groups.emplace_back();
+}
+
+void CommandLog::keep(std::string_view primitive) {
+  _groups.back().emplace_back(primitive);
+}
+
+std::string CommandLog::text() const {
+  std::string text;
+  for (const std::string &primitive : _groups | std::views::join)
+    text.append(primitive).push_back('\n');
+  return text;
+}
+
 struct Commands::Spec {
   std::vector<std::string> name; // the words a line starts with
   std::size_t arguments = 0;     // one per placeholder
@@ -86,15 +106,24 @@ struct Commands::Spec {
   std::string help;
   Command command;
   CommandHandler *handler = nullptr;
+  Primitive primitive = Primitive::no;
 };
 
 Commands::Commands(const Log &log)
-    : _log(log), _quit(add("quit", "ends the run before its next frame", *this)) {}
+    : _log(log), _quit(add("quit", "ends the run before its next frame", *this)),
+      _source(add("source <file>",
+                  "runs a file's commands, one a line, and stops at the first that fails",
+                  *this)),
+      _log_save(add("log save <file>",
+                    "writes the session's edits to a file, which source replays",
+                    *this)) {}
 
 Commands::~Commands() = default;
 
-Command
-Commands::add(std::string_view usage, std::string_view help, CommandHandler &handler) {
+Command Commands::add(std::string_view usage,
+                      std::string_view help,
+                      CommandHandler &handler,
+                      Primitive primitive) {
   std::vector<std::string_view> words = words_of(usage);
   if (words.empty() || help.empty())
     throw std::runtime_error(
@@ -120,11 +149,13 @@ Commands::add(std::string_view usage, std::string_view help, CommandHandler &han
                     .usage = std::string(usage),
                     .help = std::string(help),
                     .command = command,
-                    .handler = &handler});
+                    .handler = &handler,
+                    .primitive = primitive});
   return command;
 }
 
 void Commands::run(std::string_view line) {
+  _session.open();
   const std::vector<std::string_view> words = words_of(line);
   if (words.empty())
     return;
@@ -144,25 +175,37 @@ void Commands::run(std::string_view line) {
         std::format("{} does not fit the usage `{}`", typed, spec->usage));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
   Run call(spec->command, arguments);
+  // Read first: a handler that rebuilds a view binds operators, which may register
+  // commands and so move the specs.
+  const Primitive primitive = spec->primitive;
   spec->handler->command(call);
+  if (primitive == Primitive::yes)
+    _session.keep(joined(words, " "));
 }
 
 void Commands::source(const std::filesystem::path &file) {
-  std::ifstream in(file);
-  if (!in)
-    throw std::runtime_error(std::format("{}: cannot be read", file.string()));
+  const std::filesystem::path path = std::filesystem::weakly_canonical(resolved(file));
+  if (std::ranges::find(_sourcing, path) != _sourcing.end())
+    throw std::runtime_error(std::format(
+        "{} is running already, so sourcing it again would never end", path.string()));
+  std::ifstream in(path);
+  if (!in || !std::filesystem::is_regular_file(path))
+    throw std::runtime_error(std::format("{}: cannot be read", path.string()));
+  _sourcing.push_back(path);
   std::size_t number = 0;
   for (std::string line; !_quitting && std::getline(in, line);) {
     ++number;
     // A logic_error is a bug in vulpen, not a mistake in the file, so it keeps its own
-    // message.
+    // message, and ends the run.
     try {
       run(line);
     } catch (const std::runtime_error &failure) {
+      _sourcing.pop_back();
       throw std::runtime_error(
-          std::format("{}:{}: {}", file.string(), number, failure.what()));
+          std::format("{}:{}: {}", path.string(), number, failure.what()));
     }
   }
+  _sourcing.pop_back();
 }
 
 bool Commands::quitting() const {
@@ -173,6 +216,12 @@ void Commands::command(Call &call) {
   if (call.is(_quit)) {
     _quitting = true;
     _log.write(Level::info, Tag::run, "quit: the run ends before its next frame");
+  } else if (call.is(_source)) {
+    source(call.arguments().front());
+  } else if (call.is(_log_save)) {
+    const std::filesystem::path file = resolved(call.arguments().front());
+    Files::save(file, _session.text());
+    _log.write(Level::info, Tag::run, std::format("log save: {}", file.string()));
   }
 }
 
@@ -186,6 +235,13 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words) c
         (!found || spec.name.size() > found->name.size()))
       found = &spec;
   return found;
+}
+
+// A relative path names a file beside the one running (RP02), so a script and the files
+// it reads and writes move together.
+std::filesystem::path Commands::resolved(const std::filesystem::path &file) const {
+  return file.is_relative() && !_sourcing.empty() ? _sourcing.back().parent_path() / file
+                                                  : file;
 }
 
 } // namespace VP

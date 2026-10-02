@@ -28,7 +28,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Swapchain.cpp` | `baseclasses/Log.h` `baseclasses/Mechanics.h` `baseclasses/Platform.h` `baseclasses/Swapchain.h` |
 | `baseclasses/Swapchain.h` | `<vulkan/vulkan.h>` |
 | `main.cpp` | `commit.h` `runtime/Runtime.h` |
-| `runtime/Commands.cpp` | `runtime/Commands.h` |
+| `runtime/Commands.cpp` | `baseclasses/Platform.h` `runtime/Commands.h` |
 | `runtime/Commands.h` | `runtime/Operator.h` |
 | `runtime/Edits.cpp` | `runtime/Commands.h` `runtime/Edits.h` `runtime/View.h` |
 | `runtime/Edits.h` | `runtime/Operator.h` |
