@@ -33,7 +33,8 @@ FRAMES = 121  # the probe prints every 60th frame, so each run prints three line
 # GLSL's sin may be off by 2^-11 within [-pi, pi]; this view's angles go past it.
 TOLERANCE = 1e-3
 NUMBER = re.compile(r"[-+]?\d[\d.e+-]*")
-# Each line reruns the schedule, and the graph ends as the manifest has it.
+# They rebuild the schedule once, before the first frame, and the graph ends as the
+# manifest has it.
 EDITS = """\
 disconnect values
 node remove probe

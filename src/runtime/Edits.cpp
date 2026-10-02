@@ -181,8 +181,8 @@ void clear(Node &node, std::string_view key) {
     unknown_word(key);
 }
 
-void node_add(View &view, Arguments arguments) {
-  Node node{.name = std::string(arguments.front())};
+void node_add(View &view, Arguments arguments, std::string_view where) {
+  Node node{.name = std::string(arguments.front()), .where = std::string(where)};
   for (const std::string_view word : arguments.subspan(1)) {
     const auto [key, value] = key_and_value(word);
     Edits::word(node, key, value);
@@ -190,7 +190,7 @@ void node_add(View &view, Arguments arguments) {
   Edits::add(view, std::move(node));
 }
 
-void node_remove(View &view, Arguments arguments) {
+void node_remove(View &view, Arguments arguments, std::string_view) {
   // The argument, not the node's own name, which the erase below moves.
   const std::string_view name = arguments.front();
   existing(view, name);
@@ -202,9 +202,10 @@ void node_remove(View &view, Arguments arguments) {
   std::erase_if(view.nodes, [&](const Node &node) { return node.name == name; });
 }
 
-void node_set(View &view, Arguments arguments) {
+void node_set(View &view, Arguments arguments, std::string_view where) {
   Node &node = existing(view, arguments.front());
   Node changed = node;
+  changed.where = where;
   const Arguments words = arguments.subspan(1);
   for (const std::string_view word : words)
     clear(changed, key_and_value(word).first);
@@ -215,7 +216,8 @@ void node_set(View &view, Arguments arguments) {
   node = std::move(changed);
 }
 
-void connect_ports(View &view, Arguments arguments) {
+// A connection's errors name the connection, so it leaves the nodes' lines alone.
+void connect_ports(View &view, Arguments arguments, std::string_view) {
   Connection connection{.name = std::string(arguments[0]),
                         .from = Edits::endpoint(arguments[1])};
   for (const std::string_view to : arguments.subspan(2))
@@ -223,17 +225,18 @@ void connect_ports(View &view, Arguments arguments) {
   Edits::connect(view, std::move(connection));
 }
 
-void disconnect(View &view, Arguments arguments) {
+void disconnect(View &view, Arguments arguments, std::string_view) {
   if (std::erase_if(view.connections, [&](const Connection &connection) {
         return connection.name == arguments.front();
       }) == 0)
     throw std::runtime_error(std::format("no connection is named {}", arguments.front()));
 }
 
-void param_set(View &view, Arguments arguments) {
+void param_set(View &view, Arguments arguments, std::string_view where) {
   Node &node = existing(view, arguments[0]);
   check_name("param", arguments[1]);
   check_value(arguments[1], arguments[2]);
+  node.where = where;
   const auto found = std::ranges::find(node.params, arguments[1], &Param::key);
   if (found != node.params.end())
     found->value = arguments[2];
@@ -241,18 +244,20 @@ void param_set(View &view, Arguments arguments) {
     node.params.push_back({std::string(arguments[1]), std::string(arguments[2])});
 }
 
-void param_unset(View &view, Arguments arguments) {
+void param_unset(View &view, Arguments arguments, std::string_view where) {
   Node &node = existing(view, arguments[0]);
   if (std::erase_if(node.params,
                     [&](const Param &param) { return param.key == arguments[1]; }) == 0)
     throw std::runtime_error(
         std::format("node {} sets no param {}", node.name, arguments[1]));
+  node.where = where;
 }
 
 struct Edit {
   std::string_view usage;
   std::string_view help;
-  void (*change)(View &view, Arguments arguments);
+  // where: the file and line the edit comes from, which a node it changes keeps.
+  void (*change)(View &view, Arguments arguments, std::string_view where);
 };
 
 // Each edit's usage and help (RV04), and what it changes.
@@ -275,7 +280,7 @@ constexpr std::array edits{
 
 } // namespace
 
-Edits::Edits(Commands &commands, ViewLookup &views) : _views(views) {
+Edits::Edits(Commands &commands, ViewLookup &views) : _port(commands), _views(views) {
   for (const Edit &edit : edits)
     _commands.push_back(commands.add(edit.usage, edit.help, *this, Primitive::yes));
 }
@@ -356,8 +361,9 @@ void Edits::connect(View &view, Connection connection) {
   view.connections.push_back(std::move(connection));
 }
 
-// Each edit reruns the schedule, so it acts as if typed alone: a node removed and added
-// again is a new node.
+// The schedule takes the edited view before the next frame, once for all the edits
+// since the last, so it sees only where they end: a node removed and added again in
+// between keeps its operator and buffers, as it does across a re-read of the manifest.
 void Edits::command(Call &call) {
   const View *const view = _views.find({});
   if (!view)
@@ -365,7 +371,7 @@ void Edits::command(Call &call) {
   View edited = *view;
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index]))
-      edits[index].change(edited, call.arguments());
+      edits[index].change(edited, call.arguments(), _port.where());
   _views.replace({}, std::move(edited));
 }
 

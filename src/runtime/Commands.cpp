@@ -185,16 +185,16 @@ void Commands::run(std::string_view line) {
 
 void Commands::source(const std::filesystem::path &file) {
   const std::filesystem::path path = std::filesystem::weakly_canonical(resolved(file));
-  if (std::ranges::find(_sourcing, path) != _sourcing.end())
+  if (std::ranges::find(_sourcing, path, &Source::file) != _sourcing.end())
     throw std::runtime_error(std::format(
         "{} is running already, so sourcing it again would never end", path.string()));
   std::ifstream in(path);
   if (!in || !std::filesystem::is_regular_file(path))
     throw std::runtime_error(std::format("{}: cannot be read", path.string()));
-  _sourcing.push_back(path);
+  _sourcing.push_back({path});
   std::size_t number = 0;
   for (std::string line; !_quitting && std::getline(in, line);) {
-    ++number;
+    _sourcing.back().line = ++number;
     // A logic_error is a bug in vulpen, not a mistake in the file, so it keeps its own
     // message, and ends the run.
     try {
@@ -210,6 +210,13 @@ void Commands::source(const std::filesystem::path &file) {
 
 bool Commands::quitting() const {
   return _quitting;
+}
+
+std::string Commands::where() const {
+  if (_sourcing.empty())
+    return {};
+  return std::format(
+      "{}:{}", _sourcing.back().file.filename().string(), _sourcing.back().line);
 }
 
 void Commands::command(Call &call) {
@@ -240,8 +247,9 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words) c
 // A relative path names a file beside the one running (RP02), so a script and the files
 // it reads and writes move together.
 std::filesystem::path Commands::resolved(const std::filesystem::path &file) const {
-  return file.is_relative() && !_sourcing.empty() ? _sourcing.back().parent_path() / file
-                                                  : file;
+  return file.is_relative() && !_sourcing.empty()
+             ? _sourcing.back().file.parent_path() / file
+             : file;
 }
 
 } // namespace VP

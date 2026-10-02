@@ -33,6 +33,7 @@ public:
 private:
   void command(Call &call) override;
 
+  const Commands &_port; // which says where each edit comes from
   ViewLookup &_views;
   std::vector<Command> _commands; // one per edit, in the order they register
 };

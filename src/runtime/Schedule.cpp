@@ -302,13 +302,17 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
   make_buffers(replaced);
   make_blocks();
   make_passes();
+  // Each error names the line that last added or changed the node, if a file holds it.
   for (const Bound &bound : _bound)
     for (const std::string &error : bound.errors)
-      _wiring.log.write(
-          Level::error,
-          Tag::nod,
-          std::format(
-              "{} node {}: {}", view.file.filename().string(), bound.node->name, error));
+      _wiring.log.write(Level::error,
+                        Tag::nod,
+                        std::format("{} node {}: {}",
+                                    bound.node->where.empty()
+                                        ? view.file.filename().string()
+                                        : bound.node->where,
+                                    bound.node->name,
+                                    error));
 }
 
 Schedule::~Schedule() = default;

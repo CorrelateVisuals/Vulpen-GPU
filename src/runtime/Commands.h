@@ -14,11 +14,14 @@ namespace VP {
 // implements it, so the port reaches a view without including its owner.
 class ViewLookup {
 public:
-  // An empty name finds the view vulpen started with; null when no view has the name.
+  // An empty name finds the view vulpen started with, as the changes so far left it;
+  // null when no view has the name.
   virtual const View *find(std::string_view name) = 0;
-  // Swaps in a changed copy of the view, with a schedule built on the path a live swap
-  // takes, so it keeps what the change left alone. The running schedule points into the
-  // old view until then, so a change never edits a view in place.
+  // Takes a changed copy of the view. The schedule is rebuilt from it before the next
+  // frame, once for every change since the last frame, on the path a live swap takes, so
+  // it keeps what the changes left alone and checks only the view they leave. The
+  // running schedule points into the old view until then, so a change never edits a view
+  // in place.
   virtual void replace(std::string_view name, View view) = 0;
 
 protected:
@@ -72,9 +75,15 @@ public:
   void source(const std::filesystem::path &file);
   // Whether quit ran, so the run ends before its next frame.
   bool quitting() const;
+  // The file and line running, as `script.txt:7`; empty for a line typed or sent.
+  std::string where() const;
 
 private:
   struct Spec;
+  struct Source {
+    std::filesystem::path file;
+    std::size_t line = 0;
+  };
 
   void command(Call &call) override;
   const Spec *match(std::span<const std::string_view> words) const;
@@ -83,7 +92,7 @@ private:
   const Log &_log;
   std::vector<Spec> _specs;
   CommandLog _session;
-  std::vector<std::filesystem::path> _sourcing; // the files running, innermost last
+  std::vector<Source> _sourcing; // the files running, innermost last
   const Command _quit;
   const Command _source;
   const Command _log_save;

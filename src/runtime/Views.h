@@ -22,7 +22,7 @@ public:
   Views(const Views &) = delete;
   Views &operator=(const Views &) = delete;
 
-  // The schedule a frame runs.
+  // The schedule a frame runs, rebuilt first if commands changed the view since.
   Schedule &schedule();
   // After a live build. The manifest is read again only when it changed since it was
   // read, so the edits since then stay; the running graph stays when it does not load.
@@ -36,7 +36,8 @@ private:
   void rebuild(std::unique_ptr<View> view);
 
   const Wiring &_wiring;
-  std::unique_ptr<View> _view; // what the schedule runs, so it outlives the schedule
+  std::unique_ptr<View> _view;   // what the schedule runs, so it outlives the schedule
+  std::unique_ptr<View> _edited; // what commands made of it since; null when nothing
   std::filesystem::file_time_type _read; // the manifest's, when it was last read or saved
   std::unique_ptr<Schedule> _schedule;
   const Command _save;

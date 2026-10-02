@@ -31,12 +31,16 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
 
 Views::~Views() = default;
 
+// One rebuild for all the commands since the last frame, so a script is checked as a
+// whole, and a replay costs about what a load does.
 Schedule &Views::schedule() {
+  if (_edited)
+    rebuild(std::move(_edited));
   return *_schedule;
 }
 
 void Views::reload() {
-  std::unique_ptr<View> view;
+  std::unique_ptr<View> view = std::move(_edited);
   if (const auto time = stamp(_view->file); time != _read) {
     try {
       view = std::make_unique<View>(Manifest::load(_view->file));
@@ -52,11 +56,11 @@ void Views::reload() {
 
 // Hosts no other view yet.
 const View *Views::find(std::string_view name) {
-  return name.empty() ? _view.get() : nullptr;
+  return name.empty() ? (_edited ? _edited.get() : _view.get()) : nullptr;
 }
 
 void Views::replace(std::string_view, View view) {
-  rebuild(std::make_unique<View>(std::move(view)));
+  _edited = std::make_unique<View>(std::move(view));
 }
 
 // A manifest changed since vulpen read or saved it holds what the view does not, which a
@@ -64,16 +68,17 @@ void Views::replace(std::string_view, View view) {
 void Views::command(Call &call) {
   if (!call.is(_save))
     return;
+  const View &view = *find({});
   std::error_code missing;
-  if (std::filesystem::exists(_view->file, missing) && stamp(_view->file) != _read)
+  if (std::filesystem::exists(view.file, missing) && stamp(view.file) != _read)
     throw std::runtime_error(
         std::format("{} changed since vulpen read it, and a save would lose that change; "
                     "move the file aside to save over it",
-                    _view->file.string()));
-  Manifest::save(*_view);
-  _read = stamp(_view->file);
+                    view.file.string()));
+  Manifest::save(view);
+  _read = stamp(view.file);
   _wiring.log.write(
-      Level::info, Tag::run, std::format("view save: {}", _view->file.string()));
+      Level::info, Tag::run, std::format("view save: {}", view.file.string()));
 }
 
 // The new schedule takes from the old one, which still reads the old view, so the old

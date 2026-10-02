@@ -22,6 +22,9 @@ struct Node {
   std::uint32_t invocations = 0;
   std::vector<Param> params;
   std::string log;
+  // The file and line that last added or changed it, which its errors name; empty after
+  // a line typed or sent. A save leaves it out.
+  std::string where;
 };
 
 struct Endpoint {

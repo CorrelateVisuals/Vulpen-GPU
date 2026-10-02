@@ -169,7 +169,8 @@ void Reader::header(std::string_view text) {
     _manifest = true;
     _section = Section::manifest;
   } else if (kind == "node" && !name.empty()) {
-    _node.emplace(Node{.name = std::string(name)});
+    _node.emplace(Node{.name = std::string(name),
+                       .where = std::format("{}:{}", _file.filename().string(), _line)});
     _node_line = _line;
     _section = Section::node;
   } else if (kind == "connection" && !name.empty()) {
