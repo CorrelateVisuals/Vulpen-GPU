@@ -142,7 +142,7 @@ Command Commands::add(std::string_view usage,
   if (const Spec *const twin = match(name); twin && twin->name.size() == name.size())
     throw std::runtime_error(std::format("command `{}` registers twice", usage));
   // From 1, so a Command no add returned matches none.
-  const Command command{static_cast<std::uint32_t>(_specs.size() + 1)};
+  const Command command{++_added};
   _specs.push_back({.name = {name.begin(), name.end()},
                     .arguments = static_cast<std::size_t>(words.end() - arguments),
                     .more = more,
@@ -152,6 +152,11 @@ Command Commands::add(std::string_view usage,
                     .handler = &handler,
                     .primitive = primitive});
   return command;
+}
+
+void Commands::remove(Command command) {
+  std::erase_if(_specs,
+                [&](const Spec &spec) { return spec.command.index == command.index; });
 }
 
 void Commands::run(std::string_view line) {

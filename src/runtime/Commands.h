@@ -65,6 +65,8 @@ public:
               std::string_view help,
               CommandHandler &handler,
               Primitive primitive = Primitive::no);
+  // Before the command's handler goes, so no run reaches it after.
+  void remove(Command command);
   // A line from outside the port, in a group of its own. Throws naming the mistake: a
   // command nobody registered, or words its usage does not take.
   void run(std::string_view line);
@@ -91,6 +93,7 @@ private:
 
   const Log &_log;
   std::vector<Spec> _specs;
+  std::uint32_t _added = 0; // so a removed command's id is never handed out again
   CommandLog _session;
   std::vector<Source> _sourcing; // the files running, innermost last
   const Command _quit;

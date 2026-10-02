@@ -2,9 +2,9 @@
 """Every broken view ends the run with exit 1 and an error that names its cause (A02,
 RV03), before anything wrong reaches the GPU: a manifest that says a thing twice, SPIR-V
 cut short, C++ and a shader that disagree on a name or a type, a connection whose ends
-disagree, a dispatch that leaves a workgroup part full, and a draw that writes. A view
-with more pass blocks than one pool holds is no mistake: it runs, and so does an edit
-on it.
+disagree, a dispatch that leaves a workgroup part full, a draw that writes, and a
+node's command without its help, registered twice or failing when it runs. A view with
+more pass blocks than one pool holds is no mistake: it runs, and so does an edit on it.
 
 The views are written into a folder named mistakes, so they find the recipes the build
 compiles from mistakes/ beside this script, which get these things wrong on purpose.
@@ -63,6 +63,11 @@ CASES = {
     "workgroups": (HEAD + FILL.replace("= 64", "= 100"),
                    "invocations = 100 is not a multiple of local_size_x = 64"),
     "draw-writes": (HEAD + DRAW, "a draw's shaders only read buffers"),
+    "command-help": (HEAD + operator("NoHelp"), "command `fill help` needs a usage and a help"),
+    "command-twice": (HEAD + operator("Twin") + operator("Twin").replace('"fill"', '"twin"'),
+                      "node twin: command `fill twin` registers twice"),
+    "command-fails": (HEAD + operator("Refuse"), "command-fails.txt:1: refused, as the fixture",
+                      "refuse\n"),
 }
 WINDOWED = {"draw-writes"}
 
@@ -79,12 +84,16 @@ def cut_spirv(vulpen: str) -> list[Path]:
     return list(written)
 
 
-def check(vulpen: str, folder: Path, name: str, text: str, cause: str) -> str | None:
-    """Why the case failed, or None."""
+def check(vulpen: str, folder: Path, name: str, text: str, cause: str,
+          script: str = "") -> str | None:
+    """Why the case failed, or None. A script runs through --source."""
     view = folder / f"{name}.vlp"
     view.write_text(text, encoding="utf-8")
-    code, output = run(vulpen, [view, "--frames", 1, "--fps", 0],
-                       headless=name not in WINDOWED)
+    arguments = [view, "--frames", 1, "--fps", 0]
+    if script:
+        (folder / f"{name}.txt").write_text(script, encoding="utf-8")
+        arguments += ["--source", folder / f"{name}.txt"]
+    code, output = run(vulpen, arguments, headless=name not in WINDOWED)
     if code != 1 or cause not in output or problems(output):
         return f"{name}: expected exit 1 and '{cause}', got exit {code}:\n{output}"
     return None
@@ -111,9 +120,9 @@ def main() -> None:
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary) / "mistakes"
             folder.mkdir()
-            failed = [problem for name, (text, cause) in CASES.items()
+            failed = [problem for name, (text, cause, *script) in CASES.items()
                       if name not in WINDOWED or display()
-                      if (problem := check(vulpen, folder, name, text, cause))]
+                      if (problem := check(vulpen, folder, name, text, cause, *script))]
             if problem := no_limit(vulpen, folder):
                 failed.append(problem)
     finally:

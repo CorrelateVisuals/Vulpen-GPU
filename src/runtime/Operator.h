@@ -123,6 +123,10 @@ public:
       param_invalid(name, glsl_type<T>);
     return value;
   }
+  // A command the node answers in its command hook, registered with its usage and help
+  // (RV04). It lasts while the node runs: a rebuild registers it again, and a node that
+  // goes, or stops in error, takes it along.
+  virtual Command command(std::string_view usage, std::string_view help) = 0;
 
 protected:
   ~Bind() = default;

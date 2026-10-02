@@ -14,7 +14,7 @@
 
 namespace VP {
 
-class CommandPort;
+class Commands;
 class FilePort;
 class InputPort;
 class Pipelines;
@@ -37,7 +37,7 @@ struct Wiring {
   const Log &log;
   // The build tree's mirror of the views, where modules and SPIR-V land.
   const std::filesystem::path &views;
-  CommandPort &commands;
+  Commands &commands;
   InputPort &input;
   FilePort &files;
   TerminalPort &terminal;
@@ -63,7 +63,8 @@ public:
   Schedule &operator=(const Schedule &) = delete;
 
   bool ok() const;
-  // Before a module swap: the operators' code is about to go, so they go first.
+  // Before a module swap: the operators' code is about to go, so they go first, and
+  // their commands with them.
   void drop_operators(const std::vector<std::string> &recipes);
   void cook(std::uint64_t frame);
   // The buffers made since the last call, which the next frame zeroes first.
@@ -89,6 +90,7 @@ private:
                    Schedule *replaced);
   void make_blocks();
   void make_passes();
+  void drop_commands(Bound &bound);
   void log(Level level, Tag tag, const Bound &bound, std::string_view text) const;
   Bound *find(std::string_view node);
   const Connection *connection_of(std::string_view node, std::string_view port) const;

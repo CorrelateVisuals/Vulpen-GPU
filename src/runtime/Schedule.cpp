@@ -2,6 +2,7 @@
 
 #include "baseclasses/Passes.h"
 #include "baseclasses/Pipelines.h"
+#include "runtime/Commands.h"
 #include "runtime/Operator.h"
 #include "runtime/Recipes.h"
 #include "runtime/View.h"
@@ -109,6 +110,7 @@ struct Schedule::Bound {
   std::vector<const Buffer *> readback_buffers; // the same, once the buffers exist
   std::vector<std::string> uploads;             // ports, by Upload<T>::index
   std::vector<const Buffer *> upload_buffers;
+  std::vector<Command> commands; // registered while it bound
   std::vector<std::string> errors;
 
   bool loaded() const {
@@ -131,7 +133,16 @@ struct Schedule::Bound {
 // fit becomes one of the node's errors, and the operator gets a harmless handle.
 class Schedule::Binder final : public Bind {
 public:
-  explicit Binder(Bound &bound) : _bound(bound) {}
+  Binder(Bound &bound, Commands &commands) : _bound(bound), _commands(commands) {}
+
+  Command command(std::string_view usage, std::string_view help) override {
+    try {
+      return _bound.commands.emplace_back(_commands.add(usage, help, *_bound.op));
+    } catch (const std::runtime_error &failure) {
+      _bound.errors.emplace_back(failure.what());
+      return {};
+    }
+  }
 
 private:
   std::uint32_t value_offset(std::string_view name, std::string_view type) override {
@@ -216,6 +227,7 @@ private:
   }
 
   Bound &_bound;
+  Commands &_commands;
 };
 
 // What an operator reaches during a frame: its node's block and read-backs, nothing else.
@@ -294,6 +306,11 @@ bool Schedule::draws(const View &view) {
 Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
     : _wiring(wiring), _view(view) {
   const std::vector<const Node *> nodes = order(view);
+  // Every node registers its commands again as it binds, so no command stays behind
+  // with a node that went, and none blocks a node that takes its name.
+  if (replaced)
+    for (Bound &bound : replaced->_bound)
+      replaced->drop_commands(bound);
   _bound.reserve(nodes.size());
   for (const Node *const node : nodes)
     _bound.push_back(
@@ -303,7 +320,10 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
   make_blocks();
   make_passes();
   // Each error names the line that last added or changed the node, if a file holds it.
-  for (const Bound &bound : _bound)
+  // A node left out answers no command either.
+  for (Bound &bound : _bound) {
+    if (!bound.errors.empty())
+      drop_commands(bound);
     for (const std::string &error : bound.errors)
       _wiring.log.write(Level::error,
                         Tag::nod,
@@ -313,9 +333,13 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
                                         : bound.node->where,
                                     bound.node->name,
                                     error));
+  }
 }
 
-Schedule::~Schedule() = default;
+Schedule::~Schedule() {
+  for (Bound &bound : _bound)
+    drop_commands(bound);
+}
 
 Schedule::Bound Schedule::bind(const Node &node,
                                const std::filesystem::path &folder,
@@ -347,7 +371,7 @@ Schedule::Bound Schedule::bind(const Node &node,
     }
   }
   if (bound.op) {
-    Binder binder(bound);
+    Binder binder(bound, _wiring.commands);
     try {
       bound.op->bind(binder);
     } catch (const std::exception &failure) {
@@ -675,8 +699,10 @@ bool Schedule::ok() const {
 
 void Schedule::drop_operators(const std::vector<std::string> &recipes) {
   for (Bound &bound : _bound)
-    if (std::ranges::find(recipes, recipe_of(_view, *bound.node)) != recipes.end())
+    if (std::ranges::find(recipes, recipe_of(_view, *bound.node)) != recipes.end()) {
+      drop_commands(bound);
       bound.op.reset();
+    }
 }
 
 void Schedule::cook(std::uint64_t frame) {
@@ -691,6 +717,7 @@ void Schedule::cook(std::uint64_t frame) {
       bound.op->cook(cooker);
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
+      drop_commands(bound);
       _wiring.log.write(Level::error,
                         Tag::nod,
                         std::format("node {}: {}; its operator stops",
@@ -702,6 +729,12 @@ void Schedule::cook(std::uint64_t frame) {
     for (const Buffer *const buffer : bound.upload_buffers)
       buffer->flush();
   }
+}
+
+void Schedule::drop_commands(Bound &bound) {
+  for (const Command command : bound.commands)
+    _wiring.commands.remove(command);
+  bound.commands.clear();
 }
 
 std::vector<VkBuffer> Schedule::take_clears() {
