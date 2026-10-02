@@ -33,7 +33,8 @@ namespace {
 //   if (call.is(_reset)) {}
 //   const std::span<const std::string_view> arguments = call.arguments();
 //   call.reply("text");
-//   call.send("param set name speed 0");
+//   call.commands().send("param set name speed 0");
+//   const VP::View &view = call.view(); // with #include "runtime/View.h"
 // }
 
 } // namespace
