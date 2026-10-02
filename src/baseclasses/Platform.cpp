@@ -9,9 +9,12 @@
 #include <windows.h>
 #else
 #include <dlfcn.h>
+#include <poll.h>
 #include <unistd.h>
 #endif
 
+#include <array>
+#include <cerrno>
 #include <cstdlib>
 #include <format>
 #include <fstream>
@@ -23,6 +26,8 @@
 namespace VP {
 
 namespace {
+
+constexpr std::size_t input_chunk = 4096; // bytes of standard input one read takes
 
 [[noreturn]] void glfw_failed(const char *call) {
   const char *description = nullptr;
@@ -67,6 +72,26 @@ std::tm local_time(std::time_t time) {
   std::tm local{};
   localtime_s(&local, &time);
   return local;
+}
+
+// A pipe, or a file, which never makes a read wait. A console types nothing yet: reading
+// one without waiting takes its input events, which no Windows user has needed so far.
+std::optional<std::string> Terminal::input() {
+  const HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
+  const DWORD type = GetFileType(in);
+  if (type == FILE_TYPE_CHAR)
+    return std::string();
+  DWORD available = static_cast<DWORD>(input_chunk);
+  if (type == FILE_TYPE_PIPE &&
+      !PeekNamedPipe(in, nullptr, 0, nullptr, &available, nullptr))
+    return std::nullopt; // the writer closed it
+  std::string text(available, '\0');
+  DWORD got = 0;
+  if (available != 0 &&
+      (!ReadFile(in, text.data(), available, &got, nullptr) || got == 0))
+    return std::nullopt;
+  text.resize(got);
+  return text;
 }
 
 // A console shows ANSI colors once asked to; a pipe or a file has no console mode.
@@ -122,6 +147,21 @@ std::tm local_time(std::time_t time) {
   std::tm local{};
   localtime_r(&time, &local);
   return local;
+}
+
+// A read after poll found input never waits; one that finds the end returns nothing.
+std::optional<std::string> Terminal::input() {
+  std::string text;
+  std::array<char, input_chunk> chunk{};
+  pollfd in{.fd = STDIN_FILENO, .events = POLLIN};
+  while (poll(&in, 1, 0) > 0) {
+    const ssize_t got = read(STDIN_FILENO, chunk.data(), chunk.size());
+    if (got == 0 || (got < 0 && errno != EINTR && errno != EAGAIN))
+      return text.empty() ? std::nullopt : std::optional(std::move(text));
+    if (got > 0)
+      text.append(chunk.data(), static_cast<std::size_t>(got));
+  }
+  return text;
 }
 
 bool Terminal::colors() {

@@ -7,7 +7,8 @@ node's command without its help, registered twice or failing when it runs, and a
 deploy of a recipe with no view.vlp, of one that deploys itself, or that names a node
 its recipe lacks. A view with more pass blocks than one pool holds is no mistake: it
 runs, and so does an edit on it. Nor is a deploy: edits on one save back to the same
-manifest.
+manifest. Nor is a command line on the terminal: what it reads runs, a refusal names
+its cause and the next line still runs, and the run ends with its input.
 
 The views are written into a folder named mistakes, so they find the recipes the build
 compiles from mistakes/ beside this script, which get these things wrong on purpose; a
@@ -166,6 +167,19 @@ def deploys(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def terminal(vulpen: str, folder: Path) -> str | None:
+    """Why lines piped to a node that reads the terminal did not run as commands, or None."""
+    view = folder / "terminal.vlp"
+    view.write_text(HEAD + operator("Echo"), encoding="utf-8")
+    code, output = run(vulpen, [view], typed="echo one two\nnode remove nothing\necho three")
+    said = [line.strip() for line in output.splitlines()]
+    if (code != 0 or problems(output) or "one two" not in said or "three" not in said
+            or not any(line.endswith("no node is named nothing") for line in said)
+            or said.index("one two") > said.index("three")):
+        return f"terminal: expected the lines to run and the run to end, got exit {code}:\n{output}"
+    return None
+
+
 def main() -> None:
     vulpen = sys.argv[1]
     cut = cut_spirv(vulpen)
@@ -177,7 +191,8 @@ def main() -> None:
             failed = [problem for name, (text, cause, *script) in CASES.items()
                       if name not in WINDOWED or display()
                       if (problem := check(vulpen, folder, name, text, cause, *script))]
-            for problem in (no_limit(vulpen, folder), deploys(vulpen, folder)):
+            for problem in (no_limit(vulpen, folder), deploys(vulpen, folder),
+                            terminal(vulpen, folder)):
                 if problem:
                     failed.append(problem)
     finally:

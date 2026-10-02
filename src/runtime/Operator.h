@@ -75,7 +75,15 @@ struct Member {};
 
 // Where every change goes, as text: a node sends commands as a person types them, so no
 // recipe has a private way in.
-class CommandPort {};
+class CommandPort {
+public:
+  // Runs a line in a group of its own, as a typed one, and returns what its command
+  // answers. A refusal goes to the log, naming its cause, and answers nothing.
+  virtual std::string send(std::string_view line) = 0;
+
+protected:
+  ~CommandPort() = default;
+};
 
 // A key, text, the pointer, the wheel or focus. The input command makes the same events
 // without a window, so a headless test types as a person does.
@@ -89,7 +97,20 @@ class InputPort {};
 class FilePort {};
 
 // Lines typed on standard input and text for standard output, so a CLI needs no window.
-class TerminalPort {};
+class TerminalPort {
+public:
+  // The lines that came in since the last frame, without their line breaks. Only a node
+  // that asks makes the port read standard input, so a run nobody types to never reads
+  // it, and a run in the background is never stopped for it.
+  virtual std::span<const std::string> lines() = 0;
+  // Once standard input has ended, as a piped script's does, and its lines were given.
+  virtual bool ended() const = 0;
+  // A line of standard output.
+  virtual void print(std::string_view text) = 0;
+
+protected:
+  ~TerminalPort() = default;
+};
 
 // The graph a node reads. Only a recipe that reads it includes runtime/View.h, so the
 // others compile without its headers.
@@ -162,6 +183,8 @@ public:
   }
   virtual std::uint64_t index() const = 0;
   virtual void log(Level level, std::string_view text) const = 0;
+  virtual CommandPort &commands() = 0;
+  virtual TerminalPort &terminal() = 0;
 
 protected:
   ~Cook() = default;
@@ -180,6 +203,8 @@ public:
   virtual bool is(Command command) const = 0;
   // The words after the command's name, as many as its usage takes.
   virtual std::span<const std::string_view> arguments() const = 0;
+  // What the command answers, which goes back to whoever sent the line.
+  virtual void reply(std::string_view text) = 0;
 
 protected:
   ~Call() = default;

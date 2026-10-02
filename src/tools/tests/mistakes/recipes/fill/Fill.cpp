@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 
 namespace {
 
@@ -45,6 +46,31 @@ class Refuse final : public VP::Operator {
   VP::Command _refuse;
 };
 
+// A command line on the terminal, as the CLI's: each line typed or piped in runs as a
+// command, what it answers is printed, and the run quits once standard input ends.
+class Echo final : public VP::Operator {
+  void bind(VP::Bind &node) override {
+    _echo = node.command("echo <value>...", "answers its words");
+  }
+  void cook(VP::Cook &frame) override {
+    for (const std::string &line : frame.terminal().lines())
+      if (const std::string answer = frame.commands().send(line); !answer.empty())
+        frame.terminal().print(answer);
+    if (frame.terminal().ended())
+      frame.commands().send("quit");
+  }
+  void command(VP::Call &call) override {
+    if (!call.is(_echo))
+      return;
+    std::string words;
+    for (const std::string_view word : call.arguments())
+      words.append(words.empty() ? "" : " ").append(word);
+    call.reply(words);
+  }
+
+  VP::Command _echo;
+};
+
 } // namespace
 
 VP_RECIPE(registry) {
@@ -53,4 +79,5 @@ VP_RECIPE(registry) {
   registry.add<NoHelp>("NoHelp");
   registry.add<Twin>("Twin");
   registry.add<Refuse>("Refuse");
+  registry.add<Echo>("Echo");
 }

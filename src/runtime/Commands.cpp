@@ -4,11 +4,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <format>
 #include <fstream>
 #include <ranges>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace VP {
 
@@ -69,6 +71,10 @@ class Run final : public Call {
 public:
   Run(Command command, std::span<const std::string_view> arguments)
       : _command(command), _arguments(arguments) {}
+  // Every line the command answered.
+  std::string answer() && {
+    return std::move(_reply);
+  }
 
 private:
   bool is(Command command) const override {
@@ -77,9 +83,15 @@ private:
   std::span<const std::string_view> arguments() const override {
     return _arguments;
   }
+  void reply(std::string_view text) override {
+    _reply.append(text);
+    if (!text.ends_with('\n'))
+      _reply.push_back('\n');
+  }
 
   const Command _command;
   const std::span<const std::string_view> _arguments;
+  std::string _reply;
 };
 
 } // namespace
@@ -161,11 +173,11 @@ void Commands::remove(Command command) {
                 [&](const Spec &spec) { return spec.command.index == command.index; });
 }
 
-void Commands::run(std::string_view line) {
+std::string Commands::run(std::string_view line) {
   _session.open();
   const std::vector<std::string_view> words = words_of(line);
   if (words.empty())
-    return;
+    return {};
   const std::string_view typed(words.front().data(),
                                words.back().data() + words.back().size());
   const Spec *const spec = match(words);
@@ -188,6 +200,16 @@ void Commands::run(std::string_view line) {
   spec->handler->command(call);
   if (primitive == Primitive::yes)
     _session.keep(joined(words, " "));
+  return std::move(call).answer();
+}
+
+std::string Commands::send(std::string_view line) {
+  try {
+    return run(line);
+  } catch (const std::runtime_error &failure) {
+    _log.write(Level::error, Tag::run, failure.what());
+    return {};
+  }
 }
 
 void Commands::source(const std::filesystem::path &file) {
@@ -205,7 +227,9 @@ void Commands::source(const std::filesystem::path &file) {
     // A logic_error is a bug in vulpen, not a mistake in the file, so it keeps its own
     // message, and ends the run.
     try {
-      run(line);
+      const std::string reply = run(line);
+      std::fwrite(reply.data(), 1, reply.size(), stdout);
+      std::fflush(stdout);
     } catch (const std::runtime_error &failure) {
       // An error that names this line already, as a deploy's does, names it once.
       std::string_view message = failure.what();

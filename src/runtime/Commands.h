@@ -67,13 +67,15 @@ public:
               Primitive primitive = Primitive::no);
   // Before the command's handler goes, so no run reaches it after.
   void remove(Command command);
-  // A line from outside the port, in a group of its own. Throws naming the mistake: a
-  // command nobody registered, or words its usage does not take.
-  void run(std::string_view line);
+  // A line from outside the port, in a group of its own; returns what its command
+  // answers. Throws naming the mistake: a command nobody registered, or words its usage
+  // does not take.
+  std::string run(std::string_view line);
+  std::string send(std::string_view line) override;
   // Runs a file's lines in turn until one quits, each in a group of its own, so undo
-  // after a replay steps back one command at a time. Throws naming the file and line of
-  // the first that fails, and runs none after it, so a script never goes on from a
-  // state it did not expect.
+  // after a replay steps back one command at a time, and prints what each answers.
+  // Throws naming the file and line of the first that fails, and runs none after it, so
+  // a script never goes on from a state it did not expect.
   void source(const std::filesystem::path &file);
   // Whether quit ran, so the run ends before its next frame.
   bool quitting() const;

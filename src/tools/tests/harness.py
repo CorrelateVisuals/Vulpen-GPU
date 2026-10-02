@@ -28,10 +28,11 @@ def environment(headless: bool = True) -> dict[str, str]:
 
 
 def run(vulpen: str, arguments: list, headless: bool = True,
-        timeout: float = 120, env: dict[str, str] | None = None) -> tuple[int, str]:
-    """The exit code and everything the run printed."""
+        timeout: float = 120, env: dict[str, str] | None = None,
+        typed: str = "") -> tuple[int, str]:
+    """The exit code and everything the run printed; typed is its standard input."""
     done = subprocess.run([vulpen, *map(str, arguments)], capture_output=True, text=True,
-                          errors="replace", timeout=timeout,
+                          errors="replace", timeout=timeout, input=typed,
                           env=env if env is not None else environment(headless))
     return done.returncode, done.stdout + done.stderr
 

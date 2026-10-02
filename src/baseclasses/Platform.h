@@ -4,6 +4,7 @@
 
 #include <ctime>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -78,6 +79,9 @@ public:
   // Whether standard output shows color: a terminal that is not dumb, with no NO_COLOR
   // set (no-color.org).
   static bool colors();
+  // What standard input holds now, without waiting for more, so a frame never stalls on
+  // it (VK02); nothing once it has ended.
+  static std::optional<std::string> input();
 };
 
 } // namespace VP

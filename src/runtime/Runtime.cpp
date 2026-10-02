@@ -300,6 +300,7 @@ void Runtime::loop() {
     if (_live)
       watch();
     Schedule &schedule = prepare();
+    _ports.frame();
     schedule.cook(_options.first_frame + frames);
     _engine->run(schedule.take_clears(), schedule.passes());
     next = std::max(next + period, std::chrono::steady_clock::now());

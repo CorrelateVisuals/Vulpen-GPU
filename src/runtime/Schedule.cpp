@@ -243,6 +243,12 @@ private:
   void log(Level level, std::string_view text) const override {
     _schedule.log(level, Tag::out, _bound, text);
   }
+  CommandPort &commands() override {
+    return _schedule._wiring.commands;
+  }
+  TerminalPort &terminal() override {
+    return _schedule._wiring.terminal;
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }
