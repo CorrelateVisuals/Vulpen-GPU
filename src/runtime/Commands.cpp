@@ -28,6 +28,8 @@ constexpr std::array kinds{
     std::string_view{"key"},        // the node's params
     std::string_view{"value"},      // any word: nothing to complete
     std::string_view{"file"},       // the folders and files where the path resolves
+    std::string_view{"recipe"},     // the folders of the view's recipes
+    std::string_view{"deploy"},     // the view's deploys
 };
 // After the last placeholder: one argument or more.
 constexpr std::string_view one_or_more = "...";
@@ -205,9 +207,12 @@ void Commands::source(const std::filesystem::path &file) {
     try {
       run(line);
     } catch (const std::runtime_error &failure) {
+      // An error that names this line already, as a deploy's does, names it once.
+      std::string_view message = failure.what();
+      if (const std::string here = where() + ": "; message.starts_with(here))
+        message.remove_prefix(here.size());
       _sourcing.pop_back();
-      throw std::runtime_error(
-          std::format("{}:{}: {}", path.string(), number, failure.what()));
+      throw std::runtime_error(std::format("{}:{}: {}", path.string(), number, message));
     }
   }
   _sourcing.pop_back();

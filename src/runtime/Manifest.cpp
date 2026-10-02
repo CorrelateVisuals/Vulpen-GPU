@@ -63,7 +63,7 @@ public:
   }
 
 private:
-  enum class Section { none, manifest, node, connection };
+  enum class Section { none, manifest, deploy, node, connection };
 
   [[noreturn]] void fail(std::string_view message) const;
   // Runs an edit; its refusal names the given line.
@@ -87,6 +87,7 @@ private:
   std::size_t _node_line = 0;
   // Joined once every node is in, so a connection may come before the nodes it joins.
   std::vector<std::pair<Connection, std::size_t>> _connections;
+  std::vector<std::pair<Deploy, std::size_t>> _deploys; // added before the connections
   bool _manifest = false;
   std::optional<std::uint32_t> _version;
 };
@@ -144,6 +145,8 @@ View Reader::read() {
                     _version.value_or(0),
                     manifest_version));
   add_node();
+  for (auto &[deploy, line] : _deploys)
+    edit(line, [&] { Edits::deploy(_view, std::move(deploy)); });
   for (auto &[connection, line] : _connections)
     edit(line, [&] { Edits::connect(_view, std::move(connection)); });
   return std::move(_view);
@@ -176,10 +179,16 @@ void Reader::header(std::string_view text) {
   } else if (kind == "connection" && !name.empty()) {
     _connections.emplace_back(Connection{.name = std::string(name)}, _line);
     _section = Section::connection;
+  } else if (kind == "deploy" && !name.empty()) {
+    _deploys.emplace_back(
+        Deploy{.name = std::string(name),
+               .where = std::format("{}:{}", _file.filename().string(), _line)},
+        _line);
+    _section = Section::deploy;
   } else {
     fail(std::format(
-        "unknown section [{}]; the sections are [manifest], [node \"name\"] and "
-        "[connection \"name\"]",
+        "unknown section [{}]; the sections are [manifest], [deploy \"name\"], "
+        "[node \"name\"] and [connection \"name\"]",
         inside));
   }
 }
@@ -193,6 +202,8 @@ void Reader::word(std::string_view key, std::string_view value) {
         fail("version is set twice");
       _version = number(value);
       return;
+    case Section::deploy:
+      return edit(_line, [&] { Edits::word(_deploys.back().first, key, value); });
     case Section::node:
       return edit(_line, [&] { Edits::word(*_node, key, value); });
     case Section::connection:
@@ -261,6 +272,13 @@ std::vector<Word> words(const Node &node) {
   return words;
 }
 
+std::vector<Word> words(const Deploy &deploy) {
+  std::vector<Word> words{{"recipe", deploy.recipe}};
+  for (const Param &param : deploy.params)
+    words.push_back({"param", std::format("{}={}", param.key, param.value)});
+  return words;
+}
+
 std::vector<Word> words(const Connection &connection) {
   std::vector<Word> words{
       {"from", std::format("{}.{}", connection.from.node, connection.from.port)}};
@@ -309,6 +327,8 @@ void section(std::string &text,
 std::string text(const View &view, const Notes &notes) {
   std::string text;
   section(text, notes, "manifest", {}, {{"version", std::to_string(manifest_version)}});
+  for (const Deploy &deploy : view.deploys)
+    section(text, notes, "deploy", deploy.name, words(deploy));
   for (const Node &node : view.nodes)
     section(text, notes, "node", node.name, words(node));
   for (const Connection &connection : view.connections)
@@ -318,10 +338,100 @@ std::string text(const View &view, const Notes &notes) {
   return text;
 }
 
+View flattened(View view,
+               const std::filesystem::path &recipes,
+               std::vector<std::string> &deploying);
+
+// A deploy's params set its recipe's nodes, so a node they set was last changed there.
+void set_params(View &recipe, const Deploy &deploy) {
+  for (const Param &param : deploy.params) {
+    const std::size_t dot = param.key.rfind('.');
+    const std::string_view name = std::string_view(param.key).substr(0, dot);
+    const auto node = std::ranges::find(recipe.nodes, name, &Node::name);
+    if (node == recipe.nodes.end())
+      throw std::runtime_error(
+          std::format("it sets param {}, but recipe {} has no node {}",
+                      param.key,
+                      deploy.recipe,
+                      name));
+    const std::string key = param.key.substr(dot + 1);
+    const auto found = std::ranges::find(node->params, key, &Param::key);
+    if (found != node->params.end())
+      found->value = param.value;
+    else
+      node->params.push_back({key, param.value});
+    node->where = deploy.where;
+  }
+}
+
+// Into the view, the deploy's recipe under the deploy's name.
+void unfold(View &view,
+            const Deploy &deploy,
+            const std::filesystem::path &recipes,
+            std::vector<std::string> &deploying) {
+  if (std::ranges::find(deploying, deploy.recipe) != deploying.end())
+    throw std::runtime_error(
+        std::format("the deploys form a cycle through recipe {} (RV06)", deploy.recipe));
+  View recipe = Manifest::load(recipes / deploy.recipe / "view.vlp");
+  for (Node &node : recipe.nodes)
+    node.where = std::format("recipes/{}/{}", deploy.recipe, node.where);
+  deploying.push_back(deploy.recipe);
+  recipe = flattened(std::move(recipe), recipes, deploying);
+  deploying.pop_back();
+  set_params(recipe, deploy);
+  const auto named = [&](std::string &name) { name.insert(0, deploy.name + "."); };
+  for (Node &node : recipe.nodes) {
+    named(node.name);
+    view.nodes.push_back(std::move(node));
+  }
+  for (Connection &connection : recipe.connections) {
+    named(connection.name);
+    named(connection.from.node);
+    for (Endpoint &to : connection.to)
+      named(to.node);
+    view.connections.push_back(std::move(connection));
+  }
+}
+
+View flattened(View view,
+               const std::filesystem::path &recipes,
+               std::vector<std::string> &deploying) {
+  for (const Deploy &deploy : view.deploys) {
+    try {
+      unfold(view, deploy, recipes, deploying);
+    } catch (const std::runtime_error &failure) {
+      throw std::runtime_error(std::format("{}{}deploy {}: {}",
+                                           deploy.where,
+                                           deploy.where.empty() ? "" : ": ",
+                                           deploy.name,
+                                           failure.what()));
+    }
+  }
+  view.deploys.clear();
+  return view;
+}
+
 } // namespace
 
 View Manifest::load(const std::filesystem::path &file) {
   return Reader(file).read();
+}
+
+// A connection may name a deploy's node that its recipe lacks, which only the view
+// with the deploys unfolded shows.
+View Manifest::flatten(const View &view) {
+  std::vector<std::string> deploying;
+  View flat = flattened(view, view.file.parent_path() / "recipes", deploying);
+  for (const Connection &connection : flat.connections) {
+    const auto check = [&](const Endpoint &end) {
+      if (std::ranges::find(flat.nodes, end.node, &Node::name) == flat.nodes.end())
+        throw std::runtime_error(std::format(
+            "connection {} joins {}, which is no node", connection.name, end.node));
+    };
+    check(connection.from);
+    std::ranges::for_each(connection.to, check);
+  }
+  return flat;
 }
 
 // The comments come from the file being replaced, read as a load reads it.

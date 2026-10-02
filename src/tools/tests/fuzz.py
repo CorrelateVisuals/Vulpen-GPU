@@ -49,8 +49,9 @@ TOKENS = ["", "0", "1", "-1", "64", "65", "4294967295", "4294967296", "1e9", "0.
           "wave", "probe", "values", "samples", "Wave.comp", "Probe.comp", "Wave.vert",
           "quit", "node", "add", "remove", "set", "unset", "param", "connect", "disconnect",
           "operator", "shader", "invocations", "log", "save", "source", "session.log",
-          "script.txt", "view",
-          "[node \"wave\"]", "[connection \"values\"]", "[manifest]", "version = 1"]
+          "script.txt", "view", "deploy", "recipe", "a.wave", "a.wave.values",
+          "[node \"wave\"]", "[connection \"values\"]", "[deploy \"a\"]", "[manifest]",
+          "version = 1"]
 # What std::exception::what() says for the standard library's own throws: a message that
 # names no file, node or key of the view.
 BARE = re.compile(r"\{!!!\} (?:map::at|unordered_map::at|vector::|basic_string|array::at"

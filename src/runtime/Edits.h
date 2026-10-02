@@ -10,6 +10,7 @@ namespace VP {
 class Commands;
 class ViewLookup;
 struct Connection;
+struct Deploy;
 struct Endpoint;
 struct Node;
 
@@ -26,8 +27,12 @@ public:
 
   // One node word, as a manifest line or a word=value argument gives it.
   static void word(Node &node, std::string_view key, std::string_view value);
+  // One deploy word: its recipe, or a param on one of the recipe's nodes.
+  static void word(Deploy &deploy, std::string_view key, std::string_view value);
+  // node.port, or deploy.node.port for a port of a deployed recipe's node.
   static Endpoint endpoint(std::string_view text);
   static void add(View &view, Node node);
+  static void deploy(View &view, Deploy deploy);
   static void connect(View &view, Connection connection);
 
 private:

@@ -41,13 +41,19 @@ struct Connection {
 
 // A recipe the view deploys under a name, with the params it sets on the recipe's
 // nodes. The loader flattens it, so the schedule sees only nodes and connections.
-struct Deploy {};
+struct Deploy {
+  std::string name;
+  std::string recipe; // a folder of the view's recipes, whose view.vlp gives its nodes
+  std::vector<Param> params; // each keyed <node>.<param>, by the recipe's node names
+  std::string where;         // as a node's
+};
 
-// A view is a project: its nodes, their connections, and the child views it hosts.
-// The model includes nothing, so it can hold no GPU or OS type.
+// A view is a project: the recipes it deploys, its nodes, their connections, and the
+// child views it hosts. The model includes nothing, so it can hold no GPU or OS type.
 struct View {
   std::string name; // its folder's name, which the build tree mirrors
   std::filesystem::path file;
+  std::vector<Deploy> deploys;
   std::vector<Node> nodes;
   std::vector<Connection> connections;
 };

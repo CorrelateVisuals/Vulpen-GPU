@@ -1,0 +1,6 @@
+# A recipe that deploys itself, which no loader may unfold (RV06).
+[manifest]
+version = 1
+
+[deploy "again"]
+recipe = loop

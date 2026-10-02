@@ -43,6 +43,22 @@ void check_name(std::string_view what, std::string_view name) {
         "{} {} is not a name: a name holds letters, digits, _ and -", what, name));
 }
 
+// A deploy's node goes by its deploy's name and its own: deploy.node.
+bool deployed(std::string_view node) {
+  return node.find('.') != std::string_view::npos;
+}
+
+// Names joined by dots, as a deploy names a node of its recipe: deploy.node.
+bool is_path(std::string_view text) {
+  for (std::size_t dot = text.find('.'); dot != std::string_view::npos;
+       dot = text.find('.')) {
+    if (!is_name(text.substr(0, dot)))
+      return false;
+    text.remove_prefix(dot + 1);
+  }
+  return is_name(text);
+}
+
 // A manifest reads # as the start of a comment and a line break as the end of a line, so
 // a value that holds either would not survive a save. Blanks never reach a value: they
 // split the words of a command, and a manifest trims them.
@@ -98,7 +114,45 @@ Node *node_named(View &view, std::string_view name) {
 Node &existing(View &view, std::string_view name) {
   if (Node *const node = node_named(view, name))
     return *node;
+  if (deployed(name))
+    throw std::runtime_error(std::format(
+        "node {} comes from deploy {}: param set and unset change its params, and its "
+        "recipe's view.vlp the rest",
+        name,
+        name.substr(0, name.find('.'))));
   throw std::runtime_error(std::format("no node is named {}", name));
+}
+
+Deploy *deploy_named(View &view, std::string_view name) {
+  const auto found = std::ranges::find(view.deploys, name, &Deploy::name);
+  return found == view.deploys.end() ? nullptr : &*found;
+}
+
+// A node of the view, or a node of a deploy, which the view the schedule runs holds
+// once the deploys are unfolded, and which that view checks.
+bool has_node(View &view, std::string_view name) {
+  const std::size_t dot = name.find('.');
+  return dot == std::string_view::npos
+             ? node_named(view, name) != nullptr
+             : deploy_named(view, name.substr(0, dot)) != nullptr;
+}
+
+// A param of a deploy's node: the deploy, and its params' key for it.
+std::pair<Deploy &, std::string>
+deploy_param(View &view, std::string_view node, std::string_view key) {
+  const std::size_t dot = node.find('.');
+  Deploy *const deploy = deploy_named(view, node.substr(0, dot));
+  if (!deploy)
+    throw std::runtime_error(std::format("no node is named {}", node));
+  return {*deploy, std::format("{}.{}", node.substr(dot + 1), key)};
+}
+
+void set_param(std::vector<Param> &params, std::string_view key, std::string_view value) {
+  const auto found = std::ranges::find(params, key, &Param::key);
+  if (found != params.end())
+    found->value = value;
+  else
+    params.push_back({std::string(key), std::string(value)});
 }
 
 bool same(const Endpoint &one, const Endpoint &other) {
@@ -232,25 +286,59 @@ void disconnect(View &view, Arguments arguments, std::string_view) {
     throw std::runtime_error(std::format("no connection is named {}", arguments.front()));
 }
 
+// A deploy's node keeps its params in the deploy, as the manifest writes them.
 void param_set(View &view, Arguments arguments, std::string_view where) {
-  Node &node = existing(view, arguments[0]);
   check_name("param", arguments[1]);
   check_value(arguments[1], arguments[2]);
+  if (deployed(arguments[0])) {
+    auto [deploy, key] = deploy_param(view, arguments[0], arguments[1]);
+    set_param(deploy.params, key, arguments[2]);
+    deploy.where = where;
+    return;
+  }
+  Node &node = existing(view, arguments[0]);
+  set_param(node.params, arguments[1], arguments[2]);
   node.where = where;
-  const auto found = std::ranges::find(node.params, arguments[1], &Param::key);
-  if (found != node.params.end())
-    found->value = arguments[2];
-  else
-    node.params.push_back({std::string(arguments[1]), std::string(arguments[2])});
 }
 
 void param_unset(View &view, Arguments arguments, std::string_view where) {
+  const auto unset = [&](std::vector<Param> &params,
+                         std::string_view key,
+                         std::string &by) {
+    if (std::erase_if(params, [&](const Param &param) { return param.key == key; }) == 0)
+      throw std::runtime_error(
+          std::format("node {} sets no param {}", arguments[0], arguments[1]));
+    by = where;
+  };
+  if (deployed(arguments[0])) {
+    auto [deploy, key] = deploy_param(view, arguments[0], arguments[1]);
+    return unset(deploy.params, key, deploy.where);
+  }
   Node &node = existing(view, arguments[0]);
-  if (std::erase_if(node.params,
-                    [&](const Param &param) { return param.key == arguments[1]; }) == 0)
-    throw std::runtime_error(
-        std::format("node {} sets no param {}", node.name, arguments[1]));
-  node.where = where;
+  unset(node.params, arguments[1], node.where);
+}
+
+void deploy_add(View &view, Arguments arguments, std::string_view where) {
+  Deploy deploy{.name = std::string(arguments[0]), .where = std::string(where)};
+  Edits::word(deploy, "recipe", arguments[1]);
+  Edits::deploy(view, std::move(deploy));
+}
+
+void deploy_remove(View &view, Arguments arguments, std::string_view) {
+  const std::string_view name = arguments.front();
+  if (!deploy_named(view, name))
+    throw std::runtime_error(std::format("no deploy is named {}", name));
+  const auto inside = [&](const Endpoint &end) {
+    return end.node.starts_with(name) && end.node.size() > name.size() &&
+           end.node[name.size()] == '.';
+  };
+  for (const Connection &connection : view.connections)
+    if (inside(connection.from) || std::ranges::any_of(connection.to, inside))
+      throw std::runtime_error(
+          std::format("deploy {} is connected through {}; disconnect it first",
+                      name,
+                      connection.name));
+  std::erase_if(view.deploys, [&](const Deploy &deploy) { return deploy.name == name; });
 }
 
 struct Edit {
@@ -276,6 +364,12 @@ constexpr std::array edits{
     Edit{"disconnect <connection>", "removes a connection", disconnect},
     Edit{"param set <node> <key> <value>", "sets a param of a node", param_set},
     Edit{"param unset <node> <key>", "removes a param of a node", param_unset},
+    Edit{"deploy add <name> <recipe>",
+         "deploys a recipe of the view under a name: its nodes, as <name>.<node>",
+         deploy_add},
+    Edit{"deploy remove <deploy>",
+         "removes a deploy that no connection names",
+         deploy_remove},
 };
 
 } // namespace
@@ -318,22 +412,59 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
   }
 }
 
+void Edits::word(Deploy &deploy, std::string_view key, std::string_view value) {
+  if (value.empty())
+    throw std::runtime_error(std::format("{} has no value", key));
+  check_value(key, value);
+  if (key == "recipe") {
+    check_name("recipe", value);
+    set_once(deploy.recipe, key, value);
+  } else if (key == "param") {
+    const std::size_t equals = value.find('=');
+    const std::string_view name = trim(value.substr(0, equals));
+    const std::string_view setting = equals == std::string_view::npos
+                                         ? std::string_view{}
+                                         : trim(value.substr(equals + 1));
+    if (!deployed(name) || !is_path(name) || setting.empty())
+      throw std::runtime_error("a deploy's param is written `param = node.name=value`");
+    if (std::ranges::find(deploy.params, name, &Param::key) != deploy.params.end())
+      throw std::runtime_error(std::format("param {} is set twice", name));
+    deploy.params.push_back({std::string(name), std::string(setting)});
+  } else {
+    throw std::runtime_error(
+        std::format("unknown word {} in a deploy; its words are recipe and param", key));
+  }
+}
+
+// The port follows the last dot, so a deploy's node keeps its own: deploy.node.port.
 Endpoint Edits::endpoint(std::string_view text) {
-  const std::size_t dot = text.find('.');
+  const std::size_t dot = text.rfind('.');
   const std::string_view node = text.substr(0, dot);
   const std::string_view port =
       dot == std::string_view::npos ? std::string_view{} : text.substr(dot + 1);
-  if (!is_name(node) || !is_name(port))
+  if (!is_path(node) || !is_name(port))
     throw std::runtime_error(std::format("{} is not node.port", text));
   return {std::string(node), std::string(port)};
 }
 
+// A deploy's nodes are named <deploy>.<node>, so a node and a deploy never share a name.
 void Edits::add(View &view, Node node) {
   check_name("node", node.name);
-  if (node_named(view, node.name))
-    throw std::runtime_error(std::format("two nodes are named {}", node.name));
+  if (node_named(view, node.name) || deploy_named(view, node.name))
+    throw std::runtime_error(std::format("two nodes or deploys are named {}", node.name));
   check_whole(node);
   view.nodes.push_back(std::move(node));
+}
+
+void Edits::deploy(View &view, Deploy deploy) {
+  check_name("deploy", deploy.name);
+  if (node_named(view, deploy.name) || deploy_named(view, deploy.name))
+    throw std::runtime_error(
+        std::format("two nodes or deploys are named {}", deploy.name));
+  if (deploy.recipe.empty())
+    throw std::runtime_error(
+        std::format("deploy {} names no recipe to deploy", deploy.name));
+  view.deploys.push_back(std::move(deploy));
 }
 
 void Edits::connect(View &view, Connection connection) {
@@ -345,12 +476,12 @@ void Edits::connect(View &view, Connection connection) {
   if (connection.from.node.empty() || connection.to.empty())
     throw std::runtime_error(
         std::format("connection {} needs a from and at least one to", connection.name));
-  if (!node_named(view, connection.from.node))
+  if (!has_node(view, connection.from.node))
     throw std::runtime_error(std::format("connection {} is from {}, which is no node",
                                          connection.name,
                                          connection.from.node));
   for (const Endpoint &to : connection.to)
-    if (!node_named(view, to.node))
+    if (!has_node(view, to.node))
       throw std::runtime_error(std::format(
           "connection {} is to {}, which is no node", connection.name, to.node));
   check_ports(view, connection);

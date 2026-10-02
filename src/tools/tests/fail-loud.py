@@ -2,12 +2,16 @@
 """Every broken view ends the run with exit 1 and an error that names its cause (A02,
 RV03), before anything wrong reaches the GPU: a manifest that says a thing twice, SPIR-V
 cut short, C++ and a shader that disagree on a name or a type, a connection whose ends
-disagree, a dispatch that leaves a workgroup part full, a draw that writes, and a
-node's command without its help, registered twice or failing when it runs. A view with
-more pass blocks than one pool holds is no mistake: it runs, and so does an edit on it.
+disagree, a dispatch that leaves a workgroup part full, a draw that writes, a
+node's command without its help, registered twice or failing when it runs, and a
+deploy of a recipe with no view.vlp, of one that deploys itself, or that names a node
+its recipe lacks. A view with more pass blocks than one pool holds is no mistake: it
+runs, and so does an edit on it. Nor is a deploy: edits on one save back to the same
+manifest.
 
 The views are written into a folder named mistakes, so they find the recipes the build
-compiles from mistakes/ beside this script, which get these things wrong on purpose.
+compiles from mistakes/ beside this script, which get these things wrong on purpose; a
+link to that folder's recipes gives deploys their view.vlp.
 
 Usage: python3 src/tools/tests/fail-loud.py VULPEN
 """
@@ -24,6 +28,31 @@ SUM = '[node "sum"]\nrecipe = connect\nshader = Sum.comp\ninvocations = 64\n'
 DRAW = ('[node "draw"]\nrecipe = draw\nshader = Draw.vert\nshader = Draw.frag\n'
         'invocations = 3\n')
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
+RECIPES = Path(__file__).resolve().parent / "mistakes" / "recipes"
+# Laid out as a save writes it, so edits that end where they began save it unchanged.
+DEPLOYED = HEAD + """
+[deploy "a"]
+recipe = fill
+param  = fill.amount=2
+
+[node "sum"]
+recipe      = connect
+shader      = Sum.comp
+invocations = 64
+
+[connection "values"]
+from = a.fill.values
+to   = sum.values
+"""
+EDITS = """deploy add b fill
+param set b.fill amount 3
+connect more b.fill.values sum.sums
+disconnect more
+deploy remove b
+param set a.fill amount 5
+param set a.fill amount 2
+view save
+"""
 
 
 def connection(name: str, source: str, *targets: str) -> str:
@@ -68,6 +97,15 @@ CASES = {
                       "node twin: command `fill twin` registers twice"),
     "command-fails": (HEAD + operator("Refuse"), "command-fails.txt:1: refused, as the fixture",
                       "refuse\n"),
+    "deploy-missing": (HEAD + '[deploy "a"]\nrecipe = connect\n',
+                       ("deploy-missing.vlp:3: deploy a: ",
+                        "/recipes/connect/view.vlp: cannot be read")),
+    "deploy-cycle": (HEAD + '[deploy "a"]\nrecipe = loop\n',
+                     "the deploys form a cycle through recipe loop (RV06)"),
+    "deploy-param": (HEAD + '[deploy "a"]\nrecipe = fill\nparam = nothing.amount=1\n',
+                     "it sets param nothing.amount, but recipe fill has no node nothing"),
+    "deploy-port": (DEPLOYED.replace("a.fill.values", "a.nothing.values"),
+                    "connection values joins a.nothing, which is no node"),
 }
 WINDOWED = {"draw-writes"}
 
@@ -84,9 +122,10 @@ def cut_spirv(vulpen: str) -> list[Path]:
     return list(written)
 
 
-def check(vulpen: str, folder: Path, name: str, text: str, cause: str,
+def check(vulpen: str, folder: Path, name: str, text: str, cause: str | tuple[str, ...],
           script: str = "") -> str | None:
-    """Why the case failed, or None. A script runs through --source."""
+    """Why the case failed, or None. A cause in parts is a path between them; a script
+    runs through --source."""
     view = folder / f"{name}.vlp"
     view.write_text(text, encoding="utf-8")
     arguments = [view, "--frames", 1, "--fps", 0]
@@ -94,7 +133,8 @@ def check(vulpen: str, folder: Path, name: str, text: str, cause: str,
         (folder / f"{name}.txt").write_text(script, encoding="utf-8")
         arguments += ["--source", folder / f"{name}.txt"]
     code, output = run(vulpen, arguments, headless=name not in WINDOWED)
-    if code != 1 or cause not in output or problems(output):
+    if code != 1 or any(part not in output for part in
+                        ((cause,) if isinstance(cause, str) else cause)) or problems(output):
         return f"{name}: expected exit 1 and '{cause}', got exit {code}:\n{output}"
     return None
 
@@ -113,6 +153,19 @@ def no_limit(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def deploys(vulpen: str, folder: Path) -> str | None:
+    """Why a deploy did not run, or its edits did not save it back unchanged, or None."""
+    view = folder / "deployed.vlp"
+    view.write_text(DEPLOYED, encoding="utf-8")
+    edits = folder / "deploys.txt"
+    edits.write_text(EDITS, encoding="utf-8")
+    code, output = run(vulpen, [view, "--frames", 1, "--fps", 0, "--source", edits])
+    saved = view.read_text(encoding="utf-8")
+    if code != 0 or problems(output) or saved != DEPLOYED:
+        return f"deploys: expected exit 0 and the same manifest, got exit {code}:\n{output}\n{saved}"
+    return None
+
+
 def main() -> None:
     vulpen = sys.argv[1]
     cut = cut_spirv(vulpen)
@@ -120,11 +173,13 @@ def main() -> None:
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary) / "mistakes"
             folder.mkdir()
+            (folder / "recipes").symlink_to(RECIPES, target_is_directory=True)
             failed = [problem for name, (text, cause, *script) in CASES.items()
                       if name not in WINDOWED or display()
                       if (problem := check(vulpen, folder, name, text, cause, *script))]
-            if problem := no_limit(vulpen, folder):
-                failed.append(problem)
+            for problem in (no_limit(vulpen, folder), deploys(vulpen, folder)):
+                if problem:
+                    failed.append(problem)
     finally:
         for file in cut:
             file.unlink()

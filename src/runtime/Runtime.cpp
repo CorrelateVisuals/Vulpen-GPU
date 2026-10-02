@@ -250,7 +250,7 @@ bool Runtime::start() {
   View view = Manifest::load(_options.manifest);
   const std::filesystem::path folder = view.file.parent_path();
   // Only a view that draws opens a window; every other view runs headless (V07).
-  const bool draws = Schedule::draws(view);
+  const bool draws = Schedule::draws(Manifest::flatten(view));
   _log.write(Level::info,
              Tag::run,
              std::format("view {} from {}: {}",

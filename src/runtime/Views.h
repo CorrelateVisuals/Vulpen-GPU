@@ -22,7 +22,8 @@ public:
   Views(const Views &) = delete;
   Views &operator=(const Views &) = delete;
 
-  // The view as the changes so far left it, which the next frame's schedule runs.
+  // The view as the changes so far left it, deploys unfolded, which the next frame's
+  // schedule runs.
   const View &view() const;
   // The schedule a frame runs, rebuilt first if the view changed since.
   Schedule &schedule();
@@ -35,11 +36,16 @@ private:
   const View *find(std::string_view name) override;
   void replace(std::string_view name, View view) override;
   void command(Call &call) override;
-  void rebuild(std::unique_ptr<View> view);
+  void rebuild();
 
   const Wiring &_wiring;
-  std::unique_ptr<View> _view;   // what the schedule runs, so it outlives the schedule
-  std::unique_ptr<View> _edited; // what commands made of it since; null when nothing
+  // The view as its manifest says, which edits and save work on, and with its deploys
+  // unfolded, which the schedule runs and so outlives.
+  std::unique_ptr<View> _view;
+  std::unique_ptr<View> _flat;
+  // What commands made of the view since, both ways; null when nothing.
+  std::unique_ptr<View> _edited;
+  std::unique_ptr<View> _edited_flat;
   std::filesystem::file_time_type _read; // the manifest's, when it was last read or saved
   std::unique_ptr<Schedule> _schedule;
   const Command _save;

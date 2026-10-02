@@ -16,6 +16,11 @@ public:
   // A comment a person wrote stays over the line it was written over, or at the end of
   // the line it ended, while that line's section or word lives on.
   static void save(const View &view);
+  // The view as the schedule runs it: each deploy's nodes and connections, from its
+  // recipe's view.vlp in the view's recipes, named <deploy>.<name> and with the params
+  // the deploy sets. A recipe may deploy others, never itself (RV06). Throws naming the
+  // deploy, and what it lacks.
+  static View flatten(const View &view);
 };
 
 } // namespace VP
