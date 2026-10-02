@@ -43,6 +43,18 @@ void check_name(std::string_view what, std::string_view name) {
         "{} {} is not a name: a name holds letters, digits, _ and -", what, name));
 }
 
+// A manifest reads # as the start of a comment and a line break as the end of a line, so
+// a value that holds either would not survive a save. Blanks never reach a value: they
+// split the words of a command, and a manifest trims them.
+void check_value(std::string_view key, std::string_view value) {
+  if (value.find_first_of("#\n") != std::string_view::npos)
+    throw std::runtime_error(std::format(
+        "{} {}: a value holds no # and no line break, which a manifest reads as a "
+        "comment and a new line",
+        key,
+        value));
+}
+
 [[noreturn]] void unknown_word(std::string_view key) {
   throw std::runtime_error(
       std::format("unknown word {} in a node; its words are recipe, operator, shader, "
@@ -221,6 +233,7 @@ void disconnect(View &view, Arguments arguments) {
 void param_set(View &view, Arguments arguments) {
   Node &node = existing(view, arguments[0]);
   check_name("param", arguments[1]);
+  check_value(arguments[1], arguments[2]);
   const auto found = std::ranges::find(node.params, arguments[1], &Param::key);
   if (found != node.params.end())
     found->value = arguments[2];
@@ -270,6 +283,7 @@ Edits::Edits(Commands &commands, ViewLookup &views) : _views(views) {
 void Edits::word(Node &node, std::string_view key, std::string_view value) {
   if (value.empty())
     throw std::runtime_error(std::format("{} has no value", key));
+  check_value(key, value);
   if (key == "recipe") {
     set_once(node.recipe, key, value);
   } else if (key == "operator") {

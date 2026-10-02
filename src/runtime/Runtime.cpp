@@ -265,7 +265,7 @@ bool Runtime::start() {
                          .input = _ports,
                          .files = _ports,
                          .terminal = _ports});
-  _views.emplace(*_wiring, std::move(view));
+  _views.emplace(*_wiring, std::move(view), _commands);
   _edits.emplace(_commands, *_views);
   if (!_views->schedule().ok())
     return false;

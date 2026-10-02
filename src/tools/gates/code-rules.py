@@ -5,7 +5,11 @@
   or delete;
 - RA01: OS APIs and OS conditionals live only in the platform files, so no other file
   includes a header beyond the standard library, Vulkan, glm, VMA and stb_truetype, or
-  tests for an OS.
+  tests for an OS;
+- RA04: only the platform files write or move a file, so every save goes through
+  Files::save, which writes a temp file and renames it over the old one. A run killed
+  mid-save then leaves the old file or the new one; a kill rarely lands inside a small
+  file's write, so a test that kills runs would pass an unsafe save.
 
 Comments and string literals are left out, so prose and log text never trip a rule.
 
@@ -29,6 +33,9 @@ SHARED = re.compile(r"\b(?:shared_ptr|make_shared)\b")
 NEW_OR_DELETE = re.compile(r"\b(?:new|delete)\b")
 INCLUDE = re.compile(r"^\s*#\s*include\s*<([^>]+)>", re.MULTILINE)
 OS_TESTS = re.compile(r"\b(?:_WIN32|_WIN64|__linux__|__APPLE__|__unix__|__ANDROID__)\b")
+WRITES = re.compile(r"\bstd::(?:ofstream|fstream|fopen|filesystem::(?:rename|remove"
+                    r"|remove_all|copy|copy_file|create_directory|create_directories"
+                    r"|resize_file))\b")
 
 
 def blank(match: re.Match) -> str:
@@ -62,6 +69,10 @@ def problems(file: Path) -> list[str]:
         for match in OS_TESTS.finditer(code):
             line = code.count("\n", 0, match.start()) + 1
             found.append(f"{name}:{line}: {match.group(0)} outside the platform files (RA01)")
+        for match in WRITES.finditer(code):
+            line = code.count("\n", 0, match.start()) + 1
+            found.append(f"{name}:{line}: {match.group(0)} writes outside the platform "
+                         "files; save through Files::save (RA04)")
     return found
 
 

@@ -4,11 +4,14 @@
 #include "runtime/Edits.h"
 #include "runtime/View.h"
 
+#include <algorithm>
 #include <charconv>
 #include <format>
 #include <fstream>
+#include <map>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -27,6 +30,25 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
+// What a person wrote around one line of a manifest, so a save puts it back.
+struct Note {
+  std::string above; // the comment lines over it
+  std::string after; // the comment that ends it, with the blanks before it
+};
+// By the place of the line each belongs to; "" holds the comments after the last line.
+using Notes = std::map<std::string, Note, std::less<>>;
+
+// A line's place: a section's header, or one word of it. A word that may repeat is told
+// apart by what it names: a shader by its file, a param by its key, a to by its port.
+std::string
+place(std::string_view section, std::string_view key = {}, std::string_view value = {}) {
+  if (key == "param")
+    value = trim(value.substr(0, value.find('=')));
+  else if (key != "shader" && key != "to")
+    value = {};
+  return std::format("{}\n{}\n{}", section, key, value);
+}
+
 // Reads one manifest line by line, and runs what it describes through the edits, so a
 // loaded view and a typed one pass the same checks. Every mistake names its line (A02).
 // Each section has a closed set of words (V04), so an unknown word is a mistake, never
@@ -36,6 +58,9 @@ public:
   explicit Reader(const std::filesystem::path &file)
       : _file(std::filesystem::absolute(file)) {}
   View read();
+  const Notes &notes() const {
+    return _notes;
+  }
 
 private:
   enum class Section { none, manifest, node, connection };
@@ -48,11 +73,15 @@ private:
   void connection_word(std::string_view key, std::string_view value);
   void add_node();
   std::uint32_t number(std::string_view text) const;
+  void note(const std::string &line, std::string_view text, std::string at);
 
   const std::filesystem::path _file;
   View _view;
   Section _section = Section::none;
+  std::string _place; // the section's, as place() takes it
   std::size_t _line = 0;
+  std::string _above; // comment lines since the last line with words
+  Notes _notes;
   // The node a section describes, added once its section ends, from the section's line.
   std::optional<Node> _node;
   std::size_t _node_line = 0;
@@ -86,17 +115,27 @@ View Reader::read() {
   for (std::string line; std::getline(in, line);) {
     ++_line;
     const std::string_view text = trim(std::string_view(line).substr(0, line.find('#')));
-    if (text.empty())
+    if (text.empty()) {
+      // A blank line before any comment is layout, which a save sets itself.
+      if (!_above.empty() || line.find('#') != std::string::npos)
+        _above.append(line).push_back('\n');
       continue;
+    }
     if (text.front() == '[') {
       header(text);
+      note(line, text, place(_place));
       continue;
     }
     const std::size_t equals = text.find('=');
     if (equals == std::string_view::npos)
       fail("expected `word = value`");
-    word(trim(text.substr(0, equals)), trim(text.substr(equals + 1)));
+    const std::string_view key = trim(text.substr(0, equals));
+    const std::string_view value = trim(text.substr(equals + 1));
+    word(key, value);
+    note(line, text, place(_place, key, value));
   }
+  if (!_above.empty())
+    _notes.emplace("", Note{.above = std::move(_above)});
   _line = 0;
   if (_version != manifest_version)
     fail(
@@ -123,6 +162,7 @@ void Reader::header(std::string_view text) {
     name = name.substr(1, name.size() - 2);
   else if (!name.empty())
     fail("a section's name is quoted: [node \"name\"]");
+  _place = name.empty() ? std::string(kind) : std::format("{} {}", kind, name);
   if (kind == "manifest" && name.empty()) {
     if (_manifest)
       fail("[manifest] is given twice");
@@ -189,10 +229,108 @@ std::uint32_t Reader::number(std::string_view text) const {
   return value;
 }
 
+// The comment lines since the last line with words belong to this line, and so does
+// the comment that ends it.
+void Reader::note(const std::string &line, std::string_view text, std::string at) {
+  const auto end = static_cast<std::size_t>(text.data() + text.size() - line.data());
+  _notes[std::move(at)] = {std::exchange(_above, {}),
+                           line.find('#') == std::string::npos ? "" : line.substr(end)};
+}
+
+// One word of a section, as a save writes it.
+struct Word {
+  std::string_view key;
+  std::string value;
+};
+
+// In the order a person reads a node: where it comes from, what it runs, then its
+// settings.
+std::vector<Word> words(const Node &node) {
+  std::vector<Word> words{{"recipe", node.recipe}};
+  if (!node.operator_name.empty())
+    words.push_back({"operator", node.operator_name});
+  for (const std::string &shader : node.shaders)
+    words.push_back({"shader", shader});
+  if (node.invocations != 0)
+    words.push_back({"invocations", std::to_string(node.invocations)});
+  for (const Param &param : node.params)
+    words.push_back({"param", std::format("{}={}", param.key, param.value)});
+  if (!node.log.empty())
+    words.push_back({"log", node.log});
+  return words;
+}
+
+std::vector<Word> words(const Connection &connection) {
+  std::vector<Word> words{
+      {"from", std::format("{}.{}", connection.from.node, connection.from.port)}};
+  for (const Endpoint &to : connection.to)
+    words.push_back({"to", std::format("{}.{}", to.node, to.port)});
+  return words;
+}
+
+void put(std::string &text,
+         const Notes &notes,
+         const std::string &at,
+         std::string_view line) {
+  if (const auto found = notes.find(at); found != notes.end())
+    text.append(found->second.above).append(line).append(found->second.after);
+  else
+    text.append(line);
+  text.push_back('\n');
+}
+
+// A blank line before every section but the first, and its keys aligned, as a person
+// lays a manifest out.
+void section(std::string &text,
+             const Notes &notes,
+             std::string_view kind,
+             std::string_view name,
+             const std::vector<Word> &words) {
+  const std::string at =
+      name.empty() ? std::string(kind) : std::format("{} {}", kind, name);
+  if (!text.empty())
+    text.push_back('\n');
+  put(text,
+      notes,
+      place(at),
+      name.empty() ? std::format("[{}]", kind) : std::format("[{} \"{}\"]", kind, name));
+  std::size_t width = 0;
+  for (const Word &word : words)
+    width = std::max(width, word.key.size());
+  for (const Word &word : words)
+    put(text,
+        notes,
+        place(at, word.key, word.value),
+        std::format("{:<{}} = {}", word.key, width, word.value));
+}
+
+// The view in the words load reads, with what a person wrote around each line.
+std::string text(const View &view, const Notes &notes) {
+  std::string text;
+  section(text, notes, "manifest", {}, {{"version", std::to_string(manifest_version)}});
+  for (const Node &node : view.nodes)
+    section(text, notes, "node", node.name, words(node));
+  for (const Connection &connection : view.connections)
+    section(text, notes, "connection", connection.name, words(connection));
+  if (const auto end = notes.find(""); end != notes.end())
+    text.append("\n").append(end->second.above);
+  return text;
+}
+
 } // namespace
 
 View Manifest::load(const std::filesystem::path &file) {
   return Reader(file).read();
+}
+
+// The comments come from the file being replaced, read as a load reads it.
+void Manifest::save(const View &view) {
+  std::error_code missing;
+  if (!std::filesystem::exists(view.file, missing))
+    return Files::save(view.file, text(view, {}));
+  Reader reader(view.file);
+  reader.read();
+  Files::save(view.file, text(view, reader.notes()));
 }
 
 } // namespace VP

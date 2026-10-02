@@ -16,8 +16,8 @@ struct Wiring;
 // manifest does not; a command reaches a hosted view by its name.
 class Views final : public ViewLookup, public CommandHandler {
 public:
-  // Builds the schedule of the view vulpen started with.
-  Views(const Wiring &wiring, View view);
+  // Builds the schedule of the view vulpen started with, and registers view save.
+  Views(const Wiring &wiring, View view, Commands &commands);
   ~Views();
   Views(const Views &) = delete;
   Views &operator=(const Views &) = delete;
@@ -37,8 +37,9 @@ private:
 
   const Wiring &_wiring;
   std::unique_ptr<View> _view; // what the schedule runs, so it outlives the schedule
-  std::filesystem::file_time_type _read; // the manifest's, when it was last read
+  std::filesystem::file_time_type _read; // the manifest's, when it was last read or saved
   std::unique_ptr<Schedule> _schedule;
+  const Command _save;
 };
 
 } // namespace VP

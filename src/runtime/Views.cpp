@@ -6,6 +6,7 @@
 #include "runtime/View.h"
 
 #include <format>
+#include <stdexcept>
 
 namespace VP {
 
@@ -20,9 +21,13 @@ std::filesystem::file_time_type stamp(const std::filesystem::path &file) {
 
 } // namespace
 
-Views::Views(const Wiring &wiring, View view)
+Views::Views(const Wiring &wiring, View view, Commands &commands)
     : _wiring(wiring), _view(std::make_unique<View>(std::move(view))),
-      _read(stamp(_view->file)), _schedule(std::make_unique<Schedule>(wiring, *_view)) {}
+      _read(stamp(_view->file)), _schedule(std::make_unique<Schedule>(wiring, *_view)),
+      _save(commands.add("view save",
+                         "writes the view over its manifest, keeping the comments in it",
+                         *this,
+                         Primitive::yes)) {}
 
 Views::~Views() = default;
 
@@ -54,7 +59,22 @@ void Views::replace(std::string_view, View view) {
   rebuild(std::make_unique<View>(std::move(view)));
 }
 
-void Views::command(Call &) {}
+// A manifest changed since vulpen read or saved it holds what the view does not, which a
+// save would silently lose.
+void Views::command(Call &call) {
+  if (!call.is(_save))
+    return;
+  std::error_code missing;
+  if (std::filesystem::exists(_view->file, missing) && stamp(_view->file) != _read)
+    throw std::runtime_error(
+        std::format("{} changed since vulpen read it, and a save would lose that change; "
+                    "move the file aside to save over it",
+                    _view->file.string()));
+  Manifest::save(*_view);
+  _read = stamp(_view->file);
+  _wiring.log.write(
+      Level::info, Tag::run, std::format("view save: {}", _view->file.string()));
+}
 
 // The new schedule takes from the old one, which still reads the old view, so the old
 // view goes last.

@@ -25,9 +25,9 @@ protected:
   ~ViewLookup() = default;
 };
 
-// Whether the log keeps a command's runs. A primitive edits a view, so replaying the
-// primitives rebuilds the graph (V08). Any other command only reads, or runs others,
-// whose primitives the log keeps in its place.
+// Whether the log keeps a command's runs. A primitive edits a view or saves it, so
+// replaying the primitives rebuilds the graph and the files saved from it (V08). Any
+// other command only reads, or runs others, whose primitives the log keeps in its place.
 enum class Primitive : bool { no, yes };
 
 // The session as groups: each line from outside the port keeps the primitives it ran,

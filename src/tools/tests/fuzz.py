@@ -5,7 +5,8 @@ build. Each run either works, or ends with exit 1 and an error that names its ca
 does a refusal that only repeats what the standard library threw (A03).
 
 With --commands, the manifest stays whole and a script of commands is mutated instead,
-which the wave view runs through the command port before its first frame (RV04).
+which a copy of the wave view runs through the command port before its first frame
+(RV04); a copy, since the script saves it.
 
 The mutations follow a seed, so a failure repeats (C01): the output names the seed, the
 run and its input. "--seed today" takes the date, so each night tries new input.
@@ -24,9 +25,9 @@ from pathlib import Path
 from harness import EXAMPLES, environment, problems, run
 
 SEED_VIEW = EXAMPLES / "wave" / "view.vlp"
-# A script of every edit, which leaves the wave graph whole, then saves its log and
-# replays it, which leaves the graph as it was. quit comes in through the tokens, so most
-# runs go on to cook their frames on the edited graph.
+# A script of every edit, which leaves the wave graph whole, then saves the view and its
+# log and replays the log, which leaves the graph as it was. quit comes in through the
+# tokens, so most runs go on to cook their frames on the edited graph.
 SEED_SCRIPT = """\
 param set wave amplitude 0.5
 param set wave spare 1
@@ -37,6 +38,7 @@ node remove probe
 node add probe recipe=probe operator=Probe shader=Probe.comp invocations=8 param=step=64
 param set probe every 30
 connect values wave.values probe.values
+view save
 log save session.log
 source session.log
 """
@@ -47,7 +49,7 @@ TOKENS = ["", "0", "1", "-1", "64", "65", "4294967295", "4294967296", "1e9", "0.
           "wave", "probe", "values", "samples", "Wave.comp", "Probe.comp", "Wave.vert",
           "quit", "node", "add", "remove", "set", "unset", "param", "connect", "disconnect",
           "operator", "shader", "invocations", "log", "save", "source", "session.log",
-          "script.txt",
+          "script.txt", "view",
           "[node \"wave\"]", "[connection \"values\"]", "[manifest]", "version = 1"]
 # What std::exception::what() says for the standard library's own throws: a message that
 # names no file, node or key of the view.
@@ -100,10 +102,12 @@ def main() -> None:
         view = Path(temporary) / "wave" / "view.vlp"  # named wave, so it finds its recipes
         view.parent.mkdir()
         script = Path(temporary) / "script.txt"
-        mutated, arguments = ((script, [SEED_VIEW, "--source", script]) if options.commands
+        mutated, arguments = ((script, [view, "--source", script]) if options.commands
                               else (view, [view]))
         for index in range(options.count):
             text = mutate(seed, chance)
+            if options.commands:
+                view.write_text(SEED_VIEW.read_text(encoding="utf-8"), encoding="utf-8")
             mutated.write_text(text, encoding="utf-8", errors="replace")
             try:
                 code, output = run(options.vulpen,
