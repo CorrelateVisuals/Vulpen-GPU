@@ -249,32 +249,40 @@ private:
   const std::uint64_t _frame;
 };
 
+// Of the nodes whose writers are all placed, the first in the manifest goes next, so
+// nodes the connections leave unordered, such as two draws, run as the manifest lists
+// them. Every edit reorders the view, so the connections are indexed once, not searched
+// for each node placed.
 std::vector<const Node *> Schedule::order(const View &view) {
-  std::vector<const Node *> placed;
-  std::vector<const Node *> left;
+  std::map<std::string_view, std::size_t> index; // into view.nodes, by name
   for (const Node &node : view.nodes)
-    left.push_back(&node);
-  const auto is_placed = [&](std::string_view name) {
-    return std::ranges::any_of(placed,
-                               [&](const Node *node) { return node->name == name; });
-  };
-  const auto waits = [&](const Node *reader) {
-    return std::ranges::any_of(view.connections, [&](const Connection &connection) {
-      return connection.from.node != reader->name && !is_placed(connection.from.node) &&
-             std::ranges::any_of(connection.to, [&](const Endpoint &to) {
-               return to.node == reader->name;
-             });
-    });
-  };
-  while (!left.empty()) {
-    const auto ready =
-        std::ranges::find_if(left, [&](const Node *node) { return !waits(node); });
-    if (ready == left.end())
-      throw std::runtime_error(std::format("{}: the connections form a cycle through {}",
-                                           view.file.string(),
-                                           left.front()->name));
-    placed.push_back(*ready);
-    left.erase(ready);
+    index.emplace(node.name, index.size());
+  std::vector<std::size_t> waits(view.nodes.size()); // writers not placed yet
+  std::multimap<std::size_t, std::size_t> readers;
+  for (const Connection &connection : view.connections)
+    for (const Endpoint &to : connection.to)
+      if (to.node != connection.from.node) {
+        readers.emplace(index.at(connection.from.node), index.at(to.node));
+        ++waits[index.at(to.node)];
+      }
+  std::set<std::size_t> ready;
+  for (std::size_t node = 0; node < waits.size(); ++node)
+    if (waits[node] == 0)
+      ready.insert(node);
+  std::vector<const Node *> placed;
+  while (!ready.empty()) {
+    const std::size_t node = ready.extract(ready.begin()).value();
+    placed.push_back(&view.nodes[node]);
+    for (auto [reader, end] = readers.equal_range(node); reader != end; ++reader)
+      if (--waits[reader->second] == 0)
+        ready.insert(reader->second);
+  }
+  if (placed.size() < view.nodes.size()) {
+    const auto left =
+        std::ranges::find_if(waits, [](std::size_t count) { return count != 0; });
+    throw std::runtime_error(std::format("{}: the connections form a cycle through {}",
+                                         view.file.string(),
+                                         view.nodes[left - waits.begin()].name));
   }
   return placed;
 }
