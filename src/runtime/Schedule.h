@@ -30,7 +30,8 @@ struct View;
 struct Wiring {
   const Pipelines &pipelines;
   const Resources &resources;
-  // What draws render into; null without a window.
+  // What draws render into; null without a window. Runtime.cpp sets it again whenever
+  // the window opens or closes.
   VkRenderPass render_pass;
   Recipes &recipes;
   const Log &log;

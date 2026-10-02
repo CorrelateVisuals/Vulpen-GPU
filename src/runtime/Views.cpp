@@ -31,7 +31,11 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
 
 Views::~Views() = default;
 
-// One rebuild for all the commands since the last frame, so a script is checked as a
+const View &Views::view() const {
+  return _edited ? *_edited : *_view;
+}
+
+// One rebuild for all the changes since the last frame, so a script is checked as a
 // whole, and a replay costs about what a load does.
 Schedule &Views::schedule() {
   if (_edited)
@@ -39,19 +43,23 @@ Schedule &Views::schedule() {
   return *_schedule;
 }
 
+// A change waiting for the next frame, as an edit does, so whoever builds the frame
+// sees the view first: the window must be open before a draw's pipeline is made.
 void Views::reload() {
-  std::unique_ptr<View> view = std::move(_edited);
   if (const auto time = stamp(_view->file); time != _read) {
     try {
-      view = std::make_unique<View>(Manifest::load(_view->file));
+      _edited = std::make_unique<View>(Manifest::load(_view->file));
       _read = time;
+      return;
     } catch (const std::exception &failure) {
       _wiring.log.write(Level::error,
                         Tag::mod,
                         std::format("{}; the running graph stays", failure.what()));
     }
   }
-  rebuild(std::move(view));
+  // The same view, so the rebuild takes the new modules and SPIR-V and keeps the rest.
+  if (!_edited)
+    _edited = std::make_unique<View>(*_view);
 }
 
 // Hosts no other view yet.
@@ -84,9 +92,8 @@ void Views::command(Call &call) {
 // The new schedule takes from the old one, which still reads the old view, so the old
 // view goes last.
 void Views::rebuild(std::unique_ptr<View> view) {
-  _schedule = std::make_unique<Schedule>(_wiring, view ? *view : *_view, _schedule.get());
-  if (view)
-    _view = std::move(view);
+  _schedule = std::make_unique<Schedule>(_wiring, *view, _schedule.get());
+  _view = std::move(view);
 }
 
 } // namespace VP

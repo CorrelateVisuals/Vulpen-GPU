@@ -36,16 +36,11 @@ void bind(VkCommandBuffer commands, VkPipelineLayout layout, const Pass &pass) {
 // Each part borrows the ones made before it, so they are destroyed in reverse.
 struct Engine::Gpu {
   Gpu(const Log &log, const Window *window)
-      : mechanics(log, window),
+      : log(log), mechanics(log, window),
         resources(mechanics.instance(), mechanics.physical_device(), mechanics.device()),
         pipelines(mechanics.device(), resources) {
     if (window)
-      swapchain.emplace(log,
-                        mechanics.physical_device(),
-                        mechanics.device(),
-                        mechanics.queue(),
-                        mechanics.surface(),
-                        *window);
+      swapchain.emplace(log, mechanics, *window);
   }
 
   void dispatch(VkCommandBuffer commands, std::span<const Pass> passes);
@@ -53,6 +48,7 @@ struct Engine::Gpu {
             const Target &target,
             std::span<const Pass> passes) const;
 
+  const Log &log;
   Mechanics mechanics;
   Resources resources;
   Pipelines pipelines;
@@ -73,6 +69,14 @@ const Resources &Engine::resources() const {
 
 const Pipelines &Engine::pipelines() const {
   return _gpu->pipelines;
+}
+
+void Engine::open(const Window &window) {
+  _gpu->swapchain.emplace(_gpu->log, _gpu->mechanics, window);
+}
+
+void Engine::close() {
+  _gpu->swapchain.reset();
 }
 
 VkRenderPass Engine::render_pass() const {

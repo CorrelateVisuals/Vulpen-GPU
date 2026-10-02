@@ -83,6 +83,17 @@ VkRenderPass make_render_pass(VkDevice device, VkFormat format) {
   return render_pass;
 }
 
+// The window's surface, which only a device whose queue presents to it can show.
+VkSurfaceKHR make_surface(const Mechanics &mechanics, const Window &window) {
+  const VkSurfaceKHR surface = window.surface(mechanics.instance());
+  if (!mechanics.presents(surface)) {
+    vkDestroySurfaceKHR(mechanics.instance(), surface, nullptr);
+    throw std::runtime_error("the GPU vulpen runs on cannot present to the window; a "
+                             "view that draws at start runs on one that can");
+  }
+  return surface;
+}
+
 VkSemaphore make_semaphore(VkDevice device) {
   const VkSemaphoreCreateInfo info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
   VkSemaphore semaphore = VK_NULL_HANDLE;
@@ -92,15 +103,12 @@ VkSemaphore make_semaphore(VkDevice device) {
 
 } // namespace
 
-Swapchain::Swapchain(const Log &log,
-                     VkPhysicalDevice physical_device,
-                     VkDevice device,
-                     VkQueue queue,
-                     VkSurfaceKHR surface,
-                     const Window &window)
-    : _log(log), _window(window), _physical_device(physical_device), _device(device),
-      _queue(queue), _surface(surface), _format(pick_format(physical_device, surface)),
-      _present_mode(pick_present_mode(physical_device, surface)),
+Swapchain::Swapchain(const Log &log, const Mechanics &mechanics, const Window &window)
+    : _log(log), _window(window), _instance(mechanics.instance()),
+      _physical_device(mechanics.physical_device()), _device(mechanics.device()),
+      _queue(mechanics.queue()), _surface(make_surface(mechanics, window)),
+      _format(pick_format(_physical_device, _surface)),
+      _present_mode(pick_present_mode(_physical_device, _surface)),
       _render_pass(make_render_pass(_device, _format.format)),
       _acquired(make_semaphore(_device)) {
   if (_format.format != srgb.format || _format.colorSpace != srgb.colorSpace)
@@ -126,6 +134,7 @@ Swapchain::~Swapchain() {
   vkDestroySwapchainKHR(_device, _swapchain, nullptr);
   vkDestroySemaphore(_device, _acquired, nullptr);
   vkDestroyRenderPass(_device, _render_pass, nullptr);
+  vkDestroySurfaceKHR(_instance, _surface, nullptr);
 }
 
 VkRenderPass Swapchain::render_pass() const {

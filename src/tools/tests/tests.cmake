@@ -97,5 +97,9 @@ if(NOT VULPEN_SANITIZERS)
   if(VULPEN_LIVE)
     vulpen_test(swap-soak ${python} ${tests}/soak.py ${vulpen_file} --swaps 500)
     set_tests_properties(swap-soak PROPERTIES LABELS nightly TIMEOUT 7200)
+    # The window opens and closes 100 times (T43); with no display, it is skipped.
+    vulpen_test(window-soak ${python} ${tests}/soak.py ${vulpen_file} --windows 100)
+    set_tests_properties(window-soak PROPERTIES LABELS nightly TIMEOUT 3600
+                                                SKIP_REGULAR_EXPRESSION "no display")
   endif()
 endif()

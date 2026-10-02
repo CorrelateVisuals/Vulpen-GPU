@@ -52,6 +52,11 @@ std::string text_of(const std::filesystem::path &file) {
   return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
+// A window's title names the view it shows.
+std::string title(const View &view) {
+  return std::format("{} - vulpen", view.name);
+}
+
 std::string joined(const std::vector<std::string> &names) {
   std::string text;
   for (const std::string &name : names)
@@ -87,6 +92,7 @@ private:
   void loop();
   void watch();
   void swap();
+  Schedule &prepare();
 
   const Options _options;
   const Log _log;
@@ -234,7 +240,7 @@ int Runtime::run() {
     _log.write(Level::error, Tag::run, failure.what());
     return 1;
   }
-  return _views->schedule().ok() ? 0 : 1;
+  return prepare().ok() ? 0 : 1;
 }
 
 // False when a node is in error.
@@ -253,7 +259,7 @@ bool Runtime::start() {
                          draws ? "a node draws, so it opens a window"
                                : "no node draws, so it runs headless"));
   if (draws)
-    _window.emplace(std::format("{} - vulpen", view.name), window_size);
+    _window.emplace(title(view), window_size);
   _engine.emplace(_log, _window ? &*_window : nullptr);
   _wiring.emplace(Wiring{.pipelines = _engine->pipelines(),
                          .resources = _engine->resources(),
@@ -293,7 +299,7 @@ void Runtime::loop() {
     _engine->wait();
     if (_live)
       watch();
-    Schedule &schedule = _views->schedule();
+    Schedule &schedule = prepare();
     schedule.cook(_options.first_frame + frames);
     _engine->run(schedule.take_clears(), schedule.passes());
     next = std::max(next + period, std::chrono::steady_clock::now());
@@ -327,16 +333,41 @@ void Runtime::watch() {
 // Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest.
 void Runtime::swap() {
   const std::vector<std::string> rewritten = _recipes.rewritten();
-  _views->schedule().drop_operators(rewritten);
+  prepare().drop_operators(rewritten);
   for (const std::string &recipe : rewritten)
     _recipes.unload(recipe);
   _views->reload();
+  // Rebuilt now, not at the next frame, so the line below follows what the swap did and
+  // any error it met.
+  prepare();
   _log.write(Level::info,
              Tag::mod,
              std::format("built in {:.2f} s and swapped{}{}",
                          _live->took().count(),
                          rewritten.empty() ? "" : "; new modules: ",
                          joined(rewritten)));
+}
+
+// The schedule the next frame runs. The window follows the view first (V07): it opens
+// before the rebuild that brings the first draw, so the draw has a window to draw into,
+// and closes once no node draws.
+Schedule &Runtime::prepare() {
+  const View &view = _views->view();
+  if (Schedule::draws(view) != _window.has_value()) {
+    _log.write(Level::info,
+               Tag::run,
+               _window ? "no node draws, so the window closes"
+                       : "a node draws, so the window opens");
+    if (_window) {
+      _engine->close();
+      _window.reset();
+    } else {
+      _window.emplace(title(view), window_size);
+      _engine->open(*_window);
+    }
+    _wiring->render_pass = _engine->render_pass();
+  }
+  return _views->schedule();
 }
 
 int run(std::span<char *const> arguments, std::string_view build) {

@@ -12,6 +12,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace VP {
@@ -21,6 +22,9 @@ namespace {
 constexpr auto no_timeout = std::numeric_limits<std::uint64_t>::max();
 constexpr float queue_priority = 1.0f;
 constexpr const char *validation_layer = "VK_LAYER_KHRONOS_validation";
+// How the instance extension of every kind of surface ends: VK_KHR_surface, and each
+// platform's, such as VK_KHR_xcb_surface.
+constexpr std::string_view surface_extension = "_surface";
 #ifdef NDEBUG
 constexpr bool validate = false;
 #else
@@ -50,13 +54,21 @@ bool layer_installed(const char *name) {
   });
 }
 
-VkInstance create_instance(const Log &log, const Window *window) {
+// Every surface extension the loader offers, so a window can open whenever a draw
+// appears, while starting needs no display (V07).
+VkInstance create_instance(const Log &log) {
   const VkApplicationInfo application{.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
                                       .pApplicationName = "vulpen",
                                       .apiVersion = VK_API_VERSION_1_2};
   const bool validated = validate && layer_installed(validation_layer);
-  const std::span<const char *const> extensions =
-      window ? window->vulkan_extensions() : std::span<const char *const>{};
+  std::uint32_t count = 0;
+  vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+  std::vector<VkExtensionProperties> offered(count);
+  vkEnumerateInstanceExtensionProperties(nullptr, &count, offered.data());
+  std::vector<const char *> extensions;
+  for (const VkExtensionProperties &extension : offered)
+    if (std::string_view(extension.extensionName).ends_with(surface_extension))
+      extensions.push_back(extension.extensionName);
   const VkInstanceCreateInfo info{
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
       .pApplicationInfo = &application,
@@ -88,7 +100,7 @@ bool meets_floor(VkPhysicalDevice device) {
          features12.bufferDeviceAddress;
 }
 
-bool presents(VkPhysicalDevice device) {
+bool has_swapchain(VkPhysicalDevice device) {
   std::uint32_t count = 0;
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
   std::vector<VkExtensionProperties> extensions(count);
@@ -98,21 +110,29 @@ bool presents(VkPhysicalDevice device) {
   });
 }
 
-// One queue runs everything: compute, and with a window also draws and presents.
-std::optional<std::uint32_t> queue_family(VkPhysicalDevice device, VkSurfaceKHR surface) {
-  const VkQueueFlags needed =
-      surface ? VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT : VK_QUEUE_COMPUTE_BIT;
+std::vector<VkQueueFamilyProperties> families_of(VkPhysicalDevice device) {
   std::uint32_t count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
   std::vector<VkQueueFamilyProperties> families(count);
   vkGetPhysicalDeviceQueueFamilyProperties(device, &count, families.data());
-  for (std::uint32_t index = 0; index < count; ++index) {
-    VkBool32 present = VK_TRUE;
-    if (surface)
-      vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface, &present);
-    if ((families[index].queueFlags & needed) == needed && present)
-      return index;
-  }
+  return families;
+}
+
+// One queue runs everything: compute, and draws where the device can, so a window can
+// open when a draw appears. With a surface, the queue must present to it.
+std::optional<std::uint32_t> queue_family(VkPhysicalDevice device, VkSurfaceKHR surface) {
+  constexpr std::array<VkQueueFlags, 2> wanted{
+      VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT, VK_QUEUE_COMPUTE_BIT};
+  const std::vector<VkQueueFamilyProperties> families = families_of(device);
+  const auto count = static_cast<std::uint32_t>(families.size());
+  for (const VkQueueFlags needed : std::span(wanted).first(surface ? 1 : wanted.size()))
+    for (std::uint32_t index = 0; index < count; ++index) {
+      VkBool32 present = VK_TRUE;
+      if (surface)
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface, &present);
+      if ((families[index].queueFlags & needed) == needed && present)
+        return index;
+    }
   return std::nullopt;
 }
 
@@ -120,7 +140,7 @@ std::optional<std::uint32_t> queue_family(VkPhysicalDevice device, VkSurfaceKHR 
 const char *unfit(VkPhysicalDevice device, VkSurfaceKHR surface) {
   if (!meets_floor(device))
     return "is below the Vulkan floor";
-  if (surface && !presents(device))
+  if (surface && !has_swapchain(device))
     return "cannot present to the window";
   if (!queue_family(device, surface))
     return "has no queue that runs the view";
@@ -170,9 +190,7 @@ VkPhysicalDevice pick_device(VkInstance instance, VkSurfaceKHR surface, const Lo
   return best;
 }
 
-VkDevice create_device(VkPhysicalDevice physical_device,
-                       std::uint32_t family,
-                       VkSurfaceKHR surface) {
+VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
   const VkDeviceQueueCreateInfo queue{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                       .queueFamilyIndex = family,
                                       .queueCount = 1,
@@ -186,7 +204,8 @@ VkDevice create_device(VkPhysicalDevice physical_device,
                                 .pNext = &features12,
                                 .queueCreateInfoCount = 1,
                                 .pQueueCreateInfos = &queue,
-                                .enabledExtensionCount = surface ? 1u : 0u,
+                                .enabledExtensionCount =
+                                    has_swapchain(physical_device) ? 1u : 0u,
                                 .ppEnabledExtensionNames = &swapchain};
   VkDevice device = VK_NULL_HANDLE;
   check(vkCreateDevice(physical_device, &info, nullptr, &device), "vkCreateDevice");
@@ -201,16 +220,13 @@ void check(VkResult result, const char *call) {
 }
 
 Mechanics::Mechanics(const Log &log, const Window *window)
-    : _instance(create_instance(log, window)),
-      _surface(window ? window->surface(_instance) : VK_NULL_HANDLE),
-      _physical_device(pick_device(_instance, _surface, log)),
-      _queue_family(*queue_family(_physical_device, _surface)),
-      _device(create_device(_physical_device, _queue_family, _surface)) {
-  vkGetDeviceQueue(_device, _queue_family, 0, &_queue);
+    : _instance(create_instance(log)), _choice(choose(_instance, window, log)),
+      _device(create_device(_choice.device, _choice.family)) {
+  vkGetDeviceQueue(_device, _choice.family, 0, &_queue);
   const VkCommandPoolCreateInfo pool{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                      .flags =
                                          VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-                                     .queueFamilyIndex = _queue_family};
+                                     .queueFamilyIndex = _choice.family};
   check(vkCreateCommandPool(_device, &pool, nullptr, &_command_pool),
         "vkCreateCommandPool");
   const VkCommandBufferAllocateInfo commands{
@@ -231,9 +247,6 @@ Mechanics::~Mechanics() {
   vkDestroyFence(_device, _fence, nullptr);
   vkDestroyCommandPool(_device, _command_pool, nullptr);
   vkDestroyDevice(_device, nullptr);
-  // Headless, the instance lacks VK_KHR_surface, so even a null surface is not passed.
-  if (_surface)
-    vkDestroySurfaceKHR(_instance, _surface, nullptr);
   vkDestroyInstance(_instance, nullptr);
 }
 
@@ -242,7 +255,7 @@ VkInstance Mechanics::instance() const {
 }
 
 VkPhysicalDevice Mechanics::physical_device() const {
-  return _physical_device;
+  return _choice.device;
 }
 
 VkDevice Mechanics::device() const {
@@ -253,8 +266,24 @@ VkQueue Mechanics::queue() const {
   return _queue;
 }
 
-VkSurfaceKHR Mechanics::surface() const {
-  return _surface;
+// A device chosen headless may have only a queue that computes, which cannot draw.
+bool Mechanics::presents(VkSurfaceKHR surface) const {
+  VkBool32 present = VK_FALSE;
+  vkGetPhysicalDeviceSurfaceSupportKHR(_choice.device, _choice.family, surface, &present);
+  return present && has_swapchain(_choice.device) &&
+         (families_of(_choice.device)[_choice.family].queueFlags & VK_QUEUE_GRAPHICS_BIT);
+}
+
+// A window at start gets a device and queue that present to it, through a surface made
+// only for the choice: the window's output makes its own.
+Mechanics::Choice
+Mechanics::choose(VkInstance instance, const Window *window, const Log &log) {
+  const VkSurfaceKHR surface = window ? window->surface(instance) : VK_NULL_HANDLE;
+  const VkPhysicalDevice device = pick_device(instance, surface, log);
+  const Choice choice{.device = device, .family = *queue_family(device, surface)};
+  if (surface)
+    vkDestroySurfaceKHR(instance, surface, nullptr);
+  return choice;
 }
 
 void Mechanics::wait() const {

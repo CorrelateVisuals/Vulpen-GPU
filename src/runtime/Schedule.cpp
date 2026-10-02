@@ -421,8 +421,7 @@ void Schedule::make_pipeline(Bound &bound) const {
   if (!is_draw(node)) {
     bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
   } else if (!_wiring.render_pass) {
-    throw std::runtime_error("it draws, but vulpen opened no window for this view; "
-                             "restart vulpen to open one");
+    throw std::runtime_error("it draws, but no window is open to draw into");
   } else {
     const std::size_t vertex = node.shaders.front().ends_with(vertex_stage) ? 0 : 1;
     bound.pipeline.emplace(_wiring.pipelines,

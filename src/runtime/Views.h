@@ -22,17 +22,19 @@ public:
   Views(const Views &) = delete;
   Views &operator=(const Views &) = delete;
 
-  // The schedule a frame runs, rebuilt first if commands changed the view since.
+  // The view as the changes so far left it, which the next frame's schedule runs.
+  const View &view() const;
+  // The schedule a frame runs, rebuilt first if the view changed since.
   Schedule &schedule();
-  // After a live build. The manifest is read again only when it changed since it was
-  // read, so the edits since then stay; the running graph stays when it does not load.
+  // After a live build: the next frame's schedule takes what it rebuilt. The manifest is
+  // read again only when it changed since it was read, so the edits since then stay; the
+  // running graph stays when it does not load.
   void reload();
 
 private:
   const View *find(std::string_view name) override;
   void replace(std::string_view name, View view) override;
   void command(Call &call) override;
-  // Null keeps the view and builds its schedule anew.
   void rebuild(std::unique_ptr<View> view);
 
   const Wiring &_wiring;

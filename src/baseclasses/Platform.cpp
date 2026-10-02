@@ -220,14 +220,6 @@ VkExtent2D Window::size() const {
   return {static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height)};
 }
 
-std::span<const char *const> Window::vulkan_extensions() const {
-  std::uint32_t count = 0;
-  const char **const names = glfwGetRequiredInstanceExtensions(&count);
-  if (!names)
-    glfw_failed("glfwGetRequiredInstanceExtensions");
-  return {names, count};
-}
-
 VkSurfaceKHR Window::surface(VkInstance instance) const {
   VkSurfaceKHR surface = VK_NULL_HANDLE;
   if (glfwCreateWindowSurface(instance, _window, nullptr, &surface) != VK_SUCCESS)

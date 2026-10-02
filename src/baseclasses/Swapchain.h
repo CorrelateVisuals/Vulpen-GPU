@@ -9,6 +9,7 @@
 namespace VP {
 
 class Log;
+class Mechanics;
 class Window;
 
 // The window image one frame renders into, and what orders the frame around it.
@@ -25,12 +26,9 @@ struct Target {
 // draws' pipelines stay too.
 class Swapchain {
 public:
-  Swapchain(const Log &log,
-            VkPhysicalDevice physical_device,
-            VkDevice device,
-            VkQueue queue,
-            VkSurfaceKHR surface,
-            const Window &window);
+  // Makes the window's surface. Throws, naming why, when the device cannot present to
+  // it. The window must outlive it.
+  Swapchain(const Log &log, const Mechanics &mechanics, const Window &window);
   ~Swapchain();
   Swapchain(const Swapchain &) = delete;
   Swapchain &operator=(const Swapchain &) = delete;
@@ -49,6 +47,7 @@ private:
 
   const Log &_log;
   const Window &_window;
+  const VkInstance _instance;
   const VkPhysicalDevice _physical_device;
   const VkDevice _device;
   const VkQueue _queue;

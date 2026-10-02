@@ -27,6 +27,10 @@ public:
 
   const Resources &resources() const;
   const Pipelines &pipelines() const;
+  // The window output, open while a node draws: the window must outlive it. Between
+  // frames only, since closing waits for the GPU.
+  void open(const Window &window);
+  void close();
   // What draws render into; null without a window.
   VkRenderPass render_pass() const;
   void wait() const;

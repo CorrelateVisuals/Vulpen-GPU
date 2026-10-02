@@ -4,7 +4,6 @@
 
 #include <ctime>
 #include <filesystem>
-#include <span>
 #include <string>
 #include <string_view>
 
@@ -66,8 +65,6 @@ public:
   bool poll() const;
   // In pixels; zero while the window is minimized.
   VkExtent2D size() const;
-  // What a Vulkan instance enables to present to this window.
-  std::span<const char *const> vulkan_extensions() const;
   // The caller owns the surface and destroys it before the instance.
   VkSurfaceKHR surface(VkInstance instance) const;
 
