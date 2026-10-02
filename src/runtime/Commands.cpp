@@ -69,8 +69,8 @@ bool placeholder(std::string_view word) {
 
 class Run final : public Call {
 public:
-  Run(Command command, std::span<const std::string_view> arguments)
-      : _command(command), _arguments(arguments) {}
+  Run(CommandPort &port, Command command, std::span<const std::string_view> arguments)
+      : _port(port), _command(command), _arguments(arguments) {}
   // Every line the command answered.
   std::string answer() && {
     return std::move(_reply);
@@ -88,7 +88,11 @@ private:
     if (!text.ends_with('\n'))
       _reply.push_back('\n');
   }
+  CommandPort &commands() override {
+    return _port;
+  }
 
+  CommandPort &_port;
   const Command _command;
   const std::span<const std::string_view> _arguments;
   std::string _reply;
@@ -193,7 +197,7 @@ std::string Commands::run(std::string_view line) {
     throw std::runtime_error(
         std::format("{} does not fit the usage `{}`", typed, spec->usage));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
-  Run call(spec->command, arguments);
+  Run call(*this, spec->command, arguments);
   // Read first: a handler that rebuilds a view binds operators, which may register
   // commands and so move the specs.
   const Primitive primitive = spec->primitive;
@@ -201,6 +205,13 @@ std::string Commands::run(std::string_view line) {
   if (primitive == Primitive::yes)
     _session.keep(joined(words, " "));
   return std::move(call).answer();
+}
+
+std::vector<Usage> Commands::usages() const {
+  std::vector<Usage> usages;
+  for (const Spec &spec : _specs)
+    usages.push_back({spec.usage, spec.help});
+  return usages;
 }
 
 std::string Commands::send(std::string_view line) {

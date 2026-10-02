@@ -1,1 +1,7 @@
 # The command-line part: one node whose operator is CommandLine.
+[manifest]
+version = 1
+
+[node "command-line"]
+recipe   = command-line
+operator = CommandLine

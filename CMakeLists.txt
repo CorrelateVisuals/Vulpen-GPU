@@ -106,6 +106,7 @@ endforeach()
 if(VULPEN_LIVE)
   vulpen_view(${PROJECT_SOURCE_DIR}/src/tools/tests/mistakes)
 endif()
+vulpen_library(${PROJECT_SOURCE_DIR}/src/recipes)
 vulpen_link_recipes(${generated}/linked-recipes.h)
 
 include(src/tools/tests/tests.cmake)

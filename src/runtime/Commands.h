@@ -72,6 +72,7 @@ public:
   // does not take.
   std::string run(std::string_view line);
   std::string send(std::string_view line) override;
+  std::vector<Usage> usages() const override;
   // Runs a file's lines in turn until one quits, each in a group of its own, so undo
   // after a replay steps back one command at a time, and prints what each answers.
   // Throws naming the file and line of the first that fails, and runs none after it, so

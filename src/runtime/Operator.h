@@ -14,6 +14,7 @@
 #include <span>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 // The runtime header every recipe's C++ includes: a node's behaviour and the general
 // ports (commands, input, files, the terminal). Nothing here reaches Vulkan or the OS.
@@ -73,6 +74,12 @@ struct File {
 // checks it against the shader, so a C++ struct cannot drift from its contract.
 struct Member {};
 
+// A registered command as help shows it: its words and placeholders, and what it does.
+struct Usage {
+  std::string_view usage;
+  std::string_view help;
+};
+
 // Where every change goes, as text: a node sends commands as a person types them, so no
 // recipe has a private way in.
 class CommandPort {
@@ -80,6 +87,9 @@ public:
   // Runs a line in a group of its own, as a typed one, and returns what its command
   // answers. A refusal goes to the log, naming its cause, and answers nothing.
   virtual std::string send(std::string_view line) = 0;
+  // Every command registered now, in the order they registered (RV04). They last until
+  // the next frame, which may register others.
+  virtual std::vector<Usage> usages() const = 0;
 
 protected:
   ~CommandPort() = default;
@@ -205,6 +215,8 @@ public:
   virtual std::span<const std::string_view> arguments() const = 0;
   // What the command answers, which goes back to whoever sent the line.
   virtual void reply(std::string_view text) = 0;
+  // The port the line came through.
+  virtual CommandPort &commands() = 0;
 
 protected:
   ~Call() = default;

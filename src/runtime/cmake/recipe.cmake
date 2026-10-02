@@ -44,12 +44,26 @@ function(vulpen_view folder)
   file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/recipes/*)
   foreach(recipe IN LISTS recipes)
     if(IS_DIRECTORY ${recipe})
-      vulpen_recipe(${view} ${recipe})
+      vulpen_recipe(${view} ${recipe} ${folder}/recipes)
     endif()
   endforeach()
 endfunction()
 
-function(vulpen_recipe view folder)
+# The library (V02) builds as one view named library, which runtime/Manifest.cpp names
+# the same: each recipe of its kinds (RV06), so an app runs from the library.
+function(vulpen_library folder)
+  foreach(kind parts components apps)
+    file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/${kind}/*)
+    foreach(recipe IN LISTS recipes)
+      if(IS_DIRECTORY ${recipe})
+        vulpen_recipe(library ${recipe} ${folder})
+      endif()
+    endforeach()
+  endforeach()
+endfunction()
+
+# root: the recipes folder the recipe is in, where its contracts/ resolve (RV05).
+function(vulpen_recipe view folder root)
   get_filename_component(recipe ${folder} NAME)
   string(MAKE_C_IDENTIFIER "${view}_${recipe}" target)
   set(out ${CMAKE_BINARY_DIR}/views/${view}/recipes/${recipe})
@@ -60,7 +74,7 @@ function(vulpen_recipe view folder)
     get_filename_component(name ${shader} NAME)
     add_custom_command(OUTPUT ${out}/${name}.spv
       COMMAND ${CMAKE_COMMAND} -E make_directory ${out}
-      COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet -I${PROJECT_SOURCE_DIR}/src
+      COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet -I${PROJECT_SOURCE_DIR}/src -I${root}
               --depfile ${out}/${name}.d -o ${out}/${name}.spv ${shader}
       DEPENDS ${shader} DEPFILE ${out}/${name}.d VERBATIM)
     # A driver may take invalid SPIR-V without a word, or crash on it. The stamp exists

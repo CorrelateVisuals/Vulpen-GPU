@@ -21,6 +21,9 @@ public:
   // the deploy sets. A recipe may deploy others, never itself (RV06). Throws naming the
   // deploy, and what it lacks.
   static View flatten(const View &view);
+  // The folder a view's files are in, which the live scan watches: the view's own, or
+  // the whole library for a recipe of the library run as a view.
+  static std::filesystem::path root(const View &view);
 };
 
 } // namespace VP

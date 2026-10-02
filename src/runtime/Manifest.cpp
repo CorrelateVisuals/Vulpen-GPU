@@ -5,6 +5,7 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <format>
 #include <fstream>
@@ -22,6 +23,30 @@ namespace {
 
 constexpr std::uint32_t manifest_version = 1;
 constexpr std::string_view blanks = " \t\r";
+// The library's folders by the kind of recipe each holds (RV06), and the view it builds
+// as, which src/runtime/cmake/recipe.cmake names the same.
+constexpr std::array<std::string_view, 3> recipe_kinds{"parts", "components", "apps"};
+constexpr std::string_view library_view = "library";
+
+// A recipe of the library run as a view is in <library>/<kind>/<name>/view.vlp.
+std::optional<std::filesystem::path> library_of(const std::filesystem::path &file) {
+  const std::filesystem::path kind = file.parent_path().parent_path();
+  if (kind.parent_path().filename() != "recipes" ||
+      std::ranges::find(recipe_kinds, kind.filename().string()) == recipe_kinds.end())
+    return std::nullopt;
+  return kind.parent_path();
+}
+
+// A view's own copy (V03), or the library's recipe of that name for a library view.
+std::filesystem::path recipe_folder(const View &view, const std::string &recipe) {
+  const std::optional<std::filesystem::path> library = library_of(view.file);
+  if (!library)
+    return view.file.parent_path() / "recipes" / recipe;
+  for (const std::string_view kind : recipe_kinds)
+    if (std::filesystem::is_directory(*library / kind / recipe))
+      return *library / kind / recipe;
+  return *library / recipe_kinds.front() / recipe;
+}
 
 std::string_view trim(std::string_view text) {
   const std::size_t first = text.find_first_not_of(blanks);
@@ -112,7 +137,8 @@ View Reader::read() {
   if (!in)
     fail("cannot be read");
   _view.file = _file;
-  _view.name = _file.parent_path().filename().string();
+  _view.name = library_of(_file) ? std::string(library_view)
+                                 : _file.parent_path().filename().string();
   for (std::string line; std::getline(in, line);) {
     ++_line;
     const std::string_view text = trim(std::string_view(line).substr(0, line.find('#')));
@@ -338,9 +364,7 @@ std::string text(const View &view, const Notes &notes) {
   return text;
 }
 
-View flattened(View view,
-               const std::filesystem::path &recipes,
-               std::vector<std::string> &deploying);
+View flattened(View view, const View &top, std::vector<std::string> &deploying);
 
 // A deploy's params set its recipe's nodes, so a node they set was last changed there.
 void set_params(View &recipe, const Deploy &deploy) {
@@ -367,16 +391,16 @@ void set_params(View &recipe, const Deploy &deploy) {
 // Into the view, the deploy's recipe under the deploy's name.
 void unfold(View &view,
             const Deploy &deploy,
-            const std::filesystem::path &recipes,
+            const View &top,
             std::vector<std::string> &deploying) {
   if (std::ranges::find(deploying, deploy.recipe) != deploying.end())
     throw std::runtime_error(
         std::format("the deploys form a cycle through recipe {} (RV06)", deploy.recipe));
-  View recipe = Manifest::load(recipes / deploy.recipe / "view.vlp");
+  View recipe = Manifest::load(recipe_folder(top, deploy.recipe) / "view.vlp");
   for (Node &node : recipe.nodes)
     node.where = std::format("recipes/{}/{}", deploy.recipe, node.where);
   deploying.push_back(deploy.recipe);
-  recipe = flattened(std::move(recipe), recipes, deploying);
+  recipe = flattened(std::move(recipe), top, deploying);
   deploying.pop_back();
   set_params(recipe, deploy);
   const auto named = [&](std::string &name) { name.insert(0, deploy.name + "."); };
@@ -393,12 +417,10 @@ void unfold(View &view,
   }
 }
 
-View flattened(View view,
-               const std::filesystem::path &recipes,
-               std::vector<std::string> &deploying) {
+View flattened(View view, const View &top, std::vector<std::string> &deploying) {
   for (const Deploy &deploy : view.deploys) {
     try {
-      unfold(view, deploy, recipes, deploying);
+      unfold(view, deploy, top, deploying);
     } catch (const std::runtime_error &failure) {
       throw std::runtime_error(std::format("{}{}deploy {}: {}",
                                            deploy.where,
@@ -421,7 +443,7 @@ View Manifest::load(const std::filesystem::path &file) {
 // with the deploys unfolded shows.
 View Manifest::flatten(const View &view) {
   std::vector<std::string> deploying;
-  View flat = flattened(view, view.file.parent_path() / "recipes", deploying);
+  View flat = flattened(view, view, deploying);
   for (const Connection &connection : flat.connections) {
     const auto check = [&](const Endpoint &end) {
       if (std::ranges::find(flat.nodes, end.node, &Node::name) == flat.nodes.end())
@@ -432,6 +454,10 @@ View Manifest::flatten(const View &view) {
     std::ranges::for_each(connection.to, check);
   }
   return flat;
+}
+
+std::filesystem::path Manifest::root(const View &view) {
+  return library_of(view.file).value_or(view.file.parent_path());
 }
 
 // The comments come from the file being replaced, read as a load reads it.
