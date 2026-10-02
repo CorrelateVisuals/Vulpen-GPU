@@ -13,6 +13,7 @@
 #include <unistd.h>
 #endif
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <cstdlib>
@@ -28,6 +29,8 @@ namespace VP {
 namespace {
 
 constexpr std::size_t input_chunk = 4096; // bytes of standard input one read takes
+// At most this much input a frame, so input that never pauses cannot hold a frame.
+constexpr std::size_t input_per_call = 16 * input_chunk;
 
 [[noreturn]] void glfw_failed(const char *call) {
   const char *description = nullptr;
@@ -85,6 +88,7 @@ std::optional<std::string> Terminal::input() {
   if (type == FILE_TYPE_PIPE &&
       !PeekNamedPipe(in, nullptr, 0, nullptr, &available, nullptr))
     return std::nullopt; // the writer closed it
+  available = std::min(available, static_cast<DWORD>(input_per_call));
   std::string text(available, '\0');
   DWORD got = 0;
   if (available != 0 &&
@@ -154,7 +158,7 @@ std::optional<std::string> Terminal::input() {
   std::string text;
   std::array<char, input_chunk> chunk{};
   pollfd in{.fd = STDIN_FILENO, .events = POLLIN};
-  while (poll(&in, 1, 0) > 0) {
+  while (text.size() < input_per_call && poll(&in, 1, 0) > 0) {
     const ssize_t got = read(STDIN_FILENO, chunk.data(), chunk.size());
     if (got == 0 || (got < 0 && errno != EINTR && errno != EAGAIN))
       return text.empty() ? std::nullopt : std::optional(std::move(text));
