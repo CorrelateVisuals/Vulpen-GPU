@@ -6,8 +6,10 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <filesystem>
 #include <format>
 #include <map>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -20,6 +22,8 @@ namespace {
 using Arguments = std::span<const std::string_view>;
 
 constexpr std::string_view blanks = " \t\r";
+// The folder at a view's top that holds the contracts its nodes share (RV05).
+constexpr std::string_view contracts = "contracts";
 
 std::string_view trim(std::string_view text) {
   const std::size_t first = text.find_first_not_of(blanks);
@@ -28,8 +32,8 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
-// A name joins a manifest's section headers, its endpoints and the command line, so it
-// holds only what each of them leaves whole.
+// A name joins a manifest's section headers, its endpoints, the command line and a
+// folder's name, so it holds only what each of them leaves whole.
 bool is_name(std::string_view text) {
   return !text.empty() && std::ranges::all_of(text, [](char letter) {
     return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
@@ -43,12 +47,8 @@ void check_name(std::string_view what, std::string_view name) {
         "{} {} is not a name: a name holds letters, digits, _ and -", what, name));
 }
 
-// A deploy's node goes by its deploy's name and its own: deploy.node.
-bool deployed(std::string_view node) {
-  return node.find('.') != std::string_view::npos;
-}
-
-// Names joined by dots, as a deploy names a node of its recipe: deploy.node.
+// Names joined by dots: the nodes a node is inside, then its own, as its folder is the
+// path of their folders (RV08).
 bool is_path(std::string_view text) {
   for (std::size_t dot = text.find('.'); dot != std::string_view::npos;
        dot = text.find('.')) {
@@ -57,6 +57,15 @@ bool is_path(std::string_view text) {
     text.remove_prefix(dot + 1);
   }
   return is_name(text);
+}
+
+void check_path(std::string_view what, std::string_view path) {
+  if (!is_path(path))
+    throw std::runtime_error(
+        std::format("{} {} is not a name, or names joined by dots: a name holds letters, "
+                    "digits, _ and -",
+                    what,
+                    path));
 }
 
 // A manifest reads # as the start of a comment and a line break as the end of a line, so
@@ -73,9 +82,16 @@ void check_value(std::string_view key, std::string_view value) {
 
 [[noreturn]] void unknown_word(std::string_view key) {
   throw std::runtime_error(
-      std::format("unknown word {} in a node; its words are recipe, operator, shader, "
-                  "invocations, instance_count, param and log",
+      std::format("unknown word {} in a node; its words are recipe, operator, file, "
+                  "invocations, vertex_count, instance_count, param and log",
                   key));
+}
+
+// A node's files are what its folder holds (RV08), so no command names one.
+[[noreturn]] void no_file(std::string_view node) {
+  throw std::runtime_error(std::format("a node's files are what its folder holds: put a "
+                                       "file in the folder of node {} to add it",
+                                       node));
 }
 
 void set_once(std::string &slot, std::string_view key, std::string_view value) {
@@ -93,17 +109,90 @@ std::uint32_t whole_number(std::string_view text) {
   return value;
 }
 
+// A count left out is none, so a count given is at least 1.
+void set_count(std::uint32_t &slot,
+               std::string_view key,
+               std::string_view value,
+               std::string_view none) {
+  if (slot != 0)
+    throw std::runtime_error(std::format("{} is set twice", key));
+  slot = whole_number(value);
+  if (slot == 0)
+    throw std::runtime_error(std::format("{} is at least 1; leave it out {}", key, none));
+}
+
+// A recipe of the library by its name, and for a drop's copy an @ and the fingerprint
+// of what it copied, in hex.
+bool is_recipe(std::string_view text) {
+  const std::size_t at = text.find('@');
+  if (!is_name(text.substr(0, at)))
+    return false;
+  if (at == std::string_view::npos)
+    return true;
+  const std::string_view print = text.substr(at + 1);
+  return !print.empty() && std::ranges::all_of(print, [](char digit) {
+    return (digit >= '0' && digit <= '9') || (digit >= 'a' && digit <= 'f');
+  });
+}
+
+// A file of the node's own folder, so its name holds no folder.
+bool is_file(std::string_view text) {
+  return text != "." && text != ".." &&
+         text.find_first_of("/\\") == std::string_view::npos;
+}
+
+// A file of the node's folder, which a manifest lists once.
+void add_file(Node &node, std::string_view value) {
+  if (!is_file(value))
+    throw std::runtime_error(std::format(
+        "file {}: a file of the node's folder, named without a folder", value));
+  if (std::ranges::find(node.files, value) != node.files.end())
+    throw std::runtime_error(std::format("file {} is listed twice", value));
+  node.files.emplace_back(value);
+}
+
+// `name=value`, whose name is a path when it sets a node inside a recipe the node uses.
+void add_param(Node &node, std::string_view value) {
+  const std::size_t equals = value.find('=');
+  if (equals == std::string_view::npos)
+    throw std::runtime_error("a param is written `param = name=value`");
+  const std::string_view name = trim(value.substr(0, equals));
+  const std::string_view setting = trim(value.substr(equals + 1));
+  check_path("param", name);
+  if (setting.empty())
+    throw std::runtime_error(std::format("param {} has no value", name));
+  if (std::ranges::find(node.params, name, &Param::key) != node.params.end())
+    throw std::runtime_error(std::format("param {} is set twice", name));
+  node.params.push_back({std::string(name), std::string(setting)});
+}
+
 // What no single word can show.
 void check_whole(const Node &node) {
-  if (node.operator_name.empty() && node.shaders.empty())
-    throw std::runtime_error(std::format(
-        "node {} runs nothing: give it an operator, a shader or both", node.name));
-  if (node.recipe.empty())
+  if (node.uses()) {
+    if (!node.operator_name.empty() || !node.files.empty() || node.invocations != 0 ||
+        node.vertex_count != 0 || node.instance_count != 0)
+      throw std::runtime_error(
+          std::format("node {} uses recipe {} as it is, whose node gives it those words: "
+                      "only param and log go with it",
+                      node.name,
+                      node.recipe));
+    return;
+  }
+  for (const Param &param : node.params)
+    if (!is_name(param.key))
+      throw std::runtime_error(std::format(
+          "param {}: a dotted key sets a node inside a recipe a node uses, and "
+          "node {} uses none",
+          param.key,
+          node.name));
+  if (node.invocations != 0 && node.vertex_count != 0)
     throw std::runtime_error(
-        std::format("node {} names no recipe to find its C++ and GLSL in", node.name));
-  if (!node.shaders.empty() && node.invocations == 0)
+        std::format("node {} counts invocations and vertex_count: a dispatch counts its "
+                    "invocations, and a draw its vertex_count",
+                    node.name));
+  if (node.invocations != 0 && node.instance_count != 0)
     throw std::runtime_error(
-        std::format("node {} runs a shader, so it needs invocations", node.name));
+        "instance_count counts a draw's instances; a dispatch has none");
 }
 
 Node *node_named(View &view, std::string_view name) {
@@ -111,40 +200,42 @@ Node *node_named(View &view, std::string_view name) {
   return found == view.nodes.end() ? nullptr : &*found;
 }
 
+// The node that uses a recipe and so holds the named one, which the view as it runs
+// holds once that recipe is unfolded (V11).
+Node *user_of(View &view, std::string_view name) {
+  for (std::size_t dot = name.find('.'); dot != std::string_view::npos;
+       dot = name.find('.', dot + 1))
+    if (Node *const node = node_named(view, name.substr(0, dot)); node && node->uses())
+      return node;
+  return nullptr;
+}
+
 Node &existing(View &view, std::string_view name) {
   if (Node *const node = node_named(view, name))
     return *node;
-  if (deployed(name))
-    throw std::runtime_error(std::format(
-        "node {} comes from deploy {}: param set and unset change its params, and its "
-        "recipe's view.vlp the rest",
-        name,
-        name.substr(0, name.find('.'))));
+  if (const Node *const user = user_of(view, name))
+    throw std::runtime_error(
+        std::format("node {} is inside recipe {}, which node {} uses as it is: param set "
+                    "and unset change its params, and the recipe's own view.vlp the rest",
+                    name,
+                    user->recipe,
+                    user->name));
   throw std::runtime_error(std::format("no node is named {}", name));
 }
 
-Deploy *deploy_named(View &view, std::string_view name) {
-  const auto found = std::ranges::find(view.deploys, name, &Deploy::name);
-  return found == view.deploys.end() ? nullptr : &*found;
-}
-
-// A node of the view, or a node of a deploy, which the view the schedule runs holds
-// once the deploys are unfolded, and which that view checks.
+// A node of the view, or one inside a recipe a node uses, which the view as it runs
+// holds and checks.
 bool has_node(View &view, std::string_view name) {
-  const std::size_t dot = name.find('.');
-  return dot == std::string_view::npos
-             ? node_named(view, name) != nullptr
-             : deploy_named(view, name.substr(0, dot)) != nullptr;
+  return node_named(view, name) != nullptr || user_of(view, name) != nullptr;
 }
 
-// A param of a deploy's node: the deploy, and its params' key for it.
-std::pair<Deploy &, std::string>
-deploy_param(View &view, std::string_view node, std::string_view key) {
-  const std::size_t dot = node.find('.');
-  Deploy *const deploy = deploy_named(view, node.substr(0, dot));
-  if (!deploy)
+// A param of a node inside a recipe a node uses: the user, and its params' key for it.
+std::pair<Node &, std::string>
+user_param(View &view, std::string_view node, std::string_view key) {
+  Node *const user = user_of(view, node);
+  if (!user)
     throw std::runtime_error(std::format("no node is named {}", node));
-  return {*deploy, std::format("{}.{}", node.substr(dot + 1), key)};
+  return {*user, std::format("{}.{}", node.substr(user->name.size() + 1), key)};
 }
 
 void set_param(std::vector<Param> &params, std::string_view key, std::string_view value) {
@@ -216,23 +307,25 @@ std::pair<std::string_view, std::string_view> key_and_value(std::string_view wor
   return {word.substr(0, equals), word.substr(equals + 1)};
 }
 
-// Before node set gives a word again: shader and param words replace them all, and a
-// word given empty stays clear.
+// Before node set gives a word again: param words replace them all, and a word given
+// empty stays clear.
 void clear(Node &node, std::string_view key) {
   if (key == "recipe")
     node.recipe.clear();
   else if (key == "operator")
     node.operator_name.clear();
-  else if (key == "shader")
-    node.shaders.clear();
   else if (key == "invocations")
     node.invocations = 0;
+  else if (key == "vertex_count")
+    node.vertex_count = 0;
   else if (key == "instance_count")
     node.instance_count = 0;
   else if (key == "param")
     node.params.clear();
   else if (key == "log")
     node.log.clear();
+  else if (key == "file")
+    no_file(node.name);
   else
     unknown_word(key);
 }
@@ -241,11 +334,14 @@ void node_add(View &view, Arguments arguments, std::string_view where) {
   Node node{.name = std::string(arguments.front()), .where = std::string(where)};
   for (const std::string_view word : arguments.subspan(1)) {
     const auto [key, value] = key_and_value(word);
+    if (key == "file")
+      no_file(node.name);
     Edits::word(node, key, value);
   }
   Edits::add(view, std::move(node));
 }
 
+// Its folder stays, as every file does until a person deletes it.
 void node_remove(View &view, Arguments arguments, std::string_view) {
   // The argument, not the node's own name, which the erase below moves.
   const std::string_view name = arguments.front();
@@ -255,6 +351,11 @@ void node_remove(View &view, Arguments arguments, std::string_view) {
         std::ranges::find(connection.to, name, &Endpoint::node) != connection.to.end())
       throw std::runtime_error(std::format(
           "node {} is connected through {}; disconnect it first", name, connection.name));
+  const std::string inside = std::string(name) + '.';
+  for (const Node &node : view.nodes)
+    if (node.name.starts_with(inside))
+      throw std::runtime_error(
+          std::format("node {} holds node {}; remove that first", name, node.name));
   std::erase_if(view.nodes, [&](const Node &node) { return node.name == name; });
 }
 
@@ -288,14 +389,15 @@ void disconnect(View &view, Arguments arguments, std::string_view) {
     throw std::runtime_error(std::format("no connection is named {}", arguments.front()));
 }
 
-// A deploy's node keeps its params in the deploy, as the manifest writes them.
+// A node inside a recipe a node uses keeps its params in that node, as the manifest
+// writes them.
 void param_set(View &view, Arguments arguments, std::string_view where) {
   check_name("param", arguments[1]);
   check_value(arguments[1], arguments[2]);
-  if (deployed(arguments[0])) {
-    auto [deploy, key] = deploy_param(view, arguments[0], arguments[1]);
-    set_param(deploy.params, key, arguments[2]);
-    deploy.where = where;
+  if (!node_named(view, arguments[0]) && user_of(view, arguments[0])) {
+    auto [user, key] = user_param(view, arguments[0], arguments[1]);
+    set_param(user.params, key, arguments[2]);
+    user.where = where;
     return;
   }
   Node &node = existing(view, arguments[0]);
@@ -312,35 +414,28 @@ void param_unset(View &view, Arguments arguments, std::string_view where) {
           std::format("node {} sets no param {}", arguments[0], arguments[1]));
     by = where;
   };
-  if (deployed(arguments[0])) {
-    auto [deploy, key] = deploy_param(view, arguments[0], arguments[1]);
-    return unset(deploy.params, key, deploy.where);
+  if (!node_named(view, arguments[0]) && user_of(view, arguments[0])) {
+    auto [user, key] = user_param(view, arguments[0], arguments[1]);
+    return unset(user.params, key, user.where);
   }
   Node &node = existing(view, arguments[0]);
   unset(node.params, arguments[1], node.where);
 }
 
-void deploy_add(View &view, Arguments arguments, std::string_view where) {
-  Deploy deploy{.name = std::string(arguments[0]), .where = std::string(where)};
-  Edits::word(deploy, "recipe", arguments[1]);
-  Edits::deploy(view, std::move(deploy));
+// The file arrives absolute, as the command port resolves a <file>.
+void child_add(View &view, Arguments arguments, std::string_view where) {
+  Edits::child(view,
+               Child{.name = std::string(arguments[0]),
+                     .file = std::filesystem::path(arguments[1]),
+                     .where = std::string(where)});
 }
 
-void deploy_remove(View &view, Arguments arguments, std::string_view) {
-  const std::string_view name = arguments.front();
-  if (!deploy_named(view, name))
-    throw std::runtime_error(std::format("no deploy is named {}", name));
-  const auto inside = [&](const Endpoint &end) {
-    return end.node.starts_with(name) && end.node.size() > name.size() &&
-           end.node[name.size()] == '.';
-  };
-  for (const Connection &connection : view.connections)
-    if (inside(connection.from) || std::ranges::any_of(connection.to, inside))
-      throw std::runtime_error(
-          std::format("deploy {} is connected through {}; disconnect it first",
-                      name,
-                      connection.name));
-  std::erase_if(view.deploys, [&](const Deploy &deploy) { return deploy.name == name; });
+void child_remove(View &view, Arguments arguments, std::string_view) {
+  if (std::erase_if(view.children, [&](const Child &child) {
+        return child.name == arguments.front();
+      }) == 0)
+    throw std::runtime_error(std::format(
+        "this view hosts no view named {}; child list lists them", arguments.front()));
 }
 
 struct Edit {
@@ -352,13 +447,17 @@ struct Edit {
 
 // Each edit's usage and help (RV04), and what it changes.
 constexpr std::array edits{
-    Edit{"node add <name> <word=value>...",
-         "adds a node, given the manifest's node words",
+    Edit{"node add <name> [<word=value>...]",
+         "adds a node, given the manifest's node words; its files are what its folder "
+         "holds",
          node_add},
-    Edit{"node remove <node>", "removes a node that no connection names", node_remove},
+    Edit{
+        "node remove <node>",
+        "removes a node that no connection names and no node is inside; its folder stays",
+        node_remove},
     Edit{"node set <node> <word=value>...",
-         "gives a node the words named, clearing those given empty; shader and param "
-         "words replace them all",
+         "gives a node the words named, clearing those given empty; param words replace "
+         "them all",
          node_set},
     Edit{"connect <name> <port> <port>...",
          "joins the port that writes a buffer to the ports that read it",
@@ -366,12 +465,11 @@ constexpr std::array edits{
     Edit{"disconnect <connection>", "removes a connection", disconnect},
     Edit{"param set <node> <key> <value>", "sets a param of a node", param_set},
     Edit{"param unset <node> <key>", "removes a param of a node", param_unset},
-    Edit{"deploy add <name> <recipe>",
-         "deploys a recipe of the view under a name: its nodes, as <name>.<node>",
-         deploy_add},
-    Edit{"deploy remove <deploy>",
-         "removes a deploy that no connection names",
-         deploy_remove},
+    Edit{"child add <name> <file>",
+         "hosts the view a view.vlp holds, or an empty one that view save writes; a line "
+         "`<name>: <command>` addresses it",
+         child_add},
+    Edit{"child remove <name>", "stops hosting a view; its files stay", child_remove},
 };
 
 } // namespace
@@ -386,65 +484,32 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
     throw std::runtime_error(std::format("{} has no value", key));
   check_value(key, value);
   if (key == "recipe") {
+    if (!is_recipe(value))
+      throw std::runtime_error(
+          std::format("recipe {}: a recipe's name, and on a drop's copy an @ and its "
+                      "fingerprint, as probe@3f2a9c1e",
+                      value));
     set_once(node.recipe, key, value);
   } else if (key == "operator") {
     set_once(node.operator_name, key, value);
-  } else if (key == "shader") {
-    node.shaders.emplace_back(value);
+  } else if (key == "file") {
+    add_file(node, value);
   } else if (key == "log") {
     set_once(node.log, key, value);
   } else if (key == "invocations") {
-    if (node.invocations != 0)
-      throw std::runtime_error("invocations is set twice");
-    node.invocations = whole_number(value);
+    set_count(node.invocations, key, value, "on a node with no .comp");
+  } else if (key == "vertex_count") {
+    set_count(node.vertex_count, key, value, "on a node with no .vert");
   } else if (key == "instance_count") {
-    if (node.instance_count != 0)
-      throw std::runtime_error("instance_count is set twice");
-    node.instance_count = whole_number(value);
-    if (node.instance_count == 0)
-      throw std::runtime_error("instance_count is at least 1; leave it out for one");
+    set_count(node.instance_count, key, value, "for one");
   } else if (key == "param") {
-    const std::size_t equals = value.find('=');
-    if (equals == std::string_view::npos)
-      throw std::runtime_error("a param is written `param = name=value`");
-    const std::string_view name = trim(value.substr(0, equals));
-    const std::string_view setting = trim(value.substr(equals + 1));
-    check_name("param", name);
-    if (setting.empty())
-      throw std::runtime_error(std::format("param {} has no value", name));
-    if (std::ranges::find(node.params, name, &Param::key) != node.params.end())
-      throw std::runtime_error(std::format("param {} is set twice", name));
-    node.params.push_back({std::string(name), std::string(setting)});
+    add_param(node, value);
   } else {
     unknown_word(key);
   }
 }
 
-void Edits::word(Deploy &deploy, std::string_view key, std::string_view value) {
-  if (value.empty())
-    throw std::runtime_error(std::format("{} has no value", key));
-  check_value(key, value);
-  if (key == "recipe") {
-    check_name("recipe", value);
-    set_once(deploy.recipe, key, value);
-  } else if (key == "param") {
-    const std::size_t equals = value.find('=');
-    const std::string_view name = trim(value.substr(0, equals));
-    const std::string_view setting = equals == std::string_view::npos
-                                         ? std::string_view{}
-                                         : trim(value.substr(equals + 1));
-    if (!deployed(name) || !is_path(name) || setting.empty())
-      throw std::runtime_error("a deploy's param is written `param = node.name=value`");
-    if (std::ranges::find(deploy.params, name, &Param::key) != deploy.params.end())
-      throw std::runtime_error(std::format("param {} is set twice", name));
-    deploy.params.push_back({std::string(name), std::string(setting)});
-  } else {
-    throw std::runtime_error(
-        std::format("unknown word {} in a deploy; its words are recipe and param", key));
-  }
-}
-
-// The port follows the last dot, so a deploy's node keeps its own: deploy.node.port.
+// The port follows the last dot, so a node inside others keeps its own: ui.panel.rects.
 Endpoint Edits::endpoint(std::string_view text) {
   const std::size_t dot = text.rfind('.');
   const std::string_view node = text.substr(0, dot);
@@ -455,28 +520,30 @@ Endpoint Edits::endpoint(std::string_view text) {
   return {std::string(node), std::string(port)};
 }
 
-// A deploy's nodes are named <deploy>.<node>, so a node and a deploy never share a name.
+// A node's folder is its name's path in the view's folder (RV08), beside the folders of
+// the views it hosts and of its contracts, so none of them shares a name.
 void Edits::add(View &view, Node node) {
-  check_name("node", node.name);
-  if (node_named(view, node.name) || deploy_named(view, node.name))
-    throw std::runtime_error(std::format("two nodes or deploys are named {}", node.name));
+  check_path("node", node.name);
+  if (node.name == contracts)
+    throw std::runtime_error("contracts/ holds the contracts the view's nodes share "
+                             "(RV05), so no node is named contracts");
+  if (node_named(view, node.name) ||
+      std::ranges::find(view.children, node.name, &Child::name) != view.children.end())
+    throw std::runtime_error(std::format("two nodes or views are named {}", node.name));
   check_whole(node);
   view.nodes.push_back(std::move(node));
 }
 
-void Edits::deploy(View &view, Deploy deploy) {
-  check_name("deploy", deploy.name);
-  if (node_named(view, deploy.name) || deploy_named(view, deploy.name))
-    throw std::runtime_error(
-        std::format("two nodes or deploys are named {}", deploy.name));
-  if (deploy.recipe.empty())
-    throw std::runtime_error(
-        std::format("deploy {} names no recipe to deploy", deploy.name));
-  view.deploys.push_back(std::move(deploy));
+void Edits::child(View &view, Child child) {
+  check_name("view", child.name);
+  if (node_named(view, child.name) ||
+      std::ranges::find(view.children, child.name, &Child::name) != view.children.end())
+    throw std::runtime_error(std::format("two nodes or views are named {}", child.name));
+  view.children.push_back(std::move(child));
 }
 
 void Edits::connect(View &view, Connection connection) {
-  check_name("connection", connection.name);
+  check_path("connection", connection.name);
   if (std::ranges::find(view.connections, connection.name, &Connection::name) !=
       view.connections.end())
     throw std::runtime_error(
@@ -503,12 +570,24 @@ void Edits::connect(View &view, Connection connection) {
 // The schedule takes the edited view before the next frame, once for all the edits
 // since the last, so it sees only where they end: a node removed and added again in
 // between keeps its operator and buffers, as it does across a re-read of the manifest.
+//
+// A hosted view's name is its own, so child remove reaches the view that hosts it from
+// wherever the line goes, as from inside the view it closes.
 void Edits::command(Call &call) {
-  View edited = call.view();
+  std::string address(_port.addressed());
+  for (std::size_t index = 0; index < edits.size(); ++index)
+    if (call.is(_commands[index]) && edits[index].change == child_remove)
+      if (const std::optional<std::string> host =
+              _views.host_of(call.arguments().front()))
+        address = *host;
+  const View *const found = _views.find(address);
+  if (!found)
+    throw std::runtime_error(std::format("no view is named {}", address));
+  View edited = *found;
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index]))
       edits[index].change(edited, call.arguments(), _port.where());
-  _views.replace(_port.addressed(), std::move(edited));
+  _views.replace(address, std::move(edited));
 }
 
 } // namespace VP

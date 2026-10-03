@@ -5,10 +5,11 @@ The map is the one page a person reads to steer the engine's structure: a new en
 file or include edge lands only once someone writes it there, and the graph stays
 acyclic, so code never includes from code that builds on it.
 
-Recipe code, any file under a folder named recipes/, is not engine and has no row: a
-new recipe file builds with no edit to the map. Each of its includes must be a file in
-its own folder, a contract from the contracts/ folder of the nearest recipes/ folder
-above it, or what the map's recipe table lists. Engine code never includes recipe code.
+Node code, any file of the library (src/recipes/) or of a view, under a folder that
+holds a view.vlp, is not engine and has no row: a new node's file builds with no edit to
+the map. Each of its includes must be a file in its own folder, a contract from the
+contracts/ folder at the top of the library or of its view, or what the map's node table
+lists. Engine code never includes node code.
 
 Usage: python3 src/tools/gates/include-map.py
 """
@@ -24,17 +25,22 @@ VENDORED = SOURCE / "external-libraries"  # not our code, so not our structure
 SUFFIXES = {".h", ".hpp", ".cpp", ".glsl", ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]', re.MULTILINE)
 CODE_SPAN = re.compile(r"`([^`]+)`")
-RECIPES = "recipes"  # the folder name that makes a file recipe code
-CONTRACTS = "contracts"  # beside the recipes, the only files more than one includes (RV05)
+LIBRARY = SOURCE / "recipes"  # every recipe, and the contracts they share
+MANIFEST = "view.vlp"  # a folder holding one is a view's
+CONTRACTS = "contracts"  # at the top, the only files more than one node includes (RV05)
 # Each table on the page, by the first cell of its header.
 ENGINE_TABLE = "File"
-RECIPE_TABLE = "Recipe code may include"
+NODE_TABLE = "Node code may include"
 
 
-def recipes_folder(file: Path) -> Path | None:
-    """The nearest folder named recipes/ above a file in src/; None for engine code."""
+def node_root(file: Path) -> Path | None:
+    """Where the contracts/ of a node's file is: the library's folder for a file in the
+    library, else the nearest folder above the file that holds a view.vlp; None for
+    engine code."""
+    if LIBRARY in file.parents:
+        return LIBRARY
     return next((folder for folder in file.parents
-                 if folder.name == RECIPES and SOURCE in folder.parents), None)
+                 if SOURCE in folder.parents and (folder / MANIFEST).is_file()), None)
 
 
 def resolve(file: Path, quote: str, name: str) -> str | None:
@@ -45,9 +51,9 @@ def resolve(file: Path, quote: str, name: str) -> str | None:
         # libraries (Vulkan, OS headers) are part of the structure.
         return f"<{name}>" if "." in name or "/" in name else None
     # The compiler's search order, so "Log.h" and "baseclasses/Log.h" map alike and no
-    # spelling hides a cycle. Recipe code finds its contracts from its recipes/ folder,
-    # so a copied recipe includes the view's copy of a contract (V03).
-    for base in (file.parent, recipes_folder(file), SOURCE):
+    # spelling hides a cycle. Node code finds its contracts from the top of its view or
+    # of the library, so a dropped copy includes the view's copy of a contract (V03).
+    for base in (file.parent, node_root(file), SOURCE):
         if base is not None:
             candidate = (base / name).resolve()
             if candidate.is_file() and SOURCE in candidate.parents:
@@ -93,9 +99,9 @@ def mapped(page: dict[str, list[list[str]]], problems: list[str]) -> dict[str, s
 
 
 def reachable(page: dict[str, list[list[str]]]) -> set[str]:
-    """What recipe code may include besides its own folder and the contracts, as
-    patterns: `<glm/*>` stands for every glm header."""
-    return {span for cells in page.get(RECIPE_TABLE, []) for span in CODE_SPAN.findall(cells[0])}
+    """What node code may include besides its own folder and the contracts, as patterns:
+    `<glm/*>` stands for every glm header."""
+    return {span for cells in page.get(NODE_TABLE, []) for span in CODE_SPAN.findall(cells[0])}
 
 
 def row(file: str, names: set[str]) -> str:
@@ -103,10 +109,10 @@ def row(file: str, names: set[str]) -> str:
 
 
 def differences(code: dict[str, set[str]], page: dict[str, set[str]]) -> list[str]:
-    engine = {file: names for file, names in code.items() if not recipes_folder(SOURCE / file)}
+    engine = {file: names for file, names in code.items() if not node_root(SOURCE / file)}
     problems = [f"{file}: new file; once approved, add the row\n      {row(file, engine[file])}"
                 for file in sorted(engine.keys() - page.keys())]
-    problems += [f"{file}: recipe code has no row in the map" if file in code
+    problems += [f"{file}: node code has no row in the map" if file in code
                  else f"{file}: in the map, but not in src/"
                  for file in sorted(page.keys() - engine.keys())]
     for file in sorted(engine.keys() & page.keys()):
@@ -117,23 +123,23 @@ def differences(code: dict[str, set[str]], page: dict[str, set[str]]) -> list[st
     return problems
 
 
-def recipe_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
-    """Recipe code reaches only its own folder, the contracts and what the map lists for
-    it (RV00, RV05); engine code never reaches recipe code (RA00)."""
+def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
+    """Node code reaches only its own folder, the contracts and what the map lists for it
+    (RV00, RV05, RV08); engine code never reaches node code (RA00)."""
     problems = []
     for file, names in sorted(code.items()):
-        folder = recipes_folder(SOURCE / file)
+        root = node_root(SOURCE / file)
         for name in sorted(names):
             target = SOURCE / name
-            if folder is None:
-                if recipes_folder(target):
-                    problems.append(f"{file} -> {name}: engine code never includes recipe code "
+            if root is None:
+                if node_root(target):
+                    problems.append(f"{file} -> {name}: engine code never includes node code "
                                     "(RA00)")
             elif not (target.parent == (SOURCE / file).parent
-                      or (target.parent == folder / CONTRACTS and target.suffix == ".glsl")
+                      or (target.parent == root / CONTRACTS and target.suffix == ".glsl")
                       or any(fnmatchcase(name, pattern) for pattern in reach)):
-                problems.append(f"{file} -> {name}: recipe code includes only its own folder, a "
-                                "contract, and what the map lists for recipe code (RV00, RV05)")
+                problems.append(f"{file} -> {name}: node code includes only its own folder, a "
+                                "contract, and what the map lists for node code (RV00, RV05)")
     return problems
 
 
@@ -161,7 +167,7 @@ def main() -> None:
     code = included()
     page = tables()
     problems += differences(code, mapped(page, problems))
-    problems += recipe_rule(code, reachable(page))
+    problems += node_rule(code, reachable(page))
     if loop := cycle(code):
         problems.append("include cycle: " + " -> ".join(loop))
     if problems:

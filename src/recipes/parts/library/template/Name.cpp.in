@@ -11,7 +11,7 @@ class Name final : public VP::Operator {
   // VP::Texture _atlas;            // an image C++ fills once
   // VP::Command _reset;            // a command the node answers
   // VP::File _settings;            // a file the node reads, watches and saves
-  // std::string _folder;           // where the recipe's own files are
+  // std::string _folder;           // where the node's own files are
 
   // At load, and again after every swap: names in, handles out.
   // void bind(VP::Bind &node) override {
@@ -21,7 +21,7 @@ class Name final : public VP::Operator {
   //   _speed = node.param<float>("speed");
   //   _atlas = node.texture("atlas");
   //   _reset = node.command("reset", "turns the node back to its start");
-  //   _settings = node.file("settings.ini"); // in the recipe's folder
+  //   _settings = node.file("settings.ini"); // in the node's folder
   //   _folder = node.folder();
   // }
 
@@ -57,6 +57,6 @@ class Name final : public VP::Operator {
 
 } // namespace
 
-VP_RECIPE(registry) {
+VP_OPERATORS(registry) {
   registry.add<Name>("Name");
 }

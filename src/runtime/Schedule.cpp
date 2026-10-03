@@ -1,11 +1,14 @@
+// Longer than CPP12's 800 lines: every check it makes (A02), and the buffers, blocks and
+// passes it builds, read one node's binding, which only this file defines, so splitting
+// it would put that binding in a header for one reader.
 #include "runtime/Schedule.h"
 
 #include "baseclasses/Passes.h"
 #include "baseclasses/Pipelines.h"
 #include "runtime/Commands.h"
+#include "runtime/Modules.h"
 #include "runtime/Operator.h"
 #include "runtime/Ports.h"
-#include "runtime/Recipes.h"
 #include "runtime/View.h"
 
 #include <algorithm>
@@ -51,23 +54,51 @@ bool writes(Access access) {
 }
 
 // The build compiles each shader as the stage its extension names, as glslang does, so
-// the loader reads the stage from the same place.
+// the loader reads the stage from the same place. Every stage glslang names counts, so a
+// node holding one Vulpen does not run yet is told so.
 constexpr std::string_view compute_stage = ".comp";
 constexpr std::string_view vertex_stage = ".vert";
 constexpr std::string_view fragment_stage = ".frag";
+constexpr std::array<std::string_view, 6> stages{
+    compute_stage, vertex_stage, fragment_stage, ".geom", ".tesc", ".tese"};
 
-std::ptrdiff_t count_stage(const Node &node, std::string_view stage) {
+// The files of the node's folder that are shaders, by their extension.
+std::vector<std::string> shaders_of(const Node &node) {
+  std::vector<std::string> shaders;
+  for (const std::string &file : node.files)
+    if (std::ranges::any_of(
+            stages, [&](std::string_view stage) { return file.ends_with(stage); }))
+      shaders.push_back(file);
+  return shaders;
+}
+
+std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
+                           std::string_view stage) {
   return std::ranges::count_if(
-      node.shaders, [&](const std::string &shader) { return shader.ends_with(stage); });
+      shaders, [&](const std::string &shader) { return shader.ends_with(stage); });
 }
 
 bool is_draw(const Node &node) {
-  return count_stage(node, vertex_stage) != 0;
+  return std::ranges::any_of(
+      node.files, [](const std::string &file) { return file.ends_with(vertex_stage); });
 }
 
-// Views own their copies of recipes (V03), so the build names a recipe "view/recipe".
-std::string recipe_of(const View &view, const Node &node) {
-  return std::format("{}/{}", view.name, node.recipe);
+// A buffer holds one element per invocation of its writer: a dispatch's threads, or a
+// draw's vertices.
+std::uint32_t invocations_of(const Node &node) {
+  return is_draw(node) ? node.vertex_count : node.invocations;
+}
+
+// Views own their copies (V03), so the build names a node's module "view/folder".
+std::string module_of(const View &view, const Node &node) {
+  return std::format("{}/{}", view.name, node.module.generic_string());
+}
+
+std::string joined(const std::vector<std::string> &names) {
+  std::string text;
+  for (const std::string &name : names)
+    text += (text.empty() ? "" : " and ") + name;
+  return text;
 }
 
 // By Access and by Memory, in the words a log line uses.
@@ -97,6 +128,7 @@ std::string pass_block(const std::vector<Field> &fields, std::uint32_t size) {
 struct Schedule::Bound {
   const Node *node = nullptr;
   Level log = Level::warn;
+  std::vector<std::string> shaders_named;   // the node's shader files
   std::vector<std::filesystem::path> spirv; // by the node's shaders
   std::vector<std::filesystem::file_time_type> built;
   std::vector<Shader> shaders; // all of the node's, or none when one fails to load
@@ -339,8 +371,7 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
       replaced->drop_commands(bound);
   _bound.reserve(nodes.size());
   for (const Node *const node : nodes)
-    _bound.push_back(
-        bind(*node, wiring.views / view.name / "recipes" / node->recipe, replaced));
+    _bound.push_back(bind(*node, wiring.views / view.name / node->module, replaced));
   check_connections();
   make_buffers(replaced);
   make_blocks();
@@ -388,14 +419,13 @@ Schedule::Bound Schedule::bind(const Node &node,
   // So an edit makes blocks only for the nodes it changed.
   if (old && old->block && old->block_size == bound.block_size)
     bound.block = std::move(old->block);
-  if (old && old->op && old->node->recipe == node.recipe &&
+  if (old && old->op && old->node->module == node.module &&
       old->node->operator_name == node.operator_name) {
     bound.op = std::move(old->op);
     log(Level::debug, Tag::nod, bound, "keeps its operator " + node.operator_name);
   } else if (!node.operator_name.empty()) {
     try {
-      bound.op =
-          _wiring.recipes.make(recipe_of(_view, node), folder, node.operator_name);
+      bound.op = _wiring.modules.make(module_of(_view, node), folder, node.operator_name);
       log(Level::info, Tag::nod, bound, "new operator " + node.operator_name);
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
@@ -417,17 +447,10 @@ Schedule::Bound Schedule::bind(const Node &node,
 void Schedule::load_shaders(Bound &bound,
                             const std::filesystem::path &folder,
                             Bound *old) {
-  const Node &node = *bound.node;
-  if (node.shaders.empty())
+  const std::vector<std::string> &shaders = bound.shaders_named = shaders_of(*bound.node);
+  if (!check_counts(bound))
     return;
-  const bool dispatch = node.shaders.size() == 1 && count_stage(node, compute_stage) == 1;
-  const bool draw = node.shaders.size() == 2 && count_stage(node, vertex_stage) == 1 &&
-                    count_stage(node, fragment_stage) == 1;
-  if (!dispatch && !draw) {
-    bound.errors.push_back("a node runs one .comp shader, or one .vert and one .frag");
-    return;
-  }
-  for (const std::string &shader : node.shaders) {
+  for (const std::string &shader : shaders) {
     std::error_code missing;
     bound.spirv.push_back(folder / (shader + ".spv"));
     bound.built.push_back(std::filesystem::last_write_time(bound.spirv.back(), missing));
@@ -457,6 +480,33 @@ void Schedule::load_shaders(Bound &bound,
   check_stages(bound);
 }
 
+// What the node's shaders make it, and whether it counts what that runs: a dispatch
+// its invocations, a draw its vertex_count. False when a mistake leaves nothing to run.
+bool Schedule::check_counts(Bound &bound) const {
+  const Node &node = *bound.node;
+  const std::vector<std::string> &shaders = bound.shaders_named;
+  const bool dispatch = shaders.size() == 1 && count_stage(shaders, compute_stage) == 1;
+  const bool draw = shaders.size() == 2 && count_stage(shaders, vertex_stage) == 1 &&
+                    count_stage(shaders, fragment_stage) == 1;
+  const std::size_t before = bound.errors.size();
+  if (shaders.empty()) {
+    if (node.invocations != 0 || node.vertex_count != 0 || node.instance_count != 0)
+      bound.errors.emplace_back("it counts invocations or vertices, but its folder holds "
+                                "no shader to run them");
+  } else if (!dispatch && !draw) {
+    bound.errors.push_back(std::format("its folder holds the shaders {}, but a node runs "
+                                       "one .comp, or one .vert and one .frag",
+                                       joined(shaders)));
+  } else if (dispatch && (node.vertex_count != 0 || node.invocations == 0)) {
+    bound.errors.emplace_back(
+        "it runs a .comp, so it counts its invocations, and no vertex_count");
+  } else if (draw && (node.invocations != 0 || node.vertex_count == 0)) {
+    bound.errors.emplace_back(
+        "it draws, so it counts its vertex_count, and no invocations");
+  }
+  return !shaders.empty() && bound.errors.size() == before;
+}
+
 // A node's shaders share its one pass block, so they must agree on where each field is.
 void Schedule::make_pipeline(Bound &bound) const {
   const Node &node = *bound.node;
@@ -478,16 +528,14 @@ void Schedule::make_pipeline(Bound &bound) const {
   } else if (!_wiring.render_pass) {
     throw std::runtime_error("it draws, but no window is open to draw into");
   } else {
-    const std::size_t vertex = node.shaders.front().ends_with(vertex_stage) ? 0 : 1;
+    const std::size_t vertex =
+        bound.shaders_named.front().ends_with(vertex_stage) ? 0 : 1;
     bound.pipeline.emplace(_wiring.pipelines,
                            bound.shaders[vertex],
                            bound.shaders[1 - vertex],
                            _wiring.render_pass);
   }
-  std::string names;
-  for (const std::string &shader : node.shaders)
-    names += (names.empty() ? "" : " and ") + shader;
-  log(Level::info, Tag::nod, bound, "pipeline from " + names);
+  log(Level::info, Tag::nod, bound, "pipeline from " + joined(bound.shaders_named));
   if (!bound.fields.empty())
     log(Level::debug, Tag::nod, bound, pass_block(bound.fields, bound.block_size));
 }
@@ -619,7 +667,7 @@ void Schedule::make_buffers(Schedule *replaced) {
                                                        : Memory::device;
       make_buffer(bound,
                   name,
-                  VkDeviceSize{bound.node->invocations} * field.stride,
+                  VkDeviceSize{invocations_of(*bound.node)} * field.stride,
                   memory,
                   replaced);
     }
@@ -704,14 +752,14 @@ void Schedule::make_passes() {
     if (!bound.errors.empty() || !bound.pipeline)
       continue;
     const bool draw = is_draw(*bound.node);
-    const std::uint32_t invocations = bound.node->invocations;
     Pass pass{.bind_point =
                   draw ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE,
               .pipeline = bound.pipeline->handle(),
               .block = bound.block ? bound.block->set() : VK_NULL_HANDLE,
-              .groups =
-                  draw ? 0 : invocations / bound.shaders.front().workgroup_size()[0],
-              .vertex_count = draw ? invocations : 0,
+              .groups = draw ? 0
+                             : bound.node->invocations /
+                                   bound.shaders.front().workgroup_size()[0],
+              .vertex_count = draw ? bound.node->vertex_count : 0,
               .instance_count = std::max(bound.node->instance_count, 1u)};
     for (const Field &field : bound.fields) {
       if (!field.buffer())
@@ -732,9 +780,9 @@ bool Schedule::ok() const {
                              [](const Bound &bound) { return bound.errors.empty(); });
 }
 
-void Schedule::drop_operators(const std::vector<std::string> &recipes) {
+void Schedule::drop_operators(const std::vector<std::string> &modules) {
   for (Bound &bound : _bound)
-    if (std::ranges::find(recipes, recipe_of(_view, *bound.node)) != recipes.end()) {
+    if (std::ranges::find(modules, module_of(_view, *bound.node)) != modules.end()) {
       drop_commands(bound);
       bound.op.reset();
     }

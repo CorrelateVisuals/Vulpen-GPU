@@ -5,11 +5,13 @@
 [manifest]
 version = 1
 
-# Two shaders make a draw; invocations counts its vertices.
+# Its folder, triangle/, holds its files. A .vert and a .frag make a draw, and
+# vertex_count counts its vertices.
 [node "triangle"]
-recipe      = triangle
-operator    = Triangle
-shader      = Triangle.vert
-shader      = Triangle.frag
-invocations = 3
-param       = speed=0.01
+operator     = Triangle
+file         = Triangle.cpp
+file         = Triangle.frag
+file         = Triangle.glsl
+file         = Triangle.vert
+vertex_count = 3
+param        = speed=0.01

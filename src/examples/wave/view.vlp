@@ -5,17 +5,17 @@
 version = 1
 
 [node "wave"]
-recipe      = wave
 operator    = Wave
-shader      = Wave.comp
+file        = Wave.comp
+file        = Wave.cpp
 invocations = 1024
 param       = amplitude=1.0
 param       = speed=0.02
 
 [node "probe"]
-recipe      = probe
 operator    = Probe
-shader      = Probe.comp
+file        = Probe.comp
+file        = Probe.cpp
 invocations = 8
 param       = step=128
 param       = every=60

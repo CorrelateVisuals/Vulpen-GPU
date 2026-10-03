@@ -30,11 +30,13 @@ constexpr std::array kinds{
     std::string_view{"key"},        // the node's params
     std::string_view{"value"},      // any word: nothing to complete
     std::string_view{"file"},       // the folders and files where the path resolves
-    std::string_view{"recipe"},     // the folders of the view's recipes
-    std::string_view{"deploy"},     // the view's deploys
+    std::string_view{"recipe"},     // the recipes of the library
 };
 // After the last placeholder: one argument or more.
 constexpr std::string_view one_or_more = "...";
+// Around the last placeholder: it may be left out, so [<kind>...] takes none or more.
+constexpr char optional_open = '[';
+constexpr char optional_close = ']';
 
 std::vector<std::string_view> words_of(std::string_view line) {
   std::vector<std::string_view> words;
@@ -183,6 +185,7 @@ struct Commands::Spec {
   // it, when it takes one argument or more.
   std::vector<std::string_view> placeholders;
   bool more = false;
+  bool optional = false; // whether the last placeholder may be left out
   std::string usage;
   std::string help;
   Command command;
@@ -214,11 +217,15 @@ Command Commands::add(std::string_view usage,
   if (words.empty() || help.empty())
     throw std::runtime_error(
         std::format("command `{}` needs a usage and a help to register (RV04)", usage));
+  const bool optional = words.size() > 1 && words.back().front() == optional_open &&
+                        words.back().back() == optional_close;
+  if (optional)
+    words.back() = words.back().substr(1, words.back().size() - 2);
   const bool more = words.back().ends_with(one_or_more);
   if (more)
     words.back().remove_suffix(one_or_more.size());
   const auto arguments = std::ranges::find_if_not(words, lowercase);
-  if (arguments == words.begin() || (more && arguments == words.end()) ||
+  if (arguments == words.begin() || ((more || optional) && arguments == words.end()) ||
       !std::all_of(arguments, words.end(), placeholder))
     throw std::runtime_error(std::format(
         "command `{}`: a usage is lowercase words, then placeholders of the kinds {}",
@@ -235,6 +242,7 @@ Command Commands::add(std::string_view usage,
   _specs.push_back({.name = {name.begin(), name.end()},
                     .placeholders = std::move(placeholders),
                     .more = more,
+                    .optional = optional,
                     .usage = std::string(usage),
                     .help = std::string(help),
                     .command = command,
@@ -267,7 +275,8 @@ std::string Commands::run(std::string_view line) {
                     joined(std::views::transform(_specs, &Spec::usage))));
   std::vector<std::string_view> arguments(words.begin() + spec->name.size(), words.end());
   const std::size_t expected = spec->placeholders.size();
-  if (arguments.size() < expected || (arguments.size() > expected && !spec->more))
+  const std::size_t least = spec->optional ? expected - 1 : expected;
+  if (arguments.size() < least || (arguments.size() > expected && !spec->more))
     throw std::runtime_error(
         std::format("{} does not fit the usage `{}`", typed, spec->usage));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
@@ -356,7 +365,8 @@ void Commands::source(const std::filesystem::path &file) {
       std::fwrite(reply.data(), 1, reply.size(), stdout);
       std::fflush(stdout);
     } catch (const std::runtime_error &failure) {
-      // An error that names this line already, as a deploy's does, names it once.
+      // An error that names this line already, as one about a node it added does,
+      // names it once.
       std::string_view message = failure.what();
       if (const std::string here = where() + ": "; message.starts_with(here))
         message.remove_prefix(here.size());

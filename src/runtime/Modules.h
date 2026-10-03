@@ -12,47 +12,47 @@
 
 namespace VP {
 
-// A recipe a release build links in, by "view/recipe", and the entry that registers it.
-struct LinkedRecipe {
-  std::string_view recipe;
+// A module a release build links in, by "view/folder", and the entry that registers it.
+struct LinkedModule {
+  std::string_view module;
   void (*entry)(Registry &);
 };
 
-// The recipe library. Deploying copies a recipe into the view with every recipe it
-// deploys and every contract it includes, and the view owns those copies from then on;
-// a later library edit never reaches them.
+// The C++ of every node's folder, which builds as one module (RV08): each registers its
+// operators by the names a manifest's operator word uses.
 //
-// A dev build loads each deployed recipe's C++ as a module it can swap; a release build
-// finds the same code linked in.
-class Recipes final : public Registry {
+// A dev build loads each folder's module from the build tree, and can swap it; a release
+// build finds the same code linked in.
+class Modules final : public Registry {
 public:
-  Recipes();
-  ~Recipes();
-  Recipes(const Recipes &) = delete;
-  Recipes &operator=(const Recipes &) = delete;
+  Modules();
+  ~Modules();
+  Modules(const Modules &) = delete;
+  Modules &operator=(const Modules &) = delete;
 
-  // recipe: "view/recipe"; folder: where the build put its module. Throws naming what
-  // the recipe does register when it lacks the class (A02).
-  std::unique_ptr<Operator> make(const std::string &recipe,
+  // module: "view/folder", the folder from the view's root as the build tree mirrors it;
+  // folder: where the build put the module. Throws naming what the module does register
+  // when it lacks the class (A02).
+  std::unique_ptr<Operator> make(const std::string &module,
                                  const std::filesystem::path &folder,
                                  std::string_view name);
-  // Recipes, as "view/recipe", whose module the build rewrote since it loaded.
+  // Modules, as "view/folder", that the build rewrote since they loaded.
   std::vector<std::string> rewritten() const;
-  // The next make() loads the rebuilt module. The caller has destroyed the recipe's
-  // operators first: their code is in the module.
-  void unload(const std::string &recipe);
+  // The next make() loads the rebuilt module. The caller has destroyed the module's
+  // operators first: their code is in it.
+  void unload(const std::string &module);
 
 private:
-  // A recipe's module in a dev build. It holds the platform's Library, so Recipes.cpp
-  // defines it and this header includes no platform code.
-  struct Module;
+  // A module of a dev build. It holds the platform's Library, so Modules.cpp defines it
+  // and this header includes no platform code.
+  struct Loaded;
 
   void add(std::string_view name, Make make) override;
-  void enter(const std::string &recipe, const std::filesystem::path &folder);
-  void load(Module &module);
-  void run(const std::string &recipe, void (*entry)(Registry &));
+  void enter(const std::string &module, const std::filesystem::path &folder);
+  void load(Loaded &loaded);
+  void run(const std::string &module, void (*entry)(Registry &));
 
-  std::vector<Module> _modules;
+  std::vector<Loaded> _loaded;
   std::map<std::string, std::map<std::string, Make, std::less<>>, std::less<>> _operators;
   std::string _entering;
 };

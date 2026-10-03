@@ -38,8 +38,7 @@ NUMBER = re.compile(r"[-+]?\d[\d.e+-]*")
 EDITS = """\
 disconnect values
 node remove probe
-node add probe recipe=probe operator=Probe shader=Probe.comp invocations=8 param=step=128 \
-param=every=60 log=info
+node add probe operator=Probe invocations=8 param=step=128 param=every=60 log=info
 connect values wave.values probe.values
 param set wave amplitude 1.0
 """
@@ -107,12 +106,12 @@ def main() -> None:
         write(device, printed)
         return
     with tempfile.TemporaryDirectory() as temporary:
-        # Copies, since both runs save; each folder is named wave, so it finds its recipes.
+        # Copies of the whole view (V03), since both runs save; each folder is named
+        # wave, so it finds the modules and SPIR-V the build made for the view.
         copies = [Path(temporary) / name / "wave" / "view.vlp"
                   for name in ("edit", "replay")]
         for copy in copies:
-            copy.parent.mkdir(parents=True)
-            shutil.copyfile(VIEW, copy)
+            shutil.copytree(VIEW.parent, copy.parent)
         script = Path(temporary) / "edits.txt"
         script.write_text(EDITS + SAVE, encoding="utf-8")
         _, edited = record(options.vulpen, options.own_gpu, ["--source", script], copies[0])

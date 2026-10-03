@@ -2,8 +2,8 @@
 
 #include "runtime/Operator.h"
 
-// Only Name.cpp includes this header: a recipe's C++ is one translation unit, so the
-// class stays in the unnamed namespace and two views' copies of the recipe never clash.
+// Only Name.cpp includes this header, so the class stays in the unnamed namespace, and
+// two copies of the node in one binary never clash.
 namespace {
 
 // Why the Name operator exists, in a line or two.
@@ -15,7 +15,7 @@ class Name final : public VP::Operator {
   // VP::Texture _atlas;            // an image C++ fills once
   // VP::Command _reset;            // a command the node answers
   // VP::File _settings;            // a file the node reads, watches and saves
-  // std::string _folder;           // where the recipe's own files are
+  // std::string _folder;           // where the node's own files are
 
   // At load, and again after every swap: names in, handles out.
   // void bind(VP::Bind &node) override;

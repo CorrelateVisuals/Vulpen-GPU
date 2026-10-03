@@ -2,21 +2,30 @@
 """Every broken view ends the run with exit 1 and an error that names its cause (A02,
 RV03), before anything wrong reaches the GPU: a manifest that says a thing twice, SPIR-V
 cut short, C++ and a shader that disagree on a name or a type, a connection whose ends
-disagree, a dispatch that leaves a workgroup part full, a draw that writes, a
-node's command without its help, registered twice or failing when it runs, and a
-deploy of a recipe with no view.vlp, of one that deploys itself, or that names a node
-its recipe lacks. A view with more pass blocks than one pool holds is no mistake: it
-runs, and so does an edit on it. Nor is a deploy: edits on one save back to the same
-manifest. Nor is a command line on the terminal: what it reads runs, a refusal names
-its cause and the next line still runs, and the run ends with its input. And a pass reads
-the frame block as the engine wrote it, each value where reflection put it.
+disagree, a dispatch that leaves a workgroup part full or counts no invocations, a draw
+that writes, a node inside no node, a file named by a command, a node's command without
+its help, registered twice or failing when it runs, a view that uses a library recipe
+as it is, and a library recipe that uses one the library lacks, uses itself, or names a
+node the one it uses lacks.
 
-The views are written into a folder named mistakes, so they find the recipes the build
-compiles from mistakes/ beside this script, which get these things wrong on purpose; a
-link to that folder's recipes gives deploys their view.vlp.
+A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
+edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
+its cause and the next line still runs, and the run ends with its input. A pass reads the
+frame block as the engine wrote it, each value where reflection put it. A view's child
+views run, and leave and come back by edits that save the manifest unchanged. And a drop
+copies a recipe whose sync brings it up to the library's while it is unchanged, keeping
+the params the view set, and refuses once the view changed the copy; a sync of a copy of
+recipes that use others takes out the nodes, files and folders the library let go, and
+names the params that went with them.
+
+Each view is written into a folder named mistakes, beside a link to each node's folder
+it names, so it finds the nodes the build compiles from mistakes/ beside this script,
+which get these things wrong on purpose. The recipe cases write a library of their own.
 
 Usage: python3 src/tools/tests/fail-loud.py VULPEN
 """
+import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -24,37 +33,14 @@ from pathlib import Path
 from harness import display, problems, run
 
 HEAD = "[manifest]\nversion = 1\n"
-FILL = '[node "fill"]\nrecipe = fill\nshader = Fill.comp\ninvocations = 64\nparam = amount=1\n'
-PAIRS = '[node "pairs"]\nrecipe = connect\nshader = Pairs.comp\ninvocations = 64\n'
-SUM = '[node "sum"]\nrecipe = connect\nshader = Sum.comp\ninvocations = 64\n'
-DRAW = ('[node "draw"]\nrecipe = draw\nshader = Draw.vert\nshader = Draw.frag\n'
-        'invocations = 3\n')
+FILL = '[node "fill"]\ninvocations = 64\nparam = amount=1\n'
+PAIRS = '[node "pairs"]\ninvocations = 64\n'
+SUM = '[node "sum"]\ninvocations = 64\n'
+DRAW = '[node "draw"]\nvertex_count = 3\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
-RECIPES = Path(__file__).resolve().parent / "mistakes" / "recipes"
-# Laid out as a save writes it, so edits that end where they began save it unchanged.
-DEPLOYED = HEAD + """
-[deploy "a"]
-recipe = fill
-param  = fill.amount=2
-
-[node "sum"]
-recipe      = connect
-shader      = Sum.comp
-invocations = 64
-
-[connection "values"]
-from = a.fill.values
-to   = sum.values
-"""
-EDITS = """deploy add b fill
-param set b.fill amount 3
-connect more b.fill.values sum.sums
-disconnect more
-deploy remove b
-param set a.fill amount 5
-param set a.fill amount 2
-view save
-"""
+FIXTURE = Path(__file__).resolve().parent / "mistakes"
+NODE = re.compile(r'^\[node "([^".]+)', re.MULTILINE)
+CUT = ("truncated", "empty")  # nodes whose SPIR-V this script writes, cut short
 
 
 def connection(name: str, source: str, *targets: str) -> str:
@@ -62,11 +48,7 @@ def connection(name: str, source: str, *targets: str) -> str:
 
 
 def operator(name: str) -> str:
-    return FILL.replace("recipe = fill\n", f"recipe = fill\noperator = {name}\n")
-
-
-def shader(name: str) -> str:
-    return FILL.replace("Fill.comp", name)
+    return FILL.replace("invocations", f"operator = {name}\ninvocations")
 
 
 # What each view gets wrong, and what its error must say.
@@ -83,8 +65,9 @@ CASES = {
     "port-in-two": (HEAD + PAIRS + SUM + connection("a", "pairs.pairs", "sum.values")
                     + connection("b", "pairs.pairs", "sum.values"),
                     "pairs.pairs joins two connections"),
-    "truncated-spirv": (HEAD + shader("Truncated.comp"), "Truncated.comp.spv is truncated"),
-    "empty-spirv": (HEAD + shader("Empty.comp"), "Empty.comp.spv is not SPIR-V"),
+    "truncated-spirv": (HEAD + FILL.replace("fill", "truncated"),
+                        "Truncated.comp.spv is truncated"),
+    "empty-spirv": (HEAD + FILL.replace("fill", "empty"), "Empty.comp.spv is not SPIR-V"),
     "cpp-name": (HEAD + operator("WrongName"), "the operator sets level, which the shader"),
     "cpp-type": (HEAD + operator("WrongType"), "sets amount as a uint, but the shader"),
     "elements": (HEAD + PAIRS + SUM + connection("a", "pairs.pairs", "sum.values"),
@@ -93,85 +76,139 @@ CASES = {
                  "sums is not a buffer its shader reads"),
     "workgroups": (HEAD + FILL.replace("= 64", "= 100"),
                    "invocations = 100 is not a multiple of local_size_x = 64"),
+    "dispatch-counts": (HEAD + FILL.replace("invocations", "vertex_count"),
+                        "it runs a .comp, so it counts its invocations"),
     "draw-writes": (HEAD + DRAW, "a draw's shaders only read buffers"),
+    "draw-counts": (HEAD + DRAW.replace("vertex_count", "invocations"),
+                    "it draws, so it counts its vertex_count"),
+    "inside-nothing": (HEAD + FILL + '[node "fill.inner.deeper"]\n',
+                       "node fill.inner.deeper is inside fill.inner, which is no node"),
+    "file-word": (HEAD + FILL, "a node's files are what its folder holds", "node set fill file=x\n"),
     "command-help": (HEAD + operator("NoHelp"), "command `fill help` needs a usage and a help"),
-    "command-twice": (HEAD + operator("Twin") + operator("Twin").replace('"fill"', '"twin"'),
+    "command-twice": (HEAD + operator("Twin") + '[node "twin"]\noperator = Twin\n',
                       "node twin: command `fill twin` registers twice"),
     "command-fails": (HEAD + operator("Refuse"), "command-fails.txt:1: refused, as the fixture",
                       "refuse\n"),
-    "deploy-missing": (HEAD + '[deploy "a"]\nrecipe = connect\n',
-                       ("deploy-missing.vlp:3: deploy a: ",
-                        "/recipes/connect/view.vlp: cannot be read")),
-    "deploy-cycle": (HEAD + '[deploy "a"]\nrecipe = loop\n',
-                     "the deploys form a cycle through recipe loop (RV06)"),
-    "deploy-param": (HEAD + '[deploy "a"]\nrecipe = fill\nparam = nothing.amount=1\n',
-                     "it sets param nothing.amount, but recipe fill has no node nothing"),
-    "deploy-port": (DEPLOYED.replace("a.fill.values", "a.nothing.values"),
-                    "connection values joins a.nothing, which is no node"),
+    "uses-in-view": (HEAD + '[node "x"]\nrecipe = fill\n',
+                     "node x uses recipe fill as it is, as only the library's own recipes do"),
 }
-WINDOWED = {"draw-writes"}
+WINDOWED = {"draw-writes", "draw-counts"}
+
+# A library of manifests only, for the recipe cases: each runs as the view at its path,
+# from the library's folder.
+LIBRARY = {
+    "parts/loop": '[node "loop"]\n\n[node "loop.again"]\nrecipe = loop\n',
+    "parts/part": '[node "part"]\n',
+    "apps/missing": '[node "missing"]\n\n[node "missing.x"]\nrecipe = nothing\n',
+    "apps/param": '[node "param"]\n\n[node "param.x"]\nrecipe = part\nparam = nothing.amount=1\n',
+    "apps/port": ('[node "port"]\n\n[node "port.x"]\nrecipe = part\n\n'
+                  + connection("values", "port.x.nothing.values", "port.x.values")),
+}
+RECIPE_CASES = {
+    "apps/missing": ("missing/view.vlp:6: node missing.x: ",
+                     "/recipes/parts/nothing/view.vlp: cannot be read"),
+    "parts/loop": "the recipes it uses form a cycle through loop (RV06)",
+    "apps/param": "it sets param nothing.amount, but recipe part has no node part.nothing",
+    "apps/port": "connection values joins port.x.nothing, which is no node",
+}
+
+
+def mirror(vulpen: str) -> Path:
+    """Where the build put the fixture's modules and SPIR-V."""
+    return Path(vulpen).parent / "views" / "mistakes"
 
 
 def cut_spirv(vulpen: str) -> list[Path]:
-    """SPIR-V no build writes: one cut inside its first instruction, one empty."""
-    fill = Path(vulpen).parent / "views" / "mistakes" / "recipes" / "fill"
-    whole = (fill / "Fill.comp.spv").read_bytes()
+    """SPIR-V no build writes, for nodes whose folders hold only a shader's name: one cut
+    inside its first instruction, one empty."""
+    whole = (mirror(vulpen) / "fill" / "Fill.comp.spv").read_bytes()
     header_and_a_word = 24
-    written = {fill / "Truncated.comp.spv": whole[:header_and_a_word],
-               fill / "Empty.comp.spv": b""}
-    for file, content in written.items():
-        file.write_bytes(content)
-    return list(written)
+    written = []
+    for node, content in zip(CUT, (whole[:header_and_a_word], b"")):
+        folder = mirror(vulpen) / node
+        folder.mkdir(exist_ok=True)
+        (folder / f"{node.capitalize()}.comp.spv").write_bytes(content)
+        written.append(folder)
+    return written
+
+
+def view_in(folder: Path, name: str, text: str) -> Path:
+    """The view, written into a folder named mistakes with a link to each node's folder
+    it names: the fixture's, a fill's for a node named fillN, or one holding only a
+    shader's name for a node whose SPIR-V is cut."""
+    home = folder / name / "mistakes"
+    home.mkdir(parents=True)
+    for node in set(NODE.findall(text)):
+        if node in CUT:
+            (home / node).mkdir()
+            (home / node / f"{node.capitalize()}.comp").write_text("", encoding="utf-8")
+        elif (FIXTURE / node).is_dir():
+            (home / node).symlink_to(FIXTURE / node, target_is_directory=True)
+        elif node.startswith("fill"):
+            (home / node).symlink_to(FIXTURE / "fill", target_is_directory=True)
+    view = home / f"{name}.vlp"
+    view.write_text(text, encoding="utf-8")
+    return view
 
 
 def check(vulpen: str, folder: Path, name: str, text: str, cause: str | tuple[str, ...],
           script: str = "") -> str | None:
     """Why the case failed, or None. A cause in parts is a path between them; a script
     runs through --source."""
-    view = folder / f"{name}.vlp"
-    view.write_text(text, encoding="utf-8")
+    view = view_in(folder, name, text)
     arguments = [view, "--frames", 1, "--fps", 0]
     if script:
-        (folder / f"{name}.txt").write_text(script, encoding="utf-8")
-        arguments += ["--source", folder / f"{name}.txt"]
+        (view.parent / f"{name}.txt").write_text(script, encoding="utf-8")
+        arguments += ["--source", view.parent / f"{name}.txt"]
     code, output = run(vulpen, arguments, headless=name not in WINDOWED)
+    return judge(name, code, output, cause)
+
+
+def judge(name: str, code: int, output: str, cause: str | tuple[str, ...]) -> str | None:
     if code != 1 or any(part not in output for part in
                         ((cause,) if isinstance(cause, str) else cause)) or problems(output):
         return f"{name}: expected exit 1 and '{cause}', got exit {code}:\n{output}"
     return None
 
 
+def recipes(vulpen: str, folder: Path) -> list[str]:
+    """Why each recipe case failed: each runs the library recipe at its path as a view."""
+    library = folder / "library" / "recipes"
+    for path, text in LIBRARY.items():
+        (library / path).mkdir(parents=True)
+        (library / path / "view.vlp").write_text(HEAD + "\n" + text, encoding="utf-8")
+    failed = []
+    for path, cause in RECIPE_CASES.items():
+        code, output = run(vulpen, [library / path / "view.vlp", "--frames", 1, "--fps", 0])
+        if problem := judge(path, code, output, cause):
+            failed.append(problem)
+    return failed
+
+
 def no_limit(vulpen: str, folder: Path) -> str | None:
-    """Why a view past one pool of pass blocks, or an edit on it, failed, or None."""
-    view = folder / "passes.vlp"
-    view.write_text(HEAD + "".join(FILL.replace('"fill"', f'"fill{index}"')
-                                   for index in range(PASSES)), encoding="utf-8")
-    edit = folder / "edit.txt"
-    edit.write_text("param set fill0 amount 2\n", encoding="utf-8")
-    code, output = run(vulpen, [view, "--frames", 1, "--fps", 0, "--source", edit])
+    """Why a view past one pool of pass blocks, or an edit on it, failed, or None. Each
+    node's folder is a link to fill's, and so is its folder in the build tree."""
+    text = HEAD + "".join(FILL.replace('"fill"', f'"fill{index}"') for index in range(PASSES))
+    view = view_in(folder, "passes", text)
+    built = [mirror(vulpen) / f"fill{index}" for index in range(PASSES)]
+    try:
+        for link in built:
+            link.symlink_to(mirror(vulpen) / "fill", target_is_directory=True)
+        edit = view.parent / "edit.txt"
+        edit.write_text("param set fill0 amount 2\n", encoding="utf-8")
+        code, output = run(vulpen, [view, "--frames", 1, "--fps", 0, "--source", edit])
+    finally:
+        for link in built:
+            link.unlink(missing_ok=True)
     if code != 0 or problems(output):
         return (f"passes: expected {PASSES} passes and an edit on them to run, got exit "
                 f"{code}:\n{output}")
     return None
 
 
-def deploys(vulpen: str, folder: Path) -> str | None:
-    """Why a deploy did not run, or its edits did not save it back unchanged, or None."""
-    view = folder / "deployed.vlp"
-    view.write_text(DEPLOYED, encoding="utf-8")
-    edits = folder / "deploys.txt"
-    edits.write_text(EDITS, encoding="utf-8")
-    code, output = run(vulpen, [view, "--frames", 1, "--fps", 0, "--source", edits])
-    saved = view.read_text(encoding="utf-8")
-    if code != 0 or problems(output) or saved != DEPLOYED:
-        return f"deploys: expected exit 0 and the same manifest, got exit {code}:\n{output}\n{saved}"
-    return None
-
-
 def terminal(vulpen: str, folder: Path) -> str | None:
     """Why lines piped to a node that reads the terminal did not run as commands, or None."""
-    view = folder / "terminal.vlp"
-    view.write_text(HEAD + operator("Echo"), encoding="utf-8")
+    view = view_in(folder, "terminal", HEAD + operator("Echo"))
     code, output = run(vulpen, [view], typed="echo one two\nnode remove nothing\necho three")
     said = [line.strip() for line in output.splitlines()]
     if (code != 0 or problems(output) or "one two" not in said or "three" not in said
@@ -184,12 +221,90 @@ def terminal(vulpen: str, folder: Path) -> str | None:
 def frame_block(vulpen: str, folder: Path) -> str | None:
     """Why a pass did not read the frame block as the engine wrote it, or None; the
     fixture's operator stops when it differs, from a frame far in, where time is large."""
-    view = folder / "frame.vlp"
-    view.write_text(HEAD + '[node "frame"]\nrecipe = frame\noperator = Frame\n'
-                    'shader = Frame.comp\ninvocations = 4\n', encoding="utf-8")
+    view = view_in(folder, "frame", HEAD + '[node "frame"]\noperator = Frame\ninvocations = 4\n')
     code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--first-frame", 1_000_000])
     if code != 0 or problems(output):
         return f"frame: expected the frame block as the engine wrote it, got exit {code}:\n{output}"
+    return None
+
+
+def children(vulpen: str, folder: Path) -> str | None:
+    """Why a view's child view did not run, or did not leave and come back by edits that
+    save the manifest as it was, or None."""
+    host = folder / "children" / "host"
+    (host / "inner").mkdir(parents=True)
+    text = HEAD + '\n[view "inner"]\n'
+    (host / "view.vlp").write_text(text, encoding="utf-8")
+    (host / "inner" / "view.vlp").write_text(HEAD, encoding="utf-8")
+    script = host / "edits.txt"
+    script.write_text("child remove inner\nchild add inner inner/view.vlp\nview save\n",
+                      encoding="utf-8")
+    code, output = run(vulpen, [host / "view.vlp", "--frames", 1, "--fps", 0, "--log", "info",
+                                "--source", script])
+    saved = (host / "view.vlp").read_text(encoding="utf-8")
+    if code != 0 or problems(output) or "child inner: hosted from" not in output or saved != text:
+        return f"children: expected the child to run and the same manifest, got exit {code}:\n{output}\n{saved}"
+    return None
+
+
+def drops(vulpen: str, folder: Path) -> str | None:
+    """Why a drop, or a sync of it, did not do what the library says, or None. The CLI
+    runs from a copy of the library, which also holds a recipe of one data file, so no
+    build serves it; its node runs nothing and fails only on its param, which it never
+    reads."""
+    root = Path(__file__).resolve().parents[2] / "recipes"
+    library = folder / "drops" / "recipes"
+    for part in ("command-line", "inspect", "library"):
+        shutil.copytree(root / "parts" / part, library / "parts" / part)
+    shutil.copytree(root / "apps" / "cli", library / "apps" / "cli")
+    notes = library / "parts" / "notes"
+    notes.mkdir()
+    (notes / "view.vlp").write_text(
+        HEAD + '\n[node "notes"]\nfile  = notes.ini\nparam = level=1\n', encoding="utf-8")
+    project = folder / "drops" / "project"
+    project.mkdir()
+    (project / "view.vlp").write_text(HEAD, encoding="utf-8")
+    copy = project / "copy" / "notes.ini"
+
+    def cli(*lines: str) -> str:
+        typed = "\n".join([f"view load {project}", *lines, "view save"]) + "\n"
+        _, output = run(vulpen, [library / "apps" / "cli" / "view.vlp"], typed=typed)
+        return output
+
+    steps = [
+        ("one", ("recipe drop notes copy", "param set copy level 5"),
+         lambda out: copy.read_text() == "one" and "recipe = notes@" in manifest()),
+        ("two", ("recipe sync copy",),
+         lambda out: copy.read_text() == "two" and re.search(r"param +=", manifest())
+         and "level=5" in manifest()),
+        ("three", ("recipe sync copy",),
+         lambda out: copy.read_text() == "mine" and "node copy changed since it was dropped" in out),
+    ]
+
+    def manifest() -> str:
+        return (project / "view.vlp").read_text(encoding="utf-8")
+
+    for content, lines, holds in steps:
+        (notes / "notes.ini").write_text(content, encoding="utf-8")
+        output = cli(*lines)
+        if problems(output) or not holds(output):
+            return f"drops: the library's notes as {content!r} went wrong:\n{output}\n{manifest()}"
+        if content == "two":
+            copy.write_text("mine", encoding="utf-8")
+    both = library / "components" / "both"
+    both.mkdir(parents=True)
+    used = '[node "both"]\n\n[node "both.left"]\nrecipe = notes\n'
+    (both / "view.vlp").write_text(
+        HEAD + "\n" + used + '\n[node "both.right"]\nrecipe = notes\n\n'
+        + connection("link", "both.left.out", "both.right.in"), encoding="utf-8")
+    dropped = cli("recipe drop both pair")
+    (both / "view.vlp").write_text(HEAD + "\n" + used, encoding="utf-8")
+    synced = cli("recipe sync pair")
+    if (problems(dropped + synced) or "let go of param level=1 of pair.right" not in synced
+            or "pair.link" in manifest() or "pair.right" in manifest()
+            or (project / "pair" / "right").exists()
+            or not (project / "pair" / "left" / "notes.ini").is_file()):
+        return f"drops: a sync kept what the library let go:\n{dropped}\n{synced}\n{manifest()}"
     return None
 
 
@@ -198,19 +313,19 @@ def main() -> None:
     cut = cut_spirv(vulpen)
     try:
         with tempfile.TemporaryDirectory() as temporary:
-            folder = Path(temporary) / "mistakes"
-            folder.mkdir()
-            (folder / "recipes").symlink_to(RECIPES, target_is_directory=True)
+            folder = Path(temporary)
             failed = [problem for name, (text, cause, *script) in CASES.items()
                       if name not in WINDOWED or display()
                       if (problem := check(vulpen, folder, name, text, cause, *script))]
-            for problem in (no_limit(vulpen, folder), deploys(vulpen, folder),
-                            terminal(vulpen, folder), frame_block(vulpen, folder)):
+            failed += recipes(vulpen, folder)
+            for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
+                            frame_block(vulpen, folder), children(vulpen, folder),
+                            drops(vulpen, folder)):
                 if problem:
                     failed.append(problem)
     finally:
-        for file in cut:
-            file.unlink()
+        for made in cut:
+            shutil.rmtree(made)
     if failed:
         sys.exit("\n".join(failed))
 

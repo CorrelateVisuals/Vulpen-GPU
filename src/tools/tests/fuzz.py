@@ -37,7 +37,7 @@ param unset wave spare
 node set wave invocations=1024
 disconnect values
 node remove probe
-node add probe recipe=probe operator=Probe shader=Probe.comp invocations=8 param=step=64
+node add probe operator=Probe invocations=8 param=step=64
 param set probe every 30
 connect values wave.values probe.values
 child add e empty/view.vlp
@@ -54,10 +54,11 @@ TOKENS = ["", "0", "1", "-1", "64", "65", "4294967295", "4294967296", "1e9", "0.
           "inf", "9" * 40, "x" * 4000, '"', "[", "]", "=", ".", "#", "é", "\t",
           "wave", "probe", "values", "samples", "Wave.comp", "Probe.comp", "Wave.vert",
           "quit", "node", "add", "remove", "set", "unset", "param", "connect", "disconnect",
-          "operator", "shader", "invocations", "log", "save", "source", "session.log",
-          "script.txt", "view", "deploy", "recipe", "a.wave", "a.wave.values",
-          "[node \"wave\"]", "[connection \"values\"]", "[deploy \"a\"]", "[manifest]",
-          "version = 1", "instance_count", "child", "list", "e", "e:", ":", "empty/view.vlp", "wave/view.vlp"]
+          "operator", "file", "invocations", "vertex_count", "log", "save", "source",
+          "session.log", "script.txt", "view", "recipe", "wave@0badf00d", "wave.inner",
+          "wave.inner.values", "Wave.cpp", "[node \"wave\"]", "[connection \"values\"]",
+          "[view \"e\"]", "[manifest]", "version = 1", "instance_count", "child", "list", "e",
+          "e:", ":", "empty/view.vlp", "wave/view.vlp"]
 # What std::exception::what() says for the standard library's own throws: a message that
 # names no file, node or key of the view.
 BARE = re.compile(r"\{!!!\} (?:map::at|unordered_map::at|vector::|basic_string|array::at"
@@ -106,8 +107,10 @@ def main() -> None:
            if key not in ("DISPLAY", "WAYLAND_DISPLAY")}
     refused = 0
     with tempfile.TemporaryDirectory() as temporary:
-        view = Path(temporary) / "wave" / "view.vlp"  # named wave, so it finds its recipes
-        view.parent.mkdir()
+        # A copy of the whole view (V03), named wave, so it finds the modules and SPIR-V
+        # the build made for the view.
+        view = Path(temporary) / "wave" / "view.vlp"
+        shutil.copytree(SEED_VIEW.parent, view.parent)
         script = Path(temporary) / "script.txt"
         mutated, arguments = ((script, [view, "--source", script]) if options.commands
                               else (view, [view]))

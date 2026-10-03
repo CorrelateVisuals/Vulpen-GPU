@@ -18,7 +18,7 @@ endif()
 set(test_environment VULPEN_TEST_DRIVER=${VULPEN_TEST_DRIVER})
 # Under sanitizers, windows run on lavapipe too: a closed-source driver's leaks show up
 # as an unknown module once it is unloaded, so no suppression could name them without
-# also hiding a leak in one of our unloaded recipe modules.
+# also hiding a leak in one of our unloaded node modules.
 if(VULPEN_SANITIZERS AND VULPEN_TEST_DRIVER)
   list(APPEND test_environment VK_DRIVER_FILES=${VULPEN_TEST_DRIVER})
 endif()
@@ -69,7 +69,7 @@ set_target_properties(barriers PROPERTIES COMPILE_WARNING_AS_ERROR ON)
 add_dependencies(barriers gates)
 vulpen_test(barriers ${launch} $<TARGET_FILE:barriers>)
 
-# Its recipes build only as modules.
+# Its nodes build only as modules.
 if(VULPEN_LIVE)
   vulpen_test(fail-loud ${python} ${tests}/fail-loud.py ${vulpen_file})
 endif()

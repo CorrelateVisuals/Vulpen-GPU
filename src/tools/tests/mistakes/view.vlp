@@ -1,0 +1,45 @@
+# The fail-loud fixture: nodes that get things wrong on purpose, which the views
+# src/tools/tests/fail-loud.py writes put together. As a whole it runs only as far as
+# its mistakes let it: draw writes a buffer, which a draw may not.
+
+[manifest]
+version = 1
+
+# Fills values with its amount. Its C++ registers the operators the cases name, each
+# wrong in its own way.
+[node "fill"]
+file        = Fill.comp
+file        = Fill.cpp
+invocations = 64
+param       = amount=1
+
+# Writes vec2 pairs, which a reader of floats must refuse.
+[node "pairs"]
+file        = Pairs.comp
+invocations = 64
+
+[node "sum"]
+file        = Sum.comp
+invocations = 64
+
+[node "draw"]
+file         = Draw.frag
+file         = Draw.glsl
+file         = Draw.vert
+vertex_count = 3
+
+# Registers the command fill's Twin registers.
+[node "twin"]
+operator = Twin
+file     = Twin.cpp
+
+# Reads back the frame block, and stops when it differs from what the engine wrote.
+[node "frame"]
+operator    = Frame
+file        = Frame.comp
+file        = Frame.cpp
+invocations = 4
+
+[connection "values"]
+from = fill.values
+to   = sum.values

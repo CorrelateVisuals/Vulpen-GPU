@@ -34,25 +34,25 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Edits.h` | `runtime/Operator.h` |
 | `runtime/Manifest.cpp` | `baseclasses/Platform.h` `runtime/Edits.h` `runtime/Manifest.h` `runtime/View.h` |
 | `runtime/Manifest.h` | — |
+| `runtime/Modules.cpp` | `baseclasses/Platform.h` `linked-modules.h` `runtime/Modules.h` |
+| `runtime/Modules.h` | `runtime/Operator.h` |
 | `runtime/Operator.h` | `<glm/vec2.hpp>` `<glm/vec3.hpp>` `<glm/vec4.hpp>` `baseclasses/Log.h` |
-| `runtime/Ports.cpp` | `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Ports.h` |
+| `runtime/Ports.cpp` | `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Ports.h` `runtime/View.h` |
 | `runtime/Ports.h` | `runtime/Operator.h` |
-| `runtime/Recipes.cpp` | `baseclasses/Platform.h` `linked-recipes.h` `runtime/Recipes.h` |
-| `runtime/Recipes.h` | `runtime/Operator.h` |
-| `runtime/Runtime.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Edits.h` `runtime/Manifest.h` `runtime/Ports.h` `runtime/Recipes.h` `runtime/Runtime.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |
+| `runtime/Runtime.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Edits.h` `runtime/Manifest.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Runtime.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |
 | `runtime/Runtime.h` | — |
-| `runtime/Schedule.cpp` | `baseclasses/Passes.h` `baseclasses/Pipelines.h` `runtime/Commands.h` `runtime/Operator.h` `runtime/Ports.h` `runtime/Recipes.h` `runtime/Schedule.h` `runtime/View.h` |
+| `runtime/Schedule.cpp` | `baseclasses/Passes.h` `baseclasses/Pipelines.h` `runtime/Commands.h` `runtime/Modules.h` `runtime/Operator.h` `runtime/Ports.h` `runtime/Schedule.h` `runtime/View.h` |
 | `runtime/Schedule.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Resources.h` |
 | `runtime/View.h` | — |
 | `runtime/Views.cpp` | `runtime/Commands.h` `runtime/Manifest.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |
 | `runtime/Views.h` | `runtime/Commands.h` |
 | `tools/tests/Barriers.cpp` | `baseclasses/Passes.h` |
 
-## Recipe code
+## Node code
 
-A file under a folder named `recipes/` is recipe code, not engine (V05), so it has no row above: a new recipe file builds with no edit to this page. The gate checks each of its includes against one rule instead. Recipe code may include a file in its own folder, and a contract as `contracts/<Name>.glsl`, from the nearest `recipes/` folder above it (V03, RV05). Besides those and the standard library, it may include only what this table lists. Engine code never includes recipe code (RA00).
+A file of the library (`src/recipes/`) or of a view, under a folder that holds a `view.vlp`, is node code, not engine (V05), so it has no row above: a new node's file builds with no edit to this page. The gate checks each of its includes against one rule instead. Node code may include a file in its own folder (RV08), and a contract as `contracts/<Name>.glsl`, from the top of the library or of its view (V03, RV05). Besides those and the standard library, it may include only what this table lists. Engine code never includes node code (RA00).
 
-| Recipe code may include | Why |
+| Node code may include | Why |
 | --- | --- |
 | `runtime/Operator.h` | a node's behaviour and the general ports |
 | `runtime/View.h` | the graph, for a part that reads it |

@@ -26,8 +26,9 @@ std::vector<std::string_view> words_of(std::string_view text) {
   return words;
 }
 
+// A placeholder, or one in brackets, which a line may leave out.
 bool placeholder(std::string_view word) {
-  return word.starts_with('<');
+  return word.starts_with('<') || word.starts_with('[');
 }
 
 // Whether a line names the view it addresses, as `<name>: …` or `: …`.
@@ -48,8 +49,8 @@ std::string_view newest(std::string_view children) {
   return newest;
 }
 
-// What a placeholder stands for in the view: its nodes, connections or deploys, or the
-// params of the node named just before a key. Any other answers as itself.
+// What a placeholder stands for in the view: its nodes or connections, or the params of
+// the node named just before a key. Any other answers as itself.
 std::vector<std::string> names(std::string_view kind,
                                const VP::View &view,
                                std::span<const std::string_view> typed) {
@@ -60,9 +61,6 @@ std::vector<std::string> names(std::string_view kind,
   } else if (kind == "<connection>") {
     for (const VP::Connection &connection : view.connections)
       names.push_back(connection.name);
-  } else if (kind == "<deploy>") {
-    for (const VP::Deploy &deploy : view.deploys)
-      names.push_back(deploy.name);
   } else if (kind == "<key>" && typed.size() > 1) {
     const auto node =
         std::ranges::find(view.nodes, typed[typed.size() - 2], &VP::Node::name);
@@ -180,6 +178,6 @@ class CommandLine final : public VP::Operator {
 
 } // namespace
 
-VP_RECIPE(registry) {
+VP_OPERATORS(registry) {
   registry.add<CommandLine>("CommandLine");
 }

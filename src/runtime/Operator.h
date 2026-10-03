@@ -17,13 +17,17 @@
 #include <type_traits>
 #include <vector>
 
-// The runtime header every recipe's C++ includes: a node's behaviour and the general
+// The runtime header every node's C++ includes: a node's behaviour and the general
 // ports (commands, input, files, the terminal). Nothing here reaches Vulkan or the OS.
 //
-// A recipe gets names in and handles out, never an object that owns the GPU, so its
+// A node's C++ gets names in and handles out, never an object that owns the GPU, so its
 // module needs no engine symbol and links the same way into a release binary.
 
 namespace VP {
+
+// The graph a node reads. Only C++ that reads it includes runtime/View.h, so the rest
+// compiles without its headers.
+struct View;
 
 // The GLSL name of each type C++ may put in a pass block; the loader compares it with
 // the type the shader declares. glm's vectors are GLSL's, name for name.
@@ -82,7 +86,7 @@ struct Usage {
 };
 
 // Where every change goes, as text: a node sends commands as a person types them, so no
-// recipe has a private way in.
+// node has a private way in.
 class CommandPort {
 public:
   // Runs a line and returns what its command answers. Sent during a frame, the line is a
@@ -113,13 +117,19 @@ public:
   // it does not exist.
   virtual std::string_view text(File file) = 0;
   virtual void save(File file, std::string_view text) = 0;
-  // Any other file, by absolute path, so the working directory never counts: a recipe
+  // Any other file, by absolute path, so the working directory never counts: a node
   // names one from its folder, and a command's <file> arguments come resolved.
   virtual std::string read(std::string_view file) = 0;
   // Makes the file's folder first when it has none.
   virtual void save(std::string_view file, std::string_view text) = 0;
+  // Deletes a file, and its folder once nothing is left in it.
+  virtual void remove(std::string_view file) = 0;
   // The names in a folder, sorted, a folder's ending in /; none when it does not exist.
   virtual std::vector<std::string> list(std::string_view folder) = 0;
+  // A manifest's graph as a view runs it: each node with its folder and files, and in
+  // the library each recipe a node uses unfolded into it (V11). Throws naming the
+  // manifest's first mistake.
+  virtual View manifest(std::string_view file) = 0;
 
 protected:
   ~FilePort() = default;
@@ -143,10 +153,6 @@ public:
 protected:
   ~TerminalPort() = default;
 };
-
-// The graph a node reads. Only a recipe that reads it includes runtime/View.h, so the
-// others compile without its headers.
-struct View;
 
 // What a node's C++ gets while it binds: names in, handles out. The loader checks each
 // name against the node's shader and manifest entry before a frame runs (A02), so a
@@ -180,11 +186,11 @@ public:
   // (RV04). It lasts while the node runs: a rebuild registers it again, and a node that
   // goes, or stops in error, takes it along.
   virtual Command command(std::string_view usage, std::string_view help) = 0;
-  // A file the node reads and saves: a relative path names one in its recipe's folder.
+  // A file the node reads and saves: a relative path names one in the node's folder.
   // It lasts while the node runs; a rebuild that opens it again shares it, unread.
   virtual File file(std::string_view path) = 0;
-  // The folder of the node's recipe, where its own files are: the view's copy, or the
-  // library's recipe in a view of the library.
+  // The node's folder, where its own files are (RV08), as an absolute path: in its view,
+  // or in the library for a recipe a node of the library uses.
   virtual std::string folder() const = 0;
 
 protected:
@@ -266,7 +272,7 @@ protected:
   ~CommandHandler() = default;
 };
 
-// A node's behaviour. State in its members lasts until its recipe's module is swapped;
+// A node's behaviour. State in its members lasts until its folder's module is swapped;
 // bind runs at load and again after every swap. A key, a click or a typed line reaches
 // a node as a command or as input cook reads, so no other hook is needed.
 class Operator : public CommandHandler {
@@ -277,7 +283,8 @@ public:
   void command(Call &) override {}
 };
 
-// Where a recipe registers its operators, by the names a manifest's operator word uses.
+// Where a folder's C++ registers its operators, by the names a manifest's operator word
+// uses.
 class Registry {
 public:
   template <class T> void add(std::string_view name) {
@@ -295,7 +302,9 @@ private:
 
 } // namespace VP
 
-// A recipe's one exported symbol. The build names and exports it, so the same source
-// loads as a dev module or links into a release binary (docs/plans/live-code.md).
-#define VP_RECIPE(registry)                                                              \
-  extern "C" VP_RECIPE_EXPORT void VP_RECIPE_ENTRY(VP::Registry &registry)
+// The one exported symbol of a folder's C++, which builds as one module (RV08), so one
+// file of the folder registers its operators. The build names and exports it, so the
+// same source loads as a dev module or links into a release binary
+// (docs/plans/live-code.md).
+#define VP_OPERATORS(registry)                                                           \
+  extern "C" VP_MODULE_EXPORT void VP_MODULE_ENTRY(VP::Registry &registry)

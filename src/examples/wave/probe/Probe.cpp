@@ -23,8 +23,7 @@ class Probe final : public VP::Operator {
     char *end =
         std::format_to_n(line.data(), line.size(), "frame {:6}:", frame.index()).out;
     for (const float sample : frame.read(_samples))
-      end =
-          std::format_to_n(end, line.data() + line.size() - end, " {:+}", sample).out;
+      end = std::format_to_n(end, line.data() + line.size() - end, " {:+}", sample).out;
     frame.log(VP::Level::info, {line.data(), end});
   }
 
@@ -34,6 +33,6 @@ class Probe final : public VP::Operator {
 
 } // namespace
 
-VP_RECIPE(registry) {
+VP_OPERATORS(registry) {
   registry.add<Probe>("Probe");
 }

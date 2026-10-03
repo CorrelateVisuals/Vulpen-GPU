@@ -21,12 +21,14 @@ public:
   // leaves the old file or the new one, never half of one (RA04). Makes the file's
   // folder first when it has none. Throws naming the file.
   static void save(const std::filesystem::path &file, std::string_view text);
+  // Deletes a file, and its folder once nothing is left in it. Throws naming the file.
+  static void remove(const std::filesystem::path &file);
 };
 
 // The wall clock in the machine's time zone, for the people who read the log.
 std::tm local_time(std::time_t time);
 
-// Machine code loaded while running. Only a dev build loads recipe C++ this way; a
+// Machine code loaded while running. Only a dev build loads node C++ this way; a
 // release build links the same code in.
 class Library {
 public:

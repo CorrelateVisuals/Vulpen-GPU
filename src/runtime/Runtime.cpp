@@ -6,8 +6,8 @@
 #include "runtime/Commands.h"
 #include "runtime/Edits.h"
 #include "runtime/Manifest.h"
+#include "runtime/Modules.h"
 #include "runtime/Ports.h"
-#include "runtime/Recipes.h"
 #include "runtime/Schedule.h"
 #include "runtime/View.h"
 #include "runtime/Views.h"
@@ -103,7 +103,7 @@ private:
   std::filesystem::path _mirror; // the build tree's views, where the schedules look
   std::optional<Window> _window; // outlives the engine, which draws into it
   std::optional<Engine> _engine;
-  Recipes _recipes; // outlives the schedules, whose operators run its modules' code
+  Modules _modules; // outlives the schedules, whose operators run its code
   Ports _ports;
   Commands _commands;
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
@@ -127,7 +127,7 @@ public:
   Live(std::vector<std::filesystem::path> folders, const std::filesystem::path &build)
       : _folders(std::move(folders)), _log_file(build / build_log),
         _command(std::format(
-            R"("{}" --build "{}" --target vulpen_recipes --parallel > "{}" 2>&1)",
+            R"("{}" --build "{}" --target vulpen_modules --parallel > "{}" 2>&1)",
             VP_CMAKE_COMMAND,
             build.string(),
             _log_file.string())),
@@ -262,7 +262,7 @@ int Runtime::run() {
 bool Runtime::start() {
   const std::filesystem::path build = Files::executable().parent_path();
   _mirror = build / "views";
-  View view = Manifest::load(_options.manifest);
+  View view = Views::read(_log, _options.manifest);
   const std::filesystem::path folder = Manifest::root(view);
   // Only a view that draws opens a window; every other view runs headless (V07).
   const bool draws = Schedule::draws(Manifest::flatten(view));
@@ -279,7 +279,7 @@ bool Runtime::start() {
   _wiring.emplace(Wiring{.pipelines = _engine->pipelines(),
                          .resources = _engine->resources(),
                          .render_pass = _engine->render_pass(),
-                         .recipes = _recipes,
+                         .modules = _modules,
                          .log = _log,
                          .views = _mirror,
                          .commands = _commands,
@@ -338,7 +338,8 @@ void Runtime::loop() {
 void Runtime::watch() {
   switch (_live->poll()) {
     case Live::Build::started:
-      _log.write(Level::debug, Tag::mod, "a file changed; building its recipes");
+      _log.write(
+          Level::debug, Tag::mod, "a file changed; building the modules and shaders");
       break;
     case Live::Build::succeeded:
       swap();
@@ -356,12 +357,12 @@ void Runtime::watch() {
 
 // Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest.
 void Runtime::swap() {
-  const std::vector<std::string> rewritten = _recipes.rewritten();
+  const std::vector<std::string> rewritten = _modules.rewritten();
   prepare();
   for (Schedule *const schedule : _views->schedules())
     schedule->drop_operators(rewritten);
-  for (const std::string &recipe : rewritten)
-    _recipes.unload(recipe);
+  for (const std::string &module : rewritten)
+    _modules.unload(module);
   _views->reload();
   // Rebuilt now, not at the next frame, so the line below follows what the swap did and
   // any error it met.

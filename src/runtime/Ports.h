@@ -44,7 +44,9 @@ private:
   void save(File file, std::string_view text) override;
   std::string read(std::string_view file) override;
   void save(std::string_view file, std::string_view text) override;
+  void remove(std::string_view file) override;
   std::vector<std::string> list(std::string_view folder) override;
+  View manifest(std::string_view file) override;
   std::span<const std::string> lines() override;
   bool ended() const override;
   void print(std::string_view text) override;

@@ -40,8 +40,8 @@ add_executable(vulpen
   src/runtime/Commands.cpp
   src/runtime/Edits.cpp
   src/runtime/Manifest.cpp
+  src/runtime/Modules.cpp
   src/runtime/Ports.cpp
-  src/runtime/Recipes.cpp
   src/runtime/Runtime.cpp
   src/runtime/Schedule.cpp
   src/runtime/Views.cpp)
@@ -94,19 +94,19 @@ add_custom_target(statistics ALL
 add_dependencies(statistics vulpen)
 
 # Every folder under src/examples/ with a view.vlp is a view the build compiles.
-include(src/runtime/cmake/recipe.cmake)
+include(src/runtime/cmake/nodes.cmake)
 file(GLOB examples LIST_DIRECTORIES true CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/examples/*)
 foreach(example IN LISTS examples)
   if(EXISTS ${example}/view.vlp)
     vulpen_view(${example})
   endif()
 endforeach()
-# The recipes the fail-loud test gets wrong on purpose. They build only as modules, so no
+# The nodes the fail-loud test gets wrong on purpose. They build only as modules, so no
 # test code links into a release binary.
 if(VULPEN_LIVE)
   vulpen_view(${PROJECT_SOURCE_DIR}/src/tools/tests/mistakes)
 endif()
 vulpen_library(${PROJECT_SOURCE_DIR}/src/recipes)
-vulpen_link_recipes(${generated}/linked-recipes.h)
+vulpen_link_modules(${generated}/linked-modules.h)
 
 include(src/tools/tests/tests.cmake)

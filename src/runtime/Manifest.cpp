@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -24,9 +25,19 @@ namespace {
 constexpr std::uint32_t manifest_version = 1;
 constexpr std::string_view blanks = " \t\r";
 // The library's folders by the kind of recipe each holds (RV06), and the view it builds
-// as, which src/runtime/cmake/recipe.cmake names the same.
+// as, which src/runtime/cmake/nodes.cmake names the same.
 constexpr std::array<std::string_view, 3> recipe_kinds{"parts", "components", "apps"};
 constexpr std::string_view library_view = "library";
+constexpr std::string_view manifest_file = "view.vlp";
+// The folder at a view's top that holds the contracts its nodes share (RV05): no node.
+constexpr std::string_view contracts = "contracts";
+
+std::string_view trim(std::string_view text) {
+  const std::size_t first = text.find_first_not_of(blanks);
+  if (first == std::string_view::npos)
+    return {};
+  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
+}
 
 // A recipe of the library run as a view is in <library>/<kind>/<name>/view.vlp.
 std::optional<std::filesystem::path> library_of(const std::filesystem::path &file) {
@@ -43,22 +54,54 @@ std::string name_of(const std::filesystem::path &file) {
                           : file.parent_path().filename().string();
 }
 
-// A view's own copy (V03), or the library's recipe of that name for a library view.
-std::filesystem::path recipe_folder(const View &view, const std::string &recipe) {
-  const std::optional<std::filesystem::path> library = library_of(view.file);
-  if (!library)
-    return view.file.parent_path() / "recipes" / recipe;
-  for (const std::string_view kind : recipe_kinds)
-    if (std::filesystem::is_directory(*library / kind / recipe))
-      return *library / kind / recipe;
-  return *library / recipe_kinds.front() / recipe;
+// Where a manifest's node names start (RV08): a view's folder, or in the library the
+// folder of the recipe's kind, so a recipe's own node is the recipe's folder.
+std::filesystem::path base_of(const View &view) {
+  const std::filesystem::path folder = view.file.parent_path();
+  return library_of(view.file) ? folder.parent_path() : folder;
 }
 
-std::string_view trim(std::string_view text) {
-  const std::size_t first = text.find_first_not_of(blanks);
-  if (first == std::string_view::npos)
-    return {};
-  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
+// ui.panel as the path ui/panel.
+std::filesystem::path path_of(std::string_view name) {
+  std::filesystem::path path;
+  for (std::size_t dot = name.find('.'); dot != std::string_view::npos;
+       dot = name.find('.')) {
+    path /= name.substr(0, dot);
+    name.remove_prefix(dot + 1);
+  }
+  return path / name;
+}
+
+// The library's recipe of that name, in the first kind that holds it.
+std::filesystem::path recipe_folder(const std::filesystem::path &library,
+                                    const std::string &recipe) {
+  for (const std::string_view kind : recipe_kinds)
+    if (std::filesystem::is_directory(library / kind / recipe))
+      return library / kind / recipe;
+  return library / recipe_kinds.front() / recipe;
+}
+
+// A manifest reads # as a comment and a line as one value, and trims a value's edges,
+// so a name holding those cannot be listed; nor are hidden files and editor backups.
+bool listed(std::string_view name) {
+  return !name.empty() && name.front() != '.' && !name.ends_with('~') &&
+         name.find_first_of("#\n\r") == std::string_view::npos && trim(name) == name &&
+         name != manifest_file;
+}
+
+// A folder that is not there holds no files.
+std::vector<std::string> files_in(const std::filesystem::path &folder) {
+  std::vector<std::string> files;
+  std::error_code missing;
+  for (const std::filesystem::directory_entry &entry :
+       std::filesystem::directory_iterator(folder, missing)) {
+    std::error_code gone; // a file an editor is replacing may vanish mid-listing
+    std::string name = entry.path().filename().string();
+    if (entry.is_regular_file(gone) && listed(name))
+      files.push_back(std::move(name));
+  }
+  std::ranges::sort(files);
+  return files;
 }
 
 // What a person wrote around one line of a manifest, so a save puts it back.
@@ -70,12 +113,12 @@ struct Note {
 using Notes = std::map<std::string, Note, std::less<>>;
 
 // A line's place: a section's header, or one word of it. A word that may repeat is told
-// apart by what it names: a shader by its file, a param by its key, a to by its port.
+// apart by what it names: a file by its name, a param by its key, a to by its port.
 std::string
 place(std::string_view section, std::string_view key = {}, std::string_view value = {}) {
   if (key == "param")
     value = trim(value.substr(0, value.find('=')));
-  else if (key != "shader" && key != "to")
+  else if (key != "file" && key != "to")
     value = {};
   return std::format("{}\n{}\n{}", section, key, value);
 }
@@ -94,7 +137,7 @@ public:
   }
 
 private:
-  enum class Section { none, manifest, deploy, node, connection };
+  enum class Section { none, manifest, view, node, connection };
 
   [[noreturn]] void fail(std::string_view message) const;
   std::string here() const;
@@ -102,6 +145,7 @@ private:
   template <class Edit> void edit(std::size_t line, Edit &&change);
   void header(std::string_view text);
   void word(std::string_view key, std::string_view value);
+  void view_word(std::string_view key, std::string_view value);
   void connection_word(std::string_view key, std::string_view value);
   void add_node();
   std::uint32_t number(std::string_view text) const;
@@ -117,9 +161,11 @@ private:
   // The node a section describes, added once its section ends, from the section's line.
   std::optional<Node> _node;
   std::size_t _node_line = 0;
+  // The views it hosts, and whether the last one's section named its file.
+  std::vector<std::pair<Child, std::size_t>> _children;
+  bool _child_file = false;
   // Joined once every node is in, so a connection may come before the nodes it joins.
   std::vector<std::pair<Connection, std::size_t>> _connections;
-  std::vector<std::pair<Deploy, std::size_t>> _deploys; // added before the connections
   bool _manifest = false;
   std::optional<std::uint32_t> _version;
 };
@@ -182,8 +228,8 @@ View Reader::read() {
                     _version.value_or(0),
                     manifest_version));
   add_node();
-  for (auto &[deploy, line] : _deploys)
-    edit(line, [&] { Edits::deploy(_view, std::move(deploy)); });
+  for (auto &[child, line] : _children)
+    edit(line, [&] { Edits::child(_view, std::move(child)); });
   for (auto &[connection, line] : _connections)
     edit(line, [&] { Edits::connect(_view, std::move(connection)); });
   return std::move(_view);
@@ -203,29 +249,31 @@ void Reader::header(std::string_view text) {
   else if (!name.empty())
     fail("a section's name is quoted: [node \"name\"]");
   _place = name.empty() ? std::string(kind) : std::format("{} {}", kind, name);
+  const std::string where = std::format("{}:{}", here(), _line);
   if (kind == "manifest" && name.empty()) {
     if (_manifest)
       fail("[manifest] is given twice");
     _manifest = true;
     _section = Section::manifest;
+  } else if (kind == "view" && !name.empty()) {
+    _children.emplace_back(Child{.name = std::string(name),
+                                 .file = _file.parent_path() / name / manifest_file,
+                                 .where = where},
+                           _line);
+    _child_file = false;
+    _section = Section::view;
   } else if (kind == "node" && !name.empty()) {
-    _node.emplace(
-        Node{.name = std::string(name), .where = std::format("{}:{}", here(), _line)});
+    _node.emplace(Node{.name = std::string(name), .where = where});
     _node_line = _line;
     _section = Section::node;
   } else if (kind == "connection" && !name.empty()) {
     _connections.emplace_back(Connection{.name = std::string(name)}, _line);
     _section = Section::connection;
-  } else if (kind == "deploy" && !name.empty()) {
-    _deploys.emplace_back(
-        Deploy{.name = std::string(name), .where = std::format("{}:{}", here(), _line)},
-        _line);
-    _section = Section::deploy;
   } else {
-    fail(std::format(
-        "unknown section [{}]; the sections are [manifest], [deploy \"name\"], "
-        "[node \"name\"] and [connection \"name\"]",
-        inside));
+    fail(
+        std::format("unknown section [{}]; the sections are [manifest], [view \"name\"], "
+                    "[node \"name\"] and [connection \"name\"]",
+                    inside));
   }
 }
 
@@ -238,8 +286,8 @@ void Reader::word(std::string_view key, std::string_view value) {
         fail("version is set twice");
       _version = number(value);
       return;
-    case Section::deploy:
-      return edit(_line, [&] { Edits::word(_deploys.back().first, key, value); });
+    case Section::view:
+      return view_word(key, value);
     case Section::node:
       return edit(_line, [&] { Edits::word(*_node, key, value); });
     case Section::connection:
@@ -247,6 +295,19 @@ void Reader::word(std::string_view key, std::string_view value) {
     case Section::none:
       fail("a word before any section; a manifest starts with [manifest]");
   }
+}
+
+// A file from the manifest's folder (RP02), which a save writes back the same way.
+void Reader::view_word(std::string_view key, std::string_view value) {
+  if (key != "file")
+    fail(std::format("unknown word {} in a view; its one word is file", key));
+  if (_child_file)
+    fail("file is set twice");
+  if (value.empty())
+    fail("file has no value");
+  _child_file = true;
+  _children.back().first.file =
+      (_file.parent_path() / std::filesystem::path(value)).lexically_normal();
 }
 
 void Reader::connection_word(std::string_view key, std::string_view value) {
@@ -291,16 +352,20 @@ struct Word {
   std::string value;
 };
 
-// In the order a person reads a node: where it comes from, what it runs, then its
-// settings.
+// In the order a person reads a node: where it came from, what it runs and its files,
+// then its settings.
 std::vector<Word> words(const Node &node) {
-  std::vector<Word> words{{"recipe", node.recipe}};
+  std::vector<Word> words;
+  if (!node.recipe.empty())
+    words.push_back({"recipe", node.recipe});
   if (!node.operator_name.empty())
     words.push_back({"operator", node.operator_name});
-  for (const std::string &shader : node.shaders)
-    words.push_back({"shader", shader});
+  for (const std::string &file : node.files)
+    words.push_back({"file", file});
   if (node.invocations != 0)
     words.push_back({"invocations", std::to_string(node.invocations)});
+  if (node.vertex_count != 0)
+    words.push_back({"vertex_count", std::to_string(node.vertex_count)});
   if (node.instance_count != 0)
     words.push_back({"instance_count", std::to_string(node.instance_count)});
   for (const Param &param : node.params)
@@ -310,11 +375,13 @@ std::vector<Word> words(const Node &node) {
   return words;
 }
 
-std::vector<Word> words(const Deploy &deploy) {
-  std::vector<Word> words{{"recipe", deploy.recipe}};
-  for (const Param &param : deploy.params)
-    words.push_back({"param", std::format("{}={}", param.key, param.value)});
-  return words;
+// A child's file only when it is not <name>/view.vlp beside the manifest, from the
+// manifest's folder.
+std::vector<Word> words(const Child &child, const std::filesystem::path &folder) {
+  if (child.file.lexically_normal() ==
+      (folder / child.name / manifest_file).lexically_normal())
+    return {};
+  return {{"file", child.file.lexically_proximate(folder).generic_string()}};
 }
 
 std::vector<Word> words(const Connection &connection) {
@@ -365,8 +432,8 @@ void section(std::string &text,
 std::string text(const View &view, const Notes &notes) {
   std::string text;
   section(text, notes, "manifest", {}, {{"version", std::to_string(manifest_version)}});
-  for (const Deploy &deploy : view.deploys)
-    section(text, notes, "deploy", deploy.name, words(deploy));
+  for (const Child &child : view.children)
+    section(text, notes, "view", child.name, words(child, view.file.parent_path()));
   for (const Node &node : view.nodes)
     section(text, notes, "node", node.name, words(node));
   for (const Connection &connection : view.connections)
@@ -376,19 +443,59 @@ std::string text(const View &view, const Notes &notes) {
   return text;
 }
 
-View flattened(View view, const View &top, std::vector<std::string> &deploying);
+// Each folder below a folder that no node or hosted view names, named as a node inside
+// the parent would be. Inside a node, a folder is a node too.
+void unnamed_below(const View &view,
+                   const std::filesystem::path &folder,
+                   const std::string &parent,
+                   std::vector<std::string> &notes) {
+  std::error_code missing;
+  for (const std::filesystem::directory_entry &entry :
+       std::filesystem::directory_iterator(folder, missing)) {
+    std::error_code gone;
+    const std::string name = entry.path().filename().string();
+    const bool top = parent.empty();
+    if (!entry.is_directory(gone) || name.starts_with('.') ||
+        std::filesystem::exists(entry.path() / manifest_file, gone) ||
+        (top &&
+         (name == contracts ||
+          std::ranges::find(view.children, name, &Child::name) != view.children.end())))
+      continue;
+    const std::string node = top ? name : parent + '.' + name;
+    if (std::ranges::find(view.nodes, node, &Node::name) == view.nodes.end())
+      notes.push_back(std::format("folder {}/ is no node's, but every folder is a node: "
+                                  "give it a section [node \"{}\"], or move it out",
+                                  path_of(node).generic_string(),
+                                  node));
+    else
+      unnamed_below(view, entry.path(), node, notes);
+  }
+}
 
-// A deploy's params set its recipe's nodes, so a node they set was last changed there.
-void set_params(View &recipe, const Deploy &deploy) {
-  for (const Param &param : deploy.params) {
+// Where a node was written, before its error's text; nothing for a line typed.
+std::string at(const Node &node) {
+  return node.where.empty() ? std::string() : node.where + ": ";
+}
+
+View flattened(View view,
+               const std::filesystem::path &root,
+               std::vector<std::string> &using_recipes);
+
+// A param of a node that uses a recipe sets the recipe's own node, or with a dotted key
+// a node inside it, by its name inside the recipe: panel.rows=4.
+void set_params(View &recipe, const Node &user) {
+  for (const Param &param : user.params) {
     const std::size_t dot = param.key.rfind('.');
-    const std::string_view name = std::string_view(param.key).substr(0, dot);
+    const std::string name =
+        dot == std::string::npos
+            ? user.recipe
+            : std::format("{}.{}", user.recipe, param.key.substr(0, dot));
     const auto node = std::ranges::find(recipe.nodes, name, &Node::name);
     if (node == recipe.nodes.end())
       throw std::runtime_error(
           std::format("it sets param {}, but recipe {} has no node {}",
                       param.key,
-                      deploy.recipe,
+                      user.recipe,
                       name));
     const std::string key = param.key.substr(dot + 1);
     const auto found = std::ranges::find(node->params, key, &Param::key);
@@ -396,32 +503,51 @@ void set_params(View &recipe, const Deploy &deploy) {
       found->value = param.value;
     else
       node->params.push_back({key, param.value});
-    node->where = deploy.where;
+    node->where = user.where;
   }
 }
 
-// Into the view, the deploy's recipe under the deploy's name.
+// Into the view, the recipe a node uses, as that node and the nodes inside it (V11): a
+// recipe is one node named like its folder, and the nodes inside it.
 void unfold(View &view,
-            const Deploy &deploy,
-            const View &top,
-            std::vector<std::string> &deploying) {
-  if (std::ranges::find(deploying, deploy.recipe) != deploying.end())
+            const Node &user,
+            const std::filesystem::path &root,
+            std::vector<std::string> &using_recipes) {
+  if (std::ranges::find(using_recipes, user.recipe) != using_recipes.end())
     throw std::runtime_error(
-        std::format("the deploys form a cycle through recipe {} (RV06)", deploy.recipe));
-  View recipe = Manifest::load(recipe_folder(top, deploy.recipe) / "view.vlp");
-  for (Node &node : recipe.nodes)
-    node.where = "recipes/" + node.where;
-  deploying.push_back(deploy.recipe);
-  recipe = flattened(std::move(recipe), top, deploying);
-  deploying.pop_back();
-  set_params(recipe, deploy);
-  const auto named = [&](std::string &name) { name.insert(0, deploy.name + "."); };
+        std::format("the recipes it uses form a cycle through {} (RV06)", user.recipe));
+  View recipe = Manifest::load(recipe_folder(root, user.recipe) / manifest_file);
+  Manifest::refresh(recipe);
+  using_recipes.push_back(user.recipe);
+  recipe = flattened(std::move(recipe), root, using_recipes);
+  using_recipes.pop_back();
+  const std::string inside = user.recipe + '.';
+  if (std::ranges::find(recipe.nodes, user.recipe, &Node::name) == recipe.nodes.end())
+    throw std::runtime_error(std::format(
+        "recipe {} has no node {}: a recipe is one node named like its folder, and the "
+        "nodes inside it",
+        user.recipe,
+        user.recipe));
+  for (const Node &node : recipe.nodes)
+    if (node.name != user.recipe && !node.name.starts_with(inside))
+      throw std::runtime_error(std::format(
+          "recipe {} holds node {}, which is not inside its node {}: a recipe is one "
+          "node, and the nodes inside it",
+          user.recipe,
+          node.name,
+          user.recipe));
+  set_params(recipe, user);
+  const auto named = [&](std::string &name) {
+    name = user.name + name.substr(user.recipe.size());
+  };
   for (Node &node : recipe.nodes) {
+    if (node.name == user.recipe && !user.log.empty())
+      node.log = user.log;
     named(node.name);
     view.nodes.push_back(std::move(node));
   }
   for (Connection &connection : recipe.connections) {
-    named(connection.name);
+    connection.name = std::format("{}.{}", user.name, connection.name);
     named(connection.from.node);
     for (Endpoint &to : connection.to)
       named(to.node);
@@ -429,20 +555,56 @@ void unfold(View &view,
   }
 }
 
-View flattened(View view, const View &top, std::vector<std::string> &deploying) {
-  for (const Deploy &deploy : view.deploys) {
+// Each node with its folder, and each node that uses a recipe unfolded in its place.
+View flattened(View view,
+               const std::filesystem::path &root,
+               std::vector<std::string> &using_recipes) {
+  const std::filesystem::path base = base_of(view);
+  for (Node &node : std::exchange(view.nodes, {})) {
+    if (!node.uses()) {
+      node.folder = base / path_of(node.name);
+      node.module = node.folder.lexically_relative(root);
+      view.nodes.push_back(std::move(node));
+      continue;
+    }
     try {
-      unfold(view, deploy, top, deploying);
+      unfold(view, node, root, using_recipes);
     } catch (const std::runtime_error &failure) {
-      throw std::runtime_error(std::format("{}{}deploy {}: {}",
-                                           deploy.where,
-                                           deploy.where.empty() ? "" : ": ",
-                                           deploy.name,
-                                           failure.what()));
+      throw std::runtime_error(
+          std::format("{}node {}: {}", at(node), node.name, failure.what()));
     }
   }
-  view.deploys.clear();
   return view;
+}
+
+// Only the library's own recipes use others as they are (V11); a view holds its own
+// copies (V03).
+void check_copies(const View &view) {
+  for (const Node &node : view.nodes)
+    if (node.uses())
+      throw std::runtime_error(
+          std::format("{}node {} uses recipe {} as it is, as only the library's own "
+                      "recipes do (V11); a view holds its own copy (V03), which recipe "
+                      "drop {} {} makes",
+                      at(node),
+                      node.name,
+                      node.recipe,
+                      node.recipe,
+                      node.name));
+}
+
+// A node inside another is inside a node of the view, whose folder holds its own.
+void check_inside(const View &flat) {
+  for (const Node &node : flat.nodes) {
+    const std::size_t dot = node.name.rfind('.');
+    if (dot != std::string::npos &&
+        std::ranges::find(flat.nodes, node.name.substr(0, dot), &Node::name) ==
+            flat.nodes.end())
+      throw std::runtime_error(std::format("{}node {} is inside {}, which is no node",
+                                           at(node),
+                                           node.name,
+                                           node.name.substr(0, dot)));
+  }
 }
 
 } // namespace
@@ -456,13 +618,56 @@ View Manifest::empty(const std::filesystem::path &file) {
   return {.name = name_of(absolute), .file = absolute};
 }
 
-// A connection may name a deploy's node that its recipe lacks, which only the view
-// with the deploys unfolded shows.
+// A node's first list says nothing new, so only a list that changes is noted.
+std::vector<std::string> Manifest::refresh(View &view) {
+  std::vector<std::string> notes;
+  const std::filesystem::path base = base_of(view);
+  for (Node &node : view.nodes) {
+    if (node.uses())
+      continue;
+    const std::filesystem::path folder = path_of(node.name);
+    std::vector<std::string> files = files_in(base / folder);
+    if (node.files.empty()) {
+      node.files = std::move(files);
+      continue;
+    }
+    for (const std::string &file : files)
+      if (std::ranges::find(node.files, file) == node.files.end())
+        notes.push_back(
+            std::format("node {}: {} is in {}/ now, so it is one of its files",
+                        node.name,
+                        file,
+                        folder.generic_string()));
+    for (const std::string &file : node.files)
+      if (std::ranges::find(files, file) == files.end())
+        notes.push_back(std::format(
+            "node {}: {} is no longer in {}/", node.name, file, folder.generic_string()));
+    node.files = std::move(files);
+  }
+  return notes;
+}
+
+// In the library, from each recipe's own folder; in a view, from the view's.
+std::vector<std::string> Manifest::unnamed(const View &view) {
+  std::vector<std::string> notes;
+  if (!library_of(view.file)) {
+    unnamed_below(view, base_of(view), {}, notes);
+    return notes;
+  }
+  for (const Node &node : view.nodes)
+    if (node.name.find('.') == std::string::npos && !node.uses())
+      unnamed_below(view, base_of(view) / node.name, node.name, notes);
+  return notes;
+}
+
+// A connection may name a node inside a recipe a node uses, which only the view with
+// those recipes unfolded shows.
 View Manifest::flatten(const View &view) {
-  std::vector<std::string> deploying;
-  View flat = flattened(view, view, deploying);
-  for (Node &node : flat.nodes)
-    node.folder = recipe_folder(view, node.recipe);
+  if (!library_of(view.file))
+    check_copies(view);
+  std::vector<std::string> using_recipes;
+  View flat = flattened(view, root(view), using_recipes);
+  check_inside(flat);
   for (const Connection &connection : flat.connections) {
     const auto check = [&](const Endpoint &end) {
       if (std::ranges::find(flat.nodes, end.node, &Node::name) == flat.nodes.end())

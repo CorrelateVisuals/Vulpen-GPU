@@ -15,9 +15,9 @@
 namespace VP {
 
 class Commands;
+class Modules;
 class Pipelines;
 class Ports;
-class Recipes;
 struct Connection;
 struct Node;
 struct Pass;
@@ -31,7 +31,7 @@ struct Wiring {
   // What draws render into; null without a window. Runtime.cpp sets it again whenever
   // the window opens or closes.
   VkRenderPass render_pass;
-  Recipes &recipes;
+  Modules &modules;
   const Log &log;
   // The build tree's mirror of the views, where modules and SPIR-V land.
   const std::filesystem::path &views;
@@ -50,9 +50,9 @@ public:
 
   // Binds every node and checks each name that joins its manifest entry, shader and C++
   // (A02); a node with a mistake is left out, with its errors. From the schedule it
-  // replaces, it takes what the build left alone: operators of recipes whose module
-  // stayed, pipelines of unchanged SPIR-V, and buffers of unchanged shape, contents
-  // included. The view must outlive it.
+  // replaces, it takes what the build left alone: operators whose module stayed,
+  // pipelines of unchanged SPIR-V, and buffers of unchanged shape, contents included. The
+  // view must outlive it.
   Schedule(const Wiring &wiring, const View &view, Schedule *replaced = nullptr);
   ~Schedule();
   Schedule(const Schedule &) = delete;
@@ -60,8 +60,8 @@ public:
 
   bool ok() const;
   // Before a module swap: the operators' code is about to go, so they go first, and
-  // their commands with them.
-  void drop_operators(const std::vector<std::string> &recipes);
+  // their commands with them. modules: as "view/folder".
+  void drop_operators(const std::vector<std::string> &modules);
   void cook(std::uint64_t frame);
   // The buffers made since the last call, which the next frame zeroes first.
   std::vector<VkBuffer> take_clears();
@@ -74,6 +74,7 @@ private:
 
   Bound bind(const Node &node, const std::filesystem::path &folder, Schedule *replaced);
   void load_shaders(Bound &bound, const std::filesystem::path &folder, Bound *old);
+  bool check_counts(Bound &bound) const;
   void make_pipeline(Bound &bound) const;
   void check_stages(Bound &bound) const;
   void check_fields(Bound &bound) const;

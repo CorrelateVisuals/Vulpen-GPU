@@ -37,7 +37,7 @@ inline std::optional<Level> level_named(std::string_view name) {
 // - run: the run itself, from the build it runs to how it ended;
 // - gpu, swp: the machine: the GPU, and the swapchain of the window;
 // - nod, mem: the graph: what the engine makes for a node, and the buffers it writes;
-// - mod: recipe modules and their live builds;
+// - mod: the nodes' modules and their live builds;
 // - out: what a node's operator writes.
 enum class Tag { run, gpu, swp, nod, mem, mod, out };
 

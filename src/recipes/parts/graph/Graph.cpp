@@ -2,6 +2,6 @@
 
 #include "runtime/View.h"
 
-VP_RECIPE(registry) {
+VP_OPERATORS(registry) {
   registry.add<Graph>("Graph");
 }

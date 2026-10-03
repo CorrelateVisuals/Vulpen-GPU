@@ -22,27 +22,40 @@ std::filesystem::file_time_type stamp(const std::filesystem::path &file) {
   return std::filesystem::last_write_time(file, gone);
 }
 
-// Throws naming what keeps it from running: a deploy that does not unfold, or a cycle
-// that runs through a deploy's nodes, which no single edit could show.
+// Throws naming what keeps it from running: a recipe the library lacks, or a cycle that
+// runs through the nodes of a recipe a node uses, which no single edit could show.
 std::unique_ptr<View> unfolded(const View &view) {
   auto flat = std::make_unique<View>(Manifest::flatten(view));
   Schedule::order(*flat);
   return flat;
 }
 
+// Each line names its manifest in its folder, as a node's errors do.
+void note(const Log &log,
+          const View &view,
+          Level level,
+          const std::vector<std::string> &notes) {
+  const std::string file =
+      (view.file.parent_path().filename() / view.file.filename()).generic_string();
+  for (const std::string &text : notes)
+    log.write(level, Tag::run, std::format("{}: {}", file, text));
+}
+
 } // namespace
 
 // One view and its schedule. Edits and save work on the view as its manifest says, and
-// the schedule runs it with its deploys unfolded, so it outlives the schedule.
+// the schedule runs it with the recipes its nodes use unfolded, so it outlives the
+// schedule.
 struct Views::Hosted {
-  std::string name; // empty for the view vulpen started with
+  std::string name;   // empty for the view vulpen started with
+  std::string parent; // the name of the view whose manifest names it
   std::unique_ptr<View> view;
   std::unique_ptr<View> flat;
   // What commands made of the view since, both ways; null when nothing.
   std::unique_ptr<View> edited;
   std::unique_ptr<View> edited_flat;
   std::filesystem::file_time_type read; // the manifest's, when last read or saved
-  std::unique_ptr<Schedule> schedule;   // null until the frame after it was added
+  std::unique_ptr<Schedule> schedule;   // null until the frame after it was hosted
   bool removed = false;                 // its schedule goes before the next frame
 
   const View &current() const {
@@ -66,25 +79,25 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
         host.schedule = std::make_unique<Schedule>(wiring, *host.flat);
         return hosted;
       }()),
-      _schedules{_hosted.front()->schedule.get()},
-      _save(commands.add("view save",
-                         "writes the view over its manifest, keeping the comments in it",
-                         *this,
-                         Primitive::yes)),
-      _add(commands.add("child add <name> <file>",
-                        "hosts the view a view.vlp holds, or an empty one that view save "
-                        "writes; a line `<name>: <command>` addresses it",
-                        *this,
-                        Primitive::yes)),
-      _remove(commands.add("child remove <name>",
-                           "stops hosting a view; its files stay",
-                           *this,
-                           Primitive::yes)),
-      _list(commands.add("child list",
-                         "lists the hosted views, with their files, in the order added",
-                         *this)) {}
+      _schedules{_hosted.front()->schedule.get()} {
+  follow({}, _hosted.front()->current());
+  _save = commands.add("view save",
+                       "writes the view over its manifest, keeping the comments in it",
+                       *this,
+                       Primitive::yes);
+  _list = commands.add("child list",
+                       "lists the hosted views, with their files, in the order hosted",
+                       *this);
+}
 
 Views::~Views() = default;
+
+View Views::read(const Log &log, const std::filesystem::path &file) {
+  View view = Manifest::load(file);
+  note(log, view, Level::info, Manifest::refresh(view));
+  note(log, view, Level::warn, Manifest::unnamed(view));
+  return view;
+}
 
 const View &Views::view() const {
   return _hosted.front()->current();
@@ -148,10 +161,11 @@ std::vector<std::filesystem::path> Views::roots() const {
   return roots;
 }
 
+// By index: a manifest read again may host more views, which come after.
 void Views::reload() {
-  for (const std::unique_ptr<Hosted> &hosted : _hosted)
-    if (!hosted->removed)
-      reload(*hosted);
+  for (std::size_t index = 0; index < _hosted.size(); ++index)
+    if (!_hosted[index]->removed)
+      reload(*_hosted[index]);
 }
 
 // A change waiting for the next frame, as an edit does, so whoever builds the frame
@@ -159,8 +173,10 @@ void Views::reload() {
 void Views::reload(Hosted &hosted) {
   if (const auto time = stamp(hosted.current().file); time != hosted.read) {
     try {
-      auto view = std::make_unique<View>(Manifest::load(hosted.current().file));
-      hosted.edited_flat = unfolded(*view);
+      auto view = std::make_unique<View>(read(_wiring.log, hosted.current().file));
+      auto flat = unfolded(*view);
+      follow(hosted.name, *view);
+      hosted.edited_flat = std::move(flat);
       hosted.edited = std::move(view);
       hosted.read = time;
       return;
@@ -170,19 +186,23 @@ void Views::reload(Hosted &hosted) {
                         std::format("{}; the running graph stays", failure.what()));
     }
   }
-  // The same view, so the rebuild takes the new modules and SPIR-V and keeps the rest; a
-  // deployed recipe's view.vlp may have changed with them.
   if (hosted.edited)
     return;
+  // The same view, so the rebuild takes the new modules and SPIR-V and keeps the rest; a
+  // node's folder, or a used recipe's view.vlp, may have changed with them.
+  View view = *hosted.view;
+  const std::vector<std::string> notes = Manifest::refresh(view);
   try {
-    hosted.edited_flat = unfolded(*hosted.view);
+    hosted.edited_flat = unfolded(view);
+    hosted.edited = std::make_unique<View>(std::move(view));
+    note(_wiring.log, *hosted.edited, Level::info, notes);
   } catch (const std::exception &failure) {
     _wiring.log.write(Level::error,
                       Tag::mod,
                       std::format("{}; the running graph stays", failure.what()));
     hosted.edited_flat = std::make_unique<View>(*hosted.flat);
+    hosted.edited = std::make_unique<View>(*hosted.view);
   }
-  hosted.edited = std::make_unique<View>(*hosted.view);
 }
 
 const View *Views::find(std::string_view name) {
@@ -190,30 +210,33 @@ const View *Views::find(std::string_view name) {
   return found ? &found->current() : nullptr;
 }
 
-// An edit that leaves the view unable to unfold is refused, and changes nothing.
+// An edit that leaves the view unable to unfold, or naming a view that cannot be hosted,
+// is refused, and changes nothing.
 void Views::replace(std::string_view name, View view) {
   Hosted *const found = hosted(name);
   if (!found)
     throw std::runtime_error(std::format("no view is named {}", name));
-  found->edited_flat = unfolded(view);
+  const std::vector<std::string> notes = Manifest::refresh(view);
+  auto flat = unfolded(view);
+  follow(found->name, view);
+  found->edited_flat = std::move(flat);
   found->edited = std::make_unique<View>(std::move(view));
+  note(_wiring.log, *found->edited, Level::info, notes);
+}
+
+std::optional<std::string> Views::host_of(std::string_view name) {
+  const Hosted *const found = hosted(name);
+  if (!found || found->name.empty())
+    return std::nullopt;
+  return found->parent;
 }
 
 void Views::command(Call &call) {
-  const std::span<const std::string_view> arguments = call.arguments();
   if (call.is(_save)) {
     Hosted *const found = hosted(_port.addressed());
     if (!found)
       throw std::runtime_error("no view to save");
     save(*found);
-  } else if (call.is(_add)) {
-    host(arguments[0], arguments[1]);
-  } else if (call.is(_remove)) {
-    Hosted *const found = hosted(arguments[0]);
-    if (!found)
-      throw std::runtime_error(
-          std::format("no view is hosted as {}; child list lists them", arguments[0]));
-    found->removed = true;
   } else if (call.is(_list)) {
     for (const std::unique_ptr<Hosted> &hosted : _hosted)
       if (!hosted->removed && !hosted->name.empty())
@@ -230,22 +253,23 @@ Views::Hosted *Views::hosted(std::string_view name) const {
   return found == _hosted.end() ? nullptr : found->get();
 }
 
-// The build tree mirrors each view by its folder's name, so two views running may not
-// share one.
-void Views::host(std::string_view name, const std::filesystem::path &file) {
-  if (hosted(name))
-    throw std::runtime_error(std::format("a hosted view is named {} already", name));
+// A command addresses a hosted view by its name, so no two share one. The build tree
+// mirrors each view by its folder's name, so two views running may not share that.
+void Views::host(const Child &child, const std::string &parent) {
+  if (hosted(child.name))
+    throw std::runtime_error(
+        std::format("a hosted view is named {} already", child.name));
   std::error_code missing;
-  const bool exists = std::filesystem::exists(file, missing);
-  auto view =
-      std::make_unique<View>(exists ? Manifest::load(file) : Manifest::empty(file));
+  const bool exists = std::filesystem::exists(child.file, missing);
+  auto view = std::make_unique<View>(exists ? read(_wiring.log, child.file)
+                                            : Manifest::empty(child.file));
   for (const std::unique_ptr<Hosted> &hosted : _hosted)
     if (!hosted->removed && hosted->current().name == view->name)
       throw std::runtime_error(std::format(
           "child {}: {} is in a folder named {}, as {} is; the build tree holds one view "
           "of each name",
-          name,
-          file.string(),
+          child.name,
+          child.file.string(),
           view->name,
           hosted->current().file.string()));
   auto flat = unfolded(*view);
@@ -255,12 +279,56 @@ void Views::host(std::string_view name, const std::filesystem::path &file) {
         Tag::run,
         std::format(
             "child {}: no view at {} yet, so it starts empty; view save writes it",
-            name,
-            file.string()));
-  _hosted.push_back(std::make_unique<Hosted>(Hosted{.name = std::string(name),
-                                                    .edited = std::move(view),
-                                                    .edited_flat = std::move(flat),
-                                                    .read = stamp(file)}));
+            child.name,
+            child.file.string()));
+  Hosted &hosted = *_hosted.emplace_back(
+      std::make_unique<Hosted>(Hosted{.name = child.name,
+                                      .parent = parent,
+                                      .edited = std::move(view),
+                                      .edited_flat = std::move(flat),
+                                      .read = stamp(child.file)}));
+  follow(hosted.name, hosted.current());
+}
+
+// The views a manifest names, hosted, and the views it no longer names taken out, with
+// the views they host. A view that cannot be hosted leaves hosting as it was, and
+// throws naming why.
+void Views::follow(const std::string &host, const View &view) {
+  const std::size_t before = _hosted.size();
+  try {
+    for (const Child &child : view.children) {
+      const Hosted *const found = hosted(child.name);
+      if (!found) {
+        Views::host(child, host);
+        continue;
+      }
+      if (found->parent != host)
+        throw std::runtime_error(
+            std::format("a hosted view is named {} already", child.name));
+      if (found->current().file != child.file)
+        throw std::runtime_error(
+            std::format("child {} is hosted from {}; child remove {} first",
+                        child.name,
+                        found->current().file.string(),
+                        child.name));
+    }
+  } catch (const std::exception &) {
+    // None of them has a schedule yet, so they go at once.
+    _hosted.erase(_hosted.begin() + static_cast<std::ptrdiff_t>(before), _hosted.end());
+    throw;
+  }
+  for (const std::unique_ptr<Hosted> &hosted : _hosted)
+    if (!hosted->removed && hosted->parent == host && !hosted->name.empty() &&
+        std::ranges::find(view.children, hosted->name, &Child::name) ==
+            view.children.end())
+      unhost(*hosted);
+}
+
+void Views::unhost(Hosted &hosted) {
+  hosted.removed = true;
+  for (const std::unique_ptr<Hosted> &other : _hosted)
+    if (!other->removed && other->parent == hosted.name)
+      unhost(*other);
 }
 
 // A manifest changed since vulpen read or saved it holds what the view does not, which a

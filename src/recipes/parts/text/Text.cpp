@@ -1,5 +1,5 @@
 #include "Text.h"
 
-VP_RECIPE(registry) {
+VP_OPERATORS(registry) {
   registry.add<Text>("Text");
 }

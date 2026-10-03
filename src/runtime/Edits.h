@@ -9,14 +9,14 @@ namespace VP {
 
 class Commands;
 class ViewLookup;
+struct Child;
 struct Connection;
-struct Deploy;
 struct Endpoint;
 struct Node;
 
 // The primitive edits, which are the manifest's own words: node add, remove and set,
-// connect and disconnect, param set and unset, deploy add and remove. Loading a view
-// runs its lines through them, so a typed edit and a loaded one change a view alike.
+// connect and disconnect, param set and unset, child add and remove. Loading a view runs
+// its lines through them, so a typed edit and a loaded one change a view alike.
 //
 // Each edit throws naming the mistake and leaves the view as it was (A02), so a view
 // only ever holds whole nodes, and connections between them that form no cycle.
@@ -27,12 +27,10 @@ public:
 
   // One node word, as a manifest line or a word=value argument gives it.
   static void word(Node &node, std::string_view key, std::string_view value);
-  // One deploy word: its recipe, or a param on one of the recipe's nodes.
-  static void word(Deploy &deploy, std::string_view key, std::string_view value);
-  // node.port, or deploy.node.port for a port of a deployed recipe's node.
+  // node.port, where the node's name may hold the names of the nodes it is inside.
   static Endpoint endpoint(std::string_view text);
   static void add(View &view, Node node);
-  static void deploy(View &view, Deploy deploy);
+  static void child(View &view, Child child);
   static void connect(View &view, Connection connection);
 
 private:

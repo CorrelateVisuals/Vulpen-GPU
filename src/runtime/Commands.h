@@ -3,6 +3,7 @@
 #include "runtime/Operator.h"
 
 #include <filesystem>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -23,6 +24,9 @@ public:
   // running schedule points into the old view until then, so a change never edits a view
   // in place.
   virtual void replace(std::string_view name, View view) = 0;
+  // The name of the view whose manifest names the hosted view, empty for the one vulpen
+  // started with; none when no view of that name is hosted.
+  virtual std::optional<std::string> host_of(std::string_view name) = 0;
 
 protected:
   ~ViewLookup() = default;
@@ -34,7 +38,8 @@ protected:
 enum class Primitive : bool { no, yes };
 
 // The session as groups: each line from outside the port keeps the primitives it ran,
-// so a replay needs no recipe (V08) and undo removes one group.
+// so a replay needs none of the commands that sent them (V08) and undo removes one
+// group.
 class CommandLog {
 public:
   // A line from outside the port, typed or read from a file: the primitives it runs
@@ -59,7 +64,9 @@ private:
 // Every change to a view is a command through this one port, so the CLI, a GUI, a
 // script and an agent act alike, and replaying the log rebuilds the session. A command
 // registers with its usage, whose placeholders give its completion, and its help, or
-// not at all (RV04). A <file> argument reaches its command resolved, as an absolute path.
+// not at all (RV04). A usage's last placeholder may end in ..., taking one argument or
+// more, and stand in brackets, which a line may leave out: node add <name>
+// [<word=value>...]. A <file> argument reaches its command resolved, as an absolute path.
 //
 // A line addresses a hosted view by its name, as `<name>: <command>`, and `:` alone
 // addresses the view vulpen started with, which a line naming none addresses too. A line

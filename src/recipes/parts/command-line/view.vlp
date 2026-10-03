@@ -3,5 +3,5 @@
 version = 1
 
 [node "command-line"]
-recipe   = command-line
 operator = CommandLine
+file     = CommandLine.cpp

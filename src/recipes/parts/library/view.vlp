@@ -1,7 +1,20 @@
-# The library part: one node whose operator is Library, and the template recipe new copies.
+# The library part: one node whose operator is Library, and the template node new copies.
 [manifest]
 version = 1
 
 [node "library"]
-recipe   = library
 operator = Library
+file     = Library.cpp
+
+# The template's files end in .in, so they build only once node new writes them.
+[node "library.template"]
+file = Name.comp.in
+file = Name.cpp.in
+file = Name.frag.in
+file = Name.glsl.in
+file = Name.vert.in
+
+# The same operator with its class in a header, for C++ that outgrows one file.
+[node "library.template.header"]
+file = Name.cpp.in
+file = Name.h.in

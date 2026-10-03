@@ -17,7 +17,8 @@ std::string endpoint(const VP::Endpoint &end) {
 // front end needs no mirror of the graph of its own.
 class Inspect final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _ls = node.command("ls", "lists the view's deploys, nodes and connections");
+    _ls = node.command("ls",
+                       "lists the views the view hosts, its nodes and its connections");
     _info = node.command("info <node>",
                          "shows a node's words, and the connections it writes and reads");
   }
@@ -30,10 +31,12 @@ class Inspect final : public VP::Operator {
   }
 
   static void ls(VP::Call &call, const VP::View &view) {
-    for (const VP::Deploy &deploy : view.deploys)
-      call.reply(std::format("deploy {} of recipe {}", deploy.name, deploy.recipe));
+    for (const VP::Child &child : view.children)
+      call.reply(std::format("view {} from {}", child.name, child.file.string()));
     for (const VP::Node &node : view.nodes)
-      call.reply(std::format("node {} of recipe {}", node.name, node.recipe));
+      call.reply(node.recipe.empty()
+                     ? std::format("node {}", node.name)
+                     : std::format("node {} of recipe {}", node.name, node.recipe));
     for (const VP::Connection &connection : view.connections) {
       std::string to;
       for (const VP::Endpoint &end : connection.to)
@@ -47,14 +50,17 @@ class Inspect final : public VP::Operator {
   static void info(VP::Call &call, const VP::View &view, std::string_view name) {
     const auto node = std::ranges::find(view.nodes, name, &VP::Node::name);
     if (node == view.nodes.end())
-      return deployed(call, view, name);
-    call.reply(std::format("recipe = {}", node->recipe));
+      return inside(call, view, name);
+    if (!node->recipe.empty())
+      call.reply(std::format("recipe = {}", node->recipe));
     if (!node->operator_name.empty())
       call.reply(std::format("operator = {}", node->operator_name));
-    for (const std::string &shader : node->shaders)
-      call.reply(std::format("shader = {}", shader));
+    for (const std::string &file : node->files)
+      call.reply(std::format("file = {}", file));
     if (node->invocations != 0)
       call.reply(std::format("invocations = {}", node->invocations));
+    if (node->vertex_count != 0)
+      call.reply(std::format("vertex_count = {}", node->vertex_count));
     if (node->instance_count != 0)
       call.reply(std::format("instance_count = {}", node->instance_count));
     for (const VP::Param &param : node->params)
@@ -71,21 +77,25 @@ class Inspect final : public VP::Operator {
     }
   }
 
-  // A deploy's node lives in its recipe's view.vlp; the view holds only what the deploy
-  // sets on it.
-  static void deployed(VP::Call &call, const VP::View &view, std::string_view name) {
-    const std::size_t dot = name.find('.');
-    const auto deploy =
-        std::ranges::find(view.deploys, name.substr(0, dot), &VP::Deploy::name);
-    if (dot == std::string_view::npos || deploy == view.deploys.end())
-      throw std::runtime_error(std::format("no node is named {}", name));
-    const std::string node = std::format("{}.", name.substr(dot + 1));
-    call.reply(
-        std::format("comes from deploy {}, of recipe {}", deploy->name, deploy->recipe));
-    for (const VP::Param &param : deploy->params)
-      if (param.key.starts_with(node))
-        call.reply(
-            std::format("param = {}={}", param.key.substr(node.size()), param.value));
+  // A node inside a recipe a node uses lives in the recipe's view.vlp; the view holds
+  // only the params that node sets on it.
+  static void inside(VP::Call &call, const VP::View &view, std::string_view name) {
+    for (std::size_t dot = name.find('.'); dot != std::string_view::npos;
+         dot = name.find('.', dot + 1)) {
+      const auto user =
+          std::ranges::find(view.nodes, name.substr(0, dot), &VP::Node::name);
+      if (user == view.nodes.end() || !user->uses())
+        continue;
+      call.reply(std::format(
+          "inside recipe {}, which node {} uses as it is", user->recipe, user->name));
+      const std::string prefix = std::format("{}.", name.substr(dot + 1));
+      for (const VP::Param &param : user->params)
+        if (param.key.starts_with(prefix))
+          call.reply(
+              std::format("param = {}={}", param.key.substr(prefix.size()), param.value));
+      return;
+    }
+    throw std::runtime_error(std::format("no node is named {}", name));
   }
 
   VP::Command _ls;
@@ -94,6 +104,6 @@ class Inspect final : public VP::Operator {
 
 } // namespace
 
-VP_RECIPE(registry) {
+VP_OPERATORS(registry) {
   registry.add<Inspect>("Inspect");
 }

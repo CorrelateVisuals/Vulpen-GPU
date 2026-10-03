@@ -2,8 +2,8 @@
 
 #include "runtime/Operator.h"
 
-// Only Text.cpp includes this header: a recipe's C++ is one translation unit, so the
-// class stays in the unnamed namespace and two views' copies of the part never clash.
+// Only Text.cpp includes this header, so the class stays in the unnamed namespace, and
+// two copies of the part in one binary never clash.
 namespace {
 
 // The text a person reads and edits, loaded and saved through the file port. It writes

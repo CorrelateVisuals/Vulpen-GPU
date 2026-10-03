@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Run vulpen for long, or through many live swaps, and fail when what it holds keeps
-growing (A03): memory, GPU memory, threads, open files, and the recipe modules it maps.
+growing (A03): memory, GPU memory, threads, open files, and the modules it maps.
 
 --minutes runs the wave example headless and unpaced, and the triangle example in a
 window where a display exists, sampling both every 10 s; it writes what it saw to
@@ -34,8 +34,7 @@ WARM_UP = 0.2  # of the samples, left out while caches and pools fill
 ALLOWED = {"memory KiB": 1024, "GPU MiB": 1, "threads": 0, "files": 0, "modules": 0}
 SWAP_TIMEOUT = 300  # seconds for one build and swap
 WAVE = EXAMPLES / "wave"
-SAVED = [WAVE / "recipes" / "wave" / "Wave.comp", WAVE / "recipes" / "wave" / "Wave.cpp",
-         WAVE / "view.vlp"]
+SAVED = [WAVE / "wave" / "Wave.comp", WAVE / "wave" / "Wave.cpp", WAVE / "view.vlp"]
 STATISTICS = ROOT / "docs" / "statistics" / "soak.md"
 NOTHING = "[manifest]\nversion = 1\n"  # a view with no node, so no window
 CLI = ROOT / "src" / "recipes" / "apps" / "cli" / "view.vlp"
@@ -88,7 +87,7 @@ class Run:
         maps = Path(f"/proc/{pid}/maps").read_text()
         values = {"memory KiB": field("VmRSS"), "threads": field("Threads"),
                   "files": len(os.listdir(f"/proc/{pid}/fd")),
-                  "modules": len(set(re.findall(r"\S+/views/\S+/recipe\.so", maps)))}
+                  "modules": len(set(re.findall(r"\S+/views/\S+/module\.so", maps)))}
         if (gpu := gpu_memory(pid)) is not None:
             values["GPU MiB"] = gpu
         return values
@@ -157,7 +156,7 @@ def swaps(vulpen: str, count: int, races_only: bool) -> None:
     one.stop()
     modules = {sample["modules"] for sample in samples}
     judge({"wave": ([] if races_only else samples, one.problems + (
-        [f"the mapped recipe modules went from {samples[0]['modules']} to {modules}"]
+        [f"the mapped modules went from {samples[0]['modules']} to {modules}"]
         if len(modules) > 1 else []))})
 
 
@@ -167,9 +166,9 @@ def windows(vulpen: str, count: int) -> None:
         return
     drawn = (EXAMPLES / "triangle" / "view.vlp").read_text(encoding="utf-8")
     with tempfile.TemporaryDirectory() as temporary:
-        view = Path(temporary) / "triangle" / "view.vlp"  # named so, it finds its recipes
-        view.parent.mkdir()
-        view.write_text(drawn, encoding="utf-8")
+        # A copy of the whole view, named triangle, so it finds what the build made for it.
+        view = Path(temporary) / "triangle" / "view.vlp"
+        shutil.copytree(EXAMPLES / "triangle", view.parent)
         one = Run(vulpen, [view, "--fps", 60, "--log", "info"], headless=False,
                   listen=True)
         one.wait_for("live code:", SWAP_TIMEOUT)

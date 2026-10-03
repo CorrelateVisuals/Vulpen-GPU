@@ -2,6 +2,8 @@
 
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
+#include "runtime/Manifest.h"
+#include "runtime/View.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -22,7 +24,7 @@ namespace {
 std::filesystem::path absolute(std::string_view path) {
   if (!std::filesystem::path(path).is_absolute())
     throw std::runtime_error(std::format(
-        "{} is relative; a recipe names a file from its folder, and a command's <file> "
+        "{} is relative; a node names a file from its folder, and a command's <file> "
         "comes resolved",
         path));
   return path;
@@ -96,6 +98,10 @@ void Ports::save(std::string_view file, std::string_view text) {
   Files::save(absolute(file), text);
 }
 
+void Ports::remove(std::string_view file) {
+  Files::remove(absolute(file));
+}
+
 std::vector<std::string> Ports::list(std::string_view folder) {
   std::error_code failed;
   const std::filesystem::directory_iterator entries(absolute(folder), failed);
@@ -110,6 +116,13 @@ std::vector<std::string> Ports::list(std::string_view folder) {
   }
   std::ranges::sort(names);
   return names;
+}
+
+// As a view loads it, so a recipe read here is what a drop copies.
+View Ports::manifest(std::string_view file) {
+  View view = Manifest::load(absolute(file));
+  Manifest::refresh(view);
+  return Manifest::flatten(view);
 }
 
 void Ports::frame() {

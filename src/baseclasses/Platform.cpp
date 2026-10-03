@@ -231,6 +231,17 @@ void Files::save(const std::filesystem::path &file, std::string_view text) {
   }
 }
 
+// A folder another file still holds, or one in use, stays.
+void Files::remove(const std::filesystem::path &file) {
+  std::error_code failed;
+  if (!std::filesystem::remove(file, failed))
+    throw std::runtime_error(std::format("{}: cannot be deleted: {}",
+                                         file.string(),
+                                         failed ? failed.message() : "it is not there"));
+  if (std::filesystem::is_empty(file.parent_path(), failed) && !failed)
+    std::filesystem::remove(file.parent_path(), failed);
+}
+
 Library::Library(Library &&other) noexcept
     : _handle(std::exchange(other._handle, nullptr)), _copy(std::move(other._copy)) {}
 

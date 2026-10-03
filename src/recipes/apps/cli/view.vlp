@@ -1,13 +1,15 @@
 # The CLI app: a command-line on the terminal, and no window, so everything a GUI does
-# can be typed or scripted headless.
+# can be typed or scripted headless. Each node inside cli uses a part as it is (V11).
 [manifest]
 version = 1
 
-[deploy "command-line"]
+[node "cli"]
+
+[node "cli.command-line"]
 recipe = command-line
 
-[deploy "inspect"]
+[node "cli.inspect"]
 recipe = inspect
 
-[deploy "library"]
+[node "cli.library"]
 recipe = library

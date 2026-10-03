@@ -3,5 +3,5 @@
 version = 1
 
 [node "inspect"]
-recipe   = inspect
 operator = Inspect
+file     = Inspect.cpp

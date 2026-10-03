@@ -17,7 +17,7 @@ Configures, builds and runs the `debug` preset, or `release` with `--release`; t
 
 ## Use
 
-[docs/usage.md](docs/usage.md) shows how each part works today by example: running a view, the manifest, recipes, commands, the CLI, hosted views and the library.
+[docs/usage.md](docs/usage.md) shows how each part works today by example: running a view, the manifest, nodes and their folders, commands, recipes, the CLI, child views and the library.
 
 ## Test
 
