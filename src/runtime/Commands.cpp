@@ -71,9 +71,11 @@ class Run final : public Call {
 public:
   Run(CommandPort &port,
       ViewLookup *views,
+      FilePort &files,
       Command command,
       std::span<const std::string_view> arguments)
-      : _port(port), _views(views), _command(command), _arguments(arguments) {}
+      : _port(port), _views(views), _files(files), _command(command),
+        _arguments(arguments) {}
   // Every line the command answered.
   std::string answer() && {
     return std::move(_reply);
@@ -101,9 +103,13 @@ private:
       throw std::runtime_error("no view to read yet");
     return *view;
   }
+  FilePort &files() override {
+    return _files;
+  }
 
   CommandPort &_port;
   ViewLookup *const _views;
+  FilePort &_files;
   const Command _command;
   const std::span<const std::string_view> _arguments;
   std::string _reply;
@@ -129,8 +135,10 @@ std::string CommandLog::text() const {
 
 struct Commands::Spec {
   std::vector<std::string> name; // the words a line starts with
-  std::size_t arguments = 0;     // one per placeholder
-  bool more = false;             // the last placeholder takes one argument or more
+  // The kind of each argument, from kinds; the last placeholder's for every one after
+  // it, when it takes one argument or more.
+  std::vector<std::string_view> placeholders;
+  bool more = false;
   std::string usage;
   std::string help;
   Command command;
@@ -138,8 +146,9 @@ struct Commands::Spec {
   Primitive primitive = Primitive::no;
 };
 
-Commands::Commands(const Log &log)
-    : _log(log), _quit(add("quit", "ends the run before its next frame", *this)),
+Commands::Commands(const Log &log, FilePort &files)
+    : _log(log), _files(files),
+      _quit(add("quit", "ends the run before its next frame", *this)),
       _source(add("source <file>",
                   "runs a file's commands, one a line, and stops at the first that fails",
                   *this)),
@@ -170,10 +179,13 @@ Command Commands::add(std::string_view usage,
   const std::span<const std::string_view> name(words.begin(), arguments);
   if (const Spec *const twin = match(name); twin && twin->name.size() == name.size())
     throw std::runtime_error(std::format("command `{}` registers twice", usage));
+  std::vector<std::string_view> placeholders;
+  for (auto word = arguments; word != words.end(); ++word)
+    placeholders.push_back(*std::ranges::find(kinds, word->substr(1, word->size() - 2)));
   // From 1, so a Command no add returned matches none.
   const Command command{++_added};
   _specs.push_back({.name = {name.begin(), name.end()},
-                    .arguments = static_cast<std::size_t>(words.end() - arguments),
+                    .placeholders = std::move(placeholders),
                     .more = more,
                     .usage = std::string(usage),
                     .help = std::string(help),
@@ -201,20 +213,28 @@ std::string Commands::run(std::string_view line) {
         std::format("unknown command {}; the commands are {}",
                     words.front(),
                     joined(std::views::transform(_specs, &Spec::usage))));
-  const std::span<const std::string_view> arguments =
-      std::span(words).subspan(spec->name.size());
-  if (arguments.size() < spec->arguments ||
-      (arguments.size() > spec->arguments && !spec->more))
+  std::vector<std::string_view> arguments(words.begin() + spec->name.size(), words.end());
+  const std::size_t expected = spec->placeholders.size();
+  if (arguments.size() < expected || (arguments.size() > expected && !spec->more))
     throw std::runtime_error(
         std::format("{} does not fit the usage `{}`", typed, spec->usage));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
-  Run call(*this, _views, spec->command, arguments);
+  // Here, beside the file running, so a command and the log name the same file (RP02);
+  // reserved, so adding a path never moves the ones before it.
+  std::vector<std::string> paths;
+  paths.reserve(arguments.size());
+  for (std::size_t index = 0; index < arguments.size(); ++index)
+    if (spec->placeholders[std::min(index, expected - 1)] == "file")
+      arguments[index] = paths.emplace_back(resolved(arguments[index]).string());
   // Read first: a handler that rebuilds a view binds operators, which may register
   // commands and so move the specs.
   const Primitive primitive = spec->primitive;
+  const std::string kept =
+      joined(spec->name, " ") + (arguments.empty() ? "" : " ") + joined(arguments, " ");
+  Run call(*this, _views, _files, spec->command, arguments);
   spec->handler->command(call);
   if (primitive == Primitive::yes)
-    _session.keep(joined(words, " "));
+    _session.keep(kept);
   return std::move(call).answer();
 }
 
@@ -286,9 +306,9 @@ void Commands::command(Call &call) {
   } else if (call.is(_source)) {
     source(call.arguments().front());
   } else if (call.is(_log_save)) {
-    const std::filesystem::path file = resolved(call.arguments().front());
+    const std::string_view file = call.arguments().front();
     Files::save(file, _session.text());
-    _log.write(Level::info, Tag::run, std::format("log save: {}", file.string()));
+    _log.write(Level::info, Tag::run, std::format("log save: {}", file));
   }
 }
 
@@ -305,11 +325,11 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words) c
 }
 
 // A relative path names a file beside the one running (RP02), so a script and the files
-// it reads and writes move together.
+// it reads and writes move together; in a line typed, beside where it was typed.
 std::filesystem::path Commands::resolved(const std::filesystem::path &file) const {
-  return file.is_relative() && !_sourcing.empty()
-             ? _sourcing.back().file.parent_path() / file
-             : file;
+  return std::filesystem::absolute(file.is_relative() && !_sourcing.empty()
+                                       ? _sourcing.back().file.parent_path() / file
+                                       : file);
 }
 
 } // namespace VP

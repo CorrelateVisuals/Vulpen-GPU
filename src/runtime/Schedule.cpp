@@ -143,6 +143,9 @@ public:
       return {};
     }
   }
+  std::string folder() const override {
+    return _bound.node->folder.string();
+  }
 
 private:
   std::uint32_t value_offset(std::string_view name, std::string_view type) override {
@@ -248,6 +251,9 @@ private:
   }
   TerminalPort &terminal() override {
     return _schedule._wiring.terminal;
+  }
+  FilePort &files() override {
+    return _schedule._wiring.files;
   }
   std::span<std::byte> block() override {
     return _bound.block->bytes();

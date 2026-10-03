@@ -8,3 +8,6 @@ recipe = command-line
 
 [deploy "inspect"]
 recipe = inspect
+
+[deploy "library"]
+recipe = library

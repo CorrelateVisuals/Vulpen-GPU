@@ -204,13 +204,16 @@ int Shell::run(const std::string &command) {
 #endif
 
 void Files::save(const std::filesystem::path &file, std::string_view text) {
+  std::error_code failed;
+  // A new view's folder exists once its first save writes it.
+  if (file.has_parent_path())
+    std::filesystem::create_directories(file.parent_path(), failed);
   std::filesystem::path temp = file;
   temp += ".tmp";
   std::ofstream out(temp, std::ios::binary);
   out.write(text.data(), static_cast<std::streamsize>(text.size()));
   out.close();
-  std::error_code failed;
-  if (out)
+  if (out && !failed)
     std::filesystem::rename(temp, file, failed);
   if (!out || failed) {
     std::error_code gone; // the temp file may never have been made

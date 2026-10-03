@@ -21,6 +21,9 @@ public:
   void frame();
 
 private:
+  std::string read(std::string_view file) override;
+  void save(std::string_view file, std::string_view text) override;
+  std::vector<std::string> list(std::string_view folder) override;
   std::span<const std::string> lines() override;
   bool ended() const override;
   void print(std::string_view text) override;

@@ -100,8 +100,8 @@ private:
   std::optional<Window> _window; // outlives the engine, which draws into it
   std::optional<Engine> _engine;
   Recipes _recipes; // outlives the schedules, whose operators run its modules' code
-  Commands _commands;
   Ports _ports;
+  Commands _commands;
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
   std::optional<Views> _views;
   std::optional<Edits> _edits; // goes before the views it changes
@@ -183,7 +183,7 @@ private:
 };
 
 Runtime::Runtime(std::span<char *const> arguments, std::string_view build)
-    : _options(parse(arguments)), _log(_options.log, build), _commands(_log) {}
+    : _options(parse(arguments)), _log(_options.log, build), _commands(_log, _ports) {}
 
 Runtime::~Runtime() {
   if (_engine)

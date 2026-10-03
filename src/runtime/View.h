@@ -25,6 +25,10 @@ struct Node {
   // The file and line that last added or changed it, which its errors name; empty after
   // a line typed or sent. A save leaves it out.
   std::string where;
+  // Where its recipe's files are, which a path its C++ names starts from (RP02): the
+  // view's copy, or the library's recipe in a view of the library. Unfolding the deploys
+  // fills it, and a save leaves it out.
+  std::filesystem::path folder;
 };
 
 struct Endpoint {

@@ -18,7 +18,8 @@ public:
   // Build outputs resolve against it, never against the working directory (RP02).
   static std::filesystem::path executable();
   // Writes a temp file beside the file, then renames it over the file, so a killed run
-  // leaves the old file or the new one, never half of one (RA04). Throws naming the file.
+  // leaves the old file or the new one, never half of one (RA04). Makes the file's
+  // folder first when it has none. Throws naming the file.
   static void save(const std::filesystem::path &file, std::string_view text);
 };
 

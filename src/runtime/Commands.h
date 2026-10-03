@@ -51,10 +51,11 @@ private:
 // Every change to a view is a command through this one port, so the CLI, a GUI, a
 // script and an agent act alike, and replaying the log rebuilds the session. A command
 // registers with its usage, whose placeholders give its completion, and its help, or
-// not at all (RV04).
+// not at all (RV04). A <file> argument reaches its command resolved, as an absolute path.
 class Commands final : public CommandPort, public CommandHandler {
 public:
-  explicit Commands(const Log &log);
+  // files: what a command reaches files through.
+  Commands(const Log &log, FilePort &files);
   ~Commands();
   Commands(const Commands &) = delete;
   Commands &operator=(const Commands &) = delete;
@@ -97,6 +98,7 @@ private:
   std::filesystem::path resolved(const std::filesystem::path &file) const;
 
   const Log &_log;
+  FilePort &_files;
   std::vector<Spec> _specs;
   std::uint32_t _added = 0; // so a removed command's id is never handed out again
   ViewLookup *_views = nullptr;

@@ -12,6 +12,7 @@
 #include <cstring>
 #include <memory>
 #include <span>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -65,11 +66,6 @@ struct Command {
   std::uint32_t index = 0;
 };
 
-// A file the node opened through the file port.
-struct File {
-  std::uint32_t index = 0;
-};
-
 // One member of a struct a buffer holds. C++ names each member once and the loader
 // checks it against the shader, so a C++ struct cannot drift from its contract.
 struct Member {};
@@ -102,9 +98,21 @@ struct Event {};
 // The events of a frame, for the nodes that read keys, text or the pointer.
 class InputPort {};
 
-// Files a node reads, watches and saves. A save writes a temp file and renames it over
-// the old one, so a killed run never leaves half a file.
-class FilePort {};
+// Files a node reads and saves, by absolute path, so the working directory never counts:
+// a recipe names its own files from its folder, and a command's <file> arguments come
+// resolved. A save writes a temp file and renames it over the old one, so a killed run
+// never leaves half a file. Each call throws naming the path it could not use.
+class FilePort {
+public:
+  virtual std::string read(std::string_view file) = 0;
+  // Makes the file's folder first when it has none.
+  virtual void save(std::string_view file, std::string_view text) = 0;
+  // The names in a folder, sorted, a folder's ending in /; none when it does not exist.
+  virtual std::vector<std::string> list(std::string_view folder) = 0;
+
+protected:
+  ~FilePort() = default;
+};
 
 // Lines typed on standard input and text for standard output, so a CLI needs no window.
 class TerminalPort {
@@ -158,6 +166,9 @@ public:
   // (RV04). It lasts while the node runs: a rebuild registers it again, and a node that
   // goes, or stops in error, takes it along.
   virtual Command command(std::string_view usage, std::string_view help) = 0;
+  // The folder of the node's recipe, where its own files are: the view's copy, or the
+  // library's recipe in a view of the library.
+  virtual std::string folder() const = 0;
 
 protected:
   ~Bind() = default;
@@ -195,6 +206,7 @@ public:
   virtual void log(Level level, std::string_view text) const = 0;
   virtual CommandPort &commands() = 0;
   virtual TerminalPort &terminal() = 0;
+  virtual FilePort &files() = 0;
 
 protected:
   ~Cook() = default;
@@ -220,6 +232,7 @@ public:
   // The view the command addresses, as the changes so far left it: what a save would
   // write. Read it while the command runs; a later change replaces it.
   virtual const View &view() const = 0;
+  virtual FilePort &files() = 0;
 
 protected:
   ~Call() = default;

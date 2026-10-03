@@ -444,6 +444,8 @@ View Manifest::load(const std::filesystem::path &file) {
 View Manifest::flatten(const View &view) {
   std::vector<std::string> deploying;
   View flat = flattened(view, view, deploying);
+  for (Node &node : flat.nodes)
+    node.folder = recipe_folder(view, node.recipe);
   for (const Connection &connection : flat.connections) {
     const auto check = [&](const Endpoint &end) {
       if (std::ranges::find(flat.nodes, end.node, &Node::name) == flat.nodes.end())

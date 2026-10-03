@@ -1,1 +1,7 @@
 # The library part: one node whose operator is Library, and the template recipe new copies.
+[manifest]
+version = 1
+
+[node "library"]
+recipe   = library
+operator = Library
