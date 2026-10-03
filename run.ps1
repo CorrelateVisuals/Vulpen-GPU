@@ -19,7 +19,7 @@ try {
     $ErrorActionPreference = 'Continue'
     $said = & {
         cmake --preset $preset
-        if ($LASTEXITCODE -eq 0) { cmake --build --preset $preset }
+        if ($LASTEXITCODE -eq 0) { cmake --build --preset $preset --parallel }
     } 2>&1 | ForEach-Object { if ($verbose) { "$_" | Out-Host } else { "$_" } }
     $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0) { $said | Out-Host }

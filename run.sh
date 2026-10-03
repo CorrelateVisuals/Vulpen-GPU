@@ -16,7 +16,7 @@ done
 # CMake reads the presets from the current folder; vulpen itself runs from the
 # caller's, since nothing in it may depend on the working directory.
 root=$(dirname "$0")
-build() { cd "$root" && cmake --preset "$preset" && cmake --build --preset "$preset"; }
+build() { cd "$root" && cmake --preset "$preset" && cmake --build --preset "$preset" --parallel; }
 if $verbose; then
   (build)
 elif ! said=$(build 2>&1); then
