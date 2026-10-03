@@ -15,9 +15,10 @@ Requirements must never conflict; if two do, fix this file.
 - **RV02** Every pipeline uses the [GPU layout](#gpu-layout), with offsets and bindings taken from reflection (RA03).
 - **RV03** A manifest states its version; an older one is refused with the command that migrates it.
 - **RV04** Every command declares its usage, help and argument completion in one place; a command without them does not register.
-- **RV05** Recipes share only contracts. A contract is a GLSL struct in `recipes/contracts/` for the data one connection between two recipes carries, and C++ reads it by reflection (RA03). It is the only file under `recipes/` that more than one recipe includes, and deploying a recipe copies the contracts it includes into the view with it (V03).
-- **RV06** Code lives only in parts. A part (`recipes/parts/`) holds one job's operator and shaders and deploys no other recipe. A component (`recipes/components/`) deploys parts and other components, and an app (`recipes/apps/`) deploys parts and components; both are only a `view.vlp` of children, their params and the connections between them. Deploys never form a cycle. The [recipe map](recipe-map.md) places every recipe.
+- **RV05** Recipes share only contracts. A contract is a GLSL struct in the `contracts/` folder at the top of the library or of a view, for the data one connection carries, and C++ reads it by reflection (RA03). It is the only file there that more than one node includes, and dropping a recipe copies the contracts it includes into the view's `contracts/` (V03).
+- **RV06** Code lives only in parts. A part (`recipes/parts/`) holds one job's operator and shaders and uses no other recipe. A component (`recipes/components/`) uses parts and other components, and an app (`recipes/apps/`) uses parts and components; both are only a `view.vlp` of children, their params and the connections between them. Uses never form a cycle. The [recipe map](recipe-map.md) places every recipe.
 - **RV07** A part or a component is named for its job, never for its first user (`list`, not `menubar`); only an app carries a product's name.
+- **RV08** A node's folder is its name as a path: `ui.panel` is `ui/panel/` in its view. Its manifest section lists the files in that folder, and the nodes inside it are its subfolders. Each folder's C++ builds as one module.
 
 ### GPU layout
 

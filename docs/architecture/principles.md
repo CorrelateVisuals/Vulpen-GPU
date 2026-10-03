@@ -13,7 +13,7 @@ Principles are must-haves that leave room for interpretation; they may pull agai
 - **V00** Vulpen's core language is the nodes and their connections, expressed in the manifest (`.vlp` file).
 - **V01** Vulpen is fractal and extends itself from itself at the lowest possible abstraction level.
 - **V02** Vulpen uses recipes to allow instant deployment of combinations of premade nodes, which can be used and modified as if they were made by hand.
-- **V03** A view is a project, not a window: one manifest plus its own copy of every recipe deployed into it. It loads, runs and moves as a whole, and editing a library recipe later never changes it. A view can host other views, so views are fractal too (V01).
+- **V03** A view is a project, not a window: one manifest and a folder per node, holding its own copy of every recipe dropped into it. It loads, runs and moves as a whole, and a later edit of a library recipe reaches it only when the view asks for it. A view names the views it hosts, so views are fractal too (V01).
 - **V04** The manifest language stays small and closed: a few words, each with a closed set of values. A new word needs a job no existing word can do.
 
 ### Architecture
@@ -30,7 +30,7 @@ Principles are must-haves that leave room for interpretation; they may pull agai
 
 ### Recipes
 
-- **V11 Recipes grow by addition.** In the library, a bigger recipe deploys smaller ones and connects them; it never copies their code, or deploys a bigger one and removes nodes. Two recipes share only the contract on the connection between them, so every recipe stays whole on its own, any recipe that honors the same contracts can replace it, and a fix to a part reaches every library recipe built on it.
+- **V11 Recipes grow by addition.** In the library, a bigger recipe uses smaller ones and connects them; it never copies their code, or uses a bigger one and removes nodes. Two recipes share only the contract on the connection between them, so every recipe stays whole on its own, any recipe that honors the same contracts can replace it, and a fix to a part reaches every library recipe built on it.
 
 ## Architecture
 
