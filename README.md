@@ -15,6 +15,10 @@ Configures, builds and runs the `debug` preset, or `release` with `--release`; t
 
 `./run.sh src/examples/wave/view.vlp --log info` runs the example view headless; `./run.sh src/examples/triangle/view.vlp` opens a window and draws a triangle whose corners and color come from C++. In the `debug` preset, save any C++ or GLSL of a view while it runs and the running view swaps in the change; see [docs/plans/live-code.md](docs/plans/live-code.md).
 
+## Use
+
+[docs/usage.md](docs/usage.md) shows how each part works today by example: running a view, the manifest, recipes, commands, the CLI, hosted views and the library.
+
 ## Test
 
 ```bash
