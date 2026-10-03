@@ -98,6 +98,10 @@ std::optional<std::string> Terminal::input() {
   return text;
 }
 
+bool Terminal::typed() {
+  return GetFileType(GetStdHandle(STD_INPUT_HANDLE)) == FILE_TYPE_CHAR;
+}
+
 // A console shows ANSI colors once asked to; a pipe or a file has no console mode.
 bool Terminal::colors() {
   const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -166,6 +170,10 @@ std::optional<std::string> Terminal::input() {
       text.append(chunk.data(), static_cast<std::size_t>(got));
   }
   return text;
+}
+
+bool Terminal::typed() {
+  return isatty(STDIN_FILENO) == 1;
 }
 
 bool Terminal::colors() {

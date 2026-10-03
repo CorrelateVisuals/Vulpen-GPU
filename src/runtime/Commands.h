@@ -40,12 +40,20 @@ public:
   // A line from outside the port, typed or read from a file: the primitives it runs
   // join one group.
   void open();
-  void keep(std::string_view primitive);
-  // Every primitive kept, a line each, in order: what source replays.
-  std::string text() const;
+  // files: which of the words are files, as absolute paths.
+  void keep(std::vector<std::string> words, std::vector<std::size_t> files);
+  // Every primitive kept, a line each, in order: what source replays. A file is named
+  // from the folder the log is saved in, where source resolves it, so a log moves with
+  // the files it names (V08).
+  std::string text(const std::filesystem::path &folder) const;
 
 private:
-  std::vector<std::vector<std::string>> _groups;
+  struct Kept {
+    std::vector<std::string> words;
+    std::vector<std::size_t> files;
+  };
+
+  std::vector<std::vector<Kept>> _groups;
 };
 
 // Every change to a view is a command through this one port, so the CLI, a GUI, a

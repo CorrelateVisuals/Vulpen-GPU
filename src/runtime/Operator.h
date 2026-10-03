@@ -66,6 +66,11 @@ struct Command {
   std::uint32_t index = 0;
 };
 
+// A file the node opened while it bound, which the file port watches.
+struct File {
+  std::uint32_t index = 0;
+};
+
 // One member of a struct a buffer holds. C++ names each member once and the loader
 // checks it against the shader, so a C++ struct cannot drift from its contract.
 struct Member {};
@@ -99,12 +104,17 @@ struct Event {};
 // The events of a frame, for the nodes that read keys, text or the pointer.
 class InputPort {};
 
-// Files a node reads and saves, by absolute path, so the working directory never counts:
-// a recipe names its own files from its folder, and a command's <file> arguments come
-// resolved. A save writes a temp file and renames it over the old one, so a killed run
-// never leaves half a file. Each call throws naming the path it could not use.
+// Files a node reads, watches and saves. A save writes a temp file and renames it over
+// the old one, so a killed run never leaves half a file. Each call throws naming the
+// path it could not use.
 class FilePort {
 public:
+  // What a file the node opened holds, read again once it changed on disk; empty while
+  // it does not exist.
+  virtual std::string_view text(File file) = 0;
+  virtual void save(File file, std::string_view text) = 0;
+  // Any other file, by absolute path, so the working directory never counts: a recipe
+  // names one from its folder, and a command's <file> arguments come resolved.
   virtual std::string read(std::string_view file) = 0;
   // Makes the file's folder first when it has none.
   virtual void save(std::string_view file, std::string_view text) = 0;
@@ -126,6 +136,9 @@ public:
   virtual bool ended() const = 0;
   // A line of standard output.
   virtual void print(std::string_view text) = 0;
+  // Text where the next line is typed, with no line break. It shows only where a person
+  // types, so a piped script's output stays as it was.
+  virtual void prompt(std::string_view text) = 0;
 
 protected:
   ~TerminalPort() = default;
@@ -167,6 +180,9 @@ public:
   // (RV04). It lasts while the node runs: a rebuild registers it again, and a node that
   // goes, or stops in error, takes it along.
   virtual Command command(std::string_view usage, std::string_view help) = 0;
+  // A file the node reads and saves: a relative path names one in its recipe's folder.
+  // It lasts while the node runs; a rebuild that opens it again shares it, unread.
+  virtual File file(std::string_view path) = 0;
   // The folder of the node's recipe, where its own files are: the view's copy, or the
   // library's recipe in a view of the library.
   virtual std::string folder() const = 0;

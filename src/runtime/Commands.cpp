@@ -158,14 +158,22 @@ void CommandLog::open() {
     _groups.emplace_back();
 }
 
-void CommandLog::keep(std::string_view primitive) {
-  _groups.back().emplace_back(primitive);
+void CommandLog::keep(std::vector<std::string> words, std::vector<std::size_t> files) {
+  _groups.back().push_back({std::move(words), std::move(files)});
 }
 
-std::string CommandLog::text() const {
+// A file on another drive than the log's has no relative path, so it stays absolute.
+std::string CommandLog::text(const std::filesystem::path &folder) const {
   std::string text;
-  for (const std::string &primitive : _groups | std::views::join)
-    text.append(primitive).push_back('\n');
+  for (const Kept &kept : _groups | std::views::join) {
+    for (std::size_t index = 0; index < kept.words.size(); ++index) {
+      std::filesystem::path word(kept.words[index]);
+      if (std::ranges::find(kept.files, index) != kept.files.end())
+        word = word.lexically_normal().lexically_proximate(folder.lexically_normal());
+      text.append(index == 0 ? "" : " ").append(word.generic_string());
+    }
+    text.push_back('\n');
+  }
   return text;
 }
 
@@ -180,6 +188,10 @@ struct Commands::Spec {
   Command command;
   CommandHandler *handler = nullptr;
   Primitive primitive = Primitive::no;
+
+  bool names_file(std::size_t argument) const {
+    return placeholders[std::min(argument, placeholders.size() - 1)] == "file";
+  }
 };
 
 Commands::Commands(const Log &log, FilePort &files)
@@ -263,15 +275,21 @@ std::string Commands::run(std::string_view line) {
   // Read first: a handler that rebuilds a view binds operators, which may register
   // commands and so move the specs.
   const Primitive primitive = spec->primitive;
-  const std::string kept = (address.empty() ? "" : address + ": ") +
-                           joined(spec->name, " ") + (arguments.empty() ? "" : " ") +
-                           joined(arguments, " ");
+  std::vector<std::string> kept(spec->name.begin(), spec->name.end());
+  if (!address.empty())
+    kept.insert(kept.begin(), address + ':');
+  std::vector<std::size_t> files;
+  for (std::size_t index = 0; index < arguments.size(); ++index) {
+    if (spec->names_file(index))
+      files.push_back(kept.size());
+    kept.emplace_back(arguments[index]);
+  }
   const Restore depth(_depth, _depth + 1);
   const Restore addressed(_addressed, address);
   Run call(*this, _views, address, _files, spec->command, arguments);
   spec->handler->command(call);
   if (primitive == Primitive::yes)
-    _session.keep(kept);
+    _session.keep(std::move(kept), std::move(files));
   return std::move(call).answer();
 }
 
@@ -294,7 +312,7 @@ Commands::resolve(const Spec &spec, std::vector<std::string_view> &arguments) co
   std::vector<std::string> paths;
   paths.reserve(arguments.size());
   for (std::size_t index = 0; index < arguments.size(); ++index)
-    if (spec.placeholders[std::min(index, spec.placeholders.size() - 1)] == "file")
+    if (spec.names_file(index))
       arguments[index] = paths.emplace_back(resolved(arguments[index]).string());
   return paths;
 }
@@ -376,7 +394,7 @@ void Commands::command(Call &call) {
     source(call.arguments().front());
   } else if (call.is(_log_save)) {
     const std::string_view file = call.arguments().front();
-    Files::save(file, _session.text());
+    Files::save(file, _session.text(std::filesystem::path(file).parent_path()));
     _log.write(Level::info, Tag::run, std::format("log save: {}", file));
   }
 }

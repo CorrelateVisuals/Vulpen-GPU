@@ -2,6 +2,7 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <filesystem>
 #include <format>
@@ -20,6 +21,15 @@ constexpr std::string_view contracts = "contracts";
 // How a recipe's shader names a contract (RV05), so a drop knows which to copy.
 constexpr std::string_view contract_include = "#include \"contracts/";
 constexpr std::string_view blanks = " \t\r";
+// The template's files, from the library part's folder, and the words in them that name
+// the recipe: its C++ class, and its node.
+constexpr std::array<std::string_view, 5> template_files{
+    "Name.cpp", "Name.glsl", "Name.vert", "Name.frag", "Name.comp"};
+constexpr std::string_view template_class = "Name";
+constexpr std::string_view template_node = "name";
+// What each kind of recipe starts with, by the template's files.
+constexpr std::array<std::size_t, 4> draw_files{0, 1, 2, 3};
+constexpr std::array<std::size_t, 2> dispatch_files{0, 4};
 
 std::string_view trim(std::string_view text) {
   const std::size_t first = text.find_first_not_of(blanks);
@@ -49,6 +59,54 @@ bool inside(const std::filesystem::path &path, const std::filesystem::path &fold
   const std::filesystem::path relative =
       path.lexically_normal().lexically_relative(folder.lexically_normal());
   return !relative.empty() && *relative.begin() != "..";
+}
+
+// A recipe's folder name, which names its C++ class too: a lowercase letter, then
+// lowercase letters, digits and -.
+bool recipe_name(std::string_view name) {
+  const auto lower = [](char letter) { return letter >= 'a' && letter <= 'z'; };
+  return !name.empty() && lower(name.front()) &&
+         std::ranges::all_of(name, [&](char letter) {
+           return lower(letter) || (letter >= '0' && letter <= '9') || letter == '-';
+         });
+}
+
+// The C++ class a recipe's name gives: command-line gives CommandLine.
+std::string class_of(std::string_view name) {
+  std::string type;
+  bool upper = true;
+  for (const char letter : name) {
+    if (letter == '-') {
+      upper = true;
+      continue;
+    }
+    type.push_back(upper && letter >= 'a' && letter <= 'z'
+                       ? static_cast<char>(letter - 'a' + 'A')
+                       : letter);
+    upper = false;
+  }
+  return type;
+}
+
+bool word_letter(char letter) {
+  return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
+         (letter >= '0' && letter <= '9') || letter == '_';
+}
+
+// Each whole word `from` in the text, whether code or a comment's, becomes `to`.
+std::string replaced(std::string text, std::string_view from, std::string_view to) {
+  for (std::size_t at = text.find(from); at != std::string::npos;
+       at = text.find(from, at)) {
+    const std::size_t end = at + from.size();
+    if ((at != 0 && word_letter(text[at - 1])) ||
+        (end != text.size() && word_letter(text[end]))) {
+      at = end;
+      continue;
+    }
+    text.replace(at, from.size(), to);
+    at += to.size();
+  }
+  return text;
 }
 
 // The recipe words of a manifest: a node's own recipe, and each recipe a deploy brings.
@@ -88,14 +146,22 @@ void copy(VP::FilePort &files,
   }
 }
 
-// Works on recipe and view folders through the file port: lists and drops recipes, and
-// makes and loads views. A drop copies files and then deploys, so the view owns its copy
-// from the first edit on (V03).
+// Works on recipe and view folders through the file port: lists, drops and starts
+// recipes, and makes and loads views. A drop copies files and then deploys, so the view
+// owns its copy from the first edit on (V03).
 class Library final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // A part's folder is <library>/<kind>/<name>.
     _library = std::filesystem::path(node.folder()).parent_path().parent_path();
+    for (std::size_t index = 0; index < template_files.size(); ++index)
+      _templates[index] = node.file(std::format("template/{}", template_files[index]));
     _list = node.command("recipe list", "lists the library's recipes, by kind");
+    _draw = node.command("recipe new draw <name>",
+                         "writes a draw's first files into the view's recipes from the "
+                         "template: its C++, its pass block and its two shaders");
+    _dispatch = node.command("recipe new dispatch <name>",
+                             "writes a dispatch's first files into the view's recipes "
+                             "from the template: its C++ and its compute shader");
     _drop = node.command("recipe drop <recipe> <name>",
                          "copies a library recipe into the view, with the recipes it "
                          "deploys and the contracts they include, and deploys it");
@@ -107,6 +173,10 @@ class Library final : public VP::Operator {
   void command(VP::Call &call) override {
     if (call.is(_list))
       list(call);
+    else if (call.is(_draw))
+      start(call, draw_files);
+    else if (call.is(_dispatch))
+      start(call, dispatch_files);
     else if (call.is(_drop))
       drop(call);
     else if (call.is(_new) || call.is(_load))
@@ -132,18 +202,52 @@ class Library final : public VP::Operator {
         std::format("no recipe {} in the library; recipe list lists them", recipe));
   }
 
+  // The recipes of the view a command addresses, which owns them (V03).
+  std::filesystem::path recipes_of(VP::Call &call) const {
+    const std::filesystem::path recipes = call.view().file.parent_path() / "recipes";
+    if (inside(recipes, _library))
+      throw std::runtime_error(std::format(
+          "{} is in the library, whose recipes are its own; view new or view load hosts "
+          "a view to work on",
+          call.view().file.string()));
+    return recipes;
+  }
+
+  // A recipe's first files from the template, named for it. They build at once and do
+  // nothing yet; the lines of the menu wait, commented.
+  void start(VP::Call &call, std::span<const std::size_t> files) const {
+    const std::string_view name = call.arguments().front();
+    if (!recipe_name(name))
+      throw std::runtime_error(std::format("{} is no recipe name: a lowercase letter, "
+                                           "then lowercase letters, digits and -",
+                                           name));
+    const std::filesystem::path recipes = recipes_of(call);
+    if (holds(call.files(), recipes, std::string(name) + '/'))
+      throw std::runtime_error(
+          std::format("the view has a recipe {} already, which stays as it is", name));
+    const std::string type = class_of(name);
+    std::string wrote;
+    for (const std::size_t file : files) {
+      const std::string named =
+          type + std::string(template_files[file].substr(template_class.size()));
+      call.files().save(
+          (recipes / name / named).string(),
+          replaced(replaced(std::string(call.files().text(_templates[file])),
+                            template_class,
+                            type),
+                   template_node,
+                   name));
+      wrote.append(wrote.empty() ? "" : ", ").append(named);
+    }
+    call.reply(std::format("wrote {} in {}", wrote, (recipes / name).string()));
+  }
+
   // The recipe, every recipe it deploys and every contract they include, into the view's
   // recipes. A copy the view has already stays: the view owns it (V03).
   void drop(VP::Call &call) const {
     const std::span<const std::string_view> arguments = call.arguments();
     VP::FilePort &files = call.files();
-    const std::filesystem::path into = call.view().file.parent_path() / "recipes";
-    if (inside(into, _library))
-      throw std::runtime_error(std::format(
-          "{} is in the library, which deploys its own recipes: deploy add {} {}",
-          call.view().file.string(),
-          arguments[1],
-          arguments[0]));
+    const std::filesystem::path into = recipes_of(call);
     std::vector<std::string> recipes{std::string(arguments[0])};
     std::set<std::string> included;
     std::string copied;
@@ -190,7 +294,10 @@ class Library final : public VP::Operator {
   }
 
   std::filesystem::path _library;
+  std::array<VP::File, template_files.size()> _templates;
   VP::Command _list;
+  VP::Command _draw;
+  VP::Command _dispatch;
   VP::Command _drop;
   VP::Command _new;
   VP::Command _load;

@@ -15,11 +15,9 @@
 namespace VP {
 
 class Commands;
-class FilePort;
-class InputPort;
 class Pipelines;
+class Ports;
 class Recipes;
-class TerminalPort;
 struct Connection;
 struct Node;
 struct Pass;
@@ -38,9 +36,7 @@ struct Wiring {
   // The build tree's mirror of the views, where modules and SPIR-V land.
   const std::filesystem::path &views;
   Commands &commands;
-  InputPort &input;
-  FilePort &files;
-  TerminalPort &terminal;
+  Ports &ports;
 };
 
 // Where the graph meets the GPU: runs each node's operator in graph order and turns
@@ -91,6 +87,7 @@ private:
   void make_blocks();
   void make_passes();
   void drop_commands(Bound &bound);
+  void close_files(Bound &bound);
   void log(Level level, Tag tag, const Bound &bound, std::string_view text) const;
   Bound *find(std::string_view node);
   const Connection *connection_of(std::string_view node, std::string_view port) const;

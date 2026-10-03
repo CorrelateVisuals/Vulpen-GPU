@@ -83,6 +83,8 @@ public:
   // What standard input holds now, up to a bound, without waiting for more, so a frame
   // never stalls on it (VK02); nothing once it has ended.
   static std::optional<std::string> input();
+  // Whether a person types at standard input: a terminal, not a pipe or a file.
+  static bool typed();
 };
 
 } // namespace VP

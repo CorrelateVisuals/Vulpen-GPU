@@ -14,6 +14,7 @@ class Name final : public VP::Operator {
   // float _speed = 0;              // a param
   // VP::Texture _atlas;            // an image C++ fills once
   // VP::Command _reset;            // a command the node answers
+  // VP::File _settings;            // a file the node reads, watches and saves
   // std::string _folder;           // where the recipe's own files are
 
   // At load, and again after every swap: names in, handles out.

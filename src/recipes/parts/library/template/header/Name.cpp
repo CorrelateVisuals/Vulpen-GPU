@@ -9,6 +9,7 @@ namespace {
 //   _speed = node.param<float>("speed");
 //   _atlas = node.texture("atlas");
 //   _reset = node.command("reset", "turns the node back to its start");
+//   _settings = node.file("settings.ini"); // in the recipe's folder
 //   _folder = node.folder();
 // }
 
@@ -24,8 +25,8 @@ namespace {
 //   for (const VP::Event &event : frame.input().events()) {}
 //   for (const std::string_view line : frame.terminal().lines()) {}
 //   frame.terminal().print("text");
-//   const std::string settings = frame.files().read(_folder + "/settings.ini");
-//   frame.files().save(_folder + "/settings.ini", "text");
+//   const std::string_view settings = frame.files().text(_settings);
+//   frame.files().save(_settings, "text");
 //   const std::vector<std::string> names = frame.files().list(_folder);
 //   const VP::View &view = frame.view(); // with #include "runtime/View.h"
 // }

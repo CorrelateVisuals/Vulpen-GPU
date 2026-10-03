@@ -2,6 +2,7 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <set>
 #include <span>
 #include <string>
@@ -12,6 +13,7 @@ namespace {
 
 constexpr std::string_view clear_screen = "\x1b[2J\x1b[H"; // ANSI: erase it, then home
 constexpr std::string_view help_gap = "  "; // between a usage and what it does
+constexpr std::string_view prompt_end = "> ";
 
 // A usage's words, split at its blanks as the command port splits a line.
 std::vector<std::string_view> words_of(std::string_view text) {
@@ -34,16 +36,16 @@ bool addressed(std::string_view line) {
   return words.empty() || words.front().ends_with(':');
 }
 
-// The name child list answers last: the view hosted most recently.
-std::string newest(std::string_view children) {
-  std::string name;
+// The last line child list answers: the view hosted most recently, as `<name> <file>`.
+std::string_view newest(std::string_view children) {
+  std::string_view newest;
   for (std::size_t at = 0; at < children.size();) {
     const std::size_t end = std::min(children.find('\n', at), children.size());
     if (const std::string_view line = children.substr(at, end - at); !line.empty())
-      name = line.substr(0, line.find(' '));
+      newest = line;
     at = end + 1;
   }
-  return name;
+  return newest;
 }
 
 // What a placeholder stands for in the view: its nodes, connections or deploys, or the
@@ -78,7 +80,8 @@ std::vector<std::string> names(std::string_view kind,
 // command port. On the terminal it is the CLI: each line typed or piped in runs, what it
 // answers is printed, and the run ends with the input. A line that names no view goes to
 // the view hosted most recently, as view new and view load leave it, so it needs no name
-// and every log line still has one.
+// and every log line still has one. The prompt shows that view's folder, as a shell
+// shows the one it is in.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _help = node.command("help", "lists every command, with its usage and what it does");
@@ -90,15 +93,34 @@ class CommandLine final : public VP::Operator {
 
   void cook(VP::Cook &frame) override {
     VP::TerminalPort &terminal = frame.terminal();
-    for (const std::string &line : terminal.lines()) {
+    const std::span<const std::string> lines = terminal.lines();
+    for (const std::string &line : lines) {
       const std::string sent =
           _view.empty() || addressed(line) ? line : _view + ": " + line;
       if (const std::string answer = frame.commands().send(sent); !answer.empty())
         terminal.print(answer);
-      _view = newest(frame.commands().send(": child list"));
+      current(newest(frame.commands().send(": child list")));
     }
-    if (terminal.ended())
+    if (terminal.ended()) {
+      terminal.prompt(
+          "\n"); // ends the prompt's line, as a shell does at the end of input
       frame.commands().send("quit");
+    } else if (!lines.empty() || !_prompted) {
+      terminal.prompt(_folder + std::string(prompt_end));
+      _prompted = true;
+    }
+  }
+
+  // From where vulpen started, as a shell names a folder; the host has no name to show.
+  void current(std::string_view newest) {
+    const std::size_t space = newest.find(' ');
+    _view = newest.substr(0, space);
+    _folder = space == std::string_view::npos
+                  ? std::string()
+                  : std::filesystem::path(newest.substr(space + 1))
+                        .parent_path()
+                        .lexically_proximate(std::filesystem::current_path())
+                        .generic_string();
   }
 
   void command(VP::Call &call) override {
@@ -151,7 +173,9 @@ class CommandLine final : public VP::Operator {
   VP::Command _help;
   VP::Command _complete;
   VP::Command _clear;
-  std::string _view; // the view a line that names none goes to; empty for the host
+  std::string _view;   // the view a line that names none goes to; empty for the host
+  std::string _folder; // that view's, as the prompt shows it
+  bool _prompted = false;
 };
 
 } // namespace

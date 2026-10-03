@@ -4,6 +4,7 @@
 #include "baseclasses/Pipelines.h"
 #include "runtime/Commands.h"
 #include "runtime/Operator.h"
+#include "runtime/Ports.h"
 #include "runtime/Recipes.h"
 #include "runtime/View.h"
 
@@ -111,6 +112,7 @@ struct Schedule::Bound {
   std::vector<std::string> uploads;             // ports, by Upload<T>::index
   std::vector<const Buffer *> upload_buffers;
   std::vector<Command> commands; // registered while it bound
+  std::vector<File> files;       // opened while it bound
   std::vector<std::string> errors;
 
   bool loaded() const {
@@ -133,11 +135,22 @@ struct Schedule::Bound {
 // fit becomes one of the node's errors, and the operator gets a harmless handle.
 class Schedule::Binder final : public Bind {
 public:
-  Binder(Bound &bound, Commands &commands) : _bound(bound), _commands(commands) {}
+  Binder(Bound &bound, Commands &commands, Ports &ports)
+      : _bound(bound), _commands(commands), _ports(ports) {}
 
   Command command(std::string_view usage, std::string_view help) override {
     try {
       return _bound.commands.emplace_back(_commands.add(usage, help, *_bound.op));
+    } catch (const std::runtime_error &failure) {
+      _bound.errors.emplace_back(failure.what());
+      return {};
+    }
+  }
+  File file(std::string_view path) override {
+    const std::filesystem::path named(path);
+    try {
+      return _bound.files.emplace_back(
+          _ports.open(named.is_relative() ? _bound.node->folder / named : named));
     } catch (const std::runtime_error &failure) {
       _bound.errors.emplace_back(failure.what());
       return {};
@@ -231,6 +244,7 @@ private:
 
   Bound &_bound;
   Commands &_commands;
+  Ports &_ports;
 };
 
 // What an operator reaches during a frame: its node's block and read-backs, nothing else.
@@ -250,10 +264,10 @@ private:
     return _schedule._wiring.commands;
   }
   TerminalPort &terminal() override {
-    return _schedule._wiring.terminal;
+    return _schedule._wiring.ports;
   }
   FilePort &files() override {
-    return _schedule._wiring.files;
+    return _schedule._wiring.ports;
   }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
@@ -349,9 +363,13 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
   }
 }
 
+// A node's files outlive its code, so they go only with the schedule, once the next one
+// opened them again.
 Schedule::~Schedule() {
-  for (Bound &bound : _bound)
+  for (Bound &bound : _bound) {
     drop_commands(bound);
+    close_files(bound);
+  }
 }
 
 Schedule::Bound Schedule::bind(const Node &node,
@@ -384,7 +402,7 @@ Schedule::Bound Schedule::bind(const Node &node,
     }
   }
   if (bound.op) {
-    Binder binder(bound, _wiring.commands);
+    Binder binder(bound, _wiring.commands, _wiring.ports);
     try {
       bound.op->bind(binder);
     } catch (const std::exception &failure) {
@@ -748,6 +766,12 @@ void Schedule::drop_commands(Bound &bound) {
   for (const Command command : bound.commands)
     _wiring.commands.remove(command);
   bound.commands.clear();
+}
+
+void Schedule::close_files(Bound &bound) {
+  for (const File file : bound.files)
+    _wiring.ports.close(file);
+  bound.files.clear();
 }
 
 std::vector<VkBuffer> Schedule::take_clears() {

@@ -283,9 +283,7 @@ bool Runtime::start() {
                          .log = _log,
                          .views = _mirror,
                          .commands = _commands,
-                         .input = _ports,
-                         .files = _ports,
-                         .terminal = _ports});
+                         .ports = _ports});
   _views.emplace(*_wiring, std::move(view), _commands);
   _commands.look_in(*_views);
   _edits.emplace(_commands, *_views);

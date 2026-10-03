@@ -30,6 +30,59 @@ std::filesystem::path absolute(std::string_view path) {
 
 } // namespace
 
+File Ports::open(const std::filesystem::path &file) {
+  for (auto &[id, open] : _open)
+    if (open.path == file) {
+      ++open.nodes;
+      return {id};
+    }
+  Open open{.path = file};
+  refresh(open);
+  _open.emplace(++_opened, std::move(open));
+  return {_opened};
+}
+
+void Ports::close(File file) {
+  if (const auto found = _open.find(file.index);
+      found != _open.end() && --found->second.nodes == 0)
+    _open.erase(found);
+}
+
+Ports::Open &Ports::opened(File file) {
+  const auto found = _open.find(file.index);
+  if (found == _open.end())
+    throw std::runtime_error("a file this node did not open when it last bound");
+  return found->second;
+}
+
+// A file that is gone reads as empty, and is read again once it is back.
+void Ports::refresh(Open &open) {
+  std::error_code gone;
+  const auto written = std::filesystem::last_write_time(open.path, gone);
+  if (written == open.written)
+    return;
+  open.text = gone ? std::string() : read(open.path.string());
+  open.written = written;
+}
+
+// Compared with the disk once a frame at most, so a node may ask every frame.
+std::string_view Ports::text(File file) {
+  Open &open = opened(file);
+  if (open.checked != _frames) {
+    open.checked = _frames;
+    refresh(open);
+  }
+  return open.text;
+}
+
+void Ports::save(File file, std::string_view text) {
+  Open &open = opened(file);
+  Files::save(open.path, text);
+  open.text = text;
+  std::error_code gone;
+  open.written = std::filesystem::last_write_time(open.path, gone);
+}
+
 std::string Ports::read(std::string_view file) {
   const std::filesystem::path path = absolute(file);
   std::ifstream in(path, std::ios::binary);
@@ -60,6 +113,7 @@ std::vector<std::string> Ports::list(std::string_view folder) {
 }
 
 void Ports::frame() {
+  ++_frames;
   _lines.clear();
   _read = false;
 }
@@ -96,6 +150,13 @@ void Ports::print(std::string_view text) {
   std::fwrite(text.data(), 1, text.size(), stdout);
   if (!text.ends_with('\n'))
     std::fputc('\n', stdout);
+  std::fflush(stdout);
+}
+
+void Ports::prompt(std::string_view text) {
+  if (!Terminal::typed())
+    return;
+  std::fwrite(text.data(), 1, text.size(), stdout);
   std::fflush(stdout);
 }
 

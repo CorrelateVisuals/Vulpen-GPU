@@ -10,6 +10,7 @@ class Name final : public VP::Operator {
   // float _speed = 0;              // a param
   // VP::Texture _atlas;            // an image C++ fills once
   // VP::Command _reset;            // a command the node answers
+  // VP::File _settings;            // a file the node reads, watches and saves
   // std::string _folder;           // where the recipe's own files are
 
   // At load, and again after every swap: names in, handles out.
@@ -20,6 +21,7 @@ class Name final : public VP::Operator {
   //   _speed = node.param<float>("speed");
   //   _atlas = node.texture("atlas");
   //   _reset = node.command("reset", "turns the node back to its start");
+  //   _settings = node.file("settings.ini"); // in the recipe's folder
   //   _folder = node.folder();
   // }
 
@@ -36,8 +38,8 @@ class Name final : public VP::Operator {
   //   for (const VP::Event &event : frame.input().events()) {}
   //   for (const std::string_view line : frame.terminal().lines()) {}
   //   frame.terminal().print("text");
-  //   const std::string settings = frame.files().read(_folder + "/settings.ini");
-  //   frame.files().save(_folder + "/settings.ini", "text");
+  //   const std::string_view settings = frame.files().text(_settings);
+  //   frame.files().save(_settings, "text");
   //   const std::vector<std::string> names = frame.files().list(_folder);
   //   const VP::View &view = frame.view(); // with #include "runtime/View.h"
   // }
