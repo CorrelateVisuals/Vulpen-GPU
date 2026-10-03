@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -43,6 +44,9 @@ public:
   // Empty when the shader declares no pass block.
   const std::vector<Field> &fields() const;
   std::uint32_t block_size() const;
+  // The frame block the push constant points to (RV02); empty when it declares none.
+  const std::vector<Field> &frame() const;
+  std::uint32_t frame_size() const;
   // Zero for any stage but compute.
   const std::array<std::uint32_t, 3> &workgroup_size() const;
 
@@ -50,6 +54,8 @@ private:
   std::vector<std::uint32_t> _words;
   std::vector<Field> _fields;
   std::uint32_t _block_size = 0;
+  std::vector<Field> _frame;
+  std::uint32_t _frame_size = 0;
   std::array<std::uint32_t, 3> _workgroup_size{};
 };
 
@@ -63,10 +69,25 @@ public:
   Pipelines &operator=(const Pipelines &) = delete;
 
   VkPipelineLayout layout() const;
+  // The frame block's address, which every pass pushes (RV02); 0 until a shader declares
+  // the block.
+  VkDeviceAddress frame() const;
+  // Before a frame runs: what the frame block holds (C01).
+  void write_frame(std::uint64_t index, double time, VkExtent2D resolution) const;
 
 private:
   friend class Pipeline;
   friend class PassBlock;
+
+  // The one frame block, laid out as the first shader that declares it says (RA03).
+  struct Frame {
+    Buffer buffer;
+    std::vector<Field> fields;
+  };
+
+  // Throws naming the mismatch when the shader's block is not the one the engine writes,
+  // so its node is refused (A02).
+  void take_frame(const Shader &shader) const;
 
   // Pass blocks come from these; each block counts itself in and out of its pool.
   struct Pool {
@@ -84,6 +105,7 @@ private:
   VkDescriptorSetLayout _pass = VK_NULL_HANDLE;
   VkPipelineLayout _layout = VK_NULL_HANDLE;
   mutable std::vector<Pool> _pools;
+  mutable std::optional<Frame> _frame;
 };
 
 // A dispatch's pipeline, or a draw's for a render pass.

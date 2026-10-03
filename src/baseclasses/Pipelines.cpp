@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <cstring>
 #include <format>
 #include <fstream>
 #include <stdexcept>
@@ -40,6 +41,7 @@ constexpr std::uint32_t decoration_binding = 33;
 constexpr std::uint32_t decoration_descriptor_set = 34;
 constexpr std::uint32_t decoration_offset = 35;
 constexpr std::uint32_t storage_uniform = 2;
+constexpr std::uint32_t storage_push_constant = 9;
 constexpr std::uint32_t storage_physical_storage_buffer = 5349;
 } // namespace spirv
 
@@ -47,6 +49,11 @@ constexpr std::uint32_t scalar_bytes = 4;
 constexpr std::uint32_t address_bytes = sizeof(VkDeviceAddress);
 constexpr std::uint32_t std140_block_alignment = 16;
 constexpr std::uint32_t blocks_per_pool = 1024;
+// What the engine writes into the frame block, in its order, by the names and types
+// baseclasses/GpuLayout.glsl gives them. The cursor stays zero until the input port.
+enum FrameMember : std::size_t { resolution, cursor, time, frame_index };
+constexpr std::array<std::pair<std::string_view, std::string_view>, 4> frame_members{
+    {{"resolution", "uvec2"}, {"cursor", "vec2"}, {"time", "float"}, {"index", "uint"}}};
 constexpr float line_width = 1.0f; // the only width without the wideLines feature
 
 struct Member {
@@ -64,6 +71,7 @@ struct Module {
   std::unordered_map<std::uint32_t, std::vector<std::uint32_t>> types;
   std::unordered_map<std::uint32_t, std::uint32_t> strides, sets, bindings;
   std::vector<std::pair<std::uint32_t, std::uint32_t>> uniforms; // pointer type, variable
+  std::vector<std::uint32_t> push_constants;                     // pointer types
   std::array<std::uint32_t, 3> workgroup_size{};
 
   Member &member(std::uint32_t type, std::uint32_t index) {
@@ -153,6 +161,8 @@ void read(Module &module, std::uint32_t opcode, std::span<const std::uint32_t> o
     case spirv::op_variable:
       if (at(operands, 2) == spirv::storage_uniform)
         module.uniforms.emplace_back(at(operands, 0), at(operands, 1));
+      else if (at(operands, 2) == spirv::storage_push_constant)
+        module.push_constants.push_back(at(operands, 0));
       break;
     case spirv::op_decorate:
       decorate(module, operands);
@@ -255,6 +265,33 @@ std::pair<std::vector<Field>, std::uint32_t> pass_block(const Module &module) {
   return {};
 }
 
+// The block the push constant's one member points to, described as the pass block's
+// fields are, and its size. A shader has no other push constant, since every pass pushes
+// this one address (RV02).
+std::pair<std::vector<Field>, std::uint32_t> frame_block(const Module &module) {
+  if (module.push_constants.empty())
+    return {};
+  const std::uint32_t push = module.types.at(module.push_constants.front()).at(2);
+  const std::vector<std::uint32_t> &members = module.types.at(push);
+  const auto address =
+      members.size() == 2 ? module.types.find(members[1]) : module.types.end();
+  if (module.push_constants.size() != 1 || address == module.types.end() ||
+      address->second.at(0) != spirv::op_type_pointer ||
+      address->second.at(1) != spirv::storage_physical_storage_buffer)
+    throw std::runtime_error("its push constant is not the frame block's address, as "
+                             "baseclasses/GpuLayout.glsl declares it (RV02)");
+  const std::uint32_t block = address->second.at(2);
+  const std::vector<std::uint32_t> &block_members = module.types.at(block);
+  std::vector<Field> fields;
+  std::uint32_t end = 0;
+  for (std::size_t index = 1; index < block_members.size(); ++index) {
+    fields.push_back(
+        describe(module, module.members.at(block).at(index - 1), block_members[index]));
+    end = std::max(end, fields.back().offset + value_bytes(module, block_members[index]));
+  }
+  return {std::move(fields), end};
+}
+
 std::vector<std::uint32_t> read_words(const std::filesystem::path &spirv) {
   std::ifstream file(spirv, std::ios::binary | std::ios::ate);
   if (!file)
@@ -311,6 +348,7 @@ Shader::Shader(const std::filesystem::path &spirv) : _words(read_words(spirv)) {
   }
   _workgroup_size = module.workgroup_size;
   std::tie(_fields, _block_size) = pass_block(module);
+  std::tie(_frame, _frame_size) = frame_block(module);
 }
 
 std::span<const std::uint32_t> Shader::words() const {
@@ -323,6 +361,14 @@ const std::vector<Field> &Shader::fields() const {
 
 std::uint32_t Shader::block_size() const {
   return _block_size;
+}
+
+const std::vector<Field> &Shader::frame() const {
+  return _frame;
+}
+
+std::uint32_t Shader::frame_size() const {
+  return _frame_size;
 }
 
 const std::array<std::uint32_t, 3> &Shader::workgroup_size() const {
@@ -347,10 +393,15 @@ Pipelines::Pipelines(VkDevice device, const Resources &resources)
   check(vkCreateDescriptorSetLayout(_device, &pass, nullptr, &_pass),
         "vkCreateDescriptorSetLayout");
   const std::array sets{_images, _pass}; // in set order
+  // The frame block's address, which every pass pushes (RV02).
+  const VkPushConstantRange frame{.stageFlags = VK_SHADER_STAGE_ALL,
+                                  .size = address_bytes};
   const VkPipelineLayoutCreateInfo layout{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount = static_cast<std::uint32_t>(sets.size()),
-      .pSetLayouts = sets.data()};
+      .pSetLayouts = sets.data(),
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &frame};
   check(vkCreatePipelineLayout(_device, &layout, nullptr, &_layout),
         "vkCreatePipelineLayout");
 }
@@ -365,6 +416,52 @@ Pipelines::~Pipelines() {
 
 VkPipelineLayout Pipelines::layout() const {
   return _layout;
+}
+
+VkDeviceAddress Pipelines::frame() const {
+  return _frame ? _frame->buffer.address() : 0;
+}
+
+// The GPU of the last frame is done with it: one frame is in flight.
+void Pipelines::write_frame(std::uint64_t index,
+                            double time,
+                            VkExtent2D resolution) const {
+  if (!_frame)
+    return;
+  const std::array<std::uint32_t, 2> size{resolution.width, resolution.height};
+  const auto seconds = static_cast<float>(time);
+  const auto frame = static_cast<std::uint32_t>(index);
+  std::byte *const bytes = _frame->buffer.bytes().data();
+  const std::vector<Field> &fields = _frame->fields;
+  std::memcpy(bytes + fields[FrameMember::resolution].offset, size.data(), sizeof size);
+  std::memcpy(bytes + fields[FrameMember::time].offset, &seconds, sizeof seconds);
+  std::memcpy(bytes + fields[FrameMember::frame_index].offset, &frame, sizeof frame);
+  _frame->buffer.flush();
+}
+
+// Every shader includes the same declaration, so the first one's layout is every one's.
+void Pipelines::take_frame(const Shader &shader) const {
+  const std::vector<Field> &fields = shader.frame();
+  if (fields.empty())
+    return;
+  if (_frame) {
+    if (fields != _frame->fields)
+      throw std::runtime_error("its frame block is laid out unlike the other shaders'; "
+                               "include baseclasses/GpuLayout.glsl as they do");
+    return;
+  }
+  if (!std::ranges::equal(
+          fields, frame_members, [](const Field &field, const auto &member) {
+            return field.name == member.first && field.type == member.second;
+          }))
+    throw std::runtime_error("its frame block is not the one the engine writes: uvec2 "
+                             "resolution, vec2 cursor, float time and uint index, as "
+                             "baseclasses/GpuLayout.glsl declares them (RV02)");
+  Buffer buffer = _resources.buffer(
+      shader.frame_size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, Memory::upload);
+  std::ranges::fill(buffer.bytes(), std::byte{});
+  buffer.flush();
+  _frame.emplace(Frame{std::move(buffer), fields});
 }
 
 // Counted, not left to the pool: past maxSets one driver fails and another does not
@@ -391,6 +488,7 @@ std::size_t Pipelines::pool() const {
 
 Pipeline::Pipeline(const Pipelines &pipelines, const Shader &compute)
     : _device(pipelines._device) {
+  pipelines.take_frame(compute);
   const ShaderModule module(_device, compute);
   const VkComputePipelineCreateInfo info{
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
@@ -410,6 +508,8 @@ Pipeline::Pipeline(const Pipelines &pipelines,
                    const Shader &fragment,
                    VkRenderPass render_pass)
     : _device(pipelines._device) {
+  pipelines.take_frame(vertex);
+  pipelines.take_frame(fragment);
   const ShaderModule vertex_module(_device, vertex);
   const ShaderModule fragment_module(_device, fragment);
   const std::array stages{
@@ -441,7 +541,14 @@ Pipeline::Pipeline(const Pipelines &pipelines,
   const VkPipelineMultisampleStateCreateInfo multisample{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
       .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT};
+  // One blend mode, premultiplied over, so draws stack in graph order with no word for
+  // it: a draw covers what came before by its alpha.
   const VkPipelineColorBlendAttachmentState color{
+      .blendEnable = VK_TRUE,
+      .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+      .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+      .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+      .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
       .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
   const VkPipelineColorBlendStateCreateInfo blend{

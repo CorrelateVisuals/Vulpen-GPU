@@ -304,6 +304,9 @@ void Runtime::loop() {
       _options.fps == 0
           ? std::chrono::nanoseconds::zero()
           : std::chrono::nanoseconds(std::chrono::seconds(1)) / _options.fps;
+  // Seconds count frames at the run's rate, so a replay sees the same time (C01); an
+  // unpaced run counts them at the default rate.
+  const double rate = _options.fps == 0 ? default_fps : _options.fps;
   const auto started = std::chrono::steady_clock::now();
   auto next = started;
   std::uint64_t frames = 0;
@@ -316,12 +319,13 @@ void Runtime::loop() {
       watch();
     prepare();
     _ports.frame();
+    const std::uint64_t frame = _options.first_frame + frames;
     _clears.clear();
     for (Schedule *const schedule : _views->schedules()) {
-      schedule->cook(_options.first_frame + frames);
+      schedule->cook(frame);
       std::ranges::copy(schedule->take_clears(), std::back_inserter(_clears));
     }
-    _engine->run(_clears, _passes);
+    _engine->run(_clears, _passes, frame, static_cast<double>(frame) / rate);
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
   }

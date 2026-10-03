@@ -8,7 +8,8 @@ deploy of a recipe with no view.vlp, of one that deploys itself, or that names a
 its recipe lacks. A view with more pass blocks than one pool holds is no mistake: it
 runs, and so does an edit on it. Nor is a deploy: edits on one save back to the same
 manifest. Nor is a command line on the terminal: what it reads runs, a refusal names
-its cause and the next line still runs, and the run ends with its input.
+its cause and the next line still runs, and the run ends with its input. And a pass reads
+the frame block as the engine wrote it, each value where reflection put it.
 
 The views are written into a folder named mistakes, so they find the recipes the build
 compiles from mistakes/ beside this script, which get these things wrong on purpose; a
@@ -180,6 +181,18 @@ def terminal(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def frame_block(vulpen: str, folder: Path) -> str | None:
+    """Why a pass did not read the frame block as the engine wrote it, or None; the
+    fixture's operator stops when it differs, from a frame far in, where time is large."""
+    view = folder / "frame.vlp"
+    view.write_text(HEAD + '[node "frame"]\nrecipe = frame\noperator = Frame\n'
+                    'shader = Frame.comp\ninvocations = 4\n', encoding="utf-8")
+    code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--first-frame", 1_000_000])
+    if code != 0 or problems(output):
+        return f"frame: expected the frame block as the engine wrote it, got exit {code}:\n{output}"
+    return None
+
+
 def main() -> None:
     vulpen = sys.argv[1]
     cut = cut_spirv(vulpen)
@@ -192,7 +205,7 @@ def main() -> None:
                       if name not in WINDOWED or display()
                       if (problem := check(vulpen, folder, name, text, cause, *script))]
             for problem in (no_limit(vulpen, folder), deploys(vulpen, folder),
-                            terminal(vulpen, folder)):
+                            terminal(vulpen, folder), frame_block(vulpen, folder)):
                 if problem:
                     failed.append(problem)
     finally:

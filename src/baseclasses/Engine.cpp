@@ -24,8 +24,11 @@ void barrier(VkCommandBuffer commands,
       commands, source_stage, target_stage, 0, 1, &memory, 0, nullptr, 0, nullptr);
 }
 
-void bind(VkCommandBuffer commands, VkPipelineLayout layout, const Pass &pass) {
+void bind(VkCommandBuffer commands, const Pipelines &pipelines, const Pass &pass) {
+  const VkPipelineLayout layout = pipelines.layout();
+  const VkDeviceAddress frame = pipelines.frame();
   vkCmdBindPipeline(commands, pass.bind_point, pass.pipeline);
+  vkCmdPushConstants(commands, layout, VK_SHADER_STAGE_ALL, 0, sizeof frame, &frame);
   if (pass.block)
     vkCmdBindDescriptorSets(
         commands, pass.bind_point, layout, pass_set, 1, &pass.block, 0, nullptr);
@@ -87,7 +90,10 @@ void Engine::wait() const {
   _gpu->mechanics.wait();
 }
 
-void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes) {
+void Engine::run(std::span<const VkBuffer> clears,
+                 std::span<const Pass> passes,
+                 std::uint64_t frame,
+                 double time) {
   Mechanics &mechanics = _gpu->mechanics;
   const VkCommandBuffer commands = mechanics.record();
   for (const VkBuffer buffer : clears)
@@ -104,6 +110,8 @@ void Engine::run(std::span<const VkBuffer> clears, std::span<const Pass> passes)
       swapchain ? swapchain->acquire() : std::optional<Target>{};
   if (target)
     _gpu->draw(commands, *target, passes);
+  // After acquiring, so a resized window's frame already holds its new size.
+  _gpu->pipelines.write_frame(frame, time, target ? target->extent : VkExtent2D{});
   // Readbacks: the CPU reads this frame's writes after its fence (VK03).
   barrier(commands,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -129,7 +137,7 @@ void Engine::Gpu::dispatch(VkCommandBuffer commands, std::span<const Pass> passe
               VK_ACCESS_SHADER_WRITE_BIT,
               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
               VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-    bind(commands, pipelines.layout(), pass);
+    bind(commands, pipelines, pass);
     vkCmdDispatch(commands, pass.groups, 1, 1);
   }
 }
@@ -147,7 +155,7 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
   swapchain->begin(commands, target);
   for (const Pass &pass : passes)
     if (pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-      bind(commands, pipelines.layout(), pass);
+      bind(commands, pipelines, pass);
       vkCmdDraw(commands, pass.vertex_count, 1, 0, 0);
     }
   vkCmdEndRenderPass(commands);
