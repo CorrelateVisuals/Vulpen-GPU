@@ -14,7 +14,8 @@ struct Pass {
   VkPipeline pipeline = VK_NULL_HANDLE;
   VkDescriptorSet block = VK_NULL_HANDLE;
   std::uint32_t groups = 0;       // a dispatch's
-  std::uint32_t vertex_count = 0; // a draw's
+  std::uint32_t vertex_count = 0; // a draw's, of each instance
+  std::uint32_t instance_count = 1;
   std::vector<VkBuffer> reads;
   std::vector<VkBuffer> writes;
 };

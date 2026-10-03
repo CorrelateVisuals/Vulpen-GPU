@@ -503,6 +503,9 @@ void Schedule::check_stages(Bound &bound) const {
             "{}: a draw's shaders only read buffers; declare it readonly", field.name));
     return;
   }
+  if (node.instance_count != 0)
+    bound.errors.emplace_back(
+        "instance_count counts a draw's instances; a dispatch has none");
   const std::array<std::uint32_t, 3> &size = bound.shaders.front().workgroup_size();
   if (size[1] != 1 || size[2] != 1)
     bound.errors.push_back("only one-dimensional workgroups run yet: local_size_y and "
@@ -702,13 +705,14 @@ void Schedule::make_passes() {
       continue;
     const bool draw = is_draw(*bound.node);
     const std::uint32_t invocations = bound.node->invocations;
-    Pass pass{.bind_point = draw ? VK_PIPELINE_BIND_POINT_GRAPHICS
-                                 : VK_PIPELINE_BIND_POINT_COMPUTE,
+    Pass pass{.bind_point =
+                  draw ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE,
               .pipeline = bound.pipeline->handle(),
               .block = bound.block ? bound.block->set() : VK_NULL_HANDLE,
               .groups =
                   draw ? 0 : invocations / bound.shaders.front().workgroup_size()[0],
-              .vertex_count = draw ? invocations : 0};
+              .vertex_count = draw ? invocations : 0,
+              .instance_count = std::max(bound.node->instance_count, 1u)};
     for (const Field &field : bound.fields) {
       if (!field.buffer())
         continue;

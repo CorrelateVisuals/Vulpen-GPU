@@ -20,6 +20,8 @@ struct Node {
   std::string operator_name;
   std::vector<std::string> shaders; // one compute shader, or a vertex and a fragment one
   std::uint32_t invocations = 0;
+  std::uint32_t instance_count =
+      0; // a draw's instances; 0 when not given, which runs one
   std::vector<Param> params;
   std::string log;
   // The file and line that last added or changed it, which its errors name; empty after

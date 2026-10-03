@@ -74,7 +74,7 @@ void check_value(std::string_view key, std::string_view value) {
 [[noreturn]] void unknown_word(std::string_view key) {
   throw std::runtime_error(
       std::format("unknown word {} in a node; its words are recipe, operator, shader, "
-                  "invocations, param and log",
+                  "invocations, instance_count, param and log",
                   key));
 }
 
@@ -227,6 +227,8 @@ void clear(Node &node, std::string_view key) {
     node.shaders.clear();
   else if (key == "invocations")
     node.invocations = 0;
+  else if (key == "instance_count")
+    node.instance_count = 0;
   else if (key == "param")
     node.params.clear();
   else if (key == "log")
@@ -395,6 +397,12 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
     if (node.invocations != 0)
       throw std::runtime_error("invocations is set twice");
     node.invocations = whole_number(value);
+  } else if (key == "instance_count") {
+    if (node.instance_count != 0)
+      throw std::runtime_error("instance_count is set twice");
+    node.instance_count = whole_number(value);
+    if (node.instance_count == 0)
+      throw std::runtime_error("instance_count is at least 1; leave it out for one");
   } else if (key == "param") {
     const std::size_t equals = value.find('=');
     if (equals == std::string_view::npos)

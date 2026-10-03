@@ -156,7 +156,7 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
   for (const Pass &pass : passes)
     if (pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
       bind(commands, pipelines, pass);
-      vkCmdDraw(commands, pass.vertex_count, 1, 0, 0);
+      vkCmdDraw(commands, pass.vertex_count, pass.instance_count, 0, 0);
     }
   vkCmdEndRenderPass(commands);
 }

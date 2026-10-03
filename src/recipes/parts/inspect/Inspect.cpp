@@ -55,6 +55,8 @@ class Inspect final : public VP::Operator {
       call.reply(std::format("shader = {}", shader));
     if (node->invocations != 0)
       call.reply(std::format("invocations = {}", node->invocations));
+    if (node->instance_count != 0)
+      call.reply(std::format("instance_count = {}", node->instance_count));
     for (const VP::Param &param : node->params)
       call.reply(std::format("param = {}={}", param.key, param.value));
     if (!node->log.empty())

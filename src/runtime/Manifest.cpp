@@ -301,6 +301,8 @@ std::vector<Word> words(const Node &node) {
     words.push_back({"shader", shader});
   if (node.invocations != 0)
     words.push_back({"invocations", std::to_string(node.invocations)});
+  if (node.instance_count != 0)
+    words.push_back({"instance_count", std::to_string(node.instance_count)});
   for (const Param &param : node.params)
     words.push_back({"param", std::format("{}={}", param.key, param.value)});
   if (!node.log.empty())
