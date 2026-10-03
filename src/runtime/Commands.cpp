@@ -83,10 +83,27 @@ private:
   T _saved;
 };
 
+// The port as a command sends lines through it: a refusal fails the command too, so a
+// script stops at the line that ran it, not after.
+class Nested final : public CommandPort {
+public:
+  explicit Nested(Commands &port) : _port(port) {}
+
+private:
+  std::string send(std::string_view line) override {
+    return _port.run(line);
+  }
+  std::vector<Usage> usages() const override {
+    return _port.usages();
+  }
+
+  Commands &_port;
+};
+
 class Run final : public Call {
 public:
   // address: the name of the view the command addresses, which outlives the run.
-  Run(CommandPort &port,
+  Run(Commands &port,
       ViewLookup *views,
       std::string_view address,
       FilePort &files,
@@ -125,7 +142,7 @@ private:
     return _files;
   }
 
-  CommandPort &_port;
+  Nested _port;
   ViewLookup *const _views;
   const std::string_view _address;
   FilePort &_files;

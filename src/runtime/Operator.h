@@ -80,8 +80,9 @@ struct Usage {
 // recipe has a private way in.
 class CommandPort {
 public:
-  // Runs a line in a group of its own, as a typed one, and returns what its command
-  // answers. A refusal goes to the log, naming its cause, and answers nothing.
+  // Runs a line and returns what its command answers. Sent during a frame, the line is a
+  // group of its own, as a typed one, and a refusal goes to the log, naming its cause,
+  // and answers nothing; sent by a command, see Call::commands.
   virtual std::string send(std::string_view line) = 0;
   // Every command registered now, in the order they registered (RV04). They last until
   // the next frame, which may register others.
@@ -227,7 +228,8 @@ public:
   virtual std::span<const std::string_view> arguments() const = 0;
   // What the command answers, which goes back to whoever sent the line.
   virtual void reply(std::string_view text) = 0;
-  // The port the line came through.
+  // Where the command sends lines: each joins its group in the log and addresses its
+  // view unless it names one, and a refusal fails the command too, naming its cause.
   virtual CommandPort &commands() = 0;
   // The view the command addresses, as the changes so far left it: what a save would
   // write. Read it while the command runs; a later change replaces it.

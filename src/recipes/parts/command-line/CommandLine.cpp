@@ -28,6 +28,24 @@ bool placeholder(std::string_view word) {
   return word.starts_with('<');
 }
 
+// Whether a line names the view it addresses, as `<name>: …` or `: …`.
+bool addressed(std::string_view line) {
+  const std::vector<std::string_view> words = words_of(line);
+  return words.empty() || words.front().ends_with(':');
+}
+
+// The name child list answers last: the view hosted most recently.
+std::string newest(std::string_view children) {
+  std::string name;
+  for (std::size_t at = 0; at < children.size();) {
+    const std::size_t end = std::min(children.find('\n', at), children.size());
+    if (const std::string_view line = children.substr(at, end - at); !line.empty())
+      name = line.substr(0, line.find(' '));
+    at = end + 1;
+  }
+  return name;
+}
+
 // What a placeholder stands for in the view: its nodes, connections or deploys, or the
 // params of the node named just before a key. Any other answers as itself.
 std::vector<std::string> names(std::string_view kind,
@@ -58,7 +76,9 @@ std::vector<std::string> names(std::string_view kind,
 // One line of input with history and completion, sent to the command port. The CLI, the
 // terminal and the find bar are this part, so each reaches Vulpen only through the
 // command port. On the terminal it is the CLI: each line typed or piped in runs, what it
-// answers is printed, and the run ends with the input.
+// answers is printed, and the run ends with the input. A line that names no view goes to
+// the view hosted most recently, as view new and view load leave it, so it needs no name
+// and every log line still has one.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _help = node.command("help", "lists every command, with its usage and what it does");
@@ -70,9 +90,13 @@ class CommandLine final : public VP::Operator {
 
   void cook(VP::Cook &frame) override {
     VP::TerminalPort &terminal = frame.terminal();
-    for (const std::string &line : terminal.lines())
-      if (const std::string answer = frame.commands().send(line); !answer.empty())
+    for (const std::string &line : terminal.lines()) {
+      const std::string sent =
+          _view.empty() || addressed(line) ? line : _view + ": " + line;
+      if (const std::string answer = frame.commands().send(sent); !answer.empty())
         terminal.print(answer);
+      _view = newest(frame.commands().send(": child list"));
+    }
     if (terminal.ended())
       frame.commands().send("quit");
   }
@@ -127,6 +151,7 @@ class CommandLine final : public VP::Operator {
   VP::Command _help;
   VP::Command _complete;
   VP::Command _clear;
+  std::string _view; // the view a line that names none goes to; empty for the host
 };
 
 } // namespace
