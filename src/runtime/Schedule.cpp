@@ -331,8 +331,11 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
   make_buffers(replaced);
   make_blocks();
   make_passes();
-  // Each error names the line that last added or changed the node, if a file holds it.
-  // A node left out answers no command either.
+  // Each error names the line that last added or changed the node, if a file holds it,
+  // else the view's file, in its folder as the lines are. A node left out answers no
+  // command either.
+  const std::string file =
+      (view.file.parent_path().filename() / view.file.filename()).generic_string();
   for (Bound &bound : _bound) {
     if (!bound.errors.empty())
       drop_commands(bound);
@@ -340,9 +343,7 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
       _wiring.log.write(Level::error,
                         Tag::nod,
                         std::format("{} node {}: {}",
-                                    bound.node->where.empty()
-                                        ? view.file.filename().string()
-                                        : bound.node->where,
+                                    bound.node->where.empty() ? file : bound.node->where,
                                     bound.node->name,
                                     error));
   }

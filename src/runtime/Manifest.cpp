@@ -37,6 +37,12 @@ std::optional<std::filesystem::path> library_of(const std::filesystem::path &fil
   return kind.parent_path();
 }
 
+// The build tree mirrors a view by this name: its folder's, or the library's.
+std::string name_of(const std::filesystem::path &file) {
+  return library_of(file) ? std::string(library_view)
+                          : file.parent_path().filename().string();
+}
+
 // A view's own copy (V03), or the library's recipe of that name for a library view.
 std::filesystem::path recipe_folder(const View &view, const std::string &recipe) {
   const std::optional<std::filesystem::path> library = library_of(view.file);
@@ -91,6 +97,7 @@ private:
   enum class Section { none, manifest, deploy, node, connection };
 
   [[noreturn]] void fail(std::string_view message) const;
+  std::string here() const;
   // Runs an edit; its refusal names the given line.
   template <class Edit> void edit(std::size_t line, Edit &&change);
   void header(std::string_view text);
@@ -123,6 +130,11 @@ void Reader::fail(std::string_view message) const {
   throw std::runtime_error(std::format("{}:{}: {}", _file.string(), _line, message));
 }
 
+// With its folder, so a node's errors say which of the views running holds it.
+std::string Reader::here() const {
+  return (_file.parent_path().filename() / _file.filename()).generic_string();
+}
+
 template <class Edit> void Reader::edit(std::size_t line, Edit &&change) {
   try {
     change();
@@ -137,8 +149,7 @@ View Reader::read() {
   if (!in)
     fail("cannot be read");
   _view.file = _file;
-  _view.name = library_of(_file) ? std::string(library_view)
-                                 : _file.parent_path().filename().string();
+  _view.name = name_of(_file);
   for (std::string line; std::getline(in, line);) {
     ++_line;
     const std::string_view text = trim(std::string_view(line).substr(0, line.find('#')));
@@ -198,8 +209,8 @@ void Reader::header(std::string_view text) {
     _manifest = true;
     _section = Section::manifest;
   } else if (kind == "node" && !name.empty()) {
-    _node.emplace(Node{.name = std::string(name),
-                       .where = std::format("{}:{}", _file.filename().string(), _line)});
+    _node.emplace(
+        Node{.name = std::string(name), .where = std::format("{}:{}", here(), _line)});
     _node_line = _line;
     _section = Section::node;
   } else if (kind == "connection" && !name.empty()) {
@@ -207,8 +218,7 @@ void Reader::header(std::string_view text) {
     _section = Section::connection;
   } else if (kind == "deploy" && !name.empty()) {
     _deploys.emplace_back(
-        Deploy{.name = std::string(name),
-               .where = std::format("{}:{}", _file.filename().string(), _line)},
+        Deploy{.name = std::string(name), .where = std::format("{}:{}", here(), _line)},
         _line);
     _section = Section::deploy;
   } else {
@@ -398,7 +408,7 @@ void unfold(View &view,
         std::format("the deploys form a cycle through recipe {} (RV06)", deploy.recipe));
   View recipe = Manifest::load(recipe_folder(top, deploy.recipe) / "view.vlp");
   for (Node &node : recipe.nodes)
-    node.where = std::format("recipes/{}/{}", deploy.recipe, node.where);
+    node.where = "recipes/" + node.where;
   deploying.push_back(deploy.recipe);
   recipe = flattened(std::move(recipe), top, deploying);
   deploying.pop_back();
@@ -437,6 +447,11 @@ View flattened(View view, const View &top, std::vector<std::string> &deploying) 
 
 View Manifest::load(const std::filesystem::path &file) {
   return Reader(file).read();
+}
+
+View Manifest::empty(const std::filesystem::path &file) {
+  const std::filesystem::path absolute = std::filesystem::absolute(file);
+  return {.name = name_of(absolute), .file = absolute};
 }
 
 // A connection may name a deploy's node that its recipe lacks, which only the view

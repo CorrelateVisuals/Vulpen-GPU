@@ -67,14 +67,32 @@ bool placeholder(std::string_view word) {
          std::ranges::find(kinds, word.substr(1, word.size() - 2)) != kinds.end();
 }
 
+// Puts a value back when the scope ends, however it ends.
+template <class T> class Restore {
+public:
+  Restore(T &slot, T value)
+      : _slot(slot), _saved(std::exchange(slot, std::move(value))) {}
+  ~Restore() {
+    _slot = std::move(_saved);
+  }
+  Restore(const Restore &) = delete;
+  Restore &operator=(const Restore &) = delete;
+
+private:
+  T &_slot;
+  T _saved;
+};
+
 class Run final : public Call {
 public:
+  // address: the name of the view the command addresses, which outlives the run.
   Run(CommandPort &port,
       ViewLookup *views,
+      std::string_view address,
       FilePort &files,
       Command command,
       std::span<const std::string_view> arguments)
-      : _port(port), _views(views), _files(files), _command(command),
+      : _port(port), _views(views), _address(address), _files(files), _command(command),
         _arguments(arguments) {}
   // Every line the command answered.
   std::string answer() && {
@@ -98,7 +116,7 @@ private:
   }
   // Found anew each time, since a command this one sends may replace the view.
   const View &view() const override {
-    const View *const view = _views ? _views->find({}) : nullptr;
+    const View *const view = _views ? _views->find(_address) : nullptr;
     if (!view)
       throw std::runtime_error("no view to read yet");
     return *view;
@@ -109,6 +127,7 @@ private:
 
   CommandPort &_port;
   ViewLookup *const _views;
+  const std::string_view _address;
   FilePort &_files;
   const Command _command;
   const std::span<const std::string_view> _arguments;
@@ -201,8 +220,12 @@ void Commands::remove(Command command) {
 }
 
 std::string Commands::run(std::string_view line) {
-  _session.open();
-  const std::vector<std::string_view> words = words_of(line);
+  // A line from outside the port opens a group and addresses the view it names; a line
+  // a command sends joins the group, and the view, of the line that runs the command.
+  if (_depth == 0)
+    _session.open();
+  std::vector<std::string_view> words = words_of(line);
+  const std::string address = view_named(words);
   if (words.empty())
     return {};
   const std::string_view typed(words.front().data(),
@@ -219,23 +242,44 @@ std::string Commands::run(std::string_view line) {
     throw std::runtime_error(
         std::format("{} does not fit the usage `{}`", typed, spec->usage));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
-  // Here, beside the file running, so a command and the log name the same file (RP02);
-  // reserved, so adding a path never moves the ones before it.
-  std::vector<std::string> paths;
-  paths.reserve(arguments.size());
-  for (std::size_t index = 0; index < arguments.size(); ++index)
-    if (spec->placeholders[std::min(index, expected - 1)] == "file")
-      arguments[index] = paths.emplace_back(resolved(arguments[index]).string());
+  const std::vector<std::string> paths = resolve(*spec, arguments);
   // Read first: a handler that rebuilds a view binds operators, which may register
   // commands and so move the specs.
   const Primitive primitive = spec->primitive;
-  const std::string kept =
-      joined(spec->name, " ") + (arguments.empty() ? "" : " ") + joined(arguments, " ");
-  Run call(*this, _views, _files, spec->command, arguments);
+  const std::string kept = (address.empty() ? "" : address + ": ") +
+                           joined(spec->name, " ") + (arguments.empty() ? "" : " ") +
+                           joined(arguments, " ");
+  const Restore depth(_depth, _depth + 1);
+  const Restore addressed(_addressed, address);
+  Run call(*this, _views, address, _files, spec->command, arguments);
   spec->handler->command(call);
   if (primitive == Primitive::yes)
     _session.keep(kept);
   return std::move(call).answer();
+}
+
+// The view a line addresses, whose name it takes off the line's words.
+std::string Commands::view_named(std::vector<std::string_view> &words) const {
+  if (words.empty() || !words.front().ends_with(':'))
+    return _depth == 0 ? std::string() : _addressed;
+  std::string name(words.front().substr(0, words.front().size() - 1));
+  words.erase(words.begin());
+  if (!name.empty() && (!_views || !_views->find(name)))
+    throw std::runtime_error(
+        std::format("no view is named {}; child list lists the views", name));
+  return name;
+}
+
+// Here, beside the file running, so a command and the log name the same file (RP02).
+// Returns where the paths are, reserved first, so adding one never moves the others.
+std::vector<std::string>
+Commands::resolve(const Spec &spec, std::vector<std::string_view> &arguments) const {
+  std::vector<std::string> paths;
+  paths.reserve(arguments.size());
+  for (std::size_t index = 0; index < arguments.size(); ++index)
+    if (spec.placeholders[std::min(index, spec.placeholders.size() - 1)] == "file")
+      arguments[index] = paths.emplace_back(resolved(arguments[index]).string());
+  return paths;
 }
 
 std::vector<Usage> Commands::usages() const {
@@ -263,6 +307,10 @@ void Commands::source(const std::filesystem::path &file) {
   if (!in || !std::filesystem::is_regular_file(path))
     throw std::runtime_error(std::format("{}: cannot be read", path.string()));
   _sourcing.push_back({path});
+  // Each line stands alone, as a log's must (V08): a group of its own, addressing the
+  // view it names.
+  const Restore depth(_depth, std::size_t{0});
+  const Restore addressed(_addressed, std::string());
   std::size_t number = 0;
   for (std::string line; !_quitting && std::getline(in, line);) {
     _sourcing.back().line = ++number;
@@ -290,6 +338,10 @@ void Commands::look_in(ViewLookup &views) {
 
 bool Commands::quitting() const {
   return _quitting;
+}
+
+std::string_view Commands::addressed() const {
+  return _addressed;
 }
 
 std::string Commands::where() const {

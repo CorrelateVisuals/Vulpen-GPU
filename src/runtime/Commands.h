@@ -52,6 +52,11 @@ private:
 // script and an agent act alike, and replaying the log rebuilds the session. A command
 // registers with its usage, whose placeholders give its completion, and its help, or
 // not at all (RV04). A <file> argument reaches its command resolved, as an absolute path.
+//
+// A line addresses a hosted view by its name, as `<name>: <command>`, and `:` alone
+// addresses the view vulpen started with, which a line naming none addresses too. A line
+// a command sends addresses the same view unless it names one, and the log keeps each
+// primitive with the name of its view, so every line of it stands alone (V08).
 class Commands final : public CommandPort, public CommandHandler {
 public:
   // files: what a command reaches files through.
@@ -85,6 +90,9 @@ public:
   bool quitting() const;
   // The file and line running, as `script.txt:7`; empty for a line typed or sent.
   std::string where() const;
+  // The name of the view the running command addresses; empty for the one vulpen
+  // started with.
+  std::string_view addressed() const;
 
 private:
   struct Spec;
@@ -95,6 +103,9 @@ private:
 
   void command(Call &call) override;
   const Spec *match(std::span<const std::string_view> words) const;
+  std::string view_named(std::vector<std::string_view> &words) const;
+  std::vector<std::string> resolve(const Spec &spec,
+                                   std::vector<std::string_view> &arguments) const;
   std::filesystem::path resolved(const std::filesystem::path &file) const;
 
   const Log &_log;
@@ -104,6 +115,8 @@ private:
   ViewLookup *_views = nullptr;
   CommandLog _session;
   std::vector<Source> _sourcing; // the files running, innermost last
+  std::string _addressed;
+  std::size_t _depth = 0; // the lines running, each sent by the one before it
   const Command _quit;
   const Command _source;
   const Command _log_save;

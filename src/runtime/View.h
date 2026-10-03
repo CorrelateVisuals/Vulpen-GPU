@@ -52,8 +52,9 @@ struct Deploy {
   std::string where;         // as a node's
 };
 
-// A view is a project: the recipes it deploys, its nodes, their connections, and the
-// child views it hosts. The model includes nothing, so it can hold no GPU or OS type.
+// A view is a project: the recipes it deploys, its nodes and their connections. The
+// views it hosts are session state, which the log keeps and the manifest does not. The
+// model includes nothing, so it can hold no GPU or OS type.
 struct View {
   std::string name; // its folder's name, which the build tree mirrors
   std::filesystem::path file;

@@ -496,14 +496,11 @@ void Edits::connect(View &view, Connection connection) {
 // since the last, so it sees only where they end: a node removed and added again in
 // between keeps its operator and buffers, as it does across a re-read of the manifest.
 void Edits::command(Call &call) {
-  const View *const view = _views.find({});
-  if (!view)
-    throw std::runtime_error("no view to edit");
-  View edited = *view;
+  View edited = call.view();
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index]))
       edits[index].change(edited, call.arguments(), _port.where());
-  _views.replace({}, std::move(edited));
+  _views.replace(_port.addressed(), std::move(edited));
 }
 
 } // namespace VP

@@ -12,6 +12,7 @@
 #include "runtime/View.h"
 #include "runtime/Views.h"
 
+#include <algorithm>
 #include <atomic>
 #include <charconv>
 #include <chrono>
@@ -24,6 +25,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace VP {
 
@@ -92,7 +94,9 @@ private:
   void loop();
   void watch();
   void swap();
-  Schedule &prepare();
+  void prepare();
+  void gather();
+  bool ok() const;
 
   const Options _options;
   const Log _log;
@@ -106,18 +110,22 @@ private:
   std::optional<Views> _views;
   std::optional<Edits> _edits; // goes before the views it changes
   std::unique_ptr<Live> _live;
+  // Every view's, in the order a frame runs them; the passes are gathered only when a
+  // schedule changed, so a frame allocates nothing for them (CPP10).
+  std::vector<Pass> _passes;
+  std::vector<VkBuffer> _clears;
 };
 
 } // namespace
 
-// Notices saves under the view's folder and runs the build off the frame thread. The
+// Notices saves under the views' folders and runs the build off the frame thread. The
 // build, not the runtime, knows how C++ and GLSL compile (C02): nothing compiles here.
 class Runtime::Live {
 public:
   enum class Build { none, started, succeeded, failed };
 
-  Live(std::filesystem::path folder, const std::filesystem::path &build)
-      : _folder(std::move(folder)), _log_file(build / build_log),
+  Live(std::vector<std::filesystem::path> folders, const std::filesystem::path &build)
+      : _folders(std::move(folders)), _log_file(build / build_log),
         _command(std::format(
             R"("{}" --build "{}" --target vulpen_recipes --parallel > "{}" 2>&1)",
             VP_CMAKE_COMMAND,
@@ -151,6 +159,10 @@ public:
     return build;
   }
 
+  // A view hosted or no longer hosted brings its folder or takes it along.
+  void watch(std::vector<std::filesystem::path> folders) {
+    _folders = std::move(folders);
+  }
   const std::filesystem::path &log_file() const {
     return _log_file;
   }
@@ -164,12 +176,14 @@ private:
     // Not file_time_type{}: libstdc++ puts the file clock's epoch in the year 2174.
     auto newest = std::filesystem::file_time_type::min();
     std::error_code gone; // a file an editor is replacing may vanish mid-scan
-    for (const auto &entry : std::filesystem::recursive_directory_iterator(_folder, gone))
-      newest = std::max(newest, entry.last_write_time(gone));
+    for (const std::filesystem::path &folder : _folders)
+      for (const auto &entry :
+           std::filesystem::recursive_directory_iterator(folder, gone))
+        newest = std::max(newest, entry.last_write_time(gone));
     return newest;
   }
 
-  const std::filesystem::path _folder;
+  std::vector<std::filesystem::path> _folders;
   const std::filesystem::path _log_file;
   const std::string _command;
   std::filesystem::file_time_type _built_from;
@@ -240,7 +254,8 @@ int Runtime::run() {
     _log.write(Level::error, Tag::run, failure.what());
     return 1;
   }
-  return prepare().ok() ? 0 : 1;
+  prepare();
+  return ok() ? 0 : 1;
 }
 
 // False when a node is in error.
@@ -274,14 +289,15 @@ bool Runtime::start() {
   _views.emplace(*_wiring, std::move(view), _commands);
   _commands.look_in(*_views);
   _edits.emplace(_commands, *_views);
-  if (!_views->schedule().ok())
+  if (!ok())
     return false;
   if constexpr (VP_LIVE) {
-    _live = std::make_unique<Live>(folder, build);
+    _live = std::make_unique<Live>(_views->roots(), build);
     _log.write(Level::info,
                Tag::mod,
                std::format("live code: a save under {} swaps in", folder.string()));
   }
+  gather();
   return true;
 }
 
@@ -300,10 +316,14 @@ void Runtime::loop() {
     _engine->wait();
     if (_live)
       watch();
-    Schedule &schedule = prepare();
+    prepare();
     _ports.frame();
-    schedule.cook(_options.first_frame + frames);
-    _engine->run(schedule.take_clears(), schedule.passes());
+    _clears.clear();
+    for (Schedule *const schedule : _views->schedules()) {
+      schedule->cook(_options.first_frame + frames);
+      std::ranges::copy(schedule->take_clears(), std::back_inserter(_clears));
+    }
+    _engine->run(_clears, _passes);
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
   }
@@ -335,7 +355,9 @@ void Runtime::watch() {
 // Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest.
 void Runtime::swap() {
   const std::vector<std::string> rewritten = _recipes.rewritten();
-  prepare().drop_operators(rewritten);
+  prepare();
+  for (Schedule *const schedule : _views->schedules())
+    schedule->drop_operators(rewritten);
   for (const std::string &recipe : rewritten)
     _recipes.unload(recipe);
   _views->reload();
@@ -350,12 +372,11 @@ void Runtime::swap() {
                          joined(rewritten)));
 }
 
-// The schedule the next frame runs. The window follows the view first (V07): it opens
+// The schedules the next frame runs. The window follows the views first (V07): it opens
 // before the rebuild that brings the first draw, so the draw has a window to draw into,
-// and closes once no node draws.
-Schedule &Runtime::prepare() {
-  const View &view = _views->view();
-  if (Schedule::draws(view) != _window.has_value()) {
+// and closes once no node of any view draws.
+void Runtime::prepare() {
+  if (_views->draws() != _window.has_value()) {
     _log.write(Level::info,
                Tag::run,
                _window ? "no node draws, so the window closes"
@@ -364,12 +385,26 @@ Schedule &Runtime::prepare() {
       _engine->close();
       _window.reset();
     } else {
-      _window.emplace(title(view), window_size);
+      _window.emplace(title(_views->view()), window_size);
       _engine->open(*_window);
     }
     _wiring->render_pass = _engine->render_pass();
   }
-  return _views->schedule();
+  if (_views->rebuild())
+    gather();
+}
+
+void Runtime::gather() {
+  _passes.clear();
+  for (const Schedule *const schedule : _views->schedules())
+    std::ranges::copy(schedule->passes(), std::back_inserter(_passes));
+  if (_live)
+    _live->watch(_views->roots());
+}
+
+// Whether no node of any view is in error.
+bool Runtime::ok() const {
+  return std::ranges::all_of(_views->schedules(), &Schedule::ok);
 }
 
 int run(std::span<char *const> arguments, std::string_view build) {

@@ -16,6 +16,7 @@ Usage: python3 src/tools/tests/fuzz.py VULPEN [--commands] [--count N] [--seed N
 import argparse
 import random
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,9 +26,10 @@ from pathlib import Path
 from harness import EXAMPLES, environment, problems, run
 
 SEED_VIEW = EXAMPLES / "wave" / "view.vlp"
-# A script of every edit, which leaves the wave graph whole, then saves the view and its
-# log and replays the log, which leaves the graph as it was. quit comes in through the
-# tokens, so most runs go on to cook their frames on the edited graph.
+# A script of every edit, which leaves the wave graph whole, then hosts an empty view and
+# saves it, saves the view and its log and replays the log, which leaves the graph as it
+# was. quit comes in through the tokens, so most runs go on to cook their frames on the
+# edited graph.
 SEED_SCRIPT = """\
 param set wave amplitude 0.5
 param set wave spare 1
@@ -38,6 +40,10 @@ node remove probe
 node add probe recipe=probe operator=Probe shader=Probe.comp invocations=8 param=step=64
 param set probe every 30
 connect values wave.values probe.values
+child add e empty/view.vlp
+e: view save
+child list
+child remove e
 view save
 log save session.log
 source session.log
@@ -51,7 +57,7 @@ TOKENS = ["", "0", "1", "-1", "64", "65", "4294967295", "4294967296", "1e9", "0.
           "operator", "shader", "invocations", "log", "save", "source", "session.log",
           "script.txt", "view", "deploy", "recipe", "a.wave", "a.wave.values",
           "[node \"wave\"]", "[connection \"values\"]", "[deploy \"a\"]", "[manifest]",
-          "version = 1"]
+          "version = 1", "child", "list", "e", "e:", ":", "empty/view.vlp", "wave/view.vlp"]
 # What std::exception::what() says for the standard library's own throws: a message that
 # names no file, node or key of the view.
 BARE = re.compile(r"\{!!!\} (?:map::at|unordered_map::at|vector::|basic_string|array::at"
@@ -109,6 +115,7 @@ def main() -> None:
             text = mutate(seed, chance)
             if options.commands:
                 view.write_text(SEED_VIEW.read_text(encoding="utf-8"), encoding="utf-8")
+                shutil.rmtree(view.parent.parent / "empty", ignore_errors=True)
             mutated.write_text(text, encoding="utf-8", errors="replace")
             try:
                 code, output = run(options.vulpen,
