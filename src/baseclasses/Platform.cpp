@@ -41,7 +41,141 @@ constexpr std::size_t input_per_call = 16 * input_chunk;
       std::format("{} failed: {}", call, description ? description : "no reason given"));
 }
 
+// The keys a layout prints no character for, by GLFW's code; F1 to F12 follow on.
+constexpr std::array<std::pair<int, std::string_view>, 24> named_keys{
+    {{GLFW_KEY_SPACE, "space"},
+     {GLFW_KEY_ENTER, "enter"},
+     {GLFW_KEY_KP_ENTER, "enter"},
+     {GLFW_KEY_ESCAPE, "escape"},
+     {GLFW_KEY_TAB, "tab"},
+     {GLFW_KEY_BACKSPACE, "backspace"},
+     {GLFW_KEY_INSERT, "insert"},
+     {GLFW_KEY_DELETE, "delete"},
+     {GLFW_KEY_LEFT, "left"},
+     {GLFW_KEY_RIGHT, "right"},
+     {GLFW_KEY_UP, "up"},
+     {GLFW_KEY_DOWN, "down"},
+     {GLFW_KEY_PAGE_UP, "page_up"},
+     {GLFW_KEY_PAGE_DOWN, "page_down"},
+     {GLFW_KEY_HOME, "home"},
+     {GLFW_KEY_END, "end"},
+     {GLFW_KEY_LEFT_SHIFT, "shift"},
+     {GLFW_KEY_RIGHT_SHIFT, "shift"},
+     {GLFW_KEY_LEFT_CONTROL, "control"},
+     {GLFW_KEY_RIGHT_CONTROL, "control"},
+     {GLFW_KEY_LEFT_ALT, "alt"},
+     {GLFW_KEY_RIGHT_ALT, "alt"},
+     {GLFW_KEY_LEFT_SUPER, "super"},
+     {GLFW_KEY_RIGHT_SUPER, "super"}}};
+constexpr std::array<std::string_view, 12> function_keys{
+    "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12"};
+// GLFW_MOUSE_BUTTON_LEFT, RIGHT and MIDDLE, in that order.
+constexpr std::array<std::string_view, 3> buttons{"left", "right", "middle"};
+// UTF-8 (RFC 3629): a character past ASCII takes a first byte that marks how many bytes
+// follow it, each carrying six more bits of the character.
+constexpr std::uint32_t ascii_end = 0x80;
+constexpr std::uint32_t continuation = 0x80;
+constexpr std::uint32_t continuation_bits = 6;
+constexpr std::uint32_t continuation_mask = (1u << continuation_bits) - 1;
+// By the character's length in bytes: the largest it holds, and its first byte's mark.
+constexpr std::array<std::uint32_t, 3> length_ends{0x800, 0x10000, 0x110000};
+constexpr std::array<std::uint32_t, 3> first_marks{0xC0, 0xE0, 0xF0};
+
+std::size_t utf8_length(unsigned char first) {
+  if (first < ascii_end)
+    return 1;
+  const auto mark = std::ranges::find_if(first_marks, [&](std::uint32_t marked) {
+    return (first & (marked | marked >> 1)) == marked;
+  });
+  // A byte that only continues a character starts none.
+  return mark == first_marks.end()
+             ? 0
+             : 2 + static_cast<std::size_t>(mark - first_marks.begin());
+}
+
+std::string utf8(std::uint32_t point) {
+  if (point < ascii_end)
+    return std::string(1, static_cast<char>(point));
+  const auto end = std::ranges::find_if(
+      length_ends, [&](std::uint32_t largest) { return point < largest; });
+  const auto extra = static_cast<std::size_t>(end - length_ends.begin()) + 1;
+  std::string text(extra + 1, '\0');
+  for (std::size_t at = extra; at > 0; --at, point >>= continuation_bits)
+    text[at] = static_cast<char>(continuation | (point & continuation_mask));
+  text[0] = static_cast<char>(first_marks[extra - 1] | point);
+  return text;
+}
+
+// Empty for a key with no name, which the window hands on no event for.
+std::string key_name(int key, int scancode) {
+  const auto named =
+      std::ranges::find(named_keys, key, &decltype(named_keys)::value_type::first);
+  if (named != named_keys.end())
+    return std::string(named->second);
+  if (key >= GLFW_KEY_F1 && key < GLFW_KEY_F1 + static_cast<int>(function_keys.size()))
+    return std::string(function_keys[static_cast<std::size_t>(key - GLFW_KEY_F1)]);
+  const char *const printed = glfwGetKeyName(key, scancode);
+  return printed ? printed : "";
+}
+
+// Set only while the window polls, so no callback outlives its input (C13).
+WindowInput *input_of(GLFWwindow *window) {
+  return static_cast<WindowInput *>(glfwGetWindowUserPointer(window));
+}
+
+void on_key(GLFWwindow *window, int key, int scancode, int action, int) {
+  const std::string name = key_name(key, scancode);
+  if (WindowInput *const input = input_of(window); input && !name.empty())
+    input->key(name, action != GLFW_RELEASE);
+}
+
+void on_text(GLFWwindow *window, unsigned int point) {
+  if (WindowInput *const input = input_of(window))
+    input->text(utf8(point));
+}
+
+// GLFW places the pointer in screen units, which a scaled display maps to more pixels;
+// the frame block's cursor counts pixels.
+void on_pointer(GLFWwindow *window, double x, double y) {
+  WindowInput *const input = input_of(window);
+  if (!input)
+    return;
+  int width = 0;
+  int height = 0;
+  int pixels_x = 0;
+  int pixels_y = 0;
+  glfwGetWindowSize(window, &width, &height);
+  glfwGetFramebufferSize(window, &pixels_x, &pixels_y);
+  input->pointer(static_cast<float>(width == 0 ? x : x * pixels_x / width),
+                 static_cast<float>(height == 0 ? y : y * pixels_y / height));
+}
+
+void on_button(GLFWwindow *window, int button, int action, int) {
+  WindowInput *const input = input_of(window);
+  if (input && button >= 0 && button < static_cast<int>(buttons.size()))
+    input->button(buttons[static_cast<std::size_t>(button)], action == GLFW_PRESS);
+}
+
+void on_wheel(GLFWwindow *window, double x, double y) {
+  if (WindowInput *const input = input_of(window))
+    input->wheel(static_cast<float>(x), static_cast<float>(y));
+}
+
+void on_focus(GLFWwindow *window, int focused) {
+  if (WindowInput *const input = input_of(window))
+    input->focus(focused == GLFW_TRUE);
+}
+
 } // namespace
+
+// A name of the table, or one printable character, as a layout's key prints it.
+bool key_named(std::string_view name) {
+  return std::ranges::find(named_keys, name, &decltype(named_keys)::value_type::second) !=
+             named_keys.end() ||
+         std::ranges::find(function_keys, name) != function_keys.end() ||
+         (!name.empty() && static_cast<unsigned char>(name.front()) > ' ' &&
+          name.size() == utf8_length(static_cast<unsigned char>(name.front())));
+}
 
 #ifdef _WIN32
 
@@ -282,6 +416,12 @@ Window::Window(const std::string &title, VkExtent2D size) {
     glfwTerminate();
     glfw_failed("glfwCreateWindow");
   }
+  glfwSetKeyCallback(_window, on_key);
+  glfwSetCharCallback(_window, on_text);
+  glfwSetCursorPosCallback(_window, on_pointer);
+  glfwSetMouseButtonCallback(_window, on_button);
+  glfwSetScrollCallback(_window, on_wheel);
+  glfwSetWindowFocusCallback(_window, on_focus);
 }
 
 Window::~Window() {
@@ -289,8 +429,10 @@ Window::~Window() {
   glfwTerminate();
 }
 
-bool Window::poll() const {
+bool Window::poll(WindowInput &input) const {
+  glfwSetWindowUserPointer(_window, &input);
   glfwPollEvents();
+  glfwSetWindowUserPointer(_window, nullptr);
   return !glfwWindowShouldClose(_window);
 }
 

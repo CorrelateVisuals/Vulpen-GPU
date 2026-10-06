@@ -24,7 +24,7 @@ layout(buffer_reference, std430) buffer Floats {
 // The engine writes each member by its name, at the offset reflection gives it (RA03).
 layout(buffer_reference, std430) readonly buffer FrameBlock {
   uvec2 resolution; // of the window in pixels; zero without one
-  vec2 cursor;      // in pixels, from the top left; zero until the input port feeds it
+  vec2 cursor;      // the pointer, in pixels from the top left; zero until it moves
   float time;       // seconds, from the frame index at the run's rate, so a replay
                     // matches (C01); a float steps coarser than a frame after about 3 days
   uint index;       // the frame, as the node's C++ counts it; wraps after 2^32

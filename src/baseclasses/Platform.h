@@ -59,6 +59,25 @@ public:
   static int run(const std::string &command);
 };
 
+// What a window hands on as it polls: a key by its name, typed text, the pointer in
+// pixels from the window's top left, a button by its name, the wheel and focus.
+class WindowInput {
+public:
+  virtual void key(std::string_view name, bool down) = 0;
+  virtual void text(std::string_view typed) = 0;
+  virtual void pointer(float x, float y) = 0;
+  virtual void button(std::string_view name, bool down) = 0;
+  virtual void wheel(float x, float y) = 0;
+  virtual void focus(bool gained) = 0;
+
+protected:
+  ~WindowInput() = default;
+};
+
+// Whether a window names a key so, as the input command takes it too: the character a
+// printable key prints in the keyboard's layout, or the name of one that prints none.
+bool key_named(std::string_view name);
+
 // A desktop window through GLFW. Only a view that draws opens one (V07).
 class Window {
 public:
@@ -68,8 +87,8 @@ public:
   Window(const Window &) = delete;
   Window &operator=(const Window &) = delete;
 
-  // Takes the events since the last call; false once the window was asked to close.
-  bool poll() const;
+  // Hands on the events since the last call; false once the window was asked to close.
+  bool poll(WindowInput &input) const;
   // In pixels; zero while the window is minimized.
   VkExtent2D size() const;
   // The caller owns the surface and destroys it before the instance.

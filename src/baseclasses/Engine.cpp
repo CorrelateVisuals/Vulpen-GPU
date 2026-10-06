@@ -127,7 +127,8 @@ void Engine::run(std::span<const VkBuffer> clears,
                  std::span<const Copy> copies,
                  std::span<const Pass> passes,
                  std::uint64_t frame,
-                 double time) {
+                 double time,
+                 std::array<float, 2> cursor) {
   Mechanics &mechanics = _gpu->mechanics;
   const VkCommandBuffer commands = mechanics.record();
   for (const VkBuffer buffer : clears)
@@ -147,7 +148,8 @@ void Engine::run(std::span<const VkBuffer> clears,
   if (target)
     _gpu->draw(commands, *target, passes);
   // After acquiring, so a resized window's frame already holds its new size.
-  _gpu->pipelines.write_frame(frame, time, target ? target->extent : VkExtent2D{});
+  _gpu->pipelines.write_frame(
+      frame, time, target ? target->extent : VkExtent2D{}, cursor);
   // Readbacks: the CPU reads this frame's writes after its fence (VK03).
   barrier(commands,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,

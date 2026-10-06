@@ -4,6 +4,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -37,13 +38,14 @@ public:
   void wait() const;
   // Zeroes the new buffers first, so a run starts from the same bytes every time (C01),
   // and copies in the images the CPU filled. Dispatches run next, in order; draws, which
-  // only read, follow in one render pass. frame and time: what the frame block tells
-  // every pass (RV02).
+  // only read, follow in one render pass. frame, time and cursor: what the frame block
+  // tells every pass (RV02).
   void run(std::span<const VkBuffer> clears,
            std::span<const Copy> copies,
            std::span<const Pass> passes,
            std::uint64_t frame,
-           double time);
+           double time,
+           std::array<float, 2> cursor);
 
 private:
   // What the engine owns, behind a pointer, so a file that includes this header

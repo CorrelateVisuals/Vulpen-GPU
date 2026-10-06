@@ -11,12 +11,13 @@ of another type than its writer's, a C++ struct whose members sit elsewhere than
 shader's, C++ writing more elements than its buffer holds, an image C++ fills that
 nothing samples beside a Texture nothing fills, C++ uploading other than an image's
 count of pixels, C++ pixels other than the image's format takes, a format there is not,
-and image clear of a port that fills no image.
+image clear of a port that fills no image, and a key there is not.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
 its cause and the next line still runs, and the run ends with its input. A pass reads the
-frame block as the engine wrote it, each value where reflection put it. A C++ connection
+frame block as the engine wrote it, each value where reflection put it, the cursor where
+the pointer went. The input command's lines reach a node in the frame after, in order. A C++ connection
 hands its reader what its writer wrote that frame, a node makes a buffer through the
 engine by hand, and structs C++ writes reach the shader member for member. The pixels
 C++ fills an image with reach a shader pixel for pixel, through the node's own Texture,
@@ -127,6 +128,7 @@ CASES = {
                      "image picture=R8_UNROM: no such format"),
     "clear-nothing": (HEAD + PICTURE, "picture.nothing is no image a node's C++ fills",
                       "image clear picture.nothing\n"),
+    "input-key": (HEAD + FILL, "enterr is no key", "input key down enterr\n"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -256,9 +258,12 @@ def terminal(vulpen: str, folder: Path) -> str | None:
 
 def frame_block(vulpen: str, folder: Path) -> str | None:
     """Why a pass did not read the frame block as the engine wrote it, or None; the
-    fixture's operator stops when it differs, from a frame far in, where time is large."""
-    view = view_in(folder, "frame", HEAD + '[node "frame"]\noperator = Frame\ninvocations = 4\n')
-    code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--first-frame", 1_000_000])
+    fixture's operator stops when it differs, from a frame far in, where time is large,
+    and with the pointer moved, which the cursor follows."""
+    view = view_in(folder, "frame", HEAD + '[node "frame"]\noperator = Frame\ninvocations = 6\n')
+    (view.parent / "pointer.txt").write_text("input pointer 12.5 40\n", encoding="utf-8")
+    code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--first-frame", 1_000_000,
+                                "--source", view.parent / "pointer.txt"])
     if code != 0 or problems(output):
         return f"frame: expected the frame block as the engine wrote it, got exit {code}:\n{output}"
     return None
@@ -293,6 +298,21 @@ def images(vulpen: str, folder: Path) -> str | None:
         code, output = run(vulpen, [view, "--frames", 5, "--fps", 0])
         if code != 0 or problems(output):
             return f"image-{name}: expected the pixels C++ filled, got exit {code}:\n{output}"
+    return None
+
+
+def input_lines(vulpen: str, folder: Path) -> str | None:
+    """Why the input command's lines did not reach a node as the window's events would,
+    or None: in their order, in the first frame, and only in it."""
+    view = view_in(folder, "input", HEAD + '[node "input"]\noperator = Input\n')
+    lines = ("input key down a", "input text hello  world", "input pointer 12.5 40",
+             "input button down left", "input wheel 0 -1", "input focus off",
+             "input key up enter")
+    (view.parent / "lines.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    code, output = run(vulpen, [view, "--frames", 2, "--fps", 0,
+                                "--source", view.parent / "lines.txt"])
+    if code != 0 or problems(output):
+        return f"input: expected each line's event in the first frame, got exit {code}:\n{output}"
     return None
 
 
@@ -388,7 +408,8 @@ def main() -> None:
             failed += recipes(vulpen, folder)
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
                             frame_block(vulpen, folder), cpp(vulpen, folder),
-                            images(vulpen, folder), children(vulpen, folder),
+                            images(vulpen, folder), input_lines(vulpen, folder),
+                            children(vulpen, folder),
                             drops(vulpen, folder)):
                 if problem:
                     failed.append(problem)

@@ -66,6 +66,35 @@ std::string joined(const std::vector<std::string> &names) {
   return text;
 }
 
+// The window hands its input to the port as the input command does (V07); neither goes
+// through the log, as the lead chose on 2026-10-06.
+class Feed final : public WindowInput {
+public:
+  explicit Feed(Ports &ports) : _ports(ports) {}
+
+private:
+  void key(std::string_view name, bool down) override {
+    _ports.add({.kind = Event::Kind::key, .down = down, .name = std::string(name)});
+  }
+  void text(std::string_view typed) override {
+    _ports.add({.kind = Event::Kind::text, .name = std::string(typed)});
+  }
+  void pointer(float x, float y) override {
+    _ports.add({.kind = Event::Kind::pointer, .at = {x, y}});
+  }
+  void button(std::string_view name, bool down) override {
+    _ports.add({.kind = Event::Kind::button, .down = down, .name = std::string(name)});
+  }
+  void wheel(float x, float y) override {
+    _ports.add({.kind = Event::Kind::wheel, .turn = {x, y}});
+  }
+  void focus(bool gained) override {
+    _ports.add({.kind = Event::Kind::focus, .down = gained});
+  }
+
+  Ports &_ports;
+};
+
 // Owns every module and runs the loop.
 class Runtime {
 public:
@@ -105,6 +134,7 @@ private:
   std::optional<Engine> _engine;
   Modules _modules; // outlives the schedules, whose operators run its code
   Ports _ports;
+  Feed _feed{_ports};
   Commands _commands;
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
   std::optional<Views> _views;
@@ -198,7 +228,9 @@ private:
 };
 
 Runtime::Runtime(std::span<char *const> arguments, std::string_view build)
-    : _options(parse(arguments)), _log(_options.log, build), _commands(_log, _ports) {}
+    : _options(parse(arguments)), _log(_options.log, build), _commands(_log, _ports) {
+  _ports.listen(_commands);
+}
 
 Runtime::~Runtime() {
   if (_engine)
@@ -314,7 +346,7 @@ void Runtime::loop() {
   std::uint64_t frames = 0;
   for (; !_commands.quitting() && (_options.frames == 0 || frames < _options.frames);
        ++frames) {
-    if (_window && !_window->poll())
+    if (_window && !_window->poll(_feed))
       break;
     _engine->wait();
     if (_live)
@@ -329,7 +361,13 @@ void Runtime::loop() {
       std::ranges::copy(schedule->take_clears(), std::back_inserter(_clears));
       std::ranges::copy(schedule->take_copies(), std::back_inserter(_copies));
     }
-    _engine->run(_clears, _copies, _passes, frame, static_cast<double>(frame) / rate);
+    const glm::vec2 cursor = static_cast<const InputPort &>(_ports).pointer();
+    _engine->run(_clears,
+                 _copies,
+                 _passes,
+                 frame,
+                 static_cast<double>(frame) / rate,
+                 {cursor.x, cursor.y});
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
   }

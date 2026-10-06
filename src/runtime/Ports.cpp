@@ -6,6 +6,7 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cstdio>
 #include <filesystem>
 #include <format>
@@ -28,6 +29,32 @@ std::filesystem::path absolute(std::string_view path) {
         "comes resolved",
         path));
   return path;
+}
+
+float number(std::string_view word) {
+  float value = 0;
+  const auto [end, error] =
+      std::from_chars(word.data(), word.data() + word.size(), value);
+  if (error != std::errc{} || end != word.data() + word.size())
+    throw std::runtime_error(std::format("{} is not a number", word));
+  return value;
+}
+
+std::string checked_key(std::string_view name) {
+  if (!key_named(name))
+    throw std::runtime_error(std::format(
+        "{} is no key: a key is named by the character it prints, or as space, enter, "
+        "escape, tab, backspace, insert, delete, left, right, up, down, page_up, "
+        "page_down, home, end, shift, control, alt, super, or f1 to f12",
+        name));
+  return std::string(name);
+}
+
+std::string checked_button(std::string_view name) {
+  if (name != "left" && name != "right" && name != "middle")
+    throw std::runtime_error(
+        std::format("{} is no button: a button is left, right or middle", name));
+  return std::string(name);
 }
 
 } // namespace
@@ -129,6 +156,48 @@ void Ports::frame() {
   ++_frames;
   _lines.clear();
   _read = false;
+  _events.clear();
+  std::swap(_events, _pending);
+  for (const Event &event : _events)
+    if (event.kind == Event::Kind::pointer)
+      _pointer = event.at;
+}
+
+void Ports::add(Event event) {
+  if (event.kind == Event::Kind::pointer && !_pending.empty() &&
+      _pending.back().kind == Event::Kind::pointer)
+    _pending.back() = std::move(event);
+  else
+    _pending.push_back(std::move(event));
+}
+
+void Ports::listen(Commands &commands) {
+  const auto form = [&](std::string_view usage, std::string_view help) {
+    return commands.add(usage, help, *this);
+  };
+  _input = {
+      .key_down = form("input key down <value>",
+                       "presses a key, named by the character it prints, or as space, "
+                       "enter or f1, for the next frame, as a window does"),
+      .key_up = form("input key up <value>", "lets a key go"),
+      .text = form("input text <value>...", "types the words, joined by single blanks"),
+      .pointer =
+          form("input pointer <value> <value>",
+               "moves the pointer to x and y, in pixels from the window's top left"),
+      .button_down = form("input button down <value>",
+                          "presses a pointer button: left, right or middle"),
+      .button_up = form("input button up <value>", "lets a pointer button go"),
+      .wheel = form("input wheel <value> <value>", "turns the wheel by x and y"),
+      .focus_on = form("input focus on", "gives the window focus"),
+      .focus_off = form("input focus off", "takes focus from the window")};
+}
+
+std::span<const Event> Ports::events() const {
+  return _events;
+}
+
+glm::vec2 Ports::pointer() const {
+  return _pointer;
 }
 
 // Once a frame, for every node that asks. A line ends at its break; one that standard
@@ -173,6 +242,29 @@ void Ports::prompt(std::string_view text) {
   std::fflush(stdout);
 }
 
-void Ports::command(Call &) {}
+// What the window hands on for each, so a headless run makes the same events (V07).
+void Ports::command(Call &call) {
+  const std::span<const std::string_view> words = call.arguments();
+  if (call.is(_input.key_down) || call.is(_input.key_up)) {
+    add({.kind = Event::Kind::key,
+         .down = call.is(_input.key_down),
+         .name = checked_key(words[0])});
+  } else if (call.is(_input.text)) {
+    std::string typed;
+    for (const std::string_view word : words)
+      typed.append(typed.empty() ? "" : " ").append(word);
+    add({.kind = Event::Kind::text, .name = std::move(typed)});
+  } else if (call.is(_input.pointer)) {
+    add({.kind = Event::Kind::pointer, .at = {number(words[0]), number(words[1])}});
+  } else if (call.is(_input.button_down) || call.is(_input.button_up)) {
+    add({.kind = Event::Kind::button,
+         .down = call.is(_input.button_down),
+         .name = checked_button(words[0])});
+  } else if (call.is(_input.wheel)) {
+    add({.kind = Event::Kind::wheel, .turn = {number(words[0]), number(words[1])}});
+  } else {
+    add({.kind = Event::Kind::focus, .down = call.is(_input.focus_on)});
+  }
+}
 
 } // namespace VP

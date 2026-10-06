@@ -301,6 +301,9 @@ private:
   CommandPort &commands() override {
     return _schedule._wiring.commands;
   }
+  InputPort &input() override {
+    return _schedule._wiring.ports;
+  }
   TerminalPort &terminal() override {
     return _schedule._wiring.ports;
   }

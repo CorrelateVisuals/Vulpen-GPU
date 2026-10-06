@@ -32,7 +32,10 @@ public:
   // the block.
   VkDeviceAddress frame() const;
   // Before a frame runs: what the frame block holds (C01).
-  void write_frame(std::uint64_t index, double time, VkExtent2D resolution) const;
+  void write_frame(std::uint64_t index,
+                   double time,
+                   VkExtent2D resolution,
+                   std::array<float, 2> cursor) const;
 
 private:
   friend class Pipeline;

@@ -176,12 +176,32 @@ protected:
   ~CommandPort() = default;
 };
 
-// A key, text, the pointer, the wheel or focus. The input command makes the same events
-// without a window, so a headless test types as a person does.
-struct Event {};
+// A key, text, the pointer, a button, the wheel or focus. The input command makes the
+// same events without a window, so a headless test types and points as a person does.
+struct Event {
+  enum class Kind : std::uint8_t { key, text, pointer, button, wheel, focus };
+  Kind kind = Kind::key;
+  // A key or a button pressed, or let go; focus gained, or lost.
+  bool down = false;
+  // A key's name, as a, enter or f1; a button's, left, right or middle; the text typed.
+  std::string name;
+  glm::vec2 at{};   // where the pointer went, in pixels from the window's top left
+  glm::vec2 turn{}; // how far the wheel turned
 
-// The events of a frame, for the nodes that read keys, text or the pointer.
-class InputPort {};
+  bool operator==(const Event &) const = default;
+};
+
+// What the window or the input command made since the frame before, which every node
+// reads alike.
+class InputPort {
+public:
+  virtual std::span<const Event> events() const = 0;
+  // Where the pointer is, as the frame block's cursor says: zero until it first moves.
+  virtual glm::vec2 pointer() const = 0;
+
+protected:
+  ~InputPort() = default;
+};
 
 // Files a node reads, watches and saves. A save writes a temp file and renames it over
 // the old one, so a killed run never leaves half a file. Each call throws naming the
@@ -349,6 +369,7 @@ public:
   virtual std::uint64_t index() const = 0;
   virtual void log(Level level, std::string_view text) const = 0;
   virtual CommandPort &commands() = 0;
+  virtual InputPort &input() = 0;
   virtual TerminalPort &terminal() = 0;
   virtual FilePort &files() = 0;
 

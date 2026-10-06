@@ -38,7 +38,12 @@ file     = Twin.cpp
 operator    = Frame
 file        = Frame.comp
 file        = Frame.cpp
-invocations = 4
+invocations = 6
+
+# Stops unless the input command's events reach it in the frame after they were made.
+[node "input"]
+operator = Input
+file     = Input.cpp
 
 # Hands take the frame it cooks in, through a connection between C++ nodes; its C++
 # also registers an operator whose output no other node can name.

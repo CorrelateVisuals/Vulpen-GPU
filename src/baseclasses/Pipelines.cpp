@@ -14,7 +14,7 @@ namespace {
 
 constexpr std::uint32_t blocks_per_pool = 1024;
 // What the engine writes into the frame block, in its order, by the names and types
-// baseclasses/GpuLayout.glsl gives them. The cursor stays zero until the input port.
+// baseclasses/GpuLayout.glsl gives them.
 enum FrameMember : std::size_t { resolution, cursor, time, frame_index };
 constexpr std::array<std::pair<std::string_view, std::string_view>, 4> frame_members{
     {{"resolution", "uvec2"}, {"cursor", "vec2"}, {"time", "float"}, {"index", "uint"}}};
@@ -191,7 +191,8 @@ VkDeviceAddress Pipelines::frame() const {
 // The GPU of the last frame is done with it: one frame is in flight.
 void Pipelines::write_frame(std::uint64_t index,
                             double time,
-                            VkExtent2D resolution) const {
+                            VkExtent2D resolution,
+                            std::array<float, 2> cursor) const {
   if (!_frame)
     return;
   const std::array<std::uint32_t, 2> size{resolution.width, resolution.height};
@@ -200,6 +201,7 @@ void Pipelines::write_frame(std::uint64_t index,
   std::byte *const bytes = _frame->buffer.bytes().data();
   const std::vector<Field> &fields = _frame->fields;
   std::memcpy(bytes + fields[FrameMember::resolution].offset, size.data(), sizeof size);
+  std::memcpy(bytes + fields[FrameMember::cursor].offset, cursor.data(), sizeof cursor);
   std::memcpy(bytes + fields[FrameMember::time].offset, &seconds, sizeof seconds);
   std::memcpy(bytes + fields[FrameMember::frame_index].offset, &frame, sizeof frame);
   _frame->buffer.flush();

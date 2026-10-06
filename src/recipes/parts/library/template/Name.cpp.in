@@ -49,6 +49,7 @@ class Name final : public VP::Operator {
   //   frame.log(VP::Level::info, "a line at the node's log level");
   //   frame.commands().send("param set name speed 0.02");
   //   for (const VP::Event &event : frame.input().events()) {}
+  //   const glm::vec2 at = frame.input().pointer(); // in pixels, as the cursor
   //   for (const std::string_view line : frame.terminal().lines()) {}
   //   frame.terminal().print("text");
   //   const std::string_view settings = frame.files().text(_settings);
