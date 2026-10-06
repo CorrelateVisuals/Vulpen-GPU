@@ -486,8 +486,8 @@ constexpr std::array edits{
         "removes a node that no connection names and no node is inside; its folder stays",
         node_remove},
     Edit{"node set <node> <word=value>...",
-         "gives a node the words named, clearing those given empty; param words replace "
-         "them all",
+         "gives a node the words named, clearing those given empty; param and image "
+         "words replace them all",
          node_set},
     Edit{"connect <name> <port> <port>...",
          "joins the port that writes a buffer to the ports that read it",

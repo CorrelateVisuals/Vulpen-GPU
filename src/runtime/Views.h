@@ -22,7 +22,7 @@ struct Wiring;
 class Views final : public ViewLookup, public CommandHandler {
 public:
   // Builds the schedule of the view vulpen started with, hosts the views it names, and
-  // registers view save and child list.
+  // registers view save, child list and image clear.
   Views(const Wiring &wiring, View view, Commands &commands);
   ~Views();
   Views(const Views &) = delete;
@@ -72,6 +72,7 @@ private:
   // leaves no command to a handler that is gone.
   Command _save;
   Command _list;
+  Command _clear;
 };
 
 } // namespace VP

@@ -73,6 +73,10 @@ public:
   // The images C++ filled since the last call, which the next frame copies in before
   // its passes; the buffers they copy from last until the call after.
   std::vector<Copy> take_copies();
+  // Drops the pixels of the image a node's C++ fills, named by the port that fills it or
+  // by a Texture that samples it, which then samples nothing until the node fills it
+  // again. Throws when no node's C++ fills it.
+  void clear_image(std::string_view node, std::string_view port);
   const std::vector<Pass> &passes() const;
 
 private:

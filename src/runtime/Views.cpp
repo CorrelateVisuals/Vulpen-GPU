@@ -88,6 +88,10 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
   _list = commands.add("child list",
                        "lists the hosted views, with their files, in the order hosted",
                        *this);
+  _clear = commands.add("image clear <port>",
+                        "drops the pixels of an image a node's C++ fills, named by that "
+                        "port or one that samples it, until the node fills it again",
+                        *this);
 }
 
 Views::~Views() = default;
@@ -241,6 +245,15 @@ void Views::command(Call &call) {
     for (const std::unique_ptr<Hosted> &hosted : _hosted)
       if (!hosted->removed && !hosted->name.empty())
         call.reply(std::format("{} {}", hosted->name, hosted->current().file.string()));
+  } else if (call.is(_clear)) {
+    Hosted *const found = hosted(_port.addressed());
+    const std::string_view port = call.arguments().front();
+    const std::size_t dot = port.rfind('.');
+    if (!found || !found->schedule)
+      throw std::runtime_error("no view runs to clear an image in");
+    if (dot == std::string_view::npos)
+      throw std::runtime_error(std::format("{} is no port: node.port", port));
+    found->schedule->clear_image(port.substr(0, dot), port.substr(dot + 1));
   }
 }
 

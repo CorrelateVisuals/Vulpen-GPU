@@ -445,6 +445,25 @@ std::vector<VkBuffer> Schedule::take_clears() {
   return clears;
 }
 
+// Between frames or during one, before the passes run, so no pass samples the image.
+void Schedule::clear_image(std::string_view node, std::string_view port) {
+  const Connection *const connection = connection_of(node, port);
+  const Endpoint writer =
+      connection ? connection->from : Endpoint{std::string(node), std::string(port)};
+  const Bound *const filler = find(writer.node);
+  if (!filler || !filler->fills(writer.port))
+    throw std::runtime_error(
+        std::format("{}.{} is no image a node's C++ fills", node, port));
+  const std::string name = std::format("{}.{}", writer.node, writer.port);
+  const auto picture = std::ranges::find(_images, name, &Picture::name);
+  if (picture == _images.end())
+    return;
+  const VkImage image = picture->sampled.image().handle();
+  std::erase_if(_copies, [&](const Copy &copy) { return copy.to == image; });
+  _images.erase(picture);
+  point_readers(name, 0);
+}
+
 // The frame before has ended, so the buffers its copies read go.
 std::vector<Copy> Schedule::take_copies() {
   _in_flight = std::exchange(_staged, {});

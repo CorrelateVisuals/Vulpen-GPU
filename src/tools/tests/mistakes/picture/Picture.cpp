@@ -57,9 +57,19 @@ struct Halves {
   }
 };
 
-// Fills its image once, and stops when the shader sampled another value at a pixel than
-// C++ put there, a frame after. A frame after filling, it adds a node, which rebuilds
-// the view: the image must stay through it, as the node fills it only once.
+// Stops when the shader sampled another value at a pixel than C++ put there.
+template <class Image> void check(std::span<const float> sampled) {
+  for (std::size_t i = 0; i < sampled.size(); ++i)
+    if (std::abs(sampled[i] - Image::expected(i)) > Image::tolerance)
+      throw std::runtime_error(std::format("pixel {} sampled as {}, but C++ filled {}",
+                                           i,
+                                           sampled[i],
+                                           Image::expected(i)));
+}
+
+// Fills its image once, and stops when the shader sampled other values than C++ put
+// there, a frame after. A frame after filling, it adds a node, which rebuilds the view:
+// the image must stay through it, as the node fills it only once.
 template <class Image> class Filler final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _image = node.texture<typename Image::Pixel>(Image::port);
@@ -72,18 +82,43 @@ template <class Image> class Filler final : public VP::Operator {
     } else if (frame.index() == 1) {
       frame.commands().send("node add spare");
     }
-    const std::span<const float> sampled = frame.read(_texels);
-    for (std::size_t i = 0; i < sampled.size(); ++i)
-      if (std::abs(sampled[i] - Image::expected(i)) > Image::tolerance)
-        throw std::runtime_error(std::format("pixel {} sampled as {}, but C++ filled {}",
-                                             i,
-                                             sampled[i],
-                                             Image::expected(i)));
+    check<Image>(frame.read(_texels));
   }
 
   VP::Texture<typename Image::Pixel> _image;
   VP::Readback<float> _texels;
   bool _filled = false;
+};
+
+// Fills its image whenever it is empty, and empties it with image clear a frame after it
+// filled it first. By the last frame it must have filled it twice, and the shader must
+// sample what it filled.
+class Cleared final : public VP::Operator {
+  static constexpr std::uint64_t cleared = 1;
+  static constexpr std::uint64_t last = 4;
+
+  void bind(VP::Bind &node) override {
+    _image = node.texture<std::uint8_t>("picture");
+    _texels = node.readback<float>("texels");
+  }
+  void cook(VP::Cook &frame) override {
+    if (frame.empty(_image)) {
+      frame.upload(_image, bytes, {width, height});
+      ++_fills;
+    }
+    if (frame.index() == cleared)
+      frame.commands().send("image clear picture.picture");
+    if (frame.index() != last)
+      return;
+    if (_fills != 2)
+      throw std::runtime_error(std::format(
+          "filled {} times, though image clear emptied it once after the first", _fills));
+    check<Bytes>(frame.read(_texels));
+  }
+
+  VP::Texture<std::uint8_t> _image;
+  VP::Readback<float> _texels;
+  int _fills = 0;
 };
 
 // Fills an image nothing samples, in the format no word gives, and leaves its shader's
@@ -112,6 +147,7 @@ VP_OPERATORS(registry) {
   registry.add<Filler<Bytes>>("Picture");
   registry.add<Filler<Relayed>>("Relayed");
   registry.add<Filler<Halves>>("Deep");
+  registry.add<Cleared>("Cleared");
   registry.add<Stray>("Stray");
   registry.add<Misfilled>("Misfilled");
 }

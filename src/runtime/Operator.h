@@ -341,6 +341,11 @@ public:
               glm::uvec2 size) {
     upload_image(texture.index, std::as_bytes(pixels), size);
   }
+  // Whether the image holds no pixels: before the first upload, and after image clear or
+  // a change of its format. A node that fills its image once fills it again then.
+  template <class T> bool empty(Texture<T> texture) const {
+    return image_empty(texture.index);
+  }
   virtual std::uint64_t index() const = 0;
   virtual void log(Level level, std::string_view text) const = 0;
   virtual CommandPort &commands() = 0;
@@ -359,6 +364,7 @@ private:
   virtual void upload_image(std::uint32_t index,
                             std::span<const std::byte> pixels,
                             glm::uvec2 size) = 0;
+  virtual bool image_empty(std::uint32_t index) const = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the
