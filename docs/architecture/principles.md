@@ -30,7 +30,7 @@ Principles are must-haves that leave room for interpretation; they may pull agai
 
 ### Recipes
 
-- **V11 Recipes grow by addition.** In the library, a bigger recipe uses smaller ones and connects them; it never copies their code, or uses a bigger one and removes nodes. Two recipes share only the contract on the connection between them, so every recipe stays whole on its own, any recipe that honors the same contracts can replace it, and a fix to a part reaches every library recipe built on it.
+- **V11 Recipes grow by addition.** In the library, a bigger recipe uses smaller ones and connects them; it never copies their code, or uses a bigger one and removes nodes. Two recipes share only the contract on the connection between them, a GLSL struct for data on the GPU or a C++ header for data between C++ nodes, so every recipe stays whole on its own, any recipe that honors the same contracts can replace it, and a fix to a part reaches every library recipe built on it.
 
 ## Architecture
 

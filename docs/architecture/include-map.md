@@ -50,12 +50,13 @@ Paths are from `src/`. The standard library is left out, since every file may us
 
 ## Node code
 
-A file of the library (`src/recipes/`) or of a view, under a folder that holds a `view.vlp`, is node code, not engine (V05), so it has no row above: a new node's file builds with no edit to this page. The gate checks each of its includes against one rule instead. Node code may include a file in its own folder (RV08), and a contract as `contracts/<Name>.glsl`, from the top of the library or of its view (V03, RV05). Besides those and the standard library, it may include only what this table lists. Engine code never includes node code (RA00).
+A file of the library (`src/recipes/`) or of a view, under a folder that holds a `view.vlp`, is node code, not engine (V05), so it has no row above: a new node's file builds with no edit to this page. The gate checks each of its includes against one rule instead. Node code may include a file in its own folder (RV08), and a contract as `contracts/<Name>.glsl` or `contracts/<Name>.h`, from the top of the library or of its view (V03, RV05). Besides those and the standard library, it may include only what this table lists. Engine code never includes node code (RA00).
 
 | Node code may include | Why |
 | --- | --- |
 | `runtime/Operator.h` | a node's behaviour and the general ports |
 | `runtime/View.h` | the graph, for a part that reads it |
+| `baseclasses/*.h` `runtime/*.h` | the engine by hand, within the [runtime boundary](../plans/native-cpp.md#the-runtime-boundary) |
 | `baseclasses/GpuLayout.glsl` | the GPU layout every shader declares (RV02) |
 | `<glm/*>` | GLSL's vectors and matrices in C++, name for name |
 | `<stb_truetype.h>` | the glyph atlas the `font` part bakes |
