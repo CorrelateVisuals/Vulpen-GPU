@@ -22,6 +22,14 @@ struct Pass {
   std::vector<VkBuffer> writes;
 };
 
+// Pixels the CPU put in a buffer, which the frame copies into an image before its
+// passes, so any of them may sample it.
+struct Copy {
+  VkBuffer from = VK_NULL_HANDLE;
+  VkImage to = VK_NULL_HANDLE;
+  VkExtent2D extent{};
+};
+
 // Where barriers go between passes (V10): a pass waits for what an earlier pass wrote,
 // and for earlier reads of what it writes. It stands apart from the engine so a test can
 // check it without a GPU: synchronization validation cannot see accesses through buffer

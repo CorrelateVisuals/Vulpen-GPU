@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -20,6 +21,7 @@ class Modules;
 class Pipelines;
 class Ports;
 struct Connection;
+struct Copy;
 struct Node;
 struct Pass;
 struct View;
@@ -67,13 +69,17 @@ public:
   void cook(std::uint64_t frame);
   // The buffers made since the last call, which the next frame zeroes first.
   std::vector<VkBuffer> take_clears();
+  // The images C++ filled since the last call, which the next frame copies in before
+  // its passes; the buffers they copy from last until the call after.
+  std::vector<Copy> take_copies();
   const std::vector<Pass> &passes() const;
 
 private:
-  // Bound and Held are in runtime/Bound.h, and Binder and Cooker in runtime/Binder.cpp,
-  // so this header includes none of what they hold (CPP13).
+  // Bound, Held and Picture are in runtime/Bound.h, and Binder and Cooker in
+  // runtime/Binder.cpp, so this header includes none of what they hold (CPP13).
   struct Bound;
   struct Held;
+  struct Picture;
   class Binder;
   class Cooker;
 
@@ -85,6 +91,8 @@ private:
   void check_fields(Bound &bound) const;
   void check_connections();
   void check_inputs(const Connection &connection);
+  void check_images();
+  void keep_images(Schedule &replaced);
   void make_buffers(Schedule *replaced);
   void make_buffer(const Bound &writer,
                    const std::string &name,
@@ -94,6 +102,12 @@ private:
                    Schedule *replaced);
   void make_blocks();
   void make_passes();
+  void upload(const Bound &writer,
+              std::string_view port,
+              std::span<const std::byte> pixels,
+              VkExtent2D extent);
+  const Image &image_for(const Bound &writer, const std::string &name, VkExtent2D extent);
+  void point_readers(const std::string &name, std::uint32_t slot);
   void drop_commands(Bound &bound);
   void close_files(Bound &bound);
   void log(Level level, Tag tag, const Bound &bound, std::string_view text) const;
@@ -101,6 +115,7 @@ private:
   const Held *held(std::string_view name) const;
   const Connection *connection_of(std::string_view node, std::string_view port) const;
   std::string buffer_name(std::string_view node, std::string_view port) const;
+  std::string image_name(std::string_view node, std::string_view port) const;
 
   const Wiring _wiring;
   const View &_view;
@@ -113,6 +128,11 @@ private:
   // pass holds its address, which stays while the schedule does.
   std::map<std::string, std::uint32_t, std::less<>> _used;
   std::vector<const Buffer *> _fresh;
+  std::vector<Picture> _images; // that nodes' C++ filled
+  std::vector<Copy> _copies;
+  // What the copies read: this frame's, and those of the frame the GPU may still run.
+  std::vector<Buffer> _staged;
+  std::vector<Buffer> _in_flight;
   std::vector<Pass> _passes;
 };
 

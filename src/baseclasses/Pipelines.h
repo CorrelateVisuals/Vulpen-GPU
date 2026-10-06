@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace VP {
@@ -20,6 +21,9 @@ inline constexpr std::uint32_t pass_binding = 0;
 // samplers[0] to samplers[3] (RV02).
 inline constexpr std::uint32_t images_set = 0;
 inline constexpr std::uint32_t static_samplers = 4;
+
+// The struct a pass block names an image by, as baseclasses/GpuLayout.glsl declares it.
+inline constexpr std::string_view texture_type = "Texture";
 
 // What a shader does with a buffer, read from its qualifier: the node's declaration of
 // what it reads and writes, from which the barriers follow (V10).
@@ -36,6 +40,9 @@ struct Field {
 
   bool buffer() const {
     return stride != 0;
+  }
+  bool texture() const {
+    return type == texture_type;
   }
   bool operator==(const Field &) const = default;
 };
@@ -86,6 +93,7 @@ public:
 private:
   friend class Pipeline;
   friend class PassBlock;
+  friend class Sampled;
 
   // The one frame block, laid out as the first shader that declares it says (RA03).
   struct Frame {
@@ -106,6 +114,8 @@ private:
   // A pool with room for a block, made when every pool is full, so a view's blocks are
   // bounded by memory alone.
   std::size_t pool() const;
+  // Points a free slot of textures[] at the view; throws when none is free.
+  std::uint32_t take_slot(VkImageView view) const;
 
   const VkDevice _device;
   const Resources &_resources;
@@ -114,6 +124,8 @@ private:
   VkDescriptorSetLayout _images = VK_NULL_HANDLE;
   VkDescriptorPool _image_pool = VK_NULL_HANDLE;
   VkDescriptorSet _image_set = VK_NULL_HANDLE;
+  // textures[]'s free slots, the lowest last; slot 0, unbound, is never one.
+  mutable std::vector<std::uint32_t> _free;
   VkDescriptorSetLayout _pass = VK_NULL_HANDLE;
   VkPipelineLayout _layout = VK_NULL_HANDLE;
   mutable std::vector<Pool> _pools;
@@ -156,6 +168,24 @@ private:
   Buffer _buffer;
   std::size_t _pool = 0; // of the pipelines' pools, the one the set came from
   VkDescriptorSet _set = VK_NULL_HANDLE;
+};
+
+// An image the passes sample, and its slot in textures[], which a pass block's Texture
+// holds; the slot is free again once the image goes.
+class Sampled {
+public:
+  Sampled(const Pipelines &pipelines, Image image);
+  Sampled(Sampled &&other) noexcept;
+  Sampled &operator=(Sampled &&other) noexcept;
+  ~Sampled();
+
+  const Image &image() const;
+  std::uint32_t slot() const;
+
+private:
+  const Pipelines *_pipelines;
+  Image _image;
+  std::uint32_t _slot = 0; // 0 once moved from
 };
 
 } // namespace VP

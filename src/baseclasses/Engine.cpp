@@ -37,6 +37,36 @@ void bind(VkCommandBuffer commands, const Pipelines &pipelines, const Pass &pass
         commands, pass.bind_point, layout, pass_set, 1, &pass.block, 0, nullptr);
 }
 
+// The image's old pixels go, so the copy waits for nothing; uploads are rare, so what
+// runs after it waits for it, whatever that is, rather than naming the stages that
+// sample.
+void upload(VkCommandBuffer commands, const Copy &copy) {
+  VkImageMemoryBarrier layout{
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = copy.to,
+      .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
+  const auto transition = [&](VkPipelineStageFlags source, VkPipelineStageFlags target) {
+    vkCmdPipelineBarrier(commands, source, target, 0, 0, nullptr, 0, nullptr, 1, &layout);
+  };
+  transition(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+  const VkBufferImageCopy region{
+      .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
+      .imageExtent = {copy.extent.width, copy.extent.height, 1}};
+  vkCmdCopyBufferToImage(
+      commands, copy.from, copy.to, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+  layout.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+  layout.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  layout.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  layout.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  transition(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+}
+
 } // namespace
 
 // Each part borrows the ones made before it, so they are destroyed in reverse.
@@ -94,6 +124,7 @@ void Engine::wait() const {
 }
 
 void Engine::run(std::span<const VkBuffer> clears,
+                 std::span<const Copy> copies,
                  std::span<const Pass> passes,
                  std::uint64_t frame,
                  double time) {
@@ -107,6 +138,8 @@ void Engine::run(std::span<const VkBuffer> clears,
             VK_ACCESS_TRANSFER_WRITE_BIT,
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+  for (const Copy &copy : copies)
+    upload(commands, copy);
   _gpu->dispatch(commands, passes);
   std::optional<Swapchain> &swapchain = _gpu->swapchain;
   const std::optional<Target> target =

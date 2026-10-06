@@ -114,6 +114,7 @@ private:
   // schedule changed, so a frame allocates nothing for them (CPP10).
   std::vector<Pass> _passes;
   std::vector<VkBuffer> _clears;
+  std::vector<Copy> _copies;
 };
 
 } // namespace
@@ -322,11 +323,13 @@ void Runtime::loop() {
     _ports.frame();
     const std::uint64_t frame = _options.first_frame + frames;
     _clears.clear();
+    _copies.clear();
     for (Schedule *const schedule : _views->schedules()) {
       schedule->cook(frame);
       std::ranges::copy(schedule->take_clears(), std::back_inserter(_clears));
+      std::ranges::copy(schedule->take_copies(), std::back_inserter(_copies));
     }
-    _engine->run(_clears, _passes, frame, static_cast<double>(frame) / rate);
+    _engine->run(_clears, _copies, _passes, frame, static_cast<double>(frame) / rate);
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
   }

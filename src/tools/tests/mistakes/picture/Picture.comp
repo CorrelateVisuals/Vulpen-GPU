@@ -1,0 +1,20 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 8) in;
+
+layout(set = 1, binding = 0) uniform Pass {
+  Texture picture;  // filled by the operator, or through a connection
+  FloatsOut texels; // read back by the operator
+} pass;
+
+const uvec2 size = uvec2(4, 2);
+
+// Each invocation samples the middle of one pixel, row by row, where linear filtering
+// takes that pixel alone.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const vec2 uv = (vec2(i % size.x, i / size.x) + 0.5) / vec2(size);
+  pass.texels.at[i] = sample_linear(pass.picture, uv).r;
+}

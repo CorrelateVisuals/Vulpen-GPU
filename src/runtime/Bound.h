@@ -115,6 +115,7 @@ struct Schedule::Bound {
     std::uint32_t *used = nullptr;
   };
   std::vector<Written> uploads;
+  std::vector<std::string> textures; // ports whose image C++ fills, by Texture::index
   std::vector<Command> commands; // registered while it bound
   std::vector<File> files;       // opened while it bound
   std::vector<std::string> outputs; // its ports that carry C++ objects to C++ nodes
@@ -138,6 +139,9 @@ struct Schedule::Bound {
   bool uploads_to(std::string_view port) const {
     return upload(port) != nullptr;
   }
+  bool fills(std::string_view port) const {
+    return std::ranges::find(textures, port) != textures.end();
+  }
   const Param *param(std::string_view key) const {
     const auto found = std::ranges::find(node->params, key, &Param::key);
     return found == node->params.end() ? nullptr : &*found;
@@ -157,6 +161,13 @@ struct Schedule::Held {
   bool holds(const Kind &kind) const {
     return type == kind.type && size == kind.size && align == kind.align;
   }
+};
+
+// An image a node's C++ filled, by the port that fills it, so a connection made or
+// removed keeps it, and so does a rebuild while the node keeps its name.
+struct Schedule::Picture {
+  std::string name; // the writer's node.port
+  Sampled sampled;
 };
 
 } // namespace VP

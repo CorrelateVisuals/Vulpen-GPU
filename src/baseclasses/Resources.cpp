@@ -79,6 +79,39 @@ void Buffer::invalidate() const {
         "vmaInvalidateAllocation");
 }
 
+Image::Image(Image &&other) noexcept {
+  *this = std::move(other);
+}
+
+Image &Image::operator=(Image &&other) noexcept {
+  std::swap(_allocator, other._allocator);
+  std::swap(_device, other._device);
+  std::swap(_image, other._image);
+  std::swap(_allocation, other._allocation);
+  std::swap(_view, other._view);
+  std::swap(_extent, other._extent);
+  return *this;
+}
+
+Image::~Image() {
+  if (!_image)
+    return;
+  vkDestroyImageView(_device, _view, nullptr);
+  vmaDestroyImage(_allocator, _image, _allocation);
+}
+
+VkImage Image::handle() const {
+  return _image;
+}
+
+VkImageView Image::view() const {
+  return _view;
+}
+
+VkExtent2D Image::extent() const {
+  return _extent;
+}
+
 Resources::Resources(VkInstance instance,
                      VkPhysicalDevice physical_device,
                      VkDevice device)
@@ -117,6 +150,36 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
       .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = buffer._buffer};
   buffer._address = vkGetBufferDeviceAddress(_device, &address);
   return buffer;
+}
+
+Image Resources::image(VkExtent2D extent, VkFormat format) const {
+  const VkImageCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                               .imageType = VK_IMAGE_TYPE_2D,
+                               .format = format,
+                               .extent = {extent.width, extent.height, 1},
+                               .mipLevels = 1,
+                               .arrayLayers = 1,
+                               .samples = VK_SAMPLE_COUNT_1_BIT,
+                               .tiling = VK_IMAGE_TILING_OPTIMAL,
+                               .usage = VK_IMAGE_USAGE_SAMPLED_BIT |
+                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT};
+  const VmaAllocationCreateInfo where{.usage = VMA_MEMORY_USAGE_AUTO};
+  Image image;
+  check(vmaCreateImage(
+            _allocator, &info, &where, &image._image, &image._allocation, nullptr),
+        "vmaCreateImage");
+  image._allocator = _allocator;
+  image._device = _device;
+  image._extent = extent;
+  const VkImageViewCreateInfo view{
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = image._image,
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = format,
+      .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
+  check(vkCreateImageView(_device, &view, nullptr, &image._view), "vkCreateImageView");
+  return image;
 }
 
 } // namespace VP

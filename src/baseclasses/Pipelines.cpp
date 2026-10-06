@@ -255,10 +255,13 @@ Field describe(const Module &module, const Member &member, std::uint32_t type_id
       type.at(1) == spirv::storage_physical_storage_buffer)
     return describe_buffer(
         module, {.name = member.name, .offset = member.offset}, type.at(2));
+  if (glsl_name(module, type_id) == texture_type)
+    return {
+        .name = member.name, .type = std::string(texture_type), .offset = member.offset};
   if (value_bytes(module, type_id) == 0)
     throw std::runtime_error(
         std::format("pass block field {} has a type this build cannot set yet: use "
-                    "float, int, uint, a vector of them, or a buffer",
+                    "float, int, uint, a vector of them, a buffer or a Texture",
                     member.name));
   return {
       .name = member.name, .type = glsl_name(module, type_id), .offset = member.offset};
@@ -277,12 +280,13 @@ std::pair<std::vector<Field>, std::uint32_t> pass_block(const Module &module) {
     std::vector<Field> fields;
     std::uint32_t end = 0;
     for (std::size_t index = 1; index < members.size(); ++index) {
-      fields.push_back(
+      const Field &field = fields.emplace_back(
           describe(module, module.members.at(block).at(index - 1), members[index]));
-      end = std::max(end,
-                     fields.back().offset + (fields.back().buffer()
-                                                 ? address_bytes
-                                                 : value_bytes(module, members[index])));
+      // A Texture holds its slot as a uint.
+      const std::uint32_t bytes = field.buffer()    ? address_bytes
+                                  : field.texture() ? scalar_bytes
+                                                    : value_bytes(module, members[index]);
+      end = std::max(end, field.offset + bytes);
     }
     const std::uint32_t size = (end + std140_block_alignment - 1) /
                                std140_block_alignment * std140_block_alignment;
@@ -480,6 +484,8 @@ Pipelines::Pipelines(VkDevice device, const Resources &resources)
       .pSetLayouts = &_images};
   check(vkAllocateDescriptorSets(_device, &images, &_image_set),
         "vkAllocateDescriptorSets");
+  for (std::uint32_t slot = image_slots - 1; slot > 0; --slot)
+    _free.push_back(slot);
   const VkDescriptorSetLayoutBinding block{.binding = pass_binding,
                                            .descriptorType =
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -590,6 +596,25 @@ std::size_t Pipelines::pool() const {
   check(vkCreateDescriptorPool(_device, &info, nullptr, &made), "vkCreateDescriptorPool");
   _pools.push_back({.handle = made});
   return _pools.size() - 1;
+}
+
+std::uint32_t Pipelines::take_slot(VkImageView view) const {
+  if (_free.empty())
+    throw std::runtime_error(
+        std::format("textures[] holds {} images, all taken", image_slots - 1));
+  const std::uint32_t slot = _free.back();
+  _free.pop_back();
+  const VkDescriptorImageInfo image{
+      .imageView = view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+  const VkWriteDescriptorSet write{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                   .dstSet = _image_set,
+                                   .dstBinding = textures_binding,
+                                   .dstArrayElement = slot,
+                                   .descriptorCount = 1,
+                                   .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                                   .pImageInfo = &image};
+  vkUpdateDescriptorSets(_device, 1, &write, 0, nullptr);
+  return slot;
 }
 
 Pipeline::Pipeline(const Pipelines &pipelines, const Shader &compute)
@@ -755,6 +780,36 @@ std::span<std::byte> PassBlock::bytes() const {
 
 void PassBlock::flush() const {
   _buffer.flush();
+}
+
+Sampled::Sampled(const Pipelines &pipelines, Image image)
+    : _pipelines(&pipelines), _image(std::move(image)),
+      _slot(pipelines.take_slot(_image.view())) {}
+
+Sampled::Sampled(Sampled &&other) noexcept
+    : _pipelines(other._pipelines), _image(std::move(other._image)),
+      _slot(std::exchange(other._slot, 0)) {}
+
+Sampled &Sampled::operator=(Sampled &&other) noexcept {
+  std::swap(_pipelines, other._pipelines);
+  std::swap(_image, other._image);
+  std::swap(_slot, other._slot);
+  return *this;
+}
+
+// Between frames, so no pass that samples the slot is still running; until a pass block
+// names it again, nothing reads it.
+Sampled::~Sampled() {
+  if (_slot != 0)
+    _pipelines->_free.push_back(_slot);
+}
+
+const Image &Sampled::image() const {
+  return _image;
+}
+
+std::uint32_t Sampled::slot() const {
+  return _slot;
 }
 
 } // namespace VP

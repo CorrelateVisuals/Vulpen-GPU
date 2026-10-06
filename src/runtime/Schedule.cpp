@@ -9,10 +9,14 @@
 #include <map>
 #include <set>
 #include <stdexcept>
+#include <utility>
 
 namespace VP {
 
 namespace {
+
+// What Cook::upload hands over: one byte a pixel, read as 0 to 1.
+constexpr VkFormat pixel_format = VK_FORMAT_R8_UNORM;
 
 // The files of the node's folder that are shaders, by their extension.
 std::vector<std::string> shaders_of(const Node &node) {
@@ -108,7 +112,10 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
   for (const Node *const node : nodes)
     _bound.push_back(bind(*node, wiring.views / view.name / node->module, replaced));
   check_connections();
+  check_images();
   make_buffers(replaced);
+  if (replaced)
+    keep_images(*replaced);
   make_blocks();
   make_passes();
   // Each error names the line that last added or changed the node, if a file holds it,
@@ -312,6 +319,80 @@ void Schedule::make_blocks() {
     }
     bound.block->flush();
   }
+  for (const Picture &picture : _images)
+    point_readers(picture.name, picture.sampled.slot());
+}
+
+// A node that uploads once keeps what it filled through a rebuild, as long as it still
+// fills it.
+void Schedule::keep_images(Schedule &replaced) {
+  for (const Bound &bound : _bound)
+    for (const std::string &port : bound.textures) {
+      const std::string name = std::format("{}.{}", bound.node->name, port);
+      const auto kept = std::ranges::find(replaced._images, name, &Picture::name);
+      if (kept == replaced._images.end())
+        continue;
+      _images.push_back(std::move(*kept));
+      replaced._images.erase(kept);
+    }
+}
+
+// Each block whose Texture samples the image holds its slot; any other Texture stays 0,
+// unbound, until its image is filled.
+void Schedule::point_readers(const std::string &name, std::uint32_t slot) {
+  for (Bound &bound : _bound)
+    for (const Field &field : bound.fields)
+      if (bound.block && field.texture() &&
+          image_name(bound.node->name, field.name) == name) {
+        std::memcpy(bound.block->bytes().data() + field.offset, &slot, sizeof slot);
+        bound.block->flush();
+      }
+}
+
+// The copy runs before the frame's passes, from a buffer that lasts until the frame
+// ends.
+void Schedule::upload(const Bound &writer,
+                      std::string_view port,
+                      std::span<const std::byte> pixels,
+                      VkExtent2D extent) {
+  if (extent.width == 0 || extent.height == 0 ||
+      pixels.size() != std::size_t{extent.width} * extent.height)
+    throw std::runtime_error(
+        std::format("the operator uploads {} pixels to {}, which is {} by {}",
+                    pixels.size(),
+                    port,
+                    extent.width,
+                    extent.height));
+  const Image &image =
+      image_for(writer, std::format("{}.{}", writer.node->name, port), extent);
+  Buffer staged = _wiring.resources.buffer(
+      pixels.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::upload);
+  std::ranges::copy(pixels, staged.bytes().begin());
+  staged.flush();
+  _copies.push_back({.from = staged.handle(), .to = image.handle(), .extent = extent});
+  _staged.push_back(std::move(staged));
+}
+
+// The image of that size: a new one when the old has another, whose slot its readers
+// take, and no copy into the old one runs.
+const Image &
+Schedule::image_for(const Bound &writer, const std::string &name, VkExtent2D extent) {
+  const auto picture = std::ranges::find(_images, name, &Picture::name);
+  if (picture != _images.end()) {
+    const Image &image = picture->sampled.image();
+    if (image.extent().width == extent.width && image.extent().height == extent.height)
+      return image;
+    std::erase_if(_copies, [&](const Copy &copy) { return copy.to == image.handle(); });
+    _images.erase(picture);
+  }
+  const Picture &made = _images.emplace_back(
+      name, Sampled(_wiring.pipelines, _wiring.resources.image(extent, pixel_format)));
+  point_readers(name, made.sampled.slot());
+  log(Level::info,
+      Tag::mem,
+      writer,
+      std::format("{} of {} by {} pixels", name, extent.width, extent.height));
+  return made.sampled.image();
 }
 
 void Schedule::make_passes() {
@@ -358,6 +439,12 @@ std::vector<VkBuffer> Schedule::take_clears() {
   return clears;
 }
 
+// The frame before has ended, so the buffers its copies read go.
+std::vector<Copy> Schedule::take_copies() {
+  _in_flight = std::exchange(_staged, {});
+  return std::exchange(_copies, {});
+}
+
 const std::vector<Pass> &Schedule::passes() const {
   return _passes;
 }
@@ -390,6 +477,13 @@ const Connection *Schedule::connection_of(std::string_view node,
     if (at(connection.from) || std::ranges::any_of(connection.to, at))
       return &connection;
   return nullptr;
+}
+
+// An image goes by the port that fills it, so a connection made or removed keeps it.
+std::string Schedule::image_name(std::string_view node, std::string_view port) const {
+  if (const Connection *const connection = connection_of(node, port))
+    return std::format("{}.{}", connection->from.node, connection->from.port);
+  return std::format("{}.{}", node, port);
 }
 
 // A connected port's buffer is its connection's; an unconnected one is the node's own.

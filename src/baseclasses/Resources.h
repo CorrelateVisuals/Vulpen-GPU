@@ -42,6 +42,29 @@ private:
   Memory _memory = Memory::device;
 };
 
+// An image shaders sample, in device memory, which a copy fills.
+class Image {
+public:
+  Image(Image &&other) noexcept;
+  Image &operator=(Image &&other) noexcept;
+  ~Image();
+
+  VkImage handle() const;
+  VkImageView view() const;
+  VkExtent2D extent() const;
+
+private:
+  friend class Resources;
+  Image() = default;
+
+  VmaAllocator_T *_allocator = nullptr;
+  VkDevice _device = VK_NULL_HANDLE;
+  VkImage _image = VK_NULL_HANDLE;
+  VmaAllocation_T *_allocation = nullptr;
+  VkImageView _view = VK_NULL_HANDLE;
+  VkExtent2D _extent{};
+};
+
 class Resources {
 public:
   Resources(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device);
@@ -51,12 +74,11 @@ public:
 
   // Every buffer is reachable by its device address, the way shaders take buffers (RV02).
   Buffer buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const;
+  Image image(VkExtent2D extent, VkFormat format) const;
 
 private:
   const VkDevice _device;
   VmaAllocator_T *_allocator = nullptr;
 };
-
-class Image {};
 
 } // namespace VP

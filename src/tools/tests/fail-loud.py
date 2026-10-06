@@ -8,14 +8,18 @@ its help, registered twice or failing when it runs, a view that uses a library r
 as it is, a library recipe that uses one the library lacks, uses itself, or names a
 node the one it uses lacks, a C++ output of a type no other node can name, a C++ input
 of another type than its writer's, a C++ struct whose members sit elsewhere than the
-shader's, and C++ writing more elements than its buffer holds.
+shader's, C++ writing more elements than its buffer holds, an image C++ fills that
+nothing samples beside a Texture nothing fills, and C++ uploading other than an image's
+count of pixels.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
 its cause and the next line still runs, and the run ends with its input. A pass reads the
 frame block as the engine wrote it, each value where reflection put it. A C++ connection
 hands its reader what its writer wrote that frame, a node makes a buffer through the
-engine by hand, and structs C++ writes reach the shader member for member. A view's child views run, and leave
+engine by hand, and structs C++ writes reach the shader member for member. The pixels
+C++ fills an image with reach a shader pixel for pixel, through the node's own Texture
+and through a connection, and stay through a rebuild. A view's child views run, and leave
 and come back by edits that save the manifest unchanged. And a drop
 copies a recipe whose sync brings it up to the library's while it is unchanged, keeping
 the params the view set, and refuses once the view changed the copy; a sync of a copy of
@@ -44,6 +48,7 @@ DRAW = '[node "draw"]\nvertex_count = 3\n'
 GIVE = '[node "give"]\noperator = Give\n'
 TAKE = '[node "take"]\noperator = Take\n'
 SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
+PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
 NODE = re.compile(r'^\[node "([^".]+)', re.MULTILINE)
@@ -108,6 +113,11 @@ CASES = {
                     "shapes: member size is a float at byte 12 in C++, but a float at byte 8"),
     "overflow": (HEAD + SHAPE.replace("Shapes", "Overflow"),
                  "the operator writes 8 elements of shapes, which holds 4"),
+    "images": (HEAD + PICTURE.replace("Picture", "Stray"),
+               ("the operator fills image stray, which nothing samples",
+                "picture samples nothing")),
+    "pixels": (HEAD + PICTURE.replace("Picture", "Misfilled"),
+               "the operator uploads 7 pixels to picture, which is 4 by 2"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -258,6 +268,20 @@ def cpp(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def images(vulpen: str, folder: Path) -> str | None:
+    """Why the pixels C++ filled an image with did not reach the shader, or None: through
+    the node's own Texture, and through a connection to it. The fixture's operator adds a
+    node after it fills, which rebuilds the view, and stops when a pixel differs."""
+    for name, text in (("own", HEAD + PICTURE),
+                       ("relayed", HEAD + PICTURE.replace("Picture", "Relayed")
+                        + connection("copy", "picture.copy", "picture.picture"))):
+        view = view_in(folder, f"image-{name}", text)
+        code, output = run(vulpen, [view, "--frames", 5, "--fps", 0])
+        if code != 0 or problems(output):
+            return f"image-{name}: expected the pixels C++ filled, got exit {code}:\n{output}"
+    return None
+
+
 def children(vulpen: str, folder: Path) -> str | None:
     """Why a view's child view did not run, or did not leave and come back by edits that
     save the manifest as it was, or None."""
@@ -350,7 +374,7 @@ def main() -> None:
             failed += recipes(vulpen, folder)
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
                             frame_block(vulpen, folder), cpp(vulpen, folder),
-                            children(vulpen, folder),
+                            images(vulpen, folder), children(vulpen, folder),
                             drops(vulpen, folder)):
                 if problem:
                     failed.append(problem)

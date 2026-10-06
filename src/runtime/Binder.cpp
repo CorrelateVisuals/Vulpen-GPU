@@ -107,6 +107,15 @@ private:
     return static_cast<std::uint32_t>(_bound.uploads.size() - 1);
   }
 
+  // The node's own Texture, or a port a connection takes to another node's.
+  std::uint32_t texture_index(std::string_view port) override {
+    if (const Field *const field = _bound.field(port); field && !field->texture())
+      _bound.errors.push_back(std::format(
+          "the operator fills image {}, which its shader declares as no Texture", port));
+    _bound.textures.emplace_back(port);
+    return static_cast<std::uint32_t>(_bound.textures.size() - 1);
+  }
+
   void check_element(const Field &field, std::string_view verb, const Element &element) {
     const bool members = !element.members.empty();
     if (field.stride != element.size || (!members && element.type != field.type) ||
@@ -264,7 +273,7 @@ private:
 // What an operator reaches during a frame: its node's block and read-backs, nothing else.
 class Schedule::Cooker final : public Cook {
 public:
-  Cooker(const Schedule &schedule, Bound &bound, std::uint64_t frame)
+  Cooker(Schedule &schedule, Bound &bound, std::uint64_t frame)
       : _schedule(schedule), _bound(bound), _frame(frame) {}
 
 private:
@@ -306,8 +315,13 @@ private:
     *upload.used = static_cast<std::uint32_t>(count.value_or(holds));
     return bytes.first(*upload.used * upload.stride);
   }
+  void upload_image(std::uint32_t index,
+                    std::span<const std::byte> pixels,
+                    glm::uvec2 size) override {
+    _schedule.upload(_bound, _bound.textures.at(index), pixels, {size.x, size.y});
+  }
 
-  const Schedule &_schedule;
+  Schedule &_schedule;
   Bound &_bound;
   const std::uint64_t _frame;
 };

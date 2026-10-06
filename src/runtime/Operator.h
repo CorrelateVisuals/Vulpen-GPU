@@ -67,7 +67,7 @@ template <class T> struct Upload {
   std::uint32_t index = 0;
 };
 
-// One of the node's images, which the CPU fills once and shaders then sample.
+// An image the node's C++ fills once and shaders then sample.
 struct Texture {
   std::uint32_t index = 0;
 };
@@ -233,6 +233,11 @@ public:
   template <class T> Upload<T> upload(std::string_view name, std::uint32_t count = 0) {
     return {upload_index(name, element_of<T>(), count)};
   }
+  // The image a Texture of the node's shaders names, or one that a connection takes to
+  // another node's Texture; frame.upload fills it.
+  Texture texture(std::string_view port) {
+    return {texture_index(port)};
+  }
   template <class T> T param(std::string_view name) {
     const std::string_view text = param_text(name);
     T value{};
@@ -276,6 +281,7 @@ private:
   virtual std::uint32_t readback_index(std::string_view name, const Element &element) = 0;
   virtual std::uint32_t
   upload_index(std::string_view name, const Element &element, std::uint32_t count) = 0;
+  virtual std::uint32_t texture_index(std::string_view port) = 0;
   virtual std::string_view param_text(std::string_view name) = 0;
   virtual void param_invalid(std::string_view name, std::string_view type) = 0;
   virtual void *output_object(std::string_view port, const Kind &kind) = 0;
@@ -306,6 +312,13 @@ public:
     const std::span<std::byte> bytes = upload_bytes(upload.index, count);
     return {reinterpret_cast<T *>(bytes.data()), bytes.size() / sizeof(T)};
   }
+  // One byte a pixel, which shaders read as 0 to 1, row by row from the image's first,
+  // which uv 0 samples. The image keeps the pixels through rebuilds while the node and
+  // the port keep their names, so a node uploads once. Throws unless pixels holds
+  // size.x by size.y.
+  void upload(Texture texture, std::span<const std::uint8_t> pixels, glm::uvec2 size) {
+    upload_image(texture.index, std::as_bytes(pixels), size);
+  }
   virtual std::uint64_t index() const = 0;
   virtual void log(Level level, std::string_view text) const = 0;
   virtual CommandPort &commands() = 0;
@@ -321,6 +334,9 @@ private:
   // Every element without a count, and the buffer's used length from now on.
   virtual std::span<std::byte> upload_bytes(std::uint32_t index,
                                             std::optional<std::size_t> count) = 0;
+  virtual void upload_image(std::uint32_t index,
+                            std::span<const std::byte> pixels,
+                            glm::uvec2 size) = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the

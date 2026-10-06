@@ -43,7 +43,7 @@ class Name final : public VP::Operator {
   //   const std::span<glm::vec2> points = frame.write(_points);
   //   const std::span<glm::vec2> used = frame.write(_points, count); // used length
   //   const std::span<const float> samples = frame.read(_samples);
-  //   frame.upload(_atlas, pixels, size);
+  //   frame.upload(_atlas, pixels, {width, height}); // once: a byte a pixel
   //   const std::uint64_t index = frame.index(); // frames since the view loaded
   //   frame.log(VP::Level::info, "a line at the node's log level");
   //   frame.commands().send("param set name speed 0.02");
