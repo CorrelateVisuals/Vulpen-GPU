@@ -222,13 +222,15 @@ std::string fingerprint(VP::FilePort &files, const Copy &copy) {
   std::uint64_t hash = fnv_offset;
   for (const Inner *const inner : nodes) {
     const VP::Node &node = inner->node;
+    // No instance_count hashes as 0, as it did while the word took only a number, so a
+    // drop made before keeps its fingerprint.
     hash_in(hash,
             std::format("node {} {} {} {} {}",
                         inner->name,
                         node.operator_name,
                         node.invocations,
                         node.vertex_count,
-                        node.instance_count));
+                        node.instance_count.empty() ? "0" : node.instance_count));
     for (const std::string &file : node.files) {
       hash_in(hash, file);
       hash_in(hash, files.read((node.folder / file).string()));
@@ -272,7 +274,7 @@ words_of(const VP::Node &node, const std::vector<VP::Param> &params, bool set) {
   word("operator", node.operator_name);
   word("invocations", count(node.invocations));
   word("vertex_count", count(node.vertex_count));
-  word("instance_count", count(node.instance_count));
+  word("instance_count", node.instance_count);
   for (const VP::Param &param : params)
     words += sendable("param", std::format("{}={}", param.key, param.value));
   if (set && params.empty())

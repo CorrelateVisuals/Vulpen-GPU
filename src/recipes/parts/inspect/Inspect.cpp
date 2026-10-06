@@ -61,7 +61,7 @@ class Inspect final : public VP::Operator {
       call.reply(std::format("invocations = {}", node->invocations));
     if (node->vertex_count != 0)
       call.reply(std::format("vertex_count = {}", node->vertex_count));
-    if (node->instance_count != 0)
+    if (!node->instance_count.empty())
       call.reply(std::format("instance_count = {}", node->instance_count));
     for (const VP::Param &param : node->params)
       call.reply(std::format("param = {}={}", param.key, param.value));

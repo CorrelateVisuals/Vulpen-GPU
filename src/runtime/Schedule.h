@@ -86,7 +86,8 @@ private:
   void make_buffers(Schedule *replaced);
   void make_buffer(const Bound &writer,
                    const std::string &name,
-                   VkDeviceSize size,
+                   std::uint32_t elements,
+                   std::uint32_t stride,
                    Memory memory,
                    Schedule *replaced);
   void make_blocks();
@@ -106,6 +107,9 @@ private:
   std::vector<Held> _objects;
   std::vector<Bound> _bound; // in graph order
   std::map<std::string, Buffer, std::less<>> _buffers;
+  // Each buffer's used length in elements, which a draw's instance count may follow; a
+  // pass holds its address, which stays while the schedule does.
+  std::map<std::string, std::uint32_t, std::less<>> _used;
   std::vector<const Buffer *> _fresh;
   std::vector<Pass> _passes;
 };

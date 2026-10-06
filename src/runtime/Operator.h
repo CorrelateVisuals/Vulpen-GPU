@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -226,8 +227,11 @@ public:
   template <class T> Readback<T> readback(std::string_view name) {
     return {readback_index(name, element_of<T>())};
   }
-  template <class T> Upload<T> upload(std::string_view name) {
-    return {upload_index(name, element_of<T>())};
+  // One element per invocation of the node, or room for count when C++ writes more,
+  // as a draw's instances; never fewer than one per invocation, so a shader that
+  // indexes by its invocation stays inside the buffer (GLSL02).
+  template <class T> Upload<T> upload(std::string_view name, std::uint32_t count = 0) {
+    return {upload_index(name, element_of<T>(), count)};
   }
   template <class T> T param(std::string_view name) {
     const std::string_view text = param_text(name);
@@ -270,7 +274,8 @@ protected:
 private:
   virtual std::uint32_t value_offset(std::string_view name, std::string_view type) = 0;
   virtual std::uint32_t readback_index(std::string_view name, const Element &element) = 0;
-  virtual std::uint32_t upload_index(std::string_view name, const Element &element) = 0;
+  virtual std::uint32_t
+  upload_index(std::string_view name, const Element &element, std::uint32_t count) = 0;
   virtual std::string_view param_text(std::string_view name) = 0;
   virtual void param_invalid(std::string_view name, std::string_view type) = 0;
   virtual void *output_object(std::string_view port, const Kind &kind) = 0;
@@ -288,10 +293,17 @@ public:
     const std::span<const std::byte> bytes = readback_bytes(readback.index);
     return {reinterpret_cast<const T *>(bytes.data()), bytes.size() / sizeof(T)};
   }
-  // One element per invocation, zeroed when the buffer is made; what the CPU writes stays
-  // until it writes again.
+  // Every element, zeroed when the buffer is made; what the CPU writes stays until it
+  // writes again.
   template <class T> std::span<T> write(Upload<T> upload) {
-    const std::span<std::byte> bytes = upload_bytes(upload.index);
+    const std::span<std::byte> bytes = upload_bytes(upload.index, std::nullopt);
+    return {reinterpret_cast<T *>(bytes.data()), bytes.size() / sizeof(T)};
+  }
+  // The first count elements, the buffer's used length from now on: a draw whose
+  // instance_count names the buffer's port runs that many instances. Throws when
+  // the buffer holds fewer.
+  template <class T> std::span<T> write(Upload<T> upload, std::size_t count) {
+    const std::span<std::byte> bytes = upload_bytes(upload.index, count);
     return {reinterpret_cast<T *>(bytes.data()), bytes.size() / sizeof(T)};
   }
   virtual std::uint64_t index() const = 0;
@@ -306,7 +318,9 @@ protected:
 private:
   virtual std::span<std::byte> block() = 0;
   virtual std::span<const std::byte> readback_bytes(std::uint32_t index) const = 0;
-  virtual std::span<std::byte> upload_bytes(std::uint32_t index) = 0;
+  // Every element without a count, and the buffer's used length from now on.
+  virtual std::span<std::byte> upload_bytes(std::uint32_t index,
+                                            std::optional<std::size_t> count) = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the

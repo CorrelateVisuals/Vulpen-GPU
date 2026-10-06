@@ -27,8 +27,9 @@ struct Node {
   std::vector<std::string> files;
   std::uint32_t invocations = 0;  // a dispatch's threads
   std::uint32_t vertex_count = 0; // a draw's vertices per instance
-  std::uint32_t instance_count =
-      0; // a draw's instances; 0 when not given, which runs one
+  // A draw's instances: a number, or the port of the buffer whose used length counts
+  // them each frame; empty when not given, which runs one.
+  std::string instance_count;
   std::vector<Param> params;
   std::string log;
   // The file and line that last added or changed it, which its errors name; empty after

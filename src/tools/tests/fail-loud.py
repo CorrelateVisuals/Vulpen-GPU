@@ -7,8 +7,8 @@ that writes, a node inside no node, a file named by a command, a node's command 
 its help, registered twice or failing when it runs, a view that uses a library recipe
 as it is, a library recipe that uses one the library lacks, uses itself, or names a
 node the one it uses lacks, a C++ output of a type no other node can name, a C++ input
-of another type than its writer's, and a C++ struct whose members sit elsewhere than
-the shader's.
+of another type than its writer's, a C++ struct whose members sit elsewhere than the
+shader's, and C++ writing more elements than its buffer holds.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -106,6 +106,8 @@ CASES = {
                         "but give writes a vp_mistakes::Count of 8 bytes")),
     "cpp-members": (HEAD + SHAPE.replace("Shapes", "Misplaced"),
                     "shapes: member size is a float at byte 12 in C++, but a float at byte 8"),
+    "overflow": (HEAD + SHAPE.replace("Shapes", "Overflow"),
+                 "the operator writes 8 elements of shapes, which holds 4"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 

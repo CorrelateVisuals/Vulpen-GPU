@@ -16,6 +16,8 @@ struct Pass {
   std::uint32_t groups = 0;       // a dispatch's
   std::uint32_t vertex_count = 0; // a draw's, of each instance
   std::uint32_t instance_count = 1;
+  // When set, the instance count, which the CPU sets each frame as it writes a buffer.
+  const std::uint32_t *instances = nullptr;
   std::vector<VkBuffer> reads;
   std::vector<VkBuffer> writes;
 };

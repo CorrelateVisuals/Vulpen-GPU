@@ -95,6 +95,20 @@ std::string module_of(const View &view, const Node &node) {
   return std::format("{}/{}", view.name, node.module.generic_string());
 }
 
+// A draw's instances when its node gives them as a number, one when it gives none;
+// nothing when the used length of a port's buffer counts them.
+std::optional<std::uint32_t> instance_number(const Node &node) {
+  if (node.instance_count.empty())
+    return 1;
+  std::uint32_t count = 0;
+  const std::string &text = node.instance_count;
+  const auto [end, error] =
+      std::from_chars(text.data(), text.data() + text.size(), count);
+  if (error != std::errc{} || end != text.data() + text.size())
+    return std::nullopt;
+  return count;
+}
+
 std::string joined(const std::vector<std::string> &names) {
   std::string text;
   for (const std::string &name : names)
@@ -142,8 +156,16 @@ struct Schedule::Bound {
   std::set<std::string, std::less<>> read_by_operator;
   std::vector<std::string> readbacks;           // ports, by Readback<T>::index
   std::vector<const Buffer *> readback_buffers; // the same, once the buffers exist
-  std::vector<std::string> uploads;             // ports, by Upload<T>::index
-  std::vector<const Buffer *> upload_buffers;
+  // A buffer its C++ writes, by Upload<T>::index: its port, the elements C++ asked room
+  // for, and once the buffers exist, the buffer and its used length.
+  struct Written {
+    std::string port;
+    std::uint32_t count = 0; // 0 for one per invocation
+    std::uint32_t stride = 0;
+    const Buffer *buffer = nullptr;
+    std::uint32_t *used = nullptr;
+  };
+  std::vector<Written> uploads;
   std::vector<Command> commands; // registered while it bound
   std::vector<File> files;       // opened while it bound
   std::vector<std::string> outputs; // its ports that carry C++ objects to C++ nodes
@@ -160,8 +182,12 @@ struct Schedule::Bound {
     const auto found = std::ranges::find(fields, name, &Field::name);
     return found == fields.end() ? nullptr : &*found;
   }
+  const Written *upload(std::string_view port) const {
+    const auto found = std::ranges::find(uploads, port, &Written::port);
+    return found == uploads.end() ? nullptr : &*found;
+  }
   bool uploads_to(std::string_view port) const {
-    return std::ranges::find(uploads, port) != uploads.end();
+    return upload(port) != nullptr;
   }
   const Param *param(std::string_view key) const {
     const auto found = std::ranges::find(node->params, key, &Param::key);
@@ -250,7 +276,9 @@ private:
   }
 
   // Only the operator writes the buffer, so its shaders declare it readonly.
-  std::uint32_t upload_index(std::string_view name, const Element &element) override {
+  std::uint32_t upload_index(std::string_view name,
+                             const Element &element,
+                             std::uint32_t count) override {
     const Field *const field = _bound.field(name);
     if (!field || !field->buffer())
       _bound.errors.push_back(std::format(
@@ -261,7 +289,9 @@ private:
           name));
     else
       check_element(*field, "writes", element);
-    _bound.uploads.emplace_back(name);
+    _bound.uploads.push_back({.port = std::string(name),
+                              .count = count,
+                              .stride = static_cast<std::uint32_t>(element.size)});
     return static_cast<std::uint32_t>(_bound.uploads.size() - 1);
   }
 
@@ -450,8 +480,19 @@ private:
       return {};
     return buffer->bytes();
   }
-  std::span<std::byte> upload_bytes(std::uint32_t index) override {
-    return _bound.upload_buffers.at(index)->bytes();
+  std::span<std::byte> upload_bytes(std::uint32_t index,
+                                    std::optional<std::size_t> count) override {
+    const Bound::Written &upload = _bound.uploads.at(index);
+    const std::span<std::byte> bytes = upload.buffer->bytes();
+    const std::size_t holds = bytes.size() / upload.stride;
+    if (count > holds)
+      throw std::runtime_error(std::format("the operator writes {} elements of {}, which "
+                                           "holds {}; upload<T>(port, count) makes room",
+                                           *count,
+                                           upload.port,
+                                           holds));
+    *upload.used = static_cast<std::uint32_t>(count.value_or(holds));
+    return bytes.first(*upload.used * upload.stride);
   }
 
   const Schedule &_schedule;
@@ -630,7 +671,7 @@ bool Schedule::check_counts(Bound &bound) const {
                     count_stage(shaders, fragment_stage) == 1;
   const std::size_t before = bound.errors.size();
   if (shaders.empty()) {
-    if (node.invocations != 0 || node.vertex_count != 0 || node.instance_count != 0)
+    if (node.invocations != 0 || node.vertex_count != 0 || !node.instance_count.empty())
       bound.errors.emplace_back("it counts invocations or vertices, but its folder holds "
                                 "no shader to run them");
   } else if (!dispatch && !draw) {
@@ -689,9 +730,15 @@ void Schedule::check_stages(Bound &bound) const {
       if (field.buffer() && field.access != Access::read)
         bound.errors.push_back(std::format(
             "{}: a draw's shaders only read buffers; declare it readonly", field.name));
+    if (const Field *const field = bound.field(node.instance_count);
+        !instance_number(node) && (!field || !field->buffer()))
+      bound.errors.push_back(
+          std::format("instance_count = {}: its shaders hold no buffer of that name, "
+                      "whose used length would count the instances",
+                      node.instance_count));
     return;
   }
-  if (node.instance_count != 0)
+  if (!node.instance_count.empty())
     bound.errors.emplace_back(
         "instance_count counts a draw's instances; a dispatch has none");
   const std::array<std::uint32_t, 3> &size = bound.shaders.front().workgroup_size();
@@ -818,18 +865,16 @@ void Schedule::make_buffers(Schedule *replaced) {
       read_back.insert(buffer_name(bound.node->name, port));
   for (const Bound &bound : _bound)
     for (const Field &field : bound.fields) {
-      const bool uploaded = bound.uploads_to(field.name);
-      if (!field.buffer() || (!writes(field.access) && !uploaded))
+      const Bound::Written *const upload = bound.upload(field.name);
+      if (!field.buffer() || (!writes(field.access) && !upload))
         continue;
       const std::string name = buffer_name(bound.node->name, field.name);
-      const Memory memory = uploaded                   ? Memory::upload
+      const Memory memory = upload                     ? Memory::upload
                             : read_back.contains(name) ? Memory::readback
                                                        : Memory::device;
-      make_buffer(bound,
-                  name,
-                  VkDeviceSize{invocations_of(*bound.node)} * field.stride,
-                  memory,
-                  replaced);
+      const std::uint32_t elements =
+          std::max(invocations_of(*bound.node), upload ? upload->count : 0);
+      make_buffer(bound, name, elements, field.stride, memory, replaced);
     }
   const auto buffers_of = [&](const Bound &bound, const std::vector<std::string> &ports) {
     std::vector<const Buffer *> buffers;
@@ -841,18 +886,26 @@ void Schedule::make_buffers(Schedule *replaced) {
   };
   for (Bound &bound : _bound) {
     bound.readback_buffers = buffers_of(bound, bound.readbacks);
-    bound.upload_buffers = buffers_of(bound, bound.uploads);
+    for (Bound::Written &upload : bound.uploads) {
+      const std::string name = buffer_name(bound.node->name, upload.port);
+      const auto found = _buffers.find(name);
+      upload.buffer = found == _buffers.end() ? nullptr : &found->second;
+      upload.used = &_used[name];
+    }
   }
 }
 
 // The node that writes the buffer speaks for it, at that node's log level (V09).
 void Schedule::make_buffer(const Bound &writer,
                            const std::string &name,
-                           VkDeviceSize size,
+                           std::uint32_t elements,
+                           std::uint32_t stride,
                            Memory memory,
                            Schedule *replaced) {
   if (_buffers.contains(name))
     return;
+  const VkDeviceSize size = VkDeviceSize{elements} * stride;
+  _used[name] = elements; // until C++ writes fewer
   if (replaced) {
     auto kept = replaced->_buffers.extract(name);
     if (kept && kept.mapped().size() == size && kept.mapped().memory() == memory) {
@@ -860,6 +913,8 @@ void Schedule::make_buffer(const Bound &writer,
       if (std::ranges::find(replaced->_fresh, &kept.mapped()) != replaced->_fresh.end())
         _fresh.push_back(&kept.mapped());
       _buffers.insert(std::move(kept));
+      if (const auto used = replaced->_used.find(name); used != replaced->_used.end())
+        _used[name] = used->second;
       log(Level::debug, Tag::mem, writer, "keeps " + name + " and what it holds");
       return;
     }
@@ -920,7 +975,10 @@ void Schedule::make_passes() {
                              : bound.node->invocations /
                                    bound.shaders.front().workgroup_size()[0],
               .vertex_count = draw ? bound.node->vertex_count : 0,
-              .instance_count = std::max(bound.node->instance_count, 1u)};
+              .instance_count = instance_number(*bound.node).value_or(0)};
+    if (draw && !instance_number(*bound.node))
+      pass.instances =
+          &_used.at(buffer_name(bound.node->name, bound.node->instance_count));
     for (const Field &field : bound.fields) {
       if (!field.buffer())
         continue;
@@ -984,8 +1042,8 @@ void Schedule::cook(std::uint64_t frame) {
     }
     if (bound.block)
       bound.block->flush();
-    for (const Buffer *const buffer : bound.upload_buffers)
-      buffer->flush();
+    for (const Bound::Written &upload : bound.uploads)
+      upload.buffer->flush();
   }
 }
 

@@ -121,6 +121,18 @@ void set_count(std::uint32_t &slot,
     throw std::runtime_error(std::format("{} is at least 1; leave it out {}", key, none));
 }
 
+// A draw's instances: a number of at least 1, or the port of a buffer its shaders read,
+// whose used length counts them each frame.
+void set_instances(std::string &slot, std::string_view value) {
+  const bool number = value.front() >= '0' && value.front() <= '9';
+  if (number && whole_number(value) == 0)
+    throw std::runtime_error("instance_count is at least 1; leave it out for one");
+  if (!number && !is_name(value))
+    throw std::runtime_error(std::format(
+        "instance_count {}: a number, or the port of a buffer that counts them", value));
+  set_once(slot, "instance_count", value);
+}
+
 // A recipe of the library by its name, and for a drop's copy an @ and the fingerprint
 // of what it copied, in hex.
 bool is_recipe(std::string_view text) {
@@ -170,7 +182,7 @@ void add_param(Node &node, std::string_view value) {
 void check_whole(const Node &node) {
   if (node.uses()) {
     if (!node.operator_name.empty() || !node.files.empty() || node.invocations != 0 ||
-        node.vertex_count != 0 || node.instance_count != 0)
+        node.vertex_count != 0 || !node.instance_count.empty())
       throw std::runtime_error(
           std::format("node {} uses recipe {} as it is, whose node gives it those words: "
                       "only param and log go with it",
@@ -190,7 +202,7 @@ void check_whole(const Node &node) {
         std::format("node {} counts invocations and vertex_count: a dispatch counts its "
                     "invocations, and a draw its vertex_count",
                     node.name));
-  if (node.invocations != 0 && node.instance_count != 0)
+  if (node.invocations != 0 && !node.instance_count.empty())
     throw std::runtime_error(
         "instance_count counts a draw's instances; a dispatch has none");
 }
@@ -319,7 +331,7 @@ void clear(Node &node, std::string_view key) {
   else if (key == "vertex_count")
     node.vertex_count = 0;
   else if (key == "instance_count")
-    node.instance_count = 0;
+    node.instance_count.clear();
   else if (key == "param")
     node.params.clear();
   else if (key == "log")
@@ -501,7 +513,7 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
   } else if (key == "vertex_count") {
     set_count(node.vertex_count, key, value, "on a node with no .vert");
   } else if (key == "instance_count") {
-    set_count(node.instance_count, key, value, "for one");
+    set_instances(node.instance_count, value);
   } else if (key == "param") {
     add_param(node, value);
   } else {

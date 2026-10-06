@@ -25,7 +25,7 @@ class Name final : public VP::Operator {
   // At load, and again after every swap: names in, handles out.
   // void bind(VP::Bind &node) override {
   //   _scale = node.value<float>("scale");
-  //   _points = node.upload<glm::vec2>("points");
+  //   _points = node.upload<glm::vec2>("points"); // or ("points", count): room for more
   //   _samples = node.readback<float>("samples");
   //   _speed = node.param<float>("speed");
   //   _rects = &node.output<VP_VIEW::Rects>("rects"); // with #include "contracts/Rect.h"
