@@ -1,0 +1,180 @@
+#include "runtime/Bound.h"
+
+#include <algorithm>
+#include <format>
+
+namespace VP {
+
+namespace {
+
+std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
+                           std::string_view stage) {
+  return std::ranges::count_if(
+      shaders, [&](const std::string &shader) { return shader.ends_with(stage); });
+}
+
+} // namespace
+
+// What the node's shaders make it, and whether it counts what that runs: a dispatch
+// its invocations, a draw its vertex_count. False when a mistake leaves nothing to run.
+bool Schedule::check_counts(Bound &bound) const {
+  const Node &node = *bound.node;
+  const std::vector<std::string> &shaders = bound.shaders_named;
+  const bool dispatch = shaders.size() == 1 && count_stage(shaders, compute_stage) == 1;
+  const bool draw = shaders.size() == 2 && count_stage(shaders, vertex_stage) == 1 &&
+                    count_stage(shaders, fragment_stage) == 1;
+  const std::size_t before = bound.errors.size();
+  if (shaders.empty()) {
+    if (node.invocations != 0 || node.vertex_count != 0 || !node.instance_count.empty())
+      bound.errors.emplace_back("it counts invocations or vertices, but its folder holds "
+                                "no shader to run them");
+  } else if (!dispatch && !draw) {
+    bound.errors.push_back(std::format("its folder holds the shaders {}, but a node runs "
+                                       "one .comp, or one .vert and one .frag",
+                                       joined(shaders)));
+  } else if (dispatch && (node.vertex_count != 0 || node.invocations == 0)) {
+    bound.errors.emplace_back(
+        "it runs a .comp, so it counts its invocations, and no vertex_count");
+  } else if (draw && (node.invocations != 0 || node.vertex_count == 0)) {
+    bound.errors.emplace_back(
+        "it draws, so it counts its vertex_count, and no invocations");
+  }
+  return !shaders.empty() && bound.errors.size() == before;
+}
+
+// A draw's shaders only read buffers: storing from them needs features beyond the
+// Vulkan floor (RVK01).
+void Schedule::check_stages(Bound &bound) const {
+  const Node &node = *bound.node;
+  if (is_draw(node)) {
+    for (const Field &field : bound.fields)
+      if (field.buffer() && field.access != Access::read)
+        bound.errors.push_back(std::format(
+            "{}: a draw's shaders only read buffers; declare it readonly", field.name));
+    if (const Field *const field = bound.field(node.instance_count);
+        !instance_number(node) && (!field || !field->buffer()))
+      bound.errors.push_back(
+          std::format("instance_count = {}: its shaders hold no buffer of that name, "
+                      "whose used length would count the instances",
+                      node.instance_count));
+    return;
+  }
+  if (!node.instance_count.empty())
+    bound.errors.emplace_back(
+        "instance_count counts a draw's instances; a dispatch has none");
+  const std::array<std::uint32_t, 3> &size = bound.shaders.front().workgroup_size();
+  if (size[1] != 1 || size[2] != 1)
+    bound.errors.push_back("only one-dimensional workgroups run yet: local_size_y and "
+                           "local_size_z must be 1");
+  else if (node.invocations % size[0] != 0)
+    bound.errors.push_back(
+        std::format("invocations = {} is not a multiple of local_size_x = {}",
+                    node.invocations,
+                    size[0]));
+}
+
+// Every param is read by someone, and every value in the pass block is set by someone.
+// Without its operator, a node cannot say what the operator would have read or set.
+void Schedule::check_fields(Bound &bound) const {
+  if (!bound.node->operator_name.empty() && !bound.op)
+    return;
+  for (const Param &param : bound.node->params) {
+    const Field *const field = bound.field(param.key);
+    if (field && !field->buffer()) {
+      if (bound.set_by_operator.contains(param.key))
+        bound.errors.push_back(
+            std::format("{} is set both by a param and by the operator", param.key));
+      else if (!write_value(param.value, field->type, nullptr))
+        bound.errors.push_back(std::format(
+            "param {} = {} is not a {}", param.key, param.value, field->type));
+    } else if (!bound.read_by_operator.contains(param.key)) {
+      bound.errors.push_back(std::format("param {}: nothing reads it", param.key));
+    }
+  }
+  for (const Field &field : bound.fields)
+    if (!field.buffer() && !bound.param(field.name) &&
+        !bound.set_by_operator.contains(field.name))
+      bound.errors.push_back(std::format("{} in the pass block: nothing sets it; give "
+                                         "the node a param {} or set it from "
+                                         "the operator",
+                                         field.name,
+                                         field.name));
+}
+
+void Schedule::check_connections() {
+  for (const Connection &connection : _view.connections) {
+    Bound &writer = *find(connection.from.node);
+    if (std::ranges::find(writer.outputs, connection.from.port) != writer.outputs.end()) {
+      check_inputs(connection);
+      continue;
+    }
+    const Field *const out = writer.field(connection.from.port);
+    const bool written = out && out->buffer() &&
+                         (writes(out->access) || writer.uploads_to(connection.from.port));
+    if (writer.loaded() && !written)
+      writer.errors.push_back(
+          std::format("connection {}: {} is not a buffer its shader or operator writes",
+                      connection.name,
+                      connection.from.port));
+    for (const Endpoint &to : connection.to) {
+      Bound &reader = *find(to.node);
+      const Field *const in = reader.field(to.port);
+      if (!reader.loaded())
+        continue;
+      if (!written)
+        reader.errors.push_back(
+            std::format("connection {}: nothing writes it", connection.name));
+      else if (!in || !in->buffer() || !reads(in->access))
+        reader.errors.push_back(
+            std::format("connection {}: {} is not a buffer its shader reads",
+                        connection.name,
+                        to.port));
+      else if (in->stride != out->stride || in->type != out->type)
+        reader.errors.push_back(
+            std::format("connection {}: {} writes {}-byte {}, {} reads "
+                        "{}-byte {}",
+                        connection.name,
+                        connection.from.node,
+                        out->stride,
+                        out->type,
+                        to.port,
+                        in->stride,
+                        in->type));
+    }
+  }
+  for (Bound &bound : _bound)
+    for (const Field &field : bound.fields) {
+      if (!field.buffer() || field.access != Access::read)
+        continue;
+      const Connection *const connection = connection_of(bound.node->name, field.name);
+      const bool uploaded = bound.uploads_to(field.name);
+      if (!connection && !uploaded)
+        bound.errors.push_back(
+            std::format("{} reads nothing: connect it to a buffer another node writes, "
+                        "or write it from the operator",
+                        field.name));
+      else if (connection && uploaded && connection->from.node != bound.node->name)
+        bound.errors.push_back(
+            std::format("{} is written both by the operator and through connection {}",
+                        field.name,
+                        connection->name));
+    }
+}
+
+// A connection from a C++ output reaches only nodes whose operator reads it as an input.
+// A node whose operator did not load says why on its own.
+void Schedule::check_inputs(const Connection &connection) {
+  for (const Endpoint &to : connection.to) {
+    Bound &reader = *find(to.node);
+    const bool unbound = !reader.op && !reader.node->operator_name.empty();
+    if (!unbound && std::ranges::find(reader.inputs, to.port) == reader.inputs.end())
+      reader.errors.push_back(
+          std::format("connection {}: {} writes a C++ object, which {} does not read as "
+                      "an input",
+                      connection.name,
+                      connection.from.node,
+                      to.port));
+  }
+}
+
+} // namespace VP

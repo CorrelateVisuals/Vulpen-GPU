@@ -37,6 +37,8 @@ add_executable(vulpen
   src/baseclasses/Platform.cpp
   src/baseclasses/Resources.cpp
   src/baseclasses/Swapchain.cpp
+  src/runtime/Binder.cpp
+  src/runtime/Checks.cpp
   src/runtime/Commands.cpp
   src/runtime/Edits.cpp
   src/runtime/Manifest.cpp

@@ -70,6 +70,8 @@ public:
   const std::vector<Pass> &passes() const;
 
 private:
+  // Bound and Held are in runtime/Bound.h, and Binder and Cooker in runtime/Binder.cpp,
+  // so this header includes none of what they hold (CPP13).
   struct Bound;
   struct Held;
   class Binder;
