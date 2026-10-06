@@ -40,6 +40,22 @@ file        = Frame.comp
 file        = Frame.cpp
 invocations = 4
 
+# Hands take the frame it cooks in, through a connection between C++ nodes; its C++
+# also registers an operator whose output no other node can name.
+[node "give"]
+operator = Give
+file     = Give.cpp
+
+# Stops unless what give handed it was written that frame; its C++ also registers an
+# operator that reads it as another type.
+[node "take"]
+operator = Take
+file     = Take.cpp
+
 [connection "values"]
 from = fill.values
 to   = sum.values
+
+[connection "count"]
+from = give.count
+to   = take.count

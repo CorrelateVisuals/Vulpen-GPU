@@ -5,14 +5,16 @@ cut short, C++ and a shader that disagree on a name or a type, a connection whos
 disagree, a dispatch that leaves a workgroup part full or counts no invocations, a draw
 that writes, a node inside no node, a file named by a command, a node's command without
 its help, registered twice or failing when it runs, a view that uses a library recipe
-as it is, and a library recipe that uses one the library lacks, uses itself, or names a
-node the one it uses lacks.
+as it is, a library recipe that uses one the library lacks, uses itself, or names a
+node the one it uses lacks, a C++ output of a type no other node can name, and a C++
+input of another type than its writer's.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
 its cause and the next line still runs, and the run ends with its input. A pass reads the
-frame block as the engine wrote it, each value where reflection put it. A view's child
-views run, and leave and come back by edits that save the manifest unchanged. And a drop
+frame block as the engine wrote it, each value where reflection put it. A C++ connection
+hands its reader what its writer wrote that frame. A view's child views run, and leave
+and come back by edits that save the manifest unchanged. And a drop
 copies a recipe whose sync brings it up to the library's while it is unchanged, keeping
 the params the view set, and refuses once the view changed the copy; a sync of a copy of
 recipes that use others takes out the nodes, files and folders the library let go, and
@@ -37,6 +39,8 @@ FILL = '[node "fill"]\ninvocations = 64\nparam = amount=1\n'
 PAIRS = '[node "pairs"]\ninvocations = 64\n'
 SUM = '[node "sum"]\ninvocations = 64\n'
 DRAW = '[node "draw"]\nvertex_count = 3\n'
+GIVE = '[node "give"]\noperator = Give\n'
+TAKE = '[node "take"]\noperator = Take\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
 NODE = re.compile(r'^\[node "([^".]+)', re.MULTILINE)
@@ -91,6 +95,12 @@ CASES = {
                       "refuse\n"),
     "uses-in-view": (HEAD + '[node "x"]\nrecipe = fill\n',
                      "node x uses recipe fill as it is, as only the library's own recipes do"),
+    "cpp-unnamed": (HEAD + GIVE.replace("Give", "Secret"),
+                    "output count is a (anonymous namespace)::Hidden, in an unnamed namespace"),
+    "cpp-input-type": (HEAD + GIVE + TAKE.replace("Take", "Mistyped")
+                       + connection("count", "give.count", "take.count"),
+                       ("input count is a std::vector<int",
+                        "but give writes a vp_mistakes::Count of 8 bytes")),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -228,6 +238,17 @@ def frame_block(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def cpp_connection(vulpen: str, folder: Path) -> str | None:
+    """Why a C++ connection did not hand its reader the object its writer wrote that
+    frame, or None; the reader stops when it differs."""
+    view = view_in(folder, "cpp", HEAD + GIVE + TAKE + connection("count", "give.count",
+                                                                "take.count"))
+    code, output = run(vulpen, [view, "--frames", 3, "--fps", 0])
+    if code != 0 or problems(output):
+        return f"cpp: expected take to read what give wrote that frame, got exit {code}:\n{output}"
+    return None
+
+
 def children(vulpen: str, folder: Path) -> str | None:
     """Why a view's child view did not run, or did not leave and come back by edits that
     save the manifest as it was, or None."""
@@ -319,7 +340,8 @@ def main() -> None:
                       if (problem := check(vulpen, folder, name, text, cause, *script))]
             failed += recipes(vulpen, folder)
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
-                            frame_block(vulpen, folder), children(vulpen, folder),
+                            frame_block(vulpen, folder), cpp_connection(vulpen, folder),
+                            children(vulpen, folder),
                             drops(vulpen, folder)):
                 if problem:
                     failed.append(problem)

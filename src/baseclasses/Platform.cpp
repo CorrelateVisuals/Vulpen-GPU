@@ -8,6 +8,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #else
+#include <cxxabi.h>
 #include <dlfcn.h>
 #include <poll.h>
 #include <unistd.h>
@@ -19,6 +20,7 @@
 #include <cstdlib>
 #include <format>
 #include <fstream>
+#include <memory>
 #include <stdexcept>
 #include <string_view>
 #include <system_error>
@@ -75,6 +77,11 @@ std::tm local_time(std::time_t time) {
   std::tm local{};
   localtime_s(&local, &time);
   return local;
+}
+
+// MSVC's typeid already spells a type as code does.
+std::string type_name(const char *name) {
+  return name;
 }
 
 // A pipe, or a file, which never makes a read wait. A console types nothing yet: reading
@@ -155,6 +162,14 @@ std::tm local_time(std::time_t time) {
   std::tm local{};
   localtime_r(&time, &local);
   return local;
+}
+
+// GCC and Clang name a type as the linker does, which the C++ ABI spells out again.
+std::string type_name(const char *name) {
+  int status = 0;
+  const std::unique_ptr<char, decltype(&std::free)> spelled(
+      abi::__cxa_demangle(name, nullptr, nullptr, &status), &std::free);
+  return status == 0 ? spelled.get() : name;
 }
 
 // A read after poll found input never waits; one that finds the end returns nothing.

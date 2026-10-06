@@ -15,13 +15,15 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <typeinfo>
 #include <vector>
 
 // The runtime header every node's C++ includes: a node's behaviour and the general
 // ports (commands, input, files, the terminal). Nothing here reaches Vulkan or the OS.
 //
-// A node's C++ gets names in and handles out, never an object that owns the GPU, so its
-// module needs no engine symbol and links the same way into a release binary.
+// A node's C++ gets names in and handles out, never an object that owns the GPU, so a
+// swap never leaves it holding one that is gone. Between C++ nodes, objects pass by
+// reference (docs/plans/native-cpp.md).
 
 namespace VP {
 
@@ -78,6 +80,27 @@ struct File {
 // One member of a struct a buffer holds. C++ names each member once and the loader
 // checks it against the shader, so a C++ struct cannot drift from its contract.
 struct Member {};
+
+// A C++ object of a type the engine never names, destroyed by the code that made it.
+using Object = std::unique_ptr<void, void (*)(void *)>;
+
+// What a connection between C++ nodes carries: the type, which both ends must name
+// alike, and how to make one in the code of the module that asks, so the object's
+// destructor goes with that module (docs/plans/native-cpp.md, rule 2).
+struct Kind {
+  const char *type = nullptr; // as typeid names it
+  std::size_t size = 0;
+  std::size_t align = 0;
+  Object (*make)() = nullptr;
+};
+
+template <class T> Kind kind_of() {
+  return {typeid(T).name(), sizeof(T), alignof(T), [] {
+            return Object(std::make_unique<T>().release(), [](void *object) {
+              std::default_delete<T>()(static_cast<T *>(object));
+            });
+          }};
+}
 
 // A registered command as help shows it: its words and placeholders, and what it does.
 struct Usage {
@@ -182,6 +205,17 @@ public:
       param_invalid(name, glsl_type<T>);
     return value;
   }
+  // The object a connection carries from this node to C++ nodes: one per connection,
+  // which the engine owns (A01) and keeps, contents included, while this node's module
+  // stays. The reference lasts until the next bind.
+  template <class T> T &output(std::string_view port) {
+    return *static_cast<T *>(output_object(port, kind_of<T>()));
+  }
+  // The object the node that writes the connection hands this one: const, since only
+  // the writer changes it, and written before this node cooks.
+  template <class T> const T &input(std::string_view port) {
+    return *static_cast<const T *>(input_object(port, kind_of<T>()));
+  }
   // A command the node answers in its command hook, registered with its usage and help
   // (RV04). It lasts while the node runs: a rebuild registers it again, and a node that
   // goes, or stops in error, takes it along.
@@ -206,6 +240,8 @@ private:
                                      std::string_view type) = 0;
   virtual std::string_view param_text(std::string_view name) = 0;
   virtual void param_invalid(std::string_view name, std::string_view type) = 0;
+  virtual void *output_object(std::string_view port, const Kind &kind) = 0;
+  virtual const void *input_object(std::string_view port, const Kind &kind) = 0;
 };
 
 // What a node's C++ gets every frame, before the GPU runs the node's pass.

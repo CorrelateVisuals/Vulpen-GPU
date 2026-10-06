@@ -12,6 +12,8 @@ class Name final : public VP::Operator {
   // VP::Upload<glm::vec2> _points; // a buffer C++ writes and the shader reads
   // VP::Readback<float> _samples;  // a buffer the shader writes, read a frame later
   // float _speed = 0;              // a param
+  // VP_VIEW::Rects *_rects{};      // an object it hands C++ nodes
+  // const VP_VIEW::Rects *_hit{};  // an object a C++ node hands it
   // VP::Texture _atlas;            // an image C++ fills once
   // VP::Command _reset;            // a command the node answers
   // VP::File _settings;            // a file the node reads, watches and saves

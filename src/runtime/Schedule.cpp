@@ -5,6 +5,7 @@
 
 #include "baseclasses/Passes.h"
 #include "baseclasses/Pipelines.h"
+#include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
 #include "runtime/Modules.h"
 #include "runtime/Operator.h"
@@ -145,6 +146,11 @@ struct Schedule::Bound {
   std::vector<const Buffer *> upload_buffers;
   std::vector<Command> commands; // registered while it bound
   std::vector<File> files;       // opened while it bound
+  std::vector<std::string> outputs; // its ports that carry C++ objects to C++ nodes
+  std::vector<std::string> inputs;  // and that read them
+  // An object for each input nothing gives it, so its reference holds while it is in
+  // error; made by its module, so it goes with it.
+  std::vector<Object> stand_ins;
   std::vector<std::string> errors;
 
   bool loaded() const {
@@ -163,12 +169,28 @@ struct Schedule::Bound {
   }
 };
 
+// The object a connection between C++ nodes carries (native C++). Its writer's module
+// makes and destroys it, so it goes when a swap rewrites that module (rule 2).
+struct Schedule::Held {
+  std::string name;   // the connection's, or the writer's node.port while unconnected
+  std::string module; // the writer's, as "view/folder"
+  std::string type;   // as typeid names it
+  std::size_t size = 0;
+  std::size_t align = 0;
+  Object object;
+
+  bool holds(const Kind &kind) const {
+    return type == kind.type && size == kind.size && align == kind.align;
+  }
+};
+
 // Resolves an operator's names against its node while it binds. A name that does not
 // fit becomes one of the node's errors, and the operator gets a harmless handle.
 class Schedule::Binder final : public Bind {
 public:
-  Binder(Bound &bound, Commands &commands, Ports &ports)
-      : _bound(bound), _commands(commands), _ports(ports) {}
+  Binder(Schedule &schedule, Bound &bound, Schedule *replaced)
+      : _schedule(schedule), _bound(bound), _replaced(replaced),
+        _commands(schedule._wiring.commands), _ports(schedule._wiring.ports) {}
 
   Command command(std::string_view usage, std::string_view help) override {
     try {
@@ -274,7 +296,95 @@ private:
           std::format("param {} = {} is not a {}", name, param->value, type));
   }
 
+  // The writer binds before its readers, so the object exists before any reads it. One
+  // from the schedule replaced stays, contents included, while its module does.
+  void *output_object(std::string_view port, const Kind &kind) override {
+    if (!cpp_port(port, "output"))
+      return stand_in(kind);
+    if (type_name(kind.type).find("anonymous namespace") != std::string::npos) {
+      _bound.errors.push_back(
+          std::format("output {} is a {}, in an unnamed namespace, which no other node "
+                      "can name; give it a contract (RV05)",
+                      port,
+                      type_name(kind.type)));
+      return stand_in(kind);
+    }
+    _bound.outputs.emplace_back(port);
+    const std::string name = _schedule.buffer_name(_bound.node->name, port);
+    const std::string module = module_of(_schedule._view, *_bound.node);
+    if (const Held *const held = _schedule.held(name)) {
+      if (held->holds(kind))
+        return held->object.get();
+      _bound.errors.push_back(std::format("output {} is asked for as two types", port));
+      return stand_in(kind);
+    }
+    if (_replaced) {
+      std::vector<Held> &old = _replaced->_objects;
+      const auto kept = std::ranges::find_if(old, [&](const Held &held) {
+        return held.name == name && held.module == module && held.holds(kind);
+      });
+      if (kept != old.end()) {
+        Held &taken = _schedule._objects.emplace_back(std::move(*kept));
+        old.erase(kept);
+        return taken.object.get();
+      }
+    }
+    return _schedule._objects
+        .emplace_back(Held{.name = name,
+                           .module = module,
+                           .type = kind.type,
+                           .size = kind.size,
+                           .align = kind.align,
+                           .object = kind.make()})
+        .object.get();
+  }
+
+  const void *input_object(std::string_view port, const Kind &kind) override {
+    if (!cpp_port(port, "input"))
+      return stand_in(kind);
+    _bound.inputs.emplace_back(port);
+    const Connection *const connection = _schedule.connection_of(_bound.node->name, port);
+    const Held *const held = connection ? _schedule.held(connection->name) : nullptr;
+    if (!connection)
+      _bound.errors.push_back(
+          std::format("the operator reads {}, which no connection reaches: connect "
+                      "another node's output to it",
+                      port));
+    else if (!held)
+      _bound.errors.push_back(std::format("connection {}: {} gives no C++ output {}",
+                                          connection->name,
+                                          connection->from.node,
+                                          connection->from.port));
+    else if (!held->holds(kind))
+      _bound.errors.push_back(
+          std::format("input {} is a {} of {} bytes, but {} writes a {} of {} bytes",
+                      port,
+                      type_name(kind.type),
+                      kind.size,
+                      connection->from.node,
+                      type_name(held->type.c_str()),
+                      held->size));
+    else
+      return held->object.get();
+    return stand_in(kind);
+  }
+
+  // A port is a buffer of the node's shaders or a C++ object, never both.
+  bool cpp_port(std::string_view port, std::string_view what) {
+    if (!_bound.field(port))
+      return true;
+    _bound.errors.push_back(
+        std::format("{} is in its shader's pass block, so it is no C++ {}", port, what));
+    return false;
+  }
+
+  void *stand_in(const Kind &kind) {
+    return _bound.stand_ins.emplace_back(kind.make()).get();
+  }
+
+  Schedule &_schedule;
   Bound &_bound;
+  Schedule *const _replaced;
   Commands &_commands;
   Ports &_ports;
 };
@@ -432,7 +542,7 @@ Schedule::Bound Schedule::bind(const Node &node,
     }
   }
   if (bound.op) {
-    Binder binder(bound, _wiring.commands, _wiring.ports);
+    Binder binder(*this, bound, replaced);
     try {
       bound.op->bind(binder);
     } catch (const std::exception &failure) {
@@ -596,6 +706,10 @@ void Schedule::check_fields(Bound &bound) const {
 void Schedule::check_connections() {
   for (const Connection &connection : _view.connections) {
     Bound &writer = *find(connection.from.node);
+    if (std::ranges::find(writer.outputs, connection.from.port) != writer.outputs.end()) {
+      check_inputs(connection);
+      continue;
+    }
     const Field *const out = writer.field(connection.from.port);
     const bool written = out && out->buffer() &&
                          (writes(out->access) || writer.uploads_to(connection.from.port));
@@ -647,6 +761,22 @@ void Schedule::check_connections() {
                         field.name,
                         connection->name));
     }
+}
+
+// A connection from a C++ output reaches only nodes whose operator reads it as an input.
+// A node whose operator did not load says why on its own.
+void Schedule::check_inputs(const Connection &connection) {
+  for (const Endpoint &to : connection.to) {
+    Bound &reader = *find(to.node);
+    const bool unbound = !reader.op && !reader.node->operator_name.empty();
+    if (!unbound && std::ranges::find(reader.inputs, to.port) == reader.inputs.end())
+      reader.errors.push_back(
+          std::format("connection {}: {} writes a C++ object, which {} does not read as "
+                      "an input",
+                      connection.name,
+                      connection.from.node,
+                      to.port));
+  }
 }
 
 // One buffer per written port, shared through its connection. A buffer the CPU writes
@@ -781,11 +911,26 @@ bool Schedule::ok() const {
 }
 
 void Schedule::drop_operators(const std::vector<std::string> &modules) {
+  const auto going = [&](const std::string &module) {
+    return std::ranges::find(modules, module) != modules.end();
+  };
   for (Bound &bound : _bound)
-    if (std::ranges::find(modules, module_of(_view, *bound.node)) != modules.end()) {
+    if (going(module_of(_view, *bound.node))) {
       drop_commands(bound);
       bound.op.reset();
+      bound.stand_ins.clear();
     }
+  // An object's destructor is code of the module that made it; the writer makes it
+  // again as it binds (native C++, rule 2).
+  std::erase_if(_objects, [&](const Held &held) {
+    if (!going(held.module))
+      return false;
+    _wiring.log.write(
+        Level::info,
+        Tag::mod,
+        std::format("{} swapped; connection {} starts empty", held.module, held.name));
+    return true;
+  });
 }
 
 void Schedule::cook(std::uint64_t frame) {
@@ -844,6 +989,11 @@ void Schedule::log(Level level,
                    const Bound &bound,
                    std::string_view text) const {
   _wiring.log.write(level, bound.log, tag, bound.node->name, text);
+}
+
+const Schedule::Held *Schedule::held(std::string_view name) const {
+  const auto found = std::ranges::find(_objects, name, &Held::name);
+  return found == _objects.end() ? nullptr : &*found;
 }
 
 Schedule::Bound *Schedule::find(std::string_view node) {

@@ -21,7 +21,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Passes.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Pipelines.cpp` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` |
 | `baseclasses/Pipelines.h` | `baseclasses/Resources.h` |
-| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<dlfcn.h>` `<poll.h>` `<time.h>` `<unistd.h>` `<windows.h>` `baseclasses/Platform.h` |
+| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<cxxabi.h>` `<dlfcn.h>` `<poll.h>` `<time.h>` `<unistd.h>` `<windows.h>` `baseclasses/Platform.h` |
 | `baseclasses/Platform.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
 | `baseclasses/Resources.h` | `<vulkan/vulkan.h>` |
@@ -41,7 +41,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Ports.h` | `runtime/Operator.h` |
 | `runtime/Runtime.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Edits.h` `runtime/Manifest.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Runtime.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |
 | `runtime/Runtime.h` | — |
-| `runtime/Schedule.cpp` | `baseclasses/Passes.h` `baseclasses/Pipelines.h` `runtime/Commands.h` `runtime/Modules.h` `runtime/Operator.h` `runtime/Ports.h` `runtime/Schedule.h` `runtime/View.h` |
+| `runtime/Schedule.cpp` | `baseclasses/Passes.h` `baseclasses/Pipelines.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Modules.h` `runtime/Operator.h` `runtime/Ports.h` `runtime/Schedule.h` `runtime/View.h` |
 | `runtime/Schedule.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Resources.h` |
 | `runtime/View.h` | — |
 | `runtime/Views.cpp` | `runtime/Commands.h` `runtime/Manifest.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |

@@ -7,6 +7,8 @@ namespace {
 //   _points = node.upload<glm::vec2>("points");
 //   _samples = node.readback<float>("samples");
 //   _speed = node.param<float>("speed");
+//   _rects = &node.output<VP_VIEW::Rects>("rects"); // with #include "contracts/Rect.h"
+//   _hit = &node.input<VP_VIEW::Rects>("hit");
 //   _atlas = node.texture("atlas");
 //   _reset = node.command("reset", "turns the node back to its start");
 //   _settings = node.file("settings.ini"); // in the node's folder

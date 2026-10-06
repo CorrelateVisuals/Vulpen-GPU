@@ -28,6 +28,9 @@ public:
 // The wall clock in the machine's time zone, for the people who read the log.
 std::tm local_time(std::time_t time);
 
+// A C++ type as code spells it, from the name typeid gives it, so an error can name it.
+std::string type_name(const char *name);
+
 // Machine code loaded while running. Only a dev build loads node C++ this way; a
 // release build links the same code in.
 class Library {

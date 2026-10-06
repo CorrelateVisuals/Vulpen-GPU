@@ -8,6 +8,8 @@ class Name final : public VP::Operator {
   // VP::Upload<glm::vec2> _points; // a buffer C++ writes and the shader reads
   // VP::Readback<float> _samples;  // a buffer the shader writes, read a frame later
   // float _speed = 0;              // a param
+  // VP_VIEW::Rects *_rects{};      // an object it hands C++ nodes
+  // const VP_VIEW::Rects *_hit{};  // an object a C++ node hands it
   // VP::Texture _atlas;            // an image C++ fills once
   // VP::Command _reset;            // a command the node answers
   // VP::File _settings;            // a file the node reads, watches and saves
@@ -19,6 +21,8 @@ class Name final : public VP::Operator {
   //   _points = node.upload<glm::vec2>("points");
   //   _samples = node.readback<float>("samples");
   //   _speed = node.param<float>("speed");
+  //   _rects = &node.output<VP_VIEW::Rects>("rects"); // with #include "contracts/Rect.h"
+  //   _hit = &node.input<VP_VIEW::Rects>("hit");
   //   _atlas = node.texture("atlas");
   //   _reset = node.command("reset", "turns the node back to its start");
   //   _settings = node.file("settings.ini"); // in the node's folder

@@ -59,8 +59,8 @@ public:
   Schedule &operator=(const Schedule &) = delete;
 
   bool ok() const;
-  // Before a module swap: the operators' code is about to go, so they go first, and
-  // their commands with them. modules: as "view/folder".
+  // Before a module swap: the operators' code is about to go, so they go first, with
+  // their commands and the C++ objects their modules made. modules: as "view/folder".
   void drop_operators(const std::vector<std::string> &modules);
   void cook(std::uint64_t frame);
   // The buffers made since the last call, which the next frame zeroes first.
@@ -69,6 +69,7 @@ public:
 
 private:
   struct Bound;
+  struct Held;
   class Binder;
   class Cooker;
 
@@ -79,6 +80,7 @@ private:
   void check_stages(Bound &bound) const;
   void check_fields(Bound &bound) const;
   void check_connections();
+  void check_inputs(const Connection &connection);
   void make_buffers(Schedule *replaced);
   void make_buffer(const Bound &writer,
                    const std::string &name,
@@ -91,11 +93,15 @@ private:
   void close_files(Bound &bound);
   void log(Level level, Tag tag, const Bound &bound, std::string_view text) const;
   Bound *find(std::string_view node);
+  const Held *held(std::string_view name) const;
   const Connection *connection_of(std::string_view node, std::string_view port) const;
   std::string buffer_name(std::string_view node, std::string_view port) const;
 
   const Wiring _wiring;
   const View &_view;
+  // What connections between C++ nodes carry, which outlives the operators that hold
+  // references to it.
+  std::vector<Held> _objects;
   std::vector<Bound> _bound; // in graph order
   std::map<std::string, Buffer, std::less<>> _buffers;
   std::vector<const Buffer *> _fresh;
