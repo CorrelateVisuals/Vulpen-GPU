@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <optional>
 #include <set>
@@ -109,6 +110,63 @@ inline const PixelFormat *pixel_format(std::string_view name) {
   return found == pixel_formats.end() ? nullptr : &*found;
 }
 
+// A buffer's element as C++ writes or reads it, described as reflection describes the
+// shader's: its size as the stride, its GLSL type, or a struct's members.
+inline Field element_field(std::string_view port, const Element &element) {
+  Field field{.name = std::string(port),
+              .type = std::string(element.type),
+              .stride = static_cast<std::uint32_t>(element.size)};
+  for (const Member &member : element.members)
+    field.members.push_back({.name = std::string(member.name),
+                             .type = std::string(member.type),
+                             .offset = static_cast<std::uint32_t>(member.offset)});
+  return field;
+}
+
+// Where C++ and a shader disagree on a buffer's element, each naming both sides; none
+// when a struct agrees member for member, by name, type and offset (A02, RA03).
+inline std::vector<std::string>
+disagreements(const Field &cpp, const Field &glsl, std::string_view verb) {
+  const bool members = !cpp.members.empty();
+  if (cpp.stride != glsl.stride || (!members && cpp.type != glsl.type) ||
+      members != !glsl.members.empty())
+    return {
+        std::format("the operator {} {} as {}-byte {}, but the shader holds {}-byte {}",
+                    verb,
+                    glsl.name,
+                    cpp.stride,
+                    members ? "structs" : cpp.type,
+                    glsl.stride,
+                    glsl.type)};
+  std::vector<std::string> found;
+  for (const Field &member : glsl.members) {
+    const auto named = std::ranges::find(cpp.members, member.name, &Field::name);
+    if (named == cpp.members.end())
+      found.push_back(std::format(
+          "{}: the shader's {} holds {}, which the C++ struct's members() does not name",
+          glsl.name,
+          glsl.type,
+          member.name));
+    else if (named->type != member.type || named->offset != member.offset)
+      found.push_back(std::format(
+          "{}: member {} is a {} at byte {} in C++, but a {} at byte {} in the shader",
+          glsl.name,
+          member.name,
+          named->type,
+          named->offset,
+          member.type,
+          member.offset));
+  }
+  for (const Field &member : cpp.members)
+    if (std::ranges::find(glsl.members, member.name, &Field::name) == glsl.members.end())
+      found.push_back(std::format("{}: the C++ struct names {}, which the shader's {} "
+                                  "does not hold",
+                                  glsl.name,
+                                  member.name,
+                                  glsl.type));
+  return found;
+}
+
 inline std::string joined(const std::vector<std::string> &names) {
   std::string text;
   for (const std::string &name : names)
@@ -138,6 +196,7 @@ struct Schedule::Bound {
     std::string port;
     std::uint32_t count = 0; // 0 for one per invocation
     std::uint32_t stride = 0;
+    Field element; // as C++ writes it, which a reader's shader must hold
     const Buffer *buffer = nullptr;
     std::uint32_t *used = nullptr;
   };

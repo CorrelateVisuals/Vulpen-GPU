@@ -11,7 +11,9 @@ of another type than its writer's, a C++ struct whose members sit elsewhere than
 shader's, C++ writing more elements than its buffer holds, an image C++ fills that
 nothing samples beside a Texture nothing fills, C++ uploading other than an image's
 count of pixels, C++ pixels other than the image's format takes, a format there is not,
-image clear of a port that fills no image, and a key there is not.
+image clear of a port that fills no image, a key there is not, and a buffer C++ fills
+for another node's shader whose members sit elsewhere, given no room, or that nothing
+reads.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -51,6 +53,7 @@ DRAW = '[node "draw"]\nvertex_count = 3\n'
 GIVE = '[node "give"]\noperator = Give\n'
 TAKE = '[node "take"]\noperator = Take\n'
 SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
+MAKER = '[node "maker"]\noperator = Maker\n'
 PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = picture=R8_UNORM\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
@@ -65,6 +68,9 @@ def connection(name: str, source: str, *targets: str) -> str:
 def operator(name: str) -> str:
     return FILL.replace("invocations", f"operator = {name}\ninvocations")
 
+
+# A shape whose shapes maker's C++ fills, through a connection.
+MADE = SHAPE.replace("Shapes", "Sums") + connection("shapes", "maker.shapes", "shape.shapes")
 
 # What each view gets wrong, and what its error must say.
 CASES = {
@@ -129,6 +135,12 @@ CASES = {
     "clear-nothing": (HEAD + PICTURE, "picture.nothing is no image a node's C++ fills",
                       "image clear picture.nothing\n"),
     "input-key": (HEAD + FILL, "enterr is no key", "input key down enterr\n"),
+    "made-members": (HEAD + MAKER.replace("Maker", "Mismade") + MADE,
+                     "connection shapes: shapes: member size is a float at byte 12 in C++, "
+                     "but a float at byte 8"),
+    "made-room": (HEAD + MAKER.replace("Maker", "Roomless") + MADE,
+                  "the operator writes shapes, which no shader of its node holds; give it room"),
+    "made-unread": (HEAD + MAKER, "the operator writes shapes, which nothing reads"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -272,13 +284,17 @@ def frame_block(vulpen: str, folder: Path) -> str | None:
 def cpp(vulpen: str, folder: Path) -> str | None:
     """Why C++ did not reach what it should, or None: a C++ connection hands its reader
     what its writer wrote that frame, a node makes a buffer through the engine by hand,
-    and the structs C++ writes reach the shader member for member; each node stops when
-    it does not."""
+    and the structs C++ writes reach the shader member for member, its own or, through a
+    connection, another node's; each node stops when it does not."""
     view = view_in(folder, "cpp", HEAD + GIVE + TAKE + '[node "scratch"]\noperator = Scratch\n'
                    + SHAPE + connection("count", "give.count", "take.count"))
     code, output = run(vulpen, [view, "--frames", 3, "--fps", 0])
     if code != 0 or problems(output):
         return f"cpp: expected each node to find what it checks, got exit {code}:\n{output}"
+    made = view_in(folder, "made", HEAD + MAKER + MADE)
+    code, output = run(vulpen, [made, "--frames", 3, "--fps", 0])
+    if code != 0 or problems(output):
+        return f"made: expected shapes C++ filled to reach the shader, got exit {code}:\n{output}"
     return None
 
 

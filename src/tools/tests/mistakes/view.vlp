@@ -65,6 +65,13 @@ file        = Shape.comp
 file        = Shape.cpp
 invocations = 4
 
+# Fills the shapes shape's shader sums, through a connection, with no shader of its own;
+# its C++ also registers operators whose struct puts two members elsewhere, and that give
+# no room.
+[node "maker"]
+operator = Maker
+file     = Maker.cpp
+
 # Makes a buffer through the engine by hand.
 [node "scratch"]
 operator = Scratch

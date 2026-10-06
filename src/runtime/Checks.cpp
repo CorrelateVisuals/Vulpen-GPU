@@ -115,6 +115,31 @@ void Schedule::check_connections() {
       check_inputs(connection);
       continue;
     }
+    // A buffer C++ fills at a port no shader of its node holds reaches shaders that hold
+    // its element as C++ writes it.
+    const Bound::Written *const filled = writer.upload(connection.from.port);
+    if (filled && !writer.field(connection.from.port)) {
+      for (const Endpoint &to : connection.to) {
+        Bound &reader = *find(to.node);
+        const Field *const in = reader.field(to.port);
+        if (!reader.loaded() && !reader.shaders_named.empty())
+          continue;
+        if (filled->count == 0)
+          reader.errors.push_back(
+              std::format("connection {}: nothing writes it", connection.name));
+        else if (!in || !in->buffer() || !reads(in->access))
+          reader.errors.push_back(
+              std::format("connection {}: {} is not a buffer its shader reads",
+                          connection.name,
+                          to.port));
+        else
+          for (const std::string &disagreement :
+               disagreements(filled->element, *in, "writes"))
+            reader.errors.push_back(
+                std::format("connection {}: {}", connection.name, disagreement));
+      }
+      continue;
+    }
     // A reader whose shaders did not load says why on its own; one with none has no
     // Texture to sample.
     if (writer.fills(connection.from.port)) {
@@ -181,6 +206,14 @@ void Schedule::check_connections() {
                         field.name,
                         connection->name));
     }
+  for (Bound &bound : _bound)
+    for (const Bound::Written &written : bound.uploads)
+      if (!bound.field(written.port) && written.count != 0 &&
+          !connection_of(bound.node->name, written.port))
+        bound.errors.push_back(std::format("the operator writes {}, which nothing reads: "
+                                           "connect it to a buffer of another node's "
+                                           "shader",
+                                           written.port));
 }
 
 // Every Texture samples an image some node's C++ fills, and every image a node's C++

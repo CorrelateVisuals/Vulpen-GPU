@@ -87,23 +87,34 @@ private:
     return static_cast<std::uint32_t>(_bound.readbacks.size() - 1);
   }
 
-  // Only the operator writes the buffer, so its shaders declare it readonly.
+  // A buffer of its shaders, which they declare readonly, as only the operator writes it;
+  // or, given room, a port no shader of the node holds, which a connection takes to
+  // another node's shader, whose struct check_connections holds it to.
   std::uint32_t upload_index(std::string_view name,
                              const Element &element,
                              std::uint32_t count) override {
     const Field *const field = _bound.field(name);
-    if (!field || !field->buffer())
+    Field written = element_field(name, element);
+    if (!field && count == 0)
+      _bound.errors.push_back(
+          std::format("the operator writes {}, which no shader of its node holds; give "
+                      "it room, node.upload<T>(\"{}\", count), for a connection to take "
+                      "to another node's shader",
+                      name,
+                      name));
+    else if (field && !field->buffer())
       _bound.errors.push_back(std::format(
           "the operator writes {}, which is not a buffer of its shader", name));
-    else if (field->access != Access::read)
+    else if (field && field->access != Access::read)
       _bound.errors.push_back(std::format(
           "the operator writes {}, which its shader writes too; declare it readonly",
           name));
-    else
+    else if (field)
       check_element(*field, "writes", element);
     _bound.uploads.push_back({.port = std::string(name),
                               .count = count,
-                              .stride = static_cast<std::uint32_t>(element.size)});
+                              .stride = static_cast<std::uint32_t>(element.size),
+                              .element = std::move(written)});
     return static_cast<std::uint32_t>(_bound.uploads.size() - 1);
   }
 
@@ -132,49 +143,9 @@ private:
   }
 
   void check_element(const Field &field, std::string_view verb, const Element &element) {
-    const bool members = !element.members.empty();
-    if (field.stride != element.size || (!members && element.type != field.type) ||
-        members != !field.members.empty())
-      _bound.errors.push_back(
-          std::format("the operator {} {} as {}-byte {}, but the shader holds {}-byte {}",
-                      verb,
-                      field.name,
-                      element.size,
-                      members ? "structs" : element.type,
-                      field.stride,
-                      field.type));
-    else if (members)
-      check_members(field, element.members);
-  }
-
-  // A C++ struct and the shader's agree member for member, by name, type and offset.
-  void check_members(const Field &field, std::span<const Member> members) {
-    for (const Field &glsl : field.members) {
-      const auto found = std::ranges::find(members, glsl.name, &Member::name);
-      if (found == members.end())
-        _bound.errors.push_back(std::format("{}: the shader's {} holds {}, which the C++ "
-                                            "struct's members() does not name",
-                                            field.name,
-                                            field.type,
-                                            glsl.name));
-      else if (found->type != glsl.type || found->offset != glsl.offset)
-        _bound.errors.push_back(std::format(
-            "{}: member {} is a {} at byte {} in C++, but a {} at byte {} in the shader",
-            field.name,
-            glsl.name,
-            found->type,
-            found->offset,
-            glsl.type,
-            glsl.offset));
-    }
-    for (const Member &member : members)
-      if (std::ranges::find(field.members, member.name, &Field::name) ==
-          field.members.end())
-        _bound.errors.push_back(std::format("{}: the C++ struct names {}, which the "
-                                            "shader's {} does not hold",
-                                            field.name,
-                                            member.name,
-                                            field.type));
+    for (std::string &disagreement :
+         disagreements(element_field(field.name, element), field, verb))
+      _bound.errors.push_back(std::move(disagreement));
   }
 
   std::string_view param_text(std::string_view name) override {

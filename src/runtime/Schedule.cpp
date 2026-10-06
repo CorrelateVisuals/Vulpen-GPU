@@ -232,6 +232,17 @@ void Schedule::make_buffers(Schedule *replaced) {
           std::max(invocations_of(*bound.node), upload ? upload->count : 0);
       make_buffer(bound, name, elements, field.stride, memory, replaced);
     }
+  // C++ fills these for a connection to take to another node's shader, with the room it
+  // asked for, as no shader of its node holds them.
+  for (const Bound &bound : _bound)
+    for (const Bound::Written &written : bound.uploads)
+      if (!bound.field(written.port) && written.count != 0)
+        make_buffer(bound,
+                    buffer_name(bound.node->name, written.port),
+                    written.count,
+                    written.stride,
+                    Memory::upload,
+                    replaced);
   const auto buffers_of = [&](const Bound &bound, const std::vector<std::string> &ports) {
     std::vector<const Buffer *> buffers;
     for (const std::string &port : ports) {
