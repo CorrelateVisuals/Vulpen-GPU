@@ -238,23 +238,19 @@ private:
     return field->offset;
   }
 
-  std::uint32_t readback_index(std::string_view name,
-                               std::size_t element_size,
-                               std::string_view type) override {
+  std::uint32_t readback_index(std::string_view name, const Element &element) override {
     const Field *const field = _bound.field(name);
     if (!field || !field->buffer())
       _bound.errors.push_back(std::format(
           "the operator reads back {}, which is not a buffer of its shader", name));
     else
-      check_element(*field, "reads", element_size, type);
+      check_element(*field, "reads", element);
     _bound.readbacks.emplace_back(name);
     return static_cast<std::uint32_t>(_bound.readbacks.size() - 1);
   }
 
   // Only the operator writes the buffer, so its shaders declare it readonly.
-  std::uint32_t upload_index(std::string_view name,
-                             std::size_t element_size,
-                             std::string_view type) override {
+  std::uint32_t upload_index(std::string_view name, const Element &element) override {
     const Field *const field = _bound.field(name);
     if (!field || !field->buffer())
       _bound.errors.push_back(std::format(
@@ -264,24 +260,55 @@ private:
           "the operator writes {}, which its shader writes too; declare it readonly",
           name));
     else
-      check_element(*field, "writes", element_size, type);
+      check_element(*field, "writes", element);
     _bound.uploads.emplace_back(name);
     return static_cast<std::uint32_t>(_bound.uploads.size() - 1);
   }
 
-  void check_element(const Field &field,
-                     std::string_view verb,
-                     std::size_t element_size,
-                     std::string_view type) {
-    if (field.stride != element_size || (!type.empty() && type != field.type))
+  void check_element(const Field &field, std::string_view verb, const Element &element) {
+    const bool members = !element.members.empty();
+    if (field.stride != element.size || (!members && element.type != field.type) ||
+        members != !field.members.empty())
       _bound.errors.push_back(
           std::format("the operator {} {} as {}-byte {}, but the shader holds {}-byte {}",
                       verb,
                       field.name,
-                      element_size,
-                      type.empty() ? "elements" : type,
+                      element.size,
+                      members ? "structs" : element.type,
                       field.stride,
                       field.type));
+    else if (members)
+      check_members(field, element.members);
+  }
+
+  // A C++ struct and the shader's agree member for member, by name, type and offset (A2).
+  void check_members(const Field &field, std::span<const Member> members) {
+    for (const Field &glsl : field.members) {
+      const auto found = std::ranges::find(members, glsl.name, &Member::name);
+      if (found == members.end())
+        _bound.errors.push_back(std::format("{}: the shader's {} holds {}, which the C++ "
+                                            "struct's members() does not name",
+                                            field.name,
+                                            field.type,
+                                            glsl.name));
+      else if (found->type != glsl.type || found->offset != glsl.offset)
+        _bound.errors.push_back(std::format(
+            "{}: member {} is a {} at byte {} in C++, but a {} at byte {} in the shader",
+            field.name,
+            glsl.name,
+            found->type,
+            found->offset,
+            glsl.type,
+            glsl.offset));
+    }
+    for (const Member &member : members)
+      if (std::ranges::find(field.members, member.name, &Field::name) ==
+          field.members.end())
+        _bound.errors.push_back(std::format("{}: the C++ struct names {}, which the "
+                                            "shader's {} does not hold",
+                                            field.name,
+                                            member.name,
+                                            field.type));
   }
 
   std::string_view param_text(std::string_view name) override {

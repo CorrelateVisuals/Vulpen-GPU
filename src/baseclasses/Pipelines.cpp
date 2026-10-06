@@ -207,6 +207,21 @@ std::uint32_t value_bytes(const Module &module, std::uint32_t type_id) {
   return scalar && type.at(1) == CHAR_BIT * scalar_bytes ? scalar_bytes : 0;
 }
 
+// A struct's members as GLSL lays them out; none for any other type.
+std::vector<Field> members_of(const Module &module, std::uint32_t type_id) {
+  const std::vector<std::uint32_t> &type = module.types.at(type_id);
+  std::vector<Field> members;
+  if (type[0] != spirv::op_type_struct)
+    return members;
+  for (std::size_t index = 1; index < type.size(); ++index) {
+    const Member &member = module.members.at(type_id).at(index - 1);
+    members.push_back({.name = member.name,
+                       .type = glsl_name(module, type[index]),
+                       .offset = member.offset});
+  }
+  return members;
+}
+
 // A buffer is a pointer to a block whose first member is a runtime array: the array's
 // stride is the element size, and the member's qualifier says how the shader uses it.
 Field describe_buffer(const Module &module, Field field, std::uint32_t block) {
@@ -216,6 +231,7 @@ Field describe_buffer(const Module &module, Field field, std::uint32_t block) {
         "buffer {} must hold one runtime array, such as float at[]", field.name));
   const Member &data = module.members.at(block).at(0);
   field.type = glsl_name(module, array.at(1));
+  field.members = members_of(module, array.at(1));
   field.stride = module.strides.at(module.types.at(block).at(1));
   field.access = data.non_writable   ? Access::read
                  : data.non_readable ? Access::write

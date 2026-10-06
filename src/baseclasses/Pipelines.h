@@ -27,6 +27,8 @@ struct Field {
   std::uint32_t offset = 0; // bytes from the start of the pass block
   std::uint32_t stride = 0; // bytes per element, only for a buffer
   Access access = Access::read;
+  // For a buffer of structs, each member by name, GLSL type and offset in the element.
+  std::vector<Field> members;
 
   bool buffer() const {
     return stride != 0;

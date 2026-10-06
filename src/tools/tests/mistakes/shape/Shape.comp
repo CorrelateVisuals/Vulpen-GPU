@@ -1,0 +1,28 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 4) in;
+
+struct Shape {
+  vec2 at;
+  float size;
+  uint sides;
+};
+
+layout(buffer_reference, std430) readonly buffer Shapes {
+  Shape at[];
+};
+
+layout(set = 1, binding = 0) uniform Pass {
+  Shapes shapes;  // written by the operator
+  FloatsOut sums; // read back by the operator
+} pass;
+
+// Each member counts, so a member C++ put at another offset changes the sum.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const Shape shape = pass.shapes.at[i];
+  pass.sums.at[i] =
+      shape.at.x + 10.0 * shape.at.y + 100.0 * shape.size + 1000.0 * float(shape.sides);
+}

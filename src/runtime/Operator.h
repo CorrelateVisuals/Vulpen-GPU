@@ -81,9 +81,40 @@ struct File {
   std::uint32_t index = 0;
 };
 
-// One member of a struct a buffer holds. C++ names each member once and the loader
-// checks it against the shader, so a C++ struct cannot drift from its contract.
-struct Member {};
+// One member of a struct a buffer holds, by its name, GLSL type and offset. A C++ struct
+// names each member once, in a static members() that lists them with VP_MEMBER, and the
+// loader checks each against the shader's struct, so it cannot drift from it (RA03).
+struct Member {
+  std::string_view name;
+  std::string_view type;
+  std::size_t offset = 0;
+};
+
+template <class T> constexpr Member member(std::string_view name, std::size_t offset) {
+  static_assert(!glsl_type<T>.empty(),
+                "a struct's member is a float, int, uint or a glm vector of them");
+  return {name, glsl_type<T>, offset};
+}
+
+// What a buffer's element is in C++: its size, and its GLSL type, or a struct's members.
+struct Element {
+  std::size_t size = 0;
+  std::string_view type;
+  std::span<const Member> members;
+};
+
+template <class T> Element element_of() {
+  static_assert(std::is_trivially_copyable_v<T>);
+  if constexpr (requires { T::members(); }) {
+    static constexpr auto members = T::members();
+    return {sizeof(T), {}, members};
+  } else {
+    static_assert(!glsl_type<T>.empty(),
+                  "a buffer holds floats, ints, uints, glm vectors of them, or structs "
+                  "whose members() names their members with VP_MEMBER");
+    return {sizeof(T), glsl_type<T>, {}};
+  }
+}
 
 // A C++ object of a type the engine never names, destroyed by the code that made it.
 using Object = std::unique_ptr<void, void (*)(void *)>;
@@ -191,14 +222,12 @@ public:
                   "a pass block value is a float, int, uint or a glm vector of them");
     return {value_offset(name, glsl_type<T>)};
   }
-  // An element glsl_type names is checked by type; any other by its size alone.
+  // An element is checked against the shader by its type, or a struct by its members.
   template <class T> Readback<T> readback(std::string_view name) {
-    static_assert(std::is_trivially_copyable_v<T>);
-    return {readback_index(name, sizeof(T), glsl_type<T>)};
+    return {readback_index(name, element_of<T>())};
   }
   template <class T> Upload<T> upload(std::string_view name) {
-    static_assert(std::is_trivially_copyable_v<T>);
-    return {upload_index(name, sizeof(T), glsl_type<T>)};
+    return {upload_index(name, element_of<T>())};
   }
   template <class T> T param(std::string_view name) {
     const std::string_view text = param_text(name);
@@ -240,12 +269,8 @@ protected:
 
 private:
   virtual std::uint32_t value_offset(std::string_view name, std::string_view type) = 0;
-  virtual std::uint32_t readback_index(std::string_view name,
-                                       std::size_t element_size,
-                                       std::string_view type) = 0;
-  virtual std::uint32_t upload_index(std::string_view name,
-                                     std::size_t element_size,
-                                     std::string_view type) = 0;
+  virtual std::uint32_t readback_index(std::string_view name, const Element &element) = 0;
+  virtual std::uint32_t upload_index(std::string_view name, const Element &element) = 0;
   virtual std::string_view param_text(std::string_view name) = 0;
   virtual void param_invalid(std::string_view name, std::string_view type) = 0;
   virtual void *output_object(std::string_view port, const Kind &kind) = 0;
@@ -352,3 +377,7 @@ private:
 // (docs/plans/live-code.md).
 #define VP_OPERATORS(registry)                                                           \
   extern "C" VP_MODULE_EXPORT void VP_MODULE_ENTRY(VP::Registry &registry)
+
+// A member of the struct S, for the list its members() returns: its name, written once,
+// its GLSL type and its offset (A2).
+#define VP_MEMBER(S, name) ::VP::member<decltype(S::name)>(#name, offsetof(S, name))

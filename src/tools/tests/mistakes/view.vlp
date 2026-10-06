@@ -52,6 +52,14 @@ file     = Give.cpp
 operator = Take
 file     = Take.cpp
 
+# Writes structs its shader sums, and stops when the sums differ from what their
+# members make; its C++ also registers one whose struct puts two members elsewhere.
+[node "shape"]
+operator    = Shapes
+file        = Shape.comp
+file        = Shape.cpp
+invocations = 4
+
 # Makes a buffer through the engine by hand.
 [node "scratch"]
 operator = Scratch

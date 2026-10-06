@@ -6,6 +6,13 @@
 // two copies of the node in one binary never clash.
 namespace {
 
+// A struct a buffer holds names its members once, for the loader to check against the
+// shader's struct (A2):
+// struct Point {
+//   glm::vec2 at;
+//   static constexpr auto members() { return std::array{VP_MEMBER(Point, at)}; }
+// };
+
 // Why the Name operator exists, in a line or two.
 class Name final : public VP::Operator {
   // VP::Value<float> _scale;       // a value in the pass block

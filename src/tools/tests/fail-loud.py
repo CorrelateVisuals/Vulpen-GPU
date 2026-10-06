@@ -6,15 +6,16 @@ disagree, a dispatch that leaves a workgroup part full or counts no invocations,
 that writes, a node inside no node, a file named by a command, a node's command without
 its help, registered twice or failing when it runs, a view that uses a library recipe
 as it is, a library recipe that uses one the library lacks, uses itself, or names a
-node the one it uses lacks, a C++ output of a type no other node can name, and a C++
-input of another type than its writer's.
+node the one it uses lacks, a C++ output of a type no other node can name, a C++ input
+of another type than its writer's, and a C++ struct whose members sit elsewhere than
+the shader's.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
 its cause and the next line still runs, and the run ends with its input. A pass reads the
 frame block as the engine wrote it, each value where reflection put it. A C++ connection
-hands its reader what its writer wrote that frame, and a node makes a buffer through the
-engine by hand. A view's child views run, and leave
+hands its reader what its writer wrote that frame, a node makes a buffer through the
+engine by hand, and structs C++ writes reach the shader member for member. A view's child views run, and leave
 and come back by edits that save the manifest unchanged. And a drop
 copies a recipe whose sync brings it up to the library's while it is unchanged, keeping
 the params the view set, and refuses once the view changed the copy; a sync of a copy of
@@ -42,6 +43,7 @@ SUM = '[node "sum"]\ninvocations = 64\n'
 DRAW = '[node "draw"]\nvertex_count = 3\n'
 GIVE = '[node "give"]\noperator = Give\n'
 TAKE = '[node "take"]\noperator = Take\n'
+SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
 NODE = re.compile(r'^\[node "([^".]+)', re.MULTILINE)
@@ -102,6 +104,8 @@ CASES = {
                        + connection("count", "give.count", "take.count"),
                        ("input count is a std::vector<int",
                         "but give writes a vp_mistakes::Count of 8 bytes")),
+    "cpp-members": (HEAD + SHAPE.replace("Shapes", "Misplaced"),
+                    "shapes: member size is a float at byte 12 in C++, but a float at byte 8"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -239,15 +243,16 @@ def frame_block(vulpen: str, folder: Path) -> str | None:
     return None
 
 
-def native_cpp(vulpen: str, folder: Path) -> str | None:
-    """Why a C++ connection did not hand its reader the object its writer wrote that
-    frame, or a node could not make a buffer through the engine by hand, or None; each
-    stops when it fails."""
+def cpp(vulpen: str, folder: Path) -> str | None:
+    """Why C++ did not reach what it should, or None: a C++ connection hands its reader
+    what its writer wrote that frame, a node makes a buffer through the engine by hand,
+    and the structs C++ writes reach the shader member for member; each node stops when
+    it does not."""
     view = view_in(folder, "cpp", HEAD + GIVE + TAKE + '[node "scratch"]\noperator = Scratch\n'
-                   + connection("count", "give.count", "take.count"))
+                   + SHAPE + connection("count", "give.count", "take.count"))
     code, output = run(vulpen, [view, "--frames", 3, "--fps", 0])
     if code != 0 or problems(output):
-        return f"cpp: expected take to read what give wrote, and scratch its buffer, got exit {code}:\n{output}"
+        return f"cpp: expected each node to find what it checks, got exit {code}:\n{output}"
     return None
 
 
@@ -342,7 +347,7 @@ def main() -> None:
                       if (problem := check(vulpen, folder, name, text, cause, *script))]
             failed += recipes(vulpen, folder)
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
-                            frame_block(vulpen, folder), native_cpp(vulpen, folder),
+                            frame_block(vulpen, folder), cpp(vulpen, folder),
                             children(vulpen, folder),
                             drops(vulpen, folder)):
                 if problem:
