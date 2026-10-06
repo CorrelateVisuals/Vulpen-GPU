@@ -13,7 +13,8 @@ A view with more pass blocks than one pool holds is no mistake: it runs, and so 
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
 its cause and the next line still runs, and the run ends with its input. A pass reads the
 frame block as the engine wrote it, each value where reflection put it. A C++ connection
-hands its reader what its writer wrote that frame. A view's child views run, and leave
+hands its reader what its writer wrote that frame, and a node makes a buffer through the
+engine by hand. A view's child views run, and leave
 and come back by edits that save the manifest unchanged. And a drop
 copies a recipe whose sync brings it up to the library's while it is unchanged, keeping
 the params the view set, and refuses once the view changed the copy; a sync of a copy of
@@ -238,14 +239,15 @@ def frame_block(vulpen: str, folder: Path) -> str | None:
     return None
 
 
-def cpp_connection(vulpen: str, folder: Path) -> str | None:
+def native_cpp(vulpen: str, folder: Path) -> str | None:
     """Why a C++ connection did not hand its reader the object its writer wrote that
-    frame, or None; the reader stops when it differs."""
-    view = view_in(folder, "cpp", HEAD + GIVE + TAKE + connection("count", "give.count",
-                                                                "take.count"))
+    frame, or a node could not make a buffer through the engine by hand, or None; each
+    stops when it fails."""
+    view = view_in(folder, "cpp", HEAD + GIVE + TAKE + '[node "scratch"]\noperator = Scratch\n'
+                   + connection("count", "give.count", "take.count"))
     code, output = run(vulpen, [view, "--frames", 3, "--fps", 0])
     if code != 0 or problems(output):
-        return f"cpp: expected take to read what give wrote that frame, got exit {code}:\n{output}"
+        return f"cpp: expected take to read what give wrote, and scratch its buffer, got exit {code}:\n{output}"
     return None
 
 
@@ -340,7 +342,7 @@ def main() -> None:
                       if (problem := check(vulpen, folder, name, text, cause, *script))]
             failed += recipes(vulpen, folder)
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
-                            frame_block(vulpen, folder), cpp_connection(vulpen, folder),
+                            frame_block(vulpen, folder), native_cpp(vulpen, folder),
                             children(vulpen, folder),
                             drops(vulpen, folder)):
                 if problem:

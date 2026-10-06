@@ -27,6 +27,10 @@
 
 namespace VP {
 
+// The engine, which a node may include by hand (docs/plans/native-cpp.md); declared
+// here only, so a node that does not use it compiles as fast as one that never could.
+class Engine;
+
 // The graph a node reads. Only C++ that reads it includes runtime/View.h, so the rest
 // compiles without its headers.
 struct View;
@@ -226,6 +230,10 @@ public:
   // The node's folder, where its own files are (RV08), as an absolute path: in its view,
   // or in the library for a recipe a node of the library uses.
   virtual std::string folder() const = 0;
+  // The engine, for a node that includes its headers by hand: what the node makes with
+  // it, it destroys, and nothing it borrows outlives the next bind (the runtime
+  // boundary in docs/plans/native-cpp.md).
+  virtual const Engine &engine() const = 0;
 
 protected:
   ~Bind() = default;

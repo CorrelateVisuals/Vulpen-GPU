@@ -15,6 +15,7 @@
 namespace VP {
 
 class Commands;
+class Engine;
 class Modules;
 class Pipelines;
 class Ports;
@@ -26,6 +27,7 @@ struct View;
 // What every schedule borrows from the modules that own it (A01). Runtime.cpp fills it
 // once, and whoever builds a schedule passes it on, so no builder includes those owners.
 struct Wiring {
+  const Engine &engine; // which a node may include by hand (native C++)
   const Pipelines &pipelines;
   const Resources &resources;
   // What draws render into; null without a window. Runtime.cpp sets it again whenever

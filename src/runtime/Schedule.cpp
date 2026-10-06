@@ -213,6 +213,9 @@ public:
   std::string folder() const override {
     return _bound.node->folder.string();
   }
+  const Engine &engine() const override {
+    return _schedule._wiring.engine;
+  }
 
 private:
   std::uint32_t value_offset(std::string_view name, std::string_view type) override {

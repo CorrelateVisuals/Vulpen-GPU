@@ -30,6 +30,12 @@ else()
   set(module_export "[[gnu::visibility(\"default\")]]")
 endif()
 
+# A node's module may call the engine by hand (native C++), so a live build's vulpen
+# exports its symbols to the modules it loads; a release build links the nodes in.
+if(VULPEN_LIVE)
+  set_target_properties(vulpen PROPERTIES ENABLE_EXPORTS ON)
+endif()
+
 # What a live build rebuilds; the include map guards it like every build (A00).
 add_custom_target(vulpen_modules)
 add_dependencies(vulpen_modules gates)

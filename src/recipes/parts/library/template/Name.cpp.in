@@ -27,6 +27,7 @@ class Name final : public VP::Operator {
   //   _reset = node.command("reset", "turns the node back to its start");
   //   _settings = node.file("settings.ini"); // in the node's folder
   //   _folder = node.folder();
+  //   const VP::Engine &engine = node.engine(); // with #include "baseclasses/Engine.h"
   // }
 
   // Every frame, before the node's pass runs.

@@ -52,6 +52,11 @@ file     = Give.cpp
 operator = Take
 file     = Take.cpp
 
+# Makes a buffer through the engine by hand.
+[node "scratch"]
+operator = Scratch
+file     = Scratch.cpp
+
 [connection "values"]
 from = fill.values
 to   = sum.values

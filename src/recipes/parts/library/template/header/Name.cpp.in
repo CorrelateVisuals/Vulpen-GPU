@@ -13,6 +13,7 @@ namespace {
 //   _reset = node.command("reset", "turns the node back to its start");
 //   _settings = node.file("settings.ini"); // in the node's folder
 //   _folder = node.folder();
+//   const VP::Engine &engine = node.engine(); // with #include "baseclasses/Engine.h"
 // }
 
 // void Name::cook(VP::Cook &frame) {

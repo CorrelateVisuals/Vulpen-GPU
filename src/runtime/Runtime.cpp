@@ -276,7 +276,8 @@ bool Runtime::start() {
   if (draws)
     _window.emplace(title(view), window_size);
   _engine.emplace(_log, _window ? &*_window : nullptr);
-  _wiring.emplace(Wiring{.pipelines = _engine->pipelines(),
+  _wiring.emplace(Wiring{.engine = *_engine,
+                         .pipelines = _engine->pipelines(),
                          .resources = _engine->resources(),
                          .render_pass = _engine->render_pass(),
                          .modules = _modules,
