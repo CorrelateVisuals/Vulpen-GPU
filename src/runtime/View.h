@@ -12,6 +12,12 @@ struct Param {
   std::string value;
 };
 
+// The format of an image its C++ fills, as Vulkan names it (VK04): an image word.
+struct ImagePort {
+  std::string port;
+  std::string format;
+};
+
 // One manifest section. A node is the folder its name names (RV08): ui.panel is ui/panel/
 // in its view, beside the files of ui itself in ui/.
 struct Node {
@@ -31,6 +37,7 @@ struct Node {
   // them each frame; empty when not given, which runs one.
   std::string instance_count;
   std::vector<Param> params;
+  std::vector<ImagePort> images; // one it does not name takes R8G8B8A8_UNORM
   std::string log;
   // The file and line that last added or changed it, which its errors name; empty after
   // a line typed or sent. A save leaves it out.

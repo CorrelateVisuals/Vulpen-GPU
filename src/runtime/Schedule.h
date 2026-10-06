@@ -24,6 +24,7 @@ struct Connection;
 struct Copy;
 struct Node;
 struct Pass;
+struct PixelFormat;
 struct View;
 
 // What every schedule borrows from the modules that own it (A01). Runtime.cpp fills it
@@ -103,10 +104,13 @@ private:
   void make_blocks();
   void make_passes();
   void upload(const Bound &writer,
-              std::string_view port,
+              std::uint32_t texture,
               std::span<const std::byte> pixels,
               VkExtent2D extent);
-  const Image &image_for(const Bound &writer, const std::string &name, VkExtent2D extent);
+  const Image &image_for(const Bound &writer,
+                         const std::string &name,
+                         VkExtent2D extent,
+                         const PixelFormat &format);
   void point_readers(const std::string &name, std::uint32_t slot);
   void drop_commands(Bound &bound);
   void close_files(Bound &bound);

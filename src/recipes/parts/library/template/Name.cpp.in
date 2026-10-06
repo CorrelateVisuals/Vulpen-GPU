@@ -17,7 +17,7 @@ class Name final : public VP::Operator {
   // float _speed = 0;              // a param
   // VP_VIEW::Rects *_rects{};      // an object it hands C++ nodes
   // const VP_VIEW::Rects *_hit{};  // an object a C++ node hands it
-  // VP::Texture _atlas;            // an image C++ fills once
+  // VP::Texture<std::uint8_t> _atlas; // an image C++ fills once, a byte a pixel
   // VP::Command _reset;            // a command the node answers
   // VP::File _settings;            // a file the node reads, watches and saves
   // std::string _folder;           // where the node's own files are
@@ -30,7 +30,7 @@ class Name final : public VP::Operator {
   //   _speed = node.param<float>("speed");
   //   _rects = &node.output<VP_VIEW::Rects>("rects"); // with #include "contracts/Rect.h"
   //   _hit = &node.input<VP_VIEW::Rects>("hit");
-  //   _atlas = node.texture("atlas");
+  //   _atlas = node.texture<std::uint8_t>("atlas"); // and the word image = atlas=R8_UNORM
   //   _reset = node.command("reset", "turns the node back to its start");
   //   _settings = node.file("settings.ini"); // in the node's folder
   //   _folder = node.folder();
@@ -43,7 +43,7 @@ class Name final : public VP::Operator {
   //   const std::span<glm::vec2> points = frame.write(_points);
   //   const std::span<glm::vec2> used = frame.write(_points, count); // used length
   //   const std::span<const float> samples = frame.read(_samples);
-  //   frame.upload(_atlas, pixels, {width, height}); // once: a byte a pixel
+  //   frame.upload(_atlas, pixels, {width, height}); // once
   //   const std::uint64_t index = frame.index(); // frames since the view loaded
   //   frame.log(VP::Level::info, "a line at the node's log level");
   //   frame.commands().send("param set name speed 0.02");

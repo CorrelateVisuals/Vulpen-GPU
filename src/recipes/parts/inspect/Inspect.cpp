@@ -65,6 +65,8 @@ class Inspect final : public VP::Operator {
       call.reply(std::format("instance_count = {}", node->instance_count));
     for (const VP::Param &param : node->params)
       call.reply(std::format("param = {}={}", param.key, param.value));
+    for (const VP::ImagePort &image : node->images)
+      call.reply(std::format("image = {}={}", image.port, image.format));
     if (!node->log.empty())
       call.reply(std::format("log = {}", node->log));
     for (const VP::Connection &connection : view.connections) {

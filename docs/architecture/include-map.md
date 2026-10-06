@@ -41,7 +41,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Manifest.h` | — |
 | `runtime/Modules.cpp` | `baseclasses/Platform.h` `linked-modules.h` `runtime/Modules.h` |
 | `runtime/Modules.h` | `runtime/Operator.h` |
-| `runtime/Operator.h` | `<glm/vec2.hpp>` `<glm/vec3.hpp>` `<glm/vec4.hpp>` `baseclasses/Log.h` |
+| `runtime/Operator.h` | `<glm/ext/vector_uint2_sized.hpp>` `<glm/ext/vector_uint4_sized.hpp>` `<glm/vec2.hpp>` `<glm/vec3.hpp>` `<glm/vec4.hpp>` `baseclasses/Log.h` |
 | `runtime/Ports.cpp` | `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Ports.h` `runtime/View.h` |
 | `runtime/Ports.h` | `runtime/Operator.h` |
 | `runtime/Runtime.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Edits.h` `runtime/Manifest.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Runtime.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |

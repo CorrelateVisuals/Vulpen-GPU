@@ -213,7 +213,8 @@ void hash_in(std::uint64_t &hash, std::string_view piece) {
 }
 
 // What a copy is made of, but its params and log, which are its user's to set (V02): its
-// nodes' names, operators, counts and files, and the connections between them.
+// nodes' names, operators, counts, image formats and files, and the connections between
+// them.
 std::string fingerprint(VP::FilePort &files, const Copy &copy) {
   std::vector<const Inner *> nodes;
   for (const Inner &inner : copy.nodes)
@@ -231,6 +232,9 @@ std::string fingerprint(VP::FilePort &files, const Copy &copy) {
                         node.invocations,
                         node.vertex_count,
                         node.instance_count.empty() ? "0" : node.instance_count));
+    // Hashed only when given, so a drop made before the word keeps its fingerprint.
+    for (const VP::ImagePort &image : node.images)
+      hash_in(hash, std::format("image {}={}", image.port, image.format));
     for (const std::string &file : node.files) {
       hash_in(hash, file);
       hash_in(hash, files.read((node.folder / file).string()));
@@ -279,6 +283,10 @@ words_of(const VP::Node &node, const std::vector<VP::Param> &params, bool set) {
     words += sendable("param", std::format("{}={}", param.key, param.value));
   if (set && params.empty())
     words += " param=";
+  for (const VP::ImagePort &image : node.images)
+    words += sendable("image", std::format("{}={}", image.port, image.format));
+  if (set && node.images.empty())
+    words += " image=";
   return words;
 }
 

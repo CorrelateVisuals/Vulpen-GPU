@@ -52,6 +52,7 @@ public:
   VkImage handle() const;
   VkImageView view() const;
   VkExtent2D extent() const;
+  VkFormat format() const;
 
 private:
   friend class Resources;
@@ -63,6 +64,7 @@ private:
   VmaAllocation_T *_allocation = nullptr;
   VkImageView _view = VK_NULL_HANDLE;
   VkExtent2D _extent{};
+  VkFormat _format = VK_FORMAT_UNDEFINED;
 };
 
 class Resources {
@@ -75,8 +77,11 @@ public:
   // Every buffer is reachable by its device address, the way shaders take buffers (RV02).
   Buffer buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const;
   Image image(VkExtent2D extent, VkFormat format) const;
+  // Whether shaders may sample, filtered, an image of the format that a copy fills.
+  bool samples(VkFormat format) const;
 
 private:
+  const VkPhysicalDevice _physical_device;
   const VkDevice _device;
   VmaAllocator_T *_allocator = nullptr;
 };

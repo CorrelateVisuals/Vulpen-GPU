@@ -9,5 +9,5 @@
 // layout(set = 1, binding = 0) uniform Pass {
 //   float scale;   // C++: node.value<float>("scale"), or a param
 //   Points points; // C++: node.upload<glm::vec2>("points"), or a connection
-//   Texture atlas; // a connection, or C++: node.texture("atlas")
+//   Texture atlas; // a connection, or C++: node.texture<T>("atlas")
 // } pass;

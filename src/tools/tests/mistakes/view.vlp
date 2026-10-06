@@ -66,13 +66,14 @@ operator = Scratch
 file     = Scratch.cpp
 
 # Fills an image once, and stops when its shader samples other pixels than it filled;
-# its C++ also registers operators that fill one through a connection, fill one nothing
-# samples, and upload the wrong count of pixels.
+# its C++ also registers operators that fill one through a connection, fill one of
+# 16-bit floats, fill one nothing samples, and upload the wrong count of pixels.
 [node "picture"]
 operator    = Picture
 file        = Picture.comp
 file        = Picture.cpp
 invocations = 8
+image       = picture=R8_UNORM
 
 [connection "values"]
 from = fill.values

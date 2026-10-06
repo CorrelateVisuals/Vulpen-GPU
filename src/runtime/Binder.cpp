@@ -107,12 +107,27 @@ private:
     return static_cast<std::uint32_t>(_bound.uploads.size() - 1);
   }
 
-  // The node's own Texture, or a port a connection takes to another node's.
-  std::uint32_t texture_index(std::string_view port) override {
+  // The node's own Texture, or a port a connection takes to another node's. A format
+  // the loader does not know is the image word's mistake, which check_images names.
+  std::uint32_t texture_index(std::string_view port, std::string_view pixel) override {
     if (const Field *const field = _bound.field(port); field && !field->texture())
       _bound.errors.push_back(std::format(
           "the operator fills image {}, which its shader declares as no Texture", port));
-    _bound.textures.emplace_back(port);
+    const std::vector<ImagePort> &words = _bound.node->images;
+    const auto word = std::ranges::find(words, port, &ImagePort::port);
+    const PixelFormat *const format =
+        pixel_format(word == words.end() ? default_format : word->format);
+    if (format && format->pixel != pixel)
+      _bound.errors.push_back(
+          std::format("the operator fills {} with {} pixels, but its format {} takes {}",
+                      port,
+                      pixel,
+                      format->name,
+                      format->pixel));
+    else if (format && !_schedule._wiring.resources.samples(format->format))
+      _bound.errors.push_back(
+          std::format("{}: this GPU cannot sample {} images", port, format->name));
+    _bound.textures.push_back({.port = std::string(port), .format = format});
     return static_cast<std::uint32_t>(_bound.textures.size() - 1);
   }
 
@@ -318,7 +333,7 @@ private:
   void upload_image(std::uint32_t index,
                     std::span<const std::byte> pixels,
                     glm::uvec2 size) override {
-    _schedule.upload(_bound, _bound.textures.at(index), pixels, {size.x, size.y});
+    _schedule.upload(_bound, index, pixels, {size.x, size.y});
   }
 
   Schedule &_schedule;

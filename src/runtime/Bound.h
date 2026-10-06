@@ -82,6 +82,33 @@ inline std::optional<std::uint32_t> instance_number(const Node &node) {
   return count;
 }
 
+// The formats an image may take (V04), by Vulkan's names (VK04), each with the pixel C++
+// fills it with, byte for byte, as pixel_type names it.
+struct PixelFormat {
+  std::string_view name;
+  VkFormat format = VK_FORMAT_UNDEFINED;
+  std::string_view pixel;
+  std::uint32_t bytes = 0;
+};
+inline constexpr std::array<PixelFormat, 10> pixel_formats{
+    {{"R8_UNORM", VK_FORMAT_R8_UNORM, "uint8", 1},
+     {"R8G8_UNORM", VK_FORMAT_R8G8_UNORM, "u8vec2", 2},
+     {"R8G8B8A8_UNORM", VK_FORMAT_R8G8B8A8_UNORM, "u8vec4", 4},
+     {"R8G8B8A8_SRGB", VK_FORMAT_R8G8B8A8_SRGB, "u8vec4", 4},
+     {"R16_SFLOAT", VK_FORMAT_R16_SFLOAT, "uint16", 2},
+     {"R16G16_SFLOAT", VK_FORMAT_R16G16_SFLOAT, "u16vec2", 4},
+     {"R16G16B16A16_SFLOAT", VK_FORMAT_R16G16B16A16_SFLOAT, "u16vec4", 8},
+     {"R32_SFLOAT", VK_FORMAT_R32_SFLOAT, "float", 4},
+     {"R32G32_SFLOAT", VK_FORMAT_R32G32_SFLOAT, "vec2", 8},
+     {"R32G32B32A32_SFLOAT", VK_FORMAT_R32G32B32A32_SFLOAT, "vec4", 16}}};
+// What an image takes when its node gives it no format.
+inline constexpr std::string_view default_format = "R8G8B8A8_UNORM";
+
+inline const PixelFormat *pixel_format(std::string_view name) {
+  const auto found = std::ranges::find(pixel_formats, name, &PixelFormat::name);
+  return found == pixel_formats.end() ? nullptr : &*found;
+}
+
 inline std::string joined(const std::vector<std::string> &names) {
   std::string text;
   for (const std::string &name : names)
@@ -115,7 +142,13 @@ struct Schedule::Bound {
     std::uint32_t *used = nullptr;
   };
   std::vector<Written> uploads;
-  std::vector<std::string> textures; // ports whose image C++ fills, by Texture::index
+  // An image its C++ fills, by Texture::index: the port, and the format its node gives
+  // it, null when the node names one there is not.
+  struct Filled {
+    std::string port;
+    const PixelFormat *format = nullptr;
+  };
+  std::vector<Filled> textures;
   std::vector<Command> commands; // registered while it bound
   std::vector<File> files;       // opened while it bound
   std::vector<std::string> outputs; // its ports that carry C++ objects to C++ nodes
@@ -140,7 +173,7 @@ struct Schedule::Bound {
     return upload(port) != nullptr;
   }
   bool fills(std::string_view port) const {
-    return std::ranges::find(textures, port) != textures.end();
+    return std::ranges::find(textures, port, &Filled::port) != textures.end();
   }
   const Param *param(std::string_view key) const {
     const auto found = std::ranges::find(node->params, key, &Param::key);

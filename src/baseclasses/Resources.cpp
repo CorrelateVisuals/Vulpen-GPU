@@ -90,6 +90,7 @@ Image &Image::operator=(Image &&other) noexcept {
   std::swap(_allocation, other._allocation);
   std::swap(_view, other._view);
   std::swap(_extent, other._extent);
+  std::swap(_format, other._format);
   return *this;
 }
 
@@ -112,10 +113,14 @@ VkExtent2D Image::extent() const {
   return _extent;
 }
 
+VkFormat Image::format() const {
+  return _format;
+}
+
 Resources::Resources(VkInstance instance,
                      VkPhysicalDevice physical_device,
                      VkDevice device)
-    : _device(device) {
+    : _physical_device(physical_device), _device(device) {
   const VmaAllocatorCreateInfo info{.flags =
                                         VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
                                     .physicalDevice = physical_device,
@@ -171,6 +176,7 @@ Image Resources::image(VkExtent2D extent, VkFormat format) const {
   image._allocator = _allocator;
   image._device = _device;
   image._extent = extent;
+  image._format = format;
   const VkImageViewCreateInfo view{
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image = image._image,
@@ -180,6 +186,17 @@ Image Resources::image(VkExtent2D extent, VkFormat format) const {
           .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
   check(vkCreateImageView(_device, &view, nullptr, &image._view), "vkCreateImageView");
   return image;
+}
+
+// Every format an image may take can be sampled on most GPUs, but some cannot filter
+// 32-bit floats, and a linear sampler there reads what each vendor likes (GLSL02).
+bool Resources::samples(VkFormat format) const {
+  VkFormatProperties properties{};
+  vkGetPhysicalDeviceFormatProperties(_physical_device, format, &properties);
+  const VkFormatFeatureFlags needed = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+                                      VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+                                      VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+  return (properties.optimalTilingFeatures & needed) == needed;
 }
 
 } // namespace VP

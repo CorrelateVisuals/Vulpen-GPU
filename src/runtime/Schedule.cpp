@@ -15,9 +15,6 @@ namespace VP {
 
 namespace {
 
-// What Cook::upload hands over: one byte a pixel, read as 0 to 1.
-constexpr VkFormat pixel_format = VK_FORMAT_R8_UNORM;
-
 // The files of the node's folder that are shaders, by their extension.
 std::vector<std::string> shaders_of(const Node &node) {
   std::vector<std::string> shaders;
@@ -324,13 +321,14 @@ void Schedule::make_blocks() {
 }
 
 // A node that uploads once keeps what it filled through a rebuild, as long as it still
-// fills it.
+// fills it, in the same format.
 void Schedule::keep_images(Schedule &replaced) {
   for (const Bound &bound : _bound)
-    for (const std::string &port : bound.textures) {
-      const std::string name = std::format("{}.{}", bound.node->name, port);
+    for (const Bound::Filled &filled : bound.textures) {
+      const std::string name = std::format("{}.{}", bound.node->name, filled.port);
       const auto kept = std::ranges::find(replaced._images, name, &Picture::name);
-      if (kept == replaced._images.end())
+      if (kept == replaced._images.end() || !filled.format ||
+          kept->sampled.image().format() != filled.format->format)
         continue;
       _images.push_back(std::move(*kept));
       replaced._images.erase(kept);
@@ -352,19 +350,23 @@ void Schedule::point_readers(const std::string &name, std::uint32_t slot) {
 // The copy runs before the frame's passes, from a buffer that lasts until the frame
 // ends.
 void Schedule::upload(const Bound &writer,
-                      std::string_view port,
+                      std::uint32_t texture,
                       std::span<const std::byte> pixels,
                       VkExtent2D extent) {
+  const Bound::Filled &filled = writer.textures.at(texture);
+  const std::size_t count = pixels.size() / filled.format->bytes;
   if (extent.width == 0 || extent.height == 0 ||
-      pixels.size() != std::size_t{extent.width} * extent.height)
+      count != std::size_t{extent.width} * extent.height)
     throw std::runtime_error(
         std::format("the operator uploads {} pixels to {}, which is {} by {}",
-                    pixels.size(),
-                    port,
+                    count,
+                    filled.port,
                     extent.width,
                     extent.height));
-  const Image &image =
-      image_for(writer, std::format("{}.{}", writer.node->name, port), extent);
+  const Image &image = image_for(writer,
+                                 std::format("{}.{}", writer.node->name, filled.port),
+                                 extent,
+                                 *filled.format);
   Buffer staged = _wiring.resources.buffer(
       pixels.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::upload);
   std::ranges::copy(pixels, staged.bytes().begin());
@@ -373,25 +375,29 @@ void Schedule::upload(const Bound &writer,
   _staged.push_back(std::move(staged));
 }
 
-// The image of that size: a new one when the old has another, whose slot its readers
-// take, and no copy into the old one runs.
-const Image &
-Schedule::image_for(const Bound &writer, const std::string &name, VkExtent2D extent) {
+// The image of that size and format: a new one when the old has another, whose slot
+// its readers take, and no copy into the old one runs.
+const Image &Schedule::image_for(const Bound &writer,
+                                 const std::string &name,
+                                 VkExtent2D extent,
+                                 const PixelFormat &format) {
   const auto picture = std::ranges::find(_images, name, &Picture::name);
   if (picture != _images.end()) {
     const Image &image = picture->sampled.image();
-    if (image.extent().width == extent.width && image.extent().height == extent.height)
+    if (image.extent().width == extent.width && image.extent().height == extent.height &&
+        image.format() == format.format)
       return image;
     std::erase_if(_copies, [&](const Copy &copy) { return copy.to == image.handle(); });
     _images.erase(picture);
   }
   const Picture &made = _images.emplace_back(
-      name, Sampled(_wiring.pipelines, _wiring.resources.image(extent, pixel_format)));
+      name, Sampled(_wiring.pipelines, _wiring.resources.image(extent, format.format)));
   point_readers(name, made.sampled.slot());
   log(Level::info,
       Tag::mem,
       writer,
-      std::format("{} of {} by {} pixels", name, extent.width, extent.height));
+      std::format(
+          "{}: {} by {} pixels of {}", name, extent.width, extent.height, format.name));
   return made.sampled.image();
 }
 

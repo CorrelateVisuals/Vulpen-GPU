@@ -370,6 +370,8 @@ std::vector<Word> words(const Node &node) {
     words.push_back({"instance_count", node.instance_count});
   for (const Param &param : node.params)
     words.push_back({"param", std::format("{}={}", param.key, param.value)});
+  for (const ImagePort &image : node.images)
+    words.push_back({"image", std::format("{}={}", image.port, image.format)});
   if (!node.log.empty())
     words.push_back({"log", node.log});
   return words;

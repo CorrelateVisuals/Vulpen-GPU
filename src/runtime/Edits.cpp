@@ -83,7 +83,7 @@ void check_value(std::string_view key, std::string_view value) {
 [[noreturn]] void unknown_word(std::string_view key) {
   throw std::runtime_error(
       std::format("unknown word {} in a node; its words are recipe, operator, file, "
-                  "invocations, vertex_count, instance_count, param and log",
+                  "invocations, vertex_count, instance_count, param, image and log",
                   key));
 }
 
@@ -178,11 +178,27 @@ void add_param(Node &node, std::string_view value) {
   node.params.push_back({std::string(name), std::string(setting)});
 }
 
+// `port=FORMAT`. Which formats there are, the loader knows, as it knows the log levels.
+void add_image(Node &node, std::string_view value) {
+  const std::size_t equals = value.find('=');
+  if (equals == std::string_view::npos)
+    throw std::runtime_error(
+        "an image is written `image = port=FORMAT`, as image = atlas=R8_UNORM");
+  const std::string_view port = trim(value.substr(0, equals));
+  const std::string_view format = trim(value.substr(equals + 1));
+  check_name("image", port);
+  if (format.empty())
+    throw std::runtime_error(std::format("image {} has no format", port));
+  if (std::ranges::find(node.images, port, &ImagePort::port) != node.images.end())
+    throw std::runtime_error(std::format("image {} is set twice", port));
+  node.images.push_back({std::string(port), std::string(format)});
+}
+
 // What no single word can show.
 void check_whole(const Node &node) {
   if (node.uses()) {
     if (!node.operator_name.empty() || !node.files.empty() || node.invocations != 0 ||
-        node.vertex_count != 0 || !node.instance_count.empty())
+        node.vertex_count != 0 || !node.instance_count.empty() || !node.images.empty())
       throw std::runtime_error(
           std::format("node {} uses recipe {} as it is, whose node gives it those words: "
                       "only param and log go with it",
@@ -319,8 +335,8 @@ std::pair<std::string_view, std::string_view> key_and_value(std::string_view wor
   return {word.substr(0, equals), word.substr(equals + 1)};
 }
 
-// Before node set gives a word again: param words replace them all, and a word given
-// empty stays clear.
+// Before node set gives a word again: param and image words replace them all, and a
+// word given empty stays clear.
 void clear(Node &node, std::string_view key) {
   if (key == "recipe")
     node.recipe.clear();
@@ -334,6 +350,8 @@ void clear(Node &node, std::string_view key) {
     node.instance_count.clear();
   else if (key == "param")
     node.params.clear();
+  else if (key == "image")
+    node.images.clear();
   else if (key == "log")
     node.log.clear();
   else if (key == "file")
@@ -516,6 +534,8 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
     set_instances(node.instance_count, value);
   } else if (key == "param") {
     add_param(node, value);
+  } else if (key == "image") {
+    add_image(node, value);
   } else {
     unknown_word(key);
   }

@@ -21,7 +21,7 @@ class Name final : public VP::Operator {
   // float _speed = 0;              // a param
   // VP_VIEW::Rects *_rects{};      // an object it hands C++ nodes
   // const VP_VIEW::Rects *_hit{};  // an object a C++ node hands it
-  // VP::Texture _atlas;            // an image C++ fills once
+  // VP::Texture<std::uint8_t> _atlas; // an image C++ fills once, a byte a pixel
   // VP::Command _reset;            // a command the node answers
   // VP::File _settings;            // a file the node reads, watches and saves
   // std::string _folder;           // where the node's own files are

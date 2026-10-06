@@ -2,6 +2,8 @@
 
 #include "baseclasses/Log.h"
 
+#include <glm/ext/vector_uint2_sized.hpp>
+#include <glm/ext/vector_uint4_sized.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
@@ -52,6 +54,20 @@ template <> inline constexpr std::string_view glsl_type<glm::uvec2> = "uvec2";
 template <> inline constexpr std::string_view glsl_type<glm::uvec3> = "uvec3";
 template <> inline constexpr std::string_view glsl_type<glm::uvec4> = "uvec4";
 
+// The name of each pixel C++ may fill an image with; the loader compares it with the
+// pixel the image's format takes, byte for byte. A 16-bit float is its bits, as
+// glm::packHalf gives them.
+template <class T> inline constexpr std::string_view pixel_type{};
+template <> inline constexpr std::string_view pixel_type<std::uint8_t> = "uint8";
+template <> inline constexpr std::string_view pixel_type<glm::u8vec2> = "u8vec2";
+template <> inline constexpr std::string_view pixel_type<glm::u8vec4> = "u8vec4";
+template <> inline constexpr std::string_view pixel_type<std::uint16_t> = "uint16";
+template <> inline constexpr std::string_view pixel_type<glm::u16vec2> = "u16vec2";
+template <> inline constexpr std::string_view pixel_type<glm::u16vec4> = "u16vec4";
+template <> inline constexpr std::string_view pixel_type<float> = "float";
+template <> inline constexpr std::string_view pixel_type<glm::vec2> = "vec2";
+template <> inline constexpr std::string_view pixel_type<glm::vec4> = "vec4";
+
 // A value in the node's pass block.
 template <class T> struct Value {
   std::uint32_t offset = 0;
@@ -67,8 +83,8 @@ template <class T> struct Upload {
   std::uint32_t index = 0;
 };
 
-// An image the node's C++ fills once and shaders then sample.
-struct Texture {
+// An image the node's C++ fills once, a T a pixel, and shaders then sample.
+template <class T> struct Texture {
   std::uint32_t index = 0;
 };
 
@@ -234,9 +250,13 @@ public:
     return {upload_index(name, element_of<T>(), count)};
   }
   // The image a Texture of the node's shaders names, or one that a connection takes to
-  // another node's Texture; frame.upload fills it.
-  Texture texture(std::string_view port) {
-    return {texture_index(port)};
+  // another node's Texture; frame.upload fills it. T is checked against the format the
+  // node's image word gives the port, R8G8B8A8_UNORM's u8vec4 when it gives none.
+  template <class T> Texture<T> texture(std::string_view port) {
+    static_assert(
+        !pixel_type<T>.empty(),
+        "a pixel is a uint8, uint16 or float, or a glm vector of 2 or 4 of them");
+    return {texture_index(port, pixel_type<T>)};
   }
   template <class T> T param(std::string_view name) {
     const std::string_view text = param_text(name);
@@ -281,7 +301,7 @@ private:
   virtual std::uint32_t readback_index(std::string_view name, const Element &element) = 0;
   virtual std::uint32_t
   upload_index(std::string_view name, const Element &element, std::uint32_t count) = 0;
-  virtual std::uint32_t texture_index(std::string_view port) = 0;
+  virtual std::uint32_t texture_index(std::string_view port, std::string_view pixel) = 0;
   virtual std::string_view param_text(std::string_view name) = 0;
   virtual void param_invalid(std::string_view name, std::string_view type) = 0;
   virtual void *output_object(std::string_view port, const Kind &kind) = 0;
@@ -312,11 +332,13 @@ public:
     const std::span<std::byte> bytes = upload_bytes(upload.index, count);
     return {reinterpret_cast<T *>(bytes.data()), bytes.size() / sizeof(T)};
   }
-  // One byte a pixel, which shaders read as 0 to 1, row by row from the image's first,
-  // which uv 0 samples. The image keeps the pixels through rebuilds while the node and
-  // the port keep their names, so a node uploads once. Throws unless pixels holds
-  // size.x by size.y.
-  void upload(Texture texture, std::span<const std::uint8_t> pixels, glm::uvec2 size) {
+  // Row by row from the image's first pixel, which uv 0 samples. The image keeps the
+  // pixels through rebuilds while the node and the port keep their names and format, so
+  // a node uploads once. Throws unless pixels holds size.x by size.y.
+  template <class T>
+  void upload(Texture<T> texture,
+              std::type_identity_t<std::span<const T>> pixels,
+              glm::uvec2 size) {
     upload_image(texture.index, std::as_bytes(pixels), size);
   }
   virtual std::uint64_t index() const = 0;

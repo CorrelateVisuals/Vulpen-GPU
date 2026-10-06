@@ -7,6 +7,13 @@ namespace VP {
 
 namespace {
 
+std::string format_names() {
+  std::string names;
+  for (const PixelFormat &format : pixel_formats)
+    names += (names.empty() ? "" : ", ") + std::string(format.name);
+  return names;
+}
+
 std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
                            std::string_view stage) {
   return std::ranges::count_if(
@@ -197,12 +204,24 @@ void Schedule::check_images() {
                         field.name,
                         connection->name));
     }
-    for (const std::string &port : bound.textures)
-      if (!bound.field(port) && !connection_of(bound.node->name, port))
+    for (const Bound::Filled &filled : bound.textures)
+      if (!bound.field(filled.port) && !connection_of(bound.node->name, filled.port))
         bound.errors.push_back(std::format("the operator fills image {}, which nothing "
                                            "samples: no Texture of its shaders, and no "
                                            "connection",
-                                           port));
+                                           filled.port));
+    for (const ImagePort &image : bound.node->images)
+      if (!pixel_format(image.format))
+        bound.errors.push_back(
+            std::format("image {}={}: no such format; an image takes {}",
+                        image.port,
+                        image.format,
+                        format_names()));
+      else if (!bound.fills(image.port))
+        bound.errors.push_back(std::format("image {}={}: the operator fills no image {}",
+                                           image.port,
+                                           image.format,
+                                           image.port));
   }
 }
 

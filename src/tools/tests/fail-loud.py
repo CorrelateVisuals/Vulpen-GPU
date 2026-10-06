@@ -9,8 +9,9 @@ as it is, a library recipe that uses one the library lacks, uses itself, or name
 node the one it uses lacks, a C++ output of a type no other node can name, a C++ input
 of another type than its writer's, a C++ struct whose members sit elsewhere than the
 shader's, C++ writing more elements than its buffer holds, an image C++ fills that
-nothing samples beside a Texture nothing fills, and C++ uploading other than an image's
-count of pixels.
+nothing samples beside a Texture nothing fills, C++ uploading other than an image's
+count of pixels, C++ pixels other than the image's format takes, and a format there is
+not.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -18,8 +19,8 @@ its cause and the next line still runs, and the run ends with its input. A pass 
 frame block as the engine wrote it, each value where reflection put it. A C++ connection
 hands its reader what its writer wrote that frame, a node makes a buffer through the
 engine by hand, and structs C++ writes reach the shader member for member. The pixels
-C++ fills an image with reach a shader pixel for pixel, through the node's own Texture
-and through a connection, and stay through a rebuild. A view's child views run, and leave
+C++ fills an image with reach a shader pixel for pixel, through the node's own Texture,
+through a connection and as 16-bit floats, and stay through a rebuild. A view's child views run, and leave
 and come back by edits that save the manifest unchanged. And a drop
 copies a recipe whose sync brings it up to the library's while it is unchanged, keeping
 the params the view set, and refuses once the view changed the copy; a sync of a copy of
@@ -48,7 +49,7 @@ DRAW = '[node "draw"]\nvertex_count = 3\n'
 GIVE = '[node "give"]\noperator = Give\n'
 TAKE = '[node "take"]\noperator = Take\n'
 SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
-PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\n'
+PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = picture=R8_UNORM\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
 NODE = re.compile(r'^\[node "([^".]+)', re.MULTILINE)
@@ -118,6 +119,11 @@ CASES = {
                 "picture samples nothing")),
     "pixels": (HEAD + PICTURE.replace("Picture", "Misfilled"),
                "the operator uploads 7 pixels to picture, which is 4 by 2"),
+    "image-type": (HEAD + PICTURE.replace("R8_UNORM", "R32_SFLOAT"),
+                   "the operator fills picture with uint8 pixels, but its format R32_SFLOAT "
+                   "takes float"),
+    "image-format": (HEAD + PICTURE.replace("R8_UNORM", "R8_UNROM"),
+                     "image picture=R8_UNROM: no such format"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -270,11 +276,15 @@ def cpp(vulpen: str, folder: Path) -> str | None:
 
 def images(vulpen: str, folder: Path) -> str | None:
     """Why the pixels C++ filled an image with did not reach the shader, or None: through
-    the node's own Texture, and through a connection to it. The fixture's operator adds a
-    node after it fills, which rebuilds the view, and stops when a pixel differs."""
+    the node's own Texture, through a connection to it, and as 16-bit floats no byte
+    holds. The fixture's operator adds a node after it fills, which rebuilds the view,
+    and stops when a pixel differs."""
+    relayed = PICTURE.replace("Picture", "Relayed").replace("picture=", "copy=")
     for name, text in (("own", HEAD + PICTURE),
-                       ("relayed", HEAD + PICTURE.replace("Picture", "Relayed")
-                        + connection("copy", "picture.copy", "picture.picture"))):
+                       ("relayed", HEAD + relayed
+                        + connection("copy", "picture.copy", "picture.picture")),
+                       ("deep", HEAD + PICTURE.replace("Picture", "Deep")
+                        .replace("R8_UNORM", "R16G16B16A16_SFLOAT"))):
         view = view_in(folder, f"image-{name}", text)
         code, output = run(vulpen, [view, "--frames", 5, "--fps", 0])
         if code != 0 or problems(output):
