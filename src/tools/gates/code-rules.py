@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail when the C++ in src/ breaks a rule a text search can check:
+"""Fail when the code in src/ breaks a rule a text search can check:
 
 - RC03: ownership is std::unique_ptr or by value, so no std::shared_ptr, and no naked new
   or delete;
@@ -12,9 +12,13 @@
   file's write, so a test that kills runs would pass an unsafe save;
 - RV05: a C++ contract, a header in a contracts/ folder, opens namespace VP_VIEW, which
   the build names per view, so two views' copies of it stay two types in one release
-  binary; without it the linker keeps one definition for both (live code, rule 1).
+  binary; without it the linker keeps one definition for both (live code, rule 1);
+- RC05: a comment cites principles and requirements, never a plan's row or step, which
+  points at nothing once the plan is done. Each ID in parentheses in a comment of the
+  C++, the shaders or the node template is one principles.md or requirements.md defines.
 
-Comments and string literals are left out, so prose and log text never trip a rule.
+Comments and string literals are left out of every other rule, so prose and log text
+never trip one.
 
 Usage: python3 src/tools/gates/code-rules.py
 """
@@ -38,6 +42,12 @@ INCLUDE = re.compile(r"^\s*#\s*include\s*<([^>]+)>", re.MULTILINE)
 OS_TESTS = re.compile(r"\b(?:_WIN32|_WIN64|__linux__|__APPLE__|__unix__|__ANDROID__)\b")
 CONTRACTS = "contracts"
 VIEW_NAMESPACE = re.compile(r"\bnamespace\s+VP_VIEW\b")
+DOCS = ROOT / "docs" / "architecture"
+# RC05 reads the comments of these; the other rules hold for C++ alone.
+COMMENTED = ("*.h", "*.cpp", "*.in", "*.glsl", "*.comp", "*.vert", "*.frag")
+DEFINED = re.compile(r"\*\*([A-Z]+\d+)\b")
+CITED = re.compile(r"\(([^()\n]*)\)")
+ID = re.compile(r"\b[A-Z]+\d+\b")
 WRITES = re.compile(r"\bstd::(?:ofstream|fstream|fopen|filesystem::(?:rename|remove"
                     r"|remove_all|copy|copy_file|create_directory|create_directories"
                     r"|resize_file))\b")
@@ -56,6 +66,19 @@ def ownership(line: str) -> list[str]:
         # operator new and a deleted function (= delete) own nothing.
         if not before.endswith("operator") and not (word == "delete" and before.endswith("=")):
             found.append(f"a naked {word}")
+    return found
+
+
+def citations(name: str, text: str, ids: set[str]) -> list[str]:
+    found = []
+    for comment in LITERALS.finditer(text):
+        if not comment.group(0).startswith(("//", "/*")):
+            continue
+        for cited in CITED.finditer(comment.group(0)):
+            line = text.count("\n", 0, comment.start() + cited.start()) + 1
+            found += [f"{name}:{line}: {tag} is no principle or requirement, which are all "
+                      "a comment cites (RC05)"
+                      for tag in ID.findall(cited.group(1)) if tag not in ids]
     return found
 
 
@@ -85,9 +108,17 @@ def problems(file: Path) -> list[str]:
 
 
 def main() -> None:
-    files = [file for suffix in ("*.h", "*.cpp") for file in SOURCE.rglob(suffix)
-             if VENDORED not in file.parents]
-    if found := [problem for file in sorted(files) for problem in problems(file)]:
+    ids = set(DEFINED.findall("".join((DOCS / rules).read_text(encoding="utf-8")
+                                      for rules in ("principles.md", "requirements.md"))))
+    files = sorted(file for suffix in COMMENTED for file in SOURCE.rglob(suffix)
+                   if VENDORED not in file.parents)
+    found = []
+    for file in files:
+        found += citations(file.relative_to(SOURCE).as_posix(),
+                           file.read_text(encoding="utf-8"), ids)
+        if file.suffix in (".h", ".cpp"):
+            found += problems(file)
+    if found:
         sys.exit("\n".join(found))
 
 
