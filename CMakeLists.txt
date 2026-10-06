@@ -36,6 +36,7 @@ add_executable(vulpen
   src/baseclasses/Pipelines.cpp
   src/baseclasses/Platform.cpp
   src/baseclasses/Resources.cpp
+  src/baseclasses/Shader.cpp
   src/baseclasses/Swapchain.cpp
   src/runtime/Binder.cpp
   src/runtime/Checks.cpp
