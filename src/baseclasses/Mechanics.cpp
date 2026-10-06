@@ -97,6 +97,7 @@ bool meets_floor(VkPhysicalDevice device) {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features12};
   vkGetPhysicalDeviceFeatures2(device, &features);
   return properties.apiVersion >= VK_API_VERSION_1_2 && features12.descriptorIndexing &&
+         features.features.shaderSampledImageArrayDynamicIndexing &&
          features12.bufferDeviceAddress;
 }
 
@@ -195,9 +196,16 @@ VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
                                       .queueFamilyIndex = family,
                                       .queueCount = 1,
                                       .pQueuePriorities = &queue_priority};
+  // What set 0's array of images needs (RV02), all of which descriptor indexing brings.
+  const VkPhysicalDeviceFeatures features{.shaderSampledImageArrayDynamicIndexing =
+                                              VK_TRUE};
   const VkPhysicalDeviceVulkan12Features features12{
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       .descriptorIndexing = VK_TRUE,
+      .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+      .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+      .descriptorBindingPartiallyBound = VK_TRUE,
+      .runtimeDescriptorArray = VK_TRUE,
       .bufferDeviceAddress = VK_TRUE};
   const char *const swapchain = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
   const VkDeviceCreateInfo info{.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -206,7 +214,8 @@ VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
                                 .pQueueCreateInfos = &queue,
                                 .enabledExtensionCount =
                                     has_swapchain(physical_device) ? 1u : 0u,
-                                .ppEnabledExtensionNames = &swapchain};
+                                .ppEnabledExtensionNames = &swapchain,
+                                .pEnabledFeatures = &features};
   VkDevice device = VK_NULL_HANDLE;
   check(vkCreateDevice(physical_device, &info, nullptr, &device), "vkCreateDevice");
   return device;

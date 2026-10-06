@@ -16,6 +16,10 @@ namespace VP {
 // block there, and C++ binds it there.
 inline constexpr std::uint32_t pass_set = 1;
 inline constexpr std::uint32_t pass_binding = 0;
+// Where every image a shader samples lives, and the static samplers, which are
+// samplers[0] to samplers[3] (RV02).
+inline constexpr std::uint32_t images_set = 0;
+inline constexpr std::uint32_t static_samplers = 4;
 
 // What a shader does with a buffer, read from its qualifier: the node's declaration of
 // what it reads and writes, from which the barriers follow (V10).
@@ -71,6 +75,8 @@ public:
   Pipelines &operator=(const Pipelines &) = delete;
 
   VkPipelineLayout layout() const;
+  // Set 0, which every pass binds.
+  VkDescriptorSet images() const;
   // The frame block's address, which every pass pushes (RV02); 0 until a shader declares
   // the block.
   VkDeviceAddress frame() const;
@@ -103,7 +109,11 @@ private:
 
   const VkDevice _device;
   const Resources &_resources;
-  VkDescriptorSetLayout _images = VK_NULL_HANDLE; // set 0; gains its arrays with a user
+  // In the order baseclasses/GpuLayout.glsl names them; set 0's layout holds them.
+  std::array<VkSampler, static_samplers> _samplers{};
+  VkDescriptorSetLayout _images = VK_NULL_HANDLE;
+  VkDescriptorPool _image_pool = VK_NULL_HANDLE;
+  VkDescriptorSet _image_set = VK_NULL_HANDLE;
   VkDescriptorSetLayout _pass = VK_NULL_HANDLE;
   VkPipelineLayout _layout = VK_NULL_HANDLE;
   mutable std::vector<Pool> _pools;

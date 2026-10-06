@@ -55,6 +55,16 @@ enum FrameMember : std::size_t { resolution, cursor, time, frame_index };
 constexpr std::array<std::pair<std::string_view, std::string_view>, 4> frame_members{
     {{"resolution", "uvec2"}, {"cursor", "vec2"}, {"time", "float"}, {"index", "uint"}}};
 constexpr float line_width = 1.0f; // the only width without the wideLines feature
+constexpr std::uint32_t textures_binding = 0;
+constexpr std::uint32_t samplers_binding = 1;
+// textures[]'s length, for every view at once; slot 0 means unbound.
+constexpr std::uint32_t image_slots = 1024;
+// The static samplers, in the order baseclasses/GpuLayout.glsl names them.
+constexpr std::array<std::pair<VkFilter, VkSamplerAddressMode>, static_samplers> samplers{
+    {{VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE},
+     {VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE},
+     {VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT},
+     {VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT}}};
 
 struct Member {
   std::string name;
@@ -347,6 +357,71 @@ private:
   VkShaderModule _module = VK_NULL_HANDLE;
 };
 
+VkSampler make_sampler(VkDevice device, VkFilter filter, VkSamplerAddressMode address) {
+  const VkSamplerCreateInfo info{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                 .magFilter = filter,
+                                 .minFilter = filter,
+                                 .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                 .addressModeU = address,
+                                 .addressModeV = address,
+                                 .addressModeW = address};
+  VkSampler sampler = VK_NULL_HANDLE;
+  check(vkCreateSampler(device, &info, nullptr, &sampler), "vkCreateSampler");
+  return sampler;
+}
+
+// Set 0: a slot for every image a shader samples, written as images come and go, and
+// the static samplers, which never change. Update after bind raises the device's limit
+// on sampled images to what descriptor indexing guarantees (RV01).
+VkDescriptorSetLayout image_layout(VkDevice device, std::span<const VkSampler> samplers) {
+  const std::array<VkDescriptorBindingFlags, 2> flags{
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+          VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+      0};
+  const VkDescriptorSetLayoutBindingFlagsCreateInfo bound{
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+      .bindingCount = static_cast<std::uint32_t>(flags.size()),
+      .pBindingFlags = flags.data()};
+  const std::array bindings{
+      VkDescriptorSetLayoutBinding{.binding = textures_binding,
+                                   .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                                   .descriptorCount = image_slots,
+                                   .stageFlags = VK_SHADER_STAGE_ALL},
+      VkDescriptorSetLayoutBinding{.binding = samplers_binding,
+                                   .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+                                   .descriptorCount =
+                                       static_cast<std::uint32_t>(samplers.size()),
+                                   .stageFlags = VK_SHADER_STAGE_ALL,
+                                   .pImmutableSamplers = samplers.data()}};
+  const VkDescriptorSetLayoutCreateInfo info{
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .pNext = &bound,
+      .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+      .bindingCount = static_cast<std::uint32_t>(bindings.size()),
+      .pBindings = bindings.data()};
+  VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+  check(vkCreateDescriptorSetLayout(device, &info, nullptr, &layout),
+        "vkCreateDescriptorSetLayout");
+  return layout;
+}
+
+// The one set 0, from a pool of its own, since update after bind needs one.
+VkDescriptorPool image_pool(VkDevice device) {
+  const std::array sizes{VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                                              .descriptorCount = image_slots},
+                         VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLER,
+                                              .descriptorCount = static_samplers}};
+  const VkDescriptorPoolCreateInfo info{
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
+      .maxSets = 1,
+      .poolSizeCount = static_cast<std::uint32_t>(sizes.size()),
+      .pPoolSizes = sizes.data()};
+  VkDescriptorPool pool = VK_NULL_HANDLE;
+  check(vkCreateDescriptorPool(device, &info, nullptr, &pool), "vkCreateDescriptorPool");
+  return pool;
+}
+
 } // namespace
 
 Shader::Shader(const std::filesystem::path &spirv) : _words(read_words(spirv)) {
@@ -393,10 +468,18 @@ const std::array<std::uint32_t, 3> &Shader::workgroup_size() const {
 
 Pipelines::Pipelines(VkDevice device, const Resources &resources)
     : _device(device), _resources(resources) {
-  const VkDescriptorSetLayoutCreateInfo images{
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-  check(vkCreateDescriptorSetLayout(_device, &images, nullptr, &_images),
-        "vkCreateDescriptorSetLayout");
+  for (std::size_t index = 0; index < _samplers.size(); ++index)
+    _samplers[index] =
+        make_sampler(_device, samplers[index].first, samplers[index].second);
+  _images = image_layout(_device, _samplers);
+  _image_pool = image_pool(_device);
+  const VkDescriptorSetAllocateInfo images{
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = _image_pool,
+      .descriptorSetCount = 1,
+      .pSetLayouts = &_images};
+  check(vkAllocateDescriptorSets(_device, &images, &_image_set),
+        "vkAllocateDescriptorSets");
   const VkDescriptorSetLayoutBinding block{.binding = pass_binding,
                                            .descriptorType =
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -427,11 +510,18 @@ Pipelines::~Pipelines() {
     vkDestroyDescriptorPool(_device, pool.handle, nullptr);
   vkDestroyPipelineLayout(_device, _layout, nullptr);
   vkDestroyDescriptorSetLayout(_device, _pass, nullptr);
+  vkDestroyDescriptorPool(_device, _image_pool, nullptr);
   vkDestroyDescriptorSetLayout(_device, _images, nullptr);
+  for (const VkSampler sampler : _samplers)
+    vkDestroySampler(_device, sampler, nullptr);
 }
 
 VkPipelineLayout Pipelines::layout() const {
   return _layout;
+}
+
+VkDescriptorSet Pipelines::images() const {
+  return _image_set;
 }
 
 VkDeviceAddress Pipelines::frame() const {

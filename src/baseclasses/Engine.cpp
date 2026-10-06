@@ -27,8 +27,11 @@ void barrier(VkCommandBuffer commands,
 void bind(VkCommandBuffer commands, const Pipelines &pipelines, const Pass &pass) {
   const VkPipelineLayout layout = pipelines.layout();
   const VkDeviceAddress frame = pipelines.frame();
+  const VkDescriptorSet images = pipelines.images();
   vkCmdBindPipeline(commands, pass.bind_point, pass.pipeline);
   vkCmdPushConstants(commands, layout, VK_SHADER_STAGE_ALL, 0, sizeof frame, &frame);
+  vkCmdBindDescriptorSets(
+      commands, pass.bind_point, layout, images_set, 1, &images, 0, nullptr);
   if (pass.block)
     vkCmdBindDescriptorSets(
         commands, pass.bind_point, layout, pass_set, 1, &pass.block, 0, nullptr);
