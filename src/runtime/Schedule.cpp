@@ -311,7 +311,7 @@ private:
       check_members(field, element.members);
   }
 
-  // A C++ struct and the shader's agree member for member, by name, type and offset (A2).
+  // A C++ struct and the shader's agree member for member, by name, type and offset.
   void check_members(const Field &field, std::span<const Member> members) {
     for (const Field &glsl : field.members) {
       const auto found = std::ranges::find(members, glsl.name, &Member::name);

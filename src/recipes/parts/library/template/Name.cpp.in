@@ -3,7 +3,7 @@
 namespace {
 
 // A struct a buffer holds names its members once, for the loader to check against the
-// shader's struct (A2):
+// shader's struct:
 // struct Point {
 //   glm::vec2 at;
 //   static constexpr auto members() { return std::array{VP_MEMBER(Point, at)}; }

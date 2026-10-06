@@ -393,5 +393,5 @@ private:
   extern "C" VP_MODULE_EXPORT void VP_MODULE_ENTRY(VP::Registry &registry)
 
 // A member of the struct S, for the list its members() returns: its name, written once,
-// its GLSL type and its offset (A2).
+// its GLSL type and its offset.
 #define VP_MEMBER(S, name) ::VP::member<decltype(S::name)>(#name, offsetof(S, name))
