@@ -28,6 +28,7 @@ CODE_SPAN = re.compile(r"`([^`]+)`")
 LIBRARY = SOURCE / "recipes"  # every recipe, and the contracts they share
 MANIFEST = "view.vlp"  # a folder holding one is a view's
 CONTRACTS = "contracts"  # at the top, the only files more than one node includes (RV05)
+CONTRACT_SUFFIXES = {".glsl", ".h"}  # a GLSL struct, or a C++ header for C++ nodes
 # Each table on the page, by the first cell of its header.
 ENGINE_TABLE = "File"
 NODE_TABLE = "Node code may include"
@@ -136,7 +137,8 @@ def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
                     problems.append(f"{file} -> {name}: engine code never includes node code "
                                     "(RA00)")
             elif not (target.parent == (SOURCE / file).parent
-                      or (target.parent == root / CONTRACTS and target.suffix == ".glsl")
+                      or (target.parent == root / CONTRACTS
+                          and target.suffix in CONTRACT_SUFFIXES)
                       or any(fnmatchcase(name, pattern) for pattern in reach)):
                 problems.append(f"{file} -> {name}: node code includes only its own folder, a "
                                 "contract, and what the map lists for node code (RV00, RV05)")

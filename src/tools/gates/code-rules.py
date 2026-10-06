@@ -9,7 +9,10 @@
 - RA04: only the platform files write or move a file, so every save goes through
   Files::save, which writes a temp file and renames it over the old one. A run killed
   mid-save then leaves the old file or the new one; a kill rarely lands inside a small
-  file's write, so a test that kills runs would pass an unsafe save.
+  file's write, so a test that kills runs would pass an unsafe save;
+- RV05: a C++ contract, a header in a contracts/ folder, opens namespace VP_VIEW, which
+  the build names per view, so two views' copies of it stay two types in one release
+  binary; without it the linker keeps one definition for both (live code, rule 1).
 
 Comments and string literals are left out, so prose and log text never trip a rule.
 
@@ -33,6 +36,8 @@ SHARED = re.compile(r"\b(?:shared_ptr|make_shared)\b")
 NEW_OR_DELETE = re.compile(r"\b(?:new|delete)\b")
 INCLUDE = re.compile(r"^\s*#\s*include\s*<([^>]+)>", re.MULTILINE)
 OS_TESTS = re.compile(r"\b(?:_WIN32|_WIN64|__linux__|__APPLE__|__unix__|__ANDROID__)\b")
+CONTRACTS = "contracts"
+VIEW_NAMESPACE = re.compile(r"\bnamespace\s+VP_VIEW\b")
 WRITES = re.compile(r"\bstd::(?:ofstream|fstream|fopen|filesystem::(?:rename|remove"
                     r"|remove_all|copy|copy_file|create_directory|create_directories"
                     r"|resize_file))\b")
@@ -60,6 +65,9 @@ def problems(file: Path) -> list[str]:
     found = []
     for number, line in enumerate(code.splitlines(), 1):
         found += [f"{name}:{number}: {what} (RC03)" for what in ownership(line)]
+    if file.parent.name == CONTRACTS and file.suffix == ".h" and not VIEW_NAMESPACE.search(code):
+        found.append(f"{name}: a C++ contract opens namespace VP_VIEW, so two views' copies "
+                     "of it stay two types (RV05)")
     if name not in PLATFORM:
         for match in INCLUDE.finditer(code):
             header = match.group(1)

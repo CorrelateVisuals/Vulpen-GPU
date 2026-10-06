@@ -132,7 +132,12 @@ function(vulpen_node view folder root)
       VP_MODULE_ENTRY=vp_module_${target} VP_MODULE_EXPORT=)
     set_property(GLOBAL APPEND PROPERTY vulpen_linked "${view}/${relative}=vp_module_${target}")
   endif()
-  target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src)
+  # contracts/ resolves from the top of the view or the library, as it does for GLSL, and
+  # its C++ types live in namespace VP_VIEW, one per view, so two views' copies of a
+  # contract stay two types in one release binary (live code, rule 1).
+  target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src ${root})
+  string(MAKE_C_IDENTIFIER "vp_${view}" view_namespace)
+  target_compile_definitions(${target} PRIVATE VP_VIEW=${view_namespace})
   # runtime/Operator.h takes GLSL's vectors from glm.
   target_include_directories(${target} SYSTEM PRIVATE
                              ${PROJECT_SOURCE_DIR}/src/external-libraries)
