@@ -16,3 +16,11 @@ Two libraries are subsets of their release archive, so the repository stays smal
 - **GLFW** keeps `CMakeLists.txt`, `CMake/`, `include/`, `src/`, `deps/` (its Wayland protocol files) and its README, license and contributors. `docs/`, `tests/` and `examples/` are left out, so the build has to set `GLFW_BUILD_DOCS`, `GLFW_BUILD_TESTS` and `GLFW_BUILD_EXAMPLES` to `OFF`.
 
 The Vulkan SDK (headers, loader, `glslangValidator`) and Python 3 come from the machine and are not vendored.
+
+## Fonts
+
+A font lives in the folder of the part that reads it, beside its license, so a drop of the part copies both (V03). The file is the upstream release's, byte for byte.
+
+| Font | Release | File | License |
+|---|---|---|---|
+| [Roboto Mono](https://github.com/googlefonts/robotomono) | Version 3.001, from Google Fonts | `src/recipes/parts/font/RobotoMono-Regular.ttf` | SIL OFL 1.1, [OFL.txt](../../src/recipes/parts/font/OFL.txt) |

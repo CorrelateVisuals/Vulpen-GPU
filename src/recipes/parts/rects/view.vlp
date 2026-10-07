@@ -1,1 +1,11 @@
-# The rects part: one shader node with no C++; it draws every Rect it is given in a palette color.
+# The rects part: one shader node with no C++; it draws every Rect it is given in its
+# palette color, a quad an instance, as many as the Rects' writer wrote.
+[manifest]
+version = 1
+
+[node "rects"]
+file           = Rects.frag
+file           = Rects.glsl
+file           = Rects.vert
+vertex_count   = 6
+instance_count = rects

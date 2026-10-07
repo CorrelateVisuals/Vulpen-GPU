@@ -58,3 +58,28 @@ vec4 sample_linear(Texture image, vec2 uv) {
   return textureLod(
       sampler2D(textures[nonuniformEXT(image.index)], samplers[linear_clamp]), uv, 0.0);
 }
+
+// The texel nearest uv, for an image drawn one pixel to one texel, such as a glyph.
+vec4 sample_nearest(Texture image, vec2 uv) {
+  if (image.index == 0u)
+    return vec4(0.0);
+  return textureLod(
+      sampler2D(textures[nonuniformEXT(image.index)], samplers[nearest_clamp]), uv, 0.0);
+}
+
+// The two triangles of a quad, as its corners from the top left, so a draw of six
+// vertices an instance places a rectangle an instance.
+const int quad_vertices = 6;
+const vec2 quad_corners[quad_vertices] = vec2[quad_vertices](
+    vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0),
+    vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0));
+
+vec2 quad_corner(int vertex) {
+  return quad_corners[vertex % quad_vertices];
+}
+
+// A point in pixels from the window's top left, where clip space puts it. Only a draw
+// asks, and draws run only into a window, so its resolution is never zero here.
+vec4 pixel_clip(vec2 pixels) {
+  return vec4(pixels / vec2(frame.resolution) * 2.0 - 1.0, 0.0, 1.0);
+}

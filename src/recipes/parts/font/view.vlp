@@ -1,1 +1,13 @@
-# The font part: one node whose operator is Font, and the font file it reads.
+# The font part: one node whose operator is Font; it bakes the monospace font in its
+# folder into an atlas, a cell a glyph, at the height its param gives in pixels. Another
+# height is another font node.
+[manifest]
+version = 1
+
+[node "font"]
+operator = Font
+file     = Font.cpp
+file     = OFL.txt
+file     = RobotoMono-Regular.ttf
+param    = height=18
+image    = atlas=R8_UNORM

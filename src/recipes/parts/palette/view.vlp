@@ -1,1 +1,9 @@
-# The palette part: one node whose operator is Palette, and the theme.ini it reads.
+# The palette part: one node whose operator is Palette; it fills a color a role from
+# theme.ini, read again once it changes.
+[manifest]
+version = 1
+
+[node "palette"]
+operator = Palette
+file     = Palette.cpp
+file     = theme.ini

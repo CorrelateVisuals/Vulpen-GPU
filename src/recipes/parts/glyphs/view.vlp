@@ -1,1 +1,11 @@
-# The glyphs part: shader nodes with no C++; they lay out every Label with the font and draw it.
+# The glyphs part: one shader node with no C++; it lays out every Label in the font and
+# draws it, a quad a character, as many as the characters' writer wrote.
+[manifest]
+version = 1
+
+[node "glyphs"]
+file           = Glyphs.frag
+file           = Glyphs.glsl
+file           = Glyphs.vert
+vertex_count   = 6
+instance_count = characters
