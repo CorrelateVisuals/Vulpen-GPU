@@ -24,12 +24,13 @@ hands its reader what its writer wrote that frame, a node makes a buffer through
 engine by hand, and structs C++ writes reach the shader member for member. The pixels
 C++ fills an image with reach a shader pixel for pixel, through the node's own Texture,
 through a connection and as 16-bit floats, stay through a rebuild, and come back after
-image clear when the node fills them again. A view's child views run, and leave
-and come back by edits that save the manifest unchanged. And a drop
-copies a recipe whose sync brings it up to the library's while it is unchanged, keeping
-the params the view set, and refuses once the view changed the copy; a sync of a copy of
-recipes that use others takes out the nodes, files and folders the library let go, and
-names the params that went with them.
+image clear when the node fills them again. The library's palette, font, rects and
+glyphs draw the fixture's sign in a window without an error, where a display is. A
+view's child views run, and leave and come back by edits that save the manifest
+unchanged. And a drop copies a recipe whose sync brings it up to the library's while it
+is unchanged, keeping the params the view set, and refuses once the view changed the
+copy; a sync of a copy of recipes that use others takes out the nodes, files and folders
+the library let go, and names the params that went with them.
 
 Each view is written into a folder named mistakes, beside a link to each node's folder
 it names, so it finds the nodes the build compiles from mistakes/ beside this script,
@@ -55,8 +56,13 @@ TAKE = '[node "take"]\noperator = Take\n'
 SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
 MAKER = '[node "maker"]\noperator = Maker\n'
 PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = picture=R8_UNORM\n'
+SIGN = '[node "sign"]\noperator = Sign\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
+PARTS = Path(__file__).resolve().parents[2] / "recipes" / "parts"
+# The library's parts that put text on screen, rects before glyphs, so text draws over
+# the panels.
+TEXT = ("palette", "font", "rects", "glyphs")
 NODE = re.compile(r'^\[node "([^".]+)', re.MULTILINE)
 CUT = ("truncated", "empty")  # nodes whose SPIR-V this script writes, cut short
 
@@ -164,8 +170,9 @@ RECIPE_CASES = {
 
 
 def mirror(vulpen: str) -> Path:
-    """Where the build put the fixture's modules and SPIR-V."""
-    return Path(vulpen).parent / "views" / "mistakes"
+    """Where the build put the fixture's modules and SPIR-V, whole, so a link there finds
+    what it names."""
+    return Path(vulpen).resolve().parent / "views" / "mistakes"
 
 
 def cut_spirv(vulpen: str) -> list[Path]:
@@ -317,6 +324,38 @@ def images(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def text(vulpen: str, folder: Path) -> str | None:
+    """Why the library's palette, font, rects and glyphs did not draw the fixture's sign
+    in a window without an error, or None; with no display, None. Each part's node is its
+    library manifest's, and its folder and build output are links to the library's, as
+    the build compiles only the views it knows. What they draw is checked by eye until a
+    test can read the window back."""
+    if not display():
+        return None
+    nodes = "".join("\n" + section[section.index("[node "):] for section in
+                    ((PARTS / part / "view.vlp").read_text(encoding="utf-8") for part in TEXT))
+    view = view_in(folder, "text", HEAD + SIGN + nodes
+                   + connection("palette", "palette.palette", "rects.palette", "glyphs.palette")
+                   + connection("font", "font.font", "glyphs.font")
+                   + connection("atlas", "font.atlas", "glyphs.atlas")
+                   + connection("rects", "sign.rects", "rects.rects")
+                   + connection("labels", "sign.labels", "glyphs.labels")
+                   + connection("characters", "sign.characters", "glyphs.characters"))
+    built = mirror(vulpen).parent / "library" / "parts"
+    links = [mirror(vulpen) / part for part in TEXT]
+    try:
+        for part, link in zip(TEXT, links):
+            (view.parent / part).symlink_to(PARTS / part, target_is_directory=True)
+            link.symlink_to(built / part, target_is_directory=True)
+        code, output = run(vulpen, [view, "--frames", 60, "--fps", 0], headless=False)
+    finally:
+        for link in links:
+            link.unlink(missing_ok=True)
+    if code != 0 or problems(output):
+        return f"text: expected the sign drawn without an error, got exit {code}:\n{output}"
+    return None
+
+
 def input_lines(vulpen: str, folder: Path) -> str | None:
     """Why the input command's lines did not reach a node as the window's events would,
     or None: in their order, in the first frame, and only in it."""
@@ -424,7 +463,8 @@ def main() -> None:
             failed += recipes(vulpen, folder)
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
                             frame_block(vulpen, folder), cpp(vulpen, folder),
-                            images(vulpen, folder), input_lines(vulpen, folder),
+                            images(vulpen, folder), text(vulpen, folder),
+                            input_lines(vulpen, folder),
                             children(vulpen, folder),
                             drops(vulpen, folder)):
                 if problem:

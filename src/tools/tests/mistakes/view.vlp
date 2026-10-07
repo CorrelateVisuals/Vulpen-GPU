@@ -88,6 +88,11 @@ file        = Picture.cpp
 invocations = 8
 image       = picture=R8_UNORM
 
+# Writes the Rects and Labels of a sign, which the library's rects and glyphs draw.
+[node "sign"]
+operator = Sign
+file     = Sign.cpp
+
 [connection "values"]
 from = fill.values
 to   = sum.values
