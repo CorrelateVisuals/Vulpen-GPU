@@ -191,15 +191,16 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
           VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT);
   swapchain->begin(commands, target);
-  for (const Pass &pass : passes)
-    if (pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-      bind(commands, pipelines, pass);
-      vkCmdDraw(commands,
-                pass.vertex_count,
-                pass.instances ? *pass.instances : pass.instance_count,
-                0,
-                0);
-    }
+  // A draw given nothing this frame records nothing, while its pipeline and buffers stay,
+  // so what is hidden costs no draw and shows again the frame it is given something.
+  for (const Pass &pass : passes) {
+    const std::uint32_t instances =
+        pass.instances ? *pass.instances : pass.instance_count;
+    if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || instances == 0)
+      continue;
+    bind(commands, pipelines, pass);
+    vkCmdDraw(commands, pass.vertex_count, instances, 0, 0);
+  }
   vkCmdEndRenderPass(commands);
 }
 

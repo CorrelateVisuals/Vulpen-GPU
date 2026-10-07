@@ -101,14 +101,16 @@ class List final : public VP::Operator {
     }
   }
 
+  // Nothing shown draws nothing, not even its ground, so a list with no room or no Items
+  // costs no draw.
   void back(VP::Cook &frame) {
     const VP_VIEW::Rect &place = *_place;
-    if (_side_by_side) {
+    if (_shown->empty()) {
+      frame.write(_rects, 0);
+    } else if (_side_by_side) {
       const std::span<VP_VIEW::Rect> rects = frame.write(_rects, 1 + _shown->size());
       rects[0] = grown(place, 0, VP_VIEW::role("panel"));
       std::ranges::copy(*_shown, rects.begin() + 1);
-    } else if (_shown->empty()) {
-      frame.write(_rects, 0);
     } else {
       const std::span<VP_VIEW::Rect> rects = frame.write(_rects, frame_and_fill);
       rects[0] = grown(place, margin + frame_width, VP_VIEW::role("border"));
