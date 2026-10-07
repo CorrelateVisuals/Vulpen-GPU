@@ -7,7 +7,7 @@ layout(buffer_reference, std430) readonly buffer Palette {
 
 // As many roles as contracts/Palette.h names. A role past them draws in the last, so no
 // read leaves the buffer (GLSL02).
-const uint roles = 5u;
+const uint roles = 7u;
 
 // Premultiplied, as every draw blends.
 vec4 role_color(Palette palette, uint role) {

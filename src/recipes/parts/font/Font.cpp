@@ -33,6 +33,7 @@ class Font final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _atlas = node.texture<std::uint8_t>("atlas");
     _font = node.upload<VP_VIEW::Font>("font", 1);
+    _metrics = &node.output<VP_VIEW::Font>("metrics");
     _height = node.param<std::uint32_t>("height");
     _face = node.param<std::string>("face");
     _baked = {};
@@ -44,16 +45,19 @@ class Font final : public VP::Operator {
       _file = node.file(_face);
   }
   // Written every frame, as it is a few bytes, so a buffer made anew for a connection
-  // holds the Font too.
+  // holds the Font too. Shaders read it from the buffer, and C++ that lays text out
+  // from metrics, so both measure with the font that draws.
   void cook(VP::Cook &frame) override {
     if (_baked.count == 0 || frame.empty(_atlas))
       _baked = bake(frame);
     frame.write(_font).front() = _baked;
+    *_metrics = _baked;
   }
   VP_VIEW::Font bake(VP::Cook &frame) const;
 
   VP::Texture<std::uint8_t> _atlas;
   VP::Upload<VP_VIEW::Font> _font;
+  VP_VIEW::Font *_metrics = nullptr;
   std::uint32_t _height = 0;
   std::string _face;
   VP::File _file;
@@ -91,7 +95,8 @@ VP_VIEW::Font Font::bake(VP::Cook &frame) const {
       throw std::runtime_error(std::format(
           "face {} is not monospace: {:c} is not as wide as the space", _face, code));
     glm::ivec2 low{}, high{};
-    stbtt_GetCodepointBitmapBox(&font, code, scale, scale, &low.x, &low.y, &high.x, &high.y);
+    stbtt_GetCodepointBitmapBox(
+        &font, code, scale, scale, &low.x, &low.y, &high.x, &high.y);
     const glm::ivec2 box = high - low;
     ink.assign(static_cast<std::size_t>(box.x) * box.y, 0);
     stbtt_MakeCodepointBitmap(&font, ink.data(), box.x, box.y, box.x, scale, scale, code);

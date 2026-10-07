@@ -1,7 +1,10 @@
-# The command-line part: one node whose operator is CommandLine.
+# The command-line part: one node whose operator is CommandLine. Its param on says where
+# it is: on the terminal it is the CLI; in a window it reads the input port and draws
+# through rects and glyphs, with a list for its completions.
 [manifest]
 version = 1
 
 [node "command-line"]
 operator = CommandLine
 file     = CommandLine.cpp
+param    = on=terminal
