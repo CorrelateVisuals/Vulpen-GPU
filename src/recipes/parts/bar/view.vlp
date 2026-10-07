@@ -1,0 +1,11 @@
+# The bar part: one node whose operator is Bar; it cuts a bar size text cells across off
+# the edge of the Rect its area gives, rows at the top or bottom and columns at the left
+# or right, and hands on the bar as strip and what is left as rest.
+[manifest]
+version = 1
+
+[node "bar"]
+operator = Bar
+file     = Bar.cpp
+param    = edge=top
+param    = size=1

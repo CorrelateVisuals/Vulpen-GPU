@@ -1,6 +1,7 @@
 # The command-line part: one node whose operator is CommandLine. Its param on says where
 # it is: on the terminal it is the CLI; in a window it reads the input port and draws in
-# the Rect its area gives, through rects and glyphs, with a list for its completions.
+# the Rect its area gives, through rects and glyphs, with a list for its completions, and
+# hands a panel its tab, named by the title param a window needs.
 [manifest]
 version = 1
 

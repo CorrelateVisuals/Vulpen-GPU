@@ -169,10 +169,10 @@ struct Shown {
 // command port; its param on says where it is. On the terminal it is the CLI: each line
 // typed or piped in runs, what it answers is printed, and the run ends with the input.
 // In a window it reads the input port, and shows what lines answer and the log above
-// the line typed, in the Rect its area gives. A line that names no view goes to the view
-// hosted most recently, as view new and view load leave it, so it needs no name and
-// every log line still has one. The prompt shows that view's folder, as a shell shows
-// the one it is in.
+// the line typed, in the Rect its area gives, with a tab for the panel it sits in, named
+// by its title param. A line that names no view goes to the view hosted most recently,
+// as view new and view load leave it, so it needs no name and every log line still has
+// one. The prompt shows that view's folder, as a shell shows the one it is in.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _help = node.command("help", "lists every command, with its usage and what it does");
@@ -194,6 +194,9 @@ class CommandLine final : public VP::Operator {
     _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
     _labels = node.upload<VP_VIEW::Label>("labels", label_room);
     _characters = node.upload<VP_VIEW::Character>("characters", character_room);
+    _title = node.param<std::string>("title");
+    _tabs = &node.output<VP_VIEW::Items>("tabs");
+    name_tab();
   }
 
   void cook(VP::Cook &frame) override {
@@ -255,6 +258,17 @@ class CommandLine final : public VP::Operator {
                         .parent_path()
                         .lexically_proximate(std::filesystem::current_path())
                         .generic_string();
+    name_tab();
+  }
+
+  // Its title, and the view a line goes to unless that is the host, as a shell's title
+  // names the folder it is in.
+  void name_tab() {
+    if (!_window)
+      return;
+    const std::string label =
+        _view.empty() ? _title : std::format("{} - {}", _title, _view);
+    _tabs->assign(1, {.label = label});
   }
 
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one
@@ -510,6 +524,8 @@ class CommandLine final : public VP::Operator {
   const VP_VIEW::Font *_font = nullptr;
   VP_VIEW::Items *_items = nullptr; // the completions shown, empty for none
   VP_VIEW::Rect *_place = nullptr;  // where they show
+  std::string _title;
+  VP_VIEW::Items *_tabs = nullptr; // the one a panel shows for it
   VP::Upload<VP_VIEW::Rect> _rects;
   VP::Upload<VP_VIEW::Label> _labels;
   VP::Upload<VP_VIEW::Character> _characters;

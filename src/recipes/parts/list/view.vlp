@@ -1,9 +1,10 @@
-# The list part: one node whose operator is List; it lays out the Items it is handed as a
-# column of rows in the Rect its place gives, for a rects and a glyphs node to draw, and
-# hands on the rows' Rects as rows, for hit to find the one pressed.
+# The list part: one node whose operator is List; it lays out the Items it is handed in
+# the Rect its place gives, stacked or, with axis=x, side by side, for a rects and a glyphs
+# node to draw, and hands on where each shows as shown, for hit to find the one pressed.
 [manifest]
 version = 1
 
 [node "list"]
 operator = List
 file     = List.cpp
+param    = axis=y
