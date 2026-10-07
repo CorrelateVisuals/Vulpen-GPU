@@ -318,6 +318,9 @@ public:
   // The node's folder, where its own files are (RV08), as an absolute path: in its view,
   // or in the library for a recipe a node of the library uses.
   virtual std::string folder() const = 0;
+  // The node's name, as a line to its view names it, so the node can send a command
+  // about itself, as param set, which the log keeps and a replay repeats.
+  virtual std::string name() const = 0;
   // The engine, for a node that includes its headers by hand: what the node makes with
   // it, it destroys, and nothing it borrows outlives the next bind (the runtime
   // boundary in docs/plans/native-cpp.md).

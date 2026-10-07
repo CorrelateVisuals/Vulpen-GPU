@@ -13,6 +13,7 @@ namespace {
 //   _reset = node.command("reset", "turns the node back to its start");
 //   _settings = node.file("settings.ini"); // in the node's folder
 //   _folder = node.folder();
+//   _name = node.name(); // for a command about itself: param set <name> …
 //   const VP::Engine &engine = node.engine(); // with #include "baseclasses/Engine.h"
 // }
 
@@ -24,8 +25,10 @@ namespace {
 //   if (frame.empty(_atlas)) // at first, and after image clear
 //     frame.upload(_atlas, pixels, {width, height});
 //   const std::uint64_t index = frame.index(); // frames since the view loaded
+//   const glm::uvec2 size = frame.resolution(); // the window's; zero without one
 //   frame.log(VP::Level::info, "a line at the node's log level");
 //   frame.commands().send("param set name speed 0.02");
+//   for (const VP::Logged &line : frame.commands().log()) {} // since last frame
 //   for (const VP::Event &event : frame.input().events()) {}
 //   const glm::vec2 at = frame.input().pointer(); // in pixels, as the cursor
 //   for (const std::string_view line : frame.terminal().lines()) {}
@@ -33,7 +36,6 @@ namespace {
 //   const std::string_view settings = frame.files().text(_settings);
 //   frame.files().save(_settings, "text");
 //   const std::vector<std::string> names = frame.files().list(_folder);
-//   const VP::View &view = frame.view(); // with #include "runtime/View.h"
 // }
 
 // void Name::command(VP::Call &call) {

@@ -25,6 +25,7 @@ class Name final : public VP::Operator {
   // VP::Command _reset;            // a command the node answers
   // VP::File _settings;            // a file the node reads, watches and saves
   // std::string _folder;           // where the node's own files are
+  // std::string _name;             // its own, as a line names it
 
   // At load, and again after every swap: names in, handles out.
   // void bind(VP::Bind &node) override;

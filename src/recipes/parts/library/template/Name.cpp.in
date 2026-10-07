@@ -21,6 +21,7 @@ class Name final : public VP::Operator {
   // VP::Command _reset;            // a command the node answers
   // VP::File _settings;            // a file the node reads, watches and saves
   // std::string _folder;           // where the node's own files are
+  // std::string _name;             // its own, as a line names it
 
   // At load, and again after every swap: names in, handles out.
   // void bind(VP::Bind &node) override {
@@ -34,6 +35,7 @@ class Name final : public VP::Operator {
   //   _reset = node.command("reset", "turns the node back to its start");
   //   _settings = node.file("settings.ini"); // in the node's folder
   //   _folder = node.folder();
+  //   _name = node.name(); // for a command about itself: param set <name> …
   //   const VP::Engine &engine = node.engine(); // with #include "baseclasses/Engine.h"
   // }
 
@@ -46,8 +48,10 @@ class Name final : public VP::Operator {
   //   if (frame.empty(_atlas)) // at first, and after image clear
   //     frame.upload(_atlas, pixels, {width, height});
   //   const std::uint64_t index = frame.index(); // frames since the view loaded
+  //   const glm::uvec2 size = frame.resolution(); // the window's; zero without one
   //   frame.log(VP::Level::info, "a line at the node's log level");
   //   frame.commands().send("param set name speed 0.02");
+  //   for (const VP::Logged &line : frame.commands().log()) {} // since last frame
   //   for (const VP::Event &event : frame.input().events()) {}
   //   const glm::vec2 at = frame.input().pointer(); // in pixels, as the cursor
   //   for (const std::string_view line : frame.terminal().lines()) {}
@@ -55,7 +59,6 @@ class Name final : public VP::Operator {
   //   const std::string_view settings = frame.files().text(_settings);
   //   frame.files().save(_settings, "text");
   //   const std::vector<std::string> names = frame.files().list(_folder);
-  //   const VP::View &view = frame.view(); // with #include "runtime/View.h"
   // }
 
   // When a command the node registered runs.

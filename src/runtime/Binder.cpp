@@ -51,6 +51,9 @@ public:
   std::string folder() const override {
     return _bound.node->folder.string();
   }
+  std::string name() const override {
+    return _bound.node->name;
+  }
   const Engine &engine() const override {
     return _schedule._wiring.engine;
   }
