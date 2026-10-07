@@ -1,5 +1,6 @@
 # The list part: one node whose operator is List; it lays out the Items it is handed as a
-# column of rows in the Rect its place gives, for a rects and a glyphs node to draw.
+# column of rows in the Rect its place gives, for a rects and a glyphs node to draw, and
+# hands on the rows' Rects as rows, for hit to find the one pressed.
 [manifest]
 version = 1
 

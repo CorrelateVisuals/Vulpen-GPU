@@ -1,0 +1,8 @@
+# The viewport part: one node whose operator is Viewport; it hands on the window's whole
+# Rect as area, for the outermost split of a dock to divide.
+[manifest]
+version = 1
+
+[node "viewport"]
+operator = Viewport
+file     = Viewport.cpp

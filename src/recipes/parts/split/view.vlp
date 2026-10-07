@@ -1,1 +1,11 @@
-# The split part: one node whose operator is Split.
+# The split part: one node whose operator is Split; it divides the Rect its area gives in
+# two along its axis, x side by side or y stacked, the first taking its ratio, with a seam
+# between them that a drag moves, for a rects node to draw.
+[manifest]
+version = 1
+
+[node "split"]
+operator = Split
+file     = Split.cpp
+param    = axis=x
+param    = ratio=0.5

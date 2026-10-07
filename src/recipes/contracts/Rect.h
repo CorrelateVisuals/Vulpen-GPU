@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 namespace VP_VIEW {
 
@@ -19,5 +20,16 @@ struct alignas(8) Rect {
         VP_MEMBER(Rect, offset), VP_MEMBER(Rect, extent), VP_MEMBER(Rect, role)};
   }
 };
+
+// Rects one C++ node hands another, as a list hands hit the rows it shows.
+using Rects = std::vector<Rect>;
+
+// Whether a point, in pixels as the pointer counts them, is in the Rect. Its right and
+// bottom edges are out, so of two Rects that touch only one holds a point between them.
+inline bool contains(const Rect &rect, glm::vec2 point) {
+  const glm::vec2 from(rect.offset);
+  const glm::vec2 to = from + glm::vec2(rect.extent);
+  return point.x >= from.x && point.x < to.x && point.y >= from.y && point.y < to.y;
+}
 
 } // namespace VP_VIEW

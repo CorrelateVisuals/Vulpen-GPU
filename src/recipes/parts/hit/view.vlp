@@ -1,1 +1,8 @@
-# The hit part: one node whose operator is Hit.
+# The hit part: one node whose operator is Hit; a press on one of the Rects it reads sends
+# the command of the Item shown there.
+[manifest]
+version = 1
+
+[node "hit"]
+operator = Hit
+file     = Hit.cpp

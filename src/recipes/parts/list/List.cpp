@@ -28,8 +28,9 @@ VP_VIEW::Rect grown(const VP_VIEW::Rect &rect, std::int32_t by, std::uint32_t ro
 }
 
 // Lays out the Items it is handed as a column of rows, a row each, in the Rect its place
-// gives, over a framed fill. A completion list is this part, as menus and popups will
-// be, so none of them places its rows itself.
+// gives, over a framed fill, and hands on where each row is, so hit finds the one
+// pressed. A completion list is this part, as menus and popups will be, so none of them
+// places its rows itself.
 class List final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _items = &node.input<VP_VIEW::Items>("items");
@@ -38,6 +39,8 @@ class List final : public VP::Operator {
     _rects = node.upload<VP_VIEW::Rect>("rects", backing);
     _labels = node.upload<VP_VIEW::Label>("labels", row_room);
     _characters = node.upload<VP_VIEW::Character>("characters", character_room);
+    _rows = &node.output<VP_VIEW::Rects>("rows");
+    _rows->reserve(row_room); // so a frame never grows it (CPP10)
   }
   void cook(VP::Cook &frame) override {
     const VP_VIEW::Rect &place = *_place;
@@ -55,6 +58,7 @@ class List final : public VP::Operator {
     const std::span<VP_VIEW::Label> labels = frame.write(_labels, rows);
     const std::span<VP_VIEW::Character> room = frame.write(_characters);
     const std::size_t columns = cell.x == 0 ? 0 : place.extent.x / cell.x;
+    _rows->clear();
     std::uint32_t next = 0;
     for (std::uint32_t row = 0; row < rows; ++row) {
       const std::string_view label = (*_items)[row].label;
@@ -62,9 +66,11 @@ class List final : public VP::Operator {
           std::min({label.size(), columns, std::size_t{character_room - next}}));
       for (std::uint32_t at = 0; at < shown; ++at)
         room[next + at] = {.code = static_cast<unsigned char>(label[at]), .label = row};
-      labels[row] = {.offset = place.offset +
-                               glm::ivec2(0, static_cast<std::int32_t>(row * cell.y)),
-                     .extent = {place.extent.x, cell.y},
+      const VP_VIEW::Rect &where = _rows->emplace_back(VP_VIEW::Rect{
+          .offset = place.offset + glm::ivec2(0, static_cast<std::int32_t>(row * cell.y)),
+          .extent = {place.extent.x, cell.y}});
+      labels[row] = {.offset = where.offset,
+                     .extent = where.extent,
                      .role = VP_VIEW::role("text"),
                      .first = next,
                      .count = shown};
@@ -79,6 +85,7 @@ class List final : public VP::Operator {
   VP::Upload<VP_VIEW::Rect> _rects;
   VP::Upload<VP_VIEW::Label> _labels;
   VP::Upload<VP_VIEW::Character> _characters;
+  VP_VIEW::Rects *_rows = nullptr; // a Rect each row shown, in the order of the Items
 };
 
 } // namespace
