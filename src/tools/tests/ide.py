@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """The ide app runs in a window while typed keys drive its terminal down every path: Tab
 on a word not begun and on one begun, the completions listed, the edits and the arrows,
-history, a line the command port refuses, and help. It must end with exit 0 and print no
-validation message or sanitizer report (RVK00, A03), so in the asan preset it checks the
-terminal's memory. Where no display exists it is skipped (V07).
+history, a line the command port refuses, and help. The pointer drags the dock's seam,
+whose param set rebuilds the running app, and presses a completion. It must end with
+exit 0 and print no validation message or sanitizer report (RVK00, A03), so in the asan
+preset it checks the memory of the terminal, the dock and the rebuild. Where no display
+exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
 """
@@ -35,7 +37,14 @@ TYPED = [
     "input key down enter",
     "input text node",
     "input key down tab",
-    "input key down tab",
+    "input key down tab",  # node's words listed, from the word's column
+    # Where a 1280 by 720 window puts them; a window of another size misses, harmlessly.
+    "input pointer 640 466",  # the seam, at 0.65 of the height
+    "input button down left",
+    "input pointer 640 300",
+    "input button up left",  # one param set, which rebuilds the app
+    "input pointer 70 660",  # remove, the third word listed
+    "input button down left",
 ]
 
 

@@ -1,11 +1,11 @@
 # The IDE app: Vulpen editing Vulpen. Only child recipes and the wires between them, built
 # by addition: each row is recipes placed side by side and connected, never a bigger
-# recipe with nodes removed. Built so far: Look, the terminal alone filling the window,
-# and Library.
+# recipe with nodes removed. Built so far: Look, the dock, the terminal in its bottom
+# row, and Library; the room above waits for the editor and graph panels.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
-#   Dock       dock                   seats the menubar and the panels
+#   Dock       viewport + dock        seats the menubar and the panels in the window
 #   Editor     panel + text-area + find-bar
 #   Terminal   panel + terminal
 #   Graph      panel + graph-editor
@@ -26,6 +26,15 @@ recipe = palette
 [node "ide.font"]
 recipe = font
 
+[node "ide.viewport"]
+recipe = viewport
+
+# Listed before the panels it seats, so its ground is drawn first.
+[node "ide.dock"]
+recipe = dock
+param  = split.axis=y
+param  = split.ratio=0.65
+
 [node "ide.terminal"]
 recipe = terminal
 
@@ -35,8 +44,17 @@ recipe = inspect
 [node "ide.library"]
 recipe = library
 
+[connection "viewport"]
+from = ide.viewport.area
+to   = ide.dock.split.area
+
+[connection "terminal-area"]
+from = ide.dock.split.second
+to   = ide.terminal.command-line.area
+
 [connection "palette"]
 from = ide.palette.palette
+to   = ide.dock.rects.palette
 to   = ide.terminal.rects.palette
 to   = ide.terminal.glyphs.palette
 to   = ide.terminal.completion-rects.palette

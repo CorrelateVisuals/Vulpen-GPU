@@ -116,6 +116,14 @@ std::string_view shared_start(std::span<const std::string_view> words) {
   return shared;
 }
 
+// What a press on a completion sends: the rest of its word, typed as keys would type
+// it; nothing for a placeholder, which is never typed in, or a word typed whole.
+std::string rest_typed(std::string_view candidate, std::size_t typed) {
+  if (placeholder(candidate) || candidate.size() <= typed)
+    return {};
+  return std::format("input text {}", candidate.substr(typed));
+}
+
 // A log line's color: problems in their own, so they stand out as on the console.
 std::uint32_t role_of(VP::Level level) {
   if (level == VP::Level::error)
@@ -161,9 +169,10 @@ struct Shown {
 // command port; its param on says where it is. On the terminal it is the CLI: each line
 // typed or piped in runs, what it answers is printed, and the run ends with the input.
 // In a window it reads the input port, and shows what lines answer and the log above
-// the line typed. A line that names no view goes to the view hosted most recently, as
-// view new and view load leave it, so it needs no name and every log line still has
-// one. The prompt shows that view's folder, as a shell shows the one it is in.
+// the line typed, in the Rect its area gives. A line that names no view goes to the view
+// hosted most recently, as view new and view load leave it, so it needs no name and
+// every log line still has one. The prompt shows that view's folder, as a shell shows
+// the one it is in.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _help = node.command("help", "lists every command, with its usage and what it does");
@@ -178,6 +187,7 @@ class CommandLine final : public VP::Operator {
     _window = on == "window";
     if (!_window)
       return;
+    _area = &node.input<VP_VIEW::Rect>("area");
     _font = &node.input<VP_VIEW::Font>("font");
     _items = &node.output<VP_VIEW::Items>("items");
     _place = &node.output<VP_VIEW::Rect>("place");
@@ -305,7 +315,8 @@ class CommandLine final : public VP::Operator {
 
   // As a shell does: the word at the caret takes what every candidate shares, a word
   // only one candidate fits is finished, and several show in the list until the next
-  // key. A placeholder, as <name>, shows what may come but is never typed in.
+  // key, where a press on one types the rest of it. A placeholder, as <name>, shows what
+  // may come but is never typed in.
   void complete_word(VP::Cook &frame) {
     const std::string_view before = std::string_view(_line).substr(0, _caret);
     _word = before.find_last_of(' ') + 1; // 0 when there is none
@@ -319,15 +330,17 @@ class CommandLine final : public VP::Operator {
           return !placeholder(candidate);
         });
     const std::string_view shared = typeable.empty() ? word : shared_start(typeable);
+    const std::size_t typed = shared.size(); // the word at the caret, as completed
     _line.insert(_caret, shared.substr(word.size()));
-    _caret += shared.size() - word.size();
+    _caret += typed - word.size();
     if (candidates.size() == 1 && typeable.size() == 1) {
       _line.insert(_caret++, 1, ' ');
       return _items->clear();
     }
     _items->clear();
     for (const std::string_view candidate : candidates)
-      _items->push_back({.label = std::string(candidate)});
+      _items->push_back(
+          {.label = std::string(candidate), .command = rest_typed(candidate, typed)});
   }
 
   // Each line of the text a row, the oldest dropped past the scrollback's room.
@@ -338,59 +351,66 @@ class CommandLine final : public VP::Operator {
       _scrollback.pop_front();
   }
 
-  // The scrollback fills the window down to the line typed, its newest row last, as a
-  // shell's does. A row wider than the window is cut, and the line typed scrolls to
-  // keep the caret in view.
+  // The scrollback fills the area down to the line typed, its newest row last, as a
+  // shell's does. A row wider than the area is cut, and the line typed scrolls to keep
+  // the caret in view.
   void lay_out(VP::Cook &frame) {
-    const glm::ivec2 window(frame.resolution());
+    const VP_VIEW::Rect &area = *_area;
+    const glm::ivec2 size(area.extent);
     const glm::ivec2 cell(_font->cell);
     const std::string start = prompt();
     const auto prompt_columns = static_cast<std::int32_t>(start.size());
-    const std::int32_t columns = cell.x == 0 ? 0 : (window.x - 2 * margin) / cell.x;
-    const std::int32_t line = window.y - margin - cell.y; // the top of the line typed
+    const std::int32_t columns = cell.x == 0 ? 0 : (size.x - 2 * margin) / cell.x;
+    const std::int32_t left = area.offset.x + margin; // where text starts
+    // The top of the line typed, the rule above it, and the scrollback's room above that.
+    const std::int32_t line = area.offset.y + size.y - margin - cell.y;
     const std::int32_t rule = line - margin;
+    const std::int32_t above = rule - area.offset.y - 2 * margin;
     *_place = {};
-    if (columns <= prompt_columns || rule - 2 * margin < cell.y) { // no room, or no font
+    if (columns <= prompt_columns || above < cell.y) { // no room, or no font
       frame.write(_rects, 0);
       frame.write(_labels, 0);
       frame.write(_characters, 0);
       return;
     }
     const std::span<VP_VIEW::Rect> rects = frame.write(_rects, rect_room);
-    rects[0] = {.extent = glm::uvec2(window), .role = VP_VIEW::role("background")};
-    rects[1] = {.offset = {0, rule},
-                .extent = {static_cast<std::uint32_t>(window.x), rule_width},
+    rects[0] = {.offset = area.offset,
+                .extent = area.extent,
+                .role = VP_VIEW::role("background")};
+    rects[1] = {.offset = {area.offset.x, rule},
+                .extent = {area.extent.x, rule_width},
                 .role = VP_VIEW::role("border")};
     Text text{frame.write(_labels), frame.write(_characters)};
-    const auto rows = static_cast<std::size_t>((rule - 2 * margin) / cell.y);
+    const auto rows = static_cast<std::size_t>(above / cell.y);
     const std::size_t shown = std::min(rows, _scrollback.size());
     const glm::uvec2 row_extent(static_cast<std::uint32_t>(columns * cell.x), cell.y);
     for (std::size_t row = 0; row < shown; ++row) {
       const Shown &kept = _scrollback[_scrollback.size() - shown + row];
       const auto from_rule = static_cast<std::int32_t>(shown - row) * cell.y;
-      text.add({margin, rule - margin - from_rule},
+      text.add({left, rule - margin - from_rule},
                row_extent,
                kept.role,
                std::string_view(kept.text).substr(0, static_cast<std::size_t>(columns)));
     }
-    rects[2] = lay_out_line(text, start, columns - prompt_columns, cell, line);
+    rects[2] = lay_out_line(text, start, left, columns - prompt_columns, cell, line);
     frame.write(_labels, text.label_count);
     frame.write(_characters, text.character_count);
-    place_list(columns - prompt_columns, cell, rule, rows);
+    place_list(left, columns - prompt_columns, cell, rule, rows);
   }
 
   // The prompt and the line typed, scrolled so the caret stays in view; returns the
   // caret.
   VP_VIEW::Rect lay_out_line(Text &text,
                              std::string_view start,
+                             std::int32_t left,
                              std::int32_t room,
                              glm::ivec2 cell,
                              std::int32_t line) {
     const auto columns = static_cast<std::size_t>(room);
     _first = _caret < columns ? 0 : _caret - columns + 1;
-    const std::int32_t typed = margin + static_cast<std::int32_t>(start.size()) * cell.x;
-    text.add({margin, line},
-             glm::uvec2(static_cast<std::uint32_t>(typed - margin), cell.y),
+    const std::int32_t typed = left + static_cast<std::int32_t>(start.size()) * cell.x;
+    text.add({left, line},
+             glm::uvec2(static_cast<std::uint32_t>(typed - left), cell.y),
              VP_VIEW::role("accent"),
              start);
     text.add({typed, line},
@@ -404,8 +424,11 @@ class CommandLine final : public VP::Operator {
   }
 
   // The completions, as many as fit, just above the rule, from the word they complete.
-  void
-  place_list(std::int32_t room, glm::ivec2 cell, std::int32_t rule, std::size_t rows) {
+  void place_list(std::int32_t left,
+                  std::int32_t room,
+                  glm::ivec2 cell,
+                  std::int32_t rule,
+                  std::size_t rows) {
     if (_items->empty())
       return;
     std::size_t longest = 0;
@@ -417,8 +440,7 @@ class CommandLine final : public VP::Operator {
                       cell.x;
     const std::int32_t word = static_cast<std::int32_t>(_word) -
                               static_cast<std::int32_t>(_first);
-    const std::int32_t typed =
-        margin + static_cast<std::int32_t>(prompt().size()) * cell.x;
+    const std::int32_t typed = left + static_cast<std::int32_t>(prompt().size()) * cell.x;
     const std::int32_t x =
         std::clamp(typed + word * cell.x, typed, typed + (room * cell.x) - wide);
     *_place = {.offset = {x, rule - margin - count * cell.y},
@@ -484,6 +506,7 @@ class CommandLine final : public VP::Operator {
   bool _prompted = false;
   bool _window = false;
   // In a window: what it reads and writes, and the line being typed.
+  const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;
   VP_VIEW::Items *_items = nullptr; // the completions shown, empty for none
   VP_VIEW::Rect *_place = nullptr;  // where they show

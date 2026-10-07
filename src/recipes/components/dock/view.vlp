@@ -1,2 +1,18 @@
-# The dock component: split, hit and rects. Seating panels is a recipe, not the runtime:
-# the dock moves a seam only through a command, so a layout is rebuilt by replaying the log.
+# The dock component: split and rects. It divides the Rect its host connects to its
+# split's area in two, on the theme's background, with a seam between them that a drag
+# moves; the host seats a panel in each of split.first and split.second, or another dock
+# for more. A seam moves only through param set, so replaying the log rebuilds a layout.
+[manifest]
+version = 1
+
+[node "dock"]
+
+[node "dock.split"]
+recipe = split
+
+[node "dock.rects"]
+recipe = rects
+
+[connection "rects"]
+from = dock.split.rects
+to   = dock.rects.rects
