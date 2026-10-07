@@ -61,6 +61,10 @@ set_tests_properties(triangle PROPERTIES SKIP_REGULAR_EXPRESSION "glfwInit faile
 set_tests_properties(vulpen triangle PROPERTIES
   FAIL_REGULAR_EXPRESSION "Validation (Error|Warning|Performance Warning):")
 
+# The ide app's terminal, driven by typed keys; with no display, it is skipped (V07).
+vulpen_test(ide ${python} ${tests}/ide.py ${vulpen_file})
+set_tests_properties(ide PROPERTIES SKIP_REGULAR_EXPRESSION "no display")
+
 add_executable(barriers ${tests}/Barriers.cpp ${PROJECT_SOURCE_DIR}/src/baseclasses/Passes.cpp)
 target_include_directories(barriers PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(barriers PRIVATE Vulkan::Headers)

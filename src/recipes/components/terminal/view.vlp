@@ -1,2 +1,60 @@
 # The terminal component: command-line, rects and glyphs, with a list for completions: the
-# command port on screen, as the CLI is the command port on stdout.
+# command port on screen, as the CLI is the command port on stdout. Its host connects a
+# palette to its rects and glyphs, and a font to its glyphs, its command-line and its
+# completions, so one theme and one atlas serve every panel.
+[manifest]
+version = 1
+
+[node "terminal"]
+
+[node "terminal.command-line"]
+recipe = command-line
+param  = on=window
+
+[node "terminal.rects"]
+recipe = rects
+
+[node "terminal.glyphs"]
+recipe = glyphs
+
+[node "terminal.completions"]
+recipe = list
+
+# After the text, so the completions show over it.
+[node "terminal.completion-rects"]
+recipe = rects
+
+[node "terminal.completion-glyphs"]
+recipe = glyphs
+
+[connection "rects"]
+from = terminal.command-line.rects
+to   = terminal.rects.rects
+
+[connection "labels"]
+from = terminal.command-line.labels
+to   = terminal.glyphs.labels
+
+[connection "characters"]
+from = terminal.command-line.characters
+to   = terminal.glyphs.characters
+
+[connection "items"]
+from = terminal.command-line.items
+to   = terminal.completions.items
+
+[connection "place"]
+from = terminal.command-line.place
+to   = terminal.completions.place
+
+[connection "completion-rects"]
+from = terminal.completions.rects
+to   = terminal.completion-rects.rects
+
+[connection "completion-labels"]
+from = terminal.completions.labels
+to   = terminal.completion-glyphs.labels
+
+[connection "completion-characters"]
+from = terminal.completions.characters
+to   = terminal.completion-glyphs.characters

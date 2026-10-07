@@ -1,6 +1,7 @@
 # The IDE app: Vulpen editing Vulpen. Only child recipes and the wires between them, built
 # by addition: each row is recipes placed side by side and connected, never a bigger
-# recipe with nodes removed.
+# recipe with nodes removed. Built so far: Look, the terminal alone filling the window,
+# and Library.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -14,3 +15,44 @@
 #   Tooltip    tooltip
 #   Modes      modes                  edit or perform: which node reaches the screen
 #   Library    inspect + library      reads the graph; lists, drops and starts recipes
+[manifest]
+version = 1
+
+[node "ide"]
+
+[node "ide.palette"]
+recipe = palette
+
+[node "ide.font"]
+recipe = font
+
+[node "ide.terminal"]
+recipe = terminal
+
+[node "ide.inspect"]
+recipe = inspect
+
+[node "ide.library"]
+recipe = library
+
+[connection "palette"]
+from = ide.palette.palette
+to   = ide.terminal.rects.palette
+to   = ide.terminal.glyphs.palette
+to   = ide.terminal.completion-rects.palette
+to   = ide.terminal.completion-glyphs.palette
+
+[connection "font"]
+from = ide.font.font
+to   = ide.terminal.glyphs.font
+to   = ide.terminal.completion-glyphs.font
+
+[connection "atlas"]
+from = ide.font.atlas
+to   = ide.terminal.glyphs.atlas
+to   = ide.terminal.completion-glyphs.atlas
+
+[connection "metrics"]
+from = ide.font.metrics
+to   = ide.terminal.command-line.font
+to   = ide.terminal.completions.font
