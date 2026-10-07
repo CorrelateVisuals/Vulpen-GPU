@@ -12,41 +12,51 @@
 #include <cstdint>
 #include <format>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
 namespace {
 
-constexpr std::string_view font_file = "RobotoMono-Regular.ttf";
 // Printable ASCII, from the space to the tilde.
 constexpr std::uint32_t first = ' ';
 constexpr std::uint32_t count = '~' - first + 1;
 constexpr std::uint32_t columns = 16; // of glyphs in a row of the atlas
 constexpr std::uint32_t rows = (count + columns - 1) / columns;
 
-// Bakes the monospace font in its folder at the height its param gives, a cell a glyph,
-// into an atlas that glyphs samples a texel a pixel. It bakes again only once the atlas
-// is empty or the height changed, so a frame allocates nothing (CPP10).
+// Bakes the monospace font file its face param names at the height its height param
+// gives, a cell a glyph, into an atlas that glyphs samples a texel a pixel. It bakes
+// after it binds, as an edit of either param makes it do, and once image clear empties
+// the atlas, so a frame allocates nothing (CPP10).
 class Font final : public VP::Operator {
+  // The ports first, so a face refused leaves no other error.
   void bind(VP::Bind &node) override {
-    _file = node.file(font_file);
     _atlas = node.texture<std::uint8_t>("atlas");
     _font = node.upload<VP_VIEW::Font>("font", 1);
     _height = node.param<std::uint32_t>("height");
+    _face = node.param<std::string>("face");
+    _baked = {};
+    // In its folder, so the font moves with its view (V03).
+    if (_face.find_first_of("/\\") != std::string::npos)
+      throw std::runtime_error(std::format(
+          "param face = {}: a file of the node's folder, named without a folder", _face));
+    if (!_face.empty()) // the loader names a face left unset
+      _file = node.file(_face);
   }
   // Written every frame, as it is a few bytes, so a buffer made anew for a connection
   // holds the Font too.
   void cook(VP::Cook &frame) override {
-    if (frame.empty(_atlas) || _baked.cell.y != _height)
+    if (_baked.count == 0 || frame.empty(_atlas))
       _baked = bake(frame);
     frame.write(_font).front() = _baked;
   }
   VP_VIEW::Font bake(VP::Cook &frame) const;
 
-  VP::File _file;
   VP::Texture<std::uint8_t> _atlas;
   VP::Upload<VP_VIEW::Font> _font;
   std::uint32_t _height = 0;
+  std::string _face;
+  VP::File _file;
   VP_VIEW::Font _baked;
 };
 
@@ -55,10 +65,13 @@ class Font final : public VP::Operator {
 // into its neighbor's cell.
 VP_VIEW::Font Font::bake(VP::Cook &frame) const {
   const std::string_view bytes = frame.files().text(_file);
+  if (bytes.empty())
+    throw std::runtime_error(
+        std::format("face {} is no file of the node's folder, or an empty one", _face));
   const auto *const data = reinterpret_cast<const unsigned char *>(bytes.data());
   stbtt_fontinfo font{};
-  if (bytes.empty() || !stbtt_InitFont(&font, data, stbtt_GetFontOffsetForIndex(data, 0)))
-    throw std::runtime_error(std::format("{} is no font stb_truetype reads", font_file));
+  if (!stbtt_InitFont(&font, data, stbtt_GetFontOffsetForIndex(data, 0)))
+    throw std::runtime_error(std::format("face {} is no font stb_truetype reads", _face));
   const float scale = stbtt_ScaleForPixelHeight(&font, static_cast<float>(_height));
   int ascent = 0, descent = 0, gap = 0, advance = 0;
   stbtt_GetFontVMetrics(&font, &ascent, &descent, &gap);
@@ -76,7 +89,7 @@ VP_VIEW::Font Font::bake(VP::Cook &frame) const {
     stbtt_GetCodepointHMetrics(&font, code, &wide, nullptr);
     if (wide != advance)
       throw std::runtime_error(std::format(
-          "{} is not monospace: {:c} is not as wide as the space", font_file, code));
+          "face {} is not monospace: {:c} is not as wide as the space", _face, code));
     glm::ivec2 low{}, high{};
     stbtt_GetCodepointBitmapBox(&font, code, scale, scale, &low.x, &low.y, &high.x, &high.y);
     const glm::ivec2 box = high - low;

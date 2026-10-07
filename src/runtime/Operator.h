@@ -278,14 +278,20 @@ public:
         "a pixel is a uint8, uint16 or float, or a glm vector of 2 or 4 of them");
     return {texture_index(port, pixel_type<T>)};
   }
+  // A number, read as the shader would read it, or a word as a std::string, such as a
+  // file's name, which only C++ reads.
   template <class T> T param(std::string_view name) {
     const std::string_view text = param_text(name);
-    T value{};
-    const auto [end, error] =
-        std::from_chars(text.data(), text.data() + text.size(), value);
-    if (error != std::errc{} || end != text.data() + text.size())
-      param_invalid(name, glsl_type<T>);
-    return value;
+    if constexpr (std::is_same_v<T, std::string>) {
+      return T(text);
+    } else {
+      T value{};
+      const auto [end, error] =
+          std::from_chars(text.data(), text.data() + text.size(), value);
+      if (error != std::errc{} || end != text.data() + text.size())
+        param_invalid(name, glsl_type<T>);
+      return value;
+    }
   }
   // The object a connection carries from this node to C++ nodes: one per connection,
   // which the engine owns (A01) and keeps, contents included, while this node's module
