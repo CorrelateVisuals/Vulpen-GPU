@@ -1,7 +1,7 @@
 # The IDE app: Vulpen editing Vulpen. Only child recipes and the wires between them, built
 # by addition: each row is recipes placed side by side and connected, never a bigger
-# recipe with nodes removed. Built so far: Look, the dock, the terminal in its bottom
-# row, and Library; the room above waits for the editor and graph panels.
+# recipe with nodes removed. Built so far: Look, the dock, the terminal in a panel in its
+# bottom row, and Library; the room above waits for the editor and graph panels.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -35,6 +35,9 @@ recipe = dock
 param  = split.axis=y
 param  = split.ratio=0.65
 
+[node "ide.terminal-panel"]
+recipe = panel
+
 [node "ide.terminal"]
 recipe = terminal
 
@@ -48,13 +51,24 @@ recipe = library
 from = ide.viewport.area
 to   = ide.dock.split.area
 
-[connection "terminal-area"]
+[connection "terminal-panel"]
 from = ide.dock.split.second
+to   = ide.terminal-panel.bar.area
+
+[connection "terminal-area"]
+from = ide.terminal-panel.bar.rest
 to   = ide.terminal.command-line.area
+
+[connection "terminal-tabs"]
+from = ide.terminal.command-line.tabs
+to   = ide.terminal-panel.tabs.items
+to   = ide.terminal-panel.hit.items
 
 [connection "palette"]
 from = ide.palette.palette
 to   = ide.dock.rects.palette
+to   = ide.terminal-panel.rects.palette
+to   = ide.terminal-panel.glyphs.palette
 to   = ide.terminal.rects.palette
 to   = ide.terminal.glyphs.palette
 to   = ide.terminal.completion-rects.palette
@@ -62,15 +76,19 @@ to   = ide.terminal.completion-glyphs.palette
 
 [connection "font"]
 from = ide.font.font
+to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
 to   = ide.terminal.completion-glyphs.font
 
 [connection "atlas"]
 from = ide.font.atlas
+to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
 to   = ide.terminal.completion-glyphs.atlas
 
 [connection "metrics"]
 from = ide.font.metrics
+to   = ide.terminal-panel.bar.font
+to   = ide.terminal-panel.tabs.font
 to   = ide.terminal.command-line.font
 to   = ide.terminal.completions.font

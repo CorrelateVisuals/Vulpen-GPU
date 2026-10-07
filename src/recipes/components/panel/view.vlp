@@ -1,2 +1,47 @@
-# The panel component: list, hit, rects and glyphs draw a titled frame with a tab strip,
-# and the content fills the Rect it leaves, so any recipe can sit in a panel.
+# The panel component: bar, list, rects, glyphs and hit. Its bar cuts a strip one text row
+# tall off the top of the Rect its host connects to bar.area, and the content fills
+# bar.rest, so any recipe can sit in a panel. The strip shows the Items the content hands
+# tabs.items and hit.items, side by side, and a press on one sends its command: tabs are
+# the content's, so a panel registers no command. Another shape is another composition:
+# bar.size=0 leaves the strip no room, and a panel with no tabs is its content alone.
+[manifest]
+version = 1
+
+[node "panel"]
+
+[node "panel.bar"]
+recipe = bar
+
+[node "panel.tabs"]
+recipe = list
+param  = axis=x
+
+[node "panel.rects"]
+recipe = rects
+
+[node "panel.glyphs"]
+recipe = glyphs
+
+[node "panel.hit"]
+recipe = hit
+
+[connection "strip"]
+from = panel.bar.strip
+to   = panel.tabs.place
+
+[connection "rects"]
+from = panel.tabs.rects
+to   = panel.rects.rects
+
+[connection "labels"]
+from = panel.tabs.labels
+to   = panel.glyphs.labels
+
+[connection "characters"]
+from = panel.tabs.characters
+to   = panel.glyphs.characters
+
+# Where each tab shows, so a press on one sends its command.
+[connection "shown"]
+from = panel.tabs.shown
+to   = panel.hit.rects

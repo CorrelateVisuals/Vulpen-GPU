@@ -4,8 +4,8 @@ on a word not begun and on one begun, the completions listed, the edits and the 
 history, a line the command port refuses, and help. The pointer drags the dock's seam,
 whose param set rebuilds the running app, and presses a completion. It must end with
 exit 0 and print no validation message or sanitizer report (RVK00, A03), so in the asan
-preset it checks the memory of the terminal, the dock and the rebuild. Where no display
-exists it is skipped (V07).
+preset it checks the memory of the terminal, its panel, the dock and the rebuild. Where
+no display exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
 """
