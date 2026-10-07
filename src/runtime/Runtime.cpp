@@ -353,11 +353,14 @@ void Runtime::loop() {
       watch();
     prepare();
     _ports.frame();
+    _commands.frame();
     const std::uint64_t frame = _options.first_frame + frames;
+    // Read as the swapchain will be made for it, so C++ lays out what shaders map.
+    const VkExtent2D resolution = _window ? _window->size() : VkExtent2D{};
     _clears.clear();
     _copies.clear();
     for (Schedule *const schedule : _views->schedules()) {
-      schedule->cook(frame);
+      schedule->cook(frame, resolution);
       std::ranges::copy(schedule->take_clears(), std::back_inserter(_clears));
       std::ranges::copy(schedule->take_copies(), std::back_inserter(_copies));
     }

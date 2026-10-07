@@ -94,6 +94,10 @@ public:
   std::string run(std::string_view line);
   std::string send(std::string_view line) override;
   std::vector<Usage> usages() const override;
+  std::span<const Logged> log() const override;
+  // Before a frame cooks: what the log printed since the frame before is what nodes
+  // read in this one.
+  void frame();
   // Runs a file's lines in turn until one quits, each in a group of its own, so undo
   // after a replay steps back one command at a time, and prints what each answers.
   // Throws naming the file and line of the first that fails, and runs none after it, so
@@ -136,6 +140,8 @@ private:
   const Command _source;
   const Command _log_save;
   bool _quitting = false;
+  std::vector<Logged> _logged; // the first _logged_count are this frame's
+  std::size_t _logged_count = 0;
 };
 
 } // namespace VP

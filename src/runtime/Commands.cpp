@@ -98,6 +98,9 @@ private:
   std::vector<Usage> usages() const override {
     return _port.usages();
   }
+  std::span<const Logged> log() const override {
+    return _port.log();
+  }
 
   Commands &_port;
 };
@@ -331,6 +334,14 @@ std::vector<Usage> Commands::usages() const {
   for (const Spec &spec : _specs)
     usages.push_back({spec.usage, spec.help});
   return usages;
+}
+
+std::span<const Logged> Commands::log() const {
+  return std::span(_logged).first(_logged_count);
+}
+
+void Commands::frame() {
+  _logged_count = _log.take(_logged);
 }
 
 std::string Commands::send(std::string_view line) {

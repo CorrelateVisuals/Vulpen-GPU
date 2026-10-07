@@ -171,6 +171,10 @@ public:
   // Every command registered now, in the order they registered (RV04). They last until
   // the next frame, which may register others.
   virtual std::vector<Usage> usages() const = 0;
+  // What the log printed since the frame before, as the console shows it after the
+  // time, so a node can show the log, refusals of the lines it sent included. It lasts
+  // until the next frame.
+  virtual std::span<const Logged> log() const = 0;
 
 protected:
   ~CommandPort() = default;
@@ -373,6 +377,9 @@ public:
     return image_empty(texture.index);
   }
   virtual std::uint64_t index() const = 0;
+  // The window's size in pixels, which the frame block's resolution follows, so C++
+  // lays out what shaders draw; zero without a window.
+  virtual glm::uvec2 resolution() const = 0;
   virtual void log(Level level, std::string_view text) const = 0;
   virtual CommandPort &commands() = 0;
   virtual InputPort &input() = 0;

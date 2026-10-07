@@ -67,7 +67,8 @@ public:
   // Before a module swap: the operators' code is about to go, so they go first, with
   // their commands and the C++ objects their modules made. modules: as "view/folder".
   void drop_operators(const std::vector<std::string> &modules);
-  void cook(std::uint64_t frame);
+  // resolution: the window's size, zero without one.
+  void cook(std::uint64_t frame, VkExtent2D resolution);
   // The buffers made since the last call, which the next frame zeroes first.
   std::vector<VkBuffer> take_clears();
   // The images C++ filled since the last call, which the next frame copies in before

@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace VP {
 
@@ -41,6 +42,13 @@ inline std::optional<Level> level_named(std::string_view name) {
 // - out: what a node's operator writes.
 enum class Tag { run, gpu, swp, nod, mem, mod, out };
 
+// A line as the log printed it after its time, mark first, and the level it was written
+// at, so a node can show the log as the terminal does.
+struct Logged {
+  Level level = Level::info;
+  std::string text;
+};
+
 // The bottom of the tree: every module logs, so this header includes nothing of ours.
 // A header and a footer frame the log. Each line between them goes to standard output
 // under the time it was written, which shows only when the second changes:
@@ -69,11 +77,16 @@ public:
              Tag tag,
              std::string_view node,
              std::string_view text) const;
+  // Swaps the lines printed since the last take into lines, and returns how many lead
+  // it; what lines held is written over next, so a frame's take allocates nothing once
+  // the lines have grown (CPP10), and what the log keeps stays bounded (A03).
+  std::size_t take(std::vector<Logged> &lines) const;
 
 private:
   void print(Level level, Tag tag, std::string_view node, std::string_view text) const;
   void print_repeats() const;
   void emit(std::string_view tag, const char *color, std::string_view text) const;
+  void keep(Level level, std::string_view mark, std::string_view text) const;
 
   const Level _level;
   const bool _colors;
@@ -84,6 +97,8 @@ private:
   mutable std::string _previous;
   mutable std::uint64_t _repeats = 0;
   mutable std::time_t _second = 0;
+  mutable std::vector<Logged> _kept; // the first _count since the last take
+  mutable std::size_t _count = 0;
 };
 
 } // namespace VP

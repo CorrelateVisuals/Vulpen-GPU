@@ -259,12 +259,15 @@ private:
 // What an operator reaches during a frame: its node's block and read-backs, nothing else.
 class Schedule::Cooker final : public Cook {
 public:
-  Cooker(Schedule &schedule, Bound &bound, std::uint64_t frame)
-      : _schedule(schedule), _bound(bound), _frame(frame) {}
+  Cooker(Schedule &schedule, Bound &bound, std::uint64_t frame, glm::uvec2 resolution)
+      : _schedule(schedule), _bound(bound), _frame(frame), _resolution(resolution) {}
 
 private:
   std::uint64_t index() const override {
     return _frame;
+  }
+  glm::uvec2 resolution() const override {
+    return _resolution;
   }
   void log(Level level, std::string_view text) const override {
     _schedule.log(level, Tag::out, _bound, text);
@@ -319,6 +322,7 @@ private:
   Schedule &_schedule;
   Bound &_bound;
   const std::uint64_t _frame;
+  const glm::uvec2 _resolution;
 };
 
 Schedule::Bound Schedule::bind(const Node &node,
@@ -384,14 +388,14 @@ void Schedule::drop_operators(const std::vector<std::string> &modules) {
   });
 }
 
-void Schedule::cook(std::uint64_t frame) {
+void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
   for (const auto &entry : _buffers)
     if (entry.second.memory() == Memory::readback)
       entry.second.invalidate();
   for (Bound &bound : _bound) {
     if (!bound.errors.empty() || !bound.op)
       continue;
-    Cooker cooker(*this, bound, frame);
+    Cooker cooker(*this, bound, frame, {resolution.width, resolution.height});
     try {
       bound.op->cook(cooker);
     } catch (const std::exception &failure) {
