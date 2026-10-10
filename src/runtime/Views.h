@@ -14,6 +14,7 @@ namespace VP {
 class Log;
 class Schedule;
 struct Child;
+struct Pass;
 struct Wiring;
 
 // Every view this process runs: the one it started with and the views it hosts (V03),
@@ -34,14 +35,21 @@ public:
   // The view vulpen started with, as the changes so far left it.
   const View &view() const;
   // Whether a node of any view draws into the window, as the changes so far left them,
-  // so the next frame needs one.
+  // so the next frame needs one. A view whose window a view hosting it takes draws into
+  // an image instead, and so do the views it hosts that draw into its window.
   bool shows() const;
-  // Before a frame: rebuilds the schedule of each view that changed since the last, and
-  // drops those of the views no longer hosted. True when any schedule changed.
+  // Before a frame: rebuilds the schedule of each view that changed since the last, or
+  // whose draws into its window go elsewhere now, and drops those of the views no longer
+  // hosted. True when any schedule changed.
   bool rebuild();
-  // The schedules a frame runs: the host's first, then the hosted views' in the order
+  // The schedules a frame cooks: the host's first, then the hosted views' in the order
   // they were hosted.
   std::span<Schedule *const> schedules() const;
+  // Every view's passes, as a frame runs them: a view's work before that of the view that
+  // hosts it, which may sample its window; each image a window renders into right after
+  // the work of the views that draw into it, all its draws in one render pass; and the
+  // draws into the window last, the host's first, so a hosted view draws over it.
+  void gather(std::vector<Pass> &passes) const;
   // The folders the live scan watches: each view's.
   std::vector<std::filesystem::path> roots() const;
   // After a live build: the next frame's schedules take what it rebuilt, and each node
@@ -58,6 +66,9 @@ private:
   std::optional<std::string> host_of(std::string_view name) override;
   void command(Call &call) override;
   Hosted *hosted(std::string_view name) const;
+  // The view whose window its draws into its window render into: its own, while the
+  // view hosting it takes it with a connection, else that view's; null for the window.
+  const Hosted *target(const Hosted &hosted) const;
   void host(const Child &child, const std::string &parent);
   void follow(const std::string &host, const View &view);
   void unhost(Hosted &hosted);

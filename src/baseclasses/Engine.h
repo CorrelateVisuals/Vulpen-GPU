@@ -38,9 +38,10 @@ public:
   void wait() const;
   // Zeroes the new buffers first, so a run starts from the same bytes every time (C01),
   // and copies in the images the CPU filled. The dispatches and the draws into images run
-  // next, in graph order; the draws into the window, which nothing reads, follow in one
-  // render pass. frame, time and cursor: what the frame block tells every pass (RV02);
-  // size: its resolution while no window is open, zero for none.
+  // next, in the order given, the draws that follow one another into one image in one
+  // render pass; the draws into the window, which nothing reads, follow in one render
+  // pass. frame, time and cursor: what the frame block tells every pass (RV02); size: its
+  // resolution while no window is open, zero for none.
   void run(std::span<const VkBuffer> clears,
            std::span<const Copy> copies,
            std::span<const Pass> passes,

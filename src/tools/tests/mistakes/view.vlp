@@ -99,12 +99,20 @@ file         = Paint.frag
 file         = Paint.vert
 vertex_count = 3
 
-# Stops when a pixel of paint's image reads back as another.
+# Stops when a pixel of paint's image reads back as another; its C++ also registers an
+# operator that checks scene's pattern, in the window of a view its view hosts.
 [node "look"]
 operator    = Look
 file        = Look.comp
 file        = Look.cpp
 invocations = 64
+
+# Draws blocks into its view's window, red flipping every frame, which the view hosting it
+# takes, for look to sample.
+[node "scene"]
+file         = Scene.frag
+file         = Scene.vert
+vertex_count = 6
 
 [connection "values"]
 from = fill.values

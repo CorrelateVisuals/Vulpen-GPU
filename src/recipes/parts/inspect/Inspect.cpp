@@ -9,10 +9,6 @@
 
 namespace {
 
-std::string endpoint(const VP::Endpoint &end) {
-  return std::format("{}.{}", end.node, end.port);
-}
-
 // Reads the graph and answers ls and info, so a view can be read without a window and a
 // front end needs no mirror of the graph of its own.
 class Inspect final : public VP::Operator {
@@ -40,9 +36,9 @@ class Inspect final : public VP::Operator {
     for (const VP::Connection &connection : view.connections) {
       std::string to;
       for (const VP::Endpoint &end : connection.to)
-        to.append(to.empty() ? "" : ", ").append(endpoint(end));
+        to.append(to.empty() ? "" : ", ").append(end.text());
       call.reply(std::format(
-          "connection {} from {} to {}", connection.name, endpoint(connection.from), to));
+          "connection {} from {} to {}", connection.name, connection.from.text(), to));
     }
   }
 
@@ -75,7 +71,7 @@ class Inspect final : public VP::Operator {
       for (const VP::Endpoint &end : connection.to)
         if (end.node == name)
           call.reply(
-              std::format("reads {} from {}", end.port, endpoint(connection.from)));
+              std::format("reads {} from {}", end.port, connection.from.text()));
     }
   }
 

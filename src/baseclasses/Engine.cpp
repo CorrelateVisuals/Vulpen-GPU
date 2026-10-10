@@ -199,16 +199,24 @@ void Engine::run(std::span<const VkBuffer> clears,
   swapchain->present(*target);
 }
 
-// In graph order, so each pass runs after those that write what it reads. A draw into an
-// image records a render pass of its own, even with no instances, so its image is
-// cleared and ready to sample; a draw into the window waits for the window's.
+// In order, so each pass runs after those that write what it reads. The draws that
+// follow one another into the same image record in one render pass, even with no
+// instances, so the image is cleared and ready to sample; draws into the window wait for
+// the window's.
 void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes) {
   hazards.clear();
-  for (const Pass &pass : passes) {
+  for (std::size_t first = 0; first < passes.size();) {
+    const Pass &pass = passes[first];
     const bool draw = pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS;
+    std::size_t end = first + 1;
+    while (draw && end < passes.size() && passes[end].bind_point == pass.bind_point &&
+           passes[end].offscreen == pass.offscreen)
+      ++end;
+    const std::span<const Pass> run = passes.subspan(first, end - first);
+    first = end;
     if (draw && (!pass.offscreen || !pass.offscreen->framebuffer))
       continue;
-    if (hazards.before(pass))
+    if (hazards.before(run))
       barrier(commands,
               shader_stages,
               VK_ACCESS_SHADER_WRITE_BIT,
@@ -216,11 +224,13 @@ void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes)
               VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
     if (draw)
       begin(commands, *pass.offscreen);
-    bind(commands, pipelines, pass);
-    if (!draw)
-      vkCmdDispatch(commands, pass.groups, 1, 1);
-    else if (instances_of(pass) != 0)
-      vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
+    for (const Pass &each : run) {
+      bind(commands, pipelines, each);
+      if (!draw)
+        vkCmdDispatch(commands, each.groups, 1, 1);
+      else if (instances_of(each) != 0)
+        vkCmdDraw(commands, each.vertex_count, instances_of(each), 0, 0);
+    }
     if (draw)
       vkCmdEndRenderPass(commands);
   }

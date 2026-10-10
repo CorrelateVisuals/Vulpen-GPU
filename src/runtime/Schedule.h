@@ -24,6 +24,7 @@ class Ports;
 struct Connection;
 struct Copy;
 struct Node;
+struct Offscreen;
 struct Pass;
 struct PixelFormat;
 struct View;
@@ -49,18 +50,26 @@ struct Wiring {
 // the view into passes that declare what they read and write.
 class Schedule {
 public:
+  // Where the view's draws into its window go: the window, or an image, while the view
+  // that hosts it, or one hosting that, takes its window with a connection from
+  // `<view>:`. Its draws' pipelines fit the one or the other.
+  enum class Into : bool { window, image };
+
   // Writers before their readers. Throws when the connections form a cycle.
   static std::vector<const Node *> order(const View &view);
-  // Whether a draw of the view renders into the window, so the view needs one: a draw no
+  // Whether a draw of the view renders into its window, so the view needs one: a draw no
   // connection starts from. One whose output is connected renders into an image instead.
   static bool shows(const View &view);
 
   // Binds every node and checks each name that joins its manifest entry, shader and C++
   // (A02); a node with a mistake is left out, with its errors. From the schedule it
   // replaces, it takes what the build left alone: operators whose module stayed,
-  // pipelines of unchanged SPIR-V, and buffers of unchanged shape, contents included. The
-  // view must outlive it.
-  Schedule(const Wiring &wiring, const View &view, Schedule *replaced = nullptr);
+  // pipelines of unchanged SPIR-V that still fit what they draw into, and buffers of
+  // unchanged shape, contents included. The view must outlive it.
+  Schedule(const Wiring &wiring,
+           const View &view,
+           Into into,
+           Schedule *replaced = nullptr);
   ~Schedule();
   Schedule(const Schedule &) = delete;
   Schedule &operator=(const Schedule &) = delete;
@@ -81,7 +90,14 @@ public:
   // by a Texture that samples it, which then samples nothing until the node fills it
   // again. Throws when no node's C++ fills it.
   void clear_image(std::string_view node, std::string_view port);
-  const std::vector<Pass> &passes() const;
+  // The dispatches and the draws into images of their own, in graph order.
+  void work(std::vector<Pass> &passes) const;
+  // The draws into its window, in graph order, each recording into the image given, or
+  // into the window when none is.
+  void draws(std::vector<Pass> &passes, const Offscreen *into) const;
+  // The image the draws into the window of a view this one hosts render into, while a
+  // connection takes it; null while none does.
+  const Offscreen *window_of(std::string_view view) const;
 
 private:
   // Bound, Held and Picture are in runtime/Bound.h, and Binder and Cooker in
@@ -136,6 +152,8 @@ private:
 
   const Wiring _wiring;
   const View &_view;
+  // What its draws into its window record in; null while that is a window none opened.
+  const VkRenderPass _window;
   // What connections between C++ nodes carry, which outlives the operators that hold
   // references to it.
   std::vector<Held> _objects;
@@ -146,8 +164,8 @@ private:
   std::map<std::string, std::uint32_t, std::less<>> _used;
   std::vector<const Buffer *> _fresh;
   std::vector<Picture> _images; // that nodes' C++ filled
-  // That draws render into; each stays where it is, as the pass that draws it points to
-  // it.
+  // That draws render into, its own and the windows of views it hosts; each stays where
+  // it is, as the passes that draw it point to it.
   std::vector<std::unique_ptr<Rendered>> _rendered;
   std::vector<Copy> _copies;
   // What the copies read: this frame's, and those of the frame the GPU may still run.

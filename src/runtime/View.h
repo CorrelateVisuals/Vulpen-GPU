@@ -55,9 +55,19 @@ struct Node {
   }
 };
 
+// A node's port, or with no port a view this view hosts, as `<view>:`: what the view
+// draws into its window, as one image, which only the view that hosts it takes (V03).
 struct Endpoint {
   std::string node;
   std::string port;
+
+  bool view() const {
+    return port.empty();
+  }
+  // As a manifest and a command write it.
+  std::string text() const {
+    return view() ? node + ':' : node + '.' + port;
+  }
 };
 
 // One buffer, shared by the node that writes it and the nodes that read it.

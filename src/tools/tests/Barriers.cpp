@@ -26,8 +26,8 @@ VP::Pass pass(std::vector<VkBuffer> reads, std::vector<VkBuffer> writes) {
 
 struct Case {
   const char *name;
-  std::vector<VP::Pass> passes;
-  std::vector<bool> barriers; // whether one goes before each pass
+  std::vector<std::vector<VP::Pass>> runs; // each with no barrier inside it
+  std::vector<bool> barriers;              // whether one goes before each run
 };
 
 } // namespace
@@ -36,28 +36,33 @@ int main() {
   const VkBuffer x = buffer(1);
   const VkBuffer y = buffer(2);
   const std::vector<Case> cases{
-      {"read after write", {pass({}, {x}), pass({x}, {})}, {false, true}},
-      {"write after read", {pass({x}, {}), pass({}, {x})}, {false, true}},
-      {"write after write", {pass({}, {x}), pass({}, {x})}, {false, true}},
-      {"read after read", {pass({x}, {}), pass({x}, {})}, {false, false}},
-      {"apart", {pass({}, {x}), pass({}, {y})}, {false, false}},
-      {"read and write", {pass({x}, {x}), pass({x}, {y})}, {false, true}},
+      {"read after write", {{pass({}, {x})}, {pass({x}, {})}}, {false, true}},
+      {"write after read", {{pass({x}, {})}, {pass({}, {x})}}, {false, true}},
+      {"write after write", {{pass({}, {x})}, {pass({}, {x})}}, {false, true}},
+      {"read after read", {{pass({x}, {})}, {pass({x}, {})}}, {false, false}},
+      {"apart", {{pass({}, {x})}, {pass({}, {y})}}, {false, false}},
+      {"read and write", {{pass({x}, {x})}, {pass({x}, {y})}}, {false, true}},
       {"after a barrier",
-       {pass({}, {x}), pass({x}, {y}), pass({x}, {})},
+       {{pass({}, {x})}, {pass({x}, {y})}, {pass({x}, {})}},
        {false, true, false}},
       {"batched writers",
-       {pass({}, {x}), pass({}, {y}), pass({y}, {})},
+       {{pass({}, {x})}, {pass({}, {y})}, {pass({y}, {})}},
        {false, false, true}},
+      // The draws of one render pass: what the first reads, the next writer waits for,
+      // though the barrier came for the second.
+      {"a run",
+       {{pass({}, {x})}, {pass({y}, {}), pass({x}, {})}, {pass({}, {y})}},
+       {false, true, true}},
   };
   int failed = 0;
   VP::Hazards hazards;
   for (const Case &test : cases) {
     hazards.clear();
-    for (std::size_t index = 0; index < test.passes.size(); ++index) {
-      const bool placed = hazards.before(test.passes[index]);
+    for (std::size_t index = 0; index < test.runs.size(); ++index) {
+      const bool placed = hazards.before(test.runs[index]);
       if (placed != test.barriers[index]) {
         std::printf(
-            "%s: pass %zu %s a barrier\n", test.name, index, placed ? "gets" : "lacks");
+            "%s: run %zu %s a barrier\n", test.name, index, placed ? "gets" : "lacks");
         ++failed;
       }
     }

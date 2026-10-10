@@ -109,7 +109,25 @@ void Schedule::check_fields(Bound &bound) const {
 }
 
 void Schedule::check_connections() {
+  // An image reaches only Textures. A reader whose shaders did not load says why on its
+  // own; one with none has no Texture to sample.
+  const auto sampled = [&](const Connection &connection, std::string_view drawn) {
+    for (const Endpoint &to : connection.to) {
+      Bound &reader = *find(to.node);
+      const Field *const in = reader.field(to.port);
+      if ((reader.loaded() || reader.shaders_named.empty()) && (!in || !in->texture()))
+        reader.errors.push_back(
+            std::format("connection {}: {} an image, which {} is no Texture to sample",
+                        connection.name,
+                        drawn,
+                        to.port));
+    }
+  };
   for (const Connection &connection : _view.connections) {
+    if (connection.from.view()) {
+      sampled(connection, std::format("view {} draws", connection.from.node));
+      continue;
+    }
     Bound &writer = *find(connection.from.node);
     if (std::ranges::find(writer.outputs, connection.from.port) != writer.outputs.end()) {
       check_inputs(connection);
@@ -140,21 +158,10 @@ void Schedule::check_connections() {
       }
       continue;
     }
-    // A reader whose shaders did not load says why on its own; one with none has no
-    // Texture to sample.
     const bool drawn = writer.drawn && connection.from.port == writer.output;
     if (writer.fills(connection.from.port) || drawn) {
-      for (const Endpoint &to : connection.to) {
-        Bound &reader = *find(to.node);
-        const Field *const in = reader.field(to.port);
-        if ((reader.loaded() || reader.shaders_named.empty()) && (!in || !in->texture()))
-          reader.errors.push_back(std::format(
-              "connection {}: {} {} an image, which {} is no Texture to sample",
-              connection.name,
-              connection.from.node,
-              drawn ? "draws" : "fills",
-              to.port));
-      }
+      sampled(connection,
+              std::format("{} {}", connection.from.node, drawn ? "draws" : "fills"));
       continue;
     }
     const Field *const out = writer.field(connection.from.port);
@@ -218,22 +225,18 @@ void Schedule::check_connections() {
                                            written.port));
 }
 
-// Every Texture samples an image some node's C++ fills, and every image a node's C++
-// fills is sampled, by its own shaders or through a connection; else the shader would
-// sample nothing, with no sign of why.
+// Every image a node's C++ fills is sampled, by its own shaders or through a connection;
+// else its C++ would fill it for nothing. A Texture nothing reaches samples nothing, as
+// it does before its image is filled or drawn: it may wait for a command to connect it,
+// as the ide's waits for the view it presents.
 void Schedule::check_images() {
   for (Bound &bound : _bound) {
     for (const Field &field : bound.fields) {
       if (!field.texture())
         continue;
       const Connection *const connection = connection_of(bound.node->name, field.name);
-      if (!connection && !bound.fills(field.name))
-        bound.errors.push_back(
-            std::format("{} samples nothing: connect it to an image another node's C++ "
-                        "fills, or fill it from the operator",
-                        field.name));
-      else if (connection && bound.fills(field.name) &&
-               connection->from.node != bound.node->name)
+      if (connection && bound.fills(field.name) &&
+          connection->from.node != bound.node->name)
         bound.errors.push_back(
             std::format("{} is filled both by the operator and through connection {}",
                         field.name,

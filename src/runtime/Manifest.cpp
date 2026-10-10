@@ -387,10 +387,9 @@ std::vector<Word> words(const Child &child, const std::filesystem::path &folder)
 }
 
 std::vector<Word> words(const Connection &connection) {
-  std::vector<Word> words{
-      {"from", std::format("{}.{}", connection.from.node, connection.from.port)}};
+  std::vector<Word> words{{"from", connection.from.text()}};
   for (const Endpoint &to : connection.to)
-    words.push_back({"to", std::format("{}.{}", to.node, to.port)});
+    words.push_back({"to", to.text()});
   return words;
 }
 
@@ -549,6 +548,12 @@ void unfold(View &view,
     view.nodes.push_back(std::move(node));
   }
   for (Connection &connection : recipe.connections) {
+    if (connection.from.view())
+      throw std::runtime_error(
+          std::format("recipe {} takes the window of view {}, which a node that uses "
+                      "the recipe does not host",
+                      user.recipe,
+                      connection.from.node));
     connection.name = std::format("{}.{}", user.name, connection.name);
     named(connection.from.node);
     for (Endpoint &to : connection.to)
@@ -670,9 +675,11 @@ View Manifest::flatten(const View &view) {
   std::vector<std::string> using_recipes;
   View flat = flattened(view, root(view), using_recipes);
   check_inside(flat);
+  // A view's window names a view the edits found it hosts.
   for (const Connection &connection : flat.connections) {
     const auto check = [&](const Endpoint &end) {
-      if (std::ranges::find(flat.nodes, end.node, &Node::name) == flat.nodes.end())
+      if (!end.view() &&
+          std::ranges::find(flat.nodes, end.node, &Node::name) == flat.nodes.end())
         throw std::runtime_error(std::format(
             "connection {} joins {}, which is no node", connection.name, end.node));
     };

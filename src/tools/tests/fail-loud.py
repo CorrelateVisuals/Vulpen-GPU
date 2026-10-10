@@ -9,11 +9,12 @@ as it is, a library recipe that uses one the library lacks, uses itself, or name
 node the one it uses lacks, a C++ output of a type no other node can name, a C++ input
 of another type than its writer's, a C++ struct whose members sit elsewhere than the
 shader's, C++ writing more elements than its buffer holds, an image C++ fills that
-nothing samples beside a Texture nothing fills, C++ uploading other than an image's
-count of pixels, C++ pixels other than the image's format takes, a format there is not,
-image clear of a port that fills no image, a key there is not, a buffer C++ fills for
-another node's shader whose members sit elsewhere, given no room, or that nothing reads,
-and a draw's image taken to no Texture, or given a format there is not.
+nothing samples, C++ uploading other than an image's count of pixels, C++ pixels other
+than the image's format takes, a format there is not, image clear of a port that fills
+no image, a key there is not, a buffer C++ fills for another node's shader whose members
+sit elsewhere, given no room, or that nothing reads, a draw's image taken to no Texture,
+or given a format there is not, and a view's window taken from a view the view does not
+host, taken to a view, taken to no Texture, or left without the view by child remove.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -26,7 +27,8 @@ C++ fills an image with reach a shader pixel for pixel, through the node's own T
 through a connection and as 16-bit floats, stay through a rebuild, and come back after
 image clear when the node fills them again. The image a draw renders into reaches a
 dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
-with no window. The library's palette, font, rects and glyphs draw the fixture's sign in
+with no window, and so does the window of a view its host takes, drawn that frame. The
+library's palette, font, rects and glyphs draw the fixture's sign in
 a window without an error, where a display is, and its image part shows that image. A
 view's child views run, and leave and come back by edits that save the manifest
 unchanged. And a drop copies a recipe whose sync brings it up to the library's while it
@@ -61,6 +63,7 @@ PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = pictur
 SIGN = '[node "sign"]\noperator = Sign\n'
 PAINT = '[node "paint"]\nvertex_count = 3\n'
 LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
+INNER = '[view "inner"]\n'  # a hosted view, empty while its folder holds no view.vlp
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
 PARTS = Path(__file__).resolve().parents[2] / "recipes" / "parts"
@@ -135,8 +138,7 @@ CASES = {
     "overflow": (HEAD + SHAPE.replace("Shapes", "Overflow"),
                  "the operator writes 8 elements of shapes, which holds 4"),
     "images": (HEAD + PICTURE.replace("Picture", "Stray"),
-               ("the operator fills image stray, which nothing samples",
-                "picture samples nothing")),
+               "the operator fills image stray, which nothing samples"),
     "pixels": (HEAD + PICTURE.replace("Picture", "Misfilled"),
                "the operator uploads 7 pixels to picture, which is 4 by 2"),
     "image-type": (HEAD + PICTURE.replace("R8_UNORM", "R32_SFLOAT"),
@@ -157,6 +159,15 @@ CASES = {
                     "connection painted: paint draws an image, which values is no Texture"),
     "draw-format": (HEAD + PAINT + "image = color=R8G8B8A8_UNROM\n" + LOOK + PAINTED,
                     "image color=R8G8B8A8_UNROM: no such format"),
+    "view-unhosted": (HEAD + LOOK + connection("stage", "inner:", "look.painted"),
+                      "connection stage is from inner:, but this view hosts no view inner"),
+    "view-into": (HEAD + PAINT + connection("painted", "paint.color", "inner:"),
+                  "connection painted is to inner:, but a view's window only leaves it"),
+    "view-reader": (HEAD + INNER + SUM + connection("stage", "inner:", "sum.values"),
+                    "connection stage: view inner draws an image, which values is no Texture"),
+    "view-remove": (HEAD + INNER + LOOK + connection("stage", "inner:", "look.painted"),
+                    "view inner is connected through stage; disconnect it first",
+                    "child remove inner\n"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -388,6 +399,30 @@ def offscreen(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def presented(vulpen: str, folder: Path) -> str | None:
+    """Why the window of a view its host takes did not reach the host's dispatch, pixel
+    for pixel and drawn that frame, at the size --size gives a run with no window, or
+    None. The hosted view's scene flips its red every frame, so a dispatch that sampled
+    the frame before would find it flipped. The hosted view's folder in the build tree is
+    a link to the fixture's, where scene's shaders are built."""
+    stage = "mistakes-stage"
+    view = view_in(folder, "presented", HEAD + f'[view "{stage}"]\n'
+                   + LOOK.replace("Look", "Watch") + connection("stage", f"{stage}:", "look.painted"))
+    (view.parent / stage).mkdir()
+    (view.parent / stage / "scene").symlink_to(FIXTURE / "scene", target_is_directory=True)
+    (view.parent / stage / "view.vlp").write_text(
+        HEAD + '[node "scene"]\nvertex_count = 6\n', encoding="utf-8")
+    built = mirror(vulpen).parent / stage
+    try:
+        built.symlink_to(mirror(vulpen), target_is_directory=True)
+        code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
+    finally:
+        built.unlink(missing_ok=True)
+    if code != 0 or problems(output):
+        return f"presented: expected each pixel scene drew that frame, got exit {code}:\n{output}"
+    return None
+
+
 def input_lines(vulpen: str, folder: Path) -> str | None:
     """Why the input command's lines did not reach a node as the window's events would,
     or None: in their order, in the first frame, and only in it."""
@@ -497,6 +532,7 @@ def main() -> None:
                             frame_block(vulpen, folder), cpp(vulpen, folder),
                             images(vulpen, folder), text(vulpen, folder),
                             offscreen(vulpen, folder),
+                            presented(vulpen, folder),
                             input_lines(vulpen, folder),
                             children(vulpen, folder),
                             drops(vulpen, folder)):

@@ -391,6 +391,9 @@ public:
   virtual InputPort &input() = 0;
   virtual TerminalPort &terminal() = 0;
   virtual FilePort &files() = 0;
+  // The view the node runs in, as this frame runs it: each recipe a node of the library
+  // uses unfolded. Read it while the node cooks; a rebuild replaces it.
+  virtual const View &view() const = 0;
 
 protected:
   ~Cook() = default;

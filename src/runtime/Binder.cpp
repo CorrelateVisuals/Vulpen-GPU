@@ -287,6 +287,9 @@ private:
   FilePort &files() override {
     return _schedule._wiring.ports;
   }
+  const View &view() const override {
+    return _schedule._view;
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }

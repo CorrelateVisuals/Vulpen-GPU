@@ -57,13 +57,16 @@ std::string pass_block(const std::vector<Field> &fields, std::uint32_t size) {
 
 } // namespace
 
-// An image a draw renders into, by its writer's node.port, as its readers' connection
-// names it. The pass that draws it points at offscreen, which keeps its address while
-// the schedule lives, so a new size reaches the pass with no gathering of passes.
+// An image a draw renders into, by its writer's node.port, or the window of a view this
+// one hosts, by `<view>:`, as its readers' connection names it. The passes that draw it
+// point at offscreen, which keeps its address while the schedule lives, so a new size
+// reaches them with no gathering of passes.
 struct Schedule::Rendered {
   std::string name;
-  const Bound *writer = nullptr;
-  std::optional<Drawn> drawn; // none while there is no size
+  const PixelFormat *format = nullptr;
+  VkRenderPass render_pass = VK_NULL_HANDLE; // which its draws' pipelines fit
+  const Bound *writer = nullptr;             // null for a view's window
+  std::optional<Drawn> drawn;                // none while there is no size
   Offscreen offscreen;
 };
 
@@ -77,9 +80,10 @@ std::vector<const Node *> Schedule::order(const View &view) {
     index.emplace(node.name, index.size());
   std::vector<std::size_t> waits(view.nodes.size()); // writers not placed yet
   std::multimap<std::size_t, std::size_t> readers;
+  // A view's window comes from its own schedule, whose passes run before this one's.
   for (const Connection &connection : view.connections)
     for (const Endpoint &to : connection.to)
-      if (to.node != connection.from.node) {
+      if (!connection.from.view() && to.node != connection.from.node) {
         readers.emplace(index.at(connection.from.node), index.at(to.node));
         ++waits[index.at(to.node)];
       }
@@ -114,8 +118,11 @@ bool Schedule::shows(const View &view) {
   });
 }
 
-Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
-    : _wiring(wiring), _view(view) {
+Schedule::Schedule(const Wiring &wiring, const View &view, Into into, Schedule *replaced)
+    : _wiring(wiring), _view(view),
+      _window(into == Into::image
+                  ? wiring.pipelines.render_pass(pixel_format(window_format)->format)
+                  : wiring.render_pass) {
   const std::vector<const Node *> nodes = order(view);
   // Every node registers its commands again as it binds, so no command stays behind
   // with a node that went, and none blocks a node that takes its name.
@@ -224,9 +231,9 @@ void Schedule::read_shaders(Bound &bound) const {
   }
 }
 
-// A draw's one color goes into the window, unless a connection takes it to a Texture:
-// then into an image, in the format the node's image word gives that port. Null for a
-// format there is not, which check_images names.
+// A draw's one color goes into the view's window, unless a connection takes it to a
+// Texture: then into an image, in the format the node's image word gives that port. Null
+// for a format there is not, which check_images names.
 VkRenderPass Schedule::target_of(Bound &bound) const {
   const std::size_t fragment =
       bound.shaders_named.front().ends_with(fragment_stage) ? 0 : 1;
@@ -236,12 +243,12 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
         "its .frag writes {} colors, but a draw writes one", colors.size()));
   bound.output = colors.front();
   if (!connection_of(bound.node->name, bound.output)) {
-    if (!_wiring.render_pass)
+    if (!_window)
       throw std::runtime_error(std::format("it draws {} into the window, but none is "
                                            "open; a connection to a Texture draws it "
                                            "into an image",
                                            bound.output));
-    return _wiring.render_pass;
+    return _window;
   }
   const std::vector<ImagePort> &words = bound.node->images;
   const auto word = std::ranges::find(words, bound.output, &ImagePort::port);
@@ -472,19 +479,30 @@ const Image &Schedule::image_for(const Bound &writer,
   return made.sampled.image();
 }
 
-// An image for each draw whose color a connection takes to a Texture, made as the first
-// frame gives it a size.
+// An image for each draw whose color a connection takes to a Texture, and for each view
+// this one hosts whose window a connection takes, made as the first frame gives it a
+// size. A view's window is there while its connection is, so the hosted view's draws,
+// whose pipelines fit it, always have it to draw into.
 void Schedule::make_targets() {
   for (const Bound &bound : _bound)
     if (bound.errors.empty() && bound.pipeline && bound.drawn)
       _rendered.push_back(std::make_unique<Rendered>(
           Rendered{.name = std::format("{}.{}", bound.node->name, bound.output),
+                   .format = bound.drawn,
+                   .render_pass = bound.render_pass,
                    .writer = &bound}));
+  const PixelFormat *const window = pixel_format(window_format);
+  for (const Connection &connection : _view.connections)
+    if (connection.from.view())
+      _rendered.push_back(std::make_unique<Rendered>(
+          Rendered{.name = connection.from.text(),
+                   .format = window,
+                   .render_pass = _wiring.pipelines.render_pass(window->format)}));
 }
 
 // To the frame's size, before any pass runs: an image of another size goes, and its
 // readers sample nothing until the new one is drawn. With no size there is none, so its
-// draw records nothing: no room, no work.
+// draws record nothing: no room, no work.
 void Schedule::size_targets(VkExtent2D size) {
   for (const std::unique_ptr<Rendered> &rendered : _rendered) {
     const VkExtent2D now = rendered->offscreen.extent;
@@ -492,21 +510,25 @@ void Schedule::size_targets(VkExtent2D size) {
       continue;
     rendered->offscreen = {};
     rendered->drawn.reset();
-    const PixelFormat &format = *rendered->writer->drawn;
+    const PixelFormat &format = *rendered->format;
     if (size.width != 0 && size.height != 0) {
       const Drawn &drawn = rendered->drawn.emplace(
           _wiring.pipelines, _wiring.resources.image(size, format.format, Fill::draw));
-      rendered->offscreen = {.render_pass = rendered->writer->render_pass,
+      rendered->offscreen = {.render_pass = rendered->render_pass,
                              .framebuffer = drawn.framebuffer(),
                              .extent = size};
-      log(Level::info,
-          Tag::mem,
-          *rendered->writer,
-          std::format("{}: {} by {} pixels of {}, which it draws",
-                      rendered->name,
-                      size.width,
-                      size.height,
-                      format.name));
+      const std::string pixels =
+          std::format("{} by {} pixels of {}", size.width, size.height, format.name);
+      if (rendered->writer)
+        log(Level::info,
+            Tag::mem,
+            *rendered->writer,
+            std::format("{}: {}, which it draws", rendered->name, pixels));
+      else
+        _wiring.log.write(
+            Level::info,
+            Tag::mem,
+            std::format("{} draws its window into {}", rendered->name, pixels));
     }
     point_readers(rendered->name,
                   rendered->drawn ? rendered->drawn->sampled().slot() : 0);
@@ -585,8 +607,26 @@ std::vector<Copy> Schedule::take_copies() {
   return std::exchange(_copies, {});
 }
 
-const std::vector<Pass> &Schedule::passes() const {
-  return _passes;
+void Schedule::work(std::vector<Pass> &passes) const {
+  for (const Pass &pass : _passes)
+    if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || pass.offscreen)
+      passes.push_back(pass);
+}
+
+void Schedule::draws(std::vector<Pass> &passes, const Offscreen *into) const {
+  for (const Pass &pass : _passes)
+    if (pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS && !pass.offscreen) {
+      passes.push_back(pass);
+      passes.back().offscreen = into;
+    }
+}
+
+const Offscreen *Schedule::window_of(std::string_view view) const {
+  const std::string name = Endpoint{std::string(view), {}}.text();
+  for (const std::unique_ptr<Rendered> &rendered : _rendered)
+    if (!rendered->writer && rendered->name == name)
+      return &rendered->offscreen;
+  return nullptr;
 }
 
 // A node's own log level covers every line about it (V09).
@@ -619,10 +659,11 @@ const Connection *Schedule::connection_of(std::string_view node,
   return nullptr;
 }
 
-// An image goes by the port that fills it, so a connection made or removed keeps it.
+// An image goes by the port that fills it, so a connection made or removed keeps it, or
+// by the view whose window it is.
 std::string Schedule::image_name(std::string_view node, std::string_view port) const {
   if (const Connection *const connection = connection_of(node, port))
-    return std::format("{}.{}", connection->from.node, connection->from.port);
+    return connection->from.text();
   return std::format("{}.{}", node, port);
 }
 

@@ -3,13 +3,15 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <span>
 #include <vector>
 
 namespace VP {
 
-// An image a draw renders into instead of the window: its format's render pass, its
-// framebuffer and its size. With no framebuffer, as while it has no size, the draw
-// records nothing.
+// An image draws render into instead of the window, in one render pass: a draw's own,
+// or the window of a view that the view hosting it takes. Its format's render pass, its
+// framebuffer and its size; with no framebuffer, as while it has no size, its draws
+// record nothing.
 struct Offscreen {
   VkRenderPass render_pass = VK_NULL_HANDLE;
   VkFramebuffer framebuffer = VK_NULL_HANDLE;
@@ -27,8 +29,8 @@ struct Pass {
   std::uint32_t instance_count = 1;
   // When set, the instance count, which the CPU sets each frame as it writes a buffer.
   const std::uint32_t *instances = nullptr;
-  // A draw's image, which its schedule keeps and remakes as the size changes; null for a
-  // draw into the window.
+  // The image a draw renders into, which a schedule keeps and remakes as the size
+  // changes; null for a draw into the window.
   const Offscreen *offscreen = nullptr;
   std::vector<VkBuffer> reads;
   std::vector<VkBuffer> writes;
@@ -50,8 +52,9 @@ class Hazards {
 public:
   // A frame's first pass waits for nothing: the previous frame's fence covered it.
   void clear();
-  // Whether a barrier goes before the pass; either way, the pass counts from then on.
-  bool before(const Pass &pass);
+  // Whether a barrier goes before the passes, which run with none between them, as the
+  // draws of one render pass do; either way, they count from then on.
+  bool before(std::span<const Pass> passes);
 
 private:
   // Since the last barrier; kept between frames so a frame allocates nothing (CPP10).

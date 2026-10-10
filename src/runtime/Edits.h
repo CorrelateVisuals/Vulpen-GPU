@@ -27,7 +27,8 @@ public:
 
   // One node word, as a manifest line or a word=value argument gives it.
   static void word(Node &node, std::string_view key, std::string_view value);
-  // node.port, where the node's name may hold the names of the nodes it is inside.
+  // node.port, where the node's name may hold the names of the nodes it is inside, or
+  // view: for the window of a view this one hosts.
   static Endpoint endpoint(std::string_view text);
   static void add(View &view, Node node);
   static void child(View &view, Child child);

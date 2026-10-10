@@ -466,8 +466,7 @@ void Runtime::prepare() {
 
 void Runtime::gather() {
   _passes.clear();
-  for (const Schedule *const schedule : _views->schedules())
-    std::ranges::copy(schedule->passes(), std::back_inserter(_passes));
+  _views->gather(_passes);
   if (_live)
     _live->watch(_views->roots());
 }

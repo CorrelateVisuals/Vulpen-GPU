@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <format>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -56,7 +57,9 @@ struct Views::Hosted {
   std::unique_ptr<View> edited_flat;
   std::filesystem::file_time_type read; // the manifest's, when last read or saved
   std::unique_ptr<Schedule> schedule;   // null until the frame after it was hosted
-  bool removed = false;                 // its schedule goes before the next frame
+  // Where its schedule's draws into its window go.
+  Schedule::Into into = Schedule::Into::window;
+  bool removed = false; // its schedule goes before the next frame
 
   const View &current() const {
     return edited ? *edited : *view;
@@ -76,7 +79,8 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
         host.read = stamp(view.file);
         host.view = std::make_unique<View>(std::move(view));
         host.flat = unfolded(*host.view);
-        host.schedule = std::make_unique<Schedule>(wiring, *host.flat);
+        host.schedule =
+            std::make_unique<Schedule>(wiring, *host.flat, Schedule::Into::window);
         return hosted;
       }()),
       _schedules{_hosted.front()->schedule.get()} {
@@ -108,14 +112,15 @@ const View &Views::view() const {
 }
 
 bool Views::shows() const {
-  return std::ranges::any_of(_hosted, [](const std::unique_ptr<Hosted> &hosted) {
-    return !hosted->removed && Schedule::shows(hosted->next());
+  return std::ranges::any_of(_hosted, [&](const std::unique_ptr<Hosted> &hosted) {
+    return !hosted->removed && !target(*hosted) && Schedule::shows(hosted->next());
   });
 }
 
 // One rebuild for all the changes since the last frame, so a script is checked as a
 // whole, and a replay costs about what a load does. The new schedule takes from the old
-// one, which still reads the old view, so the old view goes last.
+// one, which still reads the old view, so the old view goes last. A view comes after the
+// view hosting it, so where its draws go follows its host's view as rebuilt.
 bool Views::rebuild() {
   bool changed = false;
   for (auto at = _hosted.begin(); at != _hosted.end();) {
@@ -129,10 +134,12 @@ bool Views::rebuild() {
       changed = true;
       continue;
     }
+    const Schedule::Into into =
+        target(hosted) ? Schedule::Into::image : Schedule::Into::window;
     if (hosted.edited) {
       const bool added = !hosted.schedule;
-      hosted.schedule =
-          std::make_unique<Schedule>(_wiring, *hosted.edited_flat, hosted.schedule.get());
+      hosted.schedule = std::make_unique<Schedule>(
+          _wiring, *hosted.edited_flat, into, hosted.schedule.get());
       hosted.view = std::move(hosted.edited);
       hosted.flat = std::move(hosted.edited_flat);
       if (added)
@@ -142,7 +149,13 @@ bool Views::rebuild() {
                                       hosted.name,
                                       hosted.view->file.string()));
       changed = true;
+    } else if (into != hosted.into) {
+      // The same view, its draws' pipelines made again for what they draw into now.
+      hosted.schedule = std::make_unique<Schedule>(
+          _wiring, *hosted.flat, into, hosted.schedule.get());
+      changed = true;
     }
+    hosted.into = into;
     ++at;
   }
   if (changed) {
@@ -155,6 +168,43 @@ bool Views::rebuild() {
 
 std::span<Schedule *const> Views::schedules() const {
   return _schedules;
+}
+
+// A view comes after the view hosting it, so going back from the last, each view's work
+// comes before its host's.
+void Views::gather(std::vector<Pass> &passes) const {
+  const auto drawing = [&](const Hosted *into) {
+    return _hosted | std::views::filter([this, into](const std::unique_ptr<Hosted> &at) {
+             return !at->removed && at->schedule && target(*at) == into;
+           });
+  };
+  for (const std::unique_ptr<Hosted> &hosted : _hosted | std::views::reverse) {
+    if (hosted->removed || !hosted->schedule)
+      continue;
+    hosted->schedule->work(passes);
+    if (target(*hosted) != hosted.get())
+      continue;
+    // Its host's schedule made the image as it made the connection that takes it.
+    if (const Offscreen *const image =
+            this->hosted(hosted->parent)->schedule->window_of(hosted->name))
+      for (const std::unique_ptr<Hosted> &into : drawing(hosted.get()))
+        into->schedule->draws(passes, image);
+  }
+  for (const std::unique_ptr<Hosted> &into : drawing(nullptr))
+    into->schedule->draws(passes, nullptr);
+}
+
+const Views::Hosted *Views::target(const Hosted &hosted) const {
+  if (hosted.name.empty())
+    return nullptr;
+  const Hosted *const host = this->hosted(hosted.parent);
+  if (!host)
+    return nullptr;
+  if (std::ranges::any_of(host->next().connections, [&](const Connection &connection) {
+        return connection.from.view() && connection.from.node == hosted.name;
+      }))
+    return &hosted;
+  return target(*host);
 }
 
 std::vector<std::filesystem::path> Views::roots() const {

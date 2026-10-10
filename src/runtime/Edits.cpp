@@ -290,7 +290,7 @@ void check_ports(const View &view, const Connection &connection) {
         });
     if (joined)
       throw std::runtime_error(
-          std::format("{}.{} joins two connections, or one twice", end.node, end.port));
+          std::format("{} joins two connections, or one twice", end.text()));
     checked.push_back(&end);
   };
   check(connection.from);
@@ -460,7 +460,14 @@ void child_add(View &view, Arguments arguments, std::string_view where) {
                      .where = std::string(where)});
 }
 
+// As a node: a connection that takes the view's window would take it from nothing.
 void child_remove(View &view, Arguments arguments, std::string_view) {
+  for (const Connection &connection : view.connections)
+    if (connection.from.view() && connection.from.node == arguments.front())
+      throw std::runtime_error(
+          std::format("view {} is connected through {}; disconnect it first",
+                      arguments.front(),
+                      connection.name));
   if (std::erase_if(view.children, [&](const Child &child) {
         return child.name == arguments.front();
       }) == 0)
@@ -542,13 +549,17 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
 }
 
 // The port follows the last dot, so a node inside others keeps its own: ui.panel.rects.
+// A view's name and a colon, as a line addresses the view, names its window.
 Endpoint Edits::endpoint(std::string_view text) {
+  if (text.ends_with(':') && is_name(text.substr(0, text.size() - 1)))
+    return {std::string(text.substr(0, text.size() - 1)), {}};
   const std::size_t dot = text.rfind('.');
   const std::string_view node = text.substr(0, dot);
   const std::string_view port =
       dot == std::string_view::npos ? std::string_view{} : text.substr(dot + 1);
   if (!is_path(node) || !is_name(port))
-    throw std::runtime_error(std::format("{} is not node.port", text));
+    throw std::runtime_error(
+        std::format("{} is not node.port, or view: for a hosted view's window", text));
   return {std::string(node), std::string(port)};
 }
 
@@ -583,12 +594,25 @@ void Edits::connect(View &view, Connection connection) {
   if (connection.from.node.empty() || connection.to.empty())
     throw std::runtime_error(
         std::format("connection {} needs a from and at least one to", connection.name));
-  if (!has_node(view, connection.from.node))
-    throw std::runtime_error(std::format("connection {} is from {}, which is no node",
-                                         connection.name,
-                                         connection.from.node));
+  const Endpoint &from = connection.from;
+  if (from.view() && std::ranges::find(view.children, from.node, &Child::name) ==
+                         view.children.end())
+    throw std::runtime_error(
+        std::format("connection {} is from {}, but this view hosts no view {}",
+                    connection.name,
+                    from.text(),
+                    from.node));
+  if (!from.view() && !has_node(view, from.node))
+    throw std::runtime_error(std::format(
+        "connection {} is from {}, which is no node", connection.name, from.node));
   for (const Endpoint &to : connection.to)
-    if (!has_node(view, to.node))
+    if (to.view())
+      throw std::runtime_error(
+          std::format("connection {} is to {}, but a view's window only leaves it, for "
+                      "the view that hosts it",
+                      connection.name,
+                      to.text()));
+    else if (!has_node(view, to.node))
       throw std::runtime_error(std::format(
           "connection {} is to {}, which is no node", connection.name, to.node));
   check_ports(view, connection);
