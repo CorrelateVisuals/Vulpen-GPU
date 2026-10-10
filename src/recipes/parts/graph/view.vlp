@@ -1,1 +1,11 @@
-# The graph part: one node whose operator is Graph, and the shader that draws its backdrop grid.
+# The graph part: one node whose operator is Graph; it lays out the graph of the view its
+# view hosted most recently in the Rect its area gives, a box a node and a curve a
+# connection, and writes them with the dots of its ground as Rects, Labels and Curves for
+# rects, glyphs and curves to draw. Its tab names the view it shows.
+[manifest]
+version = 1
+
+[node "graph"]
+operator = Graph
+file     = Graph.cpp
+file     = Graph.h

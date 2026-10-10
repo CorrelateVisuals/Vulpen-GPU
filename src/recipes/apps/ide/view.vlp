@@ -1,8 +1,8 @@
 # The IDE app: Vulpen editing Vulpen. Only child recipes and the wires between them, built
 # by addition: each row is recipes placed side by side and connected, never a bigger
-# recipe with nodes removed. Built so far: Look, Keys, Modes, the dock, the editor and the
-# Perform panel side by side in its top row and the terminal in its bottom row, and
-# Library; the graph waits.
+# recipe with nodes removed. Built so far: Look, Keys, Modes, the dock, with the editor
+# in its top row beside the graph over the Perform panel, and the terminal in its bottom
+# row, and Library.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -47,10 +47,15 @@ recipe = dock
 param  = split.axis=y
 param  = split.ratio=0.65
 
-# The dock's top row: the editor, and the Perform panel beside it.
+# The dock's top row: the editor, and beside it the graph over the Perform panel.
 [node "ide.top"]
 recipe = dock
 param  = split.axis=x
+param  = split.ratio=0.5
+
+[node "ide.side"]
+recipe = dock
+param  = split.axis=y
 param  = split.ratio=0.5
 
 [node "ide.editor-panel"]
@@ -58,6 +63,13 @@ recipe = panel
 
 [node "ide.editor"]
 recipe = text-area
+
+# The graph of the view the terminal's lines go to, under a tab naming it.
+[node "ide.graph-panel"]
+recipe = panel
+
+[node "ide.graph"]
+recipe = graph-editor
 
 # A tab a view the ide hosts, whose press presents it; the panel shows the one presented.
 [node "ide.perform-panel"]
@@ -112,8 +124,25 @@ from = ide.editor.text.tabs
 to   = ide.editor-panel.tabs.items
 to   = ide.editor-panel.hit.items
 
-[connection "perform-panel"]
+[connection "side"]
 from = ide.top.split.second
+to   = ide.side.split.area
+
+[connection "graph-panel"]
+from = ide.side.split.first
+to   = ide.graph-panel.bar.area
+
+[connection "graph-area"]
+from = ide.graph-panel.bar.rest
+to   = ide.graph.graph.area
+
+[connection "graph-tabs"]
+from = ide.graph.graph.tabs
+to   = ide.graph-panel.tabs.items
+to   = ide.graph-panel.hit.items
+
+[connection "perform-panel"]
+from = ide.side.split.second
 to   = ide.perform-panel.bar.area
 
 [connection "perform-area"]
@@ -147,10 +176,16 @@ to   = ide.terminal.command-line.typed
 from = ide.palette.palette
 to   = ide.dock.rects.palette
 to   = ide.top.rects.palette
+to   = ide.side.rects.palette
 to   = ide.editor-panel.rects.palette
 to   = ide.editor-panel.glyphs.palette
 to   = ide.editor.rects.palette
 to   = ide.editor.glyphs.palette
+to   = ide.graph-panel.rects.palette
+to   = ide.graph-panel.glyphs.palette
+to   = ide.graph.curves.palette
+to   = ide.graph.rects.palette
+to   = ide.graph.glyphs.palette
 to   = ide.perform-panel.rects.palette
 to   = ide.perform-panel.glyphs.palette
 to   = ide.terminal-panel.rects.palette
@@ -164,6 +199,8 @@ to   = ide.terminal.completion-glyphs.palette
 from = ide.font.font
 to   = ide.editor-panel.glyphs.font
 to   = ide.editor.glyphs.font
+to   = ide.graph-panel.glyphs.font
+to   = ide.graph.glyphs.font
 to   = ide.perform-panel.glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
@@ -173,6 +210,8 @@ to   = ide.terminal.completion-glyphs.font
 from = ide.font.atlas
 to   = ide.editor-panel.glyphs.atlas
 to   = ide.editor.glyphs.atlas
+to   = ide.graph-panel.glyphs.atlas
+to   = ide.graph.glyphs.atlas
 to   = ide.perform-panel.glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
@@ -183,6 +222,9 @@ from = ide.font.metrics
 to   = ide.editor-panel.bar.font
 to   = ide.editor-panel.tabs.font
 to   = ide.editor.text.font
+to   = ide.graph-panel.bar.font
+to   = ide.graph-panel.tabs.font
+to   = ide.graph.graph.font
 to   = ide.perform-panel.bar.font
 to   = ide.perform-panel.tabs.font
 to   = ide.terminal-panel.bar.font

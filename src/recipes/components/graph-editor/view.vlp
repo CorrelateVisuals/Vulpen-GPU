@@ -1,1 +1,37 @@
-# The graph-editor component: graph and relations, drawn by rects, glyphs and curves.
+# The graph-editor component: the graph part, drawn by curves, rects and glyphs: its
+# curves first, then the dots of its ground and its boxes over them, then their names.
+# The host connects a Rect to graph.area and the font's metrics to graph.font, the theme
+# to the three drawing parts, and the font and its atlas to glyphs; a panel shows
+# graph.tabs.
+[manifest]
+version = 1
+
+[node "graph-editor"]
+
+[node "graph-editor.graph"]
+recipe = graph
+
+[node "graph-editor.curves"]
+recipe = curves
+
+[node "graph-editor.rects"]
+recipe = rects
+
+[node "graph-editor.glyphs"]
+recipe = glyphs
+
+[connection "curves"]
+from = graph-editor.graph.curves
+to   = graph-editor.curves.curves
+
+[connection "rects"]
+from = graph-editor.graph.rects
+to   = graph-editor.rects.rects
+
+[connection "labels"]
+from = graph-editor.graph.labels
+to   = graph-editor.glyphs.labels
+
+[connection "characters"]
+from = graph-editor.graph.characters
+to   = graph-editor.glyphs.characters

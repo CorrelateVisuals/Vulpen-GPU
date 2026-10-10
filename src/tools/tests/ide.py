@@ -7,10 +7,13 @@ rebuilds the running app, and presses a completion. A second run edits a file in
 editor, selecting, stepping over a character past ASCII and deleting it whole, and saves
 it with the keymap's chord, so the file must hold just the edits. Two more runs host the
 triangle example and present it: one in edit mode, its window in the Perform panel, and
-one in perform mode by the keymap's chord, its window over the whole window. Each must
-end with exit 0 and print no validation message or sanitizer report (RVK00, A03), so in
+one in perform mode by the keymap's chord, its window over the whole window. The last
+hosts the wave example, whose graph the graph panel lays out, a press on a box opening its
+first file in the editor, and a drag and the wheel moving the graph. Each must end with
+exit 0 and print no validation message or sanitizer report (RVK00, A03), so in
 the asan preset it checks the memory of the keys part, the terminal, the editor, modes,
-their panels, the dock, the images a hosted view's window renders into and the rebuild.
+the graph, their panels, the dock, the images a hosted view's window renders into and
+the rebuild.
 Where no display exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
@@ -25,6 +28,19 @@ IDE = Path(__file__).resolve().parents[2] / "recipes" / "apps" / "ide" / "view.v
 TRIANGLE = Path(__file__).resolve().parents[2] / "examples" / "triangle"
 PRESENT = [f"view load {TRIANGLE}", "present triangle"]
 PERFORM = [*PRESENT, "input key down f2", "input key up f2"]  # the chord: mode perform
+WAVE = Path(__file__).resolve().parents[2] / "examples" / "wave"
+GRAPH = [
+    f"view load {WAVE}",
+    # Where a 1280 by 720 window puts them; a window of another size misses, harmlessly.
+    "input pointer 680 57",  # the wave box, whose first file opens
+    "input button down left",
+    "input button up left",
+    "input pointer 900 150",  # the ground, dragged
+    "input button down left",
+    "input pointer 1000 200",
+    "input button up left",
+    "input wheel 0 1",
+]
 # Enough for the refusal to reach the log, and for the list the last Tab opens to stay
 # drawn.
 FRAMES = 10
@@ -119,6 +135,7 @@ def main() -> None:
         drive(folder, "editor", edits(note))
         drive(folder, "presented view", PRESENT)
         drive(folder, "performed view", PERFORM)
+        drive(folder, "graph", GRAPH)
         # As bytes, so a character split in two shows as what it left.
         if (held := note.read_bytes()) != EDITED.encode("utf-8"):
             sys.exit(f"ide: expected the editor to write {EDITED!r}, got {held!r}")

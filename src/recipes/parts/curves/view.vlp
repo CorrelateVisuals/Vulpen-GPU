@@ -1,1 +1,11 @@
-# The curves part: one shader node with no C++; it draws every Curve it is given.
+# The curves part: one shader node with no C++; it draws every Curve it is given in its
+# palette color, a strip of quads an instance, as many as the Curves' writer wrote.
+[manifest]
+version = 1
+
+[node "curves"]
+file           = Curves.frag
+file           = Curves.glsl
+file           = Curves.vert
+vertex_count   = 96         # 16 segments of 6 vertices, as Curves.glsl counts them
+instance_count = curves
