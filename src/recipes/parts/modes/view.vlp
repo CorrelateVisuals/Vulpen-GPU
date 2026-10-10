@@ -1,1 +1,11 @@
-# The modes part: one node whose operator is Modes.
+# The modes part: one node whose operator is Modes. It hands the Rect its area gives to
+# the dock in edit mode, and to what is presented in perform mode; present connects the
+# window of a view its view hosts to the images its to param names, ports joined by
+# commas, which its host sets.
+[manifest]
+version = 1
+
+[node "modes"]
+operator = Modes
+file     = Modes.cpp
+param    = mode=edit

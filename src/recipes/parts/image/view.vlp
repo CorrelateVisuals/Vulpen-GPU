@@ -1,11 +1,13 @@
-# The image part: one shader node with no C++; it draws one image into each Rect it is
-# given, letterboxed, as many as the Rects' writer wrote. Its host connects a buffer of
-# Rects to its place and an image to its picture: the one a draw renders into, or one a
-# node's C++ fills.
+# The image part: one node whose operator is Image; it draws an image into the Rect its
+# area gives, letterboxed: as large as fits at the image's own aspect, and centered. Its
+# host connects a Rect to its area and an image to its picture: the one a draw renders
+# into, the window of a view the host hosts, or one a node's C++ fills.
 [manifest]
 version = 1
 
 [node "image"]
+operator       = Image
+file           = Image.cpp
 file           = Image.frag
 file           = Image.glsl
 file           = Image.vert

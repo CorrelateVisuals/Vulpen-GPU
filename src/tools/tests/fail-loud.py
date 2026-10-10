@@ -29,7 +29,8 @@ image clear when the node fills them again. The image a draw renders into reache
 dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
 with no window, and so does the window of a view its host takes, drawn that frame. The
 library's palette, font, rects and glyphs draw the fixture's sign in
-a window without an error, where a display is, and its image part shows that image. A
+a window without an error, where a display is, over that image, which the image part
+shows in the window's Rect. A
 view's child views run, and leave and come back by edits that save the manifest
 unchanged. And a drop copies a recipe whose sync brings it up to the library's while it
 is unchanged, keeping the params the view set, and refuses once the view changed the
@@ -67,9 +68,9 @@ INNER = '[view "inner"]\n'  # a hosted view, empty while its folder holds no vie
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
 PARTS = Path(__file__).resolve().parents[2] / "recipes" / "parts"
-# The library's parts that put text and an image on screen, rects before glyphs, so
-# text draws over the panels.
-TEXT = ("palette", "font", "rects", "glyphs", "image")
+# The library's parts that put text and an image on screen: the image first, in the
+# window's Rect, then rects and glyphs, so the sign and its text draw over it.
+TEXT = ("palette", "font", "viewport", "image", "rects", "glyphs")
 NODE = re.compile(r'^\[node "([^".]+)', re.MULTILINE)
 CUT = ("truncated", "empty")  # nodes whose SPIR-V this script writes, cut short
 
@@ -369,9 +370,9 @@ def windowed(vulpen: str, folder: Path, name: str, parts: tuple[str, ...], nodes
 
 def text(vulpen: str, folder: Path) -> str | None:
     """Why the library's palette, font, rects and glyphs did not draw the fixture's sign
-    in a window without an error, with its image part showing in the sign's Rects the
-    image paint draws, or None; with no display, None. What they draw is checked by eye
-    until a test can read the window back."""
+    in a window without an error, over the image paint draws, which the image part shows
+    in the window's Rect that viewport gives, or None; with no display, None. What they
+    draw is checked by eye until a test can read the window back."""
     if not display():
         return None
     code, output = windowed(
@@ -379,7 +380,8 @@ def text(vulpen: str, folder: Path) -> str | None:
         connection("palette", "palette.palette", "rects.palette", "glyphs.palette")
         + connection("font", "font.font", "glyphs.font")
         + connection("atlas", "font.atlas", "glyphs.atlas")
-        + connection("rects", "sign.rects", "rects.rects", "image.place")
+        + connection("rects", "sign.rects", "rects.rects")
+        + connection("area", "viewport.area", "image.area")
         + connection("labels", "sign.labels", "glyphs.labels")
         + connection("characters", "sign.characters", "glyphs.characters")
         + connection("painted", "paint.color", "image.picture"))

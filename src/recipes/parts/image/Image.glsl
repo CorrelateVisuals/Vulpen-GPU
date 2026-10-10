@@ -4,6 +4,7 @@
 #include "contracts/Rect.glsl"
 
 layout(set = 1, binding = 0) uniform Pass {
-  Rects place;     // a connection: where it shows, an instance a Rect
-  Texture picture; // a connection: the image a draw renders, or one a node's C++ fills
+  Rects place;     // from its C++: the Rect its area gives, an instance; none while empty
+  Texture picture; // a connection: an image a draw renders, a hosted view's window, or
+                   // one a node's C++ fills; nothing while none reaches it
 } pass;

@@ -1,7 +1,8 @@
 # The IDE app: Vulpen editing Vulpen. Only child recipes and the wires between them, built
 # by addition: each row is recipes placed side by side and connected, never a bigger
-# recipe with nodes removed. Built so far: Look, Keys, the dock, the editor in a panel in
-# its top row and the terminal in one in its bottom row, and Library; the graph waits.
+# recipe with nodes removed. Built so far: Look, Keys, Modes, the dock, the editor and the
+# Perform panel side by side in its top row and the terminal in its bottom row, and
+# Library; the graph waits.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -9,11 +10,11 @@
 #   Editor     panel + text-area + find-bar
 #   Terminal   panel + terminal
 #   Graph      panel + graph-editor
-#   Perform    panel + image          the output of the node being watched
+#   Perform    panel + image          the window of the view presented
 #   Menubar    menu                   a row at the top
 #   Popup      menu                   a column at the pointer
 #   Tooltip    tooltip
-#   Modes      modes                  edit or perform: which node reaches the screen
+#   Modes      modes + image          edit or perform: the dock, or the view presented
 #   Library    inspect + library      reads the graph; lists, drops and starts recipes
 [manifest]
 version = 1
@@ -34,17 +35,36 @@ param  = focus=ide.terminal.command-line
 [node "ide.viewport"]
 recipe = viewport
 
+# Edit mode gives the dock the window, and perform mode the view presented. present
+# connects a view's window to the Perform panel's image and the one that fills the window.
+[node "ide.modes"]
+recipe = modes
+param  = to=ide.perform.picture,ide.screen.picture
+
 # Listed before the panels it seats, so its ground is drawn first.
 [node "ide.dock"]
 recipe = dock
 param  = split.axis=y
 param  = split.ratio=0.65
 
+# The dock's top row: the editor, and the Perform panel beside it.
+[node "ide.top"]
+recipe = dock
+param  = split.axis=x
+param  = split.ratio=0.5
+
 [node "ide.editor-panel"]
 recipe = panel
 
 [node "ide.editor"]
 recipe = text-area
+
+# A tab a view the ide hosts, whose press presents it; the panel shows the one presented.
+[node "ide.perform-panel"]
+recipe = panel
+
+[node "ide.perform"]
+recipe = image
 
 [node "ide.terminal-panel"]
 recipe = panel
@@ -58,12 +78,28 @@ recipe = inspect
 [node "ide.library"]
 recipe = library
 
+# What is presented, over the whole window in perform mode; in edit mode it has no room.
+[node "ide.screen"]
+recipe = image
+
 [connection "viewport"]
 from = ide.viewport.area
+to   = ide.modes.area
+
+[connection "edit"]
+from = ide.modes.edit
 to   = ide.dock.split.area
 
-[connection "editor-panel"]
+[connection "perform"]
+from = ide.modes.perform
+to   = ide.screen.area
+
+[connection "top"]
 from = ide.dock.split.first
+to   = ide.top.split.area
+
+[connection "editor-panel"]
+from = ide.top.split.first
 to   = ide.editor-panel.bar.area
 
 [connection "editor-area"]
@@ -75,6 +111,19 @@ to   = ide.editor.text.area
 from = ide.editor.text.tabs
 to   = ide.editor-panel.tabs.items
 to   = ide.editor-panel.hit.items
+
+[connection "perform-panel"]
+from = ide.top.split.second
+to   = ide.perform-panel.bar.area
+
+[connection "perform-area"]
+from = ide.perform-panel.bar.rest
+to   = ide.perform.area
+
+[connection "perform-tabs"]
+from = ide.modes.tabs
+to   = ide.perform-panel.tabs.items
+to   = ide.perform-panel.hit.items
 
 [connection "terminal-panel"]
 from = ide.dock.split.second
@@ -97,10 +146,13 @@ to   = ide.terminal.command-line.typed
 [connection "palette"]
 from = ide.palette.palette
 to   = ide.dock.rects.palette
+to   = ide.top.rects.palette
 to   = ide.editor-panel.rects.palette
 to   = ide.editor-panel.glyphs.palette
 to   = ide.editor.rects.palette
 to   = ide.editor.glyphs.palette
+to   = ide.perform-panel.rects.palette
+to   = ide.perform-panel.glyphs.palette
 to   = ide.terminal-panel.rects.palette
 to   = ide.terminal-panel.glyphs.palette
 to   = ide.terminal.rects.palette
@@ -112,6 +164,7 @@ to   = ide.terminal.completion-glyphs.palette
 from = ide.font.font
 to   = ide.editor-panel.glyphs.font
 to   = ide.editor.glyphs.font
+to   = ide.perform-panel.glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
 to   = ide.terminal.completion-glyphs.font
@@ -120,6 +173,7 @@ to   = ide.terminal.completion-glyphs.font
 from = ide.font.atlas
 to   = ide.editor-panel.glyphs.atlas
 to   = ide.editor.glyphs.atlas
+to   = ide.perform-panel.glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
 to   = ide.terminal.completion-glyphs.atlas
@@ -129,6 +183,8 @@ from = ide.font.metrics
 to   = ide.editor-panel.bar.font
 to   = ide.editor-panel.tabs.font
 to   = ide.editor.text.font
+to   = ide.perform-panel.bar.font
+to   = ide.perform-panel.tabs.font
 to   = ide.terminal-panel.bar.font
 to   = ide.terminal-panel.tabs.font
 to   = ide.terminal.command-line.font

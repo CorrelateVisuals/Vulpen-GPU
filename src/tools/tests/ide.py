@@ -5,10 +5,13 @@ history, a line the command port refuses, help, and the keymap's chord that clea
 waits a frame for the keys before it. The pointer drags the dock's seam, whose param set
 rebuilds the running app, and presses a completion. A second run edits a file in its
 editor, selecting, stepping over a character past ASCII and deleting it whole, and saves
-it with the keymap's chord, so the file must hold just the edits. Both must end with exit
-0 and print no validation message or sanitizer report (RVK00, A03), so in the asan preset
-it checks the memory of the keys part, the terminal, the editor, their panels, the dock
-and the rebuild. Where no display exists it is skipped (V07).
+it with the keymap's chord, so the file must hold just the edits. Two more runs host the
+triangle example and present it: one in edit mode, its window in the Perform panel, and
+one in perform mode by the keymap's chord, its window over the whole window. Each must
+end with exit 0 and print no validation message or sanitizer report (RVK00, A03), so in
+the asan preset it checks the memory of the keys part, the terminal, the editor, modes,
+their panels, the dock, the images a hosted view's window renders into and the rebuild.
+Where no display exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
 """
@@ -19,6 +22,9 @@ from pathlib import Path
 from harness import display, problems, run
 
 IDE = Path(__file__).resolve().parents[2] / "recipes" / "apps" / "ide" / "view.vlp"
+TRIANGLE = Path(__file__).resolve().parents[2] / "examples" / "triangle"
+PRESENT = [f"view load {TRIANGLE}", "present triangle"]
+PERFORM = [*PRESENT, "input key down f2", "input key up f2"]  # the chord: mode perform
 # Enough for the refusal to reach the log, and for the list the last Tab opens to stay
 # drawn.
 FRAMES = 10
@@ -111,6 +117,8 @@ def main() -> None:
         note = folder / "note.txt"
         note.write_text(NOTE, encoding="utf-8")
         drive(folder, "editor", edits(note))
+        drive(folder, "presented view", PRESENT)
+        drive(folder, "performed view", PERFORM)
         # As bytes, so a character split in two shows as what it left.
         if (held := note.read_bytes()) != EDITED.encode("utf-8"):
             sys.exit(f"ide: expected the editor to write {EDITED!r}, got {held!r}")
