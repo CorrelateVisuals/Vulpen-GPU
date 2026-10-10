@@ -1,7 +1,6 @@
 #include "baseclasses/Engine.h"
 
 #include "baseclasses/Mechanics.h"
-#include "baseclasses/Offscreen.h"
 #include "baseclasses/Pipelines.h"
 #include "baseclasses/Resources.h"
 #include "baseclasses/Swapchain.h"
@@ -11,6 +10,16 @@
 namespace VP {
 
 namespace {
+
+// The stages that reach buffers, so a pass after a dispatch or a draw waits for it
+// whichever it is.
+constexpr VkPipelineStageFlags shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+// A draw's image starts as nothing at all, so what the draw leaves uncovered samples as
+// transparent.
+constexpr VkClearColorValue transparent{.float32 = {0.0f, 0.0f, 0.0f, 0.0f}};
+constexpr float far_depth = 1.0f;
 
 void barrier(VkCommandBuffer commands,
              VkPipelineStageFlags source_stage,
@@ -35,6 +44,32 @@ void bind(VkCommandBuffer commands, const Pipelines &pipelines, const Pass &pass
   if (pass.block)
     vkCmdBindDescriptorSets(
         commands, pass.bind_point, layout, pass_set, 1, &pass.block, 0, nullptr);
+}
+
+std::uint32_t instances_of(const Pass &pass) {
+  return pass.instances ? *pass.instances : pass.instance_count;
+}
+
+// The viewport and the scissor cover the image a render pass draws into.
+void fill(VkCommandBuffer commands, VkExtent2D extent) {
+  const VkViewport viewport{.width = static_cast<float>(extent.width),
+                            .height = static_cast<float>(extent.height),
+                            .maxDepth = far_depth};
+  const VkRect2D scissor{.extent = extent};
+  vkCmdSetViewport(commands, 0, 1, &viewport);
+  vkCmdSetScissor(commands, 0, 1, &scissor);
+}
+
+void begin(VkCommandBuffer commands, const Offscreen &offscreen) {
+  const VkClearValue clear{.color = transparent};
+  const VkRenderPassBeginInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                                   .renderPass = offscreen.render_pass,
+                                   .framebuffer = offscreen.framebuffer,
+                                   .renderArea = {.extent = offscreen.extent},
+                                   .clearValueCount = 1,
+                                   .pClearValues = &clear};
+  vkCmdBeginRenderPass(commands, &info, VK_SUBPASS_CONTENTS_INLINE);
+  fill(commands, offscreen.extent);
 }
 
 // The image's old pixels go, so the copy waits for nothing; uploads are rare, so what
@@ -79,7 +114,7 @@ struct Engine::Gpu {
       swapchain.emplace(log, mechanics, *window);
   }
 
-  void dispatch(VkCommandBuffer commands, std::span<const Pass> passes);
+  void record(VkCommandBuffer commands, std::span<const Pass> passes);
   void draw(VkCommandBuffer commands,
             const Target &target,
             std::span<const Pass> passes) const;
@@ -128,7 +163,8 @@ void Engine::run(std::span<const VkBuffer> clears,
                  std::span<const Pass> passes,
                  std::uint64_t frame,
                  double time,
-                 std::array<float, 2> cursor) {
+                 std::array<float, 2> cursor,
+                 VkExtent2D size) {
   Mechanics &mechanics = _gpu->mechanics;
   const VkCommandBuffer commands = mechanics.record();
   for (const VkBuffer buffer : clears)
@@ -137,19 +173,18 @@ void Engine::run(std::span<const VkBuffer> clears,
     barrier(commands,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            shader_stages,
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
   for (const Copy &copy : copies)
     upload(commands, copy);
-  _gpu->dispatch(commands, passes);
+  _gpu->record(commands, passes);
   std::optional<Swapchain> &swapchain = _gpu->swapchain;
   const std::optional<Target> target =
       swapchain ? swapchain->acquire() : std::optional<Target>{};
   if (target)
     _gpu->draw(commands, *target, passes);
   // After acquiring, so a resized window's frame already holds its new size.
-  _gpu->pipelines.write_frame(
-      frame, time, target ? target->extent : VkExtent2D{}, cursor);
+  _gpu->pipelines.write_frame(frame, time, target ? target->extent : size, cursor);
   // Readbacks: the CPU reads this frame's writes after its fence (VK03).
   barrier(commands,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -164,19 +199,30 @@ void Engine::run(std::span<const VkBuffer> clears,
   swapchain->present(*target);
 }
 
-void Engine::Gpu::dispatch(VkCommandBuffer commands, std::span<const Pass> passes) {
+// In graph order, so each pass runs after those that write what it reads. A draw into an
+// image records a render pass of its own, even with no instances, so its image is
+// cleared and ready to sample; a draw into the window waits for the window's.
+void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes) {
   hazards.clear();
   for (const Pass &pass : passes) {
-    if (pass.bind_point != VK_PIPELINE_BIND_POINT_COMPUTE)
+    const bool draw = pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS;
+    if (draw && (!pass.offscreen || !pass.offscreen->framebuffer))
       continue;
     if (hazards.before(pass))
       barrier(commands,
-              VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+              shader_stages,
               VK_ACCESS_SHADER_WRITE_BIT,
-              VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+              shader_stages,
               VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+    if (draw)
+      begin(commands, *pass.offscreen);
     bind(commands, pipelines, pass);
-    vkCmdDispatch(commands, pass.groups, 1, 1);
+    if (!draw)
+      vkCmdDispatch(commands, pass.groups, 1, 1);
+    else if (instances_of(pass) != 0)
+      vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
+    if (draw)
+      vkCmdEndRenderPass(commands);
   }
 }
 
@@ -191,15 +237,15 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
           VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT);
   swapchain->begin(commands, target);
+  fill(commands, target.extent);
   // A draw given nothing this frame records nothing, while its pipeline and buffers stay,
   // so what is hidden costs no draw and shows again the frame it is given something.
   for (const Pass &pass : passes) {
-    const std::uint32_t instances =
-        pass.instances ? *pass.instances : pass.instance_count;
-    if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || instances == 0)
+    if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || pass.offscreen ||
+        instances_of(pass) == 0)
       continue;
     bind(commands, pipelines, pass);
-    vkCmdDraw(commands, pass.vertex_count, instances, 0, 0);
+    vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
   }
   vkCmdEndRenderPass(commands);
 }

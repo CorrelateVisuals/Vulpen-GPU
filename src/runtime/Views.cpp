@@ -107,9 +107,9 @@ const View &Views::view() const {
   return _hosted.front()->current();
 }
 
-bool Views::draws() const {
+bool Views::shows() const {
   return std::ranges::any_of(_hosted, [](const std::unique_ptr<Hosted> &hosted) {
-    return !hosted->removed && Schedule::draws(hosted->next());
+    return !hosted->removed && Schedule::shows(hosted->next());
   });
 }
 

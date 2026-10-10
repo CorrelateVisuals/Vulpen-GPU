@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace VP {
@@ -36,11 +37,15 @@ public:
                    double time,
                    VkExtent2D resolution,
                    std::array<float, 2> cursor) const;
+  // The render pass a draw into an image of the format records in, made the first time
+  // the format asks and kept, so every pipeline that draws into that format fits it.
+  VkRenderPass render_pass(VkFormat format) const;
 
 private:
   friend class Pipeline;
   friend class PassBlock;
   friend class Sampled;
+  friend class Drawn;
 
   // The one frame block, laid out as the first shader that declares it says (RA03).
   struct Frame {
@@ -77,6 +82,7 @@ private:
   VkPipelineLayout _layout = VK_NULL_HANDLE;
   mutable std::vector<Pool> _pools;
   mutable std::optional<Frame> _frame;
+  mutable std::vector<std::pair<VkFormat, VkRenderPass>> _render_passes;
 };
 
 // A dispatch's pipeline, or a draw's for a render pass.
@@ -133,6 +139,24 @@ private:
   const Pipelines *_pipelines;
   Image _image;
   std::uint32_t _slot = 0; // 0 once moved from
+};
+
+// An image a draw renders into and passes then sample: its slot in textures[], and the
+// framebuffer its draw records through, in its format's render pass.
+class Drawn {
+public:
+  Drawn(const Pipelines &pipelines, Image image);
+  Drawn(Drawn &&other) noexcept;
+  Drawn &operator=(Drawn &&other) noexcept;
+  ~Drawn();
+
+  const Sampled &sampled() const;
+  VkFramebuffer framebuffer() const;
+
+private:
+  Sampled _sampled;
+  VkDevice _device = VK_NULL_HANDLE;
+  VkFramebuffer _framebuffer = VK_NULL_HANDLE;
 };
 
 } // namespace VP

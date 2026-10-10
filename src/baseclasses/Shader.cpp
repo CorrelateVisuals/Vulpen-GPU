@@ -38,6 +38,7 @@ constexpr std::uint32_t decoration_binding = 33;
 constexpr std::uint32_t decoration_descriptor_set = 34;
 constexpr std::uint32_t decoration_offset = 35;
 constexpr std::uint32_t storage_uniform = 2;
+constexpr std::uint32_t storage_output = 3;
 constexpr std::uint32_t storage_push_constant = 9;
 constexpr std::uint32_t storage_physical_storage_buffer = 5349;
 } // namespace spirv
@@ -46,6 +47,8 @@ constexpr std::uint32_t scalar_bytes = 4;
 // A buffer is a 64-bit device address in the pass block (RV02).
 constexpr std::uint32_t address_bytes = sizeof(std::uint64_t);
 constexpr std::uint32_t std140_block_alignment = 16;
+// How GLSL starts the names of its built-ins, which are no ports.
+constexpr std::string_view built_in = "gl_";
 
 struct Member {
   std::string name;
@@ -63,6 +66,7 @@ struct Module {
   std::unordered_map<std::uint32_t, std::uint32_t> strides, sets, bindings;
   std::vector<std::pair<std::uint32_t, std::uint32_t>> uniforms; // pointer type, variable
   std::vector<std::uint32_t> push_constants;                     // pointer types
+  std::vector<std::uint32_t> outputs;                            // variables
   std::array<std::uint32_t, 3> workgroup_size{};
 
   Member &member(std::uint32_t type, std::uint32_t index) {
@@ -154,6 +158,8 @@ void read(Module &module, std::uint32_t opcode, std::span<const std::uint32_t> o
         module.uniforms.emplace_back(at(operands, 0), at(operands, 1));
       else if (at(operands, 2) == spirv::storage_push_constant)
         module.push_constants.push_back(at(operands, 0));
+      else if (at(operands, 2) == spirv::storage_output)
+        module.outputs.push_back(at(operands, 1));
       break;
     case spirv::op_decorate:
       decorate(module, operands);
@@ -303,6 +309,19 @@ std::pair<std::vector<Field>, std::uint32_t> frame_block(const Module &module) {
   return {std::move(fields), end};
 }
 
+// What the shader writes out of its stage, by name; a built-in, or a block GLSL leaves
+// unnamed, is none.
+std::vector<std::string> outputs_of(const Module &module) {
+  std::vector<std::string> outputs;
+  for (const std::uint32_t output : module.outputs) {
+    const auto name = module.names.find(output);
+    if (name != module.names.end() && !name->second.empty() &&
+        !name->second.starts_with(built_in))
+      outputs.push_back(name->second);
+  }
+  return outputs;
+}
+
 std::vector<std::uint32_t> read_words(const std::filesystem::path &spirv) {
   std::ifstream file(spirv, std::ios::binary | std::ios::ate);
   if (!file)
@@ -331,6 +350,7 @@ Shader::Shader(const std::filesystem::path &spirv) : _words(read_words(spirv)) {
     word += count;
   }
   _workgroup_size = module.workgroup_size;
+  _outputs = outputs_of(module);
   std::tie(_fields, _block_size) = pass_block(module);
   std::tie(_frame, _frame_size) = frame_block(module);
 }
@@ -357,6 +377,10 @@ std::uint32_t Shader::frame_size() const {
 
 const std::array<std::uint32_t, 3> &Shader::workgroup_size() const {
   return _workgroup_size;
+}
+
+const std::vector<std::string> &Shader::outputs() const {
+  return _outputs;
 }
 
 } // namespace VP

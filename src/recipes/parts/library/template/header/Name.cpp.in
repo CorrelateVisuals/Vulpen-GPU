@@ -25,7 +25,7 @@ namespace {
 //   if (frame.empty(_atlas)) // at first, and after image clear
 //     frame.upload(_atlas, pixels, {width, height});
 //   const std::uint64_t index = frame.index(); // frames since the view loaded
-//   const glm::uvec2 size = frame.resolution(); // the window's; zero without one
+//   const glm::uvec2 size = frame.resolution(); // the window's, or --size's; else 0
 //   frame.log(VP::Level::info, "a line at the node's log level");
 //   frame.commands().send("param set name speed 0.02");
 //   for (const VP::Logged &line : frame.commands().log()) {} // since last frame

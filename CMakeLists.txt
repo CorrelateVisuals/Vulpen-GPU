@@ -31,7 +31,6 @@ add_executable(vulpen
   src/baseclasses/Engine.cpp
   src/baseclasses/Log.cpp
   src/baseclasses/Mechanics.cpp
-  src/baseclasses/Offscreen.cpp
   src/baseclasses/Passes.cpp
   src/baseclasses/Pipelines.cpp
   src/baseclasses/Platform.cpp

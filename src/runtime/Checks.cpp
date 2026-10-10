@@ -142,15 +142,17 @@ void Schedule::check_connections() {
     }
     // A reader whose shaders did not load says why on its own; one with none has no
     // Texture to sample.
-    if (writer.fills(connection.from.port)) {
+    const bool drawn = writer.drawn && connection.from.port == writer.output;
+    if (writer.fills(connection.from.port) || drawn) {
       for (const Endpoint &to : connection.to) {
         Bound &reader = *find(to.node);
         const Field *const in = reader.field(to.port);
         if ((reader.loaded() || reader.shaders_named.empty()) && (!in || !in->texture()))
           reader.errors.push_back(std::format(
-              "connection {}: {} fills an image, which {} is no Texture to sample",
+              "connection {}: {} {} an image, which {} is no Texture to sample",
               connection.name,
               connection.from.node,
+              drawn ? "draws" : "fills",
               to.port));
       }
       continue;
@@ -250,8 +252,9 @@ void Schedule::check_images() {
                         image.port,
                         image.format,
                         format_names()));
-      else if (!bound.fills(image.port))
-        bound.errors.push_back(std::format("image {}={}: the operator fills no image {}",
+      else if (!bound.fills(image.port) && image.port != bound.output)
+        bound.errors.push_back(std::format("image {}={}: neither its operator fills nor "
+                                           "its draw renders an image {}",
                                            image.port,
                                            image.format,
                                            image.port));

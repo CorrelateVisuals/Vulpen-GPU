@@ -36,7 +36,7 @@ public:
   VkRenderPass render_pass() const;
   // Nothing while the window is minimized, or while its images are being remade.
   std::optional<Target> acquire();
-  // Starts the render pass on the target, clearing it, with the viewport filling it.
+  // Starts the render pass on the target, clearing it.
   void begin(VkCommandBuffer commands, const Target &target) const;
   void present(const Target &target);
 

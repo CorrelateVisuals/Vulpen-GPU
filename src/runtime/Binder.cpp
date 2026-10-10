@@ -392,6 +392,7 @@ void Schedule::drop_operators(const std::vector<std::string> &modules) {
 }
 
 void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
+  size_targets(resolution);
   for (const auto &entry : _buffers)
     if (entry.second.memory() == Memory::readback)
       entry.second.invalidate();

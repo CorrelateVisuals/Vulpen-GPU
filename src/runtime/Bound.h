@@ -184,6 +184,11 @@ struct Schedule::Bound {
   std::vector<Field> fields;   // the pass block its shaders share
   std::uint32_t block_size = 0;
   std::optional<Pipeline> pipeline;
+  VkRenderPass render_pass = VK_NULL_HANDLE; // a draw's, which its pipeline fits
+  // A draw's color, by the name its fragment shader gives it, and while a connection
+  // takes it to a Texture, the format of the image it renders into; null for the window.
+  std::string output;
+  const PixelFormat *drawn = nullptr;
   std::optional<PassBlock> block;
   std::unique_ptr<Operator> op;
   std::set<std::string, std::less<>> set_by_operator;

@@ -383,8 +383,8 @@ public:
     return image_empty(texture.index);
   }
   virtual std::uint64_t index() const = 0;
-  // The window's size in pixels, which the frame block's resolution follows, so C++
-  // lays out what shaders draw; zero without a window.
+  // The window's size in pixels, or without one the size --size gives, which the frame
+  // block's resolution follows, so C++ lays out what shaders draw; zero without either.
   virtual glm::uvec2 resolution() const = 0;
   virtual void log(Level level, std::string_view text) const = 0;
   virtual CommandPort &commands() = 0;

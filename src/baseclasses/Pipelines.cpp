@@ -122,6 +122,51 @@ VkDescriptorPool image_pool(VkDevice device) {
   return pool;
 }
 
+// A draw's image starts each frame cleared, so what it held before is dropped. Once
+// drawn, every shader stage that samples it after its render pass sees its pixels, in
+// the layout sampling takes; earlier frames are behind the fence already.
+VkRenderPass make_render_pass(VkDevice device, VkFormat format) {
+  const VkAttachmentDescription color{.format = format,
+                                      .samples = VK_SAMPLE_COUNT_1_BIT,
+                                      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                                      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                                      .finalLayout =
+                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+  const VkAttachmentReference target{.attachment = 0,
+                                     .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+  const VkSubpassDescription subpass{.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                     .colorAttachmentCount = 1,
+                                     .pColorAttachments = &target};
+  const std::array dependencies{
+      VkSubpassDependency{.srcSubpass = VK_SUBPASS_EXTERNAL,
+                          .dstSubpass = 0,
+                          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT},
+      VkSubpassDependency{.srcSubpass = 0,
+                          .dstSubpass = VK_SUBPASS_EXTERNAL,
+                          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          .dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT}};
+  const VkRenderPassCreateInfo info{
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+      .attachmentCount = 1,
+      .pAttachments = &color,
+      .subpassCount = 1,
+      .pSubpasses = &subpass,
+      .dependencyCount = static_cast<std::uint32_t>(dependencies.size()),
+      .pDependencies = dependencies.data()};
+  VkRenderPass render_pass = VK_NULL_HANDLE;
+  check(vkCreateRenderPass(device, &info, nullptr, &render_pass), "vkCreateRenderPass");
+  return render_pass;
+}
+
 } // namespace
 
 Pipelines::Pipelines(VkDevice device, const Resources &resources)
@@ -166,6 +211,8 @@ Pipelines::Pipelines(VkDevice device, const Resources &resources)
 }
 
 Pipelines::~Pipelines() {
+  for (const auto &[format, render_pass] : _render_passes)
+    vkDestroyRenderPass(_device, render_pass, nullptr);
   for (const Pool &pool : _pools)
     vkDestroyDescriptorPool(_device, pool.handle, nullptr);
   vkDestroyPipelineLayout(_device, _layout, nullptr);
@@ -186,6 +233,14 @@ VkDescriptorSet Pipelines::images() const {
 
 VkDeviceAddress Pipelines::frame() const {
   return _frame ? _frame->buffer.address() : 0;
+}
+
+VkRenderPass Pipelines::render_pass(VkFormat format) const {
+  const auto made = std::ranges::find(
+      _render_passes, format, &std::pair<VkFormat, VkRenderPass>::first);
+  if (made != _render_passes.end())
+    return made->second;
+  return _render_passes.emplace_back(format, make_render_pass(_device, format)).second;
 }
 
 // The GPU of the last frame is done with it: one frame is in flight.
@@ -466,6 +521,46 @@ const Image &Sampled::image() const {
 
 std::uint32_t Sampled::slot() const {
   return _slot;
+}
+
+Drawn::Drawn(const Pipelines &pipelines, Image image)
+    : _sampled(pipelines, std::move(image)), _device(pipelines._device) {
+  const Image &drawn = _sampled.image();
+  const VkImageView view = drawn.view();
+  const VkFramebufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                                     .renderPass = pipelines.render_pass(drawn.format()),
+                                     .attachmentCount = 1,
+                                     .pAttachments = &view,
+                                     .width = drawn.extent().width,
+                                     .height = drawn.extent().height,
+                                     .layers = 1};
+  check(vkCreateFramebuffer(_device, &info, nullptr, &_framebuffer),
+        "vkCreateFramebuffer");
+}
+
+Drawn::Drawn(Drawn &&other) noexcept
+    : _sampled(std::move(other._sampled)), _device(other._device),
+      _framebuffer(std::exchange(other._framebuffer, VK_NULL_HANDLE)) {}
+
+Drawn &Drawn::operator=(Drawn &&other) noexcept {
+  std::swap(_sampled, other._sampled);
+  std::swap(_device, other._device);
+  std::swap(_framebuffer, other._framebuffer);
+  return *this;
+}
+
+// Between frames, as its image goes, so no draw through it is still running.
+Drawn::~Drawn() {
+  if (_framebuffer)
+    vkDestroyFramebuffer(_device, _framebuffer, nullptr);
+}
+
+const Sampled &Drawn::sampled() const {
+  return _sampled;
+}
+
+VkFramebuffer Drawn::framebuffer() const {
+  return _framebuffer;
 }
 
 } // namespace VP

@@ -93,6 +93,19 @@ image       = picture=R8_UNORM
 operator = Sign
 file     = Sign.cpp
 
+# Draws each pixel's place into an image, which look samples in the same frame.
+[node "paint"]
+file         = Paint.frag
+file         = Paint.vert
+vertex_count = 3
+
+# Stops when a pixel of paint's image reads back as another.
+[node "look"]
+operator    = Look
+file        = Look.comp
+file        = Look.cpp
+invocations = 64
+
 [connection "values"]
 from = fill.values
 to   = sum.values
@@ -100,3 +113,7 @@ to   = sum.values
 [connection "count"]
 from = give.count
 to   = take.count
+
+[connection "painted"]
+from = paint.color
+to   = look.painted

@@ -8,15 +8,13 @@ Paths are from `src/`. The standard library is left out, since every file may us
 
 | File | Includes |
 | --- | --- |
-| `baseclasses/Engine.cpp` | `baseclasses/Engine.h` `baseclasses/Mechanics.h` `baseclasses/Offscreen.h` `baseclasses/Pipelines.h` `baseclasses/Resources.h` `baseclasses/Swapchain.h` |
+| `baseclasses/Engine.cpp` | `baseclasses/Engine.h` `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` `baseclasses/Resources.h` `baseclasses/Swapchain.h` |
 | `baseclasses/Engine.h` | `<vulkan/vulkan.h>` `baseclasses/Passes.h` |
 | `baseclasses/GpuLayout.glsl` | — |
 | `baseclasses/Log.cpp` | `baseclasses/Log.h` `baseclasses/Platform.h` |
 | `baseclasses/Log.h` | — |
 | `baseclasses/Mechanics.cpp` | `baseclasses/Log.h` `baseclasses/Mechanics.h` `baseclasses/Platform.h` |
 | `baseclasses/Mechanics.h` | `<vulkan/vulkan.h>` |
-| `baseclasses/Offscreen.cpp` | `baseclasses/Mechanics.h` `baseclasses/Offscreen.h` `baseclasses/Resources.h` |
-| `baseclasses/Offscreen.h` | — |
 | `baseclasses/Passes.cpp` | `baseclasses/Passes.h` |
 | `baseclasses/Passes.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Pipelines.cpp` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` |

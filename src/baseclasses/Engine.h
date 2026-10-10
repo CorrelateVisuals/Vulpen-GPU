@@ -37,15 +37,17 @@ public:
   VkRenderPass render_pass() const;
   void wait() const;
   // Zeroes the new buffers first, so a run starts from the same bytes every time (C01),
-  // and copies in the images the CPU filled. Dispatches run next, in order; draws, which
-  // only read, follow in one render pass. frame, time and cursor: what the frame block
-  // tells every pass (RV02).
+  // and copies in the images the CPU filled. The dispatches and the draws into images run
+  // next, in graph order; the draws into the window, which nothing reads, follow in one
+  // render pass. frame, time and cursor: what the frame block tells every pass (RV02);
+  // size: its resolution while no window is open, zero for none.
   void run(std::span<const VkBuffer> clears,
            std::span<const Copy> copies,
            std::span<const Pass> passes,
            std::uint64_t frame,
            double time,
-           std::array<float, 2> cursor);
+           std::array<float, 2> cursor,
+           VkExtent2D size);
 
 private:
   // What the engine owns, behind a pointer, so a file that includes this header

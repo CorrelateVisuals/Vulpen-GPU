@@ -11,9 +11,9 @@ of another type than its writer's, a C++ struct whose members sit elsewhere than
 shader's, C++ writing more elements than its buffer holds, an image C++ fills that
 nothing samples beside a Texture nothing fills, C++ uploading other than an image's
 count of pixels, C++ pixels other than the image's format takes, a format there is not,
-image clear of a port that fills no image, a key there is not, and a buffer C++ fills
-for another node's shader whose members sit elsewhere, given no room, or that nothing
-reads.
+image clear of a port that fills no image, a key there is not, a buffer C++ fills for
+another node's shader whose members sit elsewhere, given no room, or that nothing reads,
+and a draw's image taken to no Texture, or given a format there is not.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -24,8 +24,10 @@ hands its reader what its writer wrote that frame, a node makes a buffer through
 engine by hand, and structs C++ writes reach the shader member for member. The pixels
 C++ fills an image with reach a shader pixel for pixel, through the node's own Texture,
 through a connection and as 16-bit floats, stay through a rebuild, and come back after
-image clear when the node fills them again. The library's palette, font, rects and
-glyphs draw the fixture's sign in a window without an error, where a display is. A
+image clear when the node fills them again. The image a draw renders into reaches a
+dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
+with no window. The library's palette, font, rects and glyphs draw the fixture's sign in
+a window without an error, where a display is. A
 view's child views run, and leave and come back by edits that save the manifest
 unchanged. And a drop copies a recipe whose sync brings it up to the library's while it
 is unchanged, keeping the params the view set, and refuses once the view changed the
@@ -57,6 +59,8 @@ SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
 MAKER = '[node "maker"]\noperator = Maker\n'
 PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = picture=R8_UNORM\n'
 SIGN = '[node "sign"]\noperator = Sign\n'
+PAINT = '[node "paint"]\nvertex_count = 3\n'
+LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
 PARTS = Path(__file__).resolve().parents[2] / "recipes" / "parts"
@@ -77,6 +81,8 @@ def operator(name: str) -> str:
 
 # A shape whose shapes maker's C++ fills, through a connection.
 MADE = SHAPE.replace("Shapes", "Sums") + connection("shapes", "maker.shapes", "shape.shapes")
+# The image paint draws, which look samples.
+PAINTED = connection("painted", "paint.color", "look.painted")
 
 # What each view gets wrong, and what its error must say.
 CASES = {
@@ -147,6 +153,10 @@ CASES = {
     "made-room": (HEAD + MAKER.replace("Maker", "Roomless") + MADE,
                   "the operator writes shapes, which no shader of its node holds; give it room"),
     "made-unread": (HEAD + MAKER, "the operator writes shapes, which nothing reads"),
+    "draw-reader": (HEAD + PAINT + SUM + connection("painted", "paint.color", "sum.values"),
+                    "connection painted: paint draws an image, which values is no Texture"),
+    "draw-format": (HEAD + PAINT + "image = color=R8G8B8A8_UNROM\n" + LOOK + PAINTED,
+                    "image color=R8G8B8A8_UNROM: no such format"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -324,35 +334,55 @@ def images(vulpen: str, folder: Path) -> str | None:
     return None
 
 
-def text(vulpen: str, folder: Path) -> str | None:
-    """Why the library's palette, font, rects and glyphs did not draw the fixture's sign
-    in a window without an error, or None; with no display, None. Each part's node is its
-    library manifest's, and its folder and build output are links to the library's, as
-    the build compiles only the views it knows. What they draw is checked by eye until a
-    test can read the window back."""
-    if not display():
-        return None
-    nodes = "".join("\n" + section[section.index("[node "):] for section in
-                    ((PARTS / part / "view.vlp").read_text(encoding="utf-8") for part in TEXT))
-    view = view_in(folder, "text", HEAD + SIGN + nodes
-                   + connection("palette", "palette.palette", "rects.palette", "glyphs.palette")
-                   + connection("font", "font.font", "glyphs.font")
-                   + connection("atlas", "font.atlas", "glyphs.atlas")
-                   + connection("rects", "sign.rects", "rects.rects")
-                   + connection("labels", "sign.labels", "glyphs.labels")
-                   + connection("characters", "sign.characters", "glyphs.characters"))
+def windowed(vulpen: str, folder: Path, name: str, parts: tuple[str, ...], nodes: str,
+             connections: str) -> tuple[int, str]:
+    """The exit code and output of a view of fixture nodes and library parts run in a
+    window. Each part's node is its library manifest's, after the fixture's nodes, and its
+    folder and build output are links to the library's, as the build compiles only the
+    views it knows."""
+    sections = "".join("\n" + section[section.index("[node "):] for section in
+                       ((PARTS / part / "view.vlp").read_text(encoding="utf-8")
+                        for part in parts))
+    view = view_in(folder, name, HEAD + nodes + sections + connections)
     built = mirror(vulpen).parent / "library" / "parts"
-    links = [mirror(vulpen) / part for part in TEXT]
+    links = [mirror(vulpen) / part for part in parts]
     try:
-        for part, link in zip(TEXT, links):
+        for part, link in zip(parts, links):
             (view.parent / part).symlink_to(PARTS / part, target_is_directory=True)
             link.symlink_to(built / part, target_is_directory=True)
-        code, output = run(vulpen, [view, "--frames", 60, "--fps", 0], headless=False)
+        return run(vulpen, [view, "--frames", 60, "--fps", 0], headless=False)
     finally:
         for link in links:
             link.unlink(missing_ok=True)
+
+
+def text(vulpen: str, folder: Path) -> str | None:
+    """Why the library's palette, font, rects and glyphs did not draw the fixture's sign
+    in a window without an error, or None; with no display, None. What they draw is
+    checked by eye until a test can read the window back."""
+    if not display():
+        return None
+    code, output = windowed(
+        vulpen, folder, "text", TEXT, SIGN,
+        connection("palette", "palette.palette", "rects.palette", "glyphs.palette")
+        + connection("font", "font.font", "glyphs.font")
+        + connection("atlas", "font.atlas", "glyphs.atlas")
+        + connection("rects", "sign.rects", "rects.rects")
+        + connection("labels", "sign.labels", "glyphs.labels")
+        + connection("characters", "sign.characters", "glyphs.characters"))
     if code != 0 or problems(output):
         return f"text: expected the sign drawn without an error, got exit {code}:\n{output}"
+    return None
+
+
+def offscreen(vulpen: str, folder: Path) -> str | None:
+    """Why the image a draw renders into did not reach a dispatch after it in the same
+    frame, pixel for pixel, at the size --size gives a run with no window (V07), or
+    None."""
+    view = view_in(folder, "offscreen", HEAD + PAINT + LOOK + PAINTED)
+    code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
+    if code != 0 or problems(output):
+        return f"offscreen: expected each pixel paint drew, got exit {code}:\n{output}"
     return None
 
 
@@ -464,6 +494,7 @@ def main() -> None:
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
                             frame_block(vulpen, folder), cpp(vulpen, folder),
                             images(vulpen, folder), text(vulpen, folder),
+                            offscreen(vulpen, folder),
                             input_lines(vulpen, folder),
                             children(vulpen, folder),
                             drops(vulpen, folder)):

@@ -157,7 +157,10 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
   return buffer;
 }
 
-Image Resources::image(VkExtent2D extent, VkFormat format) const {
+Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
+  const VkImageUsageFlags filled = fill == Fill::draw
+                                       ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                                       : VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   const VkImageCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                                .imageType = VK_IMAGE_TYPE_2D,
                                .format = format,
@@ -166,8 +169,7 @@ Image Resources::image(VkExtent2D extent, VkFormat format) const {
                                .arrayLayers = 1,
                                .samples = VK_SAMPLE_COUNT_1_BIT,
                                .tiling = VK_IMAGE_TILING_OPTIMAL,
-                               .usage = VK_IMAGE_USAGE_SAMPLED_BIT |
-                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT};
+                               .usage = VK_IMAGE_USAGE_SAMPLED_BIT | filled};
   const VmaAllocationCreateInfo where{.usage = VMA_MEMORY_USAGE_AUTO};
   Image image;
   check(vmaCreateImage(
@@ -189,13 +191,17 @@ Image Resources::image(VkExtent2D extent, VkFormat format) const {
 }
 
 // Every format an image may take can be sampled on most GPUs, but some cannot filter
-// 32-bit floats, and a linear sampler there reads what each vendor likes (GLSL02).
-bool Resources::samples(VkFormat format) const {
+// 32-bit floats, and a linear sampler there reads what each vendor likes (GLSL02). Every
+// draw blends, and some GPUs cannot blend into 32-bit floats either.
+bool Resources::samples(VkFormat format, Fill fill) const {
   VkFormatProperties properties{};
   vkGetPhysicalDeviceFormatProperties(_physical_device, format, &properties);
-  const VkFormatFeatureFlags needed = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-                                      VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
-                                      VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+  const VkFormatFeatureFlags needed =
+      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+      VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+      (fill == Fill::draw ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                                VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
+                          : VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
   return (properties.optimalTilingFeatures & needed) == needed;
 }
 

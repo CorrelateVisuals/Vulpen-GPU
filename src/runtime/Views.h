@@ -33,9 +33,9 @@ public:
   static View read(const Log &log, const std::filesystem::path &file);
   // The view vulpen started with, as the changes so far left it.
   const View &view() const;
-  // Whether a node of any view draws, as the changes so far left them, so the next
-  // frame needs a window.
-  bool draws() const;
+  // Whether a node of any view draws into the window, as the changes so far left them,
+  // so the next frame needs one.
+  bool shows() const;
   // Before a frame: rebuilds the schedule of each view that changed since the last, and
   // drops those of the views no longer hosted. True when any schedule changed.
   bool rebuild();

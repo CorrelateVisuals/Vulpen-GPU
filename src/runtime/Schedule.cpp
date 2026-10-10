@@ -7,6 +7,8 @@
 #include <cstring>
 #include <format>
 #include <map>
+#include <memory>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <utility>
@@ -55,6 +57,16 @@ std::string pass_block(const std::vector<Field> &fields, std::uint32_t size) {
 
 } // namespace
 
+// An image a draw renders into, by its writer's node.port, as its readers' connection
+// names it. The pass that draws it points at offscreen, which keeps its address while
+// the schedule lives, so a new size reaches the pass with no gathering of passes.
+struct Schedule::Rendered {
+  std::string name;
+  const Bound *writer = nullptr;
+  std::optional<Drawn> drawn; // none while there is no size
+  Offscreen offscreen;
+};
+
 // Of the nodes whose writers are all placed, the first in the manifest goes next, so
 // nodes the connections leave unordered, such as two draws, run as the manifest lists
 // them. Every rebuild reorders the view, so the connections are indexed once, not
@@ -93,8 +105,13 @@ std::vector<const Node *> Schedule::order(const View &view) {
   return placed;
 }
 
-bool Schedule::draws(const View &view) {
-  return std::ranges::any_of(view.nodes, is_draw);
+bool Schedule::shows(const View &view) {
+  return std::ranges::any_of(view.nodes, [&](const Node &node) {
+    return is_draw(node) &&
+           std::ranges::none_of(view.connections, [&](const Connection &connection) {
+             return connection.from.node == node.name;
+           });
+  });
 }
 
 Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
@@ -114,6 +131,7 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Schedule *replaced)
   if (replaced)
     keep_images(*replaced);
   make_blocks();
+  make_targets();
   make_passes();
   // Each error names the line that last added or changed the node, if a file holds it,
   // else the view's file, in its folder as the lines are. A node left out answers no
@@ -142,7 +160,8 @@ Schedule::~Schedule() {
   }
 }
 
-// A node whose SPIR-V the build did not rewrite keeps its reflection and pipeline.
+// A node whose SPIR-V the build did not rewrite keeps its reflection, and its pipeline
+// while the pipeline still fits what it draws into.
 void Schedule::load_shaders(Bound &bound,
                             const std::filesystem::path &folder,
                             Bound *old) {
@@ -160,28 +179,36 @@ void Schedule::load_shaders(Bound &bound,
       return;
     }
   }
-  if (old && old->pipeline && old->spirv == bound.spirv && old->built == bound.built) {
-    bound.shaders = std::move(old->shaders);
-    bound.fields = std::move(old->fields);
-    bound.block_size = old->block_size;
-    bound.pipeline = std::move(old->pipeline);
-    log(Level::debug, Tag::nod, bound, "keeps its pipeline");
-  } else {
-    try {
-      make_pipeline(bound);
-    } catch (const std::exception &failure) {
-      bound.shaders.clear();
-      bound.fields.clear();
-      bound.errors.emplace_back(failure.what());
-      return;
+  const bool unchanged =
+      old && old->loaded() && old->spirv == bound.spirv && old->built == bound.built;
+  try {
+    if (unchanged) {
+      bound.shaders = std::move(old->shaders);
+      bound.fields = std::move(old->fields);
+      bound.block_size = old->block_size;
+    } else {
+      read_shaders(bound);
     }
+    const VkRenderPass render_pass =
+        is_draw(*bound.node) ? target_of(bound) : VK_NULL_HANDLE;
+    if (unchanged && old->pipeline && old->render_pass == render_pass) {
+      bound.pipeline = std::move(old->pipeline);
+      bound.render_pass = render_pass;
+      log(Level::debug, Tag::nod, bound, "keeps its pipeline");
+    } else if (render_pass || !is_draw(*bound.node)) {
+      make_pipeline(bound, render_pass);
+    }
+  } catch (const std::exception &failure) {
+    bound.shaders.clear();
+    bound.fields.clear();
+    bound.errors.emplace_back(failure.what());
+    return;
   }
   check_stages(bound);
 }
 
 // A node's shaders share its one pass block, so they must agree on where each field is.
-void Schedule::make_pipeline(Bound &bound) const {
-  const Node &node = *bound.node;
+void Schedule::read_shaders(Bound &bound) const {
   for (const std::filesystem::path &spirv : bound.spirv)
     bound.shaders.emplace_back(spirv);
   for (const Shader &shader : bound.shaders) {
@@ -195,18 +222,51 @@ void Schedule::make_pipeline(Bound &bound) const {
                                "once, in a file both include");
     }
   }
-  if (!is_draw(node)) {
+}
+
+// A draw's one color goes into the window, unless a connection takes it to a Texture:
+// then into an image, in the format the node's image word gives that port. Null for a
+// format there is not, which check_images names.
+VkRenderPass Schedule::target_of(Bound &bound) const {
+  const std::size_t fragment =
+      bound.shaders_named.front().ends_with(fragment_stage) ? 0 : 1;
+  const std::vector<std::string> &colors = bound.shaders[fragment].outputs();
+  if (colors.size() != 1)
+    throw std::runtime_error(std::format(
+        "its .frag writes {} colors, but a draw writes one", colors.size()));
+  bound.output = colors.front();
+  if (!connection_of(bound.node->name, bound.output)) {
+    if (!_wiring.render_pass)
+      throw std::runtime_error(std::format("it draws {} into the window, but none is "
+                                           "open; a connection to a Texture draws it "
+                                           "into an image",
+                                           bound.output));
+    return _wiring.render_pass;
+  }
+  const std::vector<ImagePort> &words = bound.node->images;
+  const auto word = std::ranges::find(words, bound.output, &ImagePort::port);
+  bound.drawn = pixel_format(word == words.end() ? default_format : word->format);
+  if (!bound.drawn)
+    return VK_NULL_HANDLE;
+  if (!_wiring.resources.samples(bound.drawn->format, Fill::draw))
+    throw std::runtime_error(std::format(
+        "{}: this GPU cannot draw into {} images", bound.output, bound.drawn->name));
+  return _wiring.pipelines.render_pass(bound.drawn->format);
+}
+
+// A draw's pipeline fits the render pass it records in.
+void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
+  if (!is_draw(*bound.node)) {
     bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
-  } else if (!_wiring.render_pass) {
-    throw std::runtime_error("it draws, but no window is open to draw into");
   } else {
     const std::size_t vertex =
         bound.shaders_named.front().ends_with(vertex_stage) ? 0 : 1;
     bound.pipeline.emplace(_wiring.pipelines,
                            bound.shaders[vertex],
                            bound.shaders[1 - vertex],
-                           _wiring.render_pass);
+                           render_pass);
   }
+  bound.render_pass = render_pass;
   log(Level::info, Tag::nod, bound, "pipeline from " + joined(bound.shaders_named));
   if (!bound.fields.empty())
     log(Level::debug, Tag::nod, bound, pass_block(bound.fields, bound.block_size));
@@ -412,6 +472,47 @@ const Image &Schedule::image_for(const Bound &writer,
   return made.sampled.image();
 }
 
+// An image for each draw whose color a connection takes to a Texture, made as the first
+// frame gives it a size.
+void Schedule::make_targets() {
+  for (const Bound &bound : _bound)
+    if (bound.errors.empty() && bound.pipeline && bound.drawn)
+      _rendered.push_back(std::make_unique<Rendered>(
+          Rendered{.name = std::format("{}.{}", bound.node->name, bound.output),
+                   .writer = &bound}));
+}
+
+// To the frame's size, before any pass runs: an image of another size goes, and its
+// readers sample nothing until the new one is drawn. With no size there is none, so its
+// draw records nothing: no room, no work.
+void Schedule::size_targets(VkExtent2D size) {
+  for (const std::unique_ptr<Rendered> &rendered : _rendered) {
+    const VkExtent2D now = rendered->offscreen.extent;
+    if (now.width == size.width && now.height == size.height)
+      continue;
+    rendered->offscreen = {};
+    rendered->drawn.reset();
+    const PixelFormat &format = *rendered->writer->drawn;
+    if (size.width != 0 && size.height != 0) {
+      const Drawn &drawn = rendered->drawn.emplace(
+          _wiring.pipelines, _wiring.resources.image(size, format.format, Fill::draw));
+      rendered->offscreen = {.render_pass = rendered->writer->render_pass,
+                             .framebuffer = drawn.framebuffer(),
+                             .extent = size};
+      log(Level::info,
+          Tag::mem,
+          *rendered->writer,
+          std::format("{}: {} by {} pixels of {}, which it draws",
+                      rendered->name,
+                      size.width,
+                      size.height,
+                      format.name));
+    }
+    point_readers(rendered->name,
+                  rendered->drawn ? rendered->drawn->sampled().slot() : 0);
+  }
+}
+
 void Schedule::make_passes() {
   for (const Bound &bound : _bound) {
     if (!bound.errors.empty() || !bound.pipeline)
@@ -429,6 +530,9 @@ void Schedule::make_passes() {
     if (draw && !instance_number(*bound.node))
       pass.instances =
           &_used.at(buffer_name(bound.node->name, bound.node->instance_count));
+    for (const std::unique_ptr<Rendered> &rendered : _rendered)
+      if (rendered->writer == &bound)
+        pass.offscreen = &rendered->offscreen;
     for (const Field &field : bound.fields) {
       if (!field.buffer())
         continue;

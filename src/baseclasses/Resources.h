@@ -13,6 +13,9 @@ namespace VP {
 // Where a buffer lives: only on the GPU, or where the CPU writes or reads it back.
 enum class Memory { device, upload, readback };
 
+// What gives an image its pixels: a copy from what the CPU filled, or a draw.
+enum class Fill { copy, draw };
+
 // What the GPU holds: one owner for every buffer and image; the rest borrow handles.
 class Buffer {
 public:
@@ -42,7 +45,7 @@ private:
   Memory _memory = Memory::device;
 };
 
-// An image shaders sample, in device memory, which a copy fills.
+// An image shaders sample, in device memory, which a copy or a draw fills.
 class Image {
 public:
   Image(Image &&other) noexcept;
@@ -76,9 +79,10 @@ public:
 
   // Every buffer is reachable by its device address, the way shaders take buffers (RV02).
   Buffer buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const;
-  Image image(VkExtent2D extent, VkFormat format) const;
-  // Whether shaders may sample, filtered, an image of the format that a copy fills.
-  bool samples(VkFormat format) const;
+  Image image(VkExtent2D extent, VkFormat format, Fill fill = Fill::copy) const;
+  // Whether shaders may sample, filtered, an image of the format filled so; a draw also
+  // blends into it.
+  bool samples(VkFormat format, Fill fill = Fill::copy) const;
 
 private:
   const VkPhysicalDevice _physical_device;

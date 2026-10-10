@@ -7,6 +7,15 @@
 
 namespace VP {
 
+// An image a draw renders into instead of the window: its format's render pass, its
+// framebuffer and its size. With no framebuffer, as while it has no size, the draw
+// records nothing.
+struct Offscreen {
+  VkRenderPass render_pass = VK_NULL_HANDLE;
+  VkFramebuffer framebuffer = VK_NULL_HANDLE;
+  VkExtent2D extent{};
+};
+
 // One dispatch or draw and the buffers it touches, as its shaders' qualifiers declare
 // them.
 struct Pass {
@@ -18,6 +27,9 @@ struct Pass {
   std::uint32_t instance_count = 1;
   // When set, the instance count, which the CPU sets each frame as it writes a buffer.
   const std::uint32_t *instances = nullptr;
+  // A draw's image, which its schedule keeps and remakes as the size changes; null for a
+  // draw into the window.
+  const Offscreen *offscreen = nullptr;
   std::vector<VkBuffer> reads;
   std::vector<VkBuffer> writes;
 };

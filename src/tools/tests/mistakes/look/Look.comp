@@ -1,0 +1,27 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(buffer_reference, std430) writeonly buffer Texels {
+  vec2 at[];
+};
+
+layout(set = 1, binding = 0) uniform Pass {
+  Texture painted; // a connection: the image paint draws, this frame
+  Texels texels;   // read back by the operator: a pixel's red and green
+} pass;
+
+// Each invocation samples the middle of one pixel, at a place apart from the others',
+// across the whole frame; as Look.cpp places it. With no size there is no pixel to take,
+// and the remainder below would divide by zero (GLSL02).
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const uvec2 size = frame.resolution;
+  pass.texels.at[i] = vec2(0.0);
+  if (size.x == 0u || size.y == 0u)
+    return;
+  const uvec2 pixel = uvec2(i * 37u, i * 23u) % size;
+  pass.texels.at[i] = sample_nearest(pass.painted, (vec2(pixel) + 0.5) / vec2(size)).rg;
+}

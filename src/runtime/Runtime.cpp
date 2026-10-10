@@ -32,12 +32,27 @@ namespace VP {
 namespace {
 
 constexpr const char *usage =
-    "usage: vulpen <view.vlp> [--frames N] [--first-frame N] [--fps N]\n"
+    "usage: vulpen <view.vlp> [--frames N] [--first-frame N] [--fps N] [--size WxH]\n"
     "              [--log error|warn|info|debug] [--source FILE]";
 constexpr std::uint32_t default_fps = 60;
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 constexpr auto scan_interval = std::chrono::milliseconds(100);
 constexpr const char *build_log = "live-build.log";
+
+template <class T> T number(std::string_view flag, std::string_view text);
+
+// Width x height, as 1280x720.
+VkExtent2D size_of(std::string_view flag, std::string_view text) {
+  const std::size_t by = text.find('x');
+  if (by == std::string_view::npos)
+    throw std::runtime_error(
+        std::format("{} {} is no size: a width and a height, as 1280x720\n{}",
+                    flag,
+                    text,
+                    usage));
+  return {number<std::uint32_t>(flag, text.substr(0, by)),
+          number<std::uint32_t>(flag, text.substr(by + 1))};
+}
 
 template <class T> T number(std::string_view flag, std::string_view text) {
   T value{};
@@ -112,6 +127,9 @@ private:
     // Where the frame count starts, so a test reaches years of frames in a moment (A03).
     std::uint64_t first_frame = 0;
     std::uint32_t fps = 0;    // 0 runs unpaced
+    // While no window is open: the size of the images draws render into, and of the
+    // frame block's resolution, so a run renders headless (V07). Zero renders none.
+    VkExtent2D size{};
     Level log = Level::warn;
     // A file of commands, one a line, that the port runs before the first frame.
     std::filesystem::path source;
@@ -257,6 +275,8 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
       options.first_frame = number<std::uint64_t>(argument, value);
     } else if (argument == "--fps") {
       options.fps = number<std::uint32_t>(argument, value);
+    } else if (argument == "--size") {
+      options.size = size_of(argument, value);
     } else if (argument == "--source") {
       options.source = value;
     } else if (argument == "--log") {
@@ -297,16 +317,17 @@ bool Runtime::start() {
   _mirror = build / "views";
   View view = Views::read(_log, _options.manifest);
   const std::filesystem::path folder = Manifest::root(view);
-  // Only a view that draws opens a window; every other view runs headless (V07).
-  const bool draws = Schedule::draws(Manifest::flatten(view));
+  // Only a view that draws into the window opens one; every other view runs headless
+  // (V07), its draws into images at --size.
+  const bool shows = Schedule::shows(Manifest::flatten(view));
   _log.write(Level::info,
              Tag::run,
              std::format("view {} from {}: {}",
                          view.name,
                          view.file.string(),
-                         draws ? "a node draws, so it opens a window"
-                               : "no node draws, so it runs headless"));
-  if (draws)
+                         shows ? "a node draws into the window, so it opens one"
+                               : "no node draws into the window, so it runs headless"));
+  if (shows)
     _window.emplace(title(view), window_size);
   _engine.emplace(_log, _window ? &*_window : nullptr);
   _wiring.emplace(Wiring{.engine = *_engine,
@@ -356,7 +377,7 @@ void Runtime::loop() {
     _commands.frame();
     const std::uint64_t frame = _options.first_frame + frames;
     // Read as the swapchain will be made for it, so C++ lays out what shaders map.
-    const VkExtent2D resolution = _window ? _window->size() : VkExtent2D{};
+    const VkExtent2D resolution = _window ? _window->size() : _options.size;
     _clears.clear();
     _copies.clear();
     for (Schedule *const schedule : _views->schedules()) {
@@ -370,7 +391,8 @@ void Runtime::loop() {
                  _passes,
                  frame,
                  static_cast<double>(frame) / rate,
-                 {cursor.x, cursor.y});
+                 {cursor.x, cursor.y},
+                 _options.size);
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
   }
@@ -421,14 +443,14 @@ void Runtime::swap() {
 }
 
 // The schedules the next frame runs. The window follows the views first (V07): it opens
-// before the rebuild that brings the first draw, so the draw has a window to draw into,
-// and closes once no node of any view draws.
+// before the rebuild that brings the first draw into it, so the draw has a window to
+// draw into, and closes once no node of any view draws into it.
 void Runtime::prepare() {
-  if (_views->draws() != _window.has_value()) {
+  if (_views->shows() != _window.has_value()) {
     _log.write(Level::info,
                Tag::run,
-               _window ? "no node draws, so the window closes"
-                       : "a node draws, so the window opens");
+               _window ? "no node draws into the window, so it closes"
+                       : "a node draws into the window, so it opens");
     if (_window) {
       _engine->close();
       _window.reset();

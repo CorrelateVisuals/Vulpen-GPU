@@ -54,6 +54,9 @@ public:
   std::uint32_t frame_size() const;
   // Zero for any stage but compute.
   const std::array<std::uint32_t, 3> &workgroup_size() const;
+  // What it writes out of its stage, by name: a fragment shader's colors, each a port of
+  // its node. A built-in, as gl_Position, is none.
+  const std::vector<std::string> &outputs() const;
 
 private:
   std::vector<std::uint32_t> _words;
@@ -62,6 +65,7 @@ private:
   std::vector<Field> _frame;
   std::uint32_t _frame_size = 0;
   std::array<std::uint32_t, 3> _workgroup_size{};
+  std::vector<std::string> _outputs;
 };
 
 } // namespace VP

@@ -20,7 +20,6 @@ constexpr VkSurfaceFormatKHR srgb{.format = VK_FORMAT_B8G8R8A8_SRGB,
 // One image more than the minimum, so acquiring one rarely waits for the display.
 constexpr std::uint32_t spare_images = 1;
 constexpr VkClearColorValue clear_color{.float32 = {0.0f, 0.0f, 0.0f, 1.0f}};
-constexpr float far_depth = 1.0f;
 // The width a surface reports when the swapchain picks its size (VK_KHR_surface).
 constexpr std::uint32_t size_from_swapchain = std::numeric_limits<std::uint32_t>::max();
 
@@ -178,12 +177,6 @@ void Swapchain::begin(VkCommandBuffer commands, const Target &target) const {
                                    .clearValueCount = 1,
                                    .pClearValues = &clear};
   vkCmdBeginRenderPass(commands, &info, VK_SUBPASS_CONTENTS_INLINE);
-  const VkViewport viewport{.width = static_cast<float>(target.extent.width),
-                            .height = static_cast<float>(target.extent.height),
-                            .maxDepth = far_depth};
-  const VkRect2D scissor{.extent = target.extent};
-  vkCmdSetViewport(commands, 0, 1, &viewport);
-  vkCmdSetScissor(commands, 0, 1, &scissor);
 }
 
 void Swapchain::present(const Target &target) {

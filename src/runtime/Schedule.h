@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
@@ -50,8 +51,9 @@ class Schedule {
 public:
   // Writers before their readers. Throws when the connections form a cycle.
   static std::vector<const Node *> order(const View &view);
-  // Whether a node of the view draws, so the view needs a window to draw into.
-  static bool draws(const View &view);
+  // Whether a draw of the view renders into the window, so the view needs one: a draw no
+  // connection starts from. One whose output is connected renders into an image instead.
+  static bool shows(const View &view);
 
   // Binds every node and checks each name that joins its manifest entry, shader and C++
   // (A02); a node with a mistake is left out, with its errors. From the schedule it
@@ -67,7 +69,8 @@ public:
   // Before a module swap: the operators' code is about to go, so they go first, with
   // their commands and the C++ objects their modules made. modules: as "view/folder".
   void drop_operators(const std::vector<std::string> &modules);
-  // resolution: the window's size, zero without one.
+  // resolution: the window's size, or without one --size's, zero without either; the
+  // images draws render into take it too.
   void cook(std::uint64_t frame, VkExtent2D resolution);
   // The buffers made since the last call, which the next frame zeroes first.
   std::vector<VkBuffer> take_clears();
@@ -86,13 +89,16 @@ private:
   struct Bound;
   struct Held;
   struct Picture;
+  struct Rendered; // in runtime/Schedule.cpp, the one file that reaches its parts
   class Binder;
   class Cooker;
 
   Bound bind(const Node &node, const std::filesystem::path &folder, Schedule *replaced);
   void load_shaders(Bound &bound, const std::filesystem::path &folder, Bound *old);
   bool check_counts(Bound &bound) const;
-  void make_pipeline(Bound &bound) const;
+  void read_shaders(Bound &bound) const;
+  VkRenderPass target_of(Bound &bound) const;
+  void make_pipeline(Bound &bound, VkRenderPass render_pass) const;
   void check_stages(Bound &bound) const;
   void check_fields(Bound &bound) const;
   void check_connections();
@@ -107,6 +113,8 @@ private:
                    Memory memory,
                    Schedule *replaced);
   void make_blocks();
+  void make_targets();
+  void size_targets(VkExtent2D size);
   void make_passes();
   void upload(const Bound &writer,
               std::uint32_t texture,
@@ -138,6 +146,9 @@ private:
   std::map<std::string, std::uint32_t, std::less<>> _used;
   std::vector<const Buffer *> _fresh;
   std::vector<Picture> _images; // that nodes' C++ filled
+  // That draws render into; each stays where it is, as the pass that draws it points to
+  // it.
+  std::vector<std::unique_ptr<Rendered>> _rendered;
   std::vector<Copy> _copies;
   // What the copies read: this frame's, and those of the frame the GPU may still run.
   std::vector<Buffer> _staged;
