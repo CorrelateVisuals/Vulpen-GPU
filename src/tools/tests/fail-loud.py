@@ -27,7 +27,7 @@ through a connection and as 16-bit floats, stay through a rebuild, and come back
 image clear when the node fills them again. The image a draw renders into reaches a
 dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
 with no window. The library's palette, font, rects and glyphs draw the fixture's sign in
-a window without an error, where a display is. A
+a window without an error, where a display is, and its image part shows that image. A
 view's child views run, and leave and come back by edits that save the manifest
 unchanged. And a drop copies a recipe whose sync brings it up to the library's while it
 is unchanged, keeping the params the view set, and refuses once the view changed the
@@ -64,9 +64,9 @@ LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
 PARTS = Path(__file__).resolve().parents[2] / "recipes" / "parts"
-# The library's parts that put text on screen, rects before glyphs, so text draws over
-# the panels.
-TEXT = ("palette", "font", "rects", "glyphs")
+# The library's parts that put text and an image on screen, rects before glyphs, so
+# text draws over the panels.
+TEXT = ("palette", "font", "rects", "glyphs", "image")
 NODE = re.compile(r'^\[node "([^".]+)', re.MULTILINE)
 CUT = ("truncated", "empty")  # nodes whose SPIR-V this script writes, cut short
 
@@ -358,18 +358,20 @@ def windowed(vulpen: str, folder: Path, name: str, parts: tuple[str, ...], nodes
 
 def text(vulpen: str, folder: Path) -> str | None:
     """Why the library's palette, font, rects and glyphs did not draw the fixture's sign
-    in a window without an error, or None; with no display, None. What they draw is
-    checked by eye until a test can read the window back."""
+    in a window without an error, with its image part showing in the sign's Rects the
+    image paint draws, or None; with no display, None. What they draw is checked by eye
+    until a test can read the window back."""
     if not display():
         return None
     code, output = windowed(
-        vulpen, folder, "text", TEXT, SIGN,
+        vulpen, folder, "text", TEXT, SIGN + PAINT,
         connection("palette", "palette.palette", "rects.palette", "glyphs.palette")
         + connection("font", "font.font", "glyphs.font")
         + connection("atlas", "font.atlas", "glyphs.atlas")
-        + connection("rects", "sign.rects", "rects.rects")
+        + connection("rects", "sign.rects", "rects.rects", "image.place")
         + connection("labels", "sign.labels", "glyphs.labels")
-        + connection("characters", "sign.characters", "glyphs.characters"))
+        + connection("characters", "sign.characters", "glyphs.characters")
+        + connection("painted", "paint.color", "image.picture"))
     if code != 0 or problems(output):
         return f"text: expected the sign drawn without an error, got exit {code}:\n{output}"
     return None

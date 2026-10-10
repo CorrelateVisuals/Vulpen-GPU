@@ -1,1 +1,13 @@
-# The image part: one shader node with no C++; it draws one image into a Rect, letterboxed.
+# The image part: one shader node with no C++; it draws one image into each Rect it is
+# given, letterboxed, as many as the Rects' writer wrote. Its host connects a buffer of
+# Rects to its place and an image to its picture: the one a draw renders into, or one a
+# node's C++ fills.
+[manifest]
+version = 1
+
+[node "image"]
+file           = Image.frag
+file           = Image.glsl
+file           = Image.vert
+vertex_count   = 6
+instance_count = place
