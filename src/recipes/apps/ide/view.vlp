@@ -1,7 +1,7 @@
 # The IDE app: Vulpen editing Vulpen. Only child recipes and the wires between them, built
 # by addition: each row is recipes placed side by side and connected, never a bigger
-# recipe with nodes removed. Built so far: Look, Keys, the dock, the terminal in a panel in
-# its bottom row, and Library; the room above waits for the editor and graph panels.
+# recipe with nodes removed. Built so far: Look, Keys, the dock, the editor in a panel in
+# its top row and the terminal in one in its bottom row, and Library; the graph waits.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -26,7 +26,7 @@ recipe = palette
 [node "ide.font"]
 recipe = font
 
-# The terminal has the focus at first, as the only part that takes keys.
+# The terminal has the focus at first, so a line can be typed before anything is pressed.
 [node "ide.keys"]
 recipe = keys
 param  = focus=ide.terminal.command-line
@@ -39,6 +39,12 @@ recipe = viewport
 recipe = dock
 param  = split.axis=y
 param  = split.ratio=0.65
+
+[node "ide.editor-panel"]
+recipe = panel
+
+[node "ide.editor"]
+recipe = text-area
 
 [node "ide.terminal-panel"]
 recipe = panel
@@ -56,6 +62,20 @@ recipe = library
 from = ide.viewport.area
 to   = ide.dock.split.area
 
+[connection "editor-panel"]
+from = ide.dock.split.first
+to   = ide.editor-panel.bar.area
+
+[connection "editor-area"]
+from = ide.editor-panel.bar.rest
+to   = ide.editor.text.area
+
+# A tab a file open; a press on one shows it.
+[connection "editor-tabs"]
+from = ide.editor.text.tabs
+to   = ide.editor-panel.tabs.items
+to   = ide.editor-panel.hit.items
+
 [connection "terminal-panel"]
 from = ide.dock.split.second
 to   = ide.terminal-panel.bar.area
@@ -71,11 +91,16 @@ to   = ide.terminal-panel.hit.items
 
 [connection "typed"]
 from = ide.keys.typed
+to   = ide.editor.text.typed
 to   = ide.terminal.command-line.typed
 
 [connection "palette"]
 from = ide.palette.palette
 to   = ide.dock.rects.palette
+to   = ide.editor-panel.rects.palette
+to   = ide.editor-panel.glyphs.palette
+to   = ide.editor.rects.palette
+to   = ide.editor.glyphs.palette
 to   = ide.terminal-panel.rects.palette
 to   = ide.terminal-panel.glyphs.palette
 to   = ide.terminal.rects.palette
@@ -85,18 +110,25 @@ to   = ide.terminal.completion-glyphs.palette
 
 [connection "font"]
 from = ide.font.font
+to   = ide.editor-panel.glyphs.font
+to   = ide.editor.glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
 to   = ide.terminal.completion-glyphs.font
 
 [connection "atlas"]
 from = ide.font.atlas
+to   = ide.editor-panel.glyphs.atlas
+to   = ide.editor.glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
 to   = ide.terminal.completion-glyphs.atlas
 
 [connection "metrics"]
 from = ide.font.metrics
+to   = ide.editor-panel.bar.font
+to   = ide.editor-panel.tabs.font
+to   = ide.editor.text.font
 to   = ide.terminal-panel.bar.font
 to   = ide.terminal-panel.tabs.font
 to   = ide.terminal.command-line.font

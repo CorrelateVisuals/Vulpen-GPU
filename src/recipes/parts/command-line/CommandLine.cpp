@@ -318,7 +318,7 @@ class CommandLine final : public VP::Operator {
       return;
     const std::string label =
         _view.empty() ? _title : std::format("{} - {}", _title, _view);
-    _tabs->assign(1, {.label = label});
+    _tabs->assign(1, {.label = label, .current = true});
   }
 
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one

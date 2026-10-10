@@ -33,10 +33,10 @@ VP_VIEW::Rect grown(const VP_VIEW::Rect &rect, std::int32_t by, std::uint32_t ro
 }
 
 // Lays out the Items it is handed in the Rect its place gives: stacked, a row each, over
-// a framed fill, or with axis x side by side, each as wide as its label, over a ground.
-// It hands on where each Item shows, so hit finds the one pressed. Completions and tab
-// strips are this part, as menus and popups will be, so none of them places its
-// entries itself.
+// a framed fill, or with axis x side by side, each as wide as its label, over a ground,
+// the current one in the content's color, so it joins the content it names. It hands on
+// where each Item shows, so hit finds the one pressed. Completions and tab strips are
+// this part, as menus and popups will be, so none of them places its entries itself.
 class List final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string axis = node.param<std::string>("axis");
@@ -96,7 +96,7 @@ class List final : public VP::Operator {
       _shown->push_back(
           {.offset = {left, place.offset.y},
            .extent = {static_cast<std::uint32_t>(std::min(wide, room)), place.extent.y},
-           .role = VP_VIEW::role("background")});
+           .role = item.current ? VP_VIEW::role("background") : VP_VIEW::role("panel")});
       left += wide + gap;
     }
   }

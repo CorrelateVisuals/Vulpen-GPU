@@ -1,1 +1,30 @@
-# The text-area component: text, rects and glyphs. An editor is a text area in a panel.
+# The text-area component: text, rects and glyphs, the editor without its tabs. Its host
+# connects the Rect it fills to its text's area, the keys part's typed and a font's
+# metrics to its text, and a palette, a font and the font's atlas to its rects and glyphs.
+# Its text's tabs name the files open, for a panel's tab strip, so an editor is a text
+# area in a panel.
+[manifest]
+version = 1
+
+[node "text-area"]
+
+[node "text-area.text"]
+recipe = text
+
+[node "text-area.rects"]
+recipe = rects
+
+[node "text-area.glyphs"]
+recipe = glyphs
+
+[connection "rects"]
+from = text-area.text.rects
+to   = text-area.rects.rects
+
+[connection "labels"]
+from = text-area.text.labels
+to   = text-area.glyphs.labels
+
+[connection "characters"]
+from = text-area.text.characters
+to   = text-area.glyphs.characters

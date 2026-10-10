@@ -3,10 +3,12 @@
 on a word not begun and on one begun, the completions listed, the edits and the arrows,
 history, a line the command port refuses, help, and the keymap's chord that clears, which
 waits a frame for the keys before it. The pointer drags the dock's seam, whose param set
-rebuilds the running app, and presses a completion. It must end with exit 0 and print no
-validation message or sanitizer report (RVK00, A03), so in the asan preset it checks the
-memory of the keys part, the terminal, its panel, the dock and the rebuild. Where no
-display exists it is skipped (V07).
+rebuilds the running app, and presses a completion. A second run edits a file in its
+editor, selecting, stepping over a character past ASCII and deleting it whole, and saves
+it with the keymap's chord, so the file must hold just the edits. Both must end with exit
+0 and print no validation message or sanitizer report (RVK00, A03), so in the asan preset
+it checks the memory of the keys part, the terminal, the editor, their panels, the dock
+and the rebuild. Where no display exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
 """
@@ -52,6 +54,51 @@ TYPED = [
     "input pointer 70 660",  # remove, the third word listed
     "input button down left",
 ]
+NOTE = "first line\nsecond — line\nthird\n"
+EDITED = "first line!\nScond \n  x line\nthird\n"
+
+
+def edits(note: Path) -> list[str]:
+    return [
+        f"open {note}",
+        "find line",  # selects it, which the end key then leaves
+        "focus ide.editor.text",
+        "input key down end",
+        "input text !",
+        "input key down down",
+        "input key down home",
+        "input key down shift",
+        "input key down right",
+        "input key down right",
+        "input key up shift",
+        "input text S",  # in place of se, selected
+        "input key down end",
+        *["input key down left"] * 5,  # over line and a blank, to just past the dash
+        "input key down backspace",  # the dash, all three of its bytes
+        "input key down enter",  # what follows goes down a row
+        "input key down tab",
+        "input text x",
+        "input key down control",
+        "input key down s",  # the chord: write, once the editor took the keys before it
+        "input key up s",
+        "input key up control",
+        # After the write, so a window of another size, which puts them elsewhere, changes
+        # nothing the file holds.
+        "input pointer 300 200",
+        "input button down left",
+        "input pointer 500 260",
+        "input button up left",
+        "input wheel 0 -1",
+    ]
+
+
+def drive(folder: Path, name: str, lines: list[str]) -> None:
+    script = folder / f"{name}.txt"
+    script.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    code, output = run(sys.argv[1], [IDE, "--frames", FRAMES, "--fps", 0,
+                                     "--source", script], headless=False)
+    if code != 0 or problems(output):
+        sys.exit(f"ide: expected the {name} to take every key, got exit {code}:\n{output}")
 
 
 def main() -> None:
@@ -59,12 +106,14 @@ def main() -> None:
         print("skipped: no display to open a window on")
         return
     with tempfile.TemporaryDirectory() as temporary:
-        script = Path(temporary) / "typed.txt"
-        script.write_text("\n".join(TYPED) + "\n", encoding="utf-8")
-        code, output = run(sys.argv[1], [IDE, "--frames", FRAMES, "--fps", 0,
-                                         "--source", script], headless=False)
-    if code != 0 or problems(output):
-        sys.exit(f"ide: expected the terminal to take every key, got exit {code}:\n{output}")
+        folder = Path(temporary)
+        drive(folder, "terminal", TYPED)
+        note = folder / "note.txt"
+        note.write_text(NOTE, encoding="utf-8")
+        drive(folder, "editor", edits(note))
+        # As bytes, so a character split in two shows as what it left.
+        if (held := note.read_bytes()) != EDITED.encode("utf-8"):
+            sys.exit(f"ide: expected the editor to write {EDITED!r}, got {held!r}")
 
 
 if __name__ == "__main__":

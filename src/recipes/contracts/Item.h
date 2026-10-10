@@ -11,7 +11,8 @@ namespace VP_VIEW {
 // shows joins it once a part reads it.
 struct Item {
   std::string label;
-  std::string command; // empty for none
+  std::string command;  // empty for none
+  bool current = false; // the one chosen, as the tab whose content shows
 };
 
 // What a part hands a list, in the order the list shows them.
