@@ -75,7 +75,8 @@ protected:
 };
 
 // Whether a window names a key so, as the input command takes it too: the character a
-// printable key prints in the keyboard's layout, or the name of one that prints none.
+// printable key prints in the keyboard's layout without shift, or the name of one that
+// prints none.
 bool key_named(std::string_view name);
 
 // A desktop window through GLFW. Only a view that draws opens one (V07).

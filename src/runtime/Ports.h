@@ -58,6 +58,7 @@ private:
   View manifest(std::string_view file) override;
   std::span<const Event> events() const override;
   glm::vec2 pointer() const override;
+  bool names_key(std::string_view name) const override;
   std::span<const std::string> lines() override;
   bool ended() const override;
   void print(std::string_view text) override;

@@ -202,6 +202,9 @@ public:
   virtual std::span<const Event> events() const = 0;
   // Where the pointer is, as the frame block's cursor says: zero until it first moves.
   virtual glm::vec2 pointer() const = 0;
+  // Whether a key event may carry the name, as the input command checks it, so a part
+  // that binds keys refuses one no key has.
+  virtual bool names_key(std::string_view name) const = 0;
 
 protected:
   ~InputPort() = default;

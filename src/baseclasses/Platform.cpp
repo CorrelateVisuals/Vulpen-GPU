@@ -168,12 +168,14 @@ void on_focus(GLFWwindow *window, int focused) {
 
 } // namespace
 
-// A name of the table, or one printable character, as a layout's key prints it.
+// A name of the table, or one printable character, as a layout's key prints it without
+// shift, as glfwGetKeyName gives it, so a letter is lower case.
 bool key_named(std::string_view name) {
   return std::ranges::find(named_keys, name, &decltype(named_keys)::value_type::second) !=
              named_keys.end() ||
          std::ranges::find(function_keys, name) != function_keys.end() ||
          (!name.empty() && static_cast<unsigned char>(name.front()) > ' ' &&
+          (name.front() < 'A' || name.front() > 'Z') &&
           name.size() == utf8_length(static_cast<unsigned char>(name.front())));
 }
 

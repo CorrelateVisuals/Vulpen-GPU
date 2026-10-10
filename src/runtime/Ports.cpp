@@ -43,9 +43,9 @@ float number(std::string_view word) {
 std::string checked_key(std::string_view name) {
   if (!key_named(name))
     throw std::runtime_error(std::format(
-        "{} is no key: a key is named by the character it prints, or as space, enter, "
-        "escape, tab, backspace, insert, delete, left, right, up, down, page_up, "
-        "page_down, home, end, shift, control, alt, super, or f1 to f12",
+        "{} is no key: a key is named by the character it prints without shift, as a, "
+        "or as space, enter, escape, tab, backspace, insert, delete, left, right, up, "
+        "down, page_up, page_down, home, end, shift, control, alt, super, or f1 to f12",
         name));
   return std::string(name);
 }
@@ -198,6 +198,10 @@ std::span<const Event> Ports::events() const {
 
 glm::vec2 Ports::pointer() const {
   return _pointer;
+}
+
+bool Ports::names_key(std::string_view name) const {
+  return key_named(name);
 }
 
 // Once a frame, for every node that asks. A line ends at its break; one that standard
