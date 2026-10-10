@@ -2,7 +2,8 @@
 # hit to pick one with a press: the command port on screen, as the CLI is the command
 # port on stdout. Its host connects the Rect it fills to its command-line's area, a
 # palette to its rects and glyphs, and a font to its glyphs, its command-line and its
-# completions, so one theme and one atlas serve every panel. Its command-line's tabs name
+# completions, so one theme and one atlas serve every panel, and the keys part's typed to
+# its command-line's, which takes them while it has the focus. Its command-line's tabs name
 # it, and the view its lines go to, for a panel's tab strip.
 [manifest]
 version = 1

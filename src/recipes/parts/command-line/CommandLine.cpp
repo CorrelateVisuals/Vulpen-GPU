@@ -3,6 +3,7 @@
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
+#include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 
@@ -168,11 +169,12 @@ struct Shown {
 // terminal and the find bar are this part, so each reaches Vulpen only through the
 // command port; its param on says where it is. On the terminal it is the CLI: each line
 // typed or piped in runs, what it answers is printed, and the run ends with the input.
-// In a window it reads the input port, and shows what lines answer and the log above
-// the line typed, in the Rect its area gives, with a tab for the panel it sits in, named
-// by its title param. A line that names no view goes to the view hosted most recently,
-// as view new and view load leave it, so it needs no name and every log line still has
-// one. The prompt shows that view's folder, as a shell shows the one it is in.
+// In a window it takes keys from the keys part while it has the focus, which a press in
+// its area gives it, and shows what lines answer and the log above the line typed, in
+// the Rect its area gives, with a tab for the panel it sits in, named by its title param.
+// A line that names no view goes to the view hosted most recently, as view new and view
+// load leave it, so it needs no name and every log line still has one. The prompt shows
+// that view's folder, as a shell shows the one it is in.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _help = node.command("help", "lists every command, with its usage and what it does");
@@ -189,6 +191,8 @@ class CommandLine final : public VP::Operator {
       return;
     _area = &node.input<VP_VIEW::Rect>("area");
     _font = &node.input<VP_VIEW::Font>("font");
+    _typed = &node.input<VP_VIEW::Typed>("typed");
+    _name = node.name();
     _items = &node.output<VP_VIEW::Items>("items");
     _place = &node.output<VP_VIEW::Rect>("place");
     _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
@@ -226,9 +230,25 @@ class CommandLine final : public VP::Operator {
   void in_window(VP::Cook &frame) {
     for (const VP::Logged &line : frame.commands().log())
       show(line.text, role_of(line.level));
-    for (const VP::Event &event : frame.input().events())
+    take_focus(frame);
+    for (const VP::Event &event : _typed->to(_name))
       edit(frame, event);
     lay_out(frame);
+  }
+
+  // A press in its area gives it the focus, so typing goes where the pointer was; in the
+  // order the events came, so a press is tested where the pointer was then.
+  void take_focus(VP::Cook &frame) {
+    for (const VP::Event &event : frame.input().events())
+      if (event.kind == VP::Event::Kind::pointer)
+        _pointer = event.at;
+      else if (event.kind == VP::Event::Kind::button && event.down &&
+               event.name == "left" && VP_VIEW::contains(*_area, _pointer) && !focused())
+        frame.commands().send(std::format("focus {}", _name));
+  }
+
+  bool focused() const {
+    return _typed->focus == _name;
   }
 
   // Sends a line to the view it names, else to the one hosted most recently, and
@@ -387,7 +407,9 @@ class CommandLine final : public VP::Operator {
       frame.write(_characters, 0);
       return;
     }
-    const std::span<VP_VIEW::Rect> rects = frame.write(_rects, rect_room);
+    // The caret shows only in focus, so it marks where typing goes.
+    const std::span<VP_VIEW::Rect> rects =
+        frame.write(_rects, focused() ? rect_room : rect_room - 1);
     rects[0] = {.offset = area.offset,
                 .extent = area.extent,
                 .role = VP_VIEW::role("background")};
@@ -406,7 +428,10 @@ class CommandLine final : public VP::Operator {
                kept.role,
                std::string_view(kept.text).substr(0, static_cast<std::size_t>(columns)));
     }
-    rects[2] = lay_out_line(text, start, left, columns - prompt_columns, cell, line);
+    const VP_VIEW::Rect caret =
+        lay_out_line(text, start, left, columns - prompt_columns, cell, line);
+    if (focused())
+      rects[2] = caret;
     frame.write(_labels, text.label_count);
     frame.write(_characters, text.character_count);
     place_list(left, columns - prompt_columns, cell, rule, rows);
@@ -522,6 +547,9 @@ class CommandLine final : public VP::Operator {
   // In a window: what it reads and writes, and the line being typed.
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;
+  const VP_VIEW::Typed *_typed = nullptr;
+  std::string _name;                // as the focus names it
+  glm::vec2 _pointer{};             // as the events so far left it
   VP_VIEW::Items *_items = nullptr; // the completions shown, empty for none
   VP_VIEW::Rect *_place = nullptr;  // where they show
   std::string _title;

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """The ide app runs in a window while typed keys drive its terminal down every path: Tab
 on a word not begun and on one begun, the completions listed, the edits and the arrows,
-history, a line the command port refuses, and help. The pointer drags the dock's seam,
-whose param set rebuilds the running app, and presses a completion. It must end with
-exit 0 and print no validation message or sanitizer report (RVK00, A03), so in the asan
-preset it checks the memory of the terminal, its panel, the dock and the rebuild. Where
-no display exists it is skipped (V07).
+history, a line the command port refuses, help, and the keymap's chord that clears, which
+waits a frame for the keys before it. The pointer drags the dock's seam, whose param set
+rebuilds the running app, and presses a completion. It must end with exit 0 and print no
+validation message or sanitizer report (RVK00, A03), so in the asan preset it checks the
+memory of the keys part, the terminal, its panel, the dock and the rebuild. Where no
+display exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
 """
@@ -20,6 +21,7 @@ IDE = Path(__file__).resolve().parents[2] / "recipes" / "apps" / "ide" / "view.v
 # drawn.
 FRAMES = 10
 TYPED = [
+    "focus ide.terminal.command-line",  # a line first, so the keys part's param gives none
     "input key down tab",  # a word not begun: every command's first word
     "input text no",
     "input key down tab",  # one candidate: node, finished
@@ -35,6 +37,10 @@ TYPED = [
     "input key down down",
     "input text help",
     "input key down enter",
+    "input key down control",
+    "input key down l",  # the chord: clear, once the terminal took help's keys
+    "input key up l",
+    "input key up control",
     "input text node",
     "input key down tab",
     "input key down tab",  # node's words listed, from the word's column

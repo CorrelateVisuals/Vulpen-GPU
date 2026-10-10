@@ -1,1 +1,11 @@
-# The keys part: one node whose operator is Keys, and the keymap it reads.
+# The keys part: one node whose operator is Keys; it turns the chords keymap.ini binds into
+# the lines they send, and hands every other key, and text, on as typed, to the node in
+# focus. Its host names that node at first with the focus param, which has no default,
+# and connects typed to every node that takes keys.
+[manifest]
+version = 1
+
+[node "keys"]
+operator = Keys
+file     = Keys.cpp
+file     = keymap.ini
