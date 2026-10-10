@@ -105,6 +105,9 @@ public:
   void source(const std::filesystem::path &file);
   // Where a command finds the view it addresses, once the views exist.
   void look_in(ViewLookup &views);
+  // A hosted view by its name, as the changes so far left it, which a node reads while it
+  // cooks; null when no view has the name, or none exists yet.
+  const View *view(std::string_view name);
   // Whether quit ran, so the run ends before its next frame.
   bool quitting() const;
   // The file and line running, as `script.txt:7`; empty for a line typed or sent.

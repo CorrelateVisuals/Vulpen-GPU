@@ -290,6 +290,14 @@ private:
   const View &view() const override {
     return _schedule._view;
   }
+  // Only the views its own view hosts, so a node reaches no other view but through its
+  // own (V03).
+  const View *hosted(std::string_view name) const override {
+    const std::vector<Child> &children = _schedule._view.children;
+    if (std::ranges::find(children, name, &Child::name) == children.end())
+      return nullptr;
+    return _schedule._wiring.commands.view(name);
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }

@@ -394,6 +394,10 @@ public:
   // The view the node runs in, as this frame runs it: each recipe a node of the library
   // uses unfolded. Read it while the node cooks; a rebuild replaces it.
   virtual const View &view() const = 0;
+  // A view the node's view hosts, by its name, as the changes so far left it: what a
+  // save would write, as a command addressed to it reads it; null when its view hosts
+  // none of that name. Read it while the node cooks; a change replaces it.
+  virtual const View *hosted(std::string_view name) const = 0;
 
 protected:
   ~Cook() = default;

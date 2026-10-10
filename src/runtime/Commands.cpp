@@ -392,6 +392,10 @@ void Commands::look_in(ViewLookup &views) {
   _views = &views;
 }
 
+const View *Commands::view(std::string_view name) {
+  return _views ? _views->find(name) : nullptr;
+}
+
 bool Commands::quitting() const {
   return _quitting;
 }
