@@ -159,6 +159,19 @@ struct Text {
   }
 };
 
+// Where a terminal's text goes in its area, in pixels: the columns of text, where text
+// starts, the top of the line typed, the rule above it, and the scrollback's room above
+// the rule. It has room for the prompt, a column to type in and a row of scrollback, or
+// it shows nothing, as without a font.
+struct Grid {
+  std::int32_t columns = 0;
+  std::int32_t left = 0;
+  std::int32_t line = 0;
+  std::int32_t rule = 0;
+  std::int32_t above = 0;
+  bool room = false;
+};
+
 // A row of the scrollback, and the role it shows in.
 struct Shown {
   std::string text;
@@ -226,13 +239,15 @@ class CommandLine final : public VP::Operator {
     }
   }
 
-  // The log since the frame before and the keys pressed, then all of it drawn anew.
+  // The log since the frame before and the keys pressed, then all of it drawn anew. With
+  // no room it takes no keys, so a line never runs where nobody sees it typed.
   void in_window(VP::Cook &frame) {
     for (const VP::Logged &line : frame.commands().log())
       show(line.text, role_of(line.level));
     take_focus(frame);
-    for (const VP::Event &event : _typed->to(_name))
-      edit(frame, event);
+    if (grid().room)
+      for (const VP::Event &event : _typed->to(_name))
+        edit(frame, event);
     lay_out(frame);
   }
 
@@ -266,6 +281,21 @@ class CommandLine final : public VP::Operator {
 
   std::string prompt() const {
     return _folder + std::string(prompt_end);
+  }
+
+  // As the area, the font and the prompt are now.
+  Grid grid() const {
+    const glm::ivec2 size(_area->extent);
+    const glm::ivec2 cell(_font->cell);
+    Grid grid{.columns = cell.x == 0 ? 0 : (size.x - 2 * margin) / cell.x,
+              .left = _area->offset.x + margin,
+              .line = _area->offset.y + size.y - margin - cell.y};
+    grid.rule = grid.line - margin;
+    grid.above = grid.rule - _area->offset.y - 2 * margin;
+    grid.room =
+        grid.columns > static_cast<std::int32_t>(_folder.size() + prompt_end.size()) &&
+        grid.above >= cell.y;
+    return grid;
   }
 
   // From where vulpen started, as a shell names a folder; the host has no name to show.
@@ -390,23 +420,17 @@ class CommandLine final : public VP::Operator {
   // the caret in view.
   void lay_out(VP::Cook &frame) {
     const VP_VIEW::Rect &area = *_area;
-    const glm::ivec2 size(area.extent);
     const glm::ivec2 cell(_font->cell);
-    const std::string start = prompt();
-    const auto prompt_columns = static_cast<std::int32_t>(start.size());
-    const std::int32_t columns = cell.x == 0 ? 0 : (size.x - 2 * margin) / cell.x;
-    const std::int32_t left = area.offset.x + margin; // where text starts
-    // The top of the line typed, the rule above it, and the scrollback's room above that.
-    const std::int32_t line = area.offset.y + size.y - margin - cell.y;
-    const std::int32_t rule = line - margin;
-    const std::int32_t above = rule - area.offset.y - 2 * margin;
+    const auto [columns, left, line, rule, above, room] = grid();
     *_place = {};
-    if (columns <= prompt_columns || above < cell.y) { // no room, or no font
+    if (!room) {
       frame.write(_rects, 0);
       frame.write(_labels, 0);
       frame.write(_characters, 0);
       return;
     }
+    const std::string start = prompt();
+    const auto prompt_columns = static_cast<std::int32_t>(start.size());
     // The caret shows only in focus, so it marks where typing goes.
     const std::span<VP_VIEW::Rect> rects =
         frame.write(_rects, focused() ? rect_room : rect_room - 1);
