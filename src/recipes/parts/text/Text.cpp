@@ -108,12 +108,46 @@ void erase(Document &document, Spot from, Spot to) {
   document.changed = true;
 }
 
-// Text without a break, typed at the caret in place of the selection.
+// The selection as text, a break between its rows, as a copy takes it.
+std::string selected(const Document &document) {
+  const auto [from, to] = selection(document);
+  if (from.row == to.row)
+    return document.lines[from.row].substr(from.column, to.column - from.column);
+  std::string text = document.lines[from.row].substr(from.column);
+  for (std::size_t row = from.row + 1; row < to.row; ++row)
+    text.append(1, '\n').append(document.lines[row]);
+  return text.append(1, '\n').append(document.lines[to.row], 0, to.column);
+}
+
+// What follows the caret goes down a row, behind the first spaces of the row it was on.
+void break_row(Document &document, std::size_t spaces) {
+  const Spot caret = document.caret;
+  std::string &line = document.lines[caret.row];
+  std::string below = line.substr(0, spaces) + line.substr(caret.column);
+  line.erase(caret.column);
+  document.lines.insert(
+      document.lines.begin() + static_cast<std::ptrdiff_t>(caret.row) + 1,
+      std::move(below));
+  document.caret = document.anchor = {caret.row + 1, spaces};
+  document.changed = true;
+}
+
+// Text typed or pasted at the caret, in place of the selection; each break in it, as a
+// file from another system ends a line too, starts a row.
 void insert(Document &document, std::string_view text) {
   const auto [from, to] = selection(document);
   erase(document, from, to);
-  document.lines[document.caret.row].insert(document.caret.column, text);
-  document.caret.column += text.size();
+  for (std::size_t end = text.find('\n');; end = text.find('\n')) {
+    const std::string_view line = text.substr(0, end);
+    const std::string_view kept = line.ends_with('\r') ? line.substr(0, line.size() - 1)
+                                                        : line;
+    document.lines[document.caret.row].insert(document.caret.column, kept);
+    document.caret.column += kept.size();
+    if (end == std::string_view::npos)
+      break;
+    break_row(document, 0);
+    text.remove_prefix(end + 1);
+  }
   document.anchor = document.caret;
   document.changed = true;
 }
@@ -123,16 +157,8 @@ void insert(Document &document, std::string_view text) {
 void split(Document &document) {
   const auto [from, to] = selection(document);
   erase(document, from, to);
-  const Spot caret = document.caret;
-  std::string &line = document.lines[caret.row];
-  const std::size_t spaces = std::min(line.find_first_not_of(' '), caret.column);
-  std::string below = line.substr(0, spaces) + line.substr(caret.column);
-  line.erase(caret.column);
-  document.lines.insert(
-      document.lines.begin() + static_cast<std::ptrdiff_t>(caret.row) + 1,
-      std::move(below));
-  document.caret = document.anchor = {caret.row + 1, spaces};
-  document.changed = true;
+  const std::string &line = document.lines[document.caret.row];
+  break_row(document, std::min(line.find_first_not_of(' '), document.caret.column));
 }
 
 // A key that changes the text: a break, an indent, or the selection or a character gone.
@@ -191,14 +217,14 @@ void Text::bind(VP::Bind &node) {
 
 // The keys first: the keys part hands on only those that came before this frame's first
 // press, so a press moves the caret after them, as they came. A key let go while another
-// part had the focus never came, so out of focus shift counts as up.
+// part had the focus never came, so out of focus shift and control count as up.
 void Text::cook(VP::Cook &frame) {
   const Grid grid = this->grid();
   if (!focused())
-    _shift = false;
+    _shift = _control = false;
   for (const VP::Event &event : _typed->to(_name))
     if (!escape(frame, event, grid))
-      edit(event, grid);
+      edit(frame.input(), event, grid);
   point(frame, grid);
   lay_out(frame, grid);
 }
@@ -283,10 +309,13 @@ bool Text::escape(VP::Cook &frame, const VP::Event &event, const Grid &grid) {
 }
 
 // Typed text goes in at the caret, and a key moves the caret, selecting while shift is
-// held, or changes the text; any other does nothing here. With no room it takes none.
-void Text::edit(const VP::Event &event, const Grid &grid) {
+// held, changes the text, or with control copies, cuts or pastes; any other does
+// nothing here. With no room it takes none.
+void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) {
   if (event.kind == VP::Event::Kind::key && event.name == "shift")
     _shift = event.down;
+  if (event.kind == VP::Event::Kind::key && event.name == "control")
+    _control = event.down;
   if (grid.rows == 0 || _documents.empty() ||
       (event.kind == VP::Event::Kind::key && !event.down))
     return;
@@ -300,12 +329,28 @@ void Text::edit(const VP::Event &event, const Grid &grid) {
     document.caret = *to;
     if (!_shift)
       document.anchor = *to;
-  } else if (!changed_by(document, event.name)) {
+  } else if (!(_control && clip(input, document, event.name)) &&
+             !changed_by(document, event.name)) {
     return;
   }
   _follow = true;
   if (document.changed != changed)
     name_tabs();
+}
+
+// Control with c copies the selection, with x cuts it and with v pastes in its place;
+// false for any other key. With nothing selected, a copy or a cut leaves the clipboard
+// as it was, and an empty clipboard pastes nothing.
+bool Text::clip(VP::InputPort &input, Document &document, std::string_view key) const {
+  const auto [from, to] = selection(document);
+  if ((key == "c" || key == "x") && from != to)
+    input.copy(selected(document));
+  if (key == "x")
+    erase(document, from, to);
+  else if (const std::string pasted = key == "v" ? input.clipboard() : "";
+           !pasted.empty())
+    insert(document, pasted);
+  return key == "c" || key == "x" || key == "v";
 }
 
 // Where a key moves the caret: a character, a row or a page over, or to its row's start

@@ -3,7 +3,8 @@
 on a word not begun and on one begun, the completions listed, the edits and the arrows,
 history, a line the command port refuses, help, and the keymap's chord that clears, which
 waits a frame for the keys before it. The pointer drags the dock's seam, whose param set
-rebuilds the running app, and presses in the terminal. A second run edits a file in its
+rebuilds the running app, and drags over the rows the terminal shows, selecting them; no
+run copies or pastes, as that would write over the clipboard of whoever runs it. A second run edits a file in its
 editor, selecting, stepping over a character past ASCII and deleting it whole, and saves
 it with the keymap's chord, so the file must hold just the edits; then the keymap's chords
 zoom in and out, so the font bakes its atlas larger and back, and the zoom it keeps must
@@ -86,10 +87,13 @@ def typed(width: int, height: int) -> list[str]:
         "input button down left",
         f"input pointer {width // 2} {height * 5 // 12}",
         "input button up left",  # one param set, which rebuilds the app
-        # Where the third completion shows once listed; a script's press lands in the first
-        # frame, before Tab's complete answers, so it presses the terminal alone.
+        # Over the rows the terminal shows, selecting them; Tab's completions show there
+        # only once complete answers, frames after a script's press, which lands in the
+        # first.
         f"input pointer 70 {height - 60}",
         "input button down left",
+        f"input pointer 300 {height - 100}",
+        "input button up left",
     ]
 
 

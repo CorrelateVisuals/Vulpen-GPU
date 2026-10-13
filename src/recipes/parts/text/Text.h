@@ -71,7 +71,8 @@ class Text final : public VP::Operator {
   void scroll(float turn);
   Spot spot_at(const Document &document, const Grid &grid) const;
   bool escape(VP::Cook &frame, const VP::Event &event, const Grid &grid);
-  void edit(const VP::Event &event, const Grid &grid);
+  void edit(VP::InputPort &input, const VP::Event &event, const Grid &grid);
+  bool clip(VP::InputPort &input, Document &document, std::string_view key) const;
   std::optional<Spot> moved(const Document &document,
                             std::string_view key,
                             const Grid &grid) const;
@@ -109,6 +110,7 @@ class Text final : public VP::Operator {
   glm::vec2 _pointer{};   // as the events so far left it
   bool _dragging = false; // a selection, from a press in the area until it is let go
   bool _shift = false;    // held, so a key that moves the caret selects
+  bool _control = false;  // held, so c, x and v copy, cut and paste
   bool _follow = false;   // the caret moved, so the next layout scrolls it into view
 };
 
