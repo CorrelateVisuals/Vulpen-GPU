@@ -14,6 +14,7 @@ namespace {
 constexpr std::int32_t margin = 4; // around the text, as the terminal's
 constexpr std::uint32_t caret_width = 2;
 constexpr std::size_t row_room = 256; // rows shown at most; a taller area shows these
+constexpr std::uint32_t label_room = 16384; // a run of one role a Label, in rows shown
 constexpr std::uint32_t character_room = 131072; // the rows' characters together
 // The ground, a selection Rect a row shown, and the caret.
 constexpr std::uint32_t rect_room = row_room + 2;
@@ -24,9 +25,141 @@ constexpr char last_printable = '~';
 // UTF-8 (RFC 3629): a byte that only continues a character starts with the bits 10.
 constexpr unsigned char continuation_mask = 0xC0;
 constexpr unsigned char continuation = 0x80;
+// The words of C++ and GLSL, which nodes are written in, and the files of each syntax, a
+// blank before and after each, so a word is found whole.
+constexpr std::string_view keywords =
+    " alignas alignof auto break case catch class concept const consteval constexpr"
+    " constinit const_cast continue co_await co_return co_yield decltype default delete"
+    " do dynamic_cast else enum explicit export extern false final for friend goto if"
+    " inline mutable namespace new noexcept nullptr operator override private protected"
+    " public reinterpret_cast requires return sizeof static static_assert static_cast"
+    " struct switch template this throw true try typedef typeid typename union using"
+    " virtual volatile while attribute buffer centroid coherent discard flat highp in"
+    " inout invariant layout lowp mediump noperspective out patch precision readonly"
+    " restrict sample shared smooth subroutine uniform varying writeonly ";
+constexpr std::string_view types = " void bool char int unsigned signed short long float"
+                                   " double uint sampler sampler2D texture2D image2D ";
+constexpr std::string_view coded = " .cpp .h .hpp .cc .c .glsl .vert .frag .comp ";
+constexpr std::string_view keyed = " .vlp .ini ";
+constexpr std::string_view exponents = "eEpP"; // a sign after one goes on a number
 
 bool continues(char byte) {
   return (static_cast<unsigned char>(byte) & continuation_mask) == continuation;
+}
+
+// Whether the blank-separated words hold the word whole.
+bool listed(std::string_view words, std::string_view word) {
+  for (std::size_t at = words.find(word); at != std::string_view::npos && !word.empty();
+       at = words.find(word, at + 1))
+    if (words[at - 1] == ' ' && words[at + word.size()] == ' ')
+      return true;
+  return false;
+}
+
+bool letter(char byte) {
+  return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') || byte == '_';
+}
+
+bool digit(char byte) {
+  return byte >= '0' && byte <= '9';
+}
+
+// A template's file, as Name.cpp.in, by the name it is written for.
+Syntax syntax_of(std::string_view path) {
+  std::filesystem::path file(path);
+  if (file.extension() == ".in")
+    file.replace_extension();
+  const std::string extension = file.extension().string();
+  if (listed(coded, extension))
+    return Syntax::code;
+  return listed(keyed, extension) ? Syntax::keyed : Syntax::plain;
+}
+
+// A type by its word: C++'s and GLSL's own, a name in CamelCase, as types are named here
+// (RC01), one ending in _t, and GLSL's vectors and matrices, as uvec2 or mat4x3.
+bool typed(std::string_view word) {
+  if (listed(types, word) || word.ends_with("_t") ||
+      (word.front() >= 'A' && word.front() <= 'Z' &&
+       std::ranges::any_of(word, [](char byte) { return byte >= 'a' && byte <= 'z'; })))
+    return true;
+  if (std::string_view("iubd").find(word.front()) != std::string_view::npos)
+    word.remove_prefix(1);
+  return (word.starts_with("vec") || word.starts_with("mat")) && word.size() > 3 &&
+         word[3] >= '2' && word[3] <= '4';
+}
+
+// Past a quote's closing quote, a backslash keeping the next byte in; the row's end
+// when it has none.
+std::size_t quoted_end(std::string_view row, std::size_t at) {
+  for (std::size_t end = at + 1; end < row.size(); ++end)
+    if (row[end] == '\\')
+      ++end;
+    else if (row[end] == row[at])
+      return end + 1;
+  return row.size();
+}
+
+// Past a number's digits, letters, points and separators, as 0x1F, 1.5f, 1'000 or 2e-3.
+std::size_t number_end(std::string_view row, std::size_t at) {
+  std::size_t end = at + 1;
+  while (end < row.size() &&
+         (digit(row[end]) || letter(row[end]) || row[end] == '.' || row[end] == '\'' ||
+          ((row[end] == '+' || row[end] == '-') &&
+           exponents.find(row[end - 1]) != std::string_view::npos)))
+    ++end;
+  return end;
+}
+
+// A word's role: the first of a row in a manifest or an .ini, its key or its section;
+// in code, a keyword or a type by the word itself.
+std::uint32_t word_role(std::string_view word, Syntax syntax, bool key) {
+  if (key || (syntax == Syntax::code && listed(keywords, word)))
+    return VP_VIEW::role("keyword");
+  return syntax == Syntax::code && typed(word) ? VP_VIEW::role("type")
+                                               : VP_VIEW::role("text");
+}
+
+// Hands each run of the row in one role to each, as from, to and the role, in order and
+// with every byte in one; returns whether a block comment is open at the row's end. In
+// code, the comments, a directive, quotes, numbers, and the words by their kind; in a
+// manifest or an .ini, the comments, quotes, numbers, and the first word of a row, its
+// key or its section.
+template <class Each>
+bool scan(std::string_view row, Syntax syntax, bool commented, Each each) {
+  const std::size_t first = row.find_first_not_of(" \t");
+  bool keyed = syntax == Syntax::keyed;
+  std::size_t at = 0;
+  const auto run = [&](std::size_t to, std::uint32_t role) {
+    each(at, to, role);
+    at = to;
+  };
+  while (at < row.size()) {
+    const std::string_view rest = row.substr(at);
+    if (syntax == Syntax::plain) {
+      run(row.size(), VP_VIEW::role("text"));
+    } else if (commented || (syntax == Syntax::code && rest.starts_with("/*"))) {
+      const std::size_t end = row.find("*/", commented ? at : at + 2);
+      commented = end == std::string_view::npos;
+      run(commented ? row.size() : end + 2, VP_VIEW::role("comment"));
+    } else if (rest.starts_with(syntax == Syntax::code ? "//" : "#")) {
+      run(row.size(), VP_VIEW::role("comment"));
+    } else if (syntax == Syntax::code && rest.front() == '#' && at == first) {
+      run(row.size(), VP_VIEW::role("directive"));
+    } else if (rest.front() == '"' || rest.front() == '\'') {
+      run(quoted_end(row, at), VP_VIEW::role("string"));
+    } else if (digit(rest.front()) ||
+               (rest.size() > 1 && rest.front() == '.' && digit(rest[1]))) {
+      run(number_end(row, at), VP_VIEW::role("number"));
+    } else if (letter(rest.front())) {
+      std::size_t end = at + 1;
+      while (end < row.size() && (letter(row[end]) || digit(row[end])))
+        ++end;
+      run(end, word_role(row.substr(at, end - at), syntax, std::exchange(keyed, false)));
+    } else {
+      run(at + 1, VP_VIEW::role("text"));
+    }
+  }
+  return commented;
 }
 
 // Each line without its break, so joined with breaks they give back the text, a last
@@ -105,7 +238,7 @@ void erase(Document &document, Spot from, Spot to) {
   lines[from.row].erase(from.column).append(rest);
   lines.erase(lines.begin() + static_cast<std::ptrdiff_t>(from.row) + 1,
               lines.begin() + static_cast<std::ptrdiff_t>(to.row) + 1);
-  document.changed = true;
+  document.changed = document.restyle = true;
 }
 
 // The selection as text, a break between its rows, as a copy takes it.
@@ -129,7 +262,7 @@ void break_row(Document &document, std::size_t spaces) {
       document.lines.begin() + static_cast<std::ptrdiff_t>(caret.row) + 1,
       std::move(below));
   document.caret = document.anchor = {caret.row + 1, spaces};
-  document.changed = true;
+  document.changed = document.restyle = true;
 }
 
 // Text typed or pasted at the caret, in place of the selection; each break in it, as a
@@ -149,7 +282,7 @@ void insert(Document &document, std::string_view text) {
     text.remove_prefix(end + 1);
   }
   document.anchor = document.caret;
-  document.changed = true;
+  document.changed = document.restyle = true;
 }
 
 // Enter: what follows the caret goes down a row, behind the spaces the row starts with,
@@ -210,7 +343,7 @@ void Text::bind(VP::Bind &node) {
   _typed = &node.input<VP_VIEW::Typed>("typed");
   _tabs = &node.output<VP_VIEW::Items>("tabs");
   _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
-  _labels = node.upload<VP_VIEW::Label>("labels", row_room);
+  _labels = node.upload<VP_VIEW::Label>("labels", label_room);
   _characters = node.upload<VP_VIEW::Character>("characters", character_room);
   name_tabs();
 }
@@ -387,6 +520,8 @@ void Text::lay_out(VP::Cook &frame, const Grid &grid) {
   }
   Document &document = _documents[_shown];
   follow(document, grid);
+  if (std::exchange(document.restyle, false))
+    find_comments(document);
   const std::size_t rows = std::min(grid.rows, document.lines.size() - document.top);
   const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
   rects[0] = {.offset = _area->offset,
@@ -441,30 +576,63 @@ std::size_t Text::select(const Document &document,
   return count;
 }
 
-// A Label a row shown, holding the bytes of it that fit from the first column shown;
-// what the room lacks is cut.
+// Whether each row starts inside a block comment, from the file's top, once an edit
+// came, so a frame scans only the rows it shows.
+void Text::find_comments(Document &document) {
+  document.commented.assign(document.lines.size(), false);
+  bool commented = false;
+  for (std::size_t row = 0; row < document.lines.size(); ++row) {
+    document.commented[row] = commented;
+    commented = scan(document.lines[row],
+                     document.syntax,
+                     commented,
+                     [](std::size_t, std::size_t, std::uint32_t) {});
+  }
+}
+
+// A Label a run of one role in a row shown, holding the bytes of it that fit from the
+// first column shown; what the room lacks is cut.
 void Text::write_lines(VP::Cook &frame,
                        const Document &document,
                        const Grid &grid,
                        std::size_t rows) {
-  const std::span<VP_VIEW::Label> labels = frame.write(_labels, rows);
+  const std::span<VP_VIEW::Label> labels = frame.write(_labels);
   const std::span<VP_VIEW::Character> characters = frame.write(_characters);
-  std::size_t next = 0;
+  std::uint32_t count = 0;
+  std::uint32_t next = 0;
   for (std::size_t shown = 0; shown < rows; ++shown) {
-    const std::string_view line = document.lines[document.top + shown];
-    const std::string_view seen =
-        line.substr(std::min(document.left, line.size()), grid.columns);
-    const std::size_t count = std::min(seen.size(), characters.size() - next);
-    for (std::size_t at = 0; at < count; ++at)
-      characters[next + at] = {.code = static_cast<unsigned char>(seen[at]),
-                               .label = static_cast<std::uint32_t>(shown)};
-    labels[shown] = {.offset = cell_at(grid, shown, 0),
-                     .extent = extent_of(grid, grid.columns),
-                     .role = VP_VIEW::role("text"),
-                     .first = static_cast<std::uint32_t>(next),
-                     .count = static_cast<std::uint32_t>(count)};
-    next += count;
+    const std::size_t row = document.top + shown;
+    const std::string_view line = document.lines[row];
+    const std::size_t right = document.left + grid.columns;
+    const std::uint32_t first = count; // the row's first Label
+    bool cut = false; // a run the room lacked, so no later one joins a Label past it
+    scan(line,
+         document.syntax,
+         document.commented[row],
+         [&](std::size_t from, std::size_t to, std::uint32_t role) {
+           from = std::max(from, document.left);
+           to = std::min({to, right, from + characters.size() - next});
+           if (cut || from >= to)
+             return;
+           // A run in the role of the one before it on the row joins its Label.
+           if (count == first || labels[count - 1].role != role) {
+             if (count == labels.size()) {
+               cut = true;
+               return;
+             }
+             labels[count++] = {.offset = cell_at(grid, shown, from - document.left),
+                                .role = role,
+                                .first = next};
+           }
+           VP_VIEW::Label &label = labels[count - 1];
+           for (std::size_t at = from; at < to; ++at)
+             characters[next++] = {.code = static_cast<unsigned char>(line[at]),
+                                   .label = count - 1};
+           label.count += static_cast<std::uint32_t>(to - from);
+           label.extent = extent_of(grid, label.count);
+         });
   }
+  frame.write(_labels, count);
   frame.write(_characters, next); // the used length, which glyphs draws
 }
 
@@ -492,8 +660,9 @@ void Text::open(VP::Call &call, std::string_view path) {
   const auto found = std::ranges::find(_documents, path, &Document::path);
   const auto shown = static_cast<std::size_t>(found - _documents.begin());
   if (found == _documents.end())
-    _documents.push_back(
-        {.path = std::string(path), .lines = lines_of(call.files().read(path))});
+    _documents.push_back({.path = std::string(path),
+                          .lines = lines_of(call.files().read(path)),
+                          .syntax = syntax_of(path)});
   _shown = shown;
   _dragging = false;
   _follow = true;

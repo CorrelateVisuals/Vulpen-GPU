@@ -9,6 +9,7 @@
 
 #include <compare>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -19,6 +20,10 @@
 // Only Text.cpp includes this header, so the class stays in the unnamed namespace, and
 // two copies of the part in one binary never clash.
 namespace {
+
+// How a file's text is told apart: code, as C++ and GLSL, by its kinds of words; a
+// manifest or an .ini by its keys; any other not at all.
+enum class Syntax : std::uint8_t { plain, code, keyed };
 
 // A place in a file: a row, and the byte of it where a character starts.
 struct Spot {
@@ -33,6 +38,9 @@ struct Spot {
 struct Document {
   std::string path; // absolute, as open was given it
   std::vector<std::string> lines;
+  Syntax syntax = Syntax::plain;
+  std::vector<bool> commented; // whether each row starts inside a block comment
+  bool restyle = true;         // an edit came since commented was found
   Spot caret;
   Spot anchor;          // where the selection starts; the caret itself for none
   std::size_t top = 0;  // the first row shown
@@ -78,6 +86,7 @@ class Text final : public VP::Operator {
                             const Grid &grid) const;
   void lay_out(VP::Cook &frame, const Grid &grid);
   void follow(Document &document, const Grid &grid);
+  static void find_comments(Document &document);
   std::size_t select(const Document &document,
                      const Grid &grid,
                      std::size_t rows,
