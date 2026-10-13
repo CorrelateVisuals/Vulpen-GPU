@@ -48,11 +48,12 @@ std::optional<Held> modifier(std::string_view key) {
   return Held{1} << (found - modifiers.begin());
 }
 
-// The keys held and the key pressed, joined by +, as control+l.
+// The keys held and the key pressed, joined by +, as control+l; from the second
+// character, so a chord may press + itself, as control++ does.
 Chord chord_of(std::string_view text, const VP::InputPort &input) {
   Chord chord;
-  for (std::size_t plus = text.find('+'); plus != std::string_view::npos;
-       plus = text.find('+')) {
+  for (std::size_t plus = text.find('+', 1); plus != std::string_view::npos;
+       plus = text.find('+', 1)) {
     const std::optional<Held> bit = modifier(text.substr(0, plus));
     if (!bit)
       throw std::runtime_error(
@@ -85,6 +86,15 @@ bool registered(std::string_view line, std::span<const VP::Usage> usages) {
   });
 }
 
+// The = between a chord and its line: an = at the start or after a + is the key the
+// chord presses, as in control+= = zoom in.
+std::size_t equals_of(std::string_view text) {
+  std::size_t equals = text.find('=');
+  while (equals != std::string_view::npos && (equals == 0 || text[equals - 1] == '+'))
+    equals = text.find('=', equals + 1);
+  return equals;
+}
+
 // Each line binds a chord to the line it sends, as control+l = clear; # starts a comment.
 std::vector<Chord> chords_of(std::string_view keymap,
                              const VP::InputPort &input,
@@ -96,7 +106,7 @@ std::vector<Chord> chords_of(std::string_view keymap,
     keymap.remove_prefix(std::min(end + 1, keymap.size()));
     if (text.empty())
       continue;
-    const std::size_t equals = text.find('=');
+    const std::size_t equals = equals_of(text);
     try {
       if (equals == std::string_view::npos)
         throw std::runtime_error("a line is a chord, = and the line it sends");
