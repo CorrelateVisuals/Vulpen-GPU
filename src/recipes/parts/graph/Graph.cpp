@@ -384,7 +384,7 @@ void Graph::release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell) {
 }
 
 // The row under the pointer, as a line typed would open it: a file's opens that file,
-// and the name's the node's first, its .cpp where it has one, since that sorts first.
+// and the name's the node's first, as its folder sorts them.
 void Graph::open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uvec2 cell) {
   const VP::Node &node = view.nodes[at];
   if (node.files.empty())
