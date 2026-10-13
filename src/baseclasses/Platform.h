@@ -110,9 +110,11 @@ public:
   // set (no-color.org).
   static bool colors();
   // What standard input holds now, up to a bound, without waiting for more, so a frame
-  // never stalls on it (VK02); nothing once it has ended.
+  // never stalls on it (VK02); nothing once it has ended, and nothing yet while another
+  // job holds the terminal it is, so a run in the background is never stopped for it.
   static std::optional<std::string> input();
-  // Whether a person types at standard input: a terminal, not a pipe or a file.
+  // Whether a person types at standard input: a terminal this run holds, not a pipe or a
+  // file.
   static bool typed();
 };
 

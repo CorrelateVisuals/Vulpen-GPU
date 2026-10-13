@@ -308,8 +308,21 @@ std::string type_name(const char *name) {
   return status == 0 ? spelled.get() : name;
 }
 
+namespace {
+
+// Whether standard input is a terminal another job holds, as a run started in the
+// background finds it: a read would stop the run (SIGTTIN), and what is typed there is
+// that job's.
+bool held_elsewhere() {
+  return isatty(STDIN_FILENO) == 1 && tcgetpgrp(STDIN_FILENO) != getpgrp();
+}
+
+} // namespace
+
 // A read after poll found input never waits; one that finds the end returns nothing.
 std::optional<std::string> Terminal::input() {
+  if (held_elsewhere())
+    return std::string();
   std::string text;
   std::array<char, input_chunk> chunk{};
   pollfd in{.fd = STDIN_FILENO, .events = POLLIN};
@@ -324,7 +337,7 @@ std::optional<std::string> Terminal::input() {
 }
 
 bool Terminal::typed() {
-  return isatty(STDIN_FILENO) == 1;
+  return isatty(STDIN_FILENO) == 1 && !held_elsewhere();
 }
 
 bool Terminal::colors() {
