@@ -129,13 +129,14 @@ std::string rest_typed(std::string_view candidate, std::size_t typed) {
   return std::format("input text {}", candidate.substr(typed));
 }
 
-// A log line's color: problems in their own, so they stand out as on the console.
+// A log line's color: problems in their own, so they stand out as on the console, and
+// the rest muted, so the lines typed and what they answer stand out from them.
 std::uint32_t role_of(VP::Level level) {
   if (level == VP::Level::error)
     return VP_VIEW::role("error");
   if (level == VP::Level::warn)
     return VP_VIEW::role("warning");
-  return VP_VIEW::role("text");
+  return VP_VIEW::role("muted");
 }
 
 // The labels and characters a frame writes, filled in turn; what the room lacks is cut.
@@ -457,7 +458,7 @@ class CommandLine final : public VP::Operator {
   void submit(VP::Cook &frame) {
     const std::string line = std::exchange(_line, {});
     _caret = 0;
-    show(prompt() + line, VP_VIEW::role("text"));
+    show(prompt() + line, VP_VIEW::role("accent"));
     if (line.find_first_not_of(' ') == std::string::npos)
       return;
     if (_history.empty() || _history.back() != line)
