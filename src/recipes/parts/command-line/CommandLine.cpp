@@ -30,6 +30,7 @@ constexpr std::string_view help_gap = "  "; // between a usage and what it does
 constexpr std::string_view prompt_end = "> ";
 // What complete reads as a word not begun, since a line's words cannot be empty.
 constexpr std::string_view no_word = "\"\"";
+constexpr std::string_view output_mark = "{out}"; // a node's lines, as the log marks them
 
 // In a window: what it keeps, and how it lays out, in pixels.
 constexpr std::size_t scrollback_rows = 1000; // the oldest go first (A03)
@@ -129,14 +130,16 @@ std::string rest_typed(std::string_view candidate, std::size_t typed) {
   return std::format("input text {}", candidate.substr(typed));
 }
 
-// A log line's color: problems in their own, so they stand out as on the console, and
-// the rest muted, so the lines typed and what they answer stand out from them.
-std::uint32_t role_of(VP::Level level) {
-  if (level == VP::Level::error)
+// A log line's color: problems in their own, so they stand out as on the console; what
+// a node writes as text, as what lines answer; and the engine's own muted, so the lines
+// typed, their answers and the nodes' lines stand out from it.
+std::uint32_t role_of(const VP::Logged &line) {
+  if (line.level == VP::Level::error)
     return VP_VIEW::role("error");
-  if (level == VP::Level::warn)
+  if (line.level == VP::Level::warn)
     return VP_VIEW::role("warning");
-  return VP_VIEW::role("muted");
+  return line.text.starts_with(output_mark) ? VP_VIEW::role("text")
+                                             : VP_VIEW::role("muted");
 }
 
 // The labels and characters a frame writes, filled in turn; what the room lacks is cut.
@@ -259,7 +262,7 @@ class CommandLine final : public VP::Operator {
   // go while another part had the focus never came, so out of focus control counts as up.
   void in_window(VP::Cook &frame) {
     for (const VP::Logged &line : frame.commands().log())
-      show(line.text, role_of(line.level));
+      show(line.text, role_of(line));
     point(frame);
     if (!focused())
       _control = false;
