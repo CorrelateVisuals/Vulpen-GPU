@@ -70,6 +70,7 @@ class Text final : public VP::Operator {
   void press(VP::Cook &frame, const Grid &grid);
   void scroll(float turn);
   Spot spot_at(const Document &document, const Grid &grid) const;
+  bool escape(VP::Cook &frame, const VP::Event &event, const Grid &grid);
   void edit(const VP::Event &event, const Grid &grid);
   std::optional<Spot> moved(const Document &document,
                             std::string_view key,

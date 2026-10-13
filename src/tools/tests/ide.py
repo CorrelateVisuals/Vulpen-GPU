@@ -6,10 +6,12 @@ waits a frame for the keys before it. The pointer drags the dock's seam, whose p
 rebuilds the running app, and presses a completion. A second run edits a file in its
 editor, selecting, stepping over a character past ASCII and deleting it whole, and saves
 it with the keymap's chord, so the file must hold just the edits. Two more runs host the
-triangle example and present it: one in edit mode, its window in the Perform panel, and
-one in perform mode by the keymap's chord, its window over the whole window. The last
-hosts the wave example, whose graph the graph panel lays out, a press on a box opening its
-first file in the editor, and a drag and the wheel moving the graph. Each must end with
+triangle example, presented as it comes: one in edit mode, its window in the Perform panel,
+and one in perform mode by the keymap's chord, its window over the whole window; a third
+then presses escape three times, back to edit mode, out of the terminal's focus and out of
+the run, which must end before its frames do. The last hosts the wave example, whose graph
+the graph panel lays out, a press on a box opening its first file in the editor, and a drag
+and the wheel moving the graph. Each must end with
 exit 0 and print no validation message or sanitizer report (RVK00, A03), so in
 the asan preset it checks the memory of the keys part, the terminal, the editor, modes,
 the graph, their panels, the dock, the images a hosted view's window renders into and
@@ -18,6 +20,7 @@ Where no display exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
 """
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -26,8 +29,11 @@ from harness import display, problems, run
 
 IDE = Path(__file__).resolve().parents[2] / "recipes" / "apps" / "ide" / "view.vlp"
 TRIANGLE = Path(__file__).resolve().parents[2] / "examples" / "triangle"
-PRESENT = [f"view load {TRIANGLE}", "present triangle"]
+PRESENT = [f"view load {TRIANGLE}"]  # presented as it comes
 PERFORM = [*PRESENT, "input key down f2", "input key up f2"]  # the chord: mode perform
+# Back to edit mode, out of the terminal's focus, and out of the run.
+ESCAPE = [*PERFORM, *["input key down escape"] * 3]
+RAN = re.compile(r"\{run\} ran (\d+) frames")
 WAVE = Path(__file__).resolve().parents[2] / "examples" / "wave"
 GRAPH = [
     f"view load {WAVE}",
@@ -114,13 +120,14 @@ def edits(note: Path) -> list[str]:
     ]
 
 
-def drive(folder: Path, name: str, lines: list[str]) -> None:
+def drive(folder: Path, name: str, lines: list[str]) -> str:
     script = folder / f"{name}.txt"
     script.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    code, output = run(sys.argv[1], [IDE, "--frames", FRAMES, "--fps", 0,
+    code, output = run(sys.argv[1], [IDE, "--frames", FRAMES, "--fps", 0, "--log", "info",
                                      "--source", script], headless=False)
     if code != 0 or problems(output):
         sys.exit(f"ide: expected the {name} to take every key, got exit {code}:\n{output}")
+    return output
 
 
 def main() -> None:
@@ -135,6 +142,10 @@ def main() -> None:
         drive(folder, "editor", edits(note))
         drive(folder, "presented view", PRESENT)
         drive(folder, "performed view", PERFORM)
+        ran = RAN.findall(drive(folder, "escapes", ESCAPE))
+        if not ran or int(ran[-1]) >= FRAMES:
+            sys.exit(f"ide: expected escape to end the run before {FRAMES} frames, "
+                     f"it ran {ran}")
         drive(folder, "graph", GRAPH)
         # As bytes, so a character split in two shows as what it left.
         if (held := note.read_bytes()) != EDITED.encode("utf-8"):

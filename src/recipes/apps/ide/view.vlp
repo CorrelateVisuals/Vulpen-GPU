@@ -36,7 +36,8 @@ param  = focus=ide.terminal.command-line
 recipe = viewport
 
 # Edit mode gives the dock the window, and perform mode the view presented. present
-# connects a view's window to the Perform panel's image and the one that fills the window.
+# connects a view's window to the Perform panel's image and the one that fills the window;
+# each view loaded is presented as it comes, and the others draw nowhere and keep running.
 [node "ide.modes"]
 recipe = modes
 param  = to=ide.perform.picture,ide.screen.picture
@@ -167,10 +168,12 @@ from = ide.terminal.command-line.tabs
 to   = ide.terminal-panel.tabs.items
 to   = ide.terminal-panel.hit.items
 
+# The keys no chord takes, for the part in focus; those no part in focus takes go to modes.
 [connection "typed"]
 from = ide.keys.typed
 to   = ide.editor.text.typed
 to   = ide.terminal.command-line.typed
+to   = ide.modes.typed
 
 [connection "palette"]
 from = ide.palette.palette

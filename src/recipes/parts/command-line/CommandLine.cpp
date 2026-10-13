@@ -322,7 +322,8 @@ class CommandLine final : public VP::Operator {
   }
 
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one
-  // sent before or completes the word at the caret; any other closes the completions.
+  // sent before or completes the word at the caret; any other closes the completions, and
+  // escape with none open lets go of the focus.
   void edit(VP::Cook &frame, const VP::Event &event) {
     if (event.kind == VP::Event::Kind::text) {
       for (const char typed : event.name)
@@ -336,6 +337,8 @@ class CommandLine final : public VP::Operator {
     const std::string_view key = event.name;
     if (key == "tab")
       return complete_word(frame);
+    if (key == "escape" && _items->empty())
+      frame.commands().send("focus"); // the next escape reaches what takes the rest
     _items->clear();
     if (key == "enter")
       submit(frame);

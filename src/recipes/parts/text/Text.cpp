@@ -197,7 +197,8 @@ void Text::cook(VP::Cook &frame) {
   if (!focused())
     _shift = false;
   for (const VP::Event &event : _typed->to(_name))
-    edit(event, grid);
+    if (!escape(frame, event, grid))
+      edit(event, grid);
   point(frame, grid);
   lay_out(frame, grid);
 }
@@ -265,6 +266,20 @@ Spot Text::spot_at(const Document &document, const Grid &grid) const {
   const auto row = static_cast<std::size_t>(std::max(0.0f, std::floor(cells.y)));
   const auto column = static_cast<std::size_t>(std::max(0.0f, std::round(cells.x)));
   return at(document, document.top + row, document.left + column);
+}
+
+// Escape lets go of the selection, and with none of the focus, so the next escape reaches
+// what takes the keys no part in focus takes. With no room it takes none.
+bool Text::escape(VP::Cook &frame, const VP::Event &event, const Grid &grid) {
+  if (event.kind != VP::Event::Kind::key || !event.down || event.name != "escape" ||
+      grid.rows == 0)
+    return false;
+  if (Document *const document = _documents.empty() ? nullptr : &_documents[_shown];
+      document && document->anchor != document->caret)
+    document->anchor = document->caret;
+  else
+    frame.commands().send("focus");
+  return true;
 }
 
 // Typed text goes in at the caret, and a key moves the caret, selecting while shift is

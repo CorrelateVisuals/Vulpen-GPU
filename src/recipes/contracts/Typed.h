@@ -17,7 +17,8 @@ struct Typed {
   std::string focus; // the node's name, as a line names it
   std::vector<VP::Event> events;
 
-  // All of them for the node in focus, none for any other.
+  // All of them for the node in focus, none for any other. With no node in focus they go
+  // to the empty name, which a node that takes the keys no part takes reads.
   std::span<const VP::Event> to(std::string_view node) const {
     return node == focus ? std::span(events) : std::span<const VP::Event>();
   }

@@ -121,13 +121,14 @@ std::vector<Chord> chords_of(std::string_view keymap,
 // One owner for where a key goes: a keymap chord becomes the line it sends, and any other
 // key, and text, goes to the node in focus, so a key does nothing a typed command cannot.
 // Its focus param names the node that has the focus at first, and the focus command moves
-// it. The keymap is read again once it changes; a mistake in it stops the node, naming
-// the line (A02).
+// it, or with no node leaves no node in focus, when the keys go to a node that reads
+// those no node in focus takes. The keymap is read again once it changes; a mistake in it
+// stops the node, naming the line (A02).
 class Keys final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _focus = node.command("focus <node>",
+    _focus = node.command("focus [<node>]",
                           "sends the keys and text no chord takes to a node that reads "
-                          "them from the keys part");
+                          "them from the keys part; with none, to no node in focus");
     _name = node.name();
     _start = node.param<std::string>("focus");
     _keymap = node.file(keymap_file);
@@ -145,9 +146,9 @@ class Keys final : public VP::Operator {
     give_focus(frame);
     const std::span<const VP::Event> events = frame.input().events();
     _waiting.insert(_waiting.end(), events.begin(), events.end());
-    bool pressed = false;
+    bool refocus = false;
     std::size_t routed = 0;
-    while (routed < _waiting.size() && route(frame, _waiting[routed], pressed))
+    while (routed < _waiting.size() && route(frame, _waiting[routed], refocus))
       ++routed;
     _waiting.erase(_waiting.begin(),
                    _waiting.begin() + static_cast<std::ptrdiff_t>(routed));
@@ -165,17 +166,18 @@ class Keys final : public VP::Operator {
   }
 
   // False for what waits for the next frame, with all that came after it, so each lands
-  // in the order it came: a key after a press, which may give another node the focus,
-  // and a chord after keys handed on, whose line would run before the node in focus took
-  // them. The window losing focus lets every modifier go, since their release then
-  // reaches no window.
-  bool route(VP::Cook &frame, const VP::Event &event, bool &pressed) {
+  // in the order it came: a key after a press, which may give another node the focus, or
+  // after a chord, whose line may move it, or escape, with which the node in focus may
+  // let it go; and a chord after keys handed on, whose line would run before the node in
+  // focus took them. The window losing focus lets every modifier go, since their release
+  // then reaches no window.
+  bool route(VP::Cook &frame, const VP::Event &event, bool &refocus) {
     if (event.kind == VP::Event::Kind::focus && !event.down)
       _held = 0;
-    pressed = pressed || (event.kind == VP::Event::Kind::button && event.down);
+    refocus = refocus || (event.kind == VP::Event::Kind::button && event.down);
     if (event.kind != VP::Event::Kind::key && event.kind != VP::Event::Kind::text)
       return true;
-    if (pressed)
+    if (refocus)
       return false;
     const Chord *const chord =
         event.kind == VP::Event::Kind::key ? chord_pressed(event) : nullptr;
@@ -185,6 +187,8 @@ class Keys final : public VP::Operator {
       frame.commands().send(chord->command);
     else
       _typed->events.push_back(event);
+    refocus = chord || (event.kind == VP::Event::Kind::key && event.down &&
+                        event.name == "escape");
     return true;
   }
 
@@ -206,6 +210,10 @@ class Keys final : public VP::Operator {
   void command(VP::Call &call) override {
     if (!call.is(_focus))
       return;
+    if (call.arguments().empty()) {
+      _next.emplace();
+      return;
+    }
     const std::string_view node = call.arguments().front();
     std::string readers;
     for (const VP::Connection &connection : call.view().connections)
