@@ -445,6 +445,17 @@ VkExtent2D Window::size() const {
   return {static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height)};
 }
 
+std::string Window::clipboard() const {
+  const char *const text = glfwGetClipboardString(_window);
+  if (!text)
+    glfwGetError(nullptr); // an empty clipboard is no failure a later call should report
+  return text ? text : "";
+}
+
+void Window::copy(const std::string &text) const {
+  glfwSetClipboardString(_window, text.c_str());
+}
+
 VkSurfaceKHR Window::surface(VkInstance instance) const {
   VkSurfaceKHR surface = VK_NULL_HANDLE;
   if (glfwCreateWindowSurface(instance, _window, nullptr, &surface) != VK_SUCCESS)

@@ -337,6 +337,7 @@ bool Runtime::start() {
                                : "no node draws into the window, so it runs headless"));
   if (shows)
     _window.emplace(title(view), window_size);
+  _ports.attach(_window ? &*_window : nullptr);
   _engine.emplace(_log, _window ? &*_window : nullptr);
   _wiring.emplace(Wiring{.engine = *_engine,
                          .pipelines = _engine->pipelines(),
@@ -461,10 +462,12 @@ void Runtime::prepare() {
                        : "a node draws into the window, so it opens");
     if (_window) {
       _engine->close();
+      _ports.attach(nullptr);
       _window.reset();
     } else {
       _window.emplace(title(_views->view()), window_size);
       _engine->open(*_window);
+      _ports.attach(&*_window);
     }
     _wiring->render_pass = _engine->render_pass();
   }

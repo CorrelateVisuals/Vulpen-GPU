@@ -92,6 +92,10 @@ public:
   bool poll(WindowInput &input) const;
   // In pixels; zero while the window is minimized.
   VkExtent2D size() const;
+  // The text the system's clipboard holds, empty when it holds none. Its owner may take
+  // a moment to hand it over, which a paste, a person's act, waits for.
+  std::string clipboard() const;
+  void copy(const std::string &text) const;
   // The caller owns the surface and destroys it before the instance.
   VkSurfaceKHR surface(VkInstance instance) const;
 

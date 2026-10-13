@@ -204,6 +204,21 @@ bool Ports::names_key(std::string_view name) const {
   return key_named(name);
 }
 
+void Ports::attach(const Window *window) {
+  _window = window;
+}
+
+std::string Ports::clipboard() const {
+  return _window ? _window->clipboard() : _clipboard;
+}
+
+// Kept here too, so a window that closes leaves its last copy behind.
+void Ports::copy(std::string_view text) {
+  _clipboard = text;
+  if (_window)
+    _window->copy(_clipboard);
+}
+
 // Once a frame, for every node that asks. A line ends at its break; one that standard
 // input ends in counts too.
 std::span<const std::string> Ports::lines() {

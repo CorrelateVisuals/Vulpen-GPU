@@ -13,6 +13,7 @@
 namespace VP {
 
 class Commands;
+class Window;
 
 // The general ports a node reads besides commands (V05): input from the window or the
 // input command, files, and the terminal's lines. One owner feeds every node, so each
@@ -31,6 +32,8 @@ public:
   // Registers the input command, whose events the log never keeps, as the lead chose on
   // 2026-10-06: a replay rebuilds the graph, not the input that drove it.
   void listen(Commands &commands);
+  // The window whose clipboard copy and paste use while it is open; null once it closes.
+  void attach(const Window *window);
   // A file a node opens while it binds. One open already is shared, so a rebuild's open
   // reads nothing. Throws naming a file that is there but cannot be read (A02).
   File open(const std::filesystem::path &file);
@@ -59,6 +62,8 @@ private:
   std::span<const Event> events() const override;
   glm::vec2 pointer() const override;
   bool names_key(std::string_view name) const override;
+  std::string clipboard() const override;
+  void copy(std::string_view text) override;
   std::span<const std::string> lines() override;
   bool ended() const override;
   void print(std::string_view text) override;
@@ -76,6 +81,8 @@ private:
   std::vector<Event> _events;  // this frame's
   std::vector<Event> _pending; // the next frame's
   glm::vec2 _pointer{};
+  const Window *_window = nullptr; // borrowed from the runtime, which owns it (A01)
+  std::string _clipboard;          // what was copied last, for a run with no window
   // The input command's forms, as the window's events come in.
   struct Input {
     Command key_down, key_up, text, pointer, button_down, button_up, wheel, focus_on,

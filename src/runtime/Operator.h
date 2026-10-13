@@ -205,6 +205,10 @@ public:
   // Whether a key event may carry the name, as the input command checks it, so a part
   // that binds keys refuses one no key has.
   virtual bool names_key(std::string_view name) const = 0;
+  // The text the system's clipboard holds, or with no window what a node copied last,
+  // so a run with none copies and pastes as one with a window does (V07).
+  virtual std::string clipboard() const = 0;
+  virtual void copy(std::string_view text) = 0;
 
 protected:
   ~InputPort() = default;
