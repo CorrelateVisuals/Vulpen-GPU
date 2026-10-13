@@ -27,13 +27,15 @@ struct alignas(8) Label {
   std::uint32_t role = 0;
   std::uint32_t first = 0;
   std::uint32_t count = 0;
+  float scale = 0.0f;
 
   static constexpr auto members() {
     return std::array{VP_MEMBER(Label, offset),
                       VP_MEMBER(Label, extent),
                       VP_MEMBER(Label, role),
                       VP_MEMBER(Label, first),
-                      VP_MEMBER(Label, count)};
+                      VP_MEMBER(Label, count),
+                      VP_MEMBER(Label, scale)};
   }
 };
 

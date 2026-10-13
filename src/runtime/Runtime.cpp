@@ -221,14 +221,22 @@ public:
   }
 
 private:
+  // A name that starts with . is no node's and builds nothing, as the loader and the
+  // build skip it, so what a part keeps there, as the graph its layout, starts no build.
   std::filesystem::file_time_type newest() const {
     // Not file_time_type{}: libstdc++ puts the file clock's epoch in the year 2174.
     auto newest = std::filesystem::file_time_type::min();
     std::error_code gone; // a file an editor is replacing may vanish mid-scan
     for (const std::filesystem::path &folder : _folders)
-      for (const auto &entry :
-           std::filesystem::recursive_directory_iterator(folder, gone))
-        newest = std::max(newest, entry.last_write_time(gone));
+      for (auto entry = std::filesystem::recursive_directory_iterator(folder, gone);
+           entry != std::filesystem::recursive_directory_iterator();
+           entry.increment(gone)) {
+        if (entry->path().filename().string().starts_with('.')) {
+          entry.disable_recursion_pending();
+          continue;
+        }
+        newest = std::max(newest, entry->last_write_time(gone));
+      }
     return newest;
   }
 

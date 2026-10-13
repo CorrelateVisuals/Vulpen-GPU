@@ -59,7 +59,7 @@ vec4 sample_linear(Texture image, vec2 uv) {
       sampler2D(textures[nonuniformEXT(image.index)], samplers[linear_clamp]), uv, 0.0);
 }
 
-// The texel nearest uv, for an image drawn one pixel to one texel, such as a glyph.
+// The texel nearest uv, for an image read one pixel to one texel.
 vec4 sample_nearest(Texture image, vec2 uv) {
   if (image.index == 0u)
     return vec4(0.0);

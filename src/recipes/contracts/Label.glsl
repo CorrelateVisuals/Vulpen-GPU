@@ -7,6 +7,7 @@ struct Label {
   uint role;    // the palette color of its text, as contracts/Palette.h names the roles
   uint first;   // its first character in the list
   uint count;   // how many characters it shows
+  float scale;  // how large its cells are, the font's times this; 0 draws them as 1 does
 };
 
 // One character of the list: its code, and the label it belongs to. Its writer keeps the
