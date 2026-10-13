@@ -198,7 +198,8 @@ struct Mark {
 // In a window it takes keys from the keys part while it has the focus, which a press in
 // its area gives it, and shows what lines answer and the log above the line typed, in
 // the Rect its area gives, with a tab for the panel it sits in, named by its title param;
-// a drag selects in what it shows, which control with c copies.
+// a drag selects in what it shows, which control with c copies. The terminal vulpen was
+// started from takes lines then too, as the CLI's does, but its end ends no run.
 // A line that names no view goes to the view hosted most recently, as view new and view
 // load leave it, so it needs no name and every log line still has one. The prompt shows
 // that view's folder, as a shell shows the one it is in.
@@ -233,8 +234,7 @@ class CommandLine final : public VP::Operator {
   void cook(VP::Cook &frame) override {
     if (_window)
       in_window(frame);
-    else
-      on_terminal(frame);
+    on_terminal(frame);
   }
 
   void on_terminal(VP::Cook &frame) {
@@ -243,7 +243,7 @@ class CommandLine final : public VP::Operator {
     for (const std::string &line : lines)
       if (const std::string answer = run(frame, line); !answer.empty())
         terminal.print(answer);
-    if (terminal.ended()) {
+    if (terminal.ended() && !_window) {
       terminal.prompt(
           "\n"); // ends the prompt's line, as a shell does at the end of input
       frame.commands().send("quit");

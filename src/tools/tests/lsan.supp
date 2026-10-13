@@ -6,3 +6,7 @@ leak:libfontconfig.so
 # Where no display answers, GLFW unloads libX11 after XInitThreads and XrmInitialize
 # allocated its state, so the leak shows under GLFW's function, in an unknown module:
 leak:_glfwConnectX11
+# Lavapipe presents on Wayland through an event queue of its own, and an event read into
+# it as the run ends is at times never freed: one 96-byte closure, under libwayland's
+# function, seen once in four asan runs of the ide test on 2026-10-13:
+leak:wl_display_read_events

@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
-"""The ide app runs in a window while typed keys drive its terminal down every path: Tab
-on a word not begun and on one begun, the completions listed, the edits and the arrows,
+"""The ide app runs in a window while typed keys drive its terminal down every path: Tab on
+a word not begun and on one begun, the completions listed, the edits and the arrows,
 history, a line the command port refuses, help, and the keymap's chord that clears, which
 waits a frame for the keys before it. The pointer drags the dock's seam, whose param set
 rebuilds the running app, and drags over the rows the terminal shows, selecting them; no
-run copies or pastes, as that would write over the clipboard of whoever runs it. A second run edits a file in its
-editor, selecting, stepping over a character past ASCII and deleting it whole, and saves
-it with the keymap's chord, so the file must hold just the edits; then the keymap's chords
-zoom in and out, so the font bakes its atlas larger and back, and the zoom it keeps must
-be back where it started. Two more runs host the
-triangle example, presented as it comes: one in edit mode, its window in the Perform panel,
-and one in perform mode by the keymap's chord, its window over the whole window; a third
-then presses escape three times, back to edit mode, out of the terminal's focus and out of
-the run, which must end before its frames do. The last two host a copy of the wave
-example, laid out from the .ini put beside it: a press on a box opens its first file in
-the editor, and a drag moves the box, one on the ground the graph, as the wheel does, and
-the wheel with control held zooms it. The .ini must then hold the box, the graph and the
-zoom moved, and the last run must read it back without a word. Each must end with exit 0
-and print no validation message or sanitizer report (RVK00, A03), so in the asan preset
-it checks the memory of the keys part, the terminal, the editor, modes, the graph, their
-panels, the dock, the images a hosted view's window renders into, the atlas made anew
-at another size, and the rebuild. The zoom a person keeps in the library's font folder is
-set aside while it runs, and put back after. Where no display exists it is skipped (V07).
+run copies or pastes, as that would write over the clipboard of whoever runs it. A second
+run edits a file in its editor, selecting, stepping over a character past ASCII and
+deleting it whole, and saves it with the keymap's chord, so the file must hold just the
+edits; then the keymap's chords zoom in and out, so the font bakes its atlas larger and
+back, and the zoom it keeps must be back where it started. Two more runs host the
+triangle example, presented as it comes: one in edit mode, its window in the Perform
+panel, which also takes ls on standard input, as the terminal vulpen was started from,
+and prints what it answers, and one in perform mode by the keymap's chord, its window
+over the whole window; a third then presses escape three times, back to edit mode, out of
+the terminal's focus and out of the run, which must end before its frames do; every other
+run must run all of them, so the end of standard input, which every run finds at once,
+ends none. The last two host a copy of the wave example, laid out from the .ini put
+beside it: a press on a box opens its first file in the editor, and a drag moves the box,
+one on the ground the graph, as the wheel does, and the wheel with control held zooms it.
+The .ini must then hold the box, the graph and the zoom moved, and the last run must read
+it back without a word. Each must end with exit 0 and print no validation message or
+sanitizer report (RVK00, A03), so in the asan preset it checks the memory of the keys
+part, the terminal, the editor, modes, the graph, their panels, the dock, the images a
+hosted view's window renders into, the atlas made anew at another size, and the rebuild.
+The zoom a person keeps in the library's font folder is set aside while it runs, and put
+back after. Where no display exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
 """
@@ -42,6 +45,7 @@ PERFORM = [*PRESENT, "input key down f2", "input key up f2"]  # the chord: mode 
 # Back to edit mode, out of the terminal's focus, and out of the run.
 ESCAPE = [*PERFORM, *["input key down escape"] * 3]
 RAN = re.compile(r"\{run\} ran (\d+) frames")
+LISTED = "node ide.keys of recipe keys"  # a line ls answers for the ide
 # Every scripted event reaches the first frame, so the presses are placed for its size.
 SIZE = re.compile(r"\{swp\} presents \d+ images of (\d+)x(\d+)")
 WAVE = Path(__file__).resolve().parents[2] / "examples" / "wave"
@@ -166,13 +170,16 @@ def numbers(text: str) -> dict[str, list[float]]:
             for row in rows if len(row) == 2}
 
 
-def drive(folder: Path, name: str, lines: list[str], frames: int = FRAMES) -> str:
+def drive(folder: Path, name: str, lines: list[str], frames: int = FRAMES,
+          typed: str = "", whole: bool = True) -> str:
     script = folder / f"{name}.txt"
     script.write_text("\n".join(lines) + "\n", encoding="utf-8")
     code, output = run(sys.argv[1], [IDE, "--frames", frames, "--fps", 0, "--log", "info",
-                                     "--source", script], headless=False)
+                                     "--source", script], headless=False, typed=typed)
     if code != 0 or problems(output):
         sys.exit(f"ide: expected the {name} to take every key, got exit {code}:\n{output}")
+    if whole and RAN.findall(output) != [str(frames)]:
+        sys.exit(f"ide: expected the {name} to run {frames} frames, got:\n{output}")
     return output
 
 
@@ -196,9 +203,10 @@ def main() -> None:
 def test() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         folder = Path(temporary)
-        size = SIZE.search(drive(folder, "presented view", PRESENT))
-        if not size:
-            sys.exit("ide: expected the log to name the window's size")
+        presented = drive(folder, "presented view", PRESENT, typed="ls\n")
+        if not (size := SIZE.search(presented)) or LISTED not in presented:
+            sys.exit(f"ide: expected the log to name the window's size, and ls typed on "
+                     f"standard input to print {LISTED}, got:\n{presented}")
         width, height = int(size.group(1)), int(size.group(2))
         drive(folder, "terminal", typed(width, height))
         note = folder / "note.txt"
@@ -209,7 +217,7 @@ def test() -> None:
             sys.exit(f"ide: expected the font to keep zoom = 1 after zooming in and out, "
                      f"it kept\n{zoomed}")
         drive(folder, "performed view", PERFORM)
-        ran = RAN.findall(drive(folder, "escapes", ESCAPE))
+        ran = RAN.findall(drive(folder, "escapes", ESCAPE, whole=False))
         if not ran or int(ran[-1]) >= FRAMES:
             sys.exit(f"ide: expected escape to end the run before {FRAMES} frames, "
                      f"it ran {ran}")
