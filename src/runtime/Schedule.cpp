@@ -122,7 +122,9 @@ Schedule::Schedule(const Wiring &wiring, const View &view, Into into, Schedule *
     : _wiring(wiring), _view(view),
       _window(into == Into::image
                   ? wiring.pipelines.render_pass(pixel_format(window_format)->format)
-                  : wiring.render_pass) {
+              : into == Into::window ? wiring.render_pass
+                                     : VK_NULL_HANDLE),
+      _into(into) {
   const std::vector<const Node *> nodes = order(view);
   // Every node registers its commands again as it binds, so no command stays behind
   // with a node that went, and none blocks a node that takes its name.
@@ -233,7 +235,8 @@ void Schedule::read_shaders(Bound &bound) const {
 
 // A draw's one color goes into the view's window, unless a connection takes it to a
 // Texture: then into an image, in the format the node's image word gives that port. Null
-// for a format there is not, which check_images names.
+// for a format there is not, which check_images names, and for a window the view draws
+// nowhere, which makes the draw no pipeline and no pass.
 VkRenderPass Schedule::target_of(Bound &bound) const {
   const std::size_t fragment =
       bound.shaders_named.front().ends_with(fragment_stage) ? 0 : 1;
@@ -243,7 +246,7 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
         "its .frag writes {} colors, but a draw writes one", colors.size()));
   bound.output = colors.front();
   if (!connection_of(bound.node->name, bound.output)) {
-    if (!_window)
+    if (!_window && _into != Into::none)
       throw std::runtime_error(std::format("it draws {} into the window, but none is "
                                            "open; a connection to a Texture draws it "
                                            "into an image",

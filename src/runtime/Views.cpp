@@ -113,7 +113,8 @@ const View &Views::view() const {
 
 bool Views::shows() const {
   return std::ranges::any_of(_hosted, [&](const std::unique_ptr<Hosted> &hosted) {
-    return !hosted->removed && !target(*hosted) && Schedule::shows(hosted->next());
+    return !hosted->removed && target(*hosted) == nullptr &&
+           Schedule::shows(hosted->next());
   });
 }
 
@@ -134,8 +135,21 @@ bool Views::rebuild() {
       changed = true;
       continue;
     }
-    const Schedule::Into into =
-        target(hosted) ? Schedule::Into::image : Schedule::Into::window;
+    const std::optional<const Hosted *> to = target(hosted);
+    const Schedule::Into into = !to   ? Schedule::Into::none
+                                : *to ? Schedule::Into::image
+                                      : Schedule::Into::window;
+    // So a project that shows nothing says why.
+    if ((into == Schedule::Into::none) != (hosted.into == Schedule::Into::none) &&
+        Schedule::shows(hosted.next()))
+      _wiring.log.write(Level::info,
+                        Tag::run,
+                        std::format("child {}: {}",
+                                    hosted.name,
+                                    into == Schedule::Into::none
+                                        ? "draws nowhere, since its host draws there "
+                                          "and no connection takes its window"
+                                        : "draws again"));
     if (hosted.edited) {
       const bool added = !hosted.schedule;
       hosted.schedule = std::make_unique<Schedule>(
@@ -178,6 +192,7 @@ void Views::gather(std::vector<Pass> &passes) const {
              return !at->removed && at->schedule && target(*at) == into;
            });
   };
+  // A view that draws nowhere still runs its work: its C++ cooks and its dispatches run.
   for (const std::unique_ptr<Hosted> &hosted : _hosted | std::views::reverse) {
     if (hosted->removed || !hosted->schedule)
       continue;
@@ -194,7 +209,7 @@ void Views::gather(std::vector<Pass> &passes) const {
     into->schedule->draws(passes, nullptr);
 }
 
-const Views::Hosted *Views::target(const Hosted &hosted) const {
+std::optional<const Views::Hosted *> Views::target(const Hosted &hosted) const {
   if (hosted.name.empty())
     return nullptr;
   const Hosted *const host = this->hosted(hosted.parent);
@@ -204,6 +219,8 @@ const Views::Hosted *Views::target(const Hosted &hosted) const {
         return connection.from.view() && connection.from.node == hosted.name;
       }))
     return &hosted;
+  if (Schedule::shows(host->next()))
+    return std::nullopt;
   return target(*host);
 }
 

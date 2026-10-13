@@ -138,10 +138,13 @@ private:
   }
   // Found anew each time, since a command this one sends may replace the view.
   const View &view() const override {
-    const View *const view = _views ? _views->find(_address) : nullptr;
+    const View *const view = this->view(_address);
     if (!view)
       throw std::runtime_error("no view to read yet");
     return *view;
+  }
+  const View *view(std::string_view name) const override {
+    return _views ? _views->find(name) : nullptr;
   }
   FilePort &files() override {
     return _files;

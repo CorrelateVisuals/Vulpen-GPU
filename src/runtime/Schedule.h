@@ -52,8 +52,9 @@ class Schedule {
 public:
   // Where the view's draws into its window go: the window, or an image, while the view
   // that hosts it, or one hosting that, takes its window with a connection from
-  // `<view>:`. Its draws' pipelines fit the one or the other.
-  enum class Into : bool { window, image };
+  // `<view>:`; or nowhere, while the view hosting it draws there itself. Its draws'
+  // pipelines fit the one or the other, and drawing nowhere they have none.
+  enum class Into : std::uint8_t { window, image, none };
 
   // Writers before their readers. Throws when the connections form a cycle.
   static std::vector<const Node *> order(const View &view);
@@ -152,8 +153,10 @@ private:
 
   const Wiring _wiring;
   const View &_view;
-  // What its draws into its window record in; null while that is a window none opened.
+  // What its draws into its window record in; null while that is a window none opened,
+  // or while they draw nowhere.
   const VkRenderPass _window;
+  const Into _into;
   // What connections between C++ nodes carry, which outlives the operators that hold
   // references to it.
   std::vector<Held> _objects;

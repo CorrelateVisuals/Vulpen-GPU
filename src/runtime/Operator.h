@@ -430,6 +430,10 @@ public:
   // The view the command addresses, as the changes so far left it: what a save would
   // write. Read it while the command runs; a later change replaces it.
   virtual const View &view() const = 0;
+  // A view by the name a line addresses it with, `<name>:`, or empty for the one vulpen
+  // started with, as `:` addresses it; null when no view has the name. So a command acts
+  // at once on another view than the one it addresses, as on its own node's.
+  virtual const View *view(std::string_view name) const = 0;
   virtual FilePort &files() = 0;
 
 protected:
