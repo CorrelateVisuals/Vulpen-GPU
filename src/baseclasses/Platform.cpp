@@ -33,6 +33,9 @@ namespace {
 constexpr std::size_t input_chunk = 4096; // bytes of standard input one read takes
 // At most this much input a frame, so input that never pauses cannot hold a frame.
 constexpr std::size_t input_per_call = 16 * input_chunk;
+// What the desktop knows the window by, as Wayland's app id and X11's class, so a dock
+// finds it again after a click minimized it; without it GLFW sends none on Wayland.
+constexpr const char *app_id = "vulpen";
 
 [[noreturn]] void glfw_failed(const char *call) {
   const char *description = nullptr;
@@ -422,6 +425,9 @@ Window::Window(const std::string &title, VkExtent2D size) {
   if (!glfwInit())
     glfw_failed("glfwInit");
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  glfwWindowHintString(GLFW_WAYLAND_APP_ID, app_id);
+  glfwWindowHintString(GLFW_X11_CLASS_NAME, app_id);
+  glfwWindowHintString(GLFW_X11_INSTANCE_NAME, app_id);
   _window = glfwCreateWindow(static_cast<int>(size.width),
                              static_cast<int>(size.height),
                              title.c_str(),
