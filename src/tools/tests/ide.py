@@ -222,9 +222,10 @@ def test() -> None:
             sys.exit(f"ide: expected escape to end the run before {FRAMES} frames, "
                      f"it ran {ran}")
         # A copy, as the graph writes beside it; named wave, so it finds the modules the
-        # build made for the example.
+        # build made for the example. Without the .vulpen a person's run left there, so
+        # the graph reads only the layout put beside it.
         wave = folder / "copy" / "wave"
-        shutil.copytree(WAVE, wave)
+        shutil.copytree(WAVE, wave, ignore=shutil.ignore_patterns(".vulpen"))
         kept = wave / ".vulpen" / "graph.ini"
         kept.parent.mkdir()
         kept.write_text("".join(f"{key} = {' '.join(map(str, value))}\n"
