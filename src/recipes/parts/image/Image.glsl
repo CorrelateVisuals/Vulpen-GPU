@@ -7,4 +7,6 @@ layout(set = 1, binding = 0) uniform Pass {
   Rects place;     // from its C++: the Rect its area gives, an instance; none while empty
   Texture picture; // a connection: an image a draw renders, a hosted view's window, or
                    // one a node's C++ fills; nothing while none reaches it
+  vec2 pan;        // from its C++: how far a drag moved it, in pixels
+  float zoom;      // and how near the wheel brought it
 } pass;

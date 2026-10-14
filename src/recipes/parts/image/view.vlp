@@ -1,7 +1,8 @@
 # The image part: one node whose operator is Image; it draws an image into the Rect its
 # area gives, letterboxed: as large as fits at the image's own aspect, and centered. Its
 # host connects a Rect to its area and an image to its picture: the one a draw renders
-# into, the window of a view the host hosts, or one a node's C++ fills.
+# into, the window of a view the host hosts, or one a node's C++ fills. With param
+# moves = yes, a drag moves the image and the wheel zooms it, cut at the area's edge.
 [manifest]
 version = 1
 
@@ -13,3 +14,4 @@ file           = Image.glsl
 file           = Image.vert
 vertex_count   = 6
 instance_count = place
+param          = moves=no

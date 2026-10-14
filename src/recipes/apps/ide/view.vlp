@@ -76,8 +76,11 @@ recipe = graph-editor
 [node "ide.perform-panel"]
 recipe = panel
 
+# A drag moves the view presented and the wheel zooms it, as in the graph; the window
+# that fills the whole window in perform mode stays still.
 [node "ide.perform"]
 recipe = image
+param  = moves=yes
 
 [node "ide.terminal-panel"]
 recipe = panel

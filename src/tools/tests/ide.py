@@ -21,8 +21,9 @@ run must run all of them, so the end of standard input, which every run finds at
 ends none. The last two host a copy of the wave example, laid out from the .ini put
 beside it, with Wave.comp open in the editor: a press on a box's name selects it, a drag
 moves the box selected, a drag on the ground lets go of the selection and moves the graph,
-as the wheel does, shift with a press selects the box again, and the wheel with control
-held zooms the graph. The .ini must then hold the box, the graph and the zoom moved. The
+shift with a press selects the box again, and the wheel zooms the graph, as it then zooms
+the Perform panel's view, which a drag moves. The .ini must then hold the box, the graph
+and the zoom moved. The
 last run must read it back without a word, select probe as a script does, show it with
 info under its header, and delete it with the key, so the .ini no longer places it. Each
 must end with exit 0 and print no validation message or sanitizer report (RVK00, A03), so
@@ -183,12 +184,16 @@ def edits(note: Path, width: int) -> list[str]:
     ]
 
 
-def graph(wave: Path, width: int) -> list[str]:
+def graph(wave: Path, width: int, height: int) -> list[str]:
     box = (width // 2 + 100, 90)
     # Right of the box at the area's edge, as a large font makes the box wide; the box
     # stays under the place it moved to once the graph moved too.
     ground = (width - 40, 150)
     moved = (box[0] - 40, box[1] - 20)
+    # Two thirds down the Perform panel, under the graph's, in the dock's top row.
+    top = round((height - 4) * 0.65)
+    below = round((top - 4) * 0.5) + 4
+    perform = (width * 3 // 4, below + (top - below) * 2 // 3)
     return [
         f"view load {wave}",
         f"open {wave / 'wave' / 'Wave.comp'}",  # GLSL in the editor, in color
@@ -207,10 +212,12 @@ def graph(wave: Path, width: int) -> list[str]:
         "input button down left",
         "input button up left",  # shift adds the box to the selection
         "input key up shift",
-        "input wheel 0 1",
-        "input key down control",
         "input wheel 0 -1",  # zoomed out, about the pointer
-        "input key up control",
+        f"input pointer {perform[0]} {perform[1]}",
+        "input wheel 0 3",  # the view presented zoomed in, so the panel cuts it
+        "input button down left",
+        f"input pointer {perform[0] + 60} {perform[1] + 40}",
+        "input button up left",  # and moved
     ]
 
 
@@ -296,7 +303,7 @@ def test() -> None:
         kept.parent.mkdir()
         kept.write_text("".join(f"{key} = {' '.join(map(str, value))}\n"
                                 for key, value in ARRANGED.items()), encoding="utf-8")
-        said = drive(folder, "graph", graph(wave, width), QUIET)
+        said = drive(folder, "graph", graph(wave, width, height), QUIET)
         arranged = numbers(kept.read_text(encoding="utf-8"))
         if still := [key for key in MOVED if arranged.get(key) == ARRANGED[key]]:
             sys.exit(f"ide: expected the graph to keep {', '.join(still)} moved, it kept\n"

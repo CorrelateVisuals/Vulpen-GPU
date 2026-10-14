@@ -33,10 +33,6 @@ constexpr float dot_step_least = 12.0f; // zoomed out, every other dot goes belo
 constexpr std::uint32_t dot_size = 2;   // in pixels
 constexpr std::int32_t column_gap = 4;  // in cells, where the curves run
 constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its box
-constexpr float wheel_step = 24.0f;     // pixels the graph moves a step of the wheel
-constexpr float zoom_step = 1.1f;       // how much nearer a step of the wheel zooms
-constexpr float zoom_least = 0.25f;
-constexpr float zoom_most = 4.0f;
 constexpr float drag_least = 3.0f;         // pixels a press moves before a box follows
 constexpr std::uint64_t quiet_frames = 30; // after the wheel stops, before a save
 constexpr std::string_view title = "graph";
@@ -129,8 +125,8 @@ Arranged arranged_of(std::string_view text) {
         numbers_of(row.substr(std::min(equals + 1, row.size())));
     if (key == "pan" && numbers.size() == 2)
       arranged.pan = {numbers[0], numbers[1]};
-    else if (key == "zoom" && numbers.size() == 1 && numbers[0] >= zoom_least &&
-             numbers[0] <= zoom_most)
+    else if (key == "zoom" && numbers.size() == 1 && numbers[0] >= PanZoom::least &&
+             numbers[0] <= PanZoom::most)
       arranged.zoom = numbers[0];
     else if (key.starts_with(place_key) && numbers.size() == 2 &&
              !trim(key.substr(place_key.size())).empty())
@@ -143,8 +139,8 @@ Arranged arranged_of(std::string_view text) {
           kept_file,
           line,
           row,
-          zoom_least,
-          zoom_most));
+          PanZoom::least,
+          PanZoom::most));
   }
   return arranged;
 }
@@ -400,13 +396,11 @@ void Graph::follow(VP::Cook &frame,
       press(frame, *view);
   } else if (event.kind == VP::Event::Kind::wheel && view && inside(*_area, _pointer)) {
     turn(frame, event.turn);
-  } else if (event.kind == VP::Event::Kind::key && event.name == "control") {
-    _control = event.down;
   } else if (event.kind == VP::Event::Kind::key && event.name == "shift") {
     _shift = event.down;
   } else if (event.kind == VP::Event::Kind::focus && !event.down) {
     // Let go while the window had no focus, which no event says.
-    _control = _shift = false;
+    _shift = false;
   }
 }
 
@@ -499,18 +493,10 @@ void Graph::open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uve
       "open {}", (folder_of(view, node.name) / node.files[file]).generic_string()));
 }
 
-// The wheel moves the graph, as two fingers on a touchpad do; with control held it
-// zooms, about the pointer, which stays over the same place of the graph.
+// The wheel zooms, about the pointer, which stays over the same place of the graph; its
+// turn sideways does nothing yet.
 void Graph::turn(VP::Cook &frame, glm::vec2 turn) {
-  if (_control) {
-    const float zoom =
-        std::clamp(_arranged.zoom * std::pow(zoom_step, turn.y), zoom_least, zoom_most);
-    const glm::vec2 from = _pointer - glm::vec2(_area->offset);
-    _arranged.pan = from - (from - _arranged.pan) / _arranged.zoom * zoom;
-    _arranged.zoom = zoom;
-  } else {
-    _arranged.pan += turn * wheel_step;
-  }
+  _arranged.wheel(turn.y, _pointer - glm::vec2(_area->offset));
   _unsaved = frame.index();
 }
 
@@ -752,7 +738,7 @@ void Graph::write_curve(std::span<VP_VIEW::Curve> curves,
 }
 
 glm::vec2 Graph::on_screen(glm::vec2 at) const {
-  return glm::vec2(_area->offset) + _arranged.pan + at * _arranged.zoom;
+  return glm::vec2(_area->offset) + _arranged.on_screen(at);
 }
 
 VP_VIEW::Rect Graph::box(const Placed &placed) const {

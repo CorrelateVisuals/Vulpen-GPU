@@ -8,6 +8,7 @@
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
+#include "shared/PanZoom.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -43,10 +44,8 @@ struct Lane {
 };
 
 // What a person arranged, which the graph's .ini keeps through a restart: how far the
-// graph moved, how near it is, and each box placed by hand, by its node's name.
-struct Arranged {
-  glm::vec2 pan{};
-  float zoom = 1.0f;
+// graph moved and how near it is, and each box placed by hand, by its node's name.
+struct Arranged : PanZoom {
   std::map<std::string, glm::ivec2, std::less<>> places;
 };
 
@@ -68,9 +67,10 @@ struct Grab {
 // it shows, so a change to the graph moves none; the boxes, how far the graph moved and
 // how near it is are a look at the graph, not its plumbing, so they go in .vulpen/
 // graph.ini beside the view's manifest, and a restart shows the graph as it was left.
-// A drag on the ground or the wheel moves the graph, the wheel with control held zooms
-// it, and a press on a box selects it, shift adding it or taking it out, and opens the
-// file of a file's row in the editor; a drag on a box selected moves every box selected.
+// A drag on the ground moves the graph, the wheel zooms it about the pointer, as the
+// Perform panel's image moves, and a press on a box selects it, shift adding it or taking
+// it out, and opens the file of a file's row in the editor; a drag on a box selected
+// moves every box selected.
 // It owns the selection, which select, selected and delete reach as lines do (V06), and
 // takes keys from the keys part while it has the focus, which a press in its area gives
 // it. It writes Rects, Labels and Curves and draws nothing itself, and only what lies in
@@ -150,7 +150,6 @@ private:
   std::optional<Grab> _grab;
   glm::vec2 _pointer{};   // as the events so far left it
   bool _dragging = false; // the ground, which the graph follows
-  bool _control = false;  // held, so the wheel zooms
   bool _shift = false;    // held, so a press adds a box to the selection or takes it out
 };
 
