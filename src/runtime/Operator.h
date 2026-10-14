@@ -391,6 +391,11 @@ public:
   // block's resolution follows, so C++ lays out what shaders draw; zero without either.
   virtual glm::uvec2 resolution() const = 0;
   virtual void log(Level level, std::string_view text) const = 0;
+  // Keeps quit from ending the run while the node holds work the end would lose, as a
+  // file's changes: the node calls it each frame it does, naming what, and quit refuses
+  // while it did so this frame or the one before, naming the node and what. The window's
+  // close button asks as quit does; quit force ends the run anyway.
+  virtual void hold(std::string_view what) = 0;
   virtual CommandPort &commands() = 0;
   virtual InputPort &input() = 0;
   virtual TerminalPort &terminal() = 0;

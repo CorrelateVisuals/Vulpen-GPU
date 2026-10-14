@@ -88,7 +88,8 @@ public:
   Window(const Window &) = delete;
   Window &operator=(const Window &) = delete;
 
-  // Hands on the events since the last call; false once the window was asked to close.
+  // Hands on the events since the last call; false when the window was asked to close
+  // since then. It stays open, so the caller may refuse.
   bool poll(WindowInput &input) const;
   // In pixels; zero while the window is minimized.
   VkExtent2D size() const;

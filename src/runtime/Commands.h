@@ -96,8 +96,11 @@ public:
   std::vector<Usage> usages() const override;
   std::span<const Logged> log() const override;
   // Before a frame cooks: what the log printed since the frame before is what nodes
-  // read in this one.
+  // read in this one, and the frame's holds start anew.
   void frame();
+  // A node's Cook::hold: work the end of the run would lose, which quit refuses for while
+  // a node held it this frame or the one before, naming the node and what.
+  void hold(std::string_view node, std::string_view what);
   // Runs a file's lines in turn until one quits, each in a group of its own, so undo
   // after a replay steps back one command at a time, and prints what each answers.
   // Throws naming the file and line of the first that fails, and runs none after it, so
@@ -108,7 +111,7 @@ public:
   // A hosted view by its name, as the changes so far left it, which a node reads while it
   // cooks; null when no view has the name, or none exists yet.
   const View *view(std::string_view name);
-  // Whether quit ran, so the run ends before its next frame.
+  // Whether quit, or quit force, ran, so the run ends before its next frame.
   bool quitting() const;
   // The file and line running, as `script.txt:7`; empty for a line typed or sent.
   std::string where() const;
@@ -122,8 +125,15 @@ private:
     std::filesystem::path file;
     std::size_t line = 0;
   };
+  // A frame's holds, `node: what` a line. The first count are the frame's, and the rest
+  // are written over next, so a hold each frame allocates nothing once they grew (CPP10).
+  struct Holds {
+    std::vector<std::string> lines;
+    std::size_t count = 0;
+  };
 
   void command(Call &call) override;
+  std::vector<std::string_view> holding() const;
   const Spec *match(std::span<const std::string_view> words) const;
   std::string view_named(std::vector<std::string_view> &words) const;
   std::vector<std::string> resolve(const Spec &spec,
@@ -140,9 +150,12 @@ private:
   std::string _addressed;
   std::size_t _depth = 0; // the lines running, each sent by the one before it
   const Command _quit;
+  const Command _quit_force;
   const Command _source;
   const Command _log_save;
   bool _quitting = false;
+  Holds _holds; // this frame's
+  Holds _held;  // the frame before's
   std::vector<Logged> _logged; // the first _logged_count are this frame's
   std::size_t _logged_count = 0;
 };

@@ -275,6 +275,9 @@ private:
   void log(Level level, std::string_view text) const override {
     _schedule.log(level, Tag::out, _bound, text);
   }
+  void hold(std::string_view what) override {
+    _schedule._wiring.commands.hold(_bound.node->name, what);
+  }
   CommandPort &commands() override {
     return _schedule._wiring.commands;
   }

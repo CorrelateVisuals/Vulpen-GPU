@@ -205,7 +205,14 @@ struct Commands::Spec {
 
 Commands::Commands(const Log &log, FilePort &files)
     : _log(log), _files(files),
-      _quit(add("quit", "ends the run before its next frame", *this)),
+      _quit(add("quit",
+                "ends the run before its next frame, unless a node holds work the end "
+                "would lose, as a file's changes",
+                *this)),
+      _quit_force(add("quit force",
+                      "ends the run before its next frame, even while a node holds work "
+                      "the end would lose",
+                      *this)),
       _source(add("source <file>",
                   "runs a file's commands, one a line, and stops at the first that fails",
                   *this)),
@@ -345,6 +352,25 @@ std::span<const Logged> Commands::log() const {
 
 void Commands::frame() {
   _logged_count = _log.take(_logged);
+  std::swap(_holds, _held);
+  _holds.count = 0;
+}
+
+void Commands::hold(std::string_view node, std::string_view what) {
+  if (_holds.count == _holds.lines.size())
+    _holds.lines.emplace_back();
+  _holds.lines[_holds.count++].assign(node).append(": ").append(what);
+}
+
+// This frame's holds, then those of the frame before it has not repeated yet, as a
+// node's that cooks after the line quitting; each once.
+std::vector<std::string_view> Commands::holding() const {
+  std::vector<std::string_view> held;
+  for (const Holds *const holds : {&_holds, &_held})
+    for (const std::string &line : std::span(holds->lines).first(holds->count))
+      if (std::ranges::find(held, line) == held.end())
+        held.emplace_back(line);
+  return held;
 }
 
 std::string Commands::send(std::string_view line) {
@@ -415,7 +441,12 @@ std::string Commands::where() const {
 }
 
 void Commands::command(Call &call) {
-  if (call.is(_quit)) {
+  if (call.is(_quit) || call.is(_quit_force)) {
+    if (const std::vector<std::string_view> held = holding();
+        call.is(_quit) && !held.empty())
+      throw std::runtime_error(std::format("quit would lose what nodes hold, so the run "
+                                           "goes on; quit force ends it anyway:\n{}",
+                                           joined(held, "\n")));
     _quitting = true;
     _log.write(Level::info, Tag::run, "quit: the run ends before its next frame");
   } else if (call.is(_source)) {

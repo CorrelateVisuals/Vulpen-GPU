@@ -360,6 +360,8 @@ void Text::cook(VP::Cook &frame) {
       edit(frame.input(), event, grid);
   point(frame, grid);
   lay_out(frame, grid);
+  if (!_unsaved.empty())
+    frame.hold(_unsaved);
 }
 
 Grid Text::grid() const {
@@ -711,10 +713,21 @@ void Text::find(VP::Call &call) {
 
 void Text::name_tabs() {
   _tabs->clear();
-  for (std::size_t at = 0; at < _documents.size(); ++at)
+  std::string changed;
+  std::size_t count = 0;
+  for (std::size_t at = 0; at < _documents.size(); ++at) {
     _tabs->push_back({.label = label_of(_documents[at]),
                       .command = std::format("open {}", _documents[at].path),
                       .current = at == _shown});
+    if (!_documents[at].changed)
+      continue;
+    changed.append(count++ == 0 ? "" : ", ").append(_tabs->back().label);
+  }
+  _unsaved = count == 0 ? std::string()
+                        : std::format("{} {} changes: write saves the file shown, and "
+                                      "discard drops its changes",
+                                      changed,
+                                      count == 1 ? "has" : "have");
 }
 
 } // namespace

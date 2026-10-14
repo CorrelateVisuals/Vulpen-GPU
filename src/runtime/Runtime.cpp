@@ -376,8 +376,12 @@ void Runtime::loop() {
   std::uint64_t frames = 0;
   for (; !_commands.quitting() && (_options.frames == 0 || frames < _options.frames);
        ++frames) {
-    if (_window && !_window->poll(_feed))
-      break;
+    // The close button asks as quit does, so a node holding work keeps the run (V06).
+    if (_window && !_window->poll(_feed)) {
+      _commands.send("quit");
+      if (_commands.quitting())
+        break;
+    }
     _engine->wait();
     if (_live)
       watch();

@@ -448,7 +448,9 @@ bool Window::poll(WindowInput &input) const {
   glfwSetWindowUserPointer(_window, &input);
   glfwPollEvents();
   glfwSetWindowUserPointer(_window, nullptr);
-  return !glfwWindowShouldClose(_window);
+  const bool asked = glfwWindowShouldClose(_window) == GLFW_TRUE;
+  glfwSetWindowShouldClose(_window, GLFW_FALSE);
+  return !asked;
 }
 
 VkExtent2D Window::size() const {

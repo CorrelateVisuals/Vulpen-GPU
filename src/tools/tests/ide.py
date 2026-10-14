@@ -8,8 +8,10 @@ run copies or pastes, as that would write over the clipboard of whoever runs it.
 run edits a file in its editor, selecting, stepping over a character past ASCII and
 deleting it whole, and saves it with the keymap's chord, so the file must hold just the
 edits; then the keymap's chords zoom in and out, so the font bakes its atlas larger and
-back, and the zoom it keeps must be back where it started. Two more runs host the
-triangle example, presented as it comes: one in edit mode, its window in the Perform
+back, and the zoom it keeps must be back where it started; then it types once more and
+escapes until modes sends quit, which the editor's hold must refuse, naming the file, so
+the run runs all its frames and the file keeps only what was written. Two more runs host
+the triangle example, presented as it comes: one in edit mode, its window in the Perform
 panel, which also takes ls on standard input, as the terminal vulpen was started from,
 and prints what it answers, and one in perform mode by the keymap's chord, its window
 over the whole window; a third then presses escape three times, back to edit mode, out of
@@ -59,6 +61,9 @@ FRAMES = 10
 QUIET = 40  # the graph saves once the wheel rests for 30 frames
 NOTE = "first line\nsecond — line\nthird\n"
 EDITED = "first line!\nScond \n  x line\nthird\n"
+# What quit answers while the editor holds the note, named by its folder and name.
+REFUSED = "quit would lose what nodes hold"
+HELD = re.compile(r"ide\.editor\.text: \S+/note\.txt\* has changes")
 
 
 def typed(width: int, height: int) -> list[str]:
@@ -138,6 +143,9 @@ def edits(note: Path) -> list[str]:
         "input key down -",  # the chord: zoom out, a frame later, back again
         "input key up -",
         "input key up control",
+        "input text ?",  # a change after the write, so the editor holds the run
+        "input key down escape",  # the editor lets go of the focus
+        "input key down escape",  # so modes sends quit, which the hold refuses
     ]
 
 
@@ -211,7 +219,10 @@ def test() -> None:
         drive(folder, "terminal", typed(width, height))
         note = folder / "note.txt"
         note.write_text(NOTE, encoding="utf-8")
-        drive(folder, "editor", edits(note))
+        edited = drive(folder, "editor", edits(note))
+        if REFUSED not in edited or not HELD.search(edited):
+            sys.exit(f"ide: expected quit to be refused while the note has changes, "
+                     f"naming it, got:\n{edited}")
         zoomed = ZOOMED.read_text(encoding="utf-8") if ZOOMED.exists() else ""
         if numbers(zoomed) != {"zoom": [1]}:
             sys.exit(f"ide: expected the font to keep zoom = 1 after zooming in and out, "
