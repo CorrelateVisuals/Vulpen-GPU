@@ -30,6 +30,8 @@ constexpr std::string_view help_gap = "  "; // between a usage and what it does
 constexpr std::string_view prompt_end = "> ";
 // What complete reads as a word not begun, since a line's words cannot be empty.
 constexpr std::string_view no_word = "\"\"";
+// After a usage's last placeholder: it takes one argument or more.
+constexpr std::string_view one_or_more = "...";
 constexpr std::string_view output_mark = "{out}"; // a node's lines, as the log marks them
 
 // In a window: what it keeps, and how it lays out, in pixels.
@@ -62,6 +64,23 @@ bool placeholder(std::string_view word) {
   return word.starts_with('<') || word.starts_with('[');
 }
 
+// A usage's placeholder: what it stands for, without the brackets a line may leave it
+// out by, and whether it takes more, standing for every word after it too, so
+// [<node>...] is a <node> that repeats.
+struct Kind {
+  std::string_view name;
+  bool more = false;
+};
+
+Kind kind_of(std::string_view word) {
+  if (word.starts_with('[') && word.ends_with(']'))
+    word = word.substr(1, word.size() - 2);
+  const bool more = word.ends_with(one_or_more);
+  if (more)
+    word.remove_suffix(one_or_more.size());
+  return {word, more};
+}
+
 // Whether a line names the view it addresses, as `<name>: …` or `: …`.
 bool addressed(std::string_view line) {
   const std::vector<std::string_view> words = words_of(line);
@@ -88,26 +107,47 @@ std::string_view newest(std::string_view children) {
   return newest;
 }
 
-// What a placeholder stands for in the view: its nodes or connections, or the params of
-// the node named just before a key. Any other answers as itself.
-std::vector<std::string> names(std::string_view kind,
-                               const VP::View &view,
-                               std::span<const std::string_view> typed) {
+// The folders and files where a path begun points, each as the whole word, from where
+// vulpen started, as a typed line's <file> resolves. A name with a blank would split into
+// two words, so it is left out, and a hidden one shows once the name begun starts with a
+// dot, as in a shell. A folder that cannot be listed, as a file followed by /, is refused
+// by the file port, naming why.
+std::vector<std::string> paths(VP::FilePort &files, std::string_view begun) {
+  const std::string_view folder = begun.substr(0, begun.rfind('/') + 1);
+  const bool hidden = begun.substr(folder.size()).starts_with('.');
+  std::vector<std::string> paths;
+  for (const std::string &name :
+       files.list((std::filesystem::current_path() / folder).string()))
+    if ((hidden || !name.starts_with('.')) && name.find(' ') == std::string::npos)
+      paths.push_back(std::string(folder).append(name));
+  return paths;
+}
+
+// What a placeholder stands for: the view's nodes or connections, the params of the
+// node named just before a key, or the paths a word begun may become. Any other answers
+// as itself.
+std::vector<std::string> names(std::string_view word,
+                               VP::Call &call,
+                               std::span<const std::string_view> typed,
+                               std::string_view begun) {
+  const std::string_view kind = kind_of(word).name;
   std::vector<std::string> names;
   if (kind == "<node>") {
-    for (const VP::Node &node : view.nodes)
+    for (const VP::Node &node : call.view().nodes)
       names.push_back(node.name);
   } else if (kind == "<connection>") {
-    for (const VP::Connection &connection : view.connections)
+    for (const VP::Connection &connection : call.view().connections)
       names.push_back(connection.name);
   } else if (kind == "<key>" && typed.size() > 1) {
-    const auto node =
-        std::ranges::find(view.nodes, typed[typed.size() - 2], &VP::Node::name);
-    if (node != view.nodes.end())
+    const std::vector<VP::Node> &nodes = call.view().nodes;
+    const auto node = std::ranges::find(nodes, typed[typed.size() - 2], &VP::Node::name);
+    if (node != nodes.end())
       for (const VP::Param &param : node->params)
         names.push_back(param.key);
+  } else if (kind == "<file>") {
+    names = paths(call.files(), begun);
   } else {
-    names.emplace_back(kind);
+    names.emplace_back(word);
   }
   return names;
 }
@@ -484,7 +524,9 @@ class CommandLine final : public VP::Operator {
   // As a shell does: the word at the caret takes what every candidate shares, a word
   // only one candidate fits is finished, and several show in the list until the next
   // key, where a press on one types the rest of it. A placeholder, as <name>, shows what
-  // may come but is never typed in.
+  // may come but is never typed in. A folder is finished with no blank, so Tab again
+  // lists what it holds, and a path's candidates show from its last /, under the name
+  // they complete.
   void complete_word(VP::Cook &frame) {
     const std::string_view before = std::string_view(_line).substr(0, _caret);
     _word = before.find_last_of(' ') + 1; // 0 when there is none
@@ -497,18 +539,24 @@ class CommandLine final : public VP::Operator {
         candidates, std::back_inserter(typeable), [](std::string_view candidate) {
           return !placeholder(candidate);
         });
+    // Read before the line changes, since a word not completed points into it.
     const std::string_view shared = typeable.empty() ? word : shared_start(typeable);
     const std::size_t typed = shared.size(); // the word at the caret, as completed
+    const std::size_t name = shared.rfind('/') + 1; // 0 when it names no folder
+    const bool folder = shared.ends_with('/');
     _line.insert(_caret, shared.substr(word.size()));
     _caret += typed - word.size();
     if (candidates.size() == 1 && typeable.size() == 1) {
-      _line.insert(_caret++, 1, ' ');
+      if (!folder)
+        _line.insert(_caret++, 1, ' ');
       return _items->clear();
     }
+    _word += name;
     _items->clear();
     for (const std::string_view candidate : candidates)
       _items->push_back(
-          {.label = std::string(candidate), .command = rest_typed(candidate, typed)});
+          {.label = std::string(placeholder(candidate) ? candidate : candidate.substr(name)),
+           .command = rest_typed(candidate, typed)});
   }
 
   // Each line of the text a row, the oldest dropped past the scrollback's room.
@@ -677,7 +725,9 @@ class CommandLine final : public VP::Operator {
     const std::string_view begun = typed.back() == no_word ? "" : typed.back();
     std::set<std::string> found; // sorted, and each once
     for (const VP::Usage &usage : call.commands().usages()) {
-      const std::vector<std::string_view> words = words_of(usage.usage);
+      std::vector<std::string_view> words = words_of(usage.usage);
+      if (kind_of(words.back()).more && words.size() < typed.size())
+        words.resize(typed.size(), words.back());
       if (words.size() < typed.size())
         continue;
       const bool fits =
@@ -689,7 +739,7 @@ class CommandLine final : public VP::Operator {
       const std::string_view next = words[typed.size() - 1];
       if (!fits)
         continue;
-      for (const std::string &word : placeholder(next) ? names(next, call.view(), typed)
+      for (const std::string &word : placeholder(next) ? names(next, call, typed, begun)
                                                        : std::vector{std::string(next)})
         if (word.starts_with(begun) || placeholder(word))
           found.insert(word);

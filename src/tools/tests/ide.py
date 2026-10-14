@@ -13,7 +13,8 @@ escapes until modes sends quit, which the editor's hold must refuse, naming the 
 the run runs all its frames and the file keeps only what was written. Two more runs host
 the triangle example, presented as it comes: one in edit mode, its window in the Perform
 panel, which also takes ls on standard input, as the terminal vulpen was started from,
-and prints what it answers, and one in perform mode by the keymap's chord, its window
+and prints what it answers, and completes a path begun to the one folder it fits from
+the folders the file port lists, and one in perform mode by the keymap's chord, its window
 over the whole window; a third then presses escape three times, back to edit mode, out of
 the terminal's focus and out of the run, which must end before its frames do; every other
 run must run all of them, so the end of standard input, which every run finds at once,
@@ -48,6 +49,9 @@ PERFORM = [*PRESENT, "input key down f2", "input key up f2"]  # the chord: mode 
 ESCAPE = [*PERFORM, *["input key down escape"] * 3]
 RAN = re.compile(r"\{run\} ran (\d+) frames")
 LISTED = "node ide.keys of recipe keys"  # a line ls answers for the ide
+# The folder a path begun completes to, which complete answers alone on its line.
+COMPLETE = f"complete view load {TRIANGLE.parent}/tri"
+COMPLETED = f"{TRIANGLE}/"
 # Every scripted event reaches the first frame, so the presses are placed for its size.
 SIZE = re.compile(r"\{swp\} presents \d+ images of (\d+)x(\d+)")
 WAVE = Path(__file__).resolve().parents[2] / "examples" / "wave"
@@ -211,7 +215,9 @@ def main() -> None:
 def test() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         folder = Path(temporary)
-        presented = drive(folder, "presented view", PRESENT, typed="ls\n")
+        presented = drive(folder, "presented view", [*PRESENT, COMPLETE], typed="ls\n")
+        if COMPLETED not in presented.splitlines():
+            sys.exit(f"ide: expected {COMPLETE} to answer {COMPLETED}, got:\n{presented}")
         if not (size := SIZE.search(presented)) or LISTED not in presented:
             sys.exit(f"ide: expected the log to name the window's size, and ls typed on "
                      f"standard input to print {LISTED}, got:\n{presented}")
