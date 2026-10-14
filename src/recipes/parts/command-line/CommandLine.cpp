@@ -1,3 +1,6 @@
+// Longer than a file should be (CPP12): the line typed, its completion, its history and
+// the rows above it are one part's job, and a part's class stays in one file's unnamed
+// namespace, so two copies of the part in one binary never clash.
 #include "contracts/Font.h"
 #include "contracts/Item.h"
 #include "contracts/Label.h"
@@ -6,6 +9,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Scroll.h"
 
 #include <algorithm>
 #include <cmath>
@@ -44,8 +48,9 @@ constexpr std::uint32_t rule_width = 1;
 constexpr std::uint32_t caret_width = 2;
 constexpr std::uint32_t label_room = 256;
 constexpr std::size_t rows_most = label_room - 2; // the prompt and the line take two
-// The ground, the rule above the line, the caret, and the selection a row shown.
-constexpr std::uint32_t rect_room = 3 + rows_most;
+// The ground, the rule above the line, the caret, the scroll bar's thumb, and the
+// selection a row shown.
+constexpr std::uint32_t rect_room = 4 + rows_most;
 constexpr std::uint32_t character_room = 65536;
 
 // A usage's words, split at its blanks as the command port splits a line.
@@ -242,8 +247,9 @@ struct Mark {
 // In a window it takes keys from the keys part while it has the focus, which a press in
 // its area gives it, and shows what lines answer and the log above the line typed, in
 // the Rect its area gives, with a tab for the panel it sits in, named by its title param;
-// a drag selects in what it shows, which control with c copies. The terminal vulpen was
-// started from takes lines then too, as the CLI's does, but its end ends no run.
+// a drag selects in what it shows, which control with c copies, and the wheel or a drag
+// on the bar at its right edge scrolls it. The terminal vulpen was started from takes
+// lines then too, as the CLI's does, but its end ends no run.
 // A line that names no view goes to the view hosted most recently, as view new and view
 // load leave it, so it needs no name and every log line still has one. The prompt shows
 // that view's folder, as a shell shows the one it is in.
@@ -301,6 +307,7 @@ class CommandLine final : public VP::Operator {
   // no room it takes no keys, so a line never runs where nobody sees it typed. A key let
   // go while another part had the focus never came, so out of focus control counts as up.
   void in_window(VP::Cook &frame) {
+    fit(0);
     for (const VP::Logged &line : frame.commands().log())
       show(line.text, role_of(line));
     point(frame);
@@ -314,16 +321,25 @@ class CommandLine final : public VP::Operator {
 
   // A press in its area gives it the focus, so typing goes where the pointer was, and one
   // on the rows above the line starts a selection there, which a drag stretches; in the
-  // order the events came, so a press is tested where the pointer was then.
+  // order the events came, so a press is tested where the pointer was then. A press on
+  // the scroll bar only scrolls.
   void point(VP::Cook &frame) {
     const Grid grid = this->grid();
-    for (const VP::Event &event : frame.input().events())
+    const VP_VIEW::Rect track = this->track(grid);
+    for (const VP::Event &event : frame.input().events()) {
+      const bool inside = VP_VIEW::contains(*_area, _pointer);
       if (event.kind == VP::Event::Kind::pointer) {
         _pointer = event.at;
+        _scroll.drag(_pointer, track);
         if (_selecting)
           _end = mark_at(grid);
+      } else if (event.kind == VP::Event::Kind::wheel && inside && grid.room) {
+        _scroll.wheel(event.turn.y);
       } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
-        const bool inside = VP_VIEW::contains(*_area, _pointer);
+        if (!event.down)
+          _scroll.release();
+        if (event.down && inside && grid.room && _scroll.press(_pointer, track))
+          continue;
         _selecting = event.down && inside && grid.room && !_scrollback.empty() &&
                      _pointer.y < static_cast<float>(grid.rule);
         if (event.down && inside)
@@ -331,6 +347,7 @@ class CommandLine final : public VP::Operator {
         if (event.down && inside && !focused())
           frame.commands().send(std::format("focus {}", _name));
       }
+    }
   }
 
   // The place nearest the pointer in the rows shown: the row it is on, or the nearest,
@@ -347,7 +364,7 @@ class CommandLine final : public VP::Operator {
     const glm::vec2 cells = (_pointer - from) / cell;
     const auto row = static_cast<std::size_t>(
         std::clamp(std::floor(cells.y), 0.0f, static_cast<float>(shown - 1)));
-    const std::size_t index = _scrollback.size() - shown + row;
+    const std::size_t index = _scroll.first() + row;
     const auto column = static_cast<std::size_t>(std::max(0.0f, std::round(cells.x)));
     return {_dropped + index, std::min(column, _scrollback[index].text.size())};
   }
@@ -399,11 +416,11 @@ class CommandLine final : public VP::Operator {
     return _folder + std::string(prompt_end);
   }
 
-  // As the area, the font and the prompt are now.
+  // As the area, the font and the prompt are now, the text clear of the scroll bar.
   Grid grid() const {
     const glm::ivec2 size(_area->extent);
     const glm::ivec2 cell(_font->cell);
-    Grid grid{.columns = cell.x == 0 ? 0 : (size.x - 2 * margin) / cell.x,
+    Grid grid{.columns = cell.x == 0 ? 0 : (size.x - 2 * margin - Scroll::width) / cell.x,
               .left = _area->offset.x + margin,
               .line = _area->offset.y + size.y - margin - cell.y};
     grid.rule = grid.line - margin;
@@ -497,10 +514,12 @@ class CommandLine final : public VP::Operator {
     type(text);
   }
 
-  // A blank line only shows the prompt again, as a shell's does.
+  // A blank line only shows the prompt again, as a shell's does. Either shows the newest
+  // rows, so what the line answers shows.
   void submit(VP::Cook &frame) {
     const std::string line = std::exchange(_line, {});
     _caret = 0;
+    _scroll.move(static_cast<float>(_scrollback.size()));
     show(prompt() + line, VP_VIEW::role("accent"));
     if (line.find_first_not_of(' ') == std::string::npos)
       return;
@@ -561,10 +580,31 @@ class CommandLine final : public VP::Operator {
 
   // Each line of the text a row, the oldest dropped past the scrollback's room.
   void show(std::string_view text, std::uint32_t role) {
+    const std::size_t dropped = _dropped;
     for (const std::string_view line : lines_of(text))
       _scrollback.push_back({std::string(line), role});
     for (; _scrollback.size() > scrollback_rows; ++_dropped)
       _scrollback.pop_front();
+    fit(_dropped - dropped);
+  }
+
+  // The scroll, as the scrollback and the area are now. While the newest rows showed,
+  // they still do, as a shell's do while its output comes; else rows dropped from the
+  // front move it by as many, so the rows shown stay.
+  void fit(std::size_t dropped) {
+    const bool newest = _scroll.at_end();
+    const Grid grid = this->grid();
+    const std::size_t shown = grid.room ? rows_shown(grid) : 0;
+    _scroll.fit(_scrollback.size(), shown, _scrollback.size() - shown);
+    _scroll.move(newest ? static_cast<float>(_scrollback.size())
+                        : -static_cast<float>(dropped));
+  }
+
+  // Down the right edge of the rows above the rule.
+  VP_VIEW::Rect track(const Grid &grid) const {
+    const auto above =
+        static_cast<std::uint32_t>(std::max(0, grid.rule - _area->offset.y));
+    return Scroll::track({.offset = _area->offset, .extent = {_area->extent.x, above}});
   }
 
   // The scrollback fills the area down to the line typed, its newest row last, as a
@@ -596,7 +636,7 @@ class CommandLine final : public VP::Operator {
     const std::size_t shown = rows_shown(grid());
     const glm::uvec2 row_extent(static_cast<std::uint32_t>(columns * cell.x), cell.y);
     for (std::size_t row = 0; row < shown; ++row) {
-      const std::size_t index = _scrollback.size() - shown + row;
+      const std::size_t index = _scroll.first() + row;
       const Shown &kept = _scrollback[index];
       const auto from_rule = static_cast<std::int32_t>(shown - row) * cell.y;
       const glm::ivec2 at{left, rule - margin - from_rule};
@@ -613,6 +653,8 @@ class CommandLine final : public VP::Operator {
     // The caret shows only in focus, so it marks where typing goes.
     if (focused())
       rects[count++] = caret;
+    if (const std::optional<VP_VIEW::Rect> thumb = _scroll.thumb(track(grid())))
+      rects[count++] = *thumb;
     frame.write(_rects, count);
     frame.write(_labels, text.label_count);
     frame.write(_characters, text.character_count);
@@ -705,6 +747,7 @@ class CommandLine final : public VP::Operator {
     _dropped += _scrollback.size();
     _scrollback.clear();
     _anchor = _end;
+    fit(0);
   }
 
   // Usages aligned, so what each does reads as a column.
@@ -770,6 +813,7 @@ class CommandLine final : public VP::Operator {
   VP::Upload<VP_VIEW::Character> _characters;
   std::deque<Shown> _scrollback;
   std::size_t _dropped = 0; // rows the scrollback dropped from its front, or clear took
+  Scroll _scroll;           // the rows of it shown
   Mark _anchor;             // where a drag over the scrollback started
   Mark _end;                // where it is now; the anchor itself for no selection
   bool _selecting = false;  // from a press on the scrollback until it is let go

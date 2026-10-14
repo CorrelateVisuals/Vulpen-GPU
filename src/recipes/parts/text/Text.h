@@ -6,6 +6,7 @@
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
+#include "shared/Scroll.h"
 
 #include <compare>
 #include <cstddef>
@@ -43,7 +44,7 @@ struct Document {
   bool restyle = true;         // an edit came since commented was found
   Spot caret;
   Spot anchor;          // where the selection starts; the caret itself for none
-  std::size_t top = 0;  // the first row shown
+  Scroll scroll;        // the rows shown
   std::size_t left = 0; // the first column shown
   bool changed = false; // since it was opened or last written
 };
@@ -63,10 +64,11 @@ struct Grid {
 // is only a front end on it.
 //
 // It holds the files open, shows one, and hands a panel a tab for each, whose press
-// shows it again; while one has changes, quit refuses, naming it. It takes keys from the
-// keys part while it has the focus, which a press in its area gives it, and none while
-// it has no room. The font draws ASCII, so a character past it shows as a blank cell a
-// byte, but the caret steps over it whole and no edit ever splits it.
+// shows it again; while one has changes, quit refuses, naming it. The wheel scrolls it,
+// as does a drag on the bar at its right edge. It takes keys from the keys part while it
+// has the focus, which a press in its area gives it, and none while it has no room. The
+// font draws ASCII, so a character past it shows as a blank cell a byte, but the caret
+// steps over it whole and no edit ever splits it.
 class Text final : public VP::Operator {
   void bind(VP::Bind &node) override;
   void cook(VP::Cook &frame) override;
@@ -76,7 +78,6 @@ class Text final : public VP::Operator {
   bool focused() const;
   void point(VP::Cook &frame, const Grid &grid);
   void press(VP::Cook &frame, const Grid &grid);
-  void scroll(float turn);
   Spot spot_at(const Document &document, const Grid &grid) const;
   bool escape(VP::Cook &frame, const VP::Event &event, const Grid &grid);
   void edit(VP::InputPort &input, const VP::Event &event, const Grid &grid);

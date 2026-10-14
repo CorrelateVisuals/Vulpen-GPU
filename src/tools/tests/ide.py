@@ -29,6 +29,10 @@ must end with exit 0 and print no validation message or sanitizer report (RVK00,
 in the asan preset it checks the memory of the keys part, the terminal, the editor,
 modes, the graph, their panels, the dock, the images a hosted view's window renders
 into, the atlas made anew at another size, and the rebuild.
+The terminal run also scrolls the rows of the app's start with the wheel, a fifth of a
+step too, and drags their scroll bar to the oldest, before help, sent, shows the newest
+again; the editor run scrolls the note past its end with the wheel, and back with a drag
+on its scroll bar.
 The zoom a person keeps in the library's font folder is set aside while it runs, and put
 back after. Where no display exists it is skipped (V07).
 
@@ -112,10 +116,18 @@ def typed(width: int, height: int) -> list[str]:
         "input button down left",
         f"input pointer 300 {height - 100}",
         "input button up left",
+        # The log of the app's start fills more rows than show, so they scroll.
+        "input wheel 0 1",
+        "input wheel 0 0.2",
+        f"input pointer {width - 4} {height - 100}",  # the scroll bar, at the right edge
+        "input button down left",
+        f"input pointer {width - 4} {height // 2}",
+        "input button up left",
     ]
 
 
-def edits(note: Path) -> list[str]:
+def edits(note: Path, width: int) -> list[str]:
+    bar = round((width - 4) * 0.5) - 4  # the editor's scroll bar, left of the dock's seam
     return [
         f"open {note}",
         "find line",  # selects it, which the end key then leaves
@@ -145,7 +157,11 @@ def edits(note: Path) -> list[str]:
         "input button down left",
         "input pointer 500 260",
         "input button up left",
-        "input wheel 0 -1",
+        "input wheel 0 -1",  # past the note's end, so the bar shows
+        f"input pointer {bar} 260",
+        "input button down left",
+        f"input pointer {bar} 100",
+        "input button up left",
         "input key down control",
         "input key down =",  # the chord: zoom in, so the font bakes a larger atlas
         "input key up =",
@@ -249,7 +265,7 @@ def test() -> None:
         drive(folder, "terminal", typed(width, height))
         note = folder / "note.txt"
         note.write_text(NOTE, encoding="utf-8")
-        edited = drive(folder, "editor", edits(note))
+        edited = drive(folder, "editor", edits(note, width))
         if REFUSED not in edited or not HELD.search(edited):
             sys.exit(f"ide: expected quit to be refused while the note has changes, "
                      f"naming it, got:\n{edited}")

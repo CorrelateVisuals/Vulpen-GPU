@@ -16,10 +16,9 @@ constexpr std::uint32_t caret_width = 2;
 constexpr std::size_t row_room = 256; // rows shown at most; a taller area shows these
 constexpr std::uint32_t label_room = 16384; // a run of one role a Label, in rows shown
 constexpr std::uint32_t character_room = 131072; // the rows' characters together
-// The ground, a selection Rect a row shown, and the caret.
-constexpr std::uint32_t rect_room = row_room + 2;
-constexpr std::size_t indent = 2;  // Tab types spaces to a multiple of this column
-constexpr float wheel_rows = 3.0f; // rows a step of the wheel scrolls
+// The ground, a selection Rect a row shown, the caret and the scroll bar's thumb.
+constexpr std::uint32_t rect_room = row_room + 3;
+constexpr std::size_t indent = 2; // Tab types spaces to a multiple of this column
 constexpr char first_printable = ' '; // the font draws printable ASCII
 constexpr char last_printable = '~';
 // UTF-8 (RFC 3629): a byte that only continues a character starts with the bits 10.
@@ -358,15 +357,21 @@ void Text::cook(VP::Cook &frame) {
   for (const VP::Event &event : _typed->to(_name))
     if (!escape(frame, event, grid))
       edit(frame.input(), event, grid);
+  if (!_documents.empty()) {
+    Document &document = _documents[_shown];
+    document.scroll.fit(document.lines.size(), grid.rows, document.lines.size() - 1);
+  }
   point(frame, grid);
   lay_out(frame, grid);
   if (!_unsaved.empty())
     frame.hold(_unsaved);
 }
 
+// The text keeps clear of the scroll bar.
 Grid Text::grid() const {
   const glm::ivec2 cell(_font->cell);
-  const glm::ivec2 room = glm::ivec2(_area->extent) - 2 * margin;
+  const glm::ivec2 room =
+      glm::ivec2(_area->extent) - 2 * margin - glm::ivec2(Scroll::width, 0);
   if (cell.x <= 0 || cell.y <= 0 || room.x < cell.x || room.y < cell.y)
     return {};
   return {.origin = _area->offset + margin,
@@ -380,22 +385,32 @@ bool Text::focused() const {
 }
 
 // In the order the events came, so a press is tested where the pointer was then. A drag
-// moves the caret and leaves the selection's start where it was pressed.
+// moves the caret and leaves the selection's start where it was pressed; a press on the
+// scroll bar only scrolls.
 void Text::point(VP::Cook &frame, const Grid &grid) {
+  Scroll *const scroll =
+      _documents.empty() || grid.rows == 0 ? nullptr : &_documents[_shown].scroll;
+  const VP_VIEW::Rect track = Scroll::track(*_area);
   for (const VP::Event &event : frame.input().events()) {
     const bool inside = VP_VIEW::contains(*_area, _pointer);
     if (event.kind == VP::Event::Kind::pointer) {
       _pointer = event.at;
+      if (scroll)
+        scroll->drag(_pointer, track);
       if (_dragging && grid.rows > 0) {
         _documents[_shown].caret = spot_at(_documents[_shown], grid);
         _follow = true;
       }
     } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
-      _dragging = event.down && inside && grid.rows > 0 && !_documents.empty();
+      if (scroll && !event.down)
+        scroll->release();
+      if (event.down && inside && scroll && scroll->press(_pointer, track))
+        continue;
+      _dragging = event.down && inside && scroll != nullptr;
       if (event.down && inside)
         press(frame, grid);
-    } else if (event.kind == VP::Event::Kind::wheel && inside && !_documents.empty()) {
-      scroll(event.turn.y);
+    } else if (event.kind == VP::Event::Kind::wheel && inside && scroll) {
+      scroll->wheel(event.turn.y);
     }
   }
 }
@@ -411,22 +426,13 @@ void Text::press(VP::Cook &frame, const Grid &grid) {
   _follow = true;
 }
 
-// The wheel turns up by a positive step, which shows the rows above.
-void Text::scroll(float turn) {
-  Document &document = _documents[_shown];
-  const auto rows = static_cast<std::ptrdiff_t>(std::lround(-turn * wheel_rows));
-  const auto last = static_cast<std::ptrdiff_t>(document.lines.size()) - 1;
-  document.top = static_cast<std::size_t>(std::clamp(
-      static_cast<std::ptrdiff_t>(document.top) + rows, std::ptrdiff_t{0}, last));
-}
-
 // The spot nearest the pointer: the row it is on, and the boundary between characters
 // closest to it, so a press between two puts the caret between them.
 Spot Text::spot_at(const Document &document, const Grid &grid) const {
   const glm::vec2 cells = (_pointer - glm::vec2(grid.origin)) / glm::vec2(grid.cell);
   const auto row = static_cast<std::size_t>(std::max(0.0f, std::floor(cells.y)));
   const auto column = static_cast<std::size_t>(std::max(0.0f, std::round(cells.x)));
-  return at(document, document.top + row, document.left + column);
+  return at(document, document.scroll.first() + row, document.left + column);
 }
 
 // Escape lets go of the selection, and with none of the focus, so the next escape reaches
@@ -524,19 +530,23 @@ void Text::lay_out(VP::Cook &frame, const Grid &grid) {
   follow(document, grid);
   if (std::exchange(document.restyle, false))
     find_comments(document);
-  const std::size_t rows = std::min(grid.rows, document.lines.size() - document.top);
+  const std::size_t top = document.scroll.first();
+  const std::size_t rows = std::min(grid.rows, document.lines.size() - top);
   const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
   rects[0] = {.offset = _area->offset,
               .extent = _area->extent,
               .role = VP_VIEW::role("background")};
   std::size_t count = 1 + select(document, grid, rows, rects.subspan(1));
   const Spot caret = document.caret;
-  if (focused() && caret.row >= document.top && caret.row < document.top + rows &&
+  if (focused() && caret.row >= top && caret.row < top + rows &&
       caret.column >= document.left && caret.column < document.left + grid.columns)
     rects[count++] = {
-        .offset = cell_at(grid, caret.row - document.top, caret.column - document.left),
+        .offset = cell_at(grid, caret.row - top, caret.column - document.left),
         .extent = {caret_width, static_cast<std::uint32_t>(grid.cell.y)},
         .role = VP_VIEW::role("accent")};
+  if (const std::optional<VP_VIEW::Rect> thumb =
+          document.scroll.thumb(Scroll::track(*_area)))
+    rects[count++] = *thumb;
   frame.write(_rects, count);
   write_lines(frame, document, grid, rows);
 }
@@ -544,12 +554,10 @@ void Text::lay_out(VP::Cook &frame, const Grid &grid) {
 // The first row and column shown, scrolled so the caret shows once it moved; the wheel
 // alone may leave it out of view.
 void Text::follow(Document &document, const Grid &grid) {
-  document.top = std::min(document.top, document.lines.size() - 1);
   if (!std::exchange(_follow, false))
     return;
   const Spot caret = document.caret;
-  document.top = std::clamp(
-      document.top, caret.row + 1 - std::min(caret.row + 1, grid.rows), caret.row);
+  document.scroll.show(caret.row);
   document.left = std::clamp(document.left,
                              caret.column + 1 - std::min(caret.column + 1, grid.columns),
                              caret.column);
@@ -563,7 +571,7 @@ std::size_t Text::select(const Document &document,
   const auto [from, to] = selection(document);
   std::size_t count = 0;
   for (std::size_t shown = 0; shown < rows && from != to; ++shown) {
-    const std::size_t row = document.top + shown;
+    const std::size_t row = document.scroll.first() + shown;
     if (row < from.row || row > to.row)
       continue;
     const std::size_t first = std::max(row == from.row ? from.column : 0, document.left);
@@ -603,7 +611,7 @@ void Text::write_lines(VP::Cook &frame,
   std::uint32_t count = 0;
   std::uint32_t next = 0;
   for (std::size_t shown = 0; shown < rows; ++shown) {
-    const std::size_t row = document.top + shown;
+    const std::size_t row = document.scroll.first() + shown;
     const std::string_view line = document.lines[row];
     const std::size_t right = document.left + grid.columns;
     const std::uint32_t first = count; // the row's first Label
