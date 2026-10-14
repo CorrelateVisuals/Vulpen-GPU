@@ -65,8 +65,9 @@ struct Grid {
 //
 // It holds the files open, shows one, and hands a panel a tab for each, whose press
 // shows it again; while one has changes, quit refuses, naming it. The wheel scrolls it,
-// as does a drag on the bar at its right edge. It takes keys from the keys part while it
-// has the focus, which a press in its area gives it, and none while it has no room. The
+// as does a drag on the bar at its right edge; a double click selects a word, and one
+// more press the row. It takes keys from the keys part while it has the focus, which a
+// press in its area gives it, and none while it has no room. The
 // font draws ASCII, so a character past it shows as a blank cell a byte, but the caret
 // steps over it whole and no edit ever splits it.
 class Text final : public VP::Operator {
@@ -77,8 +78,8 @@ class Text final : public VP::Operator {
   Grid grid() const;
   bool focused() const;
   void point(VP::Cook &frame, const Grid &grid);
-  void press(VP::Cook &frame, const Grid &grid);
-  Spot spot_at(const Document &document, const Grid &grid) const;
+  void press(VP::Cook &frame, const Grid &grid, std::uint32_t presses);
+  Spot spot_at(const Document &document, const Grid &grid, bool character = false) const;
   bool escape(VP::Cook &frame, const VP::Event &event, const Grid &grid);
   void edit(VP::InputPort &input, const VP::Event &event, const Grid &grid);
   bool clip(VP::InputPort &input, Document &document, std::string_view key) const;

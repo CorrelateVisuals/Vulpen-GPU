@@ -57,6 +57,16 @@ std::string checked_button(std::string_view name) {
   return std::string(name);
 }
 
+std::uint32_t presses_of(std::string_view word) {
+  std::uint32_t presses = 0;
+  const auto [end, error] =
+      std::from_chars(word.data(), word.data() + word.size(), presses);
+  if (error != std::errc{} || end != word.data() + word.size() || presses == 0)
+    throw std::runtime_error(std::format(
+        "{} is no count of presses: 1 for one, 2 for a double click's second", word));
+  return presses;
+}
+
 } // namespace
 
 File Ports::open(const std::filesystem::path &file) {
@@ -184,8 +194,9 @@ void Ports::listen(Commands &commands) {
       .pointer =
           form("input pointer <value> <value>",
                "moves the pointer to x and y, in pixels from the window's top left"),
-      .button_down = form("input button down <value>",
-                          "presses a pointer button: left, right or middle"),
+      .button_down = form("input button down <value> [<value>]",
+                          "presses a pointer button: left, right or middle; a count "
+                          "after it, as 2, makes it the second press of a double click"),
       .button_up = form("input button up <value>", "lets a pointer button go"),
       .wheel = form("input wheel <value> <value>", "turns the wheel by x and y"),
       .focus_on = form("input focus on", "gives the window focus"),
@@ -276,9 +287,11 @@ void Ports::command(Call &call) {
   } else if (call.is(_input.pointer)) {
     add({.kind = Event::Kind::pointer, .at = {number(words[0]), number(words[1])}});
   } else if (call.is(_input.button_down) || call.is(_input.button_up)) {
+    const bool down = call.is(_input.button_down);
     add({.kind = Event::Kind::button,
-         .down = call.is(_input.button_down),
-         .name = checked_button(words[0])});
+         .down = down,
+         .name = checked_button(words[0]),
+         .presses = !down ? 0 : words.size() > 1 ? presses_of(words[1]) : 1});
   } else if (call.is(_input.wheel)) {
     add({.kind = Event::Kind::wheel, .turn = {number(words[0]), number(words[1])}});
   } else {

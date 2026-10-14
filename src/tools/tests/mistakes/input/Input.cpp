@@ -14,7 +14,7 @@ std::array<VP::Event, 7> expected() {
   return {{{.kind = Kind::key, .down = true, .name = "a"},
            {.kind = Kind::text, .name = "hello world"},
            {.kind = Kind::pointer, .at = {12.5f, 40.0f}},
-           {.kind = Kind::button, .down = true, .name = "left"},
+           {.kind = Kind::button, .down = true, .name = "left", .presses = 1},
            {.kind = Kind::wheel, .turn = {0.0f, -1.0f}},
            {.kind = Kind::focus},
            {.kind = Kind::key, .name = "enter"}}};

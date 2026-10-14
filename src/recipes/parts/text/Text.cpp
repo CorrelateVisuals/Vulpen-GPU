@@ -1,6 +1,7 @@
 #include "Text.h"
 
 #include "contracts/Palette.h"
+#include "shared/Words.h"
 
 #include <algorithm>
 #include <cmath>
@@ -408,15 +409,17 @@ void Text::point(VP::Cook &frame, const Grid &grid) {
         continue;
       _dragging = event.down && inside && scroll != nullptr;
       if (event.down && inside)
-        press(frame, grid);
+        press(frame, grid, event.presses);
     } else if (event.kind == VP::Event::Kind::wheel && inside && scroll) {
       scroll->wheel(event.turn.y);
     }
   }
 }
 
-// A press gives it the focus, and puts the caret where it was.
-void Text::press(VP::Cook &frame, const Grid &grid) {
+// A press gives it the focus, and puts the caret where it was. The second in a row
+// selects the word pressed, and any more the row with its break, as a cut then takes the
+// row whole; a drag leaves either as it is.
+void Text::press(VP::Cook &frame, const Grid &grid, std::uint32_t presses) {
   if (!focused())
     frame.commands().send(std::format("focus {}", _name));
   if (!_dragging)
@@ -424,14 +427,31 @@ void Text::press(VP::Cook &frame, const Grid &grid) {
   Document &document = _documents[_shown];
   document.caret = document.anchor = spot_at(document, grid);
   _follow = true;
+  if (presses < 2)
+    return;
+  _dragging = false;
+  const Spot pressed = spot_at(document, grid, true);
+  const std::string &line = document.lines[pressed.row];
+  if (presses == 2) {
+    const auto [from, to] = word_at(line, pressed.column);
+    document.anchor = {pressed.row, from};
+    document.caret = {pressed.row, to};
+  } else {
+    document.anchor = {pressed.row, 0};
+    document.caret = pressed.row + 1 < document.lines.size()
+                         ? Spot{pressed.row + 1, 0}
+                         : Spot{pressed.row, line.size()};
+  }
 }
 
 // The spot nearest the pointer: the row it is on, and the boundary between characters
-// closest to it, so a press between two puts the caret between them.
-Spot Text::spot_at(const Document &document, const Grid &grid) const {
+// closest to it, so a press between two puts the caret between them; or with character,
+// the start of the character it is on, as a double click's word is found from.
+Spot Text::spot_at(const Document &document, const Grid &grid, bool character) const {
   const glm::vec2 cells = (_pointer - glm::vec2(grid.origin)) / glm::vec2(grid.cell);
   const auto row = static_cast<std::size_t>(std::max(0.0f, std::floor(cells.y)));
-  const auto column = static_cast<std::size_t>(std::max(0.0f, std::round(cells.x)));
+  const auto column = static_cast<std::size_t>(
+      std::max(0.0f, character ? std::floor(cells.x) : std::round(cells.x)));
   return at(document, document.scroll.first() + row, document.left + column);
 }
 

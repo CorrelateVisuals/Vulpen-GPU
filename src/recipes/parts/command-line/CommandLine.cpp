@@ -10,6 +10,7 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Scroll.h"
+#include "shared/Words.h"
 
 #include <algorithm>
 #include <cmath>
@@ -247,8 +248,9 @@ struct Mark {
 // In a window it takes keys from the keys part while it has the focus, which a press in
 // its area gives it, and shows what lines answer and the log above the line typed, in
 // the Rect its area gives, with a tab for the panel it sits in, named by its title param;
-// a drag selects in what it shows, which control with c copies, and the wheel or a drag
-// on the bar at its right edge scrolls it. The terminal vulpen was started from takes
+// a drag selects in what it shows, as a double click does a word and one more press its
+// row, which control with c copies, and the wheel or a drag on the bar at its right edge
+// scrolls it. The terminal vulpen was started from takes
 // lines then too, as the CLI's does, but its end ends no run.
 // A line that names no view goes to the view hosted most recently, as view new and view
 // load leave it, so it needs no name and every log line still has one. The prompt shows
@@ -344,16 +346,30 @@ class CommandLine final : public VP::Operator {
                      _pointer.y < static_cast<float>(grid.rule);
         if (event.down && inside)
           _anchor = _end = _selecting ? mark_at(grid) : _end;
+        if (_selecting && event.presses > 1)
+          select_run(grid, event.presses);
         if (event.down && inside && !focused())
           frame.commands().send(std::format("focus {}", _name));
       }
     }
   }
 
+  // The second press in a row selects the word pressed, and any more the row; a drag
+  // leaves either as it is.
+  void select_run(const Grid &grid, std::uint32_t presses) {
+    const Mark pressed = mark_at(grid, true);
+    const std::string &row = _scrollback[pressed.row - _dropped].text;
+    const auto [from, to] = presses == 2 ? word_at(row, pressed.column)
+                                         : std::pair{std::size_t{0}, row.size()};
+    _anchor = {pressed.row, from};
+    _end = {pressed.row, to};
+    _selecting = false;
+  }
+
   // The place nearest the pointer in the rows shown: the row it is on, or the nearest,
   // and the boundary between characters closest to it, as a press puts the editor's
-  // caret.
-  Mark mark_at(const Grid &grid) const {
+  // caret; or with character, the start of the character it is on.
+  Mark mark_at(const Grid &grid, bool character = false) const {
     const glm::vec2 cell(_font->cell);
     const std::size_t shown = rows_shown(grid);
     if (shown == 0) // cleared, or given no room, while dragged
@@ -365,7 +381,8 @@ class CommandLine final : public VP::Operator {
     const auto row = static_cast<std::size_t>(
         std::clamp(std::floor(cells.y), 0.0f, static_cast<float>(shown - 1)));
     const std::size_t index = _scroll.first() + row;
-    const auto column = static_cast<std::size_t>(std::max(0.0f, std::round(cells.x)));
+    const auto column = static_cast<std::size_t>(
+        std::max(0.0f, character ? std::floor(cells.x) : std::round(cells.x)));
     return {_dropped + index, std::min(column, _scrollback[index].text.size())};
   }
 

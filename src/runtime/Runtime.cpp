@@ -16,6 +16,7 @@
 #include <atomic>
 #include <charconv>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <format>
 #include <fstream>
@@ -38,6 +39,10 @@ constexpr std::uint32_t default_fps = 60;
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 constexpr auto scan_interval = std::chrono::milliseconds(100);
 constexpr const char *build_log = "live-build.log";
+// How soon and how near a press must follow the one before, of the same button, to count
+// one more in a row, as a double click's second does: one place for every part (C02).
+constexpr auto press_interval = std::chrono::milliseconds(500);
+constexpr float press_reach = 6.0f; // pixels, either way
 
 template <class T> T number(std::string_view flag, std::string_view text);
 
@@ -95,10 +100,14 @@ private:
     _ports.add({.kind = Event::Kind::text, .name = std::string(typed)});
   }
   void pointer(float x, float y) override {
-    _ports.add({.kind = Event::Kind::pointer, .at = {x, y}});
+    _pointer = {x, y};
+    _ports.add({.kind = Event::Kind::pointer, .at = _pointer});
   }
   void button(std::string_view name, bool down) override {
-    _ports.add({.kind = Event::Kind::button, .down = down, .name = std::string(name)});
+    _ports.add({.kind = Event::Kind::button,
+                .down = down,
+                .name = std::string(name),
+                .presses = down ? pressed(name) : 0});
   }
   void wheel(float x, float y) override {
     _ports.add({.kind = Event::Kind::wheel, .turn = {x, y}});
@@ -107,7 +116,28 @@ private:
     _ports.add({.kind = Event::Kind::focus, .down = gained});
   }
 
+  // The press's place in its row, which the clock alone tells, so it is counted here, as
+  // the window hands it on; the input command is given it.
+  std::uint32_t pressed(std::string_view button) {
+    const auto now = std::chrono::steady_clock::now();
+    const glm::vec2 by = _pointer - _press.where;
+    const bool again = button == _press.button && now - _press.at <= press_interval &&
+                       std::abs(by.x) <= press_reach && std::abs(by.y) <= press_reach;
+    _press = {std::string(button), now, _pointer, again ? _press.presses + 1 : 1};
+    return _press.presses;
+  }
+
+  // The press before, for the next to count from.
+  struct Press {
+    std::string button;
+    std::chrono::steady_clock::time_point at;
+    glm::vec2 where{};
+    std::uint32_t presses = 0;
+  };
+
   Ports &_ports;
+  glm::vec2 _pointer{};
+  Press _press;
 };
 
 // Owns every module and runs the loop.

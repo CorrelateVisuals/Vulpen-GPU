@@ -191,6 +191,9 @@ struct Event {
   std::string name;
   glm::vec2 at{};   // where the pointer went, in pixels from the window's top left
   glm::vec2 turn{}; // how far the wheel turned
+  // A button pressed: how many presses of it came in a row, each soon after the one
+  // before and near it, so 2 is a double click's second; 0 for every other event.
+  std::uint32_t presses = 0;
 
   bool operator==(const Event &) const = default;
 };

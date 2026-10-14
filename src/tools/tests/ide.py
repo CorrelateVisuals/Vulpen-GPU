@@ -32,7 +32,7 @@ into, the atlas made anew at another size, and the rebuild.
 The terminal run also scrolls the rows of the app's start with the wheel, a fifth of a
 step too, and drags their scroll bar to the oldest, before help, sent, shows the newest
 again; the editor run scrolls the note past its end with the wheel, and back with a drag
-on its scroll bar.
+on its scroll bar. In both, three presses in a row select a word, then its row.
 The zoom a person keeps in the library's font folder is set aside while it runs, and put
 back after. Where no display exists it is skipped (V07).
 
@@ -79,6 +79,13 @@ REFUSED = "quit would lose what nodes hold"
 HELD = re.compile(r"ide\.editor\.text: \S+/note\.txt\* has changes")
 
 
+def clicks(x: int, y: int) -> list[str]:
+    """A press, a double click's second and a third, at a place, as a person's in a row."""
+    return [f"input pointer {x} {y}", "input button down left", "input button up left",
+            "input button down left 2", "input button up left",
+            "input button down left 3", "input button up left"]
+
+
 def typed(width: int, height: int) -> list[str]:
     seam = round((height - 4) * 0.65) + 2  # the middle of its 4 pixels, at the dock's ratio
     return [
@@ -123,6 +130,7 @@ def typed(width: int, height: int) -> list[str]:
         "input button down left",
         f"input pointer {width - 4} {height // 2}",
         "input button up left",
+        *clicks(70, height - 60),  # a word of the oldest rows, and then its row
     ]
 
 
@@ -162,6 +170,7 @@ def edits(note: Path, width: int) -> list[str]:
         "input button down left",
         f"input pointer {bar} 100",
         "input button up left",
+        *clicks(100, 70),  # a word of the note's top rows, then its row
         "input key down control",
         "input key down =",  # the chord: zoom in, so the font bakes a larger atlas
         "input key up =",
