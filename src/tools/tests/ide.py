@@ -19,13 +19,16 @@ over the whole window; a third then presses escape three times, back to edit mod
 the terminal's focus and out of the run, which must end before its frames do; every other
 run must run all of them, so the end of standard input, which every run finds at once,
 ends none. The last two host a copy of the wave example, laid out from the .ini put
-beside it: a press on a box opens its first file in the editor, and a drag moves the box,
-one on the ground the graph, as the wheel does, and the wheel with control held zooms it.
-The .ini must then hold the box, the graph and the zoom moved, and the last run must read
-it back without a word. Each must end with exit 0 and print no validation message or
-sanitizer report (RVK00, A03), so in the asan preset it checks the memory of the keys
-part, the terminal, the editor, modes, the graph, their panels, the dock, the images a
-hosted view's window renders into, the atlas made anew at another size, and the rebuild.
+beside it, with Wave.comp open in the editor: a press on a box's name selects it, a drag
+moves the box selected, a drag on the ground lets go of the selection and moves the graph,
+as the wheel does, shift with a press selects the box again, and the wheel with control
+held zooms the graph. The .ini must then hold the box, the graph and the zoom moved. The
+last run must read it back without a word, select probe as a script does, show it with
+info under its header, and delete it with the key, so the .ini no longer places it. Each
+must end with exit 0 and print no validation message or sanitizer report (RVK00, A03), so
+in the asan preset it checks the memory of the keys part, the terminal, the editor,
+modes, the graph, their panels, the dock, the images a hosted view's window renders
+into, the atlas made anew at another size, and the rebuild.
 The zoom a person keeps in the library's font folder is set aside while it runs, and put
 back after. Where no display exists it is skipped (V07).
 
@@ -59,6 +62,8 @@ WAVE = Path(__file__).resolve().parents[2] / "examples" / "wave"
 # presses find the box, and the ground beside it, in any window from 1280 pixels wide.
 ARRANGED = {"pan": [0, 0], "zoom": [4], "place wave": [0, 0], "place probe": [0, 200]}
 MOVED = ("pan", "zoom", "place wave")
+INFO = '[node "probe"]'  # info's header for the node selected
+DELETED = "place probe"
 # Enough for the refusal to reach the log, and for the list the last Tab opens to stay
 # drawn.
 FRAMES = 10
@@ -155,23 +160,42 @@ def edits(note: Path) -> list[str]:
 
 def graph(wave: Path, width: int) -> list[str]:
     box = (width // 2 + 100, 90)
-    ground = (width * 9 // 10, 150)  # right of the box, after it moved left
+    # Right of the box at the area's edge, as a large font makes the box wide; the box
+    # stays under the place it moved to once the graph moved too.
+    ground = (width - 40, 150)
+    moved = (box[0] - 40, box[1] - 20)
     return [
         f"view load {wave}",
+        f"open {wave / 'wave' / 'Wave.comp'}",  # GLSL in the editor, in color
         f"input pointer {box[0]} {box[1]}",
         "input button down left",
-        "input button up left",  # its first file opens
+        "input button up left",  # on its name's row: selected, and nothing opens
         "input button down left",
-        f"input pointer {box[0] - 40} {box[1] - 20}",
-        "input button up left",  # the box moved, so it opens nothing
+        f"input pointer {moved[0]} {moved[1]}",
+        "input button up left",  # the box selected moved
         f"input pointer {ground[0]} {ground[1]}",
-        "input button down left",
+        "input button down left",  # the selection goes
         f"input pointer {ground[0] - 20} {ground[1] - 10}",
-        "input button up left",
+        "input button up left",  # and the graph moved
+        f"input pointer {moved[0]} {moved[1]}",
+        "input key down shift",
+        "input button down left",
+        "input button up left",  # shift adds the box to the selection
+        "input key up shift",
         "input wheel 0 1",
         "input key down control",
         "input wheel 0 -1",  # zoomed out, about the pointer
         "input key up control",
+    ]
+
+
+def deletes(wave: Path) -> list[str]:
+    return [
+        f"view load {wave}",
+        "wave: select probe",  # as a script selects, before the first frame
+        "wave: info",  # the node selected, under its header
+        "focus ide.graph.graph",
+        "input key down delete",  # probe goes, and the connection it reads
     ]
 
 
@@ -252,10 +276,15 @@ def test() -> None:
         if still := [key for key in MOVED if arranged.get(key) == ARRANGED[key]]:
             sys.exit(f"ide: expected the graph to keep {', '.join(still)} moved, it kept\n"
                      f"{kept.read_text(encoding='utf-8')}")
-        said += drive(folder, "graph read back", [f"view load {wave}"])
-        if kept.name in said:
+        deleted = drive(folder, "graph read back", deletes(wave))
+        if kept.name in said + deleted:
             sys.exit(f"ide: expected the graph to read its .ini without a word, got:\n"
-                     f"{said}")
+                     f"{said}{deleted}")
+        placed = numbers(kept.read_text(encoding="utf-8"))
+        if INFO not in deleted.splitlines() or DELETED in placed:
+            sys.exit(f"ide: expected info to show probe selected under {INFO}, and delete "
+                     f"to take its place out of the .ini, got:\n{deleted}\n"
+                     f"{kept.read_text(encoding='utf-8')}")
         # As bytes, so a character split in two shows as what it left.
         if (held := note.read_bytes()) != EDITED.encode("utf-8"):
             sys.exit(f"ide: expected the editor to write {EDITED!r}, got {held!r}")

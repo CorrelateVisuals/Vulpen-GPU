@@ -27,6 +27,7 @@ constexpr std::uint32_t curve_room = 512;       // curves, a lane taking two mor
 constexpr std::uint32_t lane_room = 256;        // rows connections keep in columns
 constexpr std::int32_t pad = 4;                 // in pixels, above and below a box's rows
 constexpr std::int32_t border_width = 1;        // in pixels
+constexpr std::int32_t selected_width = 2;      // a selected box's border, in pixels
 constexpr float dot_step = 24.0f;       // between the dots of the ground, in pixels
 constexpr float dot_step_least = 12.0f; // zoomed out, every other dot goes below it
 constexpr std::uint32_t dot_size = 2;   // in pixels
@@ -153,6 +154,16 @@ Arranged arranged_of(std::string_view text) {
 void Graph::bind(VP::Bind &node) {
   _area = &node.input<VP_VIEW::Rect>("area");
   _font = &node.input<VP_VIEW::Font>("font");
+  _typed = &node.input<VP_VIEW::Typed>("typed");
+  _name = node.name();
+  _select = node.command("select [<node>...]",
+                         "selects nodes of the view the graph shows, in place of those "
+                         "selected; with none, none");
+  _selected =
+      node.command("selected", "lists the nodes the graph has selected, a line each");
+  _delete = node.command("delete",
+                         "removes the nodes the graph has selected, the nodes inside "
+                         "them and their connections; their folders stay");
   _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
   _labels = node.upload<VP_VIEW::Label>("labels", label_room);
   _characters = node.upload<VP_VIEW::Character>("characters", character_room);
@@ -165,14 +176,19 @@ void Graph::bind(VP::Bind &node) {
   _lanes.reserve(lane_room);
 }
 
-// The view the terminal's lines go to: the one its view hosted last.
+// The view the terminal's lines go to: the one its view hosted last. The keys once it is
+// known, and before it is read for the frame, as delete changes it.
 void Graph::cook(VP::Cook &frame) {
   const std::vector<VP::Child> &children = frame.view().children;
-  const VP::View *const view =
-      children.empty() ? nullptr : frame.hosted(children.back().name);
+  const VP::View *view = children.empty() ? nullptr : frame.hosted(children.back().name);
   const std::string_view shown = view ? std::string_view(children.back().name) : "";
   if (_tabs->empty() || shown != _shown)
     show(frame, view, shown);
+  for (const VP::Event &event : _typed->to(_name))
+    if (event.kind == VP::Event::Kind::key && event.down)
+      key(frame, event.name);
+  if (view)
+    view = frame.hosted(shown);
   const glm::uvec2 cell = _font->cell;
   const bool room =
       view && _area->extent.x != 0 && _area->extent.y != 0 && cell.x != 0 && cell.y != 0;
@@ -195,13 +211,63 @@ void Graph::cook(VP::Cook &frame) {
   frame.write(_curves, 0);
 }
 
+// On the view the graph shows, the one its view hosts last, as the terminal's lines go to
+// it, so a line to any other is refused rather than acting where nobody looks. The view
+// is found from the lines so far, so a script's select before the first frame finds it.
+void Graph::command(VP::Call &call) {
+  const std::vector<VP::Child> &children = call.view("")->children;
+  const std::string shown = children.empty() ? "" : children.back().name;
+  if (shown.empty() || call.view(shown) != &call.view())
+    throw std::runtime_error(
+        shown.empty() ? "the graph shows no view; view load hosts one"
+                      : std::format("the graph shows {}, so its lines go there, as {}: "
+                                    "select",
+                                    shown,
+                                    shown));
+  if (_selected_in != shown) // a selection in a view hosted before
+    _selection.clear();
+  const std::vector<VP::Node> &nodes = call.view().nodes;
+  if (call.is(_select)) {
+    std::vector<std::string> chosen;
+    for (const std::string_view node : call.arguments()) {
+      if (std::ranges::find(nodes, node, &VP::Node::name) == nodes.end())
+        throw std::runtime_error(std::format("no node is named {}; ls lists them", node));
+      if (std::ranges::find(chosen, node) == chosen.end())
+        chosen.emplace_back(node);
+    }
+    _selection = std::move(chosen);
+    _selected_in = shown;
+  } else if (call.is(_selected)) {
+    for (const std::string &node : _selection)
+      if (std::ranges::find(nodes, node, &VP::Node::name) != nodes.end())
+        call.reply(node);
+  } else if (call.is(_delete)) {
+    erase(call, call.view());
+  }
+}
+
+// delete or backspace deletes what is selected; escape lets go of it, and with none of
+// the focus, as the editor and the terminal do.
+void Graph::key(VP::Cook &frame, std::string_view key) {
+  const bool chosen = !_shown.empty() && _selected_in == _shown && !_selection.empty();
+  if ((key == "delete" || key == "backspace") && chosen)
+    frame.commands().send(std::format("{}: delete", _shown));
+  else if (key == "escape" && chosen)
+    frame.commands().send(std::format("{}: select", _shown));
+  else if (key == "escape")
+    frame.commands().send("focus");
+}
+
 // The tab names the view, and what its .ini kept shows it as it was left. One that holds
 // a mistake is named in the log and kept as it is, so no save writes over what a person
-// typed; the graph then lays the view out from the graph alone.
+// typed; the graph then lays the view out from the graph alone. A selection in another
+// view goes.
 void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
   if (_unsaved)
     save(frame);
   _shown = name;
+  if (_selected_in != name)
+    _selection.clear();
   _tabs->assign(
       1,
       {.label = name.empty() ? std::string(title) : std::format("{} - {}", title, name),
@@ -331,28 +397,56 @@ void Graph::follow(VP::Cook &frame,
     if (!event.down)
       release(frame, view, cell);
     else if (view && inside(*_area, _pointer))
-      press();
+      press(frame, *view);
   } else if (event.kind == VP::Event::Kind::wheel && view && inside(*_area, _pointer)) {
     turn(frame, event.turn);
   } else if (event.kind == VP::Event::Kind::key && event.name == "control") {
     _control = event.down;
+  } else if (event.kind == VP::Event::Kind::key && event.name == "shift") {
+    _shift = event.down;
   } else if (event.kind == VP::Event::Kind::focus && !event.down) {
-    _control = false; // let go while the window had no focus, which no event says
+    // Let go while the window had no focus, which no event says.
+    _control = _shift = false;
   }
 }
 
-// On a box, the box drawn last over the others, it grabs it; on the ground, the graph,
-// which follows the pointer until the button is let go.
-void Graph::press() {
-  for (std::size_t at = _placed.size(); at-- > 0;)
-    if (VP_VIEW::contains(cut(box(_placed[at]), *_area), _pointer)) {
-      _grab = Grab{.box = at, .from = _pointer, .offset = _placed[at].offset};
-      return;
+// It takes the focus. On a box, the box drawn last over the others: shift adds it to the
+// selection or takes it out; else it is selected, unless it is already, and grabbed with
+// every box selected, so a drag moves them all. On the ground, the graph, which follows
+// the pointer until the button is let go, and without shift the selection goes.
+void Graph::press(VP::Cook &frame, const VP::View &view) {
+  if (_typed->focus != _name)
+    frame.commands().send(std::format("focus {}", _name));
+  for (std::size_t at = _placed.size(); at-- > 0;) {
+    if (!VP_VIEW::contains(cut(box(_placed[at]), *_area), _pointer))
+      continue;
+    const std::string &node = view.nodes[at].name;
+    std::vector<std::string> chosen;
+    if (_selected_in == _shown)
+      chosen = _selection;
+    if (_shift || !selected(node)) {
+      if (!_shift)
+        chosen.clear();
+      if (const auto found = std::ranges::find(chosen, node); found != chosen.end())
+        chosen.erase(found);
+      else
+        chosen.push_back(node);
+      select(frame.commands(), chosen);
     }
+    if (_shift)
+      return;
+    _grab = Grab{.box = at, .from = _pointer};
+    for (std::size_t box = 0; box < _placed.size(); ++box)
+      if (selected(view.nodes[box].name))
+        _grab->moving.emplace_back(box, _placed[box].offset);
+    return;
+  }
+  if (!_shift && _selected_in == _shown && !_selection.empty())
+    select(frame.commands(), {});
   _dragging = true;
 }
 
-// Once the pointer moved a few pixels, so a press that wobbles still opens a file. The
+// Once the pointer moved a few pixels, so a press that wobbles is still a press. The
 // first drag places every box where it shows, so a box moved moves no other, and a node
 // added later takes its column's place.
 void Graph::drag(const VP::View &view, glm::vec2 to) {
@@ -364,38 +458,43 @@ void Graph::drag(const VP::View &view, glm::vec2 to) {
     for (std::size_t at = 0; at < _placed.size(); ++at)
       _arranged.places.try_emplace(view.nodes[at].name, _placed[at].offset);
   grab.moved = true;
-  const glm::ivec2 offset =
-      grab.offset + glm::ivec2(glm::round((to - grab.from) / _arranged.zoom));
-  _arranged.places.insert_or_assign(view.nodes[grab.box].name, offset);
-  _placed[grab.box].offset = offset; // so this frame shows it there
+  const glm::ivec2 by(glm::round((to - grab.from) / _arranged.zoom));
+  for (const auto &[box, offset] : grab.moving)
+    if (box < _placed.size()) {
+      _arranged.places.insert_or_assign(view.nodes[box].name, offset + by);
+      _placed[box].offset = offset + by; // so this frame shows it there
+    }
 }
 
-// A box dragged, or the ground, is saved at once; a box pressed and let go opens a file.
+// A box dragged, or the ground, is saved at once. A box pressed and let go where it was
+// stays the one selected, and opens the file of its row pressed.
 void Graph::release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell) {
   if (std::exchange(_dragging, false) && _unsaved)
     save(frame);
   if (!_grab)
     return;
   const Grab grab = *std::exchange(_grab, std::nullopt);
-  if (grab.moved)
+  if (grab.moved) {
     save(frame);
-  else if (view && grab.box < _placed.size())
-    open(frame, *view, grab.box, cell);
+    return;
+  }
+  if (!view || grab.box >= _placed.size())
+    return;
+  if (const std::string &node = view->nodes[grab.box].name; _selection.size() > 1)
+    select(frame.commands(), std::span(&node, 1));
+  open(frame, *view, grab.box, cell);
 }
 
-// The row under the pointer, as a line typed would open it: a file's opens that file,
-// and the name's the node's first, as its folder sorts them.
+// A file's row opens the file, as a line typed would; the name's row opens none.
 void Graph::open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uvec2 cell) {
   const VP::Node &node = view.nodes[at];
-  if (node.files.empty())
-    return;
   const float row =
-      (_pointer.y - on_screen(glm::vec2(_placed[at].offset)).y) / _arranged.zoom -
-      static_cast<float>(pad);
-  const auto file =
-      static_cast<std::size_t>(std::clamp(row / static_cast<float>(cell.y) - 1.0f,
-                                          0.0f,
-                                          static_cast<float>(node.files.size() - 1)));
+      ((_pointer.y - on_screen(glm::vec2(_placed[at].offset)).y) / _arranged.zoom -
+       static_cast<float>(pad)) /
+      static_cast<float>(cell.y);
+  if (node.files.empty() || row < 1.0f)
+    return;
+  const auto file = std::min(static_cast<std::size_t>(row) - 1, node.files.size() - 1);
   frame.commands().send(std::format(
       "open {}", (folder_of(view, node.name) / node.files[file]).generic_string()));
 }
@@ -415,9 +514,74 @@ void Graph::turn(VP::Cook &frame, glm::vec2 turn) {
   _unsaved = frame.index();
 }
 
-// Whole, through the file port, which writes a temp file and renames it over the old
-// one (RA04). A save the disk refuses is named in the log, and the graph goes on.
+bool Graph::selected(std::string_view node) const {
+  return _selected_in == _shown &&
+         std::ranges::find(_selection, node) != _selection.end();
+}
+
+// As a line, so a press selects as a script or an agent does (V06).
+void Graph::select(VP::CommandPort &commands, std::span<const std::string> nodes) const {
+  std::string line = std::format("{}: select", _shown);
+  for (const std::string &node : nodes)
+    line.append(" ").append(node);
+  commands.send(line);
+}
+
+// The nodes selected and every node inside them, deepest first, as node remove takes no
+// node that holds one. A connection a node going writes is let go, and one it reads is
+// made again without it, so the nodes that stay keep reading. Each is a line of this
+// command, so the log keeps them as one group (V08), and their boxes leave the .ini.
+// What it reads of the view is copied first, since each line replaces the view.
+void Graph::erase(VP::Call &call, const VP::View &view) {
+  std::vector<std::string> going;
+  for (const VP::Node &node : view.nodes)
+    if (std::ranges::any_of(_selection, [&](const std::string &chosen) {
+          return node.name == chosen || node.name.starts_with(chosen + '.');
+        }))
+      going.push_back(node.name);
+  if (going.empty())
+    throw std::runtime_error(
+        "no node is selected; select or a press on a box selects one");
+  const auto goes = [&](const VP::Endpoint &end) {
+    return !end.view() && std::ranges::find(going, end.node) != going.end();
+  };
+  const std::vector<VP::Connection> connections = view.connections;
+  for (const VP::Connection &connection : connections) {
+    if (!goes(connection.from) && std::ranges::none_of(connection.to, goes))
+      continue;
+    call.commands().send(std::format("disconnect {}", connection.name));
+    std::string staying;
+    for (const VP::Endpoint &end : connection.to)
+      if (!goes(end))
+        staying.append(" ").append(end.text());
+    if (!goes(connection.from) && !staying.empty())
+      call.commands().send(std::format(
+          "connect {} {}{}", connection.name, connection.from.text(), staying));
+  }
+  std::ranges::stable_sort(going, std::greater{}, [](const std::string &name) {
+    return std::ranges::count(name, '.');
+  });
+  for (const std::string &node : going) {
+    call.commands().send(std::format("node remove {}", node));
+    _arranged.places.erase(node);
+  }
+  _selection.clear();
+  _grab.reset();
+  keep(call.files());
+}
+
+// A save the disk refuses is named in the log, and the graph goes on.
 void Graph::save(VP::Cook &frame) {
+  try {
+    keep(frame.files());
+  } catch (const std::runtime_error &failure) {
+    frame.log(VP::Level::error, failure.what());
+  }
+}
+
+// Whole, through the file port, which writes a temp file and renames it over the old
+// one (RA04). Throws naming a save the disk refuses.
+void Graph::keep(VP::FilePort &files) {
   _unsaved.reset();
   if (_ini.empty() || _refused)
     return;
@@ -428,30 +592,30 @@ void Graph::save(VP::Cook &frame) {
                       _arranged.zoom);
   for (const auto &[node, place] : _arranged.places)
     text += std::format("{}{} = {} {}\n", place_key, node, place.x, place.y);
-  try {
-    frame.files().save(_ini, text);
-  } catch (const std::runtime_error &failure) {
-    frame.log(VP::Level::error, failure.what());
-  }
+  files.save(_ini, text);
 }
 
-// The dots first, then a border and a fill a box, so the boxes draw over the ground.
+// The dots first, then a border and a fill a box, so the boxes draw over the ground. A
+// box selected has a wider border, in the accent color.
 void Graph::write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
   const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
   std::uint32_t written = write_dots(rects);
-  const auto border_inset = glm::ivec2(border_width);
-  for (const Placed &placed : _placed) {
-    const VP_VIEW::Rect outer = box(placed);
-    const VP_VIEW::Rect border = cut(
-        {.offset = outer.offset, .extent = outer.extent, .role = VP_VIEW::role("border")},
-        *_area);
+  for (std::size_t at = 0; at < _placed.size(); ++at) {
+    const bool chosen = selected(view.nodes[at].name);
+    const auto inset = glm::ivec2(chosen ? selected_width : border_width);
+    const VP_VIEW::Rect outer = box(_placed[at]);
+    const VP_VIEW::Rect border =
+        cut({.offset = outer.offset,
+             .extent = outer.extent,
+             .role = chosen ? VP_VIEW::role("accent") : VP_VIEW::role("border")},
+            *_area);
     if (border.extent.x == 0)
       continue;
     rects[written++] = border;
     rects[written++] =
-        cut({.offset = outer.offset + border_inset,
+        cut({.offset = outer.offset + inset,
              .extent = glm::uvec2(
-                 glm::max(glm::ivec2(outer.extent) - 2 * border_inset, glm::ivec2(0))),
+                 glm::max(glm::ivec2(outer.extent) - 2 * inset, glm::ivec2(0))),
              .role = VP_VIEW::role("panel")},
             *_area);
   }

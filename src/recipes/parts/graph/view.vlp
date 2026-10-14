@@ -1,7 +1,9 @@
 # The graph part: one node whose operator is Graph; it lays out the graph of the view its
 # view hosted most recently in the Rect its area gives, a box a node and a curve a
 # connection, and writes them with the dots of its ground as Rects, Labels and Curves for
-# rects, glyphs and curves to draw. Its tab names the view it shows.
+# rects, glyphs and curves to draw. Its tab names the view it shows. A press selects a
+# box, which select, selected and delete reach as lines do, and the keys its typed hands
+# on while it has the focus delete what is selected.
 [manifest]
 version = 1
 

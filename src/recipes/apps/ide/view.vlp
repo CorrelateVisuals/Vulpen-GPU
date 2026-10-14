@@ -173,6 +173,7 @@ to   = ide.terminal-panel.hit.items
 from = ide.keys.typed
 to   = ide.editor.text.typed
 to   = ide.terminal.command-line.typed
+to   = ide.graph.graph.typed
 to   = ide.modes.typed
 
 [connection "palette"]

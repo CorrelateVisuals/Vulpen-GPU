@@ -6,24 +6,47 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
 // Reads the graph and answers ls and info, so a view can be read without a window and a
-// front end needs no mirror of the graph of its own.
+// front end needs no mirror of the graph of its own. info with no node asks for the nodes
+// selected through selected, the command a part that selects registers, as the graph
+// does, so it reads a selection without a connection, which the CLI could not give it.
 class Inspect final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _ls = node.command("ls",
                        "lists the views the view hosts, its nodes and its connections");
-    _info = node.command("info <node>",
-                         "shows a node's words, and the connections it writes and reads");
+    _info = node.command("info [<node>]",
+                         "shows a node's words, and the connections it writes and reads; "
+                         "with none, each selected node's under its header");
   }
 
   void command(VP::Call &call) override {
     if (call.is(_ls))
       ls(call, call.view());
-    else if (call.is(_info))
+    else if (call.is(_info) && !call.arguments().empty())
       info(call, call.view(), call.arguments().front());
+    else if (call.is(_info))
+      info_selected(call);
+  }
+
+  // Each as the manifest's section of it would read, header first.
+  static void info_selected(VP::Call &call) {
+    const std::vector<VP::Usage> usages = call.commands().usages();
+    if (std::ranges::find(usages, "selected", &VP::Usage::usage) == usages.end())
+      throw std::runtime_error("nothing here selects nodes; info <node> shows one");
+    const std::string selected = call.commands().send("selected");
+    if (selected.empty())
+      throw std::runtime_error("no node is selected; info <node> shows one");
+    for (std::size_t at = 0; at < selected.size();) {
+      const std::size_t end = std::min(selected.find('\n', at), selected.size());
+      const std::string node = selected.substr(at, end - at);
+      call.reply(std::format("[node \"{}\"]", node));
+      info(call, call.view(), node);
+      at = end + 1;
+    }
   }
 
   static void ls(VP::Call &call, const VP::View &view) {

@@ -6,6 +6,7 @@
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
+#include "contracts/Typed.h"
 #include "runtime/Operator.h"
 
 #include <cstddef>
@@ -16,6 +17,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 // Only Graph.cpp includes this header, so the class stays in the unnamed namespace, and
@@ -48,12 +50,12 @@ struct Arranged {
   std::map<std::string, glm::ivec2, std::less<>> places;
 };
 
-// A box pressed: which, where the pointer and the box were then, and whether it has been
-// dragged, or is a press that opens a file when let go.
+// A box pressed: which, where the pointer was then, the boxes a drag moves, each with
+// where it was then, and whether it has been dragged, or is a press let go where it was.
 struct Grab {
   std::size_t box = 0;
   glm::vec2 from{};
-  glm::ivec2 offset{};
+  std::vector<std::pair<std::size_t, glm::ivec2>> moving;
   bool moved = false;
 };
 
@@ -67,27 +69,36 @@ struct Grab {
 // how near it is are a look at the graph, not its plumbing, so they go in .vulpen/
 // graph.ini beside the view's manifest, and a restart shows the graph as it was left.
 // A drag on the ground or the wheel moves the graph, the wheel with control held zooms
-// it, and a press on a box opens the file of the row pressed in the editor, the name's
-// the node's first. It writes Rects, Labels and Curves and draws nothing itself, and only
-// what lies in its area: a box cut at its edge, a name cut to the characters inside, and
-// a curve whose ends both lie inside.
+// it, and a press on a box selects it, shift adding it or taking it out, and opens the
+// file of a file's row in the editor; a drag on a box selected moves every box selected.
+// It owns the selection, which select, selected and delete reach as lines do (V06), and
+// takes keys from the keys part while it has the focus, which a press in its area gives
+// it. It writes Rects, Labels and Curves and draws nothing itself, and only what lies in
+// its area: a box cut at its edge, a name cut to the characters inside, and a curve whose
+// ends both lie inside.
 class Graph final : public VP::Operator {
 public:
   void bind(VP::Bind &node) override;
   void cook(VP::Cook &frame) override;
+  void command(VP::Call &call) override;
 
 private:
+  void key(VP::Cook &frame, std::string_view key);
   void show(VP::Cook &frame, const VP::View *view, std::string_view name);
   void lay_out(const VP::View &view, glm::uvec2 cell);
   void place_columns(glm::uvec2 cell);
   void
   follow(VP::Cook &frame, const VP::View *view, const VP::Event &event, glm::uvec2 cell);
-  void press();
+  void press(VP::Cook &frame, const VP::View &view);
   void drag(const VP::View &view, glm::vec2 to);
   void release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell);
   void open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uvec2 cell);
   void turn(VP::Cook &frame, glm::vec2 turn);
+  bool selected(std::string_view node) const;
+  void select(VP::CommandPort &commands, std::span<const std::string> nodes) const;
+  void erase(VP::Call &call, const VP::View &view);
   void save(VP::Cook &frame);
+  void keep(VP::FilePort &files);
   void write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
   std::uint32_t write_dots(std::span<VP_VIEW::Rect> rects) const;
   void write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
@@ -108,6 +119,11 @@ private:
 
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;
+  const VP_VIEW::Typed *_typed = nullptr;
+  std::string _name; // as the focus names it
+  VP::Command _select;
+  VP::Command _selected;
+  VP::Command _delete;
   VP::Upload<VP_VIEW::Rect> _rects;
   VP::Upload<VP_VIEW::Label> _labels;
   VP::Upload<VP_VIEW::Character> _characters;
@@ -123,6 +139,10 @@ private:
   std::uint32_t _label_count = 0;   // written this frame
   std::uint32_t _character_count = 0;
   std::string _shown; // the view the tab names; empty for none
+  // The nodes selected, by name, in the view named, which select may name before the
+  // graph shows it, as a script's does before the first frame.
+  std::vector<std::string> _selection;
+  std::string _selected_in;
   Arranged _arranged;
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over
@@ -131,6 +151,7 @@ private:
   glm::vec2 _pointer{};   // as the events so far left it
   bool _dragging = false; // the ground, which the graph follows
   bool _control = false;  // held, so the wheel zooms
+  bool _shift = false;    // held, so a press adds a box to the selection or takes it out
 };
 
 } // namespace
