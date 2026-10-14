@@ -9,7 +9,6 @@
 #include <format>
 #include <functional>
 #include <optional>
-#include <set>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -20,9 +19,13 @@
 namespace {
 
 constexpr std::string_view manifest = "view.vlp";
+// What a drop copies besides the nodes' files: the contracts and the shared code they
+// include, at the same path from the view's top (RV05, RV09). The library keeps its
+// shared code in parts/, beside the parts that include it, and lists it as no recipe.
 constexpr std::string_view contracts = "contracts";
-// How a node's file names a contract (RV05), so a drop knows which to copy.
-constexpr std::string_view contract_include = "#include \"contracts/";
+constexpr std::string_view shared = "shared";
+constexpr std::string_view parts = "parts";
+constexpr std::string_view include_start = "#include \"";
 // The template's files, in the library part's template node, and the words in them that
 // name the node: its C++ class, and its name. Each ends in .in, so it builds only once
 // node new writes it.
@@ -60,6 +63,11 @@ bool holds(VP::FilePort &files,
   return std::ranges::find(names, name) != names.end();
 }
 
+// Whether a folder of a kind's, as the file port names them, is the shared code's.
+bool shared_code(std::string_view kind, std::string_view folder) {
+  return kind.substr(0, kind.size() - 1) == parts && folder == shared;
+}
+
 // As text, since neither path need exist.
 bool inside(const std::filesystem::path &path, const std::filesystem::path &folder) {
   const std::filesystem::path relative =
@@ -83,6 +91,29 @@ bool is_path(std::string_view text) {
     text.remove_prefix(dot + 1);
   }
   return name(text);
+}
+
+// What a file includes that a drop copies along, each once, in the order found: a
+// contract or shared code by its path from the view's top, and, in a file of those, a
+// file beside it by its name, as a shared header includes its .cpp.
+void includes_of(std::string_view text,
+                 const std::filesystem::path &folder,
+                 std::vector<std::filesystem::path> &found) {
+  for (std::size_t at = text.find(include_start); at != std::string_view::npos;
+       at = text.find(include_start, at + 1)) {
+    const std::size_t start = at + include_start.size();
+    const std::filesystem::path name(text.substr(start, text.find('"', start) - start));
+    if (name.empty())
+      continue;
+    const std::filesystem::path top = *name.begin();
+    std::filesystem::path file;
+    if (top == contracts || top == shared)
+      file = name;
+    else if (!folder.empty() && name == top)
+      file = folder / name;
+    if (!file.empty() && std::ranges::find(found, file) == found.end())
+      found.push_back(std::move(file));
+  }
 }
 
 // ui.panel as the path ui/panel, as a node's folder is its name's path (RV08).
@@ -329,7 +360,8 @@ class Library final : public VP::Operator {
                              "template into its folder: its C++ and its compute shader");
     _drop = node.command("recipe drop <recipe> <name>",
                          "copies a library recipe into the view as a node of that name, "
-                         "with the nodes inside it and the contracts they include");
+                         "with the nodes inside it and the contracts and shared code "
+                         "they include");
     _sync =
         node.command("recipe sync <node>",
                      "brings a dropped recipe up to the library's, while what it copied "
@@ -354,12 +386,14 @@ class Library final : public VP::Operator {
       host(call, call.is(_new));
   }
 
-  // A recipe is a folder in a kind's folder; the contracts' folder holds only files.
+  // A recipe is a folder in a kind's folder, but the shared code's; the contracts' folder
+  // holds only files.
   void list(VP::Call &call) const {
     for (const std::string &kind : folders(call.files(), _library))
       for (std::string recipe : folders(call.files(), _library / kind)) {
         recipe.pop_back();
-        call.reply(kind + recipe);
+        if (!shared_code(kind, recipe))
+          call.reply(kind + recipe);
       }
   }
 
@@ -367,7 +401,7 @@ class Library final : public VP::Operator {
   std::filesystem::path find(VP::FilePort &files, std::string_view recipe) const {
     const std::string folder = std::string(recipe) + '/';
     for (const std::string &kind : folders(files, _library))
-      if (holds(files, _library / kind, folder))
+      if (!shared_code(kind, recipe) && holds(files, _library / kind, folder))
         return _library / kind / recipe;
     throw std::runtime_error(
         std::format("no recipe {} in the library; recipe list lists them", recipe));
@@ -473,26 +507,29 @@ class Library final : public VP::Operator {
   }
 
   // Each node's files into the folder its name names in the view, saved whole (RA04),
-  // and each contract they include that the view lacks, from the library (RV05).
+  // and each contract and shared file they include that the view lacks, from the library,
+  // with what those include in turn (RV05, RV09). One the view has stays as it is.
   void write(VP::FilePort &files,
              const Copy &copy,
              const std::filesystem::path &view,
              std::string_view root) const {
-    std::set<std::string> included;
+    std::vector<std::filesystem::path> included;
     for (const Inner &inner : copy.nodes)
       for (const std::string &file : inner.node.files) {
         const std::string text = files.read((inner.node.folder / file).string());
-        for (std::size_t at = text.find(contract_include); at != std::string::npos;
-             at = text.find(contract_include, at + 1)) {
-          const std::size_t start = at + contract_include.size();
-          included.insert(text.substr(start, text.find('"', start) - start));
-        }
+        includes_of(text, {}, included);
         files.save((view / path_of(outer_name(root, inner.name)) / file).string(), text);
       }
-    for (const std::string &contract : included)
-      if (!holds(files, view / contracts, contract))
-        files.save((view / contracts / contract).string(),
-                   files.read((_library / contracts / contract).string()));
+    for (std::size_t next = 0; next < included.size(); ++next) {
+      const std::filesystem::path file = included[next];
+      if (holds(files, view / file.parent_path(), file.filename().string()))
+        continue;
+      const std::filesystem::path from =
+          *file.begin() == shared ? _library / parts / file : _library / file;
+      const std::string text = files.read(from.string());
+      includes_of(text, file.parent_path(), included);
+      files.save((view / file).string(), text);
+    }
   }
 
   // The edits that add a copy's nodes under root, its own node naming the recipe it came

@@ -29,8 +29,10 @@ constexpr std::string_view blanks = " \t\r";
 constexpr std::array<std::string_view, 3> recipe_kinds{"parts", "components", "apps"};
 constexpr std::string_view library_view = "library";
 constexpr std::string_view manifest_file = "view.vlp";
-// The folder at a view's top that holds the contracts its nodes share (RV05): no node.
+// The folders at a view's top that hold the contracts and the code its nodes share (RV05,
+// RV09): no node's.
 constexpr std::string_view contracts = "contracts";
+constexpr std::string_view shared = "shared";
 
 std::string_view trim(std::string_view text) {
   const std::size_t first = text.find_first_not_of(blanks);
@@ -459,7 +461,7 @@ void unnamed_below(const View &view,
     if (!entry.is_directory(gone) || name.starts_with('.') ||
         std::filesystem::exists(entry.path() / manifest_file, gone) ||
         (top &&
-         (name == contracts ||
+         (name == contracts || name == shared ||
           std::ranges::find(view.children, name, &Child::name) != view.children.end())))
       continue;
     const std::string node = top ? name : parent + '.' + name;

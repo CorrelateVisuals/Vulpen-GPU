@@ -46,7 +46,7 @@ target_compile_definitions(vulpen PRIVATE
   VP_MODULE_SUFFIX="${CMAKE_SHARED_MODULE_SUFFIX}"
   VP_MODULE_STAMP="${module_stamp}")
 
-# A view: each folder in it is a node, but its contracts/ (RV05).
+# A view: each folder in it is a node, but its contracts/ and its shared/ (RV05, RV09).
 function(vulpen_view folder)
   get_filename_component(view ${folder} NAME)
   vulpen_nodes(${view} ${folder} ${folder})
@@ -54,12 +54,12 @@ endfunction()
 
 # The library (V02) builds as one view named library, which runtime/Manifest.cpp names the
 # same: each recipe of its kinds (RV06) is a node's folder, so an app runs from the
-# library.
+# library. Its parts/shared/ is the code parts share, which no node is (RV09).
 function(vulpen_library folder)
   foreach(kind parts components apps)
     file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/${kind}/*)
     foreach(recipe IN LISTS recipes)
-      if(IS_DIRECTORY ${recipe})
+      if(IS_DIRECTORY ${recipe} AND NOT recipe STREQUAL "${folder}/parts/shared")
         vulpen_node(library ${recipe} ${folder})
         vulpen_nodes(library ${recipe} ${folder})
       endif()
@@ -74,7 +74,8 @@ function(vulpen_nodes view folder root)
   file(GLOB entries LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/*)
   foreach(entry IN LISTS entries)
     get_filename_component(name ${entry} NAME)
-    if(NOT IS_DIRECTORY ${entry} OR name MATCHES "^\\." OR entry STREQUAL "${root}/contracts")
+    if(NOT IS_DIRECTORY ${entry} OR name MATCHES "^\\." OR entry STREQUAL "${root}/contracts"
+       OR entry STREQUAL "${root}/shared")
       continue()
     endif()
     if(EXISTS ${entry}/view.vlp)
@@ -91,6 +92,13 @@ function(vulpen_node view folder root)
   file(RELATIVE_PATH relative ${root} ${folder})
   string(MAKE_C_IDENTIFIER "${view}_${relative}" target)
   set(out ${CMAKE_BINARY_DIR}/views/${view}/${relative})
+  # Where contracts/ and shared/ resolve from: the top of the view, and in the library
+  # shared/ from parts/, beside the parts that include it (RV05, RV09).
+  set(includes ${PROJECT_SOURCE_DIR}/src ${root})
+  if(view STREQUAL "library")
+    list(APPEND includes ${root}/parts)
+  endif()
+  list(TRANSFORM includes PREPEND -I OUTPUT_VARIABLE include_flags)
 
   file(GLOB shaders CONFIGURE_DEPENDS ${folder}/*.comp ${folder}/*.vert ${folder}/*.frag)
   set(spirv "")
@@ -98,7 +106,7 @@ function(vulpen_node view folder root)
     get_filename_component(name ${shader} NAME)
     add_custom_command(OUTPUT ${out}/${name}.spv
       COMMAND ${CMAKE_COMMAND} -E make_directory ${out}
-      COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet -I${PROJECT_SOURCE_DIR}/src -I${root}
+      COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet ${include_flags}
               --depfile ${out}/${name}.d -o ${out}/${name}.spv ${shader}
       DEPENDS ${shader} DEPFILE ${out}/${name}.d VERBATIM)
     # A driver may take invalid SPIR-V without a word, or crash on it. The stamp exists
@@ -138,10 +146,9 @@ function(vulpen_node view folder root)
       VP_MODULE_ENTRY=vp_module_${target} VP_MODULE_EXPORT=)
     set_property(GLOBAL APPEND PROPERTY vulpen_linked "${view}/${relative}=vp_module_${target}")
   endif()
-  # contracts/ resolves from the top of the view or the library, as it does for GLSL, and
-  # its C++ types live in namespace VP_VIEW, one per view, so two views' copies of a
-  # contract stay two types in one release binary (live code, rule 1).
-  target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src ${root})
+  # As for GLSL. A contract's C++ types live in namespace VP_VIEW, one per view, so two
+  # views' copies of a contract stay two types in one release binary (live code, rule 1).
+  target_include_directories(${target} PRIVATE ${includes})
   string(MAKE_C_IDENTIFIER "vp_${view}" view_namespace)
   target_compile_definitions(${target} PRIVATE VP_VIEW=${view_namespace})
   # runtime/Operator.h takes GLSL's vectors from glm.

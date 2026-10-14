@@ -22,8 +22,10 @@ namespace {
 using Arguments = std::span<const std::string_view>;
 
 constexpr std::string_view blanks = " \t\r";
-// The folder at a view's top that holds the contracts its nodes share (RV05).
+// The folders at a view's top that hold the contracts and the code its nodes share (RV05,
+// RV09).
 constexpr std::string_view contracts = "contracts";
+constexpr std::string_view shared = "shared";
 
 std::string_view trim(std::string_view text) {
   const std::size_t first = text.find_first_not_of(blanks);
@@ -564,12 +566,14 @@ Endpoint Edits::endpoint(std::string_view text) {
 }
 
 // A node's folder is its name's path in the view's folder (RV08), beside the folders of
-// the views it hosts and of its contracts, so none of them shares a name.
+// the views it hosts and of its contracts and shared code, so none of them shares a name.
 void Edits::add(View &view, Node node) {
   check_path("node", node.name);
-  if (node.name == contracts)
-    throw std::runtime_error("contracts/ holds the contracts the view's nodes share "
-                             "(RV05), so no node is named contracts");
+  if (node.name == contracts || node.name == shared)
+    throw std::runtime_error(std::format("{}/ holds what the view's nodes share (RV05, "
+                                         "RV09), so no node is named {}",
+                                         node.name,
+                                         node.name));
   if (node_named(view, node.name) ||
       std::ranges::find(view.children, node.name, &Child::name) != view.children.end())
     throw std::runtime_error(std::format("two nodes or views are named {}", node.name));

@@ -13,6 +13,9 @@
 - RV05: a C++ contract, a header in a contracts/ folder, opens namespace VP_VIEW, which
   the build names per view, so two views' copies of it stay two types in one release
   binary; without it the linker keeps one definition for both (live code, rule 1);
+- RV09: shared code, a header or its .cpp in a shared/ folder, opens the unnamed
+  namespace, so each part that includes it holds its own copy, and two views' copies
+  never become one definition in a release binary;
 - RC05: a comment cites principles and requirements, never a plan's row or step, which
   points at nothing once the plan is done. Each ID in parentheses in a comment of the
   C++, the shaders or the node template is one principles.md or requirements.md defines.
@@ -42,6 +45,8 @@ INCLUDE = re.compile(r"^\s*#\s*include\s*<([^>]+)>", re.MULTILINE)
 OS_TESTS = re.compile(r"\b(?:_WIN32|_WIN64|__linux__|__APPLE__|__unix__|__ANDROID__)\b")
 CONTRACTS = "contracts"
 VIEW_NAMESPACE = re.compile(r"\bnamespace\s+VP_VIEW\b")
+SHARED_CODE = "shared"
+UNNAMED_NAMESPACE = re.compile(r"\bnamespace\s*\{")
 DOCS = ROOT / "docs" / "architecture"
 # RC05 reads the comments of these; the other rules hold for C++ alone.
 COMMENTED = ("*.h", "*.cpp", "*.in", "*.glsl", "*.comp", "*.vert", "*.frag")
@@ -91,6 +96,9 @@ def problems(file: Path) -> list[str]:
     if file.parent.name == CONTRACTS and file.suffix == ".h" and not VIEW_NAMESPACE.search(code):
         found.append(f"{name}: a C++ contract opens namespace VP_VIEW, so two views' copies "
                      "of it stay two types (RV05)")
+    if file.parent.name == SHARED_CODE and not UNNAMED_NAMESPACE.search(code):
+        found.append(f"{name}: shared code opens the unnamed namespace, so each part holds its "
+                     "own copy (RV09)")
     if name not in PLATFORM:
         for match in INCLUDE.finditer(code):
             header = match.group(1)

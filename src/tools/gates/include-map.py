@@ -8,7 +8,8 @@ acyclic, so code never includes from code that builds on it.
 Node code, any file of the library (src/recipes/) or of a view, under a folder that
 holds a view.vlp, is not engine and has no row: a new node's file builds with no edit to
 the map. Each of its includes must be a file in its own folder, a contract from the
-contracts/ folder at the top of the library or of its view, or what the map's node table
+contracts/ folder at the top of the library or of its view, shared code from the shared/
+folder in the library's parts/ or at the top of its view, or what the map's node table
 lists. Engine code never includes node code.
 
 Usage: python3 src/tools/gates/include-map.py
@@ -25,10 +26,14 @@ VENDORED = SOURCE / "external-libraries"  # not our code, so not our structure
 SUFFIXES = {".h", ".hpp", ".cpp", ".glsl", ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]', re.MULTILINE)
 CODE_SPAN = re.compile(r"`([^`]+)`")
-LIBRARY = SOURCE / "recipes"  # every recipe, and the contracts they share
+LIBRARY = SOURCE / "recipes"  # every recipe, and the contracts and code they share
 MANIFEST = "view.vlp"  # a folder holding one is a view's
-CONTRACTS = "contracts"  # at the top, the only files more than one node includes (RV05)
-CONTRACT_SUFFIXES = {".glsl", ".h"}  # a GLSL struct, or a C++ header for C++ nodes
+# The only files more than one node includes, at the top of the library or of a view, but
+# the library keeps shared/ in parts/ (RV05, RV09); a node includes their GLSL or C++
+# headers.
+CONTRACTS = "contracts"
+SHARED = "shared"
+HEADER_SUFFIXES = {".glsl", ".h"}
 # Each table on the page, by the first cell of its header.
 ENGINE_TABLE = "File"
 NODE_TABLE = "Node code may include"
@@ -44,6 +49,13 @@ def node_root(file: Path) -> Path | None:
                  if SOURCE in folder.parents and (folder / MANIFEST).is_file()), None)
 
 
+def shared_root(file: Path) -> Path | None:
+    """Where the shared/ of a node's file is: in the library's parts/, else at the top of
+    its view; None for engine code."""
+    root = node_root(file)
+    return LIBRARY / "parts" if root == LIBRARY else root
+
+
 def resolve(file: Path, quote: str, name: str) -> str | None:
     """The include as the map names it: a path from src/ for our files, <name> for a
     library, None for the standard library."""
@@ -52,9 +64,9 @@ def resolve(file: Path, quote: str, name: str) -> str | None:
         # libraries (Vulkan, OS headers) are part of the structure.
         return f"<{name}>" if "." in name or "/" in name else None
     # The compiler's search order, so "Log.h" and "baseclasses/Log.h" map alike and no
-    # spelling hides a cycle. Node code finds its contracts from the top of its view or
-    # of the library, so a dropped copy includes the view's copy of a contract (V03).
-    for base in (file.parent, node_root(file), SOURCE):
+    # spelling hides a cycle. Node code finds its contracts and shared code as the build
+    # does, so a dropped copy includes the view's copy of them (V03).
+    for base in (file.parent, node_root(file), shared_root(file), SOURCE):
         if base is not None:
             candidate = (base / name).resolve()
             if candidate.is_file() and SOURCE in candidate.parents:
@@ -125,8 +137,8 @@ def differences(code: dict[str, set[str]], page: dict[str, set[str]]) -> list[st
 
 
 def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
-    """Node code reaches only its own folder, the contracts and what the map lists for it
-    (RV00, RV05, RV08); engine code never reaches node code (RA00)."""
+    """Node code reaches only its own folder, the contracts, shared code and what the map
+    lists for it (RV00, RV05, RV08, RV09); engine code never reaches node code (RA00)."""
     problems = []
     for file, names in sorted(code.items()):
         root = node_root(SOURCE / file)
@@ -137,11 +149,13 @@ def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
                     problems.append(f"{file} -> {name}: engine code never includes node code "
                                     "(RA00)")
             elif not (target.parent == (SOURCE / file).parent
-                      or (target.parent == root / CONTRACTS
-                          and target.suffix in CONTRACT_SUFFIXES)
+                      or (target.suffix in HEADER_SUFFIXES
+                          and target.parent in (root / CONTRACTS,
+                                                shared_root(SOURCE / file) / SHARED))
                       or any(fnmatchcase(name, pattern) for pattern in reach)):
                 problems.append(f"{file} -> {name}: node code includes only its own folder, a "
-                                "contract, and what the map lists for node code (RV00, RV05)")
+                                "contract, shared code's header, and what the map lists for "
+                                "node code (RV00, RV05, RV09)")
     return problems
 
 
