@@ -22,8 +22,8 @@ ends none. The last two host a copy of the wave example, laid out from the .ini 
 beside it, with Wave.comp open in the editor: a press on a box's name selects it, a drag
 moves the box selected, a drag on the ground lets go of the selection and moves the graph,
 shift with a press selects the box again, and the wheel zooms the graph, as it then zooms
-the Perform panel's view, which a drag moves. The .ini must then hold the box, the graph
-and the zoom moved. The
+the Perform panel's view, which a drag moves, and h, with the focus the press gave the
+panel, brings home. The .ini must then hold the box, the graph and the zoom moved. The
 last run must read it back without a word, select probe as a script does, show it with
 info under its header, and delete it with the key, so the .ini no longer places it. Each
 must end with exit 0 and print no validation message or sanitizer report (RVK00, A03), so
@@ -218,6 +218,7 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
         "input button down left",
         f"input pointer {perform[0] + 60} {perform[1] + 40}",
         "input button up left",  # and moved
+        "input key down h",  # home again, as the press gave the panel the focus
     ]
 
 

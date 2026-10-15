@@ -2,7 +2,9 @@
 # area gives, letterboxed: as large as fits at the image's own aspect, and centered. Its
 # host connects a Rect to its area and an image to its picture: the one a draw renders
 # into, the window of a view the host hosts, or one a node's C++ fills. With param
-# moves = yes, a drag moves the image and the wheel zooms it, cut at the area's edge.
+# moves = yes, a drag moves the image and the wheel zooms it, cut at the area's edge, and
+# a press in its area gives it the focus, so the host also connects the keys part's typed
+# to its typed: h then brings it home, letterboxed again.
 [manifest]
 version = 1
 

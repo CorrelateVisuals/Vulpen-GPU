@@ -76,8 +76,9 @@ recipe = graph-editor
 [node "ide.perform-panel"]
 recipe = panel
 
-# A drag moves the view presented and the wheel zooms it, as in the graph; the window
-# that fills the whole window in perform mode stays still.
+# A drag moves the view presented and the wheel zooms it, as in the graph, and h, while
+# the panel has the focus, brings it home; the window that fills the whole window in
+# perform mode stays still.
 [node "ide.perform"]
 recipe = image
 param  = moves=yes
@@ -177,6 +178,7 @@ from = ide.keys.typed
 to   = ide.editor.text.typed
 to   = ide.terminal.command-line.typed
 to   = ide.graph.graph.typed
+to   = ide.perform.typed
 to   = ide.modes.typed
 
 [connection "palette"]

@@ -243,15 +243,20 @@ void Graph::command(VP::Call &call) {
 }
 
 // delete or backspace deletes what is selected; escape lets go of it, and with none of
-// the focus, as the editor and the terminal do.
+// the focus, as the editor and the terminal do. The home key brings the graph home, and
+// saves it at once, as a drag does.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = !_shown.empty() && _selected_in == _shown && !_selection.empty();
-  if ((key == "delete" || key == "backspace") && chosen)
+  if ((key == "delete" || key == "backspace") && chosen) {
     frame.commands().send(std::format("{}: delete", _shown));
-  else if (key == "escape" && chosen)
+  } else if (key == "escape" && chosen) {
     frame.commands().send(std::format("{}: select", _shown));
-  else if (key == "escape")
+  } else if (key == "escape") {
     frame.commands().send("focus");
+  } else if (key == PanZoom::home_key) {
+    _arranged.home();
+    save(frame);
+  }
 }
 
 // The tab names the view, and what its .ini kept shows it as it was left. One that holds
