@@ -632,10 +632,7 @@ VP_VIEW::Rect Graph::select_box(glm::vec2 from) const {
 // A box's name a cell in from its left, between its pads, in its kind's color where the
 // .ini gives one, and each file a row below it.
 void Graph::write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
-  const std::span<VP_VIEW::Label> labels = frame.write(_labels);
-  const std::span<VP_VIEW::Character> characters = frame.write(_characters);
-  _label_count = 0;
-  _character_count = 0;
+  Labels written{frame.write(_labels), frame.write(_characters)};
   for (std::size_t at = 0; at < _placed.size(); ++at) {
     const VP::Node &node = view.nodes[at];
     const glm::vec2 text = glm::vec2(_placed[at].offset) +
@@ -644,18 +641,16 @@ void Graph::write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell)
               node.name,
               color_of(node).value_or(VP_VIEW::role("accent")),
               cell,
-              labels,
-              characters);
+              written);
     for (std::size_t row = 0; row < node.files.size(); ++row)
       write_row(on_screen(text + glm::vec2(0.0f, static_cast<float>((row + 1) * cell.y))),
                 node.files[row],
                 VP_VIEW::role("text"),
                 cell,
-                labels,
-                characters);
+                written);
   }
-  frame.write(_labels, _label_count);
-  frame.write(_characters, _character_count);
+  frame.write(_labels, written.label_count);
+  frame.write(_characters, written.character_count);
 }
 
 // Its room is the area, which glyphs cuts its characters at, so a row half out of view
@@ -666,8 +661,7 @@ void Graph::write_row(glm::vec2 at,
                       std::string_view row,
                       std::uint32_t role,
                       glm::uvec2 cell,
-                      std::span<VP_VIEW::Label> labels,
-                      std::span<VP_VIEW::Character> characters) {
+                      Labels &written) const {
   const VP_VIEW::Rect &area = *_area;
   const glm::vec2 size = glm::vec2(cell) * _pan_zoom.zoom;
   const glm::vec2 from(area.offset);
@@ -675,24 +669,15 @@ void Graph::write_row(glm::vec2 at,
   const auto skip =
       static_cast<std::size_t>(std::max(std::floor((from.x - at.x) / size.x), 0.0f));
   at.x += static_cast<float>(skip) * size.x;
-  if (_label_count == labels.size() || skip >= row.size() || at.x >= to.x ||
-      at.y >= to.y || at.y + size.y <= from.y)
+  if (skip >= row.size() || at.x >= to.x || at.y >= to.y || at.y + size.y <= from.y)
     return;
   const glm::ivec2 offset(glm::round(at));
-  const auto shown = static_cast<std::uint32_t>(
-      std::min(row.size() - skip, std::size_t{characters.size() - _character_count}));
-  for (std::uint32_t character = 0; character < shown; ++character)
-    characters[_character_count + character] = {
-        .code = static_cast<unsigned char>(row[skip + character]), .label = _label_count};
-  labels[_label_count++] = {
-      .offset = offset,
-      .extent = glm::uvec2(glm::ivec2(to) - offset),
-      .role = role,
-      .first = _character_count,
-      .count = shown,
-      .scale = _pan_zoom.zoom,
-      .cut = glm::uvec2(glm::max(area.offset - offset, glm::ivec2(0)))};
-  _character_count += shown;
+  written.add({.offset = offset,
+               .extent = glm::uvec2(glm::ivec2(to) - offset),
+               .role = role,
+               .scale = _pan_zoom.zoom,
+               .cut = glm::uvec2(glm::max(area.offset - offset, glm::ivec2(0)))},
+              row.substr(skip));
 }
 
 // From the middle of the writer's name row on its right side to the middle of the

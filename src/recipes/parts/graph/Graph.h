@@ -8,6 +8,7 @@
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
+#include "shared/Labels.h"
 #include "shared/PanZoom.h"
 #include "Arranged.h"
 
@@ -108,8 +109,7 @@ private:
                  std::string_view row,
                  std::uint32_t role,
                  glm::uvec2 cell,
-                 std::span<VP_VIEW::Label> labels,
-                 std::span<VP_VIEW::Character> characters);
+                 Labels &written) const;
   void write_curves(VP::Cook &frame, glm::uvec2 cell);
   void write_curve(std::span<VP_VIEW::Curve> curves,
                    std::uint32_t &written,
@@ -143,8 +143,6 @@ private:
   std::vector<std::int32_t> _downs; // each column's next row
   std::vector<std::size_t> _ends;   // a connection's writer and reader, two a pair
   std::vector<Lane> _lanes;         // a pair's in the order of its columns
-  std::uint32_t _label_count = 0;   // written this frame
-  std::uint32_t _character_count = 0;
   std::string _shown; // the view the tab names; empty for none
   // The nodes selected, by name, in the view named, which select may name before the
   // graph shows it, as a script's does before the first frame.

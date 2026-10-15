@@ -6,6 +6,7 @@
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
+#include "shared/Labels.h"
 #include "shared/Scroll.h"
 #include "Syntax.h"
 

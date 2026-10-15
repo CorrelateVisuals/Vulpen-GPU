@@ -510,45 +510,40 @@ void Text::write_lines(VP::Cook &frame,
                        const Document &document,
                        const Grid &grid,
                        std::size_t rows) {
-  const std::span<VP_VIEW::Label> labels = frame.write(_labels);
-  const std::span<VP_VIEW::Character> characters = frame.write(_characters);
+  Labels written{frame.write(_labels), frame.write(_characters)};
   const std::size_t left = document.columns.first();
-  std::uint32_t count = 0;
-  std::uint32_t next = 0;
+  const std::size_t room = written.characters.size();
   for (std::size_t shown = 0; shown < rows; ++shown) {
     const std::size_t row = document.scroll.first() + shown;
     const std::string_view line = document.lines[row];
     const std::size_t right = left + grid.columns;
-    const std::uint32_t first = count; // the row's first Label
+    const std::uint32_t first = written.label_count; // the row's first Label
     bool cut = false; // a run the room lacked, so no later one joins a Label past it
     scan(line,
          document.syntax,
          document.inside[row],
          [&](std::size_t from, std::size_t to, std::uint32_t role) {
            from = std::max(from, left);
-           to = std::min({to, right, from + characters.size() - next});
+           to = std::min({to, right, from + room - written.character_count});
            if (cut || from >= to)
              return;
+           const std::string_view run = line.substr(from, to - from);
            // A run in the role of the one before it on the row joins its Label.
-           if (count == first || labels[count - 1].role != role) {
-             if (count == labels.size()) {
-               cut = true;
-               return;
-             }
-             labels[count++] = {.offset = cell_at(grid, shown, from - left),
-                                .role = role,
-                                .first = next};
+           if (written.label_count > first &&
+               written.labels[written.label_count - 1].role == role) {
+             written.append(run);
+           } else if (!written.add(
+                          {.offset = cell_at(grid, shown, from - left), .role = role},
+                          run)) {
+             cut = true;
+             return;
            }
-           VP_VIEW::Label &label = labels[count - 1];
-           for (std::size_t at = from; at < to; ++at)
-             characters[next++] = {.code = static_cast<unsigned char>(line[at]),
-                                   .label = count - 1};
-           label.count += static_cast<std::uint32_t>(to - from);
+           VP_VIEW::Label &label = written.labels[written.label_count - 1];
            label.extent = extent_of(grid, label.count);
          });
   }
-  frame.write(_labels, count);
-  frame.write(_characters, next); // the used length, which glyphs draws
+  frame.write(_labels, written.label_count);
+  frame.write(_characters, written.character_count); // the used length glyphs draws
 }
 
 void Text::command(VP::Call &call) {

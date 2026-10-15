@@ -4,6 +4,7 @@
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
+#include "shared/Labels.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -137,41 +138,25 @@ class List final : public VP::Operator {
   // and centered top to bottom, and a tab's close mark in its cell, muted. What its room
   // lacks is cut.
   void write_labels(VP::Cook &frame, glm::uvec2 cell) {
-    const std::span<VP_VIEW::Label> labels = frame.write(_labels);
-    const std::span<VP_VIEW::Character> room = frame.write(_characters);
-    std::uint32_t count = 0;
-    std::uint32_t next = 0;
-    const auto add = [&](const VP_VIEW::Rect &text,
-                         std::string_view chars,
-                         std::uint32_t role) {
-      const std::size_t columns = text.extent.x / cell.x;
-      const auto shown = static_cast<std::uint32_t>(
-          std::min({chars.size(), columns, std::size_t{character_room - next}}));
-      for (std::uint32_t character = 0; character < shown; ++character)
-        room[next + character] = {.code = static_cast<unsigned char>(chars[character]),
-                                  .label = count};
-      labels[count++] = {.offset = text.offset,
-                         .extent = text.extent,
-                         .role = role,
-                         .first = next,
-                         .count = shown};
-      next += shown;
-    };
+    Labels written{frame.write(_labels), frame.write(_characters)};
     for (std::uint32_t at = 0; at < _shown->size(); ++at) {
       VP_VIEW::Rect text = (*_shown)[at];
       if (_side_by_side) {
         text.offset += glm::ivec2(glm::uvec2(cell.x, (text.extent.y - cell.y) / 2));
         text.extent = {text.extent.x - 2 * cell.x, cell.y};
       }
-      add(text, (*_items)[at].label, VP_VIEW::role("text"));
+      const std::string_view label = (*_items)[at].label;
+      written.add(
+          {.offset = text.offset, .extent = text.extent, .role = VP_VIEW::role("text")},
+          label.substr(0, text.extent.x / cell.x));
       if (at < _marks->size() && (*_marks)[at].extent.x != 0)
-        add({.offset = {(*_marks)[at].offset.x, text.offset.y},
-             .extent = {cell.x, cell.y}},
-            mark_text,
-            VP_VIEW::role("muted"));
+        written.add({.offset = {(*_marks)[at].offset.x, text.offset.y},
+                     .extent = {cell.x, cell.y},
+                     .role = VP_VIEW::role("muted")},
+                    mark_text);
     }
-    frame.write(_labels, count);
-    frame.write(_characters, next); // the used length, which glyphs draws
+    frame.write(_labels, written.label_count);
+    frame.write(_characters, written.character_count); // the used length glyphs draws
   }
 
   bool _side_by_side = false;

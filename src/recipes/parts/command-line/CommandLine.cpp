@@ -9,6 +9,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Labels.h"
 #include "shared/Scroll.h"
 #include "shared/Words.h"
 
@@ -187,31 +188,6 @@ std::uint32_t role_of(const VP::Logged &line) {
   return line.text.starts_with(output_mark) ? VP_VIEW::role("text")
                                              : VP_VIEW::role("muted");
 }
-
-// The labels and characters a frame writes, filled in turn; what the room lacks is cut.
-struct Text {
-  std::span<VP_VIEW::Label> labels;
-  std::span<VP_VIEW::Character> characters;
-  std::uint32_t label_count = 0;
-  std::uint32_t character_count = 0;
-
-  void
-  add(glm::ivec2 offset, glm::uvec2 extent, std::uint32_t role, std::string_view text) {
-    if (label_count == labels.size())
-      return;
-    const auto shown = static_cast<std::uint32_t>(
-        std::min(text.size(), characters.size() - character_count));
-    for (std::uint32_t at = 0; at < shown; ++at)
-      characters[character_count + at] = {.code = static_cast<unsigned char>(text[at]),
-                                          .label = label_count};
-    labels[label_count++] = {.offset = offset,
-                             .extent = extent,
-                             .role = role,
-                             .first = character_count,
-                             .count = shown};
-    character_count += shown;
-  }
-};
 
 // Where a terminal's text goes in its area, in pixels: the columns of text, where text
 // starts, the top of the line typed, the rule above it, the bottom of the scrollback's
@@ -676,7 +652,7 @@ class CommandLine final : public VP::Operator {
                 .extent = {area.extent.x, rule_width},
                 .role = VP_VIEW::role("border")};
     std::uint32_t count = 2;
-    Text text{frame.write(_labels), frame.write(_characters)};
+    Labels text{frame.write(_labels), frame.write(_characters)};
     const auto rows = static_cast<std::size_t>(above / cell.y);
     const std::size_t shown = rows_shown(grid());
     const glm::uvec2 row_extent(static_cast<std::uint32_t>(columns * cell.x), cell.y);
@@ -691,9 +667,7 @@ class CommandLine final : public VP::Operator {
         rects[count++] = *selection;
       const std::string_view whole = kept.text;
       const std::size_t from = std::min(first, whole.size());
-      text.add(at,
-               row_extent,
-               kept.role,
+      text.add({.offset = at, .extent = row_extent, .role = kept.role},
                whole.substr(from, static_cast<std::size_t>(columns)));
     }
     const VP_VIEW::Rect caret =
@@ -734,7 +708,7 @@ class CommandLine final : public VP::Operator {
 
   // The prompt and the line typed, scrolled so the caret stays in view; returns the
   // caret.
-  VP_VIEW::Rect lay_out_line(Text &text,
+  VP_VIEW::Rect lay_out_line(Labels &text,
                              std::string_view start,
                              std::int32_t left,
                              std::int32_t room,
@@ -743,13 +717,13 @@ class CommandLine final : public VP::Operator {
     const auto columns = static_cast<std::size_t>(room);
     _first = _caret < columns ? 0 : _caret - columns + 1;
     const std::int32_t typed = left + static_cast<std::int32_t>(start.size()) * cell.x;
-    text.add({left, line},
-             glm::uvec2(static_cast<std::uint32_t>(typed - left), cell.y),
-             VP_VIEW::role("accent"),
+    text.add({.offset = {left, line},
+              .extent = glm::uvec2(static_cast<std::uint32_t>(typed - left), cell.y),
+              .role = VP_VIEW::role("accent")},
              start);
-    text.add({typed, line},
-             glm::uvec2(static_cast<std::uint32_t>(room * cell.x), cell.y),
-             VP_VIEW::role("text"),
+    text.add({.offset = {typed, line},
+              .extent = glm::uvec2(static_cast<std::uint32_t>(room * cell.x), cell.y),
+              .role = VP_VIEW::role("text")},
              std::string_view(_line).substr(_first, columns));
     const auto caret = static_cast<std::int32_t>(_caret - _first);
     return {.offset = {typed + caret * cell.x, line},
