@@ -108,7 +108,7 @@ class Text final : public VP::Operator {
   VP::Command _open;
   VP::Command _write;
   VP::Command _close;
-  VP::Command _discard;
+  VP::Command _close_force;
   VP::Command _find;
   std::string _name; // as the focus names it
   const VP_VIEW::Rect *_area = nullptr;

@@ -332,8 +332,8 @@ void Text::bind(VP::Bind &node) {
   _write = node.command("write", "saves the file the editor shows");
   _close =
       node.command("close", "closes the file the editor shows, unless it has changes");
-  _discard =
-      node.command("discard", "closes the file the editor shows, dropping its changes");
+  _close_force = node.command("close force",
+                              "closes the file the editor shows, dropping its changes");
   _find = node.command("find <value>...",
                        "selects the next place the file shown holds the words, joined by "
                        "single blanks, after the caret, and from its start past its end");
@@ -695,8 +695,9 @@ void Text::command(VP::Call &call) {
     write(call);
   else if (call.is(_close) && document.changed)
     throw std::runtime_error(std::format(
-        "{} has changes: write saves them, and discard drops them", label_of(document)));
-  else if (call.is(_close) || call.is(_discard))
+        "{} has changes: write saves them, and close force drops them",
+        label_of(document)));
+  else if (call.is(_close) || call.is(_close_force))
     close();
   else if (call.is(_find))
     find(call);
@@ -770,7 +771,7 @@ void Text::name_tabs() {
   }
   _unsaved = count == 0 ? std::string()
                         : std::format("{} {} changes: write saves the file shown, and "
-                                      "discard drops its changes",
+                                      "close force drops its changes",
                                       changed,
                                       count == 1 ? "has" : "have");
 }
