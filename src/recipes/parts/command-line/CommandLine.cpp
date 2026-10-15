@@ -44,8 +44,6 @@ constexpr std::string_view output_mark = "{out}"; // a node's lines, as the log 
 // In a window: what it keeps, and how it lays out, in pixels.
 constexpr std::size_t scrollback_rows = 1000; // the oldest go first (A03)
 constexpr std::size_t history_lines = 100;
-constexpr char first_printable = ' '; // the font draws printable ASCII
-constexpr char last_printable = '~';
 constexpr std::int32_t margin = 4; // around the text
 constexpr std::uint32_t rule_width = 1;
 constexpr std::uint32_t caret_width = 2;
@@ -535,7 +533,7 @@ class CommandLine final : public VP::Operator {
   // The printable characters go in at the caret; the font draws no other.
   void type(std::string_view text) {
     for (const char typed : text)
-      if (typed >= first_printable && typed <= last_printable)
+      if (typed >= VP_VIEW::first_printable && typed <= VP_VIEW::last_printable)
         _line.insert(_caret++, 1, typed);
   }
 

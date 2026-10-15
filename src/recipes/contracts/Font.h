@@ -7,6 +7,11 @@
 
 namespace VP_VIEW {
 
+// The characters a font bakes, printable ASCII from the space to the tilde, and so what a
+// part that takes typed text keeps, since no other shows.
+inline constexpr char first_printable = ' ';
+inline constexpr char last_printable = '~';
+
 // contracts/Font.glsl's Font, member for member, as C++ writes it; the loader holds it
 // to the shader's (RA03). std430 aligns it as its uvec2, so a list of them steps 32 bytes.
 struct alignas(8) Font {

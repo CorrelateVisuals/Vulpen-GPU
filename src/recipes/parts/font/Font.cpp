@@ -21,9 +21,9 @@
 
 namespace {
 
-// Printable ASCII, from the space to the tilde.
-constexpr std::uint32_t first = ' ';
-constexpr std::uint32_t count = '~' - first + 1;
+// The printable ASCII the Font contract names.
+constexpr std::uint32_t first = VP_VIEW::first_printable;
+constexpr std::uint32_t count = VP_VIEW::last_printable - first + 1;
 constexpr std::uint32_t columns = 16; // of glyphs in a row of the atlas
 constexpr std::uint32_t rows = (count + columns - 1) / columns;
 constexpr float zoom_step = 1.1f; // how much larger a step of zoom in draws

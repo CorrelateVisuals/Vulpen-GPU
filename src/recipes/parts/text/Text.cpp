@@ -20,11 +20,10 @@ constexpr std::uint32_t character_room = 131072; // the rows' characters togethe
 // The ground, a selection Rect a row shown, the caret and the scroll bars' thumbs.
 constexpr std::uint32_t rect_room = row_room + 4;
 constexpr std::size_t indent = 2; // Tab types spaces to a multiple of this column
-constexpr char first_printable = ' '; // the font draws printable ASCII
-constexpr char last_printable = '~';
 // UTF-8 (RFC 3629): a byte that only continues a character starts with the bits 10.
 constexpr unsigned char continuation_mask = 0xC0;
 constexpr unsigned char continuation = 0x80;
+
 bool continues(char byte) {
   return (static_cast<unsigned char>(byte) & continuation_mask) == continuation;
 }
@@ -370,7 +369,7 @@ void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) 
   const bool changed = document.changed;
   if (event.kind == VP::Event::Kind::text) {
     for (const char typed : event.name)
-      if (typed >= first_printable && typed <= last_printable)
+      if (typed >= VP_VIEW::first_printable && typed <= VP_VIEW::last_printable)
         insert(document, std::string_view(&typed, 1));
   } else if (const std::optional<Spot> to = moved(document, event.name, grid)) {
     document.caret = *to;
