@@ -19,6 +19,7 @@
 #include <deque>
 #include <filesystem>
 #include <format>
+#include <map>
 #include <optional>
 #include <set>
 #include <span>
@@ -32,6 +33,7 @@ namespace {
 
 constexpr std::string_view clear_screen = "\x1b[2J\x1b[H"; // ANSI: erase it, then home
 constexpr std::string_view help_gap = "  "; // between a usage and what it does
+constexpr std::size_t help_depth = 2; // words a group's head holds at most: input key
 constexpr std::string_view prompt_end = "> ";
 // What complete reads as a word not begun, since a line's words cannot be empty.
 constexpr std::string_view no_word = "\"\"";
@@ -259,7 +261,8 @@ struct Mark {
 // that view's folder, as a shell shows the one it is in.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _help = node.command("help", "lists every command, with its usage and what it does");
+    _help = node.command(
+        "help", "lists every command, under the words it shares, and what each does");
     _complete = node.command(
         "complete <value>...",
         "lists the words that may come next, the last word given being the start of one, "
@@ -801,17 +804,62 @@ class CommandLine final : public VP::Operator {
     fit(0);
   }
 
-  // Usages aligned, so what each does reads as a column.
+  // Every command as a tree of the words they start with: a word that more than one
+  // starts with once, their usages under it without it, indented, and so again for a
+  // second word, as input key; a command named as its group, as quit beside quit force,
+  // is the group's row. In the order of their words, so a group reads in one place, and
+  // what each does in one column.
   static void help(VP::Call &call) {
-    const std::vector<VP::Usage> usages = call.commands().usages();
+    std::vector<VP::Usage> usages = call.commands().usages();
+    std::ranges::sort(usages, {}, &VP::Usage::usage);
+    std::map<std::string_view, std::size_t> begun; // usages a head starts, by its words
+    for (const VP::Usage &usage : usages)
+      for (const std::string_view head : heads_of(usage.usage))
+        ++begun[head];
+    std::vector<std::pair<std::string, std::string_view>> rows; // indented, and help
+    std::set<std::string_view> opened;
+    for (const VP::Usage &usage : usages) {
+      std::size_t depth = 0;
+      std::size_t from = 0; // where its words past the heads it is under start
+      bool own = false;     // the usage is its group's row
+      for (const std::string_view head : heads_of(usage.usage)) {
+        if (begun[head] < 2)
+          break;
+        if (opened.insert(head).second) {
+          own = head.size() == usage.usage.size();
+          rows.emplace_back(std::string(2 * depth, ' ').append(head.substr(from)),
+                            own ? usage.help : "");
+        }
+        from = head.size() + 1; // past the blank after it
+        ++depth;
+      }
+      if (!own)
+        rows.emplace_back(std::string(2 * depth, ' ').append(
+                              usage.usage.substr(std::min(from, usage.usage.size()))),
+                          usage.help);
+    }
     std::size_t width = 0;
-    for (const VP::Usage &usage : usages)
-      width = std::max(width, usage.usage.size());
-    for (const VP::Usage &usage : usages)
-      call.reply(std::string(usage.usage)
-                     .append(width - usage.usage.size(), ' ')
-                     .append(help_gap)
-                     .append(usage.help));
+    for (const auto &[words, help] : rows)
+      if (!help.empty())
+        width = std::max(width, words.size());
+    for (const auto &[words, help] : rows)
+      call.reply(help.empty() ? words
+                              : std::string(words)
+                                    .append(width - words.size(), ' ')
+                                    .append(help_gap)
+                                    .append(help));
+  }
+
+  // The words a usage starts with that may head a group: its first and its first two,
+  // unless one is a placeholder.
+  static std::vector<std::string_view> heads_of(std::string_view usage) {
+    std::vector<std::string_view> heads;
+    for (const std::string_view word : words_of(usage)) {
+      if (heads.size() == help_depth || placeholder(word))
+        break;
+      heads.push_back(usage.substr(0, word.data() + word.size() - usage.data()));
+    }
+    return heads;
   }
 
   static void complete(VP::Call &call) {
