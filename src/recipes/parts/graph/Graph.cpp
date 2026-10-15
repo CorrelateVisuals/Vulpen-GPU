@@ -29,19 +29,17 @@ constexpr std::int32_t pad = 4;                 // in pixels, above and below a 
 constexpr std::int32_t border_width = 1;        // in pixels
 constexpr std::int32_t selected_width = 2;      // a selected box's border, in pixels
 constexpr std::int32_t column_gap = 4;          // in cells, where the curves run
-constexpr std::int32_t name_margin = 1;    // in cells, either side of a row in its box
-constexpr float drag_least = 3.0f;         // pixels a press moves before a box follows
-constexpr std::uint64_t quiet_frames = 30; // after the wheel stops, before a save
+constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its box
+constexpr float drag_least = 3.0f;      // pixels a press moves before a box follows
 constexpr std::string_view title = "graph";
 constexpr std::string_view kept_folder = ".vulpen"; // which no build or scan reads
 constexpr std::string_view kept_file = "graph.ini";
 constexpr std::string_view place_key = "place ";
 constexpr std::string_view blanks = " \t\r";
 constexpr std::string_view kept_header =
-    "# The graph editor's look at this view, which a restart keeps: how far the graph\n"
-    "# moved, how near it is, and each box placed by hand, from the graph's top left\n"
-    "# at zoom 1. The graph part writes it as they change; delete it to lay the boxes\n"
-    "# out from the graph again.\n";
+    "# The graph editor's look at this view, which a restart keeps: each box placed by\n"
+    "# hand, from the graph's top left at zoom 1. The graph part writes it as they\n"
+    "# move; delete it to lay the boxes out from the graph again.\n";
 
 // The node named, or the one a recipe it is inside makes it part of; none, past the
 // last, for a name no node holds.
@@ -55,6 +53,13 @@ std::size_t node_of(const std::vector<VP::Node> &nodes, std::string_view name) {
       return nodes.size();
     name = name.substr(0, dot);
   }
+}
+
+// Where the graph alone puts its first box: half a column's gap in from the left and a
+// row down, so a home that fits shows the boxes as far in.
+glm::ivec2 margin_of(glm::uvec2 cell) {
+  return {static_cast<std::int32_t>(column_gap * cell.x) / 2,
+          static_cast<std::int32_t>(cell.y)};
 }
 
 // A node's folder in its view's (RV08): ui.panel is ui/panel/.
@@ -111,8 +116,9 @@ std::vector<float> numbers_of(std::string_view text) {
   return numbers;
 }
 
-// Each line as save writes it: pan = x y, zoom = z, or place <node> = x y; # starts a
-// comment. Throws naming the first line that is none of them (A02).
+// Each line as save writes it, place <node> = x y; # starts a comment. Throws naming the
+// first line that is none, and a pan or a zoom an older graph kept as no longer kept,
+// since the graph starts at home (A02).
 Arranged arranged_of(std::string_view text) {
   Arranged arranged;
   for (std::size_t line = 1; !text.empty(); ++line) {
@@ -125,24 +131,20 @@ Arranged arranged_of(std::string_view text) {
     const std::string_view key = trim(row.substr(0, equals));
     const std::vector<float> numbers =
         numbers_of(row.substr(std::min(equals + 1, row.size())));
-    if (key == "pan" && numbers.size() == 2)
-      arranged.pan = {numbers[0], numbers[1]};
-    else if (key == "zoom" && numbers.size() == 1 && numbers[0] >= PanZoom::least &&
-             numbers[0] <= PanZoom::most)
-      arranged.zoom = numbers[0];
-    else if (key.starts_with(place_key) && numbers.size() == 2 &&
-             !trim(key.substr(place_key.size())).empty())
-      arranged.places.insert_or_assign(
-          std::string(trim(key.substr(place_key.size()))),
-          glm::ivec2(std::lround(numbers[0]), std::lround(numbers[1])));
-    else
-      throw std::runtime_error(std::format(
-          "{}:{}: {} is none of pan = x y, zoom = z from {} to {}, place <node> = x y",
-          kept_file,
-          line,
-          row,
-          PanZoom::least,
-          PanZoom::most));
+    if (key == "pan" || key == "zoom")
+      throw std::runtime_error(
+          std::format("{}:{}: {}: the graph keeps no pan or zoom, as it starts at home; "
+                      "delete the line",
+                      kept_file,
+                      line,
+                      row));
+    if (!key.starts_with(place_key) || numbers.size() != 2 ||
+        trim(key.substr(place_key.size())).empty())
+      throw std::runtime_error(
+          std::format("{}:{}: {} is no place <node> = x y", kept_file, line, row));
+    arranged.places.insert_or_assign(
+        std::string(trim(key.substr(place_key.size()))),
+        glm::ivec2(std::lround(numbers[0]), std::lround(numbers[1])));
   }
   return arranged;
 }
@@ -194,15 +196,15 @@ void Graph::cook(VP::Cook &frame) {
   const bool room =
       view && _area->extent.x != 0 && _area->extent.y != 0 && cell.x != 0 && cell.y != 0;
   _placed.clear();
-  if (room)
+  if (room) {
     lay_out(*view, cell);
+    if (std::exchange(_homing, false))
+      home(cell);
+  }
   for (const VP::Event &event : frame.input().events())
     follow(frame, room ? view : nullptr, event, cell);
-  // Once the wheel rests, so a turn of it writes the file once, not a step at a time.
-  if (_unsaved && !_dragging && !_grab && frame.index() >= *_unsaved + quiet_frames)
-    save(frame);
-  frame.set(_pan, _arranged.pan);
-  frame.set(_zoom, _arranged.zoom);
+  frame.set(_pan, _pan_zoom.pan);
+  frame.set(_zoom, _pan_zoom.zoom);
   if (room) {
     write(frame, *view, cell);
     return;
@@ -251,8 +253,8 @@ void Graph::command(VP::Call &call) {
 }
 
 // delete or backspace deletes what is selected; escape lets go of it, and with none of
-// the focus, as the editor and the terminal do. The home key brings the graph home, and
-// saves it at once, as a drag does.
+// the focus, as the editor and the terminal do. The home key brings the graph home once
+// the frame has laid the boxes out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = !_shown.empty() && _selected_in == _shown && !_selection.empty();
   if ((key == "delete" || key == "backspace") && chosen) {
@@ -262,18 +264,15 @@ void Graph::key(VP::Cook &frame, std::string_view key) {
   } else if (key == "escape") {
     frame.commands().send("focus");
   } else if (key == PanZoom::home_key) {
-    _arranged.home();
-    save(frame);
+    _homing = true;
   }
 }
 
-// The tab names the view, and what its .ini kept shows it as it was left. One that holds
-// a mistake is named in the log and kept as it is, so no save writes over what a person
-// typed; the graph then lays the view out from the graph alone. A selection in another
-// view goes.
+// The tab names the view, and the boxes its .ini kept show where they were left, from
+// home. An .ini that holds a mistake is named in the log and kept as it is, so no save
+// writes over what a person typed; the graph then lays the view out from the graph alone.
+// A selection in another view goes.
 void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
-  if (_unsaved)
-    save(frame);
   _shown = name;
   if (_selected_in != name)
     _selection.clear();
@@ -284,6 +283,7 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
   _arranged = {};
   _ini.clear();
   _refused = false;
+  _homing = true;
   _grab.reset();
   _select_from.reset();
   if (!view)
@@ -367,12 +367,12 @@ void Graph::place_columns(glm::uvec2 cell) {
   for (const Placed &placed : _placed)
     columns = std::max(columns, placed.column + 1);
   _lefts.assign(columns, 0);
-  _downs.assign(columns, static_cast<std::int32_t>(cell.y));
+  _downs.assign(columns, margin_of(cell).y);
   for (const Placed &placed : _placed)
     _lefts[placed.column] =
         std::max(_lefts[placed.column], static_cast<std::int32_t>(placed.extent.x));
   const auto gap = static_cast<std::int32_t>(column_gap * cell.x);
-  std::int32_t left = gap / 2;
+  std::int32_t left = margin_of(cell).x;
   for (std::int32_t &width : _lefts)
     left += std::exchange(width, left) + gap;
   const auto apart = static_cast<std::int32_t>(cell.y);
@@ -389,6 +389,29 @@ void Graph::place_columns(glm::uvec2 cell) {
   }
 }
 
+// Unmoved at zoom 1 while every box shows whole there, as the graph first shows them;
+// else the boxes from their top left, as far in as the graph puts its first box, and as
+// near as lets them all show, never nearer than zoom 1, so text keeps its size where it
+// can. Where even the least zoom cannot hold them, from their top left at the least.
+void Graph::home(glm::uvec2 cell) {
+  _pan_zoom.home();
+  if (_placed.empty())
+    return;
+  glm::ivec2 low = _placed.front().offset;
+  glm::ivec2 high = low;
+  for (const Placed &placed : _placed) {
+    low = glm::min(low, placed.offset);
+    high = glm::max(high, placed.offset + glm::ivec2(placed.extent));
+  }
+  const glm::ivec2 room(_area->extent);
+  if (low.x >= 0 && low.y >= 0 && high.x <= room.x && high.y <= room.y)
+    return;
+  const glm::vec2 margin(margin_of(cell));
+  const glm::vec2 fits = (glm::vec2(room) - 2.0f * margin) / glm::vec2(high - low);
+  _pan_zoom.zoom = std::clamp(std::min(fits.x, fits.y), PanZoom::least, 1.0f);
+  _pan_zoom.pan = margin - glm::vec2(low) * _pan_zoom.zoom;
+}
+
 // In the order the events came, so a press is tested where the pointer was then. With
 // no view in its area it takes no press and no wheel, only where the pointer went.
 void Graph::follow(VP::Cook &frame,
@@ -399,8 +422,7 @@ void Graph::follow(VP::Cook &frame,
     if (_grab && view) {
       drag(*view, event.at);
     } else if (_dragging) {
-      _arranged.pan += event.at - _pointer;
-      _unsaved = frame.index();
+      _pan_zoom.pan += event.at - _pointer;
     }
     _pointer = event.at;
   } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
@@ -409,7 +431,7 @@ void Graph::follow(VP::Cook &frame,
     else if (view && inside(*_area, _pointer))
       press(frame, *view);
   } else if (event.kind == VP::Event::Kind::wheel && view && inside(*_area, _pointer)) {
-    turn(frame, event.turn);
+    turn(event.turn);
   } else if (event.kind == VP::Event::Kind::key && event.name == "shift") {
     _shift = event.down;
   } else if (event.kind == VP::Event::Kind::focus && !event.down) {
@@ -471,7 +493,7 @@ void Graph::drag(const VP::View &view, glm::vec2 to) {
     for (std::size_t at = 0; at < _placed.size(); ++at)
       _arranged.places.try_emplace(view.nodes[at].name, _placed[at].offset);
   grab.moved = true;
-  const glm::ivec2 by(glm::round((to - grab.from) / _arranged.zoom));
+  const glm::ivec2 by(glm::round((to - grab.from) / _pan_zoom.zoom));
   for (const auto &[box, offset] : grab.moving)
     if (box < _placed.size()) {
       _arranged.places.insert_or_assign(view.nodes[box].name, offset + by);
@@ -479,12 +501,10 @@ void Graph::drag(const VP::View &view, glm::vec2 to) {
     }
 }
 
-// A box dragged, or the ground, is saved at once. A select box selects what it holds. A
-// box pressed and let go where it was stays the one selected, and opens the file of its
-// row pressed.
+// A box dragged is saved at once. A select box selects what it touches. A box pressed
+// and let go where it was stays the one selected, and opens the file of its row pressed.
 void Graph::release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell) {
-  if (std::exchange(_dragging, false) && _unsaved)
-    save(frame);
+  _dragging = false;
   if (const std::optional<glm::vec2> from = std::exchange(_select_from, std::nullopt);
       from && view)
     select_touched(frame.commands(), *view, *from);
@@ -506,7 +526,7 @@ void Graph::release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell) {
 void Graph::open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uvec2 cell) {
   const VP::Node &node = view.nodes[at];
   const float row =
-      ((_pointer.y - on_screen(glm::vec2(_placed[at].offset)).y) / _arranged.zoom -
+      ((_pointer.y - on_screen(glm::vec2(_placed[at].offset)).y) / _pan_zoom.zoom -
        static_cast<float>(pad)) /
       static_cast<float>(cell.y);
   if (node.files.empty() || row < 1.0f)
@@ -518,9 +538,8 @@ void Graph::open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uve
 
 // The wheel zooms, about the pointer, which stays over the same place of the graph; its
 // turn sideways does nothing yet.
-void Graph::turn(VP::Cook &frame, glm::vec2 turn) {
-  _arranged.wheel(turn.y, _pointer - glm::vec2(_area->offset));
-  _unsaved = frame.index();
+void Graph::turn(glm::vec2 turn) {
+  _pan_zoom.wheel(turn.y, _pointer - glm::vec2(_area->offset));
 }
 
 bool Graph::selected(std::string_view node) const {
@@ -609,14 +628,9 @@ void Graph::save(VP::Cook &frame) {
 // Whole, through the file port, which writes a temp file and renames it over the old
 // one (RA04). Throws naming a save the disk refuses.
 void Graph::keep(VP::FilePort &files) {
-  _unsaved.reset();
   if (_ini.empty() || _refused)
     return;
   std::string text(kept_header);
-  text += std::format("pan  = {} {}\nzoom = {:.3f}\n",
-                      std::lround(_arranged.pan.x),
-                      std::lround(_arranged.pan.y),
-                      _arranged.zoom);
   for (const auto &[node, place] : _arranged.places)
     text += std::format("{}{} = {} {}\n", place_key, node, place.x, place.y);
   files.save(_ini, text);
@@ -716,7 +730,7 @@ void Graph::write_row(glm::vec2 at,
                       std::span<VP_VIEW::Label> labels,
                       std::span<VP_VIEW::Character> characters) {
   const VP_VIEW::Rect &area = *_area;
-  const glm::vec2 size = glm::vec2(cell) * _arranged.zoom;
+  const glm::vec2 size = glm::vec2(cell) * _pan_zoom.zoom;
   const glm::vec2 from(area.offset);
   const glm::vec2 to = from + glm::vec2(area.extent);
   const auto skip =
@@ -737,7 +751,7 @@ void Graph::write_row(glm::vec2 at,
       .role = role,
       .first = _character_count,
       .count = shown,
-      .scale = _arranged.zoom,
+      .scale = _pan_zoom.zoom,
       .cut = glm::uvec2(glm::max(area.offset - offset, glm::ivec2(0)))};
   _character_count += shown;
 }
@@ -760,7 +774,7 @@ void Graph::write_curves(VP::Cook &frame, glm::uvec2 cell) {
       const glm::vec2 left =
           on_screen(glm::vec2(_lanes[lane].offset) + glm::vec2(0.0f, middle));
       const glm::vec2 right =
-          left + glm::vec2(static_cast<float>(_lanes[lane].width) * _arranged.zoom, 0.0f);
+          left + glm::vec2(static_cast<float>(_lanes[lane].width) * _pan_zoom.zoom, 0.0f);
       write_curve(curves, written, from, left);
       write_curve(curves, written, left, right);
       from = right;
@@ -781,7 +795,7 @@ void Graph::write_curve(std::span<VP_VIEW::Curve> curves,
 }
 
 glm::vec2 Graph::on_screen(glm::vec2 at) const {
-  return glm::vec2(_area->offset) + _arranged.on_screen(at);
+  return glm::vec2(_area->offset) + _pan_zoom.on_screen(at);
 }
 
 VP_VIEW::Rect Graph::box(const Placed &placed) const {

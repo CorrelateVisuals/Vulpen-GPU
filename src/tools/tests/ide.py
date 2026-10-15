@@ -18,15 +18,16 @@ the folders the file port lists, and one in perform mode by the keymap's chord, 
 over the whole window; a third then presses escape three times, back to edit mode, out of
 the terminal's focus and out of the run, which must end before its frames do; every other
 run must run all of them, so the end of standard input, which every run finds at once,
-ends none. The last two host a copy of the wave example, laid out from the .ini put
-beside it, with Wave.comp open in the editor: a press on a box's name selects it, a drag
-moves the box selected, a drag on the ground lets go of the selection and moves the graph,
-shift with a press selects the box again, the wheel zooms the graph, and shift with a
-drag on the ground draws a select box over the box; the wheel then zooms the Perform
-panel's view, which a drag moves, and h, with the focus the press gave the panel, brings
-home. The .ini must then hold the box, the graph and the zoom moved. The last run must
-read it back without a word, select probe as a script does, show it with info under its
-header, and delete it with the key, so the .ini no longer places it. Each
+ends none. The last two host a copy of the wave example, its boxes placed by the .ini put
+beside it where both show whole, so the graph starts at home unmoved, with Wave.comp open
+in the editor: a press on a box's name selects it, a drag moves the box selected, a drag
+on the ground lets go of the selection and moves the graph, shift with a press selects
+the box again, the wheel zooms the graph, and shift with a drag on the ground draws a
+select box over the box; the wheel then zooms the Perform panel's view, which a drag
+moves, and h, with the focus the press gave the panel, brings home. The .ini must then
+hold the box moved. The last run must read it back without a word, select probe as a
+script does, show it with info under its header, and delete it with the key, so the .ini
+no longer places it. Each
 must end with exit 0 and print no validation message or sanitizer report (RVK00, A03), so
 in the asan preset it checks the memory of the keys part, the terminal, the editor,
 modes, the graph, their panels, the dock, the images a hosted view's window renders
@@ -64,16 +65,20 @@ COMPLETED = f"{TRIANGLE}/"
 # Every scripted event reaches the first frame, so the presses are placed for its size.
 SIZE = re.compile(r"\{swp\} presents \d+ images of (\d+)x(\d+)")
 WAVE = Path(__file__).resolve().parents[2] / "examples" / "wave"
-# Four times as near, the wave box at the graph's top left and probe far below it, so the
-# presses find the box, and the ground beside it, in any window from 1280 pixels wide.
-ARRANGED = {"pan": [0, 0], "zoom": [4], "place wave": [0, 0], "place probe": [0, 200]}
-MOVED = ("pan", "zoom", "place wave")
+# The wave box at the graph's top left and probe's beside it, so both show whole in any
+# window from 1280 pixels wide, and the graph starts unmoved at zoom 1.
+ARRANGED = {"place wave": [0, 0], "place probe": [200, 0]}
+MOVED = ("place wave",)
+# The graph's area starts below its panel's tab strip, a text row and 4 pixels either
+# side, at the font's height; a box's name is a row a pad below its top.
+CELL = 18
+STRIP = CELL + 2 * 4
+NAME = STRIP + 4 + CELL // 2
 INFO = '[node "probe"]'  # info's header for the node selected
 DELETED = "place probe"
 # Enough for the refusal to reach the log, and for the list the last Tab opens to stay
 # drawn.
 FRAMES = 10
-QUIET = 40  # the graph saves once the wheel rests for 30 frames
 NOTE = "first line\nsecond — line\nthird\n"
 EDITED = "first line!\nScond \n  x line\nthird\n"
 # What quit answers while the editor holds the note, named by its folder and name.
@@ -186,11 +191,11 @@ def edits(note: Path, width: int) -> list[str]:
 
 
 def graph(wave: Path, width: int, height: int) -> list[str]:
-    box = (width // 2 + 100, 90)
-    # Right of the box at the area's edge, as a large font makes the box wide; the box
-    # stays under the place it moved to once the graph moved too.
-    ground = (width - 40, 150)
-    moved = (box[0] - 40, box[1] - 20)
+    left = round((width - 4) * 0.5) + 4  # past the top row's seam: the graph's area
+    box = (left + 40, NAME)
+    moved = (box[0] + 30, box[1])  # the box dragged right
+    ground = (width - 40, 150)  # below and right of both boxes
+    panned = (moved[0] + 20, moved[1] + 10)  # where it shows once the graph moved
     # Two thirds down the Perform panel, under the graph's, in the dock's top row.
     top = round((height - 4) * 0.65)
     below = round((top - 4) * 0.5) + 4
@@ -206,9 +211,9 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
         "input button up left",  # the box selected moved
         f"input pointer {ground[0]} {ground[1]}",
         "input button down left",  # the selection goes
-        f"input pointer {ground[0] - 20} {ground[1] - 10}",
+        f"input pointer {ground[0] + 20} {ground[1] + 10}",
         "input button up left",  # and the graph moved
-        f"input pointer {moved[0]} {moved[1]}",
+        f"input pointer {panned[0]} {panned[1]}",
         "input key down shift",
         "input button down left",
         "input button up left",  # shift adds the box to the selection
@@ -217,8 +222,8 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
         "input key down shift",
         f"input pointer {ground[0]} {ground[1]}",
         "input button down left",  # a select box, not a move
-        f"input pointer {width // 2 + 20} 40",
-        "input button up left",  # what it holds joins the selection
+        f"input pointer {left + 20} {STRIP + 4}",
+        "input button up left",  # what it touches joins the selection
         "input key up shift",
         f"input pointer {perform[0]} {perform[1]}",
         "input wheel 0 3",  # the view presented zoomed in, so the panel cuts it
@@ -311,7 +316,7 @@ def test() -> None:
         kept.parent.mkdir()
         kept.write_text("".join(f"{key} = {' '.join(map(str, value))}\n"
                                 for key, value in ARRANGED.items()), encoding="utf-8")
-        said = drive(folder, "graph", graph(wave, width, height), QUIET)
+        said = drive(folder, "graph", graph(wave, width, height))
         arranged = numbers(kept.read_text(encoding="utf-8"))
         if still := [key for key in MOVED if arranged.get(key) == ARRANGED[key]]:
             sys.exit(f"ide: expected the graph to keep {', '.join(still)} moved, it kept\n"

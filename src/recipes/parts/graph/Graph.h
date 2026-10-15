@@ -43,9 +43,9 @@ struct Lane {
   std::int32_t width = 0;
 };
 
-// What a person arranged, which the graph's .ini keeps through a restart: how far the
-// graph moved and how near it is, and each box placed by hand, by its node's name.
-struct Arranged : PanZoom {
+// What a person arranged, which the graph's .ini keeps through a restart: each box placed
+// by hand, by its node's name.
+struct Arranged {
   std::map<std::string, glm::ivec2, std::less<>> places;
 };
 
@@ -64,11 +64,13 @@ struct Grab {
 // lays it out: a node a column past every node it reads from, down each column in the
 // manifest's order, and below its boxes a lane for each connection that passes the
 // column. A box dragged stays where it is put, and the first drag places every box where
-// it shows, so a change to the graph moves none; the boxes, how far the graph moved and
-// how near it is are a look at the graph, not its plumbing, so they go in .vulpen/
-// graph.ini beside the view's manifest, and a restart shows the graph as it was left.
-// A drag on the ground moves the graph, the wheel zooms it about the pointer, and h
-// brings it home, as the Perform panel's image moves, and a press on a box selects it,
+// it shows, so a change to the graph moves none; the boxes placed are a look at the
+// graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's manifest,
+// and a restart shows them as they were left. The graph starts at home, as a view is
+// shown and as h brings it there: unmoved at zoom 1 while every box shows whole there,
+// else moved and zoomed out until they all do. A drag on the ground moves the graph and
+// the wheel zooms it about the pointer, as the Perform panel's image moves, and neither
+// is kept. A press on a box selects it,
 // shift adding it or taking it out, and opens the file of a file's row in the editor; a
 // drag on a box selected moves every box selected. With shift, a drag on the ground draws
 // a select box, and letting go adds every box it touches to the selection.
@@ -90,13 +92,14 @@ private:
   void show(VP::Cook &frame, const VP::View *view, std::string_view name);
   void lay_out(const VP::View &view, glm::uvec2 cell);
   void place_columns(glm::uvec2 cell);
+  void home(glm::uvec2 cell);
   void
   follow(VP::Cook &frame, const VP::View *view, const VP::Event &event, glm::uvec2 cell);
   void press(VP::Cook &frame, const VP::View &view);
   void drag(const VP::View &view, glm::vec2 to);
   void release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell);
   void open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uvec2 cell);
-  void turn(VP::Cook &frame, glm::vec2 turn);
+  void turn(glm::vec2 turn);
   bool selected(std::string_view node) const;
   void select(VP::CommandPort &commands, std::span<const std::string> nodes) const;
   void
@@ -155,7 +158,9 @@ private:
   Arranged _arranged;
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over
-  std::optional<std::uint64_t> _unsaved; // the frame of the change not yet saved
+  PanZoom _pan_zoom;
+  // Until the frame home is worked out in, which needs the boxes laid out in the area.
+  bool _homing = false;
   std::optional<Grab> _grab;
   // Where a press on the ground with shift began the select box, until it is let go.
   std::optional<glm::vec2> _select_from;

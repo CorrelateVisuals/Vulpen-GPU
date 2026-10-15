@@ -1,21 +1,26 @@
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
+#include "runtime/View.h"
 #include "shared/PanZoom.h"
 
 #include <format>
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace {
+
+constexpr std::string_view picture = "picture"; // the port its shaders sample
 
 // Seats the image in the Rect its area gives, as a panel seats any content, and its
 // shaders letterbox it there: one instance of its draw, none while the area is empty, so
 // an image given no room costs no draw. With param moves = yes, a drag moves it and the
 // wheel zooms it about the pointer, as the graph moves, and its shaders cut it at the
 // area's edge, so it never draws over what is beside it; a press in its area gives it
-// the focus, and while it has it, h brings it home, letterboxed again.
+// the focus, and while it has it, h brings it home, letterboxed again. What a connection
+// brings to its picture anew, as another view presented, shows at home too.
 class Image final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _area = &node.input<VP_VIEW::Rect>("area");
@@ -39,11 +44,26 @@ class Image final : public VP::Operator {
     if (room)
       place.front() = *_area;
     if (_moves) {
+      follow(frame.view());
       keys(frame);
       move(frame);
     }
     frame.set(_pan, _view.pan);
     frame.set(_zoom, _view.zoom);
+  }
+
+  // The writer of the connection that reaches its picture, none while none does; copied
+  // only when it changes, so a frame allocates nothing for it.
+  void follow(const VP::View &view) {
+    const VP::Endpoint *from = nullptr;
+    for (const VP::Connection &connection : view.connections)
+      for (const VP::Endpoint &to : connection.to)
+        if (to.node == _name && to.port == picture)
+          from = &connection.from;
+    if (from ? from->node == _from.node && from->port == _from.port : _from.node.empty())
+      return;
+    _from = from ? *from : VP::Endpoint{};
+    _view.home();
   }
 
   // Escape lets go of the focus, as the other parts that take keys do.
@@ -83,6 +103,7 @@ class Image final : public VP::Operator {
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;
   PanZoom _view;
+  VP::Endpoint _from;     // what reaches its picture, as the frame before saw it
   glm::vec2 _pointer{};   // as the events so far left it
   bool _moves = false;    // whether a drag and the wheel move it
   bool _dragging = false; // from a press in its area until it is let go
