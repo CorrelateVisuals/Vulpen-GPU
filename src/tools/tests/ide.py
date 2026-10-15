@@ -21,17 +21,17 @@ run must run all of them, so the end of standard input, which every run finds at
 ends none. The last two host a copy of the wave example, its boxes placed by the .ini put
 beside it where both show whole, so the graph starts at home unmoved, with Wave.comp open
 in the editor: a press on a box's name selects it, a drag moves the box selected, a drag
-on the ground lets go of the selection and moves the graph, shift with a press selects
-the box again, the wheel zooms the graph, and shift with a drag on the ground draws a
-select box over the box; the wheel then zooms the Perform panel's view, which a drag
-moves, and h, with the focus the press gave the panel, brings home. The .ini must then
-hold the box moved. The last run must read it back without a word, select probe as a
-script does, show it with info under its header, and delete it with the key, so the .ini
-no longer places it, with this file open in the editor, in Python's colors. Each must end
-with exit 0 and print no validation message or sanitizer report (RVK00, A03), so
-in the asan preset it checks the memory of the keys part, the terminal, the editor,
-modes, the graph, their panels, the dock, the images a hosted view's window renders
-into, the atlas made anew at another size, and the rebuild.
+on the ground lets go of the selection and moves the graph, shift with a press selects the
+box again, the wheel zooms the graph, and shift with a drag on the ground draws a select
+box over the box; the wheel then zooms the Perform panel's view, which a drag moves, and
+h, with the focus the press gave the panel, brings home. The .ini must then hold the box
+moved, and the color it gave dispatches. The last run must read it back without a word,
+select probe as a script does, show it with info under its header, and delete it with the
+key, so the .ini no longer places it, with this file open in the editor, in Python's
+colors. Each must end with exit 0 and print no validation message or sanitizer report
+(RVK00, A03), so in the asan preset it checks the memory of the keys part, the terminal,
+the editor, modes, the graph, their panels, the dock, the images a hosted view's window
+renders into, the atlas made anew at another size, and the rebuild.
 The terminal run also scrolls the rows of the app's start with the wheel, a fifth of a
 step too, and drags their scroll bar to the oldest, before help, sent, shows the newest
 again, and scrolls them across with shift and the wheel and back with the wheel turned
@@ -70,6 +70,7 @@ WAVE = Path(__file__).resolve().parents[2] / "examples" / "wave"
 # window from 1280 pixels wide, and the graph starts unmoved at zoom 1.
 ARRANGED = {"place wave": [0, 0], "place probe": [200, 0]}
 MOVED = ("place wave",)
+COLORED = "color dispatch = number"  # a person's line, which the graph's saves keep
 # The graph's area starts below its panel's tab strip, a text row and 4 pixels either
 # side, at the font's height; a box's name is a row a pad below its top.
 CELL = 18
@@ -251,10 +252,12 @@ def deletes(wave: Path) -> list[str]:
 
 
 def numbers(text: str) -> dict[str, list[float]]:
-    """Each line's key and numbers, as the graph keeps them."""
+    """Each line's key and numbers, as the graph and the font keep them; a line of a word,
+    as a color's, is left out."""
     rows = (line.split("#")[0].split("=") for line in text.splitlines())
     return {row[0].strip(): [float(number) for number in row[1].split()]
-            for row in rows if len(row) == 2}
+            for row in rows if len(row) == 2
+            and all(re.fullmatch(r"-?[\d.]+", number) for number in row[1].split())}
 
 
 def drive(folder: Path, name: str, lines: list[str], frames: int = FRAMES,
@@ -321,11 +324,15 @@ def test() -> None:
         kept = wave / ".vulpen" / "graph.ini"
         kept.parent.mkdir()
         kept.write_text("".join(f"{key} = {' '.join(map(str, value))}\n"
-                                for key, value in ARRANGED.items()), encoding="utf-8")
+                                for key, value in ARRANGED.items()) + COLORED + "\n",
+                        encoding="utf-8")
         said = drive(folder, "graph", graph(wave, width, height))
         arranged = numbers(kept.read_text(encoding="utf-8"))
         if still := [key for key in MOVED if arranged.get(key) == ARRANGED[key]]:
             sys.exit(f"ide: expected the graph to keep {', '.join(still)} moved, it kept\n"
+                     f"{kept.read_text(encoding='utf-8')}")
+        if COLORED not in kept.read_text(encoding="utf-8").splitlines():
+            sys.exit(f"ide: expected the graph's save to keep {COLORED}, it kept\n"
                      f"{kept.read_text(encoding='utf-8')}")
         deleted = drive(folder, "graph read back", deletes(wave))
         if kept.name in said + deleted:

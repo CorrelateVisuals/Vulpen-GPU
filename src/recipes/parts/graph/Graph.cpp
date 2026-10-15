@@ -6,7 +6,6 @@
 #include <glm/geometric.hpp>
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <filesystem>
 #include <format>
@@ -32,14 +31,6 @@ constexpr std::int32_t column_gap = 4;          // in cells, where the curves ru
 constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its box
 constexpr float drag_least = 3.0f;      // pixels a press moves before a box follows
 constexpr std::string_view title = "graph";
-constexpr std::string_view kept_folder = ".vulpen"; // which no build or scan reads
-constexpr std::string_view kept_file = "graph.ini";
-constexpr std::string_view place_key = "place ";
-constexpr std::string_view blanks = " \t\r";
-constexpr std::string_view kept_header =
-    "# The graph editor's look at this view, which a restart keeps: each box placed by\n"
-    "# hand, from the graph's top left at zoom 1. The graph part writes it as they\n"
-    "# move; delete it to lay the boxes out from the graph again.\n";
 
 // The node named, or the one a recipe it is inside makes it part of; none, past the
 // last, for a name no node holds.
@@ -92,61 +83,6 @@ bool touches(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
 
 bool inside(const VP_VIEW::Rect &area, glm::vec2 point) {
   return VP_VIEW::contains(area, point);
-}
-
-std::string_view trim(std::string_view text) {
-  const std::size_t first = text.find_first_not_of(blanks);
-  if (first == std::string_view::npos)
-    return {};
-  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
-}
-
-// The numbers a value holds, between blanks; none when a word is no number.
-std::vector<float> numbers_of(std::string_view text) {
-  std::vector<float> numbers;
-  for (text = trim(text); !text.empty(); text = trim(text)) {
-    const std::size_t length = std::min(text.find_first_of(blanks), text.size());
-    float number = 0.0f;
-    const auto [end, error] = std::from_chars(text.data(), text.data() + length, number);
-    if (error != std::errc{} || end != text.data() + length)
-      return {};
-    numbers.push_back(number);
-    text.remove_prefix(length);
-  }
-  return numbers;
-}
-
-// Each line as save writes it, place <node> = x y; # starts a comment. Throws naming the
-// first line that is none, and a pan or a zoom an older graph kept as no longer kept,
-// since the graph starts at home (A02).
-Arranged arranged_of(std::string_view text) {
-  Arranged arranged;
-  for (std::size_t line = 1; !text.empty(); ++line) {
-    const std::size_t end = std::min(text.find('\n'), text.size());
-    const std::string_view row = trim(text.substr(0, std::min(text.find('#'), end)));
-    text.remove_prefix(std::min(end + 1, text.size()));
-    if (row.empty())
-      continue;
-    const std::size_t equals = std::min(row.find('='), row.size());
-    const std::string_view key = trim(row.substr(0, equals));
-    const std::vector<float> numbers =
-        numbers_of(row.substr(std::min(equals + 1, row.size())));
-    if (key == "pan" || key == "zoom")
-      throw std::runtime_error(
-          std::format("{}:{}: {}: the graph keeps no pan or zoom, as it starts at home; "
-                      "delete the line",
-                      kept_file,
-                      line,
-                      row));
-    if (!key.starts_with(place_key) || numbers.size() != 2 ||
-        trim(key.substr(place_key.size())).empty())
-      throw std::runtime_error(
-          std::format("{}:{}: {} is no place <node> = x y", kept_file, line, row));
-    arranged.places.insert_or_assign(
-        std::string(trim(key.substr(place_key.size()))),
-        glm::ivec2(std::lround(numbers[0]), std::lround(numbers[1])));
-  }
-  return arranged;
 }
 
 } // namespace
@@ -630,15 +566,13 @@ void Graph::save(VP::Cook &frame) {
 void Graph::keep(VP::FilePort &files) {
   if (_ini.empty() || _refused)
     return;
-  std::string text(kept_header);
-  for (const auto &[node, place] : _arranged.places)
-    text += std::format("{}{} = {} {}\n", place_key, node, place.x, place.y);
-  files.save(_ini, text);
+  files.save(_ini, text_of(_arranged));
 }
 
 // The ground under the whole area, in the role of its lines, which the graph's shaders
-// draw before the parts that draw the rest; then a border and a fill a box. A box
-// selected has a wider border, in the accent color.
+// draw before the parts that draw the rest; then a border and a fill a box, the border in
+// its kind's color where the .ini gives one. A box selected has a wider border, in the
+// accent color.
 void Graph::write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
   frame.write(_ground, 1).front() = {
       .offset = _area->offset, .extent = _area->extent, .role = VP_VIEW::role("border")};
@@ -648,11 +582,11 @@ void Graph::write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
     const bool chosen = selected(view.nodes[at].name);
     const auto inset = glm::ivec2(chosen ? selected_width : border_width);
     const VP_VIEW::Rect outer = box(_placed[at]);
+    const std::uint32_t edge = chosen ? VP_VIEW::role("accent")
+                                      : color_of(view.nodes[at]).value_or(
+                                            VP_VIEW::role("border"));
     const VP_VIEW::Rect border =
-        cut({.offset = outer.offset,
-             .extent = outer.extent,
-             .role = chosen ? VP_VIEW::role("accent") : VP_VIEW::role("border")},
-            *_area);
+        cut({.offset = outer.offset, .extent = outer.extent, .role = edge}, *_area);
     if (border.extent.x == 0)
       continue;
     rects[written++] = border;
@@ -695,7 +629,8 @@ VP_VIEW::Rect Graph::select_box(glm::vec2 from) const {
   return cut({.offset = low, .extent = glm::uvec2(high - low)}, *_area);
 }
 
-// A box's name a cell in from its left, between its pads, and each file a row below it.
+// A box's name a cell in from its left, between its pads, in its kind's color where the
+// .ini gives one, and each file a row below it.
 void Graph::write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
   const std::span<VP_VIEW::Label> labels = frame.write(_labels);
   const std::span<VP_VIEW::Character> characters = frame.write(_characters);
@@ -705,8 +640,12 @@ void Graph::write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell)
     const VP::Node &node = view.nodes[at];
     const glm::vec2 text = glm::vec2(_placed[at].offset) +
                            glm::vec2(static_cast<float>(name_margin * cell.x), pad);
-    write_row(
-        on_screen(text), node.name, VP_VIEW::role("accent"), cell, labels, characters);
+    write_row(on_screen(text),
+              node.name,
+              color_of(node).value_or(VP_VIEW::role("accent")),
+              cell,
+              labels,
+              characters);
     for (std::size_t row = 0; row < node.files.size(); ++row)
       write_row(on_screen(text + glm::vec2(0.0f, static_cast<float>((row + 1) * cell.y))),
                 node.files[row],
@@ -792,6 +731,10 @@ void Graph::write_curve(std::span<VP_VIEW::Curve> curves,
                         glm::vec2 to) const {
   if (written < curves.size())
     curves[written++] = {.from = from, .to = to, .role = VP_VIEW::role("accent")};
+}
+
+std::optional<std::uint32_t> Graph::color_of(const VP::Node &node) const {
+  return _arranged.colors[static_cast<std::size_t>(kind_of(node))];
 }
 
 glm::vec2 Graph::on_screen(glm::vec2 at) const {

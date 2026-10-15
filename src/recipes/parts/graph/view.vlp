@@ -10,6 +10,7 @@ version = 1
 
 [node "graph"]
 operator       = Graph
+file           = Arranged.h
 file           = Graph.cpp
 file           = Graph.frag
 file           = Graph.glsl

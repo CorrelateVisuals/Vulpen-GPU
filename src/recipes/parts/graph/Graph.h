@@ -9,11 +9,10 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "shared/PanZoom.h"
+#include "Arranged.h"
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -43,12 +42,6 @@ struct Lane {
   std::int32_t width = 0;
 };
 
-// What a person arranged, which the graph's .ini keeps through a restart: each box placed
-// by hand, by its node's name.
-struct Arranged {
-  std::map<std::string, glm::ivec2, std::less<>> places;
-};
-
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
 // where it was then, and whether it has been dragged, or is a press let go where it was.
 struct Grab {
@@ -66,14 +59,15 @@ struct Grab {
 // column. A box dragged stays where it is put, and the first drag places every box where
 // it shows, so a change to the graph moves none; the boxes placed are a look at the
 // graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's manifest,
-// and a restart shows them as they were left. The graph starts at home, as a view is
-// shown and as h brings it there: unmoved at zoom 1 while every box shows whole there,
-// else moved and zoomed out until they all do. A drag on the ground moves the graph and
-// the wheel zooms it about the pointer, as the Perform panel's image moves, and neither
-// is kept. A press on a box selects it,
-// shift adding it or taking it out, and opens the file of a file's row in the editor; a
-// drag on a box selected moves every box selected. With shift, a drag on the ground draws
-// a select box, and letting go adds every box it touches to the selection.
+// and a restart shows them as they were left; so do the colors a person gives each kind
+// of node there, which draw its boxes' borders and names. The graph starts at home, as a
+// view is shown and as h brings it there: unmoved at zoom 1 while every box shows whole
+// there, else moved and zoomed out until they all do. A drag on the ground moves the
+// graph and the wheel zooms it about the pointer, as the Perform panel's image moves, and
+// neither is kept. A press on a box selects it, shift adding it or taking it out, and
+// opens the file of a file's row in the editor; a drag on a box selected moves every box
+// selected. With shift, a drag on the ground draws a select box, and letting go adds
+// every box it touches to the selection.
 // It owns the selection, which select, selected and delete reach as lines do (V06), and
 // takes keys from the keys part while it has the focus, which a press in its area gives
 // it. Its own shaders draw the ground, lines that move and zoom with the graph over the
@@ -123,6 +117,7 @@ private:
                    glm::vec2 to) const;
   // Where a place of the graph shows this frame, in pixels from the window's top left.
   glm::vec2 on_screen(glm::vec2 at) const;
+  std::optional<std::uint32_t> color_of(const VP::Node &node) const;
   VP_VIEW::Rect box(const Placed &placed) const;
   VP_VIEW::Rect select_box(glm::vec2 from) const;
 
