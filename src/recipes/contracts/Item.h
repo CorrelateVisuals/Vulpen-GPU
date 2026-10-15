@@ -13,6 +13,9 @@ struct Item {
   std::string label;
   std::string command;  // empty for none
   bool current = false; // the one chosen, as the tab whose content shows
+  // What a press on its close mark sends, as a tab's content closes what the tab shows;
+  // empty for no mark.
+  std::string close;
 };
 
 // What a part hands a list, in the order the list shows them.

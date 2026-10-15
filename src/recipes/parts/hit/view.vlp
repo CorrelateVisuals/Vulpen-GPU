@@ -1,5 +1,6 @@
 # The hit part: one node whose operator is Hit; a press on one of the Rects it reads sends
-# the command of the Item shown there.
+# the command of the Item shown there, or on the Item's close mark, which marks places,
+# its close command.
 [manifest]
 version = 1
 

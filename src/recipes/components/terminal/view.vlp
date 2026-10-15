@@ -71,3 +71,8 @@ to   = terminal.completion-glyphs.characters
 [connection "shown"]
 from = terminal.completions.shown
 to   = terminal.hit.rects
+
+# A completion has no close mark, so none is pressed.
+[connection "marks"]
+from = terminal.completions.marks
+to   = terminal.hit.marks

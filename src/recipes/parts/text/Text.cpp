@@ -197,10 +197,12 @@ void Text::bind(VP::Bind &node) {
   _open =
       node.command("open <file>", "opens a file in the editor, as a tab, or shows it");
   _write = node.command("write", "saves the file the editor shows");
-  _close =
-      node.command("close", "closes the file the editor shows, unless it has changes");
-  _close_force = node.command("close force",
-                              "closes the file the editor shows, dropping its changes");
+  _close = node.command("close [<file>]",
+                        "closes a file the editor holds, or with none the one it shows, "
+                        "unless it has changes");
+  _close_force = node.command("close force [<file>]",
+                              "closes a file the editor holds, or with none the one it "
+                              "shows, dropping its changes");
   _find = node.command("find <value>...",
                        "selects the next place the file shown holds the words, joined by "
                        "single blanks, after the caret, and from its start past its end");
@@ -557,15 +559,10 @@ void Text::command(VP::Call &call) {
   }
   if (_documents.empty())
     throw std::runtime_error("no file is open");
-  const Document &document = _documents[_shown];
   if (call.is(_write))
     write(call);
-  else if (call.is(_close) && document.changed)
-    throw std::runtime_error(std::format(
-        "{} has changes: write saves them, and close force drops them",
-        label_of(document)));
   else if (call.is(_close) || call.is(_close_force))
-    close();
+    close(call, call.is(_close_force));
   else if (call.is(_find))
     find(call);
 }
@@ -593,9 +590,29 @@ void Text::write(VP::Call &call) {
 }
 
 // The file after it shows, or the one before at the end.
-void Text::close() {
-  _documents.erase(_documents.begin() + static_cast<std::ptrdiff_t>(_shown));
-  _shown = std::min(_shown, _documents.empty() ? 0 : _documents.size() - 1);
+// The file named, as a tab's close mark names it, or the one shown; one with changes only
+// by force, so nothing typed goes unasked. The file shown keeps showing, and when it is
+// the one closed, the one after it, or else the one before.
+void Text::close(VP::Call &call, bool force) {
+  std::size_t at = _shown;
+  if (!call.arguments().empty()) {
+    const auto found =
+        std::ranges::find(_documents, call.arguments().front(), &Document::path);
+    if (found == _documents.end())
+      throw std::runtime_error(
+          std::format("{} is not open in the editor", call.arguments().front()));
+    at = static_cast<std::size_t>(found - _documents.begin());
+  }
+  if (_documents[at].changed && !force)
+    throw std::runtime_error(
+        std::format("{} has changes: {}write saves them, and close force drops them",
+                    label_of(_documents[at]),
+                    at == _shown ? "" : "a press on its tab, then "));
+  _documents.erase(_documents.begin() + static_cast<std::ptrdiff_t>(at));
+  if (at < _shown)
+    --_shown;
+  else
+    _shown = std::min(_shown, _documents.empty() ? 0 : _documents.size() - 1);
   _dragging = false;
   _follow = true;
   name_tabs();
@@ -631,7 +648,8 @@ void Text::name_tabs() {
   for (std::size_t at = 0; at < _documents.size(); ++at) {
     _tabs->push_back({.label = label_of(_documents[at]),
                       .command = std::format("open {}", _documents[at].path),
-                      .current = at == _shown});
+                      .current = at == _shown,
+                      .close = std::format("close {}", _documents[at].path)});
     if (!_documents[at].changed)
       continue;
     changed.append(count++ == 0 ? "" : ", ").append(_tabs->back().label);

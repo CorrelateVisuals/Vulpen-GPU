@@ -24,7 +24,8 @@ constexpr std::string_view escape = "escape";
 // replay restores it. present connects the window of a view its view hosts to the images
 // its to param names, so the log keeps one connection a switch (V08); a view it hosts
 // draws nowhere else, since its view draws into the window itself, and keeps running.
-// Each view hosted is presented as it comes, and has a tab that presents it when pressed.
+// Each view hosted is presented as it comes, and has a tab that presents it when pressed,
+// and a close mark that closes it, as view close does.
 // It takes the keys no part in focus takes: escape leaves perform mode, and in edit mode
 // ends the run, once the part in focus let go of its selection and of the focus.
 class Modes final : public VP::Operator {
@@ -142,7 +143,8 @@ class Modes final : public VP::Operator {
     for (const VP::Child &child : view.children)
       _tabs->push_back({.label = child.name,
                         .command = std::format("present {}", child.name),
-                        .current = child.name == presented});
+                        .current = child.name == presented,
+                        .close = std::format("view close {}", child.name)});
   }
 
   bool _perform = false;

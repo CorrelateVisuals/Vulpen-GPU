@@ -98,7 +98,7 @@ class Text final : public VP::Operator {
                    std::size_t rows);
   void open(VP::Call &call, std::string_view path);
   void write(VP::Call &call);
-  void close();
+  void close(VP::Call &call, bool force);
   void find(VP::Call &call);
   void name_tabs();
 

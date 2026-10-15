@@ -45,3 +45,8 @@ to   = panel.glyphs.characters
 [connection "shown"]
 from = panel.tabs.shown
 to   = panel.hit.rects
+
+# Where each tab's close mark shows, so a press on one closes what the tab shows.
+[connection "marks"]
+from = panel.tabs.marks
+to   = panel.hit.marks

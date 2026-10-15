@@ -74,8 +74,12 @@ COLORED = "color dispatch = number"  # a person's line, which the graph's saves 
 # The graph's area starts below its panel's tab strip, a text row and 4 pixels either
 # side, at the font's height; a box's name is a row a pad below its top.
 CELL = 18
+CELL_WIDE = 8  # a cell's width at that height, as Roboto Mono's advance makes it
 STRIP = CELL + 2 * 4
 NAME = STRIP + 4 + CELL // 2
+# The close mark of the editor's first tab, the window's top left: a cell in, the label,
+# a blank, then the mark, a cell wide, as wave/Wave.comp's.
+MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2, STRIP // 2)
 INFO = '[node "probe"]'  # info's header for the node selected
 DELETED = "place probe"
 # Enough for the refusal to reach the log, and for the list the last Tab opens to stay
@@ -237,6 +241,9 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
         f"input pointer {perform[0] + 60} {perform[1] + 40}",
         "input button up left",  # and moved
         "input key down h",  # home again, as the press gave the panel the focus
+        f"input pointer {MARK[0]} {MARK[1]}",
+        "input button down left",  # on Wave.comp's close mark, which closes it, unchanged
+        "input button up left",
     ]
 
 
