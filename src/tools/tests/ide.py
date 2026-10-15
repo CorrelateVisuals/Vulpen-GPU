@@ -54,7 +54,7 @@ IDE = Path(__file__).resolve().parents[2] / "recipes" / "apps" / "ide" / "view.v
 ZOOMED = Path(__file__).resolve().parents[2] / "recipes/parts/font/.vulpen/font.ini"
 TRIANGLE = Path(__file__).resolve().parents[2] / "examples" / "triangle"
 PRESENT = [f"view load {TRIANGLE}"]  # presented as it comes
-PERFORM = [*PRESENT, "input key down f2", "input key up f2"]  # the chord: mode perform
+PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode toggle
 # Back to edit mode, out of the terminal's focus, and out of the run.
 ESCAPE = [*PERFORM, *["input key down escape"] * 3]
 RAN = re.compile(r"\{run\} ran (\d+) frames")

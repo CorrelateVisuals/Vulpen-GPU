@@ -49,6 +49,7 @@ class Modes final : public VP::Operator {
                               "presented in its panel");
     _perform_mode = node.command(
         "mode perform", "gives the window to what is presented, and the dock no room");
+    _toggle_mode = node.command("mode toggle", "switches to the other mode");
   }
 
   // Lines go to the view this node runs in, the one vulpen started with (`:`), whichever
@@ -58,6 +59,8 @@ class Modes final : public VP::Operator {
       present(call, call.arguments().front());
     else if (call.is(_edit_mode) || call.is(_perform_mode))
       switch_mode(call.commands(), call.is(_perform_mode));
+    else if (call.is(_toggle_mode))
+      switch_mode(call.commands(), !_perform);
   }
 
   // At once, from the connections as the lines so far left them, so the connection lands
@@ -156,6 +159,7 @@ class Modes final : public VP::Operator {
   VP::Command _present;
   VP::Command _edit_mode;
   VP::Command _perform_mode;
+  VP::Command _toggle_mode;
 };
 
 } // namespace
