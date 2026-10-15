@@ -28,6 +28,7 @@ struct alignas(8) Label {
   std::uint32_t first = 0;
   std::uint32_t count = 0;
   float scale = 0.0f;
+  glm::uvec2 cut{};
 
   static constexpr auto members() {
     return std::array{VP_MEMBER(Label, offset),
@@ -35,7 +36,8 @@ struct alignas(8) Label {
                       VP_MEMBER(Label, role),
                       VP_MEMBER(Label, first),
                       VP_MEMBER(Label, count),
-                      VP_MEMBER(Label, scale)};
+                      VP_MEMBER(Label, scale),
+                      VP_MEMBER(Label, cut)};
   }
 };
 

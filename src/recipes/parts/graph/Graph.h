@@ -75,9 +75,9 @@ struct Grab {
 // takes keys from the keys part while it has the focus, which a press in its area gives
 // it. Its own shaders draw the ground, lines that move and zoom with the graph over the
 // whole area, as the POC's grid did; it writes Rects, Labels and Curves for the parts
-// that draw over them, and only what lies in its area: a box cut at its edge and a name
-// cut to the characters inside; a curve goes whole, and the curves part cuts it at the
-// edge of the ground the graph hands it.
+// that draw over them, and only what lies in its area: a box cut at its edge, and a row
+// of text with the area as its room, which glyphs cuts at the edge; a curve goes whole,
+// and the curves part cuts it at the edge of the ground the graph hands it.
 class Graph final : public VP::Operator {
 public:
   void bind(VP::Bind &node) override;

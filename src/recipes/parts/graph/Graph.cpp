@@ -644,9 +644,9 @@ void Graph::write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell)
   frame.write(_characters, _character_count);
 }
 
-// The characters left of the area are dropped, and its room ends at the area's right,
-// which glyphs cuts at; a row the area does not hold whole is not written. Its cells are
-// the font's at the graph's zoom.
+// Its room is the area, which glyphs cuts its characters at, so a row half out of view
+// shows the half in it until it goes; the characters wholly left of the area are dropped,
+// and a row wholly out of it is not written. Its cells are the font's at the graph's zoom.
 void Graph::write_row(glm::vec2 at,
                       std::string_view row,
                       std::uint32_t role,
@@ -655,19 +655,13 @@ void Graph::write_row(glm::vec2 at,
                       std::span<VP_VIEW::Character> characters) {
   const VP_VIEW::Rect &area = *_area;
   const glm::vec2 size = glm::vec2(cell) * _arranged.zoom;
-  const auto right =
-      static_cast<float>(area.offset.x + static_cast<std::int32_t>(area.extent.x));
-  if (_label_count == labels.size() || at.y < static_cast<float>(area.offset.y) ||
-      at.y + size.y >
-          static_cast<float>(area.offset.y) + static_cast<float>(area.extent.y))
-    return;
-  std::size_t skip = 0;
-  if (at.x < static_cast<float>(area.offset.x)) {
-    skip = static_cast<std::size_t>(
-        std::ceil((static_cast<float>(area.offset.x) - at.x) / size.x));
-    at.x += static_cast<float>(skip) * size.x;
-  }
-  if (skip >= row.size() || at.x >= right)
+  const glm::vec2 from(area.offset);
+  const glm::vec2 to = from + glm::vec2(area.extent);
+  const auto skip =
+      static_cast<std::size_t>(std::max(std::floor((from.x - at.x) / size.x), 0.0f));
+  at.x += static_cast<float>(skip) * size.x;
+  if (_label_count == labels.size() || skip >= row.size() || at.x >= to.x ||
+      at.y >= to.y || at.y + size.y <= from.y)
     return;
   const glm::ivec2 offset(glm::round(at));
   const auto shown = static_cast<std::uint32_t>(
@@ -677,12 +671,12 @@ void Graph::write_row(glm::vec2 at,
         .code = static_cast<unsigned char>(row[skip + character]), .label = _label_count};
   labels[_label_count++] = {
       .offset = offset,
-      .extent = {static_cast<std::uint32_t>(right) - static_cast<std::uint32_t>(offset.x),
-                 static_cast<std::uint32_t>(std::ceil(size.y))},
+      .extent = glm::uvec2(glm::ivec2(to) - offset),
       .role = role,
       .first = _character_count,
       .count = shown,
-      .scale = _arranged.zoom};
+      .scale = _arranged.zoom,
+      .cut = glm::uvec2(glm::max(area.offset - offset, glm::ivec2(0)))};
   _character_count += shown;
 }
 
