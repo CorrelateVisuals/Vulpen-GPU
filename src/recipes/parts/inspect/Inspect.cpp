@@ -6,9 +6,16 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
+
+constexpr std::string_view note_gap = "  "; // between a folder and what it is
+
+// A row ls answers: a folder or a file, indented under the folder it is in, and what
+// the folder is, empty for none.
+using Rows = std::vector<std::pair<std::string, std::string>>;
 
 // Reads the graph and answers ls and info, so a view can be read without a window and a
 // front end needs no mirror of the graph of its own. info with no node asks for the nodes
@@ -17,7 +24,8 @@ namespace {
 class Inspect final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _ls = node.command("ls",
-                       "lists the views the view hosts, its nodes and its connections");
+                       "lists the view as folders: each node with its files, and each "
+                       "view it hosts");
     _info = node.command("info [<node>]",
                          "shows a node's words, and the connections it writes and reads; "
                          "with none, each selected node's under its header");
@@ -49,20 +57,46 @@ class Inspect final : public VP::Operator {
     }
   }
 
+  // The view as the folders its nodes are (RV08): each node a folder under the node it is
+  // inside, its files under it and beside it the recipe it uses or was dropped from, and
+  // each view it hosts a folder, beside it the file it is hosted from. Connections are
+  // each node's, which info shows. What each folder is reads down one column.
   static void ls(VP::Call &call, const VP::View &view) {
+    Rows rows;
     for (const VP::Child &child : view.children)
-      call.reply(std::format("view {} from {}", child.name, child.file.string()));
+      rows.emplace_back(child.name + '/',
+                        std::format("view, from {}", child.file.string()));
     for (const VP::Node &node : view.nodes)
-      call.reply(node.recipe.empty()
-                     ? std::format("node {}", node.name)
-                     : std::format("node {} of recipe {}", node.name, node.recipe));
-    for (const VP::Connection &connection : view.connections) {
-      std::string to;
-      for (const VP::Endpoint &end : connection.to)
-        to.append(to.empty() ? "" : ", ").append(end.text());
-      call.reply(std::format(
-          "connection {} from {} to {}", connection.name, connection.from.text(), to));
-    }
+      if (node.name.find('.') == std::string::npos)
+        list(view, node, 0, rows);
+    std::size_t width = 0;
+    for (const auto &[folder, note] : rows)
+      if (!note.empty())
+        width = std::max(width, folder.size());
+    for (const auto &[folder, note] : rows)
+      call.reply(note.empty() ? folder
+                              : std::string(folder)
+                                    .append(width - folder.size(), ' ')
+                                    .append(note_gap)
+                                    .append(note));
+  }
+
+  // A node's folder, its files, then the folders of the nodes inside it, each in the
+  // manifest's order.
+  static void
+  list(const VP::View &view, const VP::Node &node, std::size_t depth, Rows &rows) {
+    const std::string indent(2 * depth, ' ');
+    const std::string_view name =
+        std::string_view(node.name).substr(node.name.rfind('.') + 1);
+    rows.emplace_back(indent + std::string(name) + '/',
+                      node.recipe.empty() ? "" : std::format("recipe {}", node.recipe));
+    for (const std::string &file : node.files)
+      rows.emplace_back(indent + "  " + file, "");
+    const std::string inside = node.name + '.';
+    for (const VP::Node &inner : view.nodes)
+      if (inner.name.starts_with(inside) &&
+          inner.name.find('.', inside.size()) == std::string::npos)
+        list(view, inner, depth + 1, rows);
   }
 
   // In the manifest's words, so what info shows is what a node section would hold.

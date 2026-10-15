@@ -59,7 +59,7 @@ PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode 
 # Back to edit mode, out of the terminal's focus, and out of the run.
 ESCAPE = [*PERFORM, *["input key down escape"] * 3]
 RAN = re.compile(r"\{run\} ran (\d+) frames")
-LISTED = "node ide.keys of recipe keys"  # a line ls answers for the ide
+LISTED = re.compile(r"^  keys/ +recipe keys$", re.M)  # a row ls answers for the ide
 # The folder a path begun completes to, which complete answers alone on its line.
 COMPLETE = f"complete view load {TRIANGLE.parent}/tri"
 COMPLETED = f"{TRIANGLE}/"
@@ -292,9 +292,9 @@ def test() -> None:
         presented = drive(folder, "presented view", [*PRESENT, COMPLETE], typed="ls\n")
         if COMPLETED not in presented.splitlines():
             sys.exit(f"ide: expected {COMPLETE} to answer {COMPLETED}, got:\n{presented}")
-        if not (size := SIZE.search(presented)) or LISTED not in presented:
+        if not (size := SIZE.search(presented)) or not LISTED.search(presented):
             sys.exit(f"ide: expected the log to name the window's size, and ls typed on "
-                     f"standard input to print {LISTED}, got:\n{presented}")
+                     f"standard input to print {LISTED.pattern}, got:\n{presented}")
         width, height = int(size.group(1)), int(size.group(2))
         drive(folder, "terminal", typed(width, height))
         note = folder / "note.txt"
