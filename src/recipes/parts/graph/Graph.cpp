@@ -28,7 +28,7 @@ constexpr std::int32_t pad = 4;                 // in pixels, above and below a 
 constexpr std::int32_t border_width = 1;        // in pixels
 constexpr std::int32_t selected_width = 2;      // a selected box's border, in pixels
 constexpr std::int32_t column_gap = 4;          // in cells, where the curves run
-constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its box
+constexpr std::int32_t name_margin = 1;    // in cells, either side of a row in its box
 constexpr float drag_least = 3.0f;         // pixels a press moves before a box follows
 constexpr std::uint64_t quiet_frames = 30; // after the wheel stops, before a save
 constexpr std::string_view title = "graph";
@@ -645,8 +645,9 @@ void Graph::write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell)
 }
 
 // Its room is the area, which glyphs cuts its characters at, so a row half out of view
-// shows the half in it until it goes; the characters wholly left of the area are dropped,
-// and a row wholly out of it is not written. Its cells are the font's at the graph's zoom.
+// shows the half in it until it goes; the characters wholly left of the area are
+// dropped, and a row wholly out of it is not written. Its cells are the font's at the
+// graph's zoom.
 void Graph::write_row(glm::vec2 at,
                       std::string_view row,
                       std::uint32_t role,
