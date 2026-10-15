@@ -80,10 +80,9 @@ VP_VIEW::Rect cut(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
   return {.offset = from, .extent = glm::uvec2(end - from), .role = rect.role};
 }
 
-// Whether a Rect lies wholly inside another, which then cuts none of it.
-bool within(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
-  const VP_VIEW::Rect kept = cut(rect, by);
-  return kept.offset == rect.offset && kept.extent == rect.extent;
+// Whether two Rects share a pixel.
+bool touches(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
+  return cut(rect, by).extent.x != 0;
 }
 
 bool inside(const VP_VIEW::Rect &area, glm::vec2 point) {
@@ -488,7 +487,7 @@ void Graph::release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell) {
     save(frame);
   if (const std::optional<glm::vec2> from = std::exchange(_select_from, std::nullopt);
       from && view)
-    select_within(frame.commands(), *view, *from);
+    select_touched(frame.commands(), *view, *from);
   if (!_grab)
     return;
   const Grab grab = *std::exchange(_grab, std::nullopt);
@@ -537,11 +536,11 @@ void Graph::select(VP::CommandPort &commands, std::span<const std::string> nodes
   commands.send(line);
 }
 
-// Each box wholly inside the select box joins the selection, as shift with a press adds
-// one; the select box is cut at the area, as it shows, so no box out of view joins.
-void Graph::select_within(VP::CommandPort &commands,
-                          const VP::View &view,
-                          glm::vec2 from) const {
+// Each box the select box touches joins the selection, as shift with a press adds one;
+// the select box is cut at the area, as it shows, so only what shows of a box is touched.
+void Graph::select_touched(VP::CommandPort &commands,
+                           const VP::View &view,
+                           glm::vec2 from) const {
   std::vector<std::string> chosen;
   if (_selected_in == _shown)
     chosen = _selection;
@@ -549,7 +548,7 @@ void Graph::select_within(VP::CommandPort &commands,
   const VP_VIEW::Rect swept = select_box(from);
   for (std::size_t at = 0; at < _placed.size(); ++at)
     if (const std::string &node = view.nodes[at].name;
-        within(box(_placed[at]), swept) && !selected(node))
+        touches(box(_placed[at]), swept) && !selected(node))
       chosen.push_back(node);
   if (chosen.size() != before)
     select(commands, chosen);

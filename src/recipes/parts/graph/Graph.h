@@ -71,7 +71,7 @@ struct Grab {
 // brings it home, as the Perform panel's image moves, and a press on a box selects it,
 // shift adding it or taking it out, and opens the file of a file's row in the editor; a
 // drag on a box selected moves every box selected. With shift, a drag on the ground draws
-// a select box, and letting go adds the boxes wholly inside it to the selection.
+// a select box, and letting go adds every box it touches to the selection.
 // It owns the selection, which select, selected and delete reach as lines do (V06), and
 // takes keys from the keys part while it has the focus, which a press in its area gives
 // it. Its own shaders draw the ground, lines that move and zoom with the graph over the
@@ -100,7 +100,7 @@ private:
   bool selected(std::string_view node) const;
   void select(VP::CommandPort &commands, std::span<const std::string> nodes) const;
   void
-  select_within(VP::CommandPort &commands, const VP::View &view, glm::vec2 from) const;
+  select_touched(VP::CommandPort &commands, const VP::View &view, glm::vec2 from) const;
   void erase(VP::Call &call, const VP::View &view);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
