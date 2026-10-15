@@ -17,9 +17,10 @@
 
 namespace {
 
-constexpr std::uint32_t node_room = 256; // boxes shown at most; the rest are cut
-constexpr std::uint32_t box_rects = 2;   // a box is its border, then its fill
-constexpr std::uint32_t rect_room = box_rects * node_room;
+constexpr std::uint32_t node_room = 256;  // boxes shown at most; the rest are cut
+constexpr std::uint32_t box_rects = 2;    // a box is its border, then its fill
+constexpr std::uint32_t select_rects = 4; // the select box's edges
+constexpr std::uint32_t rect_room = box_rects * node_room + select_rects;
 constexpr std::uint32_t label_room = 2048;      // the names and the files together
 constexpr std::uint32_t character_room = 16384; // their characters
 constexpr std::uint32_t curve_room = 512;       // curves, a lane taking two more
@@ -77,6 +78,12 @@ VP_VIEW::Rect cut(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
   if (end.x <= from.x || end.y <= from.y)
     return {.offset = from, .role = rect.role};
   return {.offset = from, .extent = glm::uvec2(end - from), .role = rect.role};
+}
+
+// Whether a Rect lies wholly inside another, which then cuts none of it.
+bool within(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
+  const VP_VIEW::Rect kept = cut(rect, by);
+  return kept.offset == rect.offset && kept.extent == rect.extent;
 }
 
 bool inside(const VP_VIEW::Rect &area, glm::vec2 point) {
@@ -279,6 +286,7 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
   _ini.clear();
   _refused = false;
   _grab.reset();
+  _select_from.reset();
   if (!view)
     return;
   const std::filesystem::path folder = view->file.parent_path() / kept_folder;
@@ -413,8 +421,9 @@ void Graph::follow(VP::Cook &frame,
 
 // It takes the focus. On a box, the box drawn last over the others: shift adds it to the
 // selection or takes it out; else it is selected, unless it is already, and grabbed with
-// every box selected, so a drag moves them all. On the ground, the graph, which follows
-// the pointer until the button is let go, and without shift the selection goes.
+// every box selected, so a drag moves them all. On the ground with shift, a select box
+// from there to the pointer until the button is let go; without, the selection goes, and
+// the graph follows the pointer until then.
 void Graph::press(VP::Cook &frame, const VP::View &view) {
   if (_typed->focus != _name)
     frame.commands().send(std::format("focus {}", _name));
@@ -442,7 +451,11 @@ void Graph::press(VP::Cook &frame, const VP::View &view) {
         _grab->moving.emplace_back(box, _placed[box].offset);
     return;
   }
-  if (!_shift && _selected_in == _shown && !_selection.empty())
+  if (_shift) {
+    _select_from = _pointer;
+    return;
+  }
+  if (_selected_in == _shown && !_selection.empty())
     select(frame.commands(), {});
   _dragging = true;
 }
@@ -467,11 +480,15 @@ void Graph::drag(const VP::View &view, glm::vec2 to) {
     }
 }
 
-// A box dragged, or the ground, is saved at once. A box pressed and let go where it was
-// stays the one selected, and opens the file of its row pressed.
+// A box dragged, or the ground, is saved at once. A select box selects what it holds. A
+// box pressed and let go where it was stays the one selected, and opens the file of its
+// row pressed.
 void Graph::release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell) {
   if (std::exchange(_dragging, false) && _unsaved)
     save(frame);
+  if (const std::optional<glm::vec2> from = std::exchange(_select_from, std::nullopt);
+      from && view)
+    select_within(frame.commands(), *view, *from);
   if (!_grab)
     return;
   const Grab grab = *std::exchange(_grab, std::nullopt);
@@ -518,6 +535,24 @@ void Graph::select(VP::CommandPort &commands, std::span<const std::string> nodes
   for (const std::string &node : nodes)
     line.append(" ").append(node);
   commands.send(line);
+}
+
+// Each box wholly inside the select box joins the selection, as shift with a press adds
+// one; the select box is cut at the area, as it shows, so no box out of view joins.
+void Graph::select_within(VP::CommandPort &commands,
+                          const VP::View &view,
+                          glm::vec2 from) const {
+  std::vector<std::string> chosen;
+  if (_selected_in == _shown)
+    chosen = _selection;
+  const std::size_t before = chosen.size();
+  const VP_VIEW::Rect swept = select_box(from);
+  for (std::size_t at = 0; at < _placed.size(); ++at)
+    if (const std::string &node = view.nodes[at].name;
+        within(box(_placed[at]), swept) && !selected(node))
+      chosen.push_back(node);
+  if (chosen.size() != before)
+    select(commands, chosen);
 }
 
 // The nodes selected and every node inside them, deepest first, as node remove takes no
@@ -615,9 +650,36 @@ void Graph::write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
              .role = VP_VIEW::role("panel")},
             *_area);
   }
+  if (_select_from)
+    write_select_box(rects, written);
   frame.write(_rects, written); // the used length, which rects draws
   write_labels(frame, view, cell);
   write_curves(frame, cell);
+}
+
+// Its four edges, as wide as a box's border and in the accent color, over the boxes.
+void Graph::write_select_box(std::span<VP_VIEW::Rect> rects,
+                             std::uint32_t &written) const {
+  const VP_VIEW::Rect swept = select_box(*_select_from);
+  if (swept.extent.x == 0 || swept.extent.y == 0)
+    return;
+  const glm::ivec2 from = swept.offset;
+  const glm::ivec2 last = from + glm::ivec2(swept.extent) - border_width;
+  const auto width = static_cast<std::uint32_t>(border_width);
+  const glm::uvec2 across{swept.extent.x, width};
+  const glm::uvec2 down{width, swept.extent.y};
+  constexpr std::uint32_t accent = VP_VIEW::role("accent");
+  rects[written++] = {.offset = from, .extent = across, .role = accent};
+  rects[written++] = {.offset = {from.x, last.y}, .extent = across, .role = accent};
+  rects[written++] = {.offset = from, .extent = down, .role = accent};
+  rects[written++] = {.offset = {last.x, from.y}, .extent = down, .role = accent};
+}
+
+// From where the shift press began to the pointer, either way, cut at the area.
+VP_VIEW::Rect Graph::select_box(glm::vec2 from) const {
+  const glm::ivec2 low(glm::round(glm::min(from, _pointer)));
+  const glm::ivec2 high(glm::round(glm::max(from, _pointer)));
+  return cut({.offset = low, .extent = glm::uvec2(high - low)}, *_area);
 }
 
 // A box's name a cell in from its left, between its pads, and each file a row below it.

@@ -70,7 +70,8 @@ struct Grab {
 // A drag on the ground moves the graph, the wheel zooms it about the pointer, and h
 // brings it home, as the Perform panel's image moves, and a press on a box selects it,
 // shift adding it or taking it out, and opens the file of a file's row in the editor; a
-// drag on a box selected moves every box selected.
+// drag on a box selected moves every box selected. With shift, a drag on the ground draws
+// a select box, and letting go adds the boxes wholly inside it to the selection.
 // It owns the selection, which select, selected and delete reach as lines do (V06), and
 // takes keys from the keys part while it has the focus, which a press in its area gives
 // it. Its own shaders draw the ground, lines that move and zoom with the graph over the
@@ -98,10 +99,13 @@ private:
   void turn(VP::Cook &frame, glm::vec2 turn);
   bool selected(std::string_view node) const;
   void select(VP::CommandPort &commands, std::span<const std::string> nodes) const;
+  void
+  select_within(VP::CommandPort &commands, const VP::View &view, glm::vec2 from) const;
   void erase(VP::Call &call, const VP::View &view);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
   void write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
+  void write_select_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const;
   void write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
   void write_row(glm::vec2 at,
                  std::string_view row,
@@ -117,6 +121,7 @@ private:
   // Where a place of the graph shows this frame, in pixels from the window's top left.
   glm::vec2 on_screen(glm::vec2 at) const;
   VP_VIEW::Rect box(const Placed &placed) const;
+  VP_VIEW::Rect select_box(glm::vec2 from) const;
 
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;
@@ -152,6 +157,8 @@ private:
   bool _refused = false; // its .ini holds a mistake, which no save writes over
   std::optional<std::uint64_t> _unsaved; // the frame of the change not yet saved
   std::optional<Grab> _grab;
+  // Where a press on the ground with shift began the select box, until it is let go.
+  std::optional<glm::vec2> _select_from;
   glm::vec2 _pointer{};   // as the events so far left it
   bool _dragging = false; // the ground, which the graph follows
   bool _shift = false;    // held, so a press adds a box to the selection or takes it out
