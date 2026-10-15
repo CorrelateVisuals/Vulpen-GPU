@@ -7,6 +7,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "shared/Scroll.h"
+#include "Syntax.h"
 
 #include <compare>
 #include <cstddef>
@@ -22,10 +23,6 @@
 // two copies of the part in one binary never clash.
 namespace {
 
-// How a file's text is told apart: code, as C++ and GLSL, by its kinds of words; a
-// manifest or an .ini by its keys; any other not at all.
-enum class Syntax : std::uint8_t { plain, code, keyed };
-
 // A place in a file: a row, and the byte of it where a character starts.
 struct Spot {
   std::size_t row = 0;
@@ -40,9 +37,9 @@ struct Document {
   std::string path; // absolute, as open was given it
   std::vector<std::string> lines;
   Syntax syntax = Syntax::plain;
-  std::vector<bool> commented; // whether each row starts inside a block comment
-  std::size_t widest = 0;      // the widest row's bytes
-  bool restyle = true;         // an edit came since commented and widest were found
+  std::vector<Open> inside; // what each row starts in: a block comment, or a string
+  std::size_t widest = 0;   // the widest row's bytes
+  bool restyle = true;      // an edit came since inside and widest were found
   Spot caret;
   Spot anchor;   // where the selection starts; the caret itself for none
   Scroll scroll; // the rows shown

@@ -27,8 +27,8 @@ select box over the box; the wheel then zooms the Perform panel's view, which a 
 moves, and h, with the focus the press gave the panel, brings home. The .ini must then
 hold the box moved. The last run must read it back without a word, select probe as a
 script does, show it with info under its header, and delete it with the key, so the .ini
-no longer places it. Each
-must end with exit 0 and print no validation message or sanitizer report (RVK00, A03), so
+no longer places it, with this file open in the editor, in Python's colors. Each must end
+with exit 0 and print no validation message or sanitizer report (RVK00, A03), so
 in the asan preset it checks the memory of the keys part, the terminal, the editor,
 modes, the graph, their panels, the dock, the images a hosted view's window renders
 into, the atlas made anew at another size, and the rebuild.
@@ -242,6 +242,7 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
 def deletes(wave: Path) -> list[str]:
     return [
         f"view load {wave}",
+        f"open {Path(__file__).resolve()}",  # Python in color, a docstring over many rows
         "wave: select probe",  # as a script selects, before the first frame
         "wave: info",  # the node selected, under its header
         "focus ide.graph.graph",

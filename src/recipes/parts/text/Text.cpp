@@ -25,141 +25,8 @@ constexpr char last_printable = '~';
 // UTF-8 (RFC 3629): a byte that only continues a character starts with the bits 10.
 constexpr unsigned char continuation_mask = 0xC0;
 constexpr unsigned char continuation = 0x80;
-// The words of C++ and GLSL, which nodes are written in, and the files of each syntax, a
-// blank before and after each, so a word is found whole.
-constexpr std::string_view keywords =
-    " alignas alignof auto break case catch class concept const consteval constexpr"
-    " constinit const_cast continue co_await co_return co_yield decltype default delete"
-    " do dynamic_cast else enum explicit export extern false final for friend goto if"
-    " inline mutable namespace new noexcept nullptr operator override private protected"
-    " public reinterpret_cast requires return sizeof static static_assert static_cast"
-    " struct switch template this throw true try typedef typeid typename union using"
-    " virtual volatile while attribute buffer centroid coherent discard flat highp in"
-    " inout invariant layout lowp mediump noperspective out patch precision readonly"
-    " restrict sample shared smooth subroutine uniform varying writeonly ";
-constexpr std::string_view types = " void bool char int unsigned signed short long float"
-                                   " double uint sampler sampler2D texture2D image2D ";
-constexpr std::string_view coded = " .cpp .h .hpp .cc .c .glsl .vert .frag .comp ";
-constexpr std::string_view keyed = " .vlp .ini ";
-constexpr std::string_view exponents = "eEpP"; // a sign after one goes on a number
-
 bool continues(char byte) {
   return (static_cast<unsigned char>(byte) & continuation_mask) == continuation;
-}
-
-// Whether the blank-separated words hold the word whole.
-bool listed(std::string_view words, std::string_view word) {
-  for (std::size_t at = words.find(word); at != std::string_view::npos && !word.empty();
-       at = words.find(word, at + 1))
-    if (words[at - 1] == ' ' && words[at + word.size()] == ' ')
-      return true;
-  return false;
-}
-
-bool letter(char byte) {
-  return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') || byte == '_';
-}
-
-bool digit(char byte) {
-  return byte >= '0' && byte <= '9';
-}
-
-// A template's file, as Name.cpp.in, by the name it is written for.
-Syntax syntax_of(std::string_view path) {
-  std::filesystem::path file(path);
-  if (file.extension() == ".in")
-    file.replace_extension();
-  const std::string extension = file.extension().string();
-  if (listed(coded, extension))
-    return Syntax::code;
-  return listed(keyed, extension) ? Syntax::keyed : Syntax::plain;
-}
-
-// A type by its word: C++'s and GLSL's own, a name in CamelCase, as types are named here
-// (RC01), one ending in _t, and GLSL's vectors and matrices, as uvec2 or mat4x3.
-bool typed(std::string_view word) {
-  if (listed(types, word) || word.ends_with("_t") ||
-      (word.front() >= 'A' && word.front() <= 'Z' &&
-       std::ranges::any_of(word, [](char byte) { return byte >= 'a' && byte <= 'z'; })))
-    return true;
-  if (std::string_view("iubd").find(word.front()) != std::string_view::npos)
-    word.remove_prefix(1);
-  return (word.starts_with("vec") || word.starts_with("mat")) && word.size() > 3 &&
-         word[3] >= '2' && word[3] <= '4';
-}
-
-// Past a quote's closing quote, a backslash keeping the next byte in; the row's end
-// when it has none.
-std::size_t quoted_end(std::string_view row, std::size_t at) {
-  for (std::size_t end = at + 1; end < row.size(); ++end)
-    if (row[end] == '\\')
-      ++end;
-    else if (row[end] == row[at])
-      return end + 1;
-  return row.size();
-}
-
-// Past a number's digits, letters, points and separators, as 0x1F, 1.5f, 1'000 or 2e-3.
-std::size_t number_end(std::string_view row, std::size_t at) {
-  std::size_t end = at + 1;
-  while (end < row.size() &&
-         (digit(row[end]) || letter(row[end]) || row[end] == '.' || row[end] == '\'' ||
-          ((row[end] == '+' || row[end] == '-') &&
-           exponents.find(row[end - 1]) != std::string_view::npos)))
-    ++end;
-  return end;
-}
-
-// A word's role: the first of a row in a manifest or an .ini, its key or its section;
-// in code, a keyword or a type by the word itself.
-std::uint32_t word_role(std::string_view word, Syntax syntax, bool key) {
-  if (key || (syntax == Syntax::code && listed(keywords, word)))
-    return VP_VIEW::role("keyword");
-  return syntax == Syntax::code && typed(word) ? VP_VIEW::role("type")
-                                               : VP_VIEW::role("text");
-}
-
-// Hands each run of the row in one role to each, as from, to and the role, in order and
-// with every byte in one; returns whether a block comment is open at the row's end. In
-// code, the comments, a directive, quotes, numbers, and the words by their kind; in a
-// manifest or an .ini, the comments, quotes, numbers, and the first word of a row, its
-// key or its section.
-template <class Each>
-bool scan(std::string_view row, Syntax syntax, bool commented, Each each) {
-  const std::size_t first = row.find_first_not_of(" \t");
-  bool keyed = syntax == Syntax::keyed;
-  std::size_t at = 0;
-  const auto run = [&](std::size_t to, std::uint32_t role) {
-    each(at, to, role);
-    at = to;
-  };
-  while (at < row.size()) {
-    const std::string_view rest = row.substr(at);
-    if (syntax == Syntax::plain) {
-      run(row.size(), VP_VIEW::role("text"));
-    } else if (commented || (syntax == Syntax::code && rest.starts_with("/*"))) {
-      const std::size_t end = row.find("*/", commented ? at : at + 2);
-      commented = end == std::string_view::npos;
-      run(commented ? row.size() : end + 2, VP_VIEW::role("comment"));
-    } else if (rest.starts_with(syntax == Syntax::code ? "//" : "#")) {
-      run(row.size(), VP_VIEW::role("comment"));
-    } else if (syntax == Syntax::code && rest.front() == '#' && at == first) {
-      run(row.size(), VP_VIEW::role("directive"));
-    } else if (rest.front() == '"' || rest.front() == '\'') {
-      run(quoted_end(row, at), VP_VIEW::role("string"));
-    } else if (digit(rest.front()) ||
-               (rest.size() > 1 && rest.front() == '.' && digit(rest[1]))) {
-      run(number_end(row, at), VP_VIEW::role("number"));
-    } else if (letter(rest.front())) {
-      std::size_t end = at + 1;
-      while (end < row.size() && (letter(row[end]) || digit(row[end])))
-        ++end;
-      run(end, word_role(row.substr(at, end - at), syntax, std::exchange(keyed, false)));
-    } else {
-      run(at + 1, VP_VIEW::role("text"));
-    }
-  }
-  return commented;
 }
 
 // Each line without its break, so joined with breaks they give back the text, a last
@@ -620,19 +487,19 @@ std::size_t Text::select(const Document &document,
   return count;
 }
 
-// Whether each row starts inside a block comment, and the widest row, from the file's
+// What each row starts inside, as a block comment, and the widest row, from the file's
 // top, once an edit came, so a frame scans only the rows it shows.
 void Text::measure(Document &document) {
-  document.commented.assign(document.lines.size(), false);
+  document.inside.assign(document.lines.size(), Open::none);
   document.widest = 0;
-  bool commented = false;
+  Open open = Open::none;
   for (std::size_t row = 0; row < document.lines.size(); ++row) {
-    document.commented[row] = commented;
+    document.inside[row] = open;
     document.widest = std::max(document.widest, document.lines[row].size());
-    commented = scan(document.lines[row],
-                     document.syntax,
-                     commented,
-                     [](std::size_t, std::size_t, std::uint32_t) {});
+    open = scan(document.lines[row],
+                document.syntax,
+                open,
+                [](std::size_t, std::size_t, std::uint32_t) {});
   }
 }
 
@@ -655,7 +522,7 @@ void Text::write_lines(VP::Cook &frame,
     bool cut = false; // a run the room lacked, so no later one joins a Label past it
     scan(line,
          document.syntax,
-         document.commented[row],
+         document.inside[row],
          [&](std::size_t from, std::size_t to, std::uint32_t role) {
            from = std::max(from, left);
            to = std::min({to, right, from + characters.size() - next});
