@@ -34,8 +34,9 @@ modes, the graph, their panels, the dock, the images a hosted view's window rend
 into, the atlas made anew at another size, and the rebuild.
 The terminal run also scrolls the rows of the app's start with the wheel, a fifth of a
 step too, and drags their scroll bar to the oldest, before help, sent, shows the newest
-again; the editor run scrolls the note past its end with the wheel, and back with a drag
-on its scroll bar. In both, three presses in a row select a word, then its row.
+again, and scrolls them across with shift and the wheel and back with the wheel turned
+sideways; the editor run scrolls the note past its end with the wheel, and back with a
+drag on its scroll bar. In both, three presses in a row select a word, then its row.
 The zoom a person keeps in the library's font folder is set aside while it runs, and put
 back after. Where no display exists it is skipped (V07).
 
@@ -138,6 +139,10 @@ def typed(width: int, height: int) -> list[str]:
         f"input pointer {width - 4} {height // 2}",
         "input button up left",
         *clicks(70, height - 60),  # a word of the oldest rows, and then its row
+        "input key down shift",
+        "input wheel 0 -1",  # across, as the log's rows are wider than the terminal
+        "input key up shift",
+        "input wheel 1 0",  # and back, turned sideways, as a touchpad turns it
     ]
 
 

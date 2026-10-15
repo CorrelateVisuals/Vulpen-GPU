@@ -41,11 +41,12 @@ struct Document {
   std::vector<std::string> lines;
   Syntax syntax = Syntax::plain;
   std::vector<bool> commented; // whether each row starts inside a block comment
-  bool restyle = true;         // an edit came since commented was found
+  std::size_t widest = 0;      // the widest row's bytes
+  bool restyle = true;         // an edit came since commented and widest were found
   Spot caret;
-  Spot anchor;          // where the selection starts; the caret itself for none
-  Scroll scroll;        // the rows shown
-  std::size_t left = 0; // the first column shown
+  Spot anchor;   // where the selection starts; the caret itself for none
+  Scroll scroll; // the rows shown
+  Scroll columns{Scroll::Axis::across};
   bool changed = false; // since it was opened or last written
 };
 
@@ -65,11 +66,12 @@ struct Grid {
 //
 // It holds the files open, shows one, and hands a panel a tab for each, whose press
 // shows it again; while one has changes, quit refuses, naming it. The wheel scrolls it,
-// as does a drag on the bar at its right edge; a double click selects a word, and one
-// more press the row. It takes keys from the keys part while it has the focus, which a
-// press in its area gives it, and none while it has no room. The
-// font draws ASCII, so a character past it shows as a blank cell a byte, but the caret
-// steps over it whole and no edit ever splits it.
+// as does a drag on the bar at its right edge, and across, turned sideways or with
+// shift, as does a drag on the bar at its bottom edge; a double click selects a word,
+// and one more press the row. It takes keys from the keys part while it has the focus,
+// which a press in its area gives it, and none while it has no room. The font draws
+// ASCII, so a character past it shows as a blank cell a byte, but the caret steps over
+// it whole and no edit ever splits it.
 class Text final : public VP::Operator {
   void bind(VP::Bind &node) override;
   void cook(VP::Cook &frame) override;
@@ -87,8 +89,8 @@ class Text final : public VP::Operator {
                             std::string_view key,
                             const Grid &grid) const;
   void lay_out(VP::Cook &frame, const Grid &grid);
-  void follow(Document &document, const Grid &grid);
-  static void find_comments(Document &document);
+  void follow(Document &document);
+  static void measure(Document &document);
   std::size_t select(const Document &document,
                      const Grid &grid,
                      std::size_t rows,
@@ -124,6 +126,7 @@ class Text final : public VP::Operator {
   glm::vec2 _pointer{};   // as the events so far left it
   bool _dragging = false; // a selection, from a press in the area until it is let go
   bool _shift = false;    // held, so a key that moves the caret selects
+  bool _sideways = false; // shift held, as the window says, so the wheel scrolls across
   bool _control = false;  // held, so c, x and v copy, cut and paste
   bool _follow = false;   // the caret moved, so the next layout scrolls it into view
 };

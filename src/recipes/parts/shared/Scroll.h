@@ -10,15 +10,20 @@
 namespace {
 
 // Rows of which as many as fit show at once, from a first row that the wheel and a drag
-// on a bar's thumb move, as the editor's and the terminal's. The first row keeps its
-// fraction, so a touchpad's many small turns add up, where each alone would round to no
-// row. The part hands it the turns, presses and pointer moves it takes, so the part still
-// decides what a press is for (RV09).
+// on a bar's thumb move, as the editor's and the terminal's; or across, columns, as of
+// their rows wider than they show. The first row keeps its fraction, so a touchpad's many
+// small turns add up, where each alone would round to no row. The part hands it the
+// turns, presses and pointer moves it takes, so the part still decides what a press is
+// for (RV09).
 class Scroll {
 public:
-  // How wide a bar is, down the right edge of what scrolls, which a part keeps its text
-  // out of.
+  // How wide a bar is, down the right edge of what scrolls or across its bottom edge,
+  // which a part keeps its text out of.
   static constexpr std::int32_t width = 10;
+  enum class Axis : std::uint8_t { down, across };
+
+  Scroll() = default;
+  explicit Scroll(Axis axis) : _along(axis == Axis::across ? 0 : 1) {}
 
   // The rows in all, as many as show at once, and the last row that may show first: the
   // one that leaves the last row at the bottom, or a later one, as an editor scrolls on
@@ -41,12 +46,14 @@ public:
   void release();
   // The thumb on the track while a row does not show; none while all do.
   std::optional<VP_VIEW::Rect> thumb(const VP_VIEW::Rect &track) const;
-  // The track down the right edge of what scrolls.
-  static VP_VIEW::Rect track(const VP_VIEW::Rect &along);
+  // The track down the right edge of what scrolls, or across its bottom edge, left of
+  // the other, so the two never meet.
+  VP_VIEW::Rect track(const VP_VIEW::Rect &along) const;
 
 private:
   float length(const VP_VIEW::Rect &track) const;
 
+  glm::length_t _along = 1; // 0 for x, 1 for y: the axis its rows run along
   float _first = 0.0f;
   std::size_t _rows = 0;
   std::size_t _shown = 0;

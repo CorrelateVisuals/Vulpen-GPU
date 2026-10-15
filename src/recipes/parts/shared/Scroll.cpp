@@ -8,7 +8,7 @@
 
 namespace {
 
-constexpr float wheel_rows = 3.0f;   // rows a step of the wheel scrolls
+constexpr float wheel_rows = 3.0f;   // rows, or columns, a step of the wheel scrolls
 constexpr float thumb_least = 16.0f; // pixels, so the thumb of many rows can be held
 
 inline void Scroll::fit(std::size_t rows, std::size_t shown, std::size_t last) {
@@ -46,19 +46,20 @@ inline bool Scroll::press(glm::vec2 at, const VP_VIEW::Rect &track) {
   const std::optional<VP_VIEW::Rect> held = thumb(track);
   if (!held || !VP_VIEW::contains(track, at))
     return false;
-  _held = VP_VIEW::contains(*held, at) ? at.y - static_cast<float>(held->offset.y)
-                                       : static_cast<float>(held->extent.y) / 2.0f;
+  _held = VP_VIEW::contains(*held, at)
+              ? at[_along] - static_cast<float>(held->offset[_along])
+              : static_cast<float>(held->extent[_along]) / 2.0f;
   drag(at, track);
   return true;
 }
 
 inline void Scroll::drag(glm::vec2 at, const VP_VIEW::Rect &track) {
-  const float room = static_cast<float>(track.extent.y) - length(track);
+  const float room = static_cast<float>(track.extent[_along]) - length(track);
   if (!_held || room <= 0.0f)
     return;
-  const float down = at.y - static_cast<float>(track.offset.y) - *_held;
+  const float along = at[_along] - static_cast<float>(track.offset[_along]) - *_held;
   _first = std::clamp(
-      down / room * static_cast<float>(_last), 0.0f, static_cast<float>(_last));
+      along / room * static_cast<float>(_last), 0.0f, static_cast<float>(_last));
 }
 
 inline void Scroll::release() {
@@ -69,28 +70,32 @@ inline std::optional<VP_VIEW::Rect> Scroll::thumb(const VP_VIEW::Rect &track) co
   if (_shown == 0 || (first() == 0 && _shown >= _rows))
     return std::nullopt;
   const float length = this->length(track);
-  const float room = static_cast<float>(track.extent.y) - length;
-  const auto down = static_cast<std::int32_t>(
+  const float room = static_cast<float>(track.extent[_along]) - length;
+  VP_VIEW::Rect thumb{
+      .offset = track.offset, .extent = track.extent, .role = VP_VIEW::role("muted")};
+  thumb.offset[_along] += static_cast<std::int32_t>(
       std::lround(_last == 0 ? 0.0f : room * _first / static_cast<float>(_last)));
-  return VP_VIEW::Rect{
-      .offset = track.offset + glm::ivec2(0, down),
-      .extent = {track.extent.x, static_cast<std::uint32_t>(std::lround(length))},
-      .role = VP_VIEW::role("muted")};
+  thumb.extent[_along] = static_cast<std::uint32_t>(std::lround(length));
+  return thumb;
 }
 
-inline VP_VIEW::Rect Scroll::track(const VP_VIEW::Rect &along) {
-  return {.offset = along.offset +
-                    glm::ivec2(static_cast<std::int32_t>(along.extent.x) - width, 0),
+inline VP_VIEW::Rect Scroll::track(const VP_VIEW::Rect &along) const {
+  const glm::ivec2 extent(along.extent);
+  if (_along == 0)
+    return {.offset = along.offset + glm::ivec2(0, extent.y - width),
+            .extent = {static_cast<std::uint32_t>(std::max(extent.x - width, 0)),
+                       static_cast<std::uint32_t>(width)}};
+  return {.offset = along.offset + glm::ivec2(extent.x - width, 0),
           .extent = {static_cast<std::uint32_t>(width), along.extent.y}};
 }
 
 // As much of the track as the rows shown are of the rows the first may run over, and
 // those it shows.
 inline float Scroll::length(const VP_VIEW::Rect &track) const {
-  const auto height = static_cast<float>(track.extent.y);
+  const auto along = static_cast<float>(track.extent[_along]);
   const auto span = static_cast<float>(std::max(_last + _shown, std::size_t{1}));
-  const float part = height * static_cast<float>(_shown) / span;
-  return std::min(height, std::max(thumb_least, part));
+  const float part = along * static_cast<float>(_shown) / span;
+  return std::min(along, std::max(thumb_least, part));
 }
 
 } // namespace
