@@ -190,7 +190,7 @@ def children(vulpen: str, count: int) -> None:
         one.type(f"child add w {WAVE / 'view.vlp'}")
         if "{!!!}" in one.wait_for("child w: hosted", SWAP_TIMEOUT):
             break
-        one.type("child remove w")
+        one.type("view close w")
         if "{!!!}" in one.wait_for("child w: no longer hosted", SWAP_TIMEOUT):
             break
         samples.append(one.sample())

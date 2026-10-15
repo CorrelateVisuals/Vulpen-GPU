@@ -462,19 +462,17 @@ void child_add(View &view, Arguments arguments, std::string_view where) {
                      .where = std::string(where)});
 }
 
-// As a node: a connection that takes the view's window would take it from nothing.
-void child_remove(View &view, Arguments arguments, std::string_view) {
-  for (const Connection &connection : view.connections)
-    if (connection.from.view() && connection.from.node == arguments.front())
-      throw std::runtime_error(
-          std::format("view {} is connected through {}; disconnect it first",
-                      arguments.front(),
-                      connection.name));
+// The connections that take the view's window go first, as they would take it from
+// nothing, so a view presented is no longer; nothing takes its place.
+void view_close(View &view, Arguments arguments, std::string_view) {
   if (std::erase_if(view.children, [&](const Child &child) {
         return child.name == arguments.front();
       }) == 0)
     throw std::runtime_error(std::format(
         "this view hosts no view named {}; child list lists them", arguments.front()));
+  std::erase_if(view.connections, [&](const Connection &connection) {
+    return connection.from.view() && connection.from.node == arguments.front();
+  });
 }
 
 struct Edit {
@@ -508,7 +506,10 @@ constexpr std::array edits{
          "hosts the view a view.vlp holds, or an empty one that view save writes; a line "
          "`<name>: <command>` addresses it",
          child_add},
-    Edit{"child remove <name>", "stops hosting a view; its files stay", child_remove},
+    Edit{"view close <name>",
+         "stops hosting a view, letting go of the connections that take its window; its "
+         "files stay",
+         view_close},
 };
 
 } // namespace
@@ -631,12 +632,12 @@ void Edits::connect(View &view, Connection connection) {
 // since the last, so it sees only where they end: a node removed and added again in
 // between keeps its operator and buffers, as it does across a re-read of the manifest.
 //
-// A hosted view's name is its own, so child remove reaches the view that hosts it from
+// A hosted view's name is its own, so view close reaches the view that hosts it from
 // wherever the line goes, as from inside the view it closes.
 void Edits::command(Call &call) {
   std::string address(_port.addressed());
   for (std::size_t index = 0; index < edits.size(); ++index)
-    if (call.is(_commands[index]) && edits[index].change == child_remove)
+    if (call.is(_commands[index]) && edits[index].change == view_close)
       if (const std::optional<std::string> host =
               _views.host_of(call.arguments().front()))
         address = *host;

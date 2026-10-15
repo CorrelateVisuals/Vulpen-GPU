@@ -14,7 +14,7 @@ than the image's format takes, a format there is not, image clear of a port that
 no image, a key there is not, a buffer C++ fills for another node's shader whose members
 sit elsewhere, given no room, or that nothing reads, a draw's image taken to no Texture,
 or given a format there is not, and a view's window taken from a view the view does not
-host, taken to a view, taken to no Texture, or left without the view by child remove.
+host, taken to a view, or taken to no Texture.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -166,9 +166,6 @@ CASES = {
                   "connection painted is to inner:, but a view's window only leaves it"),
     "view-reader": (HEAD + INNER + SUM + connection("stage", "inner:", "sum.values"),
                     "connection stage: view inner draws an image, which values is no Texture"),
-    "view-remove": (HEAD + INNER + LOOK + connection("stage", "inner:", "look.painted"),
-                    "view inner is connected through stage; disconnect it first",
-                    "child remove inner\n"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -449,7 +446,7 @@ def children(vulpen: str, folder: Path) -> str | None:
     (host / "view.vlp").write_text(text, encoding="utf-8")
     (host / "inner" / "view.vlp").write_text(HEAD, encoding="utf-8")
     script = host / "edits.txt"
-    script.write_text("child remove inner\nchild add inner inner/view.vlp\nview save\n",
+    script.write_text("view close inner\nchild add inner inner/view.vlp\nview save\n",
                       encoding="utf-8")
     code, output = run(vulpen, [host / "view.vlp", "--frames", 1, "--fps", 0, "--log", "info",
                                 "--source", script])

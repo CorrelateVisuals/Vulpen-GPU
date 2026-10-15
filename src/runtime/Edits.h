@@ -15,8 +15,8 @@ struct Endpoint;
 struct Node;
 
 // The primitive edits, which are the manifest's own words: node add, remove and set,
-// connect and disconnect, param set and unset, child add and remove. Loading a view runs
-// its lines through them, so a typed edit and a loaded one change a view alike.
+// connect and disconnect, param set and unset, child add and view close. Loading a view
+// runs its lines through them, so a typed edit and a loaded one change a view alike.
 //
 // Each edit throws naming the mistake and leaves the view as it was (A02), so a view
 // only ever holds whole nodes, and connections between them that form no cycle.

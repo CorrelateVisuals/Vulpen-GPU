@@ -387,7 +387,7 @@ void Views::follow(const std::string &host, const View &view) {
             std::format("a hosted view is named {} already", child.name));
       if (found->current().file != child.file)
         throw std::runtime_error(
-            std::format("child {} is hosted from {}; child remove {} first",
+            std::format("child {} is hosted from {}; view close {} first",
                         child.name,
                         found->current().file.string(),
                         child.name));

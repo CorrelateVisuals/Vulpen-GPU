@@ -43,7 +43,7 @@ connect values wave.values probe.values
 child add e empty/view.vlp
 e: view save
 child list
-child remove e
+view close e
 view save
 log save session.log
 source session.log
@@ -53,7 +53,8 @@ TIMEOUT = 60  # seconds; a sanitizer build of a small view starts in about one
 TOKENS = ["", "0", "1", "-1", "64", "65", "4294967295", "4294967296", "1e9", "0.5", "nan",
           "inf", "9" * 40, "x" * 4000, '"', "[", "]", "=", ".", "#", "é", "\t",
           "wave", "probe", "values", "samples", "Wave.comp", "Probe.comp", "Wave.vert",
-          "quit", "node", "add", "remove", "set", "unset", "param", "connect", "disconnect",
+          "quit", "node", "add", "remove", "close", "set", "unset", "param", "connect",
+          "disconnect",
           "operator", "file", "invocations", "vertex_count", "log", "save", "source",
           "session.log", "script.txt", "view", "recipe", "wave@0badf00d", "wave.inner",
           "wave.inner.values", "Wave.cpp", "[node \"wave\"]", "[connection \"values\"]",
