@@ -19,7 +19,7 @@ Principles are must-haves that leave room for interpretation; they may pull agai
 ### Architecture
 
 - **V05 Features are recipes.** Vulpen itself only offers general ports (input, commands such as graph edits, file access). When a recipe needs something Vulpen lacks, Vulpen gains the general port, never the feature.
-- **V06 Every action is a command.** Vulpen offers one command port that every front end uses: the CLI and the GUIs are recipes on it, scripts and agents send it text, and none has a private way in. Every command has a text form, so anything a GUI does can also be typed or scripted.
+- **V06 Every action is a command.** Vulpen offers one command port that every front end uses: the CLI and the GUIs are recipes on it, scripts and agents send it text, and none has a private way in. Every command has a text form, so anything a GUI does can also be typed or scripted. Commands stay few: a variant of a command is an option of it, as `quit force`, never a command of its own.
 - **V07 Headless is first-class.** Everything runs without a window or display: batch compute on HPC nodes and servers, and tests, scripts and agents driving Vulpen. A window is one output next to files and streams, never a precondition.
 - **V08 Replayable.** A session is its command log: replaying the log headless rebuilds the same graph and, with C01, the same output. A bug report, a test and an HPC job all become a log file, and undo comes for free.
 - **V09** A node's log level applies to it and everything nested under it; the nearest setting wins, and none means the process level. This keeps C09's quiet default usable in a large graph.
