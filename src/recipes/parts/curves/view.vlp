@@ -1,5 +1,6 @@
 # The curves part: one shader node with no C++; it draws every Curve it is given in its
-# palette color, a strip of quads an instance, as many as the Curves' writer wrote.
+# palette color, a strip of quads an instance, as many as the Curves' writer wrote, cut
+# at the first Rect its area is given, so none draws over what is beside it.
 [manifest]
 version = 1
 

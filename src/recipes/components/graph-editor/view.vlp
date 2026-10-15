@@ -24,6 +24,12 @@ recipe = glyphs
 from = graph-editor.graph.curves
 to   = graph-editor.curves.curves
 
+# The graph's area, its ground, at whose edge the curves are cut, so a curve to a box
+# dragged out of view runs to the edge.
+[connection "ground"]
+from = graph-editor.graph.ground
+to   = graph-editor.curves.area
+
 [connection "rects"]
 from = graph-editor.graph.rects
 to   = graph-editor.rects.rects

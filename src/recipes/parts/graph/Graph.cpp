@@ -714,13 +714,13 @@ void Graph::write_curves(VP::Cook &frame, glm::uvec2 cell) {
   frame.write(_curves, written);
 }
 
-// When both its ends lie inside the area: a curve's bend stays between its ends, so it
-// does too.
+// Whole, even with an end out of view: the curves part cuts it at the area's edge, which
+// the ground hands it, so a curve to a box dragged out runs to the edge.
 void Graph::write_curve(std::span<VP_VIEW::Curve> curves,
                         std::uint32_t &written,
                         glm::vec2 from,
                         glm::vec2 to) const {
-  if (written < curves.size() && inside(*_area, from) && inside(*_area, to))
+  if (written < curves.size())
     curves[written++] = {.from = from, .to = to, .role = VP_VIEW::role("accent")};
 }
 

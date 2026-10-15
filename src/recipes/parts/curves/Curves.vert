@@ -3,6 +3,7 @@
 #include "Curves.glsl"
 
 layout(location = 0) flat out vec4 fill;
+layout(location = 1) flat out vec4 room; // the area's left, top, right and bottom
 
 // Its handles reach half the way across, and at least this far, so a curve that runs
 // back to the left still bends round.
@@ -30,4 +31,6 @@ void main() {
       dot(slope, slope) > 0.0 ? normalize(vec2(-slope.y, slope.x)) : vec2(0.0, 1.0);
   gl_Position = pixel_clip(point + side * (corner.y * 2.0 - 1.0) * half_width);
   fill = role_color(pass.palette, curve.role);
+  const Rect area = pass.area.at[0];
+  room = vec4(vec2(area.offset), vec2(area.offset) + vec2(area.extent));
 }
