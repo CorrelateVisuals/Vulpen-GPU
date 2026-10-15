@@ -1,5 +1,6 @@
 #include "contracts/Font.h"
 #include "runtime/Operator.h"
+#include "shared/Ini.h"
 
 // Static, so each view's copy of this part keeps stb_truetype to itself, and copies in
 // two views link into one release binary.
@@ -8,7 +9,6 @@
 #include <stb_truetype.h>
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -30,41 +30,28 @@ constexpr float zoom_step = 1.1f; // how much larger a step of zoom in draws
 constexpr float zoom_least = 0.5f;
 constexpr float zoom_most = 4.0f;
 constexpr std::string_view kept_file = ".vulpen/font.ini"; // which no build or scan reads
-constexpr std::string_view blanks = " \t\r";
 constexpr std::string_view kept_header =
     "# How much larger than its height param the font draws the text, which a restart\n"
     "# keeps. zoom in, zoom out and zoom reset write it; delete it to draw the text at\n"
     "# the font's height again.\n";
 
-std::string_view trim(std::string_view text) {
-  const std::size_t first = text.find_first_not_of(blanks);
-  if (first == std::string_view::npos)
-    return {};
-  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
-}
-
-// The line zoom = z, as a zoom writes it; # starts a comment, and with none the font
-// draws at its height. Throws naming the first line that is no such zoom (A02).
+// The row zoom = z, as a zoom writes it; with none the font draws at its height. Throws
+// naming the first row that is no such zoom (A02).
 float zoom_of(std::string_view text) {
   float zoom = 1.0f;
-  for (std::size_t line = 1; !text.empty(); ++line) {
-    const std::size_t end = std::min(text.find('\n'), text.size());
-    const std::string_view row = trim(text.substr(0, std::min(text.find('#'), end)));
-    text.remove_prefix(std::min(end + 1, text.size()));
-    if (row.empty())
-      continue;
-    const std::size_t equals = std::min(row.find('='), row.size());
-    const std::string_view value = trim(row.substr(std::min(equals + 1, row.size())));
-    const auto [stop, error] =
-        std::from_chars(value.data(), value.data() + value.size(), zoom);
-    if (trim(row.substr(0, equals)) != "zoom" || error != std::errc{} ||
-        stop != value.data() + value.size() || !(zoom >= zoom_least && zoom <= zoom_most))
+  for (const Row &row : rows_of(text)) {
+    const auto pair = key_value(row.text);
+    const std::vector<float> numbers =
+        pair ? numbers_of(pair->second) : std::vector<float>{};
+    if (!pair || pair->first != "zoom" || numbers.size() != 1 ||
+        !(numbers[0] >= zoom_least && numbers[0] <= zoom_most))
       throw std::runtime_error(std::format("{}:{}: {} is no zoom = z from {} to {}",
                                            kept_file,
-                                           line,
-                                           row,
+                                           row.line,
+                                           row.text,
                                            zoom_least,
                                            zoom_most));
+    zoom = numbers[0];
   }
   return zoom;
 }

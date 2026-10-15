@@ -1,6 +1,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Ini.h"
 
 #include <algorithm>
 #include <array>
@@ -19,7 +20,6 @@ namespace {
 
 constexpr std::string_view keymap_file = "keymap.ini";
 constexpr std::string_view typed_port = "typed";
-constexpr std::string_view blanks = " \t\r";
 // The keys a chord holds while it presses its last, as the input port names them; a bit
 // each, in this order, in what a chord holds.
 constexpr std::array<std::string_view, 4> modifiers{"shift", "control", "alt", "super"};
@@ -32,13 +32,6 @@ struct Chord {
   std::string key;
   std::string command;
 };
-
-std::string_view trim(std::string_view text) {
-  const std::size_t first = text.find_first_not_of(blanks);
-  if (first == std::string_view::npos)
-    return {};
-  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
-}
 
 // A modifier's bit; none for any other key.
 std::optional<Held> modifier(std::string_view key) {
@@ -95,17 +88,13 @@ std::size_t equals_of(std::string_view text) {
   return equals;
 }
 
-// Each line binds a chord to the line it sends, as control+l = clear; # starts a comment.
+// Each row binds a chord to the line it sends, as control+l = clear.
 std::vector<Chord> chords_of(std::string_view keymap,
                              const VP::InputPort &input,
                              std::span<const VP::Usage> usages) {
   std::vector<Chord> chords;
-  for (std::size_t line = 1; !keymap.empty(); ++line) {
-    const std::size_t end = std::min(keymap.find('\n'), keymap.size());
-    const std::string_view text = trim(keymap.substr(0, std::min(keymap.find('#'), end)));
-    keymap.remove_prefix(std::min(end + 1, keymap.size()));
-    if (text.empty())
-      continue;
+  for (const Row &row : rows_of(keymap)) {
+    const std::string_view text = row.text;
     const std::size_t equals = equals_of(text);
     try {
       if (equals == std::string_view::npos)
@@ -122,7 +111,7 @@ std::vector<Chord> chords_of(std::string_view keymap,
       chords.push_back(std::move(chord));
     } catch (const std::runtime_error &mistake) {
       throw std::runtime_error(
-          std::format("{}:{}: {}", keymap_file, line, mistake.what()));
+          std::format("{}:{}: {}", keymap_file, row.line, mistake.what()));
     }
   }
   return chords;

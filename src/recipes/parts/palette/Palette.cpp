@@ -1,72 +1,54 @@
 #include "contracts/Palette.h"
 #include "runtime/Operator.h"
+#include "shared/Ini.h"
 
 #include <algorithm>
 #include <array>
-#include <charconv>
+#include <cstddef>
 #include <cstdint>
 #include <format>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
 constexpr std::string_view theme_file = "theme.ini";
 constexpr std::uint32_t roles = VP_VIEW::role_names.size();
-constexpr glm::length_t channels = 4; // red, green, blue and alpha
-constexpr glm::length_t opaque = 3;   // the channels a color gives when its alpha is 1
-constexpr std::string_view blanks = " \t\r";
+constexpr std::size_t channels = 4; // red, green, blue and alpha
+constexpr std::size_t opaque = 3;   // the channels a color gives when its alpha is 1
 
 using Colors = std::array<glm::vec4, roles>;
-
-std::string_view trim(std::string_view text) {
-  const std::size_t first = text.find_first_not_of(blanks);
-  if (first == std::string_view::npos)
-    return {};
-  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
-}
 
 // Linear, as the window's sRGB images take it; none when a channel is no number from 0
 // to 1, or there are too few or too many.
 std::optional<glm::vec4> color_of(std::string_view text) {
-  glm::vec4 color(1.0f);
-  glm::length_t given = 0;
-  for (text = trim(text); !text.empty(); text = trim(text)) {
-    const std::size_t length = std::min(text.find_first_of(blanks), text.size());
-    float channel = 0.0f;
-    const auto [end, error] = std::from_chars(text.data(), text.data() + length, channel);
-    if (given == channels || error != std::errc{} || end != text.data() + length ||
-        !(channel >= 0.0f && channel <= 1.0f))
-      return std::nullopt;
-    color[given++] = channel;
-    text.remove_prefix(length);
-  }
-  if (given < opaque)
+  const std::vector<float> given = numbers_of(text);
+  const auto unit = [](float channel) { return channel >= 0.0f && channel <= 1.0f; };
+  if (given.size() < opaque || given.size() > channels ||
+      !std::ranges::all_of(given, unit))
     return std::nullopt;
+  glm::vec4 color(1.0f);
+  for (std::size_t at = 0; at < given.size(); ++at)
+    color[static_cast<glm::length_t>(at)] = given[at];
   return color;
 }
 
-// Each line gives a role its color, as role = red green blue, with alpha after when it
-// is not opaque; # starts a comment.
+// Each row gives a role its color, as role = red green blue, with alpha after when it is
+// not opaque.
 Colors colors_of(std::string_view theme) {
   Colors colors{};
   std::array<bool, roles> given{};
-  for (std::size_t line = 1; !theme.empty(); ++line) {
-    const std::size_t end = std::min(theme.find('\n'), theme.size());
-    const std::string_view text = trim(theme.substr(0, std::min(theme.find('#'), end)));
-    theme.remove_prefix(std::min(end + 1, theme.size()));
+  for (const Row &row : rows_of(theme)) {
     const auto mistake = [&](std::string_view why) {
-      return std::runtime_error(std::format("{}:{}: {}", theme_file, line, why));
+      return std::runtime_error(std::format("{}:{}: {}", theme_file, row.line, why));
     };
-    if (text.empty())
-      continue;
-    const std::size_t equals = text.find('=');
-    if (equals == std::string_view::npos)
+    const auto pair = key_value(row.text);
+    if (!pair)
       throw mistake("a line is a role, = and its color");
-    const std::string_view name = trim(text.substr(0, equals));
-    const std::string_view value = trim(text.substr(equals + 1));
+    const auto [name, value] = *pair;
     const auto role = std::ranges::find(VP_VIEW::role_names, name);
     if (role == VP_VIEW::role_names.end()) {
       std::string names;

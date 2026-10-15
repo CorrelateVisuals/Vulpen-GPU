@@ -3,10 +3,10 @@
 #include "contracts/Palette.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Ini.h"
 
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -28,7 +28,6 @@ constexpr std::string_view kept_folder = ".vulpen"; // which no build or scan re
 constexpr std::string_view kept_file = "graph.ini";
 constexpr std::string_view place_key = "place ";
 constexpr std::string_view color_key = "color ";
-constexpr std::string_view blanks = " \t\r";
 constexpr std::string_view kept_header =
     "# The graph editor's look at this view, which a restart keeps: each box placed by\n"
     "# hand, from the graph's top left at zoom 1, and the role a kind of node's boxes\n"
@@ -71,28 +70,6 @@ Kind kind_of(const VP::Node &node) {
   return node.files.empty() ? Kind::group : Kind::data;
 }
 
-std::string_view trim(std::string_view text) {
-  const std::size_t first = text.find_first_not_of(blanks);
-  if (first == std::string_view::npos)
-    return {};
-  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
-}
-
-// The numbers a value holds, between blanks; none when a word is no number.
-std::vector<float> numbers_of(std::string_view text) {
-  std::vector<float> numbers;
-  for (text = trim(text); !text.empty(); text = trim(text)) {
-    const std::size_t length = std::min(text.find_first_of(blanks), text.size());
-    float number = 0.0f;
-    const auto [end, error] = std::from_chars(text.data(), text.data() + length, number);
-    if (error != std::errc{} || end != text.data() + length)
-      return {};
-    numbers.push_back(number);
-    text.remove_prefix(length);
-  }
-  return numbers;
-}
-
 // The words a list gives, a comma between each, for a mistake to name.
 template <std::size_t Count>
 std::string listed(const std::array<std::string_view, Count> &words) {
@@ -126,41 +103,34 @@ void color_line(Arranged &arranged, std::string_view kind, std::string_view role
 // (A02).
 Arranged arranged_of(std::string_view text) {
   Arranged arranged;
-  for (std::size_t line = 1; !text.empty(); ++line) {
-    const std::size_t end = std::min(text.find('\n'), text.size());
-    const std::string_view row = trim(text.substr(0, std::min(text.find('#'), end)));
-    text.remove_prefix(std::min(end + 1, text.size()));
-    if (row.empty())
-      continue;
-    const std::size_t equals = std::min(row.find('='), row.size());
-    const std::string_view key = trim(row.substr(0, equals));
-    const std::vector<float> numbers =
-        numbers_of(row.substr(std::min(equals + 1, row.size())));
+  for (const Row &row : rows_of(text)) {
+    const auto pair = key_value(row.text);
+    const std::string_view key = pair ? pair->first : row.text;
+    const std::string_view value = pair ? pair->second : std::string_view{};
     if (key == "pan" || key == "zoom")
       throw std::runtime_error(
           std::format("{}:{}: {}: the graph keeps no pan or zoom, as it starts at home; "
                       "delete the line",
                       kept_file,
-                      line,
-                      row));
+                      row.line,
+                      row.text));
     if (key.starts_with(color_key)) {
       try {
-        color_line(arranged,
-                   trim(key.substr(color_key.size())),
-                   trim(row.substr(std::min(equals + 1, row.size()))));
+        color_line(arranged, trim(key.substr(color_key.size())), value);
       } catch (const std::runtime_error &mistake) {
         throw std::runtime_error(
-            std::format("{}:{}: {}", kept_file, line, mistake.what()));
+            std::format("{}:{}: {}", kept_file, row.line, mistake.what()));
       }
       continue;
     }
+    const std::vector<float> numbers = numbers_of(value);
     if (!key.starts_with(place_key) || numbers.size() != 2 ||
         trim(key.substr(place_key.size())).empty())
       throw std::runtime_error(std::format(
           "{}:{}: {} is no place <node> = x y, nor color <kind> = <role>",
           kept_file,
-          line,
-          row));
+          row.line,
+          row.text));
     arranged.places.insert_or_assign(
         std::string(trim(key.substr(place_key.size()))),
         glm::ivec2(std::lround(numbers[0]), std::lround(numbers[1])));
