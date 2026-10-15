@@ -18,9 +18,8 @@
 namespace {
 
 constexpr std::uint32_t node_room = 256; // boxes shown at most; the rest are cut
-constexpr std::uint32_t dot_room = 2048; // dots of the ground
 constexpr std::uint32_t box_rects = 2;   // a box is its border, then its fill
-constexpr std::uint32_t rect_room = dot_room + box_rects * node_room;
+constexpr std::uint32_t rect_room = box_rects * node_room;
 constexpr std::uint32_t label_room = 2048;      // the names and the files together
 constexpr std::uint32_t character_room = 16384; // their characters
 constexpr std::uint32_t curve_room = 512;       // curves, a lane taking two more
@@ -28,10 +27,7 @@ constexpr std::uint32_t lane_room = 256;        // rows connections keep in colu
 constexpr std::int32_t pad = 4;                 // in pixels, above and below a box's rows
 constexpr std::int32_t border_width = 1;        // in pixels
 constexpr std::int32_t selected_width = 2;      // a selected box's border, in pixels
-constexpr float dot_step = 24.0f;       // between the dots of the ground, in pixels
-constexpr float dot_step_least = 12.0f; // zoomed out, every other dot goes below it
-constexpr std::uint32_t dot_size = 2;   // in pixels
-constexpr std::int32_t column_gap = 4;  // in cells, where the curves run
+constexpr std::int32_t column_gap = 4;          // in cells, where the curves run
 constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its box
 constexpr float drag_least = 3.0f;         // pixels a press moves before a box follows
 constexpr std::uint64_t quiet_frames = 30; // after the wheel stops, before a save
@@ -165,6 +161,9 @@ void Graph::bind(VP::Bind &node) {
   _characters = node.upload<VP_VIEW::Character>("characters", character_room);
   _curves = node.upload<VP_VIEW::Curve>("curves", curve_room);
   _tabs = &node.output<VP_VIEW::Items>("tabs");
+  _ground = node.upload<VP_VIEW::Rect>("ground");
+  _pan = node.value<glm::vec2>("pan");
+  _zoom = node.value<float>("zoom");
   _placed.reserve(node_room); // so a frame never grows them (CPP10)
   _lefts.reserve(node_room);
   _downs.reserve(node_room);
@@ -196,11 +195,14 @@ void Graph::cook(VP::Cook &frame) {
   // Once the wheel rests, so a turn of it writes the file once, not a step at a time.
   if (_unsaved && !_dragging && !_grab && frame.index() >= *_unsaved + quiet_frames)
     save(frame);
+  frame.set(_pan, _arranged.pan);
+  frame.set(_zoom, _arranged.zoom);
   if (room) {
     write(frame, *view, cell);
     return;
   }
   // No room, no work: nothing written draws nothing.
+  frame.write(_ground, 0);
   frame.write(_rects, 0);
   frame.write(_labels, 0);
   frame.write(_characters, 0);
@@ -586,11 +588,14 @@ void Graph::keep(VP::FilePort &files) {
   files.save(_ini, text);
 }
 
-// The dots first, then a border and a fill a box, so the boxes draw over the ground. A
-// box selected has a wider border, in the accent color.
+// The ground under the whole area, in the role of its lines, which the graph's shaders
+// draw before the parts that draw the rest; then a border and a fill a box. A box
+// selected has a wider border, in the accent color.
 void Graph::write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
+  frame.write(_ground, 1).front() = {
+      .offset = _area->offset, .extent = _area->extent, .role = VP_VIEW::role("border")};
   const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
-  std::uint32_t written = write_dots(rects);
+  std::uint32_t written = 0;
   for (std::size_t at = 0; at < _placed.size(); ++at) {
     const bool chosen = selected(view.nodes[at].name);
     const auto inset = glm::ivec2(chosen ? selected_width : border_width);
@@ -613,29 +618,6 @@ void Graph::write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
   frame.write(_rects, written); // the used length, which rects draws
   write_labels(frame, view, cell);
   write_curves(frame, cell);
-}
-
-// A dot each step from where the ground moved to, inside the area; zoomed far out, every
-// other dot goes, so the ground never crowds.
-std::uint32_t Graph::write_dots(std::span<VP_VIEW::Rect> rects) const {
-  const VP_VIEW::Rect &area = *_area;
-  float step = dot_step * _arranged.zoom;
-  while (step < dot_step_least)
-    step *= 2.0f;
-  const glm::vec2 first =
-      glm::vec2(area.offset) + glm::mod(_arranged.pan, glm::vec2(step));
-  const glm::vec2 end = glm::vec2(area.offset + glm::ivec2(area.extent));
-  std::uint32_t written = 0;
-  for (float y = first.y; y < end.y; y += step)
-    for (float x = first.x; x < end.x; x += step) {
-      if (written == dot_room)
-        return written;
-      rects[written++] = cut({.offset = glm::ivec2(glm::round(glm::vec2(x, y))),
-                              .extent = glm::uvec2(dot_size),
-                              .role = VP_VIEW::role("border")},
-                             area);
-    }
-  return written;
 }
 
 // A box's name a cell in from its left, between its pads, and each file a row below it.

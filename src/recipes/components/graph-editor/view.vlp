@@ -1,8 +1,8 @@
-# The graph-editor component: the graph part, drawn by curves, rects and glyphs: its
-# curves first, then the dots of its ground and its boxes over them, then their names.
+# The graph-editor component: the graph part, which draws its ground, and over it
+# curves, rects and glyphs: its curves first, then its boxes over them, then their names.
 # The host connects a Rect to graph.area, the font's metrics to graph.font and the keys
-# part's typed to graph.typed, the theme to the three drawing parts, and the font and its
-# atlas to glyphs; a panel shows graph.tabs.
+# part's typed to graph.typed, the theme to the graph and the three drawing parts, and the
+# font and its atlas to glyphs; a panel shows graph.tabs.
 [manifest]
 version = 1
 

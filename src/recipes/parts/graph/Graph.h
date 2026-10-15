@@ -73,9 +73,10 @@ struct Grab {
 // drag on a box selected moves every box selected.
 // It owns the selection, which select, selected and delete reach as lines do (V06), and
 // takes keys from the keys part while it has the focus, which a press in its area gives
-// it. It writes Rects, Labels and Curves and draws nothing itself, and only what lies in
-// its area: a box cut at its edge, a name cut to the characters inside, and a curve whose
-// ends both lie inside.
+// it. Its own shaders draw the ground, lines that move and zoom with the graph over the
+// whole area, as the POC's grid did; it writes Rects, Labels and Curves for the parts
+// that draw over them, and only what lies in its area: a box cut at its edge, a name cut
+// to the characters inside, and a curve whose ends both lie inside.
 class Graph final : public VP::Operator {
 public:
   void bind(VP::Bind &node) override;
@@ -100,7 +101,6 @@ private:
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
   void write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
-  std::uint32_t write_dots(std::span<VP_VIEW::Rect> rects) const;
   void write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
   void write_row(glm::vec2 at,
                  std::string_view row,
@@ -124,6 +124,9 @@ private:
   VP::Command _select;
   VP::Command _selected;
   VP::Command _delete;
+  VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
+  VP::Value<glm::vec2> _pan;
+  VP::Value<float> _zoom;
   VP::Upload<VP_VIEW::Rect> _rects;
   VP::Upload<VP_VIEW::Label> _labels;
   VP::Upload<VP_VIEW::Character> _characters;

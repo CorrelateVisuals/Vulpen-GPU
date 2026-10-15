@@ -192,6 +192,7 @@ to   = ide.editor.rects.palette
 to   = ide.editor.glyphs.palette
 to   = ide.graph-panel.rects.palette
 to   = ide.graph-panel.glyphs.palette
+to   = ide.graph.graph.palette
 to   = ide.graph.curves.palette
 to   = ide.graph.rects.palette
 to   = ide.graph.glyphs.palette
