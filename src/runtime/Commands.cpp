@@ -101,6 +101,9 @@ private:
   std::span<const Logged> log() const override {
     return _port.log();
   }
+  void keep_log_to(std::span<const std::string> views) override {
+    _port.keep_log_to(views);
+  }
 
   Commands &_port;
 };
@@ -348,6 +351,10 @@ std::vector<Usage> Commands::usages() const {
 
 std::span<const Logged> Commands::log() const {
   return std::span(_logged).first(_logged_count);
+}
+
+void Commands::keep_log_to(std::span<const std::string> views) {
+  _log.keep_to(views);
 }
 
 void Commands::frame() {

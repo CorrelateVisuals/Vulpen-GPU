@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <ctime>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -82,12 +83,18 @@ public:
              std::string_view view,
              std::string_view node,
              std::string_view text) const;
+  // From now on the lines about nodes print only for these views, and those of the view
+  // vulpen started with; a line about no node, and every problem, prints still (A02).
+  // None prints every line, as at the start. Like a write, it changes only what the log
+  // prints next, so it is const too.
+  void keep_to(std::span<const std::string> views) const;
   // Swaps the lines printed since the last take into lines, and returns how many lead
   // it; what lines held is written over next, so a frame's take allocates nothing once
   // the lines have grown (CPP10), and what the log keeps stays bounded (A03).
   std::size_t take(std::vector<Logged> &lines) const;
 
 private:
+  bool kept(Level level, std::string_view view) const;
   void print(Level level,
              Tag tag,
              std::string_view view,
@@ -108,6 +115,7 @@ private:
   mutable std::string _line;
   mutable std::string _previous;
   mutable std::string _previous_view; // the view of the line before, which a repeat keeps
+  mutable std::vector<std::string> _views; // as keep_to named them
   mutable std::uint64_t _repeats = 0;
   mutable std::time_t _second = 0;
   mutable std::vector<Logged> _kept; // the first _count since the last take

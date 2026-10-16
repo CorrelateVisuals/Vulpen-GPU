@@ -175,6 +175,12 @@ public:
   // time, so a node can show the log, refusals of the lines it sent included. It lasts
   // until the next frame.
   virtual std::span<const Logged> log() const = 0;
+  // From now on the log, on the terminal and in what log hands on, keeps to the lines
+  // about the nodes of these views, by the names a line addresses them with, and those of
+  // the view vulpen started with; a line about no node, and every problem, stays (A02).
+  // None keeps every line, as at the start. The part that shows the log sets it, so the
+  // terminal vulpen was started from shows what a terminal in a window does.
+  virtual void keep_log_to(std::span<const std::string> views) = 0;
 
 protected:
   ~CommandPort() = default;

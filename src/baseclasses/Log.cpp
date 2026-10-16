@@ -2,6 +2,7 @@
 
 #include "baseclasses/Platform.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <format>
 #include <utility>
@@ -81,8 +82,17 @@ void Log::write(Level level,
                 std::string_view view,
                 std::string_view node,
                 std::string_view text) const {
-  if (level <= shown)
+  if (level <= shown && kept(level, view))
     print(level, tag, view, node, text);
+}
+
+void Log::keep_to(std::span<const std::string> views) const {
+  _views.assign(views.begin(), views.end());
+}
+
+bool Log::kept(Level level, std::string_view view) const {
+  return level <= Level::warn || view.empty() || _views.empty() ||
+         std::ranges::find(_views, view) != _views.end();
 }
 
 // A line the same as the one before, about the same view, only counts, until another

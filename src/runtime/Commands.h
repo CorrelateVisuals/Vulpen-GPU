@@ -95,6 +95,7 @@ public:
   std::string send(std::string_view line) override;
   std::vector<Usage> usages() const override;
   std::span<const Logged> log() const override;
+  void keep_log_to(std::span<const std::string> views) override;
   // Before a frame cooks: what the log printed since the frame before is what nodes
   // read in this one, and the frame's holds start anew.
   void frame();
