@@ -222,8 +222,9 @@ struct Mark {
 // command port; its param on says where it is. On the terminal it is the CLI: each line
 // typed or piped in runs, what it answers is printed, and the run ends with the input.
 // In a window it takes keys from the keys part while it has the focus, which a press in
-// its area gives it, and shows what lines answer and the log above the line typed, in
-// the Rect its area gives, with a tab for the panel it sits in, named by its title param;
+// its area gives it, and shows what lines answer and the log above the line typed, but
+// the lines about another view than the one lines go to, in the Rect its area gives, with
+// a tab for the panel it sits in, named by its title param;
 // a drag selects in what it shows, as a double click does a word and one more press its
 // row, which control with c copies, and the wheel or a drag on the bar at its right edge
 // scrolls it; turned sideways or with shift, or a drag on the bar above the rule, scrolls
@@ -304,8 +305,10 @@ class CommandLine final : public VP::Operator {
   // go while another part had the focus never came, so out of focus control counts as up.
   void in_window(VP::Cook &frame) {
     fit(0);
+    const VP::View *const followed = _view.empty() ? nullptr : frame.hosted(_view);
     for (const VP::Logged &line : frame.commands().log())
-      show(line.text, role_of(line));
+      if (belongs(line, followed))
+        show(line.text, role_of(line));
     point(frame);
     if (!focused())
       _control = false;
@@ -358,6 +361,20 @@ class CommandLine final : public VP::Operator {
           frame.commands().send(std::format("focus {}", _name));
       }
     }
+  }
+
+  // Whether a line of the log joins the rows: one about a node of a view the terminal
+  // does not follow stays out, as it comes, so with views running side by side the rows
+  // show the one lines go to, and the views it hosts. A line about no node, or about the
+  // app's own, joins them, and so does a problem of any view, which never hides (A02).
+  bool belongs(const VP::Logged &line, const VP::View *followed) const {
+    if (line.view.empty() || line.view == _view || line.level <= VP::Level::warn)
+      return true;
+    const auto hosts = [&](const VP::View &view) {
+      return std::ranges::find(view.children, line.view, &VP::Child::name) !=
+             view.children.end();
+    };
+    return followed && hosts(*followed);
   }
 
   // The second press in a row selects the word pressed, and any more the row; a drag
