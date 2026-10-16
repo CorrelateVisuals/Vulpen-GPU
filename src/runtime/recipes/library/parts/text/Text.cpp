@@ -192,9 +192,16 @@ glm::uvec2 extent_of(const Grid &grid, std::size_t columns) {
 
 namespace {
 
+// The file param names the file to show, as open sets it: a change opens it at the next
+// cook or command, where the file port is. The same name again, as after a rebuild,
+// changes nothing.
 void Text::bind(VP::Bind &node) {
-  _open =
-      node.command("open <file>", "opens a file in the editor, as a tab, or shows it");
+  std::string file;
+  if (node.sets("file"))
+    file = (std::filesystem::path(node.folder()) / node.param<std::string>("file"))
+               .string();
+  if (std::exchange(_file, file) != file)
+    _opening = !file.empty();
   _write = node.command("write", "saves the file the editor shows");
   _close = node.command("close [<file>]",
                         "closes a file the editor holds, or with none the one it shows, "
@@ -220,6 +227,13 @@ void Text::bind(VP::Bind &node) {
 // press, so a press moves the caret after them, as they came. A key let go while another
 // part had the focus never came, so out of focus shift and control count as up.
 void Text::cook(VP::Cook &frame) {
+  if (std::exchange(_opening, false)) {
+    try {
+      open(frame.files(), _file);
+    } catch (const std::runtime_error &failure) {
+      frame.log(VP::Level::error, failure.what());
+    }
+  }
   const Grid grid = this->grid();
   if (!focused())
     _shift = _control = false;
@@ -547,10 +561,8 @@ void Text::write_lines(VP::Cook &frame,
 }
 
 void Text::command(VP::Call &call) {
-  if (call.is(_open)) {
-    open(call, call.arguments().front());
-    return;
-  }
+  if (std::exchange(_opening, false))
+    open(call.files(), _file);
   if (_documents.empty())
     throw std::runtime_error("no file is open");
   if (call.is(_write))
@@ -562,12 +574,12 @@ void Text::command(VP::Call &call) {
 }
 
 // Read once, when it opens, so what was typed is never read over.
-void Text::open(VP::Call &call, std::string_view path) {
+void Text::open(VP::FilePort &files, std::string_view path) {
   const auto found = std::ranges::find(_documents, path, &Document::path);
   const auto shown = static_cast<std::size_t>(found - _documents.begin());
   if (found == _documents.end())
     _documents.push_back({.path = std::string(path),
-                          .lines = lines_of(call.files().read(path)),
+                          .lines = lines_of(files.read(path)),
                           .syntax = syntax_of(path)});
   _shown = shown;
   _dragging = false;
@@ -602,6 +614,12 @@ void Text::close(VP::Call &call, bool force) {
         std::format("{} has changes: {}write saves them, and close force drops them",
                     label_of(_documents[at]),
                     at == _shown ? "" : "a press on its tab, then "));
+  // The param names the file shown no longer, so open names it again as a change. The
+  // editor runs in the view vulpen started with.
+  if (_documents[at].path == _file) {
+    _file.clear();
+    call.commands().send(std::format(": param unset {} file", _name));
+  }
   _documents.erase(_documents.begin() + static_cast<std::ptrdiff_t>(at));
   if (at < _shown)
     --_shown;

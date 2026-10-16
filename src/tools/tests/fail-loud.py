@@ -464,7 +464,7 @@ def cli_copy(folder: Path) -> Path:
     folder."""
     root = Path(__file__).resolve().parents[2] / "runtime" / "recipes"
     recipes = folder / "recipes"
-    for part in ("command-line", "inspect", "library", "projects"):
+    for part in ("command-line", "inspect", "library", "projects", "editor"):
         shutil.copytree(root / "library" / "parts" / part,
                         recipes / "library" / "parts" / part)
     shutil.copytree(root / "cli", recipes / "cli")

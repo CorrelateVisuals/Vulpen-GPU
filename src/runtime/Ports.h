@@ -20,6 +20,7 @@ class Window;
 // frame's events reach them all alike.
 class Ports final : public InputPort,
                     public FilePort,
+                    public ProcessPort,
                     public TerminalPort,
                     public CommandHandler {
 public:
@@ -61,6 +62,7 @@ private:
   void copy(std::string_view from, std::string_view to) override;
   void rename(std::string_view from, std::string_view to) override;
   void save(const View &view, std::string_view file) override;
+  void start(std::string_view program, std::span<const std::string> arguments) override;
   View manifest(std::string_view file) override;
   std::span<const Event> events() const override;
   glm::vec2 pointer() const override;

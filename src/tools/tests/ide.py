@@ -158,10 +158,9 @@ def typed(width: int, height: int) -> list[str]:
     ]
 
 
-def edits(note: Path, width: int) -> list[str]:
+def edits(width: int) -> list[str]:
     bar = round((width - 4) * 0.5) - 4  # the editor's scroll bar, left of the dock's seam
     return [
-        f"open {note}",
         "find line",  # selects it, which the end key then leaves
         "focus ide.editor.text",
         "input key down end",
@@ -319,7 +318,11 @@ def test() -> None:
         drive(folder, "terminal", typed(width, height))
         note = folder / "note.txt"
         note.write_text(NOTE, encoding="utf-8")
-        edited = drive(folder, "editor", edits(note, width))
+        # open names the note in the editor's file param, which opens it in the first
+        # frame, so the edits come in a script that standard input sources then.
+        later = folder / "edits.txt"
+        later.write_text("\n".join(edits(width)) + "\n", encoding="utf-8")
+        edited = drive(folder, "editor", [f"open {note}"], typed=f"source {later}\n")
         if REFUSED not in edited or not HELD.search(edited):
             sys.exit(f"ide: expected quit to be refused while the note has changes, "
                      f"naming it, got:\n{edited}")

@@ -284,7 +284,7 @@ private:
 };
 
 Runtime::Runtime(std::span<char *const> arguments, std::string_view build)
-    : _options(parse(arguments)), _log(_options.log, build), _commands(_log, _ports) {
+    : _options(parse(arguments)), _log(_options.log, build), _commands(_log, _ports, _ports) {
   _ports.listen(_commands);
 }
 

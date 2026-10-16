@@ -151,6 +151,11 @@ private:
       _bound.errors.push_back(std::move(disagreement));
   }
 
+  bool sets(std::string_view name) override {
+    _bound.read_by_operator.emplace(name);
+    return _bound.param(name) != nullptr;
+  }
+
   std::string_view param_text(std::string_view name) override {
     _bound.read_by_operator.emplace(name);
     if (const Param *const param = _bound.param(name))

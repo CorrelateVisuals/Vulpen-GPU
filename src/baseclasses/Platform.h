@@ -5,6 +5,7 @@
 #include <ctime>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -63,6 +64,9 @@ class Shell {
 public:
   // Waits for the command; 0 when it succeeded.
   static int run(const std::string &command);
+  // Starts a program the PATH holds, each argument one word whatever it holds, and does
+  // not wait for it. Throws naming a program the PATH lacks (A02).
+  static void start(const std::string &program, std::span<const std::string> arguments);
 };
 
 // What a window hands on as it polls: a key by its name, typed text, the pointer in

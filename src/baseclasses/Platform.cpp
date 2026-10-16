@@ -291,6 +291,16 @@ int Shell::run(const std::string &command) {
   return std::system(std::format("\"{}\"", command).c_str());
 }
 
+// where finds the program as cmd does, and start runs it on its own and returns at once;
+// start's first quoted word is a title, so an empty one comes first.
+void Shell::start(const std::string &program, std::span<const std::string> arguments) {
+  std::string line = std::format("\"{}\"", program);
+  for (const std::string &argument : arguments)
+    line.append(std::format(" \"{}\"", argument));
+  if (run(std::format("where /q \"{}\" && start \"\" {}", program, line)) != 0)
+    throw std::runtime_error(std::format("{} is not on the PATH", program));
+}
+
 #else
 
 std::filesystem::path Files::executable() {
@@ -374,6 +384,33 @@ bool Library::mapped(const std::filesystem::path &file) {
 
 int Shell::run(const std::string &command) {
   return std::system(command.c_str());
+}
+
+namespace {
+
+// In single quotes, so a blank or a quote in a word stays in it.
+std::string single_quoted(std::string_view word) {
+  std::string text = "'";
+  for (const char letter : word)
+    text.append(letter == '\'' ? std::string_view("'\\''")
+                               : std::string_view(&letter, 1));
+  return text + "'";
+}
+
+} // namespace
+
+// command -v finds the program as the shell does, which then starts it in the background
+// and ends at once, so the program is no child of vulpen's: nothing waits for it, and
+// none is left to wait for.
+void Shell::start(const std::string &program, std::span<const std::string> arguments) {
+  std::string line = single_quoted(program);
+  for (const std::string &argument : arguments)
+    line.append(" ").append(single_quoted(argument));
+  if (std::system(std::format("command -v {} >/dev/null || exit 1; {} >/dev/null 2>&1 &",
+                              single_quoted(program),
+                              line)
+                      .c_str()) != 0)
+    throw std::runtime_error(std::format("{} is not on the PATH", program));
 }
 
 #endif

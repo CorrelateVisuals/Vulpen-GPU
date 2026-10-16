@@ -2,7 +2,7 @@
 # by addition: each row is recipes placed side by side and connected, never a bigger
 # recipe with nodes removed. Built so far: Look, Keys, Modes, the dock, with the editor
 # in its top row beside the graph over the Perform panel, and the terminal in its bottom
-# row, Library and Projects.
+# row, Library, Projects and Opener.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -17,6 +17,7 @@
 #   Modes      modes + image          edit or perform: the dock, or the view presented
 #   Library    inspect + library      reads the graph; lists, drops and starts recipes
 #   Projects   projects               makes, hosts, copies and renames projects
+#   Opener     editor                 open, which gives a file to the editor here
 [manifest]
 version = 1
 
@@ -98,6 +99,10 @@ recipe = library
 
 [node "ide.projects"]
 recipe = projects
+
+[node "ide.opener"]
+recipe = editor
+param  = window=:ide.editor.text
 
 # What is presented, over the whole window in perform mode; in edit mode it has no room.
 [node "ide.screen"]

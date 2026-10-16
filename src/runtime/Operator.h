@@ -258,6 +258,19 @@ protected:
   ~FilePort() = default;
 };
 
+// Programs a node starts and leaves running, as a person's own editor, which the graph
+// never reads back.
+class ProcessPort {
+public:
+  // Starts a program the PATH holds, each argument one word whatever it holds, and does
+  // not wait for it. Throws naming a program the PATH lacks (A02).
+  virtual void start(std::string_view program,
+                     std::span<const std::string> arguments) = 0;
+
+protected:
+  ~ProcessPort() = default;
+};
+
 // Lines typed on standard input and text for standard output, so a CLI needs no window.
 class TerminalPort {
 public:
@@ -342,6 +355,10 @@ public:
   // The node's folder, where its own files are (RV08), as an absolute path: in its view,
   // or in the library for a recipe a node of the library uses.
   virtual std::string folder() const = 0;
+  // Whether the node sets the param, for one the node may go without. Read then, it is
+  // as any param, and one a node sets that its operator never asks about stays a
+  // mistake (A02).
+  virtual bool sets(std::string_view name) = 0;
   // The node's name, as a line to its view names it, so the node can send a command
   // about itself, as param set, which the log keeps and a replay repeats.
   virtual std::string name() const = 0;
@@ -461,6 +478,7 @@ public:
   // at once on another view than the one it addresses, as on its own node's.
   virtual const View *view(std::string_view name) const = 0;
   virtual FilePort &files() = 0;
+  virtual ProcessPort &processes() = 0;
 
 protected:
   ~Call() = default;

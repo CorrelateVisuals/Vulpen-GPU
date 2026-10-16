@@ -116,10 +116,11 @@ public:
       ViewLookup *views,
       std::string_view address,
       FilePort &files,
+      ProcessPort &processes,
       Command command,
       std::span<const std::string_view> arguments)
-      : _port(port), _views(views), _address(address), _files(files), _command(command),
-        _arguments(arguments) {}
+      : _port(port), _views(views), _address(address), _files(files),
+        _processes(processes), _command(command), _arguments(arguments) {}
   // Every line the command answered.
   std::string answer() && {
     return std::move(_reply);
@@ -153,11 +154,15 @@ private:
   FilePort &files() override {
     return _files;
   }
+  ProcessPort &processes() override {
+    return _processes;
+  }
 
   Nested _port;
   ViewLookup *const _views;
   const std::string_view _address;
   FilePort &_files;
+  ProcessPort &_processes;
   const Command _command;
   const std::span<const std::string_view> _arguments;
   std::string _reply;
@@ -211,8 +216,8 @@ struct Commands::Spec {
   }
 };
 
-Commands::Commands(const Log &log, FilePort &files)
-    : _log(log), _files(files),
+Commands::Commands(const Log &log, FilePort &files, ProcessPort &processes)
+    : _log(log), _files(files), _processes(processes),
       _quit(add("quit",
                 "ends the run before its next frame, unless a node holds work the end "
                 "would lose, as a file's changes",
@@ -316,7 +321,7 @@ std::string Commands::run(std::string_view line) {
   }
   const Restore depth(_depth, _depth + 1);
   const Restore addressed(_addressed, address);
-  Run call(*this, _views, address, _files, spec->command, arguments);
+  Run call(*this, _views, address, _files, _processes, spec->command, arguments);
   spec->handler->command(call);
   if (primitive == Primitive::yes)
     _session.keep(std::move(kept), std::move(files));

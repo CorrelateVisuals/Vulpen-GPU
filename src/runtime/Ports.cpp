@@ -169,6 +169,10 @@ void Ports::save(const View &view, std::string_view file) {
   Manifest::save(moved);
 }
 
+void Ports::start(std::string_view program, std::span<const std::string> arguments) {
+  Shell::start(std::string(program), arguments);
+}
+
 // As a view loads it, so a recipe read here is what a drop copies.
 View Ports::manifest(std::string_view file) {
   View view = Manifest::load(absolute(file));

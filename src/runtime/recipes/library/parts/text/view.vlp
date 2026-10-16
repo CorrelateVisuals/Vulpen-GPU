@@ -1,6 +1,8 @@
 # The text part: one node whose operator is Text, the editor's text. Its host connects a
 # Rect to its area, a font's metrics to its font and the keys part's typed to its typed;
-# its rects, labels and characters go to drawing parts, and its tabs to a panel.
+# its rects, labels and characters go to drawing parts, and its tabs to a panel. Its file
+# param, which the editor part's open sets, names the file it shows; unset, it shows none
+# until one is named.
 [manifest]
 version = 1
 

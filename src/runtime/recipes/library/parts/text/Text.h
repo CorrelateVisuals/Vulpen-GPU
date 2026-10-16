@@ -97,18 +97,20 @@ class Text final : public VP::Operator {
                    const Document &document,
                    const Grid &grid,
                    std::size_t rows);
-  void open(VP::Call &call, std::string_view path);
+  void open(VP::FilePort &files, std::string_view path);
   void write(VP::Call &call);
   void close(VP::Call &call, bool force);
   void find(VP::Call &call);
   void name_tabs();
 
-  VP::Command _open;
   VP::Command _write;
   VP::Command _close;
   VP::Command _close_force;
   VP::Command _find;
   std::string _name; // as the focus names it
+  // What the file param names, from the node's folder; empty while it is not set.
+  std::string _file;
+  bool _opening = false; // the param named another file, which opens where the port is
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;

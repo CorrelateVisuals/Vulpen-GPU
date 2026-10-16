@@ -75,8 +75,8 @@ private:
 // primitive with the name of its view, so every line of it stands alone (V08).
 class Commands final : public CommandPort, public CommandHandler {
 public:
-  // files: what a command reaches files through.
-  Commands(const Log &log, FilePort &files);
+  // files and processes: what a command reaches files and programs through.
+  Commands(const Log &log, FilePort &files, ProcessPort &processes);
   ~Commands();
   Commands(const Commands &) = delete;
   Commands &operator=(const Commands &) = delete;
@@ -144,6 +144,7 @@ private:
 
   const Log &_log;
   FilePort &_files;
+  ProcessPort &_processes;
   std::vector<Spec> _specs;
   std::uint32_t _added = 0; // so a removed command's id is never handed out again
   ViewLookup *_views = nullptr;
