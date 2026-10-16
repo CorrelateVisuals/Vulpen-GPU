@@ -18,6 +18,8 @@ public:
   // An empty name finds the view vulpen started with, as the changes so far left it;
   // null when no view has the name.
   virtual const View *find(std::string_view name) = 0;
+  // The same view as the next frame runs it, each recipe a node uses unfolded.
+  virtual const View *unfolded(std::string_view name) = 0;
   // Takes a changed copy of the view. The schedule is rebuilt from it before the next
   // frame, once for every change since the last frame, on the path a live swap takes, so
   // it keeps what the changes left alone and checks only the view they leave. The
@@ -114,6 +116,8 @@ public:
   // A hosted view by its name, as the changes so far left it, which a node reads while it
   // cooks; null when no view has the name, or none exists yet.
   const View *view(std::string_view name);
+  // The same view as the next frame runs it, each recipe a node uses unfolded.
+  const View *unfolded(std::string_view name);
   // Whether quit, or quit force, ran, so the run ends before its next frame.
   bool quitting() const;
   // The file and line running, as `script.txt:7`; empty for a line typed or sent.

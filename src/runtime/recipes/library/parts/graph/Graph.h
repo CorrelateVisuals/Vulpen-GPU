@@ -11,6 +11,8 @@
 #include "shared/Labels.h"
 #include "shared/PanZoom.h"
 #include "Arranged.h"
+#include "Boxes.h"
+#include "Layout.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -26,24 +28,6 @@
 // two copies of the part in one binary never clash.
 namespace {
 
-// A node, or a view the view shown hosts, where the graph shows it: its box, from the
-// graph's top left before it moves or zooms, a row for its name and one for each of its
-// files, and its column, counted from the boxes that read nothing.
-struct Placed {
-  glm::ivec2 offset{};
-  glm::uvec2 extent{};
-  std::size_t column = 0;
-};
-
-// A row a connection keeps in a column it passes, so it runs past that column's boxes,
-// not behind them: as wide as the column, from the graph's top left before it moves.
-struct Lane {
-  std::size_t pair = 0; // of the connection's writer and reader
-  std::size_t column = 0;
-  glm::ivec2 offset{};
-  std::int32_t width = 0;
-};
-
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
 // where it was then, and whether it has been dragged, or is a press let go where it was.
 struct Grab {
@@ -54,33 +38,37 @@ struct Grab {
 };
 
 // The graph of the current view, as the terminals' lines go to it, which view switch
-// moves and a second press on a view's box moves into it: a box a node, with its name and
-// its files, a box each view it hosts, with its name and the file it is hosted from, and
-// a curve a connection, from the writer's right side to the reader's left, a view's from
-// where its host takes its window. The manifest holds no places (V04), so the graph alone
-// lays it out: a node a column past every node it reads from, down each column in the
-// manifest's order, and below its boxes a lane for each connection that passes the
-// column. A box dragged stays where it is put, and the first drag places every box where
-// it shows, so a change to the graph moves none; the boxes placed are a look at the
-// graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's manifest,
-// and a restart shows them as they were left; so do the colors a person gives each kind
-// of node there, which draw its boxes' borders and names. The graph starts at home, as a
-// view is shown and as h brings it there: unmoved at zoom 1 while every box shows whole
-// there, else moved and zoomed out until they all do. A drag on the ground moves the
-// graph and the wheel zooms it about the pointer, as the Perform panel's image moves, and
-// neither is kept. A press on a box selects it, shift adding it or taking it out, and
-// opens the file of a file's row in the editor; a drag on a box selected moves every box
-// selected. With shift, a drag on the ground draws a select box, and letting go adds
-// every box it touches to the selection.
+// moves and a second press on a view's box moves into it, as the view runs, each recipe a
+// node uses unfolded: a box a node, with its name, its ports, the recipe it uses and its
+// files, and inside it the boxes of the nodes inside it, as their folders are inside its
+// own (RV08), so a node using a recipe shows the code the recipe brings; a box each view
+// it hosts, with its name, its window and the file it is hosted from; and a curve a
+// reader of a connection, from the writer's port on its box's right side to the reader's
+// on its left, a view's from its window where its host takes it. The manifest holds no
+// places (V04), so the graph alone lays it out: the boxes inside each box, and those at
+// the top, a column past every box beside them they read from, down each column in the
+// manifest's order. A box dragged stays where it is put, and the first drag places every
+// box where it shows, so a change to the graph moves none; the boxes placed are a look at
+// the graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's
+// manifest, and a restart shows them as they were left; so do the colors a person gives
+// each kind of node there, which draw its boxes' borders and names. The graph starts at
+// home, as a view is shown and as h brings it there: unmoved at zoom 1 while every box
+// shows whole there, else moved and zoomed out until they all do. A drag on the ground
+// moves the graph and the wheel zooms it about the pointer, as the Perform panel's image
+// moves, and neither is kept. A press on a box selects it, or the box of the node whose
+// recipe holds it, shift adding it or taking it out, and opens the file of a row that
+// names one in the editor; a drag on a box selected moves every box selected. With
+// shift, a drag on the ground draws a select box, and letting go adds every box it
+// touches to the selection.
 // It owns the selection, of nodes and of the views the view shown hosts, which select and
 // selected reach as lines do (V06), and which delete or backspace removes as node remove
-// and view close do, and
-// takes keys from the keys part while it has the focus, which a press in its area gives
-// it. Its own shaders draw the ground, lines that move and zoom with the graph over the
-// whole area, as the POC's grid did; it writes Rects, Labels and Curves for the parts
-// that draw over them, and only what lies in its area: a box cut at its edge, and a row
-// of text with the area as its room, which glyphs cuts at the edge; a curve goes whole,
-// and the curves part cuts it at the edge of the ground the graph hands it.
+// and view close do, and takes keys from the keys part while it has the focus, which a
+// press in its area gives it. Its own shaders draw the ground, lines that move and zoom
+// with the graph over the whole area, as the POC's grid did; it writes Rects, Labels and
+// Curves for the parts that draw over them, and only what lies in its area: a box cut at
+// its edge, and a row of text with the area as its room, which glyphs cuts at the edge; a
+// curve goes whole, and the curves part cuts it at the edge of the ground the graph hands
+// it.
 class Graph final : public VP::Operator {
 public:
   void bind(VP::Bind &node) override;
@@ -90,45 +78,42 @@ public:
 private:
   void key(VP::Cook &frame, std::string_view key);
   void show(VP::Cook &frame, const VP::View *view, std::string_view name);
-  void name_views(const VP::View &view);
-  void lay_out(const VP::View &view, glm::uvec2 cell);
-  void place_columns(glm::uvec2 cell);
+  void build(const VP::View *edited, const VP::View *flat);
   void home(glm::uvec2 cell);
-  void
-  follow(VP::Cook &frame, const VP::View *view, const VP::Event &event, glm::uvec2 cell);
-  void press(VP::Cook &frame, const VP::View &view, std::uint32_t presses);
-  void drag(const VP::View &view, glm::vec2 to);
-  void release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell);
-  void open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uvec2 cell);
+  void follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec2 cell);
+  void press(VP::Cook &frame, std::uint32_t presses);
+  void drag(glm::vec2 to);
+  void release(VP::Cook &frame, bool room, glm::uvec2 cell);
+  void open(VP::Cook &frame, std::size_t at, glm::uvec2 cell);
   void turn(glm::vec2 turn);
   bool selected(std::string_view node) const;
   void select(VP::CommandPort &commands, std::span<const std::string> nodes) const;
-  void
-  select_touched(VP::CommandPort &commands, const VP::View &view, glm::vec2 from) const;
+  void select_touched(VP::CommandPort &commands, glm::vec2 from) const;
   void erase(VP::Cook &frame, const VP::View &view);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
-  void write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
+  void write(VP::Cook &frame, glm::uvec2 cell);
+  void write_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written, std::size_t at) const;
   void write_select_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const;
-  void write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
+  void write_labels(VP::Cook &frame, glm::uvec2 cell);
   void write_row(glm::vec2 at,
                  std::string_view row,
                  std::uint32_t role,
                  glm::uvec2 cell,
                  Labels &written) const;
-  void write_curves(VP::Cook &frame, glm::uvec2 cell);
+  void write_curves(VP::Cook &frame);
   void write_curve(std::span<VP_VIEW::Curve> curves,
                    std::uint32_t &written,
                    glm::vec2 from,
                    glm::vec2 to) const;
   // Where a place of the graph shows this frame, in pixels from the window's top left.
   glm::vec2 on_screen(glm::vec2 at) const;
-  // A box's name, the rows under it and its color: a node's, or past the nodes those of
-  // a view the view hosts, in the order hosted.
-  const std::string &name_of(const VP::View &view, std::size_t box) const;
-  std::span<const std::string> rows_of(const VP::View &view, std::size_t box) const;
-  std::optional<std::uint32_t> color_of(const VP::View &view, std::size_t box) const;
-  VP_VIEW::Rect box(const Placed &placed) const;
+  // The middle of a box's port row, at its left edge or its right, on screen.
+  glm::vec2 port_of(std::size_t box, std::size_t row, bool right) const;
+  // The box a press on it selects: its own, or that of the node whose recipe holds it.
+  std::size_t own_box(std::size_t box) const;
+  std::optional<std::uint32_t> color_of(std::size_t box) const;
+  VP_VIEW::Rect box(std::size_t at) const;
   VP_VIEW::Rect select_box(glm::vec2 from) const;
 
   const VP_VIEW::Rect *_area = nullptr;
@@ -145,18 +130,16 @@ private:
   VP::Upload<VP_VIEW::Character> _characters;
   VP::Upload<VP_VIEW::Curve> _curves;
   VP_VIEW::Items *_tabs = nullptr;
-  // By the view's nodes, its columns and its connections, kept between frames so a frame
-  // allocates nothing once they hold the graph shown.
-  std::vector<Placed> _placed;
-  std::vector<std::int32_t> _lefts; // each column's left; its width while laid out
-  std::vector<std::int32_t> _downs; // each column's next row
-  std::vector<std::size_t> _ends;   // a connection's writer and reader, two a pair
-  std::vector<Lane> _lanes;         // a pair's in the order of its columns
   std::string _shown; // the view the tab names; empty for the one vulpen started with
-  // The file each view the view shown hosts is hosted from, and the row its box shows of
-  // it, found again only when they change, so a frame allocates nothing for them.
-  std::vector<std::filesystem::path> _view_files;
-  std::vector<std::string> _view_rows;
+  // The boxes of the view shown, built again only when the views they were built from
+  // change, which each edit replaces, and laid out again only then, as the font's cell
+  // changes, or as a box is dragged, so a frame allocates nothing for them.
+  Boxes _boxes;
+  const VP::View *_built_edited = nullptr;
+  const VP::View *_built_flat = nullptr;
+  Layout _layout;
+  glm::uvec2 _laid_cell{};
+  bool _laid = false;
   // The nodes selected, by name, in the view named, which select may name before the
   // graph shows it, as a script's does before the first frame.
   std::vector<std::string> _selection;

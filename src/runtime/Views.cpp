@@ -25,7 +25,7 @@ std::filesystem::file_time_type stamp(const std::filesystem::path &file) {
 
 // Throws naming what keeps it from running: a recipe the library lacks, or a cycle that
 // runs through the nodes of a recipe a node uses, which no single edit could show.
-std::unique_ptr<View> unfolded(const View &view) {
+std::unique_ptr<View> flat_of(const View &view) {
   auto flat = std::make_unique<View>(Manifest::flatten(view));
   Schedule::order(*flat);
   return flat;
@@ -80,7 +80,7 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
         Hosted &host = *hosted.emplace_back(std::make_unique<Hosted>());
         host.read = stamp(view.file);
         host.view = std::make_unique<View>(std::move(view));
-        host.flat = unfolded(*host.view);
+        host.flat = flat_of(*host.view);
         host.schedule =
             std::make_unique<Schedule>(wiring, "", *host.flat, Schedule::Into::window);
         return hosted;
@@ -326,7 +326,7 @@ void Views::reload(Hosted &hosted) {
   if (const auto time = stamp(hosted.current().file); time != hosted.read) {
     try {
       auto view = std::make_unique<View>(read(_wiring.log, hosted.current().file));
-      auto flat = unfolded(*view);
+      auto flat = flat_of(*view);
       follow(hosted.name, *view);
       hosted.edited_flat = std::move(flat);
       hosted.edited = std::move(view);
@@ -345,7 +345,7 @@ void Views::reload(Hosted &hosted) {
   View view = *hosted.view;
   const std::vector<std::string> notes = Manifest::refresh(view);
   try {
-    hosted.edited_flat = unfolded(view);
+    hosted.edited_flat = flat_of(view);
     hosted.edited = std::make_unique<View>(std::move(view));
     note(_wiring.log, *hosted.edited, Level::info, notes);
   } catch (const std::exception &failure) {
@@ -362,6 +362,11 @@ const View *Views::find(std::string_view name) {
   return found ? &found->current() : nullptr;
 }
 
+const View *Views::unfolded(std::string_view name) {
+  const Hosted *const found = hosted(name);
+  return found ? &found->next() : nullptr;
+}
+
 // An edit that leaves the view unable to unfold, or naming a view that cannot be hosted,
 // is refused, and changes nothing.
 void Views::replace(std::string_view name, View view) {
@@ -369,7 +374,7 @@ void Views::replace(std::string_view name, View view) {
   if (!found)
     throw std::runtime_error(std::format("no view is named {}", name));
   const std::vector<std::string> notes = Manifest::refresh(view);
-  auto flat = unfolded(view);
+  auto flat = flat_of(view);
   follow(found->name, view);
   found->edited_flat = std::move(flat);
   found->edited = std::make_unique<View>(std::move(view));
@@ -434,7 +439,7 @@ void Views::host(const Child &child, const std::string &parent) {
           child.file.string(),
           view->name,
           hosted->current().file.string()));
-  auto flat = unfolded(*view);
+  auto flat = flat_of(*view);
   if (!exists)
     _wiring.log.write(
         Level::info,

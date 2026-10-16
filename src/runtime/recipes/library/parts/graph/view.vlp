@@ -18,5 +18,6 @@ file           = Graph.frag
 file           = Graph.glsl
 file           = Graph.h
 file           = Graph.vert
+file           = Layout.h
 vertex_count   = 6
 instance_count = ground

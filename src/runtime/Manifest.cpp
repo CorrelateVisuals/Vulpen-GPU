@@ -559,8 +559,13 @@ void unfold(View &view,
     name = user.name + name.substr(user.recipe.size());
   };
   for (Node &node : recipe.nodes) {
-    if (node.name == user.recipe && !user.log.empty())
-      node.log = user.log;
+    // The recipe's own node keeps the recipe's name, so the view as it runs still says
+    // which recipe a node's code came from (Cook::unfolded).
+    if (node.name == user.recipe) {
+      node.recipe = user.recipe;
+      if (!user.log.empty())
+        node.log = user.log;
+    }
     named(node.name);
     view.nodes.push_back(std::move(node));
   }

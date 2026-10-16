@@ -474,6 +474,10 @@ const View *Commands::view(std::string_view name) {
   return _views ? _views->find(name) : nullptr;
 }
 
+const View *Commands::unfolded(std::string_view name) {
+  return _views ? _views->unfolded(name) : nullptr;
+}
+
 bool Commands::quitting() const {
   return _quitting;
 }

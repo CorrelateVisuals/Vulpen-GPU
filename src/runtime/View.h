@@ -24,7 +24,7 @@ struct Node {
   std::string name; // the names of the nodes it is inside, then its own, joined by dots
   // In a view, the library recipe a drop copied it from and that copy's fingerprint, as
   // probe@3f2a9c1e. In the library, a recipe it uses as it is (V11), whose node it
-  // becomes.
+  // becomes, and which that node still names once unfolded.
   std::string recipe;
   std::string operator_name;
   // The files in its folder, sorted: the folder decides, so a file put there is one of
@@ -49,7 +49,8 @@ struct Node {
   std::filesystem::path module;
 
   // Whether it uses a recipe of the library as it is, as only the library's own nodes
-  // do; a drop's copy names its recipe with an @ and its fingerprint.
+  // do, or, unfolded, became one; a drop's copy names its recipe with an @ and its
+  // fingerprint.
   bool uses() const {
     return !recipe.empty() && recipe.find('@') == std::string::npos;
   }

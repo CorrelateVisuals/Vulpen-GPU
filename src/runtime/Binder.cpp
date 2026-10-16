@@ -304,6 +304,9 @@ private:
   const View *view(std::string_view name) const override {
     return _schedule._wiring.commands.view(name);
   }
+  const View *unfolded(std::string_view name) const override {
+    return _schedule._wiring.commands.unfolded(name);
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }

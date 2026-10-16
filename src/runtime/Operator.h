@@ -466,6 +466,10 @@ public:
   // name. A read changes nothing, so a node still changes a view only by commands (V06).
   // Read it while the node cooks; a change replaces it.
   virtual const View *view(std::string_view name) const = 0;
+  // The same view as the next frame runs it, as view() reads the node's own: each node
+  // with its folder and files, and each recipe a node of the library uses unfolded, its
+  // own node naming it, so the graph shows the code a recipe brings. Null as above.
+  virtual const View *unfolded(std::string_view name) const = 0;
 
 protected:
   ~Cook() = default;
