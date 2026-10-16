@@ -212,28 +212,30 @@ struct Mark {
 // a drag selects in what it shows, as a double click does a word and one more press its
 // row, which control with c copies, and the wheel or a drag on the bar at its right edge
 // scrolls it; turned sideways or with shift, or a drag on the bar above the rule, scrolls
-// its rows across, while the line typed keeps its caret in view. The terminal vulpen was
-// started from takes lines then too, as the CLI's does, but its end ends no run.
-// A line that names no view goes to the view presented, whose window a connection of its
-// view takes, as the frame began, while it is still hosted; else to the one hosted most
-// recently, as view new and view load leave it. So it needs no name, every log line still
-// has one, and it works on the view the window shows, as the graph does. The prompt shows
-// that view's folder, as a shell shows the one it is in, and the log keeps to that view.
+// its rows across, while the line typed keeps its caret in view. Only the one on the
+// terminal registers help, complete and clear, as a command has one owner, and a
+// terminal in a window sends them as it sends any line, taking what clear answers as a
+// terminal takes it; on the terminal, the end of the input ends the run while no window
+// is open, as one a launcher gives no input still shows its window.
+// A line that names no view goes to the current view, which view switch moves, so it
+// needs no name and every log line still has one. The prompt shows that view's folder, as
+// a shell shows the one it is in, and the log keeps to that view.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _help = node.command(
-        "help", "lists every command, under the words it shares, and what each does");
-    _complete = node.command(
-        "complete <value>...",
-        "lists the words that may come next, the last word given being the start of one, "
-        "or \"\" for one not begun");
-    _clear = node.command("clear", "clears the terminal");
     const std::string on = node.param<std::string>("on");
     if (!on.empty() && on != "terminal" && on != "window") // the loader names it unset
       throw std::runtime_error(std::format("param on = {}: terminal or window", on));
     _window = on == "window";
-    if (!_window)
+    if (!_window) {
+      _help = node.command(
+          "help", "lists every command, under the words it shares, and what each does");
+      _complete = node.command(
+          "complete <value>...",
+          "lists the words that may come next, the last word given being the start of "
+          "one, or \"\" for one not begun");
+      _clear = node.command("clear", "clears the terminal");
       return;
+    }
     _area = &node.input<VP_VIEW::Rect>("area");
     _font = &node.input<VP_VIEW::Font>("font");
     _typed = &node.input<VP_VIEW::Typed>("typed");
@@ -251,7 +253,8 @@ class CommandLine final : public VP::Operator {
     keep_log(frame);
     if (_window)
       in_window(frame);
-    on_terminal(frame);
+    else
+      on_terminal(frame);
   }
 
   // The log keeps to the view lines go to and the views it hosts, so with views running
@@ -297,13 +300,13 @@ class CommandLine final : public VP::Operator {
 
   void on_terminal(VP::Cook &frame) {
     VP::TerminalPort &terminal = frame.terminal();
-    if (!_window && terminal.typed())
+    if (terminal.typed())
       return typing(frame, terminal);
     const std::span<const std::string> lines = terminal.lines();
     for (const std::string &line : lines)
       if (const std::string answer = run(frame, line); !answer.empty())
         terminal.print(answer);
-    if (terminal.ended() && !_window) {
+    if (terminal.ended() && !frame.input().windowed()) {
       terminal.prompt(
           "\n"); // ends the prompt's line, as a shell does at the end of input
       frame.commands().send("quit");
@@ -464,6 +467,10 @@ class CommandLine final : public VP::Operator {
   std::string run(VP::Cook &frame, std::string_view line) {
     std::string answer = frame.commands().send(address(line));
     follow(frame);
+    if (_window && answer == clear_screen) {
+      clear();
+      return {};
+    }
     return answer;
   }
 
@@ -503,8 +510,9 @@ class CommandLine final : public VP::Operator {
   }
 
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one
-  // sent before, completes the word at the caret, or with control copies or pastes;
-  // escape lets go of the selection, and with none of the focus.
+  // sent before, completes the word at the caret, or with control copies, pastes or
+  // clears, sending clear from here, so what it answers comes back here; escape lets go
+  // of the selection, and with none of the focus.
   void edit(VP::Cook &frame, const VP::Event &event) {
     if (event.kind == VP::Event::Kind::text) {
       type(event.name);
@@ -525,6 +533,8 @@ class CommandLine final : public VP::Operator {
       frame.input().copy(selected());
     else if (_control && key == "v")
       paste(frame, frame.input().clipboard());
+    else if (_control && key == "l")
+      show(run(frame, "clear"), VP_VIEW::role("text"));
     else if (key == "enter")
       submit(frame);
     else if (key == "backspace" && _caret > 0)
@@ -797,8 +807,6 @@ class CommandLine final : public VP::Operator {
       help(call);
     else if (call.is(_complete))
       complete(call);
-    else if (call.is(_clear) && _window)
-      clear();
     else if (call.is(_clear))
       call.reply(clear_screen);
   }

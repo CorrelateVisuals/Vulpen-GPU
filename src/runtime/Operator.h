@@ -222,6 +222,9 @@ public:
   // so a run with none copies and pastes as one with a window does (V07).
   virtual std::string clipboard() const = 0;
   virtual void copy(std::string_view text) = 0;
+  // Whether a window is open, whose events come here too, so the end of the terminal's
+  // input ends no run a window still holds.
+  virtual bool windowed() const = 0;
 
 protected:
   ~InputPort() = default;

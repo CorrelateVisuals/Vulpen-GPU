@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -39,13 +40,20 @@ bool holds(const Find &view_of, std::string_view name, std::string_view current)
          });
 }
 
-// The view the view hosts that is the current one or holds it, so a nested view shows
-// through its project; empty while the current view is none of them.
-template <class Find>
+// The projects a GUI presents: the views the view vulpen started with hosts, but the
+// GUI's own, so those beside it, or, run as that view, those it hosts.
+auto projects(const VP::View &top, std::string_view own) {
+  return top.children |
+         std::views::filter([own](const VP::Child &child) { return child.name != own; });
+}
+
+// The project that is the current view or holds it, so a nested view shows through its
+// project; empty while the current view is none of them.
+template <class Find, class Projects>
 std::string_view project_of(const Find &view_of,
-                            const VP::View &view,
+                            Projects &&projects,
                             std::string_view current) {
-  for (const VP::Child &child : view.children)
+  for (const VP::Child &child : projects)
     if (!current.empty() && holds(view_of, child.name, current))
       return child.name;
   return {};
@@ -54,13 +62,13 @@ std::string_view project_of(const Find &view_of,
 // Chooses what reaches the window. In edit mode the dock gets the Rect its area gives;
 // in perform mode the view presented gets all of it and the dock none, so the dock draws
 // and takes nothing (no room, no work). The mode is its param, so a save keeps it and a
-// replay restores it. It presents the current view while that is a view its view hosts,
-// or the one holding it, and keeps the one presented while the current view is its own;
-// at the first frame, with none presented, the one hosted last. To present one, it
-// connects that view's window to the images its to param names, so the log keeps one
-// connection a switch (V08); a view it hosts draws nowhere else, since its view draws
-// into the window itself, and keeps running. Each view hosted has a tab that makes it the
-// current view when pressed, and a close mark that closes it, as view close does. Perform
+// replay restores it. It presents the current view while that is a project, or the one
+// holding it, and keeps the one presented while the current view is none, as its own or
+// the cli; at the first frame, with none presented, the one hosted last. To present one,
+// it connects that view's window to the images its to param names, so the log keeps one
+// connection a switch (V08); a project not presented draws nowhere else, as the window
+// has one owner, and keeps running. Each project has a tab that makes it the current
+// view when pressed, and a close mark that closes it, as view close does. Perform
 // mode needs a view presented, so it refuses while none is, and gives way to edit mode
 // once none is; it hides the log, so it gives way too once the log shows an error, as a
 // line refused's, which the terminal then shows.
@@ -100,10 +108,9 @@ class Modes final : public VP::Operator {
 
   // At once, from the connections as own holds them, the view as the lines so far left
   // it, so the connection lands before the next frame, a mode line in the same frame
-  // finds it made, and the view never shows anywhere but in the images. Only a view this
-  // view hosts itself: one a view it hosts hosts in turn shows through that view, as
-  // that view composes its window (V03). A line it sends replaces own, so name must not
-  // point into it.
+  // finds it made, and the view never shows anywhere but in the images. Only a project
+  // itself: a view it hosts shows through it, as it composes its window (V03). A line it
+  // sends replaces own, so name must not point into it.
   void present(VP::CommandPort &commands, const VP::View &own, std::string_view name) {
     const auto made =
         std::ranges::find(own.connections, presenting, &VP::Connection::name);
@@ -124,11 +131,11 @@ class Modes final : public VP::Operator {
     if (perform && shown_by(own).empty()) {
       const std::string project(project_of(
           [&](std::string_view name) { return call.view(name); },
-          own,
+          projects(*call.view(""), _view),
           call.commands().current()));
       if (project.empty())
         throw std::runtime_error("nothing is presented to perform; view switch <name> "
-                                 "shows a view this view hosts");
+                                 "makes a project the current view, which this presents");
       present(call.commands(), own, project);
     }
     VP::CommandPort &commands = call.commands();
@@ -145,23 +152,25 @@ class Modes final : public VP::Operator {
   // Perform mode gives way to edit mode as escape asks, once nothing is presented nor
   // about to be, as after view close of the view presented, and once the log printed an
   // error since the frame before, which perform mode would hide.
+  // The projects are read before a line goes, as one may replace the view they are in.
   void cook(VP::Cook &frame) override {
-    const VP::View &view = frame.view();
-    const std::string_view presented = shown_by(view);
+    const std::string_view presented = shown_by(frame.view());
+    auto hosted = projects(*frame.view(""), _view);
     const std::string_view project = project_of(
         [&](std::string_view name) { return frame.view(name); },
-        view,
+        hosted,
         frame.commands().current());
-    const std::string_view newest =
-        view.children.empty() ? std::string_view() : view.children.back().name;
+    std::string_view newest;
+    for (const VP::Child &child : hosted)
+      newest = child.name;
     const std::string_view wanted = !project.empty()                    ? project
                                     : !_started && presented.empty() ? newest
                                                                      : presented;
     const bool presenting = !wanted.empty() && wanted != presented;
+    name_tabs(hosted, presented);
     if (presenting)
-      present(frame.commands(), *frame.view(_view), wanted);
+      present(frame.commands(), *frame.view(_view), std::string(wanted));
     _started = true;
-    name_tabs(view, presented);
     bool leave = false;
     for (const VP::Event &event : _typed->to(""))
       if (event.kind == VP::Event::Kind::key && event.down && event.name == escape) {
@@ -179,16 +188,17 @@ class Modes final : public VP::Operator {
     *_shown = _perform ? *_area : VP_VIEW::Rect{};
   }
 
-  // Only when the views hosted or the one presented changed, so a frame allocates
-  // nothing for them.
-  void name_tabs(const VP::View &view, std::string_view presented) {
+  // Only when the projects or the one presented changed, so a frame allocates nothing
+  // for them.
+  template <class Projects>
+  void name_tabs(Projects &&hosted, std::string_view presented) {
     const auto shows = [&](const VP_VIEW::Item &tab, const VP::Child &child) {
       return tab.label == child.name && tab.current == (child.name == presented);
     };
-    if (std::ranges::equal(*_tabs, view.children, shows))
+    if (std::ranges::equal(*_tabs, hosted, shows))
       return;
     _tabs->clear();
-    for (const VP::Child &child : view.children)
+    for (const VP::Child &child : hosted)
       _tabs->push_back({.label = child.name,
                         .command = std::format("view switch {}", child.name),
                         .current = child.name == presented,

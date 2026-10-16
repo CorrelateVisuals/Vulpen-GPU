@@ -326,6 +326,10 @@ void Ports::attach(const Window *window) {
   _window = window;
 }
 
+bool Ports::windowed() const {
+  return _window != nullptr;
+}
+
 std::string Ports::clipboard() const {
   return _window ? _window->clipboard() : _clipboard;
 }

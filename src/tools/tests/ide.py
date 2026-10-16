@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""The ide app runs in a window while typed keys drive its terminal down every path: Tab on
-a word not begun and on one begun, the completions listed, the edits and the arrows,
-history, a line the command port refuses, help, and the keymap's chord that clears, which
-waits a frame for the keys before it. The pointer drags the dock's seam, whose param set
+"""The ide app runs in a window, hosted by the cli as ./run.sh --ide runs it, while typed
+keys drive its terminal down every path: Tab on a word not begun and on one begun, the
+completions listed, the edits and the arrows, history, a line the command port refuses,
+help, which the cli answers, and control with l, which sends clear from the terminal, so
+what the cli answers clears it. The pointer drags the dock's seam, whose param set
 rebuilds the running app, and drags over the rows the terminal shows, selecting them; no
 run copies or pastes, as that would write over the clipboard of whoever runs it. A second
 run edits a file in its editor, selecting, stepping over a character past ASCII and
@@ -12,8 +13,8 @@ back, and the zoom it keeps must be back where it started; then it types once mo
 escapes until modes sends quit, which the editor's hold must refuse, naming the file, so
 the run runs all its frames and the file keeps only what was written. Two more runs host
 the triangle example, presented as it comes: one in edit mode, its window in the Perform
-panel, which also takes ls on standard input, as the terminal vulpen was started from, and
-prints what it answers for the triangle, the view the terminal follows, and completes a
+panel, where the cli takes ls on standard input, the terminal vulpen was started from, and
+prints what it answers for the triangle, the view both terminals follow, and completes a
 path begun to the one folder it fits from the folders the file port lists, and one in
 perform mode by the keymap's chord in the first frame, its window over the whole window,
 which nothing may refuse; a third then presses escape three times, back to edit mode, out
@@ -56,6 +57,7 @@ from pathlib import Path
 from harness import display, problems, run
 
 RUNTIME = Path(__file__).resolve().parents[2] / "runtime"
+CLI = RUNTIME / "recipes" / "cli" / "view.vlp"
 IDE = RUNTIME / "recipes" / "ide" / "view.vlp"
 # The ide's font is the library's part, so it keeps its zoom in the library's folder.
 ZOOMED = RUNTIME / "recipes/library/parts/font/.vulpen/font.ini"
@@ -128,7 +130,7 @@ def typed(width: int, height: int) -> list[str]:
         "input text help",
         "input key down enter",
         "input key down control",
-        "input key down l",  # the chord: clear, once the terminal took help's keys
+        "input key down l",  # clear, sent by the terminal, which the cli answers
         "input key up l",
         "input key up control",
         "input text node",
@@ -279,8 +281,8 @@ def drive(folder: Path, name: str, lines: list[str], frames: int = FRAMES,
           typed: str = "", whole: bool = True) -> str:
     script = folder / f"{name}.txt"
     script.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    code, output = run(sys.argv[1], [IDE, "--frames", frames, "--fps", 0, "--log", "info",
-                                     "--source", script], headless=False, typed=typed)
+    code, output = run(sys.argv[1], [CLI, IDE, "--frames", frames, "--fps", 0, "--log",
+                                     "info", "--source", script], headless=False, typed=typed)
     if code != 0 or problems(output):
         sys.exit(f"ide: expected the {name} to take every key, got exit {code}:\n{output}")
     if whole and RAN.findall(output) != [str(frames)]:

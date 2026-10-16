@@ -41,7 +41,7 @@ std::optional<Held> modifier(std::string_view key) {
   return Held{1} << (found - modifiers.begin());
 }
 
-// The keys held and the key pressed, joined by +, as control+l; from the second
+// The keys held and the key pressed, joined by +, as control+s; from the second
 // character, so a chord may press + itself, as control++ does.
 Chord chord_of(std::string_view text, const VP::InputPort &input) {
   Chord chord;
@@ -57,7 +57,7 @@ Chord chord_of(std::string_view text, const VP::InputPort &input) {
   }
   if (modifier(text))
     throw std::runtime_error(std::format(
-        "{} only holds: a chord ends in the key it presses, as control+l", text));
+        "{} only holds: a chord ends in the key it presses, as control+s", text));
   if (!input.names_key(text))
     throw std::runtime_error(
         std::format("{} is no key a chord presses: one named by the character it prints "
@@ -88,7 +88,7 @@ std::size_t equals_of(std::string_view text) {
   return equals;
 }
 
-// Each row binds a chord to the line it sends, as control+l = clear.
+// Each row binds a chord to the line it sends, as control+s = write.
 std::vector<Chord> chords_of(std::string_view keymap,
                              const VP::InputPort &input,
                              std::span<const VP::Usage> usages) {
@@ -129,6 +129,7 @@ class Keys final : public VP::Operator {
                           "sends the keys and text no chord takes to a node that reads "
                           "them from the keys part; with none, to no node in focus");
     _name = node.name();
+    _view = node.view_name();
     _start = node.param<std::string>("focus");
     _keymap = node.file(keymap_file);
     _typed = &node.output<VP_VIEW::Typed>(typed_port);
@@ -206,6 +207,7 @@ class Keys final : public VP::Operator {
 
   // Only a node that reads what this one hands on takes the focus, so a misspelt name is
   // refused, naming those that do, rather than leaving every key unread.
+  // The nodes that read its keys are in its own view, whichever view the line addressed.
   void command(VP::Call &call) override {
     if (!call.is(_focus))
       return;
@@ -215,7 +217,7 @@ class Keys final : public VP::Operator {
     }
     const std::string_view node = call.arguments().front();
     std::string readers;
-    for (const VP::Connection &connection : call.view().connections)
+    for (const VP::Connection &connection : call.view(_view)->connections)
       if (connection.from.node == _name && connection.from.port == typed_port)
         for (const VP::Endpoint &to : connection.to) {
           if (to.node == node) {
@@ -233,6 +235,7 @@ class Keys final : public VP::Operator {
 
   VP::Command _focus;
   std::string _name;
+  std::string _view; // the one it runs in
   std::string _start;               // the node its focus param names
   bool _started = false;            // whether the param gave the focus yet
   std::optional<std::string> _next; // the node a focus line gave, for the next frame

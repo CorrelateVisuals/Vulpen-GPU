@@ -303,11 +303,13 @@ std::string_view Views::nowhere(const Hosted &hosted) const {
   return nowhere(host);
 }
 
+// Each once, as the apps share the recipes' folder.
 std::vector<std::filesystem::path> Views::roots() const {
   std::vector<std::filesystem::path> roots;
   for (const std::unique_ptr<Hosted> &hosted : _hosted)
-    if (!hosted->removed)
-      roots.push_back(Manifest::root(hosted->current()));
+    if (const std::filesystem::path root = Manifest::root(hosted->current());
+        !hosted->removed && std::ranges::find(roots, root) == roots.end())
+      roots.push_back(root);
   return roots;
 }
 
@@ -412,7 +414,8 @@ Views::Hosted *Views::hosted(std::string_view name) const {
 }
 
 // A command addresses a hosted view by its name, so no two share one. The build tree
-// mirrors each view by its folder's name, so two views running may not share that.
+// mirrors each view by its folder's name, so two views running may share that only when
+// they build from one folder, as the apps do from the recipes'.
 void Views::host(const Child &child, const std::string &parent) {
   if (hosted(child.name))
     throw std::runtime_error(
@@ -422,10 +425,11 @@ void Views::host(const Child &child, const std::string &parent) {
   auto view = std::make_unique<View>(exists ? read(_wiring.log, child.file)
                                             : Manifest::empty(child.file));
   for (const std::unique_ptr<Hosted> &hosted : _hosted)
-    if (!hosted->removed && hosted->current().name == view->name)
+    if (!hosted->removed && hosted->current().name == view->name &&
+        Manifest::root(hosted->current()) != Manifest::root(*view))
       throw std::runtime_error(std::format(
-          "child {}: {} is in a folder named {}, as {} is; the build tree holds one view "
-          "of each name",
+          "child {}: {} builds as the view {}, as {} does from another folder; the "
+          "build tree holds one view of each name",
           child.name,
           child.file.string(),
           view->name,

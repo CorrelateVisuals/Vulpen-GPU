@@ -78,6 +78,7 @@ private:
   bool names_key(std::string_view name) const override;
   std::string clipboard() const override;
   void copy(std::string_view text) override;
+  bool windowed() const override;
   bool typed() const override;
   std::span<const Event> keys() override;
   std::span<const std::string> lines() override;

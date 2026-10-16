@@ -10,18 +10,23 @@ if ($rest.Count -gt 0 -and $rest[0] -eq '--release') { $preset = 'release'; $res
 $recipes = Join-Path $PSScriptRoot 'src\runtime\recipes'
 $projects = Join-Path $PSScriptRoot 'projects'
 $options = '--log', '--frames', '--fps', '--first-frame', '--source', '--size'
-# An app's flag and a project's are the script's own and stand for its view.vlp, so
-# vulpen knows no app or project by name (V05). vulpen's options come before a project, so
-# one named like an option runs by its path; each takes a value, and any other word is a
-# view.
+# An app's flag and a project's are the script's own and stand for views, so vulpen knows
+# no app or project by name (V05): --cli for the cli's view.vlp, which vulpen starts
+# with, and --ide for the cli's and the ide's, which vulpen then hosts beside the
+# projects, as it hosts each view named after the first. vulpen's options come before a
+# project, so one named like an option runs by its path; each takes a value, and any
+# other word is a view.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
 # level nothing unless it fails (C09).
+function App($flag) {
+    @(Join-Path $recipes 'cli\view.vlp') + @(if ($flag -eq '--ide') { Join-Path $recipes 'ide\view.vlp' })
+}
 $arguments = @()
 $named = $false
 $verbose = $false
 for ($i = 0; $i -lt $rest.Count; $i++) {
     if ($rest[$i] -in '--cli', '--ide') {
-        $arguments += Join-Path $recipes "$($rest[$i] -replace '^--')\view.vlp"; $named = $true
+        $arguments += App $rest[$i]; $named = $true
     } elseif ($rest[$i] -in $options) {
         if ($rest[$i] -eq '--log' -and $rest[$i + 1] -eq 'debug') { $verbose = $true }
         $arguments += $rest[$i]
@@ -34,7 +39,7 @@ for ($i = 0; $i -lt $rest.Count; $i++) {
         $arguments += $rest[$i]; $named = $true
     }
 }
-if (-not $named) { $arguments = @(Join-Path $recipes "$($default -replace '^--')\view.vlp") + $arguments }
+if (-not $named) { $arguments = @(App $default) + $arguments }
 
 # CMake reads the presets from the current folder; vulpen itself runs from the
 # caller's, since nothing in it may depend on the working directory.

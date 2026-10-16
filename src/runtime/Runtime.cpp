@@ -33,8 +33,8 @@ namespace VP {
 namespace {
 
 constexpr const char *usage =
-    "usage: vulpen <view.vlp> [--frames N] [--first-frame N] [--fps N] [--size WxH]\n"
-    "              [--log error|warn|info|debug] [--source FILE]";
+    "usage: vulpen <view.vlp> [<view.vlp>...] [--frames N] [--first-frame N] [--fps N]\n"
+    "              [--size WxH] [--log error|warn|info|debug] [--source FILE]";
 constexpr std::uint32_t default_fps = 60;
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 constexpr auto scan_interval = std::chrono::milliseconds(100);
@@ -153,6 +153,8 @@ public:
 private:
   struct Options {
     std::filesystem::path manifest;
+    // The views it hosts from the start, beside the projects, as the cli hosts the ide.
+    std::vector<std::filesystem::path> hosted;
     std::uint64_t frames = 0; // 0 runs until stopped
     // Where the frame count starts, so a test reaches years of frames in a moment (A03).
     std::uint64_t first_frame = 0;
@@ -168,6 +170,7 @@ private:
 
   static Options parse(std::span<char *const> arguments);
   bool start();
+  void host();
   void loop();
   void watch();
   void swap();
@@ -298,10 +301,10 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
   for (std::size_t index = 1; index < arguments.size(); ++index) {
     const std::string_view argument = arguments[index];
     if (!argument.starts_with("--")) {
-      if (!options.manifest.empty())
-        throw std::runtime_error(
-            std::format("one view at a time, not {}\n{}", argument, usage));
-      options.manifest = argument;
+      if (options.manifest.empty())
+        options.manifest = argument;
+      else
+        options.hosted.emplace_back(argument);
       continue;
     }
     if (index + 1 == arguments.size())
@@ -338,6 +341,7 @@ int Runtime::run() {
   try {
     if (!start())
       return 1;
+    host();
     if (!_options.source.empty())
       _commands.source(_options.source);
     loop();
@@ -347,6 +351,21 @@ int Runtime::run() {
   }
   prepare();
   return ok() ? 0 : 1;
+}
+
+// Each named for its folder, as view load names a project, by a line the log keeps (V08).
+// Built before the script runs, as the view vulpen started with is, so the script may use
+// their commands, and the window opens as theirs draw; the views a manifest hosts build
+// with the first frame, after the script, as before.
+void Runtime::host() {
+  if (_options.hosted.empty())
+    return;
+  for (const std::filesystem::path &file : _options.hosted) {
+    const std::string name =
+        std::filesystem::absolute(file).parent_path().filename().string();
+    _commands.run(std::format("view add {} {}", name, file.string()));
+  }
+  prepare();
 }
 
 // False when a node is in error.

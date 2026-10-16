@@ -11,18 +11,21 @@ if [[ ${1:-} == --release ]]; then preset=release; shift; fi
 root=$(cd "$(dirname "$0")" && pwd)
 recipes=$root/src/runtime/recipes
 projects=$root/projects
-# An app's flag and a project's are the script's own and stand for its view.vlp, so
-# vulpen knows no app or project by name (V05). vulpen's options come before a project, so
-# one named like an option runs by its path; each takes a value, and any other word is a
-# view.
+# An app's flag and a project's are the script's own and stand for views, so vulpen knows
+# no app or project by name (V05): --cli for the cli's view.vlp, which vulpen starts
+# with, and --ide for the cli's and the ide's, which vulpen then hosts beside the
+# projects, as it hosts each view named after the first. vulpen's options come before a
+# project, so one named like an option runs by its path; each takes a value, and any
+# other word is a view.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
 # level nothing unless it fails (C09).
+app() { views=("$recipes/cli/view.vlp"); [[ $1 == --cli ]] || views+=("$recipes/ide/view.vlp"); }
 arguments=()
 named=false
 verbose=false
 while (($#)); do
   case $1 in
-    --cli | --ide) arguments+=("$recipes/${1#--}/view.vlp"); named=true; shift ;;
+    --cli | --ide) app "$1"; arguments+=("${views[@]}"); named=true; shift ;;
     --log | --frames | --fps | --first-frame | --source | --size)
       [[ $1 == --log && ${2:-} == debug ]] && verbose=true
       arguments+=("${@:1:2}")
@@ -37,7 +40,7 @@ while (($#)); do
     *) arguments+=("$1"); named=true; shift ;;
   esac
 done
-$named || arguments=("$recipes/${default#--}/view.vlp" "${arguments[@]}")
+$named || { app "$default"; arguments=("${views[@]}" "${arguments[@]}"); }
 
 # CMake reads the presets from the current folder; vulpen itself runs from the
 # caller's, since nothing in it may depend on the working directory.

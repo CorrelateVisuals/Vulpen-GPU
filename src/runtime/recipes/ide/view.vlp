@@ -1,8 +1,9 @@
-# The IDE app: Vulpen editing Vulpen. Only child recipes and the wires between them, built
-# by addition: each row is recipes placed side by side and connected, never a bigger
-# recipe with nodes removed. Built so far: Look, Keys, Modes, the dock, with the editor
-# in its top row beside the graph over the Perform panel, and the terminal in its bottom
-# row, Library, Projects and Opener.
+# The IDE app: Vulpen editing Vulpen, a window the cli hosts beside the projects, so every
+# command that reads or changes a view is the cli's, and this adds what the window
+# shows: ./run.sh --ide. Only child recipes and the wires between them, built by
+# addition: each row is recipes placed side by side and connected, never a bigger recipe
+# with nodes removed. Built so far: Look, Keys, Modes, the dock, with the editor in its
+# top row beside the graph over the Perform panel, and the terminal in its bottom row.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -15,9 +16,6 @@
 #   Popup      menu                   a column at the pointer
 #   Tooltip    tooltip
 #   Modes      modes + image          edit or perform: the dock, or the view presented
-#   Library    inspect + library      reads the graph; lists, drops and starts recipes
-#   Projects   projects               makes, hosts, copies and renames projects
-#   Opener     editor                 open, which gives a file to the editor here
 [manifest]
 version = 1
 
@@ -38,8 +36,9 @@ param  = focus=ide.terminal.command-line
 recipe = viewport
 
 # Edit mode gives the dock the window, and perform mode the view presented. present
-# connects a view's window to the Perform panel's image and the one that fills the window;
-# each view loaded is presented as it comes, and the others draw nowhere and keep running.
+# connects the window of a project beside the ide to the Perform panel's image and the
+# one that fills the window; each project loaded is presented as it comes, and the others
+# draw nowhere and keep running.
 [node "ide.modes"]
 recipe = modes
 param  = to=ide.perform.picture,ide.screen.picture
@@ -74,7 +73,8 @@ recipe = panel
 [node "ide.graph"]
 recipe = graph-editor
 
-# A tab a view the ide hosts, whose press presents it; the panel shows the one presented.
+# A tab a project, whose press makes it the current view; the panel shows the one
+# presented.
 [node "ide.perform-panel"]
 recipe = panel
 
@@ -90,19 +90,6 @@ recipe = panel
 
 [node "ide.terminal"]
 recipe = terminal
-
-[node "ide.inspect"]
-recipe = inspect
-
-[node "ide.library"]
-recipe = library
-
-[node "ide.projects"]
-recipe = projects
-
-[node "ide.opener"]
-recipe = editor
-param  = window=:ide.editor.text
 
 # What is presented, over the whole window in perform mode; in edit mode it has no room.
 [node "ide.screen"]
