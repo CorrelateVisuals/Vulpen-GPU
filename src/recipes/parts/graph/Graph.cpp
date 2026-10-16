@@ -2,6 +2,7 @@
 
 #include "runtime/View.h"
 #include "shared/Presented.h"
+#include "Boxes.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -17,7 +18,6 @@
 
 namespace {
 
-constexpr std::uint32_t node_room = 256;  // boxes shown at most; the rest are cut
 constexpr std::uint32_t box_rects = 2;    // a box is its border, then its fill
 constexpr std::uint32_t select_rects = 4; // the select box's edges
 constexpr std::uint32_t rect_room = box_rects * node_room + select_rects;
@@ -33,51 +33,11 @@ constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its
 constexpr float drag_least = 3.0f;      // pixels a press moves before a box follows
 constexpr std::string_view title = "graph";
 
-// The node named, or the one a recipe it is inside makes it part of; none, past the
-// last, for a name no node holds.
-std::size_t node_of(const std::vector<VP::Node> &nodes, std::string_view name) {
-  for (;;) {
-    const auto found = std::ranges::find(nodes, name, &VP::Node::name);
-    if (found != nodes.end())
-      return static_cast<std::size_t>(found - nodes.begin());
-    const std::size_t dot = name.rfind('.');
-    if (dot == std::string_view::npos)
-      return nodes.size();
-    name = name.substr(0, dot);
-  }
-}
-
-// The boxes the graph shows of a view: its nodes, then the views it hosts, as many as
-// there is room for.
-std::size_t boxes_of(const VP::View &view) {
-  return std::min(view.nodes.size() + view.children.size(), std::size_t{node_room});
-}
-
-// The box a connection leaves: its writer's, or that of the view whose window it takes;
-// none, past the last, for one the view does not show.
-std::size_t writer_of(const VP::View &view, const VP::Endpoint &from) {
-  if (!from.view())
-    return node_of(view.nodes, from.node);
-  const auto child = std::ranges::find(view.children, from.node, &VP::Child::name);
-  return view.nodes.size() + static_cast<std::size_t>(child - view.children.begin());
-}
-
 // Where the graph alone puts its first box: half a column's gap in from the left and a
 // row down, so a home that fits shows the boxes as far in.
 glm::ivec2 margin_of(glm::uvec2 cell) {
   return {static_cast<std::int32_t>(column_gap * cell.x) / 2,
           static_cast<std::int32_t>(cell.y)};
-}
-
-// A node's folder in its view's (RV08): ui.panel is ui/panel/.
-std::filesystem::path folder_of(const VP::View &view, std::string_view name) {
-  std::filesystem::path folder = view.file.parent_path();
-  for (std::size_t dot = name.find('.'); dot != std::string_view::npos;
-       dot = name.find('.')) {
-    folder /= name.substr(0, dot);
-    name.remove_prefix(dot + 1);
-  }
-  return folder / name;
 }
 
 // What of a Rect lies inside another; no extent when nothing does.
