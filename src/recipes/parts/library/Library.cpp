@@ -738,7 +738,7 @@ class Library final : public VP::Operator {
           "{} holds no {}; view new starts a view there", folder.string(), manifest));
     const std::string name = folder.filename().string();
     call.commands().send(
-        std::format(": child add {} {}", name, (folder / manifest).string()));
+        std::format(": view add {} {}", name, (folder / manifest).string()));
     if (fresh)
       call.commands().send(std::format("{}: view save", name));
   }

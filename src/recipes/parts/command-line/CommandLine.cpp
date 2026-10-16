@@ -105,7 +105,7 @@ std::vector<std::string_view> lines_of(std::string_view text) {
   return lines;
 }
 
-// The last line child list answers: the view hosted most recently, as `<name> <file>`.
+// The last line view list answers: the view hosted most recently, as `<name> <file>`.
 std::string_view newest(std::string_view children) {
   std::string_view newest;
   for (const std::string_view line : lines_of(children))
@@ -412,7 +412,7 @@ class CommandLine final : public VP::Operator {
   // returns what its command answers.
   std::string run(VP::Cook &frame, std::string_view line) {
     std::string answer = frame.commands().send(address(line));
-    current(newest(frame.commands().send(": child list")));
+    current(newest(frame.commands().send(": view list")));
     return answer;
   }
 

@@ -70,7 +70,7 @@ class Modes final : public VP::Operator {
     const VP::View &own = *call.view("");
     if (std::ranges::find(own.children, name, &VP::Child::name) == own.children.end())
       throw std::runtime_error(
-          std::format("no view named {} is hosted; child list lists them", name));
+          std::format("no view named {} is hosted; view list lists them", name));
     const auto made =
         std::ranges::find(own.connections, presenting, &VP::Connection::name);
     if (made != own.connections.end()) {

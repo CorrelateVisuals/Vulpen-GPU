@@ -40,9 +40,9 @@ node remove probe
 node add probe operator=Probe invocations=8 param=step=64
 param set probe every 30
 connect values wave.values probe.values
-child add e empty/view.vlp
+view add e empty/view.vlp
 e: view save
-child list
+view list
 view close e
 view save
 log save session.log
@@ -58,7 +58,7 @@ TOKENS = ["", "0", "1", "-1", "64", "65", "4294967295", "4294967296", "1e9", "0.
           "operator", "file", "invocations", "vertex_count", "log", "save", "source",
           "session.log", "script.txt", "view", "recipe", "wave@0badf00d", "wave.inner",
           "wave.inner.values", "Wave.cpp", "[node \"wave\"]", "[connection \"values\"]",
-          "[view \"e\"]", "[manifest]", "version = 1", "instance_count", "child", "list", "e",
+          "[view \"e\"]", "[manifest]", "version = 1", "instance_count", "list", "e",
           "e:", ":", "empty/view.vlp", "wave/view.vlp"]
 # What std::exception::what() says for the standard library's own throws: a message that
 # names no file, node or key of the view.

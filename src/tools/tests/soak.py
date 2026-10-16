@@ -187,7 +187,7 @@ def children(vulpen: str, count: int) -> None:
               typed=True)
     samples = []
     for _ in range(count):
-        one.type(f"child add w {WAVE / 'view.vlp'}")
+        one.type(f"view add w {WAVE / 'view.vlp'}")
         if "{!!!}" in one.wait_for("child w: hosted", SWAP_TIMEOUT):
             break
         one.type("view close w")

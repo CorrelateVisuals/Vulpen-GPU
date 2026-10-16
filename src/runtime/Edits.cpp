@@ -455,7 +455,7 @@ void param_unset(View &view, Arguments arguments, std::string_view where) {
 }
 
 // The file arrives absolute, as the command port resolves a <file>.
-void child_add(View &view, Arguments arguments, std::string_view where) {
+void view_add(View &view, Arguments arguments, std::string_view where) {
   Edits::child(view,
                Child{.name = std::string(arguments[0]),
                      .file = std::filesystem::path(arguments[1]),
@@ -469,7 +469,7 @@ void view_close(View &view, Arguments arguments, std::string_view) {
         return child.name == arguments.front();
       }) == 0)
     throw std::runtime_error(std::format(
-        "this view hosts no view named {}; child list lists them", arguments.front()));
+        "this view hosts no view named {}; view list lists them", arguments.front()));
   std::erase_if(view.connections, [&](const Connection &connection) {
     return connection.from.view() && connection.from.node == arguments.front();
   });
@@ -502,10 +502,10 @@ constexpr std::array edits{
     Edit{"disconnect <connection>", "removes a connection", disconnect},
     Edit{"param set <node> <key> <value>", "sets a param of a node", param_set},
     Edit{"param unset <node> <key>", "removes a param of a node", param_unset},
-    Edit{"child add <name> <file>",
+    Edit{"view add <name> <file>",
          "hosts the view a view.vlp holds, or an empty one that view save writes; a line "
          "`<name>: <command>` addresses it",
-         child_add},
+         view_add},
     Edit{"view close <name>",
          "stops hosting a view, letting go of the connections that take its window; its "
          "files stay",

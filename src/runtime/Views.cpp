@@ -89,8 +89,9 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
                        "writes the view over its manifest, keeping the comments in it",
                        *this,
                        Primitive::yes);
-  _list = commands.add("child list",
-                       "lists the hosted views, with their files, in the order hosted",
+  _list = commands.add("view list",
+                       "lists the views this view hosts, with their files, in the order "
+                       "hosted",
                        *this);
   _clear = commands.add("image clear <port>",
                         "drops the pixels of an image a node's C++ fills, named by that "
@@ -309,9 +310,8 @@ void Views::command(Call &call) {
       throw std::runtime_error("no view to save");
     save(*found);
   } else if (call.is(_list)) {
-    for (const std::unique_ptr<Hosted> &hosted : _hosted)
-      if (!hosted->removed && !hosted->name.empty())
-        call.reply(std::format("{} {}", hosted->name, hosted->current().file.string()));
+    for (const Child &child : call.view().children)
+      call.reply(std::format("{} {}", child.name, child.file.string()));
   } else if (call.is(_clear)) {
     Hosted *const found = hosted(_port.addressed());
     const std::string_view port = call.arguments().front();

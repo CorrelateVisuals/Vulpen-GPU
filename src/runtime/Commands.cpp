@@ -323,7 +323,7 @@ std::string Commands::view_named(std::vector<std::string_view> &words) const {
   words.erase(words.begin());
   if (!name.empty() && (!_views || !_views->find(name)))
     throw std::runtime_error(
-        std::format("no view is named {}; child list lists the views", name));
+        std::format("no view is named {}; view list lists those a view hosts", name));
   return name;
 }
 

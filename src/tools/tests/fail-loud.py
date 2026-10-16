@@ -446,7 +446,7 @@ def children(vulpen: str, folder: Path) -> str | None:
     (host / "view.vlp").write_text(text, encoding="utf-8")
     (host / "inner" / "view.vlp").write_text(HEAD, encoding="utf-8")
     script = host / "edits.txt"
-    script.write_text("view close inner\nchild add inner inner/view.vlp\nview save\n",
+    script.write_text("view close inner\nview add inner inner/view.vlp\nview save\n",
                       encoding="utf-8")
     code, output = run(vulpen, [host / "view.vlp", "--frames", 1, "--fps", 0, "--log", "info",
                                 "--source", script])
