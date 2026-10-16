@@ -1,6 +1,8 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 
+#include <algorithm>
+#include <filesystem>
 #include <format>
 #include <stdexcept>
 #include <string>
@@ -8,6 +10,30 @@
 #include <vector>
 
 namespace {
+
+// Whether a file or a folder is there, as its folder lists it.
+bool named(VP::FilePort &files, std::filesystem::path path) {
+  if (path.filename().empty())
+    path = path.parent_path();
+  const std::vector<std::string> names = files.list(path.parent_path().string());
+  const std::string name = path.filename().string();
+  return std::ranges::find(names, name) != names.end() ||
+         std::ranges::find(names, name + '/') != names.end();
+}
+
+// Where the view holds a file of that name, in a node's folder (RV08), as the prompt
+// names a folder, from where vulpen started; empty for nowhere.
+std::string held(const VP::View &view, const std::string &name) {
+  for (const VP::Node &node : view.nodes)
+    if (std::ranges::find(node.files, name) != node.files.end()) {
+      std::string folder = node.name;
+      std::ranges::replace(folder, '.', '/');
+      return (view.file.parent_path() / folder / name)
+          .lexically_proximate(std::filesystem::current_path())
+          .generic_string();
+    }
+  return {};
+}
 
 // The person's editor: open hands a file or a folder to the program its program param
 // names, or, while the view its window param names runs, a file to the editor there,
@@ -26,7 +52,17 @@ class Editor final : public VP::Operator {
                          "manifest there, or its folder here");
   }
 
+  // A path that names nothing is refused, whichever editor takes it, so a misspelt one
+  // fails loud rather than opening as a new, empty file (A02).
   void command(VP::Call &call) override {
+    if (!call.arguments().empty() && !named(call.files(), call.arguments()[0])) {
+      const std::filesystem::path path(call.arguments()[0]);
+      const std::string there = held(call.view(), path.filename().string());
+      throw std::runtime_error(std::format(
+          "{} names nothing, as a typed path counts from where vulpen started{}",
+          path.string(),
+          there.empty() ? "" : std::format("; the view holds {}", there)));
+    }
     const std::size_t colon = _window.find(':');
     if (colon != std::string::npos && call.view(_window.substr(0, colon)))
       in_window(call, _window.substr(0, colon), _window.substr(colon + 1));
