@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
-"""Fail when the includes in src/ differ from docs/architecture/include-map.md, or form a cycle.
+"""Fail when the includes in src/ differ from docs/architecture/include-map.md, or form a
+cycle, or when node code in src/ or projects/ includes what it may not.
 
 The map is the one page a person reads to steer the engine's structure: a new engine
 file or include edge lands only once someone writes it there, and the graph stays
 acyclic, so code never includes from code that builds on it.
 
 Node code, any file of the library (src/runtime/recipes/library/) or of a view, under a
-folder that holds a view.vlp, is not engine and has no row: a new node's file builds
-with no edit to the map. Each of its includes must be a file in its own folder, a
-contract from the contracts/ folder at the top of the library or of its view, shared
-code from the shared/ folder in the library's parts/ or at the top of its view, or what
-the map's node table lists. Engine code never includes node code.
+folder that holds a view.vlp, as each project in projects/ is, is not engine and has no
+row: a new node's file builds with no edit to the map. Each of its includes must be a
+file in its own folder, a contract from the contracts/ folder at the top of the library
+or of its view, shared code from the shared/ folder in the library's parts/ or at the
+top of its view, or an engine file the map's node table lists. Engine code never
+includes node code.
 
 Usage: python3 src/tools/gates/include-map.py
 """
+import os
 import re
 import sys
 from fnmatch import fnmatchcase
@@ -21,6 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / "src"
+PROJECTS = ROOT / "projects"  # built into vulpen as src/ is, in a release build
 MAP = ROOT / "docs" / "architecture" / "include-map.md"
 VENDORED = SOURCE / "external-libraries"  # not our code, so not our structure
 SUFFIXES = {".h", ".hpp", ".cpp", ".glsl", ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp"}
@@ -39,6 +43,19 @@ ENGINE_TABLE = "File"
 NODE_TABLE = "Node code may include"
 
 
+def key_of(file: Path) -> str:
+    """A file as the map names it: from src/, so a project's starts with ../projects/."""
+    return Path(os.path.relpath(file, SOURCE)).as_posix()
+
+
+def path_of(key: str) -> Path:
+    return (SOURCE / key).resolve()
+
+
+def ours(file: Path) -> bool:
+    return SOURCE in file.parents or PROJECTS in file.parents
+
+
 def node_root(file: Path) -> Path | None:
     """Where the contracts/ of a node's file is: the library's folder for a file in the
     library, else the nearest folder above the file that holds a view.vlp; None for
@@ -46,7 +63,7 @@ def node_root(file: Path) -> Path | None:
     if LIBRARY in file.parents:
         return LIBRARY
     return next((folder for folder in file.parents
-                 if SOURCE in folder.parents and (folder / MANIFEST).is_file()), None)
+                 if ours(folder) and (folder / MANIFEST).is_file()), None)
 
 
 def shared_root(file: Path) -> Path | None:
@@ -69,18 +86,18 @@ def resolve(file: Path, quote: str, name: str) -> str | None:
     for base in (file.parent, node_root(file), shared_root(file), SOURCE):
         if base is not None:
             candidate = (base / name).resolve()
-            if candidate.is_file() and SOURCE in candidate.parents:
-                return candidate.relative_to(SOURCE).as_posix()
+            if candidate.is_file() and ours(candidate):
+                return key_of(candidate)
     return name  # generated into the build tree, such as commit.h
 
 
 def included() -> dict[str, set[str]]:
     edges = {}
-    for file in sorted(SOURCE.rglob("*")):
+    for file in sorted(file for folder in (SOURCE, PROJECTS) for file in folder.rglob("*")):
         if file.suffix in SUFFIXES and VENDORED not in file.parents:
             text = file.read_text(encoding="utf-8")
             names = (resolve(file, quote, name) for quote, name in INCLUDE.findall(text))
-            edges[file.relative_to(SOURCE).as_posix()] = {name for name in names if name}
+            edges[key_of(file)] = {name for name in names if name}
     return edges
 
 
@@ -122,7 +139,7 @@ def row(file: str, names: set[str]) -> str:
 
 
 def differences(code: dict[str, set[str]], page: dict[str, set[str]]) -> list[str]:
-    engine = {file: names for file, names in code.items() if not node_root(SOURCE / file)}
+    engine = {file: names for file, names in code.items() if not node_root(path_of(file))}
     problems = [f"{file}: new file; once approved, add the row\n      {row(file, engine[file])}"
                 for file in sorted(engine.keys() - page.keys())]
     problems += [f"{file}: node code has no row in the map" if file in code
@@ -141,17 +158,17 @@ def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
     lists for it (RV00, RV05, RV08, RV09); engine code never reaches node code (RA00)."""
     problems = []
     for file, names in sorted(code.items()):
-        root = node_root(SOURCE / file)
+        root = node_root(path_of(file))
         for name in sorted(names):
-            target = SOURCE / name
+            target = path_of(name)
             if root is None:
                 if node_root(target):
                     problems.append(f"{file} -> {name}: engine code never includes node code "
                                     "(RA00)")
-            elif not (target.parent == (SOURCE / file).parent
+            elif not (target.parent == path_of(file).parent
                       or (target.suffix in HEADER_SUFFIXES
                           and target.parent in (root / CONTRACTS,
-                                                shared_root(SOURCE / file) / SHARED))
+                                                shared_root(path_of(file)) / SHARED))
                       # The table lists engine files; since the library is under runtime/,
                       # its patterns would else reach another recipe's code too (RV00).
                       or (not node_root(target)

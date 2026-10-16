@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail when the code in src/ breaks a rule a text search can check:
+"""Fail when the code in src/ or projects/ breaks a rule a text search can check:
 
 - RC03: ownership is std::unique_ptr or by value, so no std::shared_ptr, and no naked new
   or delete;
@@ -31,6 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / "src"
+PROJECTS = ROOT / "projects"  # built into vulpen as src/ is, in a release build
 VENDORED = SOURCE / "external-libraries"  # not our code, so not our rules
 PLATFORM = {"baseclasses/Platform.h", "baseclasses/Platform.cpp"}
 # What any file may include; the include map says which files do.
@@ -87,8 +88,13 @@ def citations(name: str, text: str, ids: set[str]) -> list[str]:
     return found
 
 
+def name_of(file: Path) -> str:
+    """From src/, as the platform files are named, or a project's from the top."""
+    return file.relative_to(SOURCE if SOURCE in file.parents else ROOT).as_posix()
+
+
 def problems(file: Path) -> list[str]:
-    name = file.relative_to(SOURCE).as_posix()
+    name = name_of(file)
     code = LITERALS.sub(blank, file.read_text(encoding="utf-8"))
     found = []
     for number, line in enumerate(code.splitlines(), 1):
@@ -118,12 +124,11 @@ def problems(file: Path) -> list[str]:
 def main() -> None:
     ids = set(DEFINED.findall("".join((DOCS / rules).read_text(encoding="utf-8")
                                       for rules in ("principles.md", "requirements.md"))))
-    files = sorted(file for suffix in COMMENTED for file in SOURCE.rglob(suffix)
-                   if VENDORED not in file.parents)
+    files = sorted(file for suffix in COMMENTED for folder in (SOURCE, PROJECTS)
+                   for file in folder.rglob(suffix) if VENDORED not in file.parents)
     found = []
     for file in files:
-        found += citations(file.relative_to(SOURCE).as_posix(),
-                           file.read_text(encoding="utf-8"), ids)
+        found += citations(name_of(file), file.read_text(encoding="utf-8"), ids)
         if file.suffix in (".h", ".cpp"):
             found += problems(file)
     if found:

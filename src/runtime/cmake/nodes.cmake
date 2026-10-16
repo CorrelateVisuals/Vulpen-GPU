@@ -51,7 +51,7 @@ function(vulpen_view folder)
 endfunction()
 
 # The build tree mirrors each view by its name, where the runtime finds its modules, so
-# two views of one name, as a project named like an example, would build into one place:
+# two views of one name, as a project named library, would build into one place:
 # the build fails, naming both (A02).
 function(vulpen_name view folder)
   get_property(taken GLOBAL PROPERTY vulpen_view_${view})

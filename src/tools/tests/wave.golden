@@ -1,4 +1,4 @@
-# What src/runtime/examples/wave/view.vlp prints, bit for bit, on the device below.
+# What projects/wave/view.vlp prints, bit for bit, on the device below.
 # Only a change meant to move it rewrites it: python3 src/tools/tests/golden.py VULPEN --update
 device llvmpipe (LLVM 20.1.2, 256 bits): cpu, Vulkan 1.4.318
 tolerance 0.001

@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-EXAMPLES = ROOT / "src" / "runtime" / "examples"
+EXAMPLES = ROOT / "projects"  # the example projects, wave and triangle
 PROBLEM = re.compile(r"Validation (?:Error|Warning|Performance Warning):|runtime error:"
                      r"|ERROR: \w+Sanitizer|WARNING: ThreadSanitizer")
 OUT = re.compile(r"\{out\} (.*)$")

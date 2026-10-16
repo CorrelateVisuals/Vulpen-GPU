@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Fail when code built from src/ holds a mutable global (C13): every writable object in
-an object file, from its symbol table. Vendored code is ours to build, not to change
-(RA02), so its few globals are listed by name.
+"""Fail when code built from src/ or projects/ holds a mutable global (C13): every
+writable object in an object file, from its symbol table. Vendored code is ours to build,
+not to change (RA02), so its few globals are listed by name.
 
 State has an owner and reaches code through parameters. A global also outlives a live
 swap in one module and resets in another, and it is shared by every thread.
@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "src"
+PROJECTS = ROOT / "projects"  # built into vulpen as src/ is, in a release build
 VENDORED = SOURCE / "external-libraries"
 THREAD_LOCAL = (".tdata", ".tbss")
 WRITABLE = (".data", ".bss", *THREAD_LOCAL)
@@ -59,8 +60,9 @@ def main() -> None:
     found = []
     for entry in entries:
         source = Path(entry["file"]).resolve()
-        if SOURCE in source.parents and VENDORED not in source.parents:
-            name = source.relative_to(SOURCE).as_posix()
+        if ((SOURCE in source.parents or PROJECTS in source.parents)
+                and VENDORED not in source.parents):
+            name = source.relative_to(ROOT).as_posix()
             found += [f"{name}: {symbol}"
                       for symbol in writable(Path(entry["directory"]) / entry["output"])]
     if found:

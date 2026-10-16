@@ -14,11 +14,13 @@ __pycache__/
 # Archi leaves a .bak beside the model it saves; git history is the backup.
 *.bak
 
-# Each person's projects, and a project that is a git repository of its own; the README
-# keeps the folder.
+# Each person's projects, and a project that is a git repository of its own; .gitkeep
+# keeps the folder, and the example projects are everyone's.
 /projects/*
-!/projects/README.md
+!/projects/.gitkeep
+!/projects/triangle/
+!/projects/wave/
 
 # What the ide's parts keep beside a view, as the graph its layout: a look at the view,
-# not the view, so the examples and the library leave each person's look at them out.
+# not the view, so the example projects and the library leave each person's look at them out.
 .vulpen/

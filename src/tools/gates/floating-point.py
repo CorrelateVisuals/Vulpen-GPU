@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / "src"
+PROJECTS = ROOT / "projects"  # built into vulpen as src/ is, in a release build
 VENDORED = SOURCE / "external-libraries"
 FORBIDDEN = ("-ffast-math", "-Ofast", "-funsafe-math-optimizations", "-ffinite-math-only",
              "-fno-signed-zeros", "-freciprocal-math", "-fassociative-math")
@@ -23,10 +24,11 @@ CONTRACT = "-ffp-contract="
 
 def problems(entry: dict) -> list[str]:
     file = Path(entry["file"]).resolve()
-    if SOURCE not in file.parents or VENDORED in file.parents:
+    if (SOURCE not in file.parents and PROJECTS not in file.parents
+            or VENDORED in file.parents):
         return []
     arguments = entry.get("arguments") or shlex.split(entry["command"])
-    name = file.relative_to(SOURCE).as_posix()
+    name = file.relative_to(ROOT).as_posix()
     found = [f"{name}: compiles with {flag}" for flag in FORBIDDEN if flag in arguments]
     contracts = [argument for argument in arguments if argument.startswith(CONTRACT)]
     if not contracts or contracts[-1] != CONTRACT + "off":  # the last one wins

@@ -1,6 +1,5 @@
 # Headless compute: wave fills a buffer, probe samples it back to the CPU and prints it.
-# Run ./run.sh src/runtime/examples/wave/view.vlp, then save any file of this view while
-# it runs.
+# Run ./run.sh --wave, then save any file of this view while it runs.
 
 [manifest]
 version = 1

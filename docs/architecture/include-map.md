@@ -56,7 +56,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 
 ## Node code
 
-A file of the library (`src/runtime/recipes/library/`) or of a view, under a folder that holds a `view.vlp`, is node code, not engine (V05), so it has no row above: a new node's file builds with no edit to this page. The gate checks each of its includes against one rule instead. Node code may include a file in its own folder (RV08), a contract as `contracts/<Name>.glsl` or `contracts/<Name>.h`, from the top of the library or of its view (V03, RV05), and shared code's header as `shared/<Name>.h`, from the library's `parts/` or the top of its view, which includes its `.cpp` from beside it (RV09). Besides those and the standard library, it may include only what this table lists. Engine code never includes node code (RA00).
+A file of the library (`src/runtime/recipes/library/`) or of a view, under a folder that holds a `view.vlp`, as each project in `projects/` is, is node code, not engine (V05), so it has no row above: a new node's file builds with no edit to this page. The gate checks each of its includes against one rule instead. Node code may include a file in its own folder (RV08), a contract as `contracts/<Name>.glsl` or `contracts/<Name>.h`, from the top of the library or of its view (V03, RV05), and shared code's header as `shared/<Name>.h`, from the library's `parts/` or the top of its view, which includes its `.cpp` from beside it (RV09). Besides those and the standard library, it may include only what this table lists. Engine code never includes node code (RA00).
 
 | Node code may include | Why |
 | --- | --- |
