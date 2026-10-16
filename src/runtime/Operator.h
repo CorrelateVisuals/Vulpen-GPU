@@ -181,6 +181,10 @@ public:
   // None keeps every line, as at the start. The part that shows the log sets it, so the
   // terminal vulpen was started from shows what a terminal in a window does.
   virtual void keep_log_to(std::span<const std::string> views) = 0;
+  // The current view, where the lines a person types go, by its name, empty for the one
+  // vulpen started with: where view switch moved it, and once that view is no longer
+  // hosted, the nearest view that held it and still is. Every face shows it.
+  virtual std::string_view current() = 0;
 
 protected:
   ~CommandPort() = default;
@@ -450,10 +454,11 @@ public:
   // The view the node runs in, as this frame runs it: each recipe a node of the library
   // uses unfolded. Read it while the node cooks; a rebuild replaces it.
   virtual const View &view() const = 0;
-  // A view the node's view hosts, by its name, as the changes so far left it: what a
-  // save would write, as a command addressed to it reads it; null when its view hosts
-  // none of that name. Read it while the node cooks; a change replaces it.
-  virtual const View *hosted(std::string_view name) const = 0;
+  // Any view by its name, as a line addresses it, empty for the one vulpen started with,
+  // as the changes so far left it: what a save would write; null when no view has the
+  // name. A read changes nothing, so a node still changes a view only by commands (V06).
+  // Read it while the node cooks; a change replaces it.
+  virtual const View *view(std::string_view name) const = 0;
 
 protected:
   ~Cook() = default;

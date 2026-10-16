@@ -57,7 +57,8 @@ std::string hosted_name(VP::Call &call) {
 }
 
 // The projects: views of their own in one folder (V03), which the commands here make,
-// host, copy and rename, by a project's name or by a folder's path.
+// host, copy and rename, by a project's name or by a folder's path; each view they host
+// becomes the current one.
 class Projects final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // From the part's own folder (RP02), so a person who works elsewhere changes one
@@ -111,6 +112,7 @@ class Projects final : public VP::Operator {
         std::format(": view add {} {}", name, (folder / manifest).string()));
     if (fresh)
       call.commands().send(std::format("{}: view save", name));
+    call.commands().send(std::format("view switch {}", name));
   }
 
   // The copy takes the view's folder whole, its look too, then the manifest as the edits
@@ -137,6 +139,7 @@ class Projects final : public VP::Operator {
     call.files().save(view, (to / manifest).string());
     call.commands().send(std::format(": view close {}", hosted));
     call.commands().send(std::format(": view add {} {}", name, (to / manifest).string()));
+    call.commands().send(std::format("view switch {}", name));
   }
 
   // The folder moves whole, with the views it hosts. Nothing inside a project names it,
@@ -155,6 +158,7 @@ class Projects final : public VP::Operator {
     call.commands().send(std::format(": view close {}", hosted));
     call.commands().send(
         std::format(": view add {} {}", name, (to / file.filename()).string()));
+    call.commands().send(std::format("view switch {}", name));
   }
 
   std::filesystem::path _folder;

@@ -257,7 +257,7 @@ def deletes(wave: Path) -> list[str]:
     return [
         f"view load {wave}",
         f"view load {TRIANGLE}",  # hosted last, presented as it comes
-        "present wave",  # so the panels follow the copy, not the view hosted last
+        "view switch wave",  # so the panels follow the copy, not the view hosted last
         f"open {Path(__file__).resolve()}",  # Python in color, a docstring over many rows
         "wave: select probe inner",  # as a script selects, before the first frame
         "wave: info",  # the node and the view selected, under their headers

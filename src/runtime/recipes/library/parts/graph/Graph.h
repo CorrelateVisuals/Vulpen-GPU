@@ -53,12 +53,11 @@ struct Grab {
   bool moved = false;
 };
 
-// The graph of the view presented, whose window a connection of its view takes, else of
-// the one its view hosted most recently, as the terminal's lines go to it: a box a node,
-// with its name and its files, a box each view it hosts, with its name and the file it is
-// hosted from, and a curve a connection, from the writer's right side to the reader's
-// left, a view's from where its host takes its window. The manifest holds no places
-// (V04), so the graph alone
+// The graph of the current view, as the terminals' lines go to it, which view switch
+// moves and a second press on a view's box moves into it: a box a node, with its name and
+// its files, a box each view it hosts, with its name and the file it is hosted from, and
+// a curve a connection, from the writer's right side to the reader's left, a view's from
+// where its host takes its window. The manifest holds no places (V04), so the graph alone
 // lays it out: a node a column past every node it reads from, down each column in the
 // manifest's order, and below its boxes a lane for each connection that passes the
 // column. A box dragged stays where it is put, and the first drag places every box where
@@ -97,7 +96,7 @@ private:
   void home(glm::uvec2 cell);
   void
   follow(VP::Cook &frame, const VP::View *view, const VP::Event &event, glm::uvec2 cell);
-  void press(VP::Cook &frame, const VP::View &view);
+  void press(VP::Cook &frame, const VP::View &view, std::uint32_t presses);
   void drag(const VP::View &view, glm::vec2 to);
   void release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell);
   void open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uvec2 cell);
@@ -154,9 +153,7 @@ private:
   std::vector<std::int32_t> _downs; // each column's next row
   std::vector<std::size_t> _ends;   // a connection's writer and reader, two a pair
   std::vector<Lane> _lanes;         // a pair's in the order of its columns
-  std::string _shown;     // the view the tab names; empty for none
-  std::string _presented; // as the frame showed it; empty for none
-  bool _cooked = false;   // since the first frame, which finds the view presented
+  std::string _shown; // the view the tab names; empty for the one vulpen started with
   // The file each view the view shown hosts is hosted from, and the row its box shows of
   // it, found again only when they change, so a frame allocates nothing for them.
   std::vector<std::filesystem::path> _view_files;

@@ -1,7 +1,6 @@
 #include "Graph.h"
 
 #include "runtime/View.h"
-#include "shared/Presented.h"
 #include "Boxes.h"
 
 #include <glm/common.hpp>
@@ -92,27 +91,18 @@ void Graph::bind(VP::Bind &node) {
   _lanes.reserve(lane_room);
 }
 
-// The view the terminal's lines go to: the one presented, else the one its view hosted
-// last. The keys once it is known, and before it is read for the frame, as delete
-// changes it.
+// The current view, where the terminals' lines go, the one vulpen started with too. The
+// keys once it is known, and before it is read for the frame, as delete changes it.
 void Graph::cook(VP::Cook &frame) {
-  const VP::View &host = frame.view();
-  if (const std::string_view presented_now = presented(host); presented_now != _presented)
-    _presented = presented_now;
-  _cooked = true;
-  const std::string_view chosen = !_presented.empty() ? std::string_view(_presented)
-                                  : host.children.empty()
-                                      ? std::string_view()
-                                      : std::string_view(host.children.back().name);
-  const VP::View *view = chosen.empty() ? nullptr : frame.hosted(chosen);
-  const std::string_view shown = view ? chosen : "";
+  const std::string shown(frame.commands().current());
+  const VP::View *view = frame.view(shown);
   if (_tabs->empty() || shown != _shown)
     show(frame, view, shown);
   for (const VP::Event &event : _typed->to(_name))
     if (event.kind == VP::Event::Kind::key && event.down)
       key(frame, event.name);
   if (view)
-    view = frame.hosted(shown);
+    view = frame.view(shown);
   const glm::uvec2 cell = _font->cell;
   const bool room =
       view && _area->extent.x != 0 && _area->extent.y != 0 && cell.x != 0 && cell.y != 0;
@@ -123,12 +113,14 @@ void Graph::cook(VP::Cook &frame) {
     if (std::exchange(_homing, false))
       home(cell);
   }
+  // A press may send a line that edits the view shown, as open does the ide's own, or
+  // closes it, so the view is read again for each event and for the writing.
   for (const VP::Event &event : frame.input().events())
-    follow(frame, room ? view : nullptr, event, cell);
+    follow(frame, room ? frame.view(shown) : nullptr, event, cell);
   frame.set(_pan, _pan_zoom.pan);
   frame.set(_zoom, _pan_zoom.zoom);
-  if (room) {
-    write(frame, *view, cell);
+  if (const VP::View *const now = room ? frame.view(shown) : nullptr) {
+    write(frame, *now, cell);
     return;
   }
   // No room, no work: nothing written draws nothing.
@@ -139,25 +131,15 @@ void Graph::cook(VP::Cook &frame) {
   frame.write(_curves, 0);
 }
 
-// On the view the graph shows, as the terminal's lines go to it: the one presented as the
-// frame began, while it is still hosted, else the one its view hosts last, so a line to
-// any other is refused rather than acting where nobody looks. Before the first frame,
-// both are found from the lines so far, so a script's select then finds the view.
+// On the view the graph shows, the current one, as the terminals' lines go to it, so a
+// line to any other is refused rather than acting where nobody looks.
 void Graph::command(VP::Call &call) {
-  const VP::View &host = *call.view("");
-  const std::string_view then = _cooked ? std::string_view(_presented) : presented(host);
-  const bool presenting =
-      std::ranges::find(host.children, then, &VP::Child::name) != host.children.end();
-  const std::string shown = presenting              ? std::string(then)
-                            : host.children.empty() ? ""
-                                                    : host.children.back().name;
-  if (shown.empty() || call.view(shown) != &call.view())
-    throw std::runtime_error(
-        shown.empty() ? "the graph shows no view; view load hosts one"
-                      : std::format("the graph shows {}, so its lines go there, as {}: "
-                                    "select",
-                                    shown,
-                                    shown));
+  const std::string shown(call.commands().current());
+  if (call.view(shown) != &call.view())
+    throw std::runtime_error(std::format(
+        "the graph shows {}, so its lines go there, as {}: select",
+        shown.empty() ? std::string_view("the view vulpen started with") : shown,
+        shown));
   if (_selected_in != shown) // a selection in a view hosted before
     _selection.clear();
   const VP::View &view = call.view();
@@ -190,7 +172,7 @@ void Graph::command(VP::Call &call) {
 // the focus, as the editor and the terminal do. The home key brings the graph home once
 // the frame has laid the boxes out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
-  const bool chosen = !_shown.empty() && _selected_in == _shown && !_selection.empty();
+  const bool chosen = _selected_in == _shown && !_selection.empty();
   if ((key == "delete" || key == "backspace") && chosen) {
     frame.commands().send(std::format("{}: delete", _shown));
   } else if (key == "escape" && chosen) {
@@ -374,7 +356,7 @@ void Graph::follow(VP::Cook &frame,
     if (!event.down)
       release(frame, view, cell);
     else if (view && inside(*_area, _pointer))
-      press(frame, *view);
+      press(frame, *view, event.presses);
   } else if (event.kind == VP::Event::Kind::wheel && view && inside(*_area, _pointer)) {
     turn(event.turn);
   } else if (event.kind == VP::Event::Kind::key && event.name == "shift") {
@@ -385,18 +367,23 @@ void Graph::follow(VP::Cook &frame,
   }
 }
 
-// It takes the focus. On a box, the box drawn last over the others: shift adds it to the
-// selection or takes it out; else it is selected, unless it is already, and grabbed with
-// every box selected, so a drag moves them all. On the ground with shift, a select box
-// from there to the pointer until the button is let go; without, the selection goes, and
-// the graph follows the pointer until then.
-void Graph::press(VP::Cook &frame, const VP::View &view) {
+// It takes the focus. On a box, the box drawn last over the others: a second press on a
+// view's box goes into it, as view switch; shift adds a box to the selection or takes
+// it out; else it is selected, unless it is already, and grabbed with every box
+// selected, so a drag moves them all. On the ground with shift, a select box from there
+// to the pointer until the button is let go; without, the selection goes, and the graph
+// follows the pointer until then.
+void Graph::press(VP::Cook &frame, const VP::View &view, std::uint32_t presses) {
   if (_typed->focus != _name)
     frame.commands().send(std::format("focus {}", _name));
   for (std::size_t at = _placed.size(); at-- > 0;) {
     if (!VP_VIEW::contains(cut(box(_placed[at]), *_area), _pointer))
       continue;
     const std::string &name = name_of(view, at);
+    if (presses == 2 && at >= view.nodes.size()) {
+      frame.commands().send(std::format("view switch {}", name));
+      return;
+    }
     std::vector<std::string> chosen;
     if (_selected_in == _shown)
       chosen = _selection;

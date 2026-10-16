@@ -97,6 +97,7 @@ public:
   std::vector<Usage> usages() const override;
   std::span<const Logged> log() const override;
   void keep_log_to(std::span<const std::string> views) override;
+  std::string_view current() override;
   // Before a frame cooks: what the log printed since the frame before is what nodes
   // read in this one, and the frame's holds start anew.
   void frame();
@@ -140,6 +141,7 @@ private:
   std::string view_named(std::vector<std::string_view> &words) const;
   std::vector<std::string> resolve(const Spec &spec,
                                    std::vector<std::string_view> &arguments) const;
+  void switch_to(std::string_view name);
   std::filesystem::path resolved(const std::filesystem::path &file) const;
 
   const Log &_log;
@@ -156,7 +158,10 @@ private:
   const Command _quit_force;
   const Command _source;
   const Command _log_save;
+  const Command _switch;
   bool _quitting = false;
+  std::string _current;               // the view view switch moved to
+  std::vector<std::string> _holding; // the views that held it then, its host first
   Holds _holds; // this frame's
   Holds _held;  // the frame before's
   std::vector<Logged> _logged; // the first _logged_count are this frame's

@@ -10,7 +10,6 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Labels.h"
-#include "shared/Presented.h"
 #include "shared/Scroll.h"
 #include "shared/Words.h"
 
@@ -105,20 +104,6 @@ std::vector<std::string_view> lines_of(std::string_view text) {
     at = end + 1;
   }
   return lines;
-}
-
-// Of the lines view list answers, a view each as `<name> <file>`, the one lines go to:
-// the view presented while it is still hosted, else the one hosted most recently; empty
-// for none.
-std::string_view followed(std::string_view hosted, std::string_view shown) {
-  std::string_view newest;
-  for (const std::string_view line : lines_of(hosted)) {
-    if (!shown.empty() && line.substr(0, line.find(' ')) == shown)
-      return line;
-    if (!line.empty())
-      newest = line;
-  }
-  return newest;
 }
 
 // The folders and files where a path begun points, each as the whole word, from where
@@ -274,7 +259,7 @@ class CommandLine final : public VP::Operator {
   // worked on, and every view's problems; told only when they change, so a frame
   // allocates nothing for them.
   void keep_log(VP::Cook &frame) {
-    const VP::View *const followed = _view.empty() ? nullptr : frame.hosted(_view);
+    const VP::View *const followed = _view.empty() ? nullptr : frame.view(_view);
     const std::span<const VP::Child> inside =
         followed ? std::span(followed->children) : std::span<const VP::Child>();
     const std::size_t count = _view.empty() ? 0 : 1 + inside.size();
@@ -291,19 +276,23 @@ class CommandLine final : public VP::Operator {
     frame.commands().keep_log_to(_kept);
   }
 
-  // Once the frame shows another view presented, or another hosted most recently, as at
-  // the first frame, the view lines go to is found again; a frame between asks nothing.
+  // Lines go to the command port's current view, which view switch moves, so both
+  // terminals, the graph and the Perform panel follow one; found again once it changed,
+  // as a line typed may change it. The prompt names its folder from where vulpen
+  // started, as a shell names one; the view vulpen started with has none to show.
   void follow(VP::Cook &frame) {
-    const VP::View &view = frame.view();
-    const std::string_view shown = presented(view);
-    const std::string_view newest =
-        view.children.empty() ? std::string_view() : view.children.back().name;
-    if (_followed && shown == _presented && newest == _newest)
+    const std::string_view now = frame.commands().current();
+    if (_followed && now == _view)
       return;
     _followed = true;
-    _presented = shown;
-    _newest = newest;
-    current(followed(frame.commands().send(": view list"), _presented));
+    _view = now;
+    const VP::View *const view = frame.view(_view);
+    _folder = _view.empty() || !view
+                  ? std::string()
+                  : view->file.parent_path()
+                        .lexically_proximate(std::filesystem::current_path())
+                        .generic_string();
+    name_tab();
   }
 
   void on_terminal(VP::Cook &frame) {
@@ -470,11 +459,11 @@ class CommandLine final : public VP::Operator {
     return _typed->focus == _name;
   }
 
-  // Sends a line to the view it names, else to the one lines go to, and returns what its
-  // command answers; the line may host a view or close one, which the next line follows.
+  // Sends a line to the view it names, else to the current one, and returns what its
+  // command answers; the line may switch the current view, which the next line follows.
   std::string run(VP::Cook &frame, std::string_view line) {
     std::string answer = frame.commands().send(address(line));
-    current(followed(frame.commands().send(": view list"), _presented));
+    follow(frame);
     return answer;
   }
 
@@ -501,19 +490,6 @@ class CommandLine final : public VP::Operator {
         grid.columns > static_cast<std::int32_t>(_folder.size() + prompt_end.size()) &&
         grid.above >= cell.y;
     return grid;
-  }
-
-  // From where vulpen started, as a shell names a folder; the host has no name to show.
-  void current(std::string_view hosted) {
-    const std::size_t space = hosted.find(' ');
-    _view = hosted.substr(0, space);
-    _folder = space == std::string_view::npos
-                  ? std::string()
-                  : std::filesystem::path(hosted.substr(space + 1))
-                        .parent_path()
-                        .lexically_proximate(std::filesystem::current_path())
-                        .generic_string();
-    name_tab();
   }
 
   // Its title, and the view a line goes to unless that is the host, as a shell's title
@@ -925,12 +901,9 @@ class CommandLine final : public VP::Operator {
   VP::Command _help;
   VP::Command _complete;
   VP::Command _clear;
-  std::string _view;   // the view a line that names none goes to; empty for the host
+  std::string _view;   // the current view, as last found; empty for the host
   std::string _folder; // that view's, as the prompt shows it
-  // As the frame before showed them: the view presented, and the one hosted last.
-  std::string _presented;
-  std::string _newest;
-  bool _followed = false; // until the first frame finds the view lines go to
+  bool _followed = false; // until the first frame finds the current view
   std::vector<std::string> _kept; // the views the log keeps to, as it was told
   bool _prompted = false;
   bool _window = false;

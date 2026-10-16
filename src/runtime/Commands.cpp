@@ -105,6 +105,9 @@ private:
   void keep_log_to(std::span<const std::string> views) override {
     _port.keep_log_to(views);
   }
+  std::string_view current() override {
+    return _port.current();
+  }
 
   Commands &_port;
 };
@@ -231,7 +234,11 @@ Commands::Commands(const Log &log, FilePort &files, ProcessPort &processes)
                   *this)),
       _log_save(add("log save <file>",
                     "writes the session's edits to a file, which source replays",
-                    *this)) {}
+                    *this)),
+      _switch(add("view switch [<name>]",
+                  "makes a hosted view the current one, where the lines typed go and "
+                  "which every face shows; with none, the view vulpen started with",
+                  *this)) {}
 
 Commands::~Commands() = default;
 
@@ -367,6 +374,31 @@ void Commands::keep_log_to(std::span<const std::string> views) {
   _log.keep_to(views);
 }
 
+// The nearest view that held it, once it is no longer hosted, as after view close of it
+// or of a view holding it.
+std::string_view Commands::current() {
+  while (!_current.empty() && (!_views || !_views->find(_current))) {
+    _current = _holding.empty() ? std::string() : std::move(_holding.front());
+    if (!_holding.empty())
+      _holding.erase(_holding.begin());
+  }
+  return _current;
+}
+
+// It changes no view, so the log keeps none of it, and every line it keeps names its
+// view (V08).
+void Commands::switch_to(std::string_view name) {
+  if (!name.empty() && (!_views || !_views->find(name)))
+    throw std::runtime_error(
+        std::format("no view is named {}; view list lists those a view hosts", name));
+  _current = name;
+  _holding.clear();
+  for (std::optional<std::string> host = _views ? _views->host_of(name) : std::nullopt;
+       host && !host->empty();
+       host = _views->host_of(*host))
+    _holding.push_back(*host);
+}
+
 void Commands::frame() {
   _logged_count = _log.take(_logged);
   std::swap(_holds, _held);
@@ -468,6 +500,8 @@ void Commands::command(Call &call) {
     _log.write(Level::info, Tag::run, "quit: the run ends before its next frame");
   } else if (call.is(_source)) {
     source(call.arguments().front());
+  } else if (call.is(_switch)) {
+    switch_to(call.arguments().empty() ? std::string_view() : call.arguments().front());
   } else if (call.is(_log_save)) {
     const std::string_view file = call.arguments().front();
     Files::save(file, _session.text(std::filesystem::path(file).parent_path()));
