@@ -1,10 +1,11 @@
-# The graph part: one node whose operator is Graph; it lays out the graph of the view its
-# view hosted most recently in the Rect its area gives, a box a node and a curve a
-# connection, and writes them as Rects, Labels and Curves for rects, glyphs and curves to
-# draw; its own shaders draw the ground under them, lines that move and zoom with the
-# graph, in the theme its host connects to its palette. Its tab names the view it shows.
-# A press selects a box, which select, selected and delete reach as lines do, and the
-# keys its typed hands on while it has the focus delete what is selected.
+# The graph part: one node whose operator is Graph; it lays out the graph of the view
+# presented, else of the one its view hosted most recently, in the Rect its area gives, a
+# box a node and one each view it hosts, and a curve a connection, and writes them as
+# Rects, Labels and Curves for rects, glyphs and curves to draw; its own shaders draw the
+# ground under them, lines that move and zoom with the graph, in the theme its host
+# connects to its palette. Its tab names the view it shows. A press selects a box, which
+# select, selected and delete reach as lines do, and the keys its typed hands on while it
+# has the focus delete what is selected.
 [manifest]
 version = 1
 

@@ -12,26 +12,31 @@ back, and the zoom it keeps must be back where it started; then it types once mo
 escapes until modes sends quit, which the editor's hold must refuse, naming the file, so
 the run runs all its frames and the file keeps only what was written. Two more runs host
 the triangle example, presented as it comes: one in edit mode, its window in the Perform
-panel, which also takes ls on standard input, as the terminal vulpen was started from,
-and prints what it answers, and completes a path begun to the one folder it fits from
-the folders the file port lists, and one in perform mode by the keymap's chord, its window
-over the whole window; a third then presses escape three times, back to edit mode, out of
-the terminal's focus and out of the run, which must end before its frames do; every other
-run must run all of them, so the end of standard input, which every run finds at once,
-ends none. The last two host a copy of the wave example, its boxes placed by the .ini put
-beside it where both show whole, so the graph starts at home unmoved, with Wave.comp open
-in the editor: a press on a box's name selects it, a drag moves the box selected, a drag
-on the ground lets go of the selection and moves the graph, shift with a press selects the
-box again, the wheel zooms the graph, and shift with a drag on the ground draws a select
-box over the box; the wheel then zooms the Perform panel's view, which a drag moves, and
-h, with the focus the press gave the panel, brings home. The .ini must then hold the box
-moved, and the color it gave dispatches. The last run must read it back without a word,
-select probe as a script does, show it with info under its header, and delete it with the
-key, so the .ini no longer places it, with this file open in the editor, in Python's
-colors. Each must end with exit 0 and print no validation message or sanitizer report
-(RVK00, A03), so in the asan preset it checks the memory of the keys part, the terminal,
-the editor, modes, the graph, their panels, the dock, the images a hosted view's window
-renders into, the atlas made anew at another size, and the rebuild.
+panel, which also takes ls on standard input, as the terminal vulpen was started from, and
+prints what it answers for the triangle, the view the terminal follows, and completes a
+path begun to the one folder it fits from the folders the file port lists, and one in
+perform mode by the keymap's chord in the first frame, its window over the whole window,
+which nothing may refuse; a third then presses escape three times, back to edit mode, out
+of the terminal's focus and out of the run, which must end before its frames do; every
+other run must run all of them, so the end of standard input, which every run finds at
+once, ends none. The last two host a copy of the wave example, its boxes placed by the
+.ini put beside it where both show whole, so the graph starts at home unmoved, with
+Wave.comp open in the editor: a press on a box's name selects it, a drag moves the box
+selected, a drag on the ground lets go of the selection and moves the graph, shift with a
+press selects the box again, the wheel zooms the graph, and shift with a drag on the
+ground draws a select box over the box; the wheel then zooms the Perform panel's view,
+which a drag moves, and h, with the focus the press gave the panel, brings home. The .ini
+must then hold the box moved, and the color it gave dispatches. The last run hosts the
+triangle after the copy, which it keeps presented, and the copy hosts a view of its own,
+inner; it must read the .ini back without a word, select probe and inner as a script does,
+the graph following the copy presented, not the triangle hosted last, show both with info
+under their headers, and delete them with the key, so the .ini no longer places probe and
+inner is no longer hosted, with this file open in the editor, in Python's colors; ls on
+standard input must answer for the copy, as the terminal follows it too. Each must end
+with exit 0 and print no validation message or sanitizer report (RVK00, A03), so in the
+asan preset it checks the memory of the keys part, the terminal, the editor, modes, the
+graph, their panels, the dock, the images a hosted view's window renders into, the atlas
+made anew at another size, and the rebuild.
 The terminal run also scrolls the rows of the app's start with the wheel, a fifth of a
 step too, and drags their scroll bar to the oldest, before help, sent, shows the newest
 again, and scrolls them across with shift and the wheel and back with the wheel turned
@@ -59,7 +64,7 @@ PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode 
 # Back to edit mode, out of the terminal's focus, and out of the run.
 ESCAPE = [*PERFORM, *["input key down escape"] * 3]
 RAN = re.compile(r"\{run\} ran (\d+) frames")
-LISTED = re.compile(r"^  keys/ +recipe keys$", re.M)  # a row ls answers for the ide
+LISTED = re.compile(r"^  Triangle\.vert$", re.M)  # a row ls answers for the triangle
 # The folder a path begun completes to, which complete answers alone on its line.
 COMPLETE = f"complete view load {TRIANGLE.parent}/tri"
 COMPLETED = f"{TRIANGLE}/"
@@ -80,8 +85,11 @@ NAME = STRIP + 4 + CELL // 2
 # The close mark of the editor's first tab, the window's top left: a cell in, the label,
 # a blank, then the mark, a cell wide, as wave/Wave.comp's.
 MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2, STRIP // 2)
-INFO = '[node "probe"]'  # info's header for the node selected
+INFO = ['[node "probe"]', '[view "inner"]']  # info's headers for the boxes selected
 DELETED = "place probe"
+NESTED = '\n[view "inner"]\n'  # a view the copy hosts, empty until a save writes it
+CLOSED = "child inner: no longer hosted"
+FOLLOWED = re.compile(r"^  Wave\.comp$", re.M)  # a row ls answers for the copy
 # Enough for the refusal to reach the log, and for the list the last Tab opens to stay
 # drawn.
 FRAMES = 10
@@ -250,11 +258,13 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
 def deletes(wave: Path) -> list[str]:
     return [
         f"view load {wave}",
+        f"view load {TRIANGLE}",  # hosted last, presented as it comes
+        "present wave",  # so the panels follow the copy, not the view hosted last
         f"open {Path(__file__).resolve()}",  # Python in color, a docstring over many rows
-        "wave: select probe",  # as a script selects, before the first frame
-        "wave: info",  # the node selected, under its header
+        "wave: select probe inner",  # as a script selects, before the first frame
+        "wave: info",  # the node and the view selected, under their headers
         "focus ide.graph.graph",
-        "input key down delete",  # probe goes, and the connection it reads
+        "input key down delete",  # probe goes, and the connection it reads; inner closes
     ]
 
 
@@ -318,7 +328,10 @@ def test() -> None:
         if numbers(zoomed) != {"zoom": [1]}:
             sys.exit(f"ide: expected the font to keep zoom = 1 after zooming in and out, "
                      f"it kept\n{zoomed}")
-        drive(folder, "performed view", PERFORM)
+        performed = drive(folder, "performed view", PERFORM)
+        if "{!!!}" in performed:
+            sys.exit(f"ide: expected the chord to give the triangle the window, got:\n"
+                     f"{performed}")
         ran = RAN.findall(drive(folder, "escapes", ESCAPE, whole=False))
         if not ran or int(ran[-1]) >= FRAMES:
             sys.exit(f"ide: expected escape to end the run before {FRAMES} frames, "
@@ -341,15 +354,22 @@ def test() -> None:
         if COLORED not in kept.read_text(encoding="utf-8").splitlines():
             sys.exit(f"ide: expected the graph's save to keep {COLORED}, it kept\n"
                      f"{kept.read_text(encoding='utf-8')}")
-        deleted = drive(folder, "graph read back", deletes(wave))
+        manifest = wave / "view.vlp"
+        nested = manifest.read_text(encoding="utf-8") + NESTED
+        manifest.write_text(nested, encoding="utf-8")
+        deleted = drive(folder, "graph read back", deletes(wave), typed="ls\n")
         if kept.name in said + deleted:
             sys.exit(f"ide: expected the graph to read its .ini without a word, got:\n"
                      f"{said}{deleted}")
         placed = numbers(kept.read_text(encoding="utf-8"))
-        if INFO not in deleted.splitlines() or DELETED in placed:
-            sys.exit(f"ide: expected info to show probe selected under {INFO}, and delete "
-                     f"to take its place out of the .ini, got:\n{deleted}\n"
-                     f"{kept.read_text(encoding='utf-8')}")
+        if (any(header not in deleted.splitlines() for header in INFO)
+                or DELETED in placed or CLOSED not in deleted):
+            sys.exit(f"ide: expected info to show probe and inner selected under {INFO}, "
+                     f"and delete to take probe's place out of the .ini and close inner, "
+                     f"got:\n{deleted}\n{kept.read_text(encoding='utf-8')}")
+        if not FOLLOWED.search(deleted):
+            sys.exit(f"ide: expected ls on standard input to answer for the copy "
+                     f"presented, {FOLLOWED.pattern}, got:\n{deleted}")
         # As bytes, so a character split in two shows as what it left.
         if (held := note.read_bytes()) != EDITED.encode("utf-8"):
             sys.exit(f"ide: expected the editor to write {EDITED!r}, got {held!r}")

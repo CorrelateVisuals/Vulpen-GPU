@@ -1,6 +1,7 @@
 #include "Graph.h"
 
 #include "runtime/View.h"
+#include "shared/Presented.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -44,6 +45,21 @@ std::size_t node_of(const std::vector<VP::Node> &nodes, std::string_view name) {
       return nodes.size();
     name = name.substr(0, dot);
   }
+}
+
+// The boxes the graph shows of a view: its nodes, then the views it hosts, as many as
+// there is room for.
+std::size_t boxes_of(const VP::View &view) {
+  return std::min(view.nodes.size() + view.children.size(), std::size_t{node_room});
+}
+
+// The box a connection leaves: its writer's, or that of the view whose window it takes;
+// none, past the last, for one the view does not show.
+std::size_t writer_of(const VP::View &view, const VP::Endpoint &from) {
+  if (!from.view())
+    return node_of(view.nodes, from.node);
+  const auto child = std::ranges::find(view.children, from.node, &VP::Child::name);
+  return view.nodes.size() + static_cast<std::size_t>(child - view.children.begin());
 }
 
 // Where the graph alone puts its first box: half a column's gap in from the left and a
@@ -93,13 +109,14 @@ void Graph::bind(VP::Bind &node) {
   _typed = &node.input<VP_VIEW::Typed>("typed");
   _name = node.name();
   _select = node.command("select [<node>...]",
-                         "selects nodes of the view the graph shows, in place of those "
-                         "selected; with none, none");
-  _selected =
-      node.command("selected", "lists the nodes the graph has selected, a line each");
+                         "selects nodes of the view the graph shows, or views it hosts, "
+                         "in place of those selected; with none, none");
+  _selected = node.command(
+      "selected", "lists the nodes and views the graph has selected, a line each");
   _delete = node.command("delete",
                          "removes the nodes the graph has selected, the nodes inside "
-                         "them and their connections; their folders stay");
+                         "them and their connections, and closes the views selected; "
+                         "their folders stay");
   _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
   _labels = node.upload<VP_VIEW::Label>("labels", label_room);
   _characters = node.upload<VP_VIEW::Character>("characters", character_room);
@@ -115,12 +132,20 @@ void Graph::bind(VP::Bind &node) {
   _lanes.reserve(lane_room);
 }
 
-// The view the terminal's lines go to: the one its view hosted last. The keys once it is
-// known, and before it is read for the frame, as delete changes it.
+// The view the terminal's lines go to: the one presented, else the one its view hosted
+// last. The keys once it is known, and before it is read for the frame, as delete
+// changes it.
 void Graph::cook(VP::Cook &frame) {
-  const std::vector<VP::Child> &children = frame.view().children;
-  const VP::View *view = children.empty() ? nullptr : frame.hosted(children.back().name);
-  const std::string_view shown = view ? std::string_view(children.back().name) : "";
+  const VP::View &host = frame.view();
+  if (const std::string_view presented_now = presented(host); presented_now != _presented)
+    _presented = presented_now;
+  _cooked = true;
+  const std::string_view chosen = !_presented.empty() ? std::string_view(_presented)
+                                  : host.children.empty()
+                                      ? std::string_view()
+                                      : std::string_view(host.children.back().name);
+  const VP::View *view = chosen.empty() ? nullptr : frame.hosted(chosen);
+  const std::string_view shown = view ? chosen : "";
   if (_tabs->empty() || shown != _shown)
     show(frame, view, shown);
   for (const VP::Event &event : _typed->to(_name))
@@ -133,6 +158,7 @@ void Graph::cook(VP::Cook &frame) {
       view && _area->extent.x != 0 && _area->extent.y != 0 && cell.x != 0 && cell.y != 0;
   _placed.clear();
   if (room) {
+    name_views(*view);
     lay_out(*view, cell);
     if (std::exchange(_homing, false))
       home(cell);
@@ -153,12 +179,18 @@ void Graph::cook(VP::Cook &frame) {
   frame.write(_curves, 0);
 }
 
-// On the view the graph shows, the one its view hosts last, as the terminal's lines go to
-// it, so a line to any other is refused rather than acting where nobody looks. The view
-// is found from the lines so far, so a script's select before the first frame finds it.
+// On the view the graph shows, as the terminal's lines go to it: the one presented as the
+// frame began, while it is still hosted, else the one its view hosts last, so a line to
+// any other is refused rather than acting where nobody looks. Before the first frame,
+// both are found from the lines so far, so a script's select then finds the view.
 void Graph::command(VP::Call &call) {
-  const std::vector<VP::Child> &children = call.view("")->children;
-  const std::string shown = children.empty() ? "" : children.back().name;
+  const VP::View &host = *call.view("");
+  const std::string_view then = _cooked ? std::string_view(_presented) : presented(host);
+  const bool presenting =
+      std::ranges::find(host.children, then, &VP::Child::name) != host.children.end();
+  const std::string shown = presenting              ? std::string(then)
+                            : host.children.empty() ? ""
+                                                    : host.children.back().name;
   if (shown.empty() || call.view(shown) != &call.view())
     throw std::runtime_error(
         shown.empty() ? "the graph shows no view; view load hosts one"
@@ -168,21 +200,27 @@ void Graph::command(VP::Call &call) {
                                     shown));
   if (_selected_in != shown) // a selection in a view hosted before
     _selection.clear();
-  const std::vector<VP::Node> &nodes = call.view().nodes;
+  const VP::View &view = call.view();
+  const auto boxed = [&](std::string_view name) {
+    const auto &children = view.children;
+    return std::ranges::find(view.nodes, name, &VP::Node::name) != view.nodes.end() ||
+           std::ranges::find(children, name, &VP::Child::name) != children.end();
+  };
   if (call.is(_select)) {
     std::vector<std::string> chosen;
-    for (const std::string_view node : call.arguments()) {
-      if (std::ranges::find(nodes, node, &VP::Node::name) == nodes.end())
-        throw std::runtime_error(std::format("no node is named {}; ls lists them", node));
-      if (std::ranges::find(chosen, node) == chosen.end())
-        chosen.emplace_back(node);
+    for (const std::string_view name : call.arguments()) {
+      if (!boxed(name))
+        throw std::runtime_error(
+            std::format("no node or view it hosts is named {}; ls lists them", name));
+      if (std::ranges::find(chosen, name) == chosen.end())
+        chosen.emplace_back(name);
     }
     _selection = std::move(chosen);
     _selected_in = shown;
   } else if (call.is(_selected)) {
-    for (const std::string &node : _selection)
-      if (std::ranges::find(nodes, node, &VP::Node::name) != nodes.end())
-        call.reply(node);
+    for (const std::string &name : _selection)
+      if (boxed(name))
+        call.reply(name);
   } else if (call.is(_delete)) {
     erase(call, call.view());
   }
@@ -241,28 +279,39 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
   }
 }
 
+// A box of a view hosted shows the file it is hosted from by its name, as a node's box
+// shows a file of its folder.
+void Graph::name_views(const VP::View &view) {
+  if (std::ranges::equal(_view_files, view.children, {}, {}, &VP::Child::file))
+    return;
+  _view_files.clear();
+  _view_rows.clear();
+  for (const VP::Child &child : view.children) {
+    _view_files.push_back(child.file);
+    _view_rows.push_back(child.file.filename().generic_string());
+  }
+}
+
 // A box as wide as its widest row with a cell either side, and a row of text for its
-// name and each file, with pad above and below them, a column past every node it reads
+// name and each file, with pad above and below them, a column past every box it reads
 // from; a box placed by hand where it was put.
 void Graph::lay_out(const VP::View &view, glm::uvec2 cell) {
-  const std::vector<VP::Node> &nodes = view.nodes;
-  const std::size_t count = std::min(nodes.size(), std::size_t{node_room});
+  const std::size_t count = boxes_of(view);
   for (std::size_t at = 0; at < count; ++at) {
-    std::size_t widest = nodes[at].name.size();
-    for (const std::string &file : nodes[at].files)
+    const std::span<const std::string> files = rows_of(view, at);
+    std::size_t widest = name_of(view, at).size();
+    for (const std::string &file : files)
       widest = std::max(widest, file.size());
-    const auto rows = static_cast<std::uint32_t>(1 + nodes[at].files.size());
+    const auto rows = static_cast<std::uint32_t>(1 + files.size());
     _placed.push_back(
         {.extent = {static_cast<std::uint32_t>(widest + 2 * name_margin) * cell.x,
                     rows * cell.y + 2 * pad}});
   }
   _ends.clear();
   for (const VP::Connection &connection : view.connections) {
-    if (connection.from.view())
-      continue;
-    const std::size_t writer = node_of(nodes, connection.from.node);
+    const std::size_t writer = writer_of(view, connection.from);
     for (const VP::Endpoint &to : connection.to)
-      if (const std::size_t reader = node_of(nodes, to.node);
+      if (const std::size_t reader = node_of(view.nodes, to.node);
           writer < count && reader < count && writer != reader &&
           _ends.size() < 2 * curve_room) {
         _ends.push_back(writer);
@@ -291,7 +340,7 @@ void Graph::lay_out(const VP::View &view, glm::uvec2 cell) {
       _lanes.push_back({.pair = at / 2, .column = column});
   place_columns(cell);
   for (std::size_t at = 0; at < count; ++at)
-    if (const auto place = _arranged.places.find(nodes[at].name);
+    if (const auto place = _arranged.places.find(name_of(view, at));
         place != _arranged.places.end())
       _placed[at].offset = place->second;
 }
@@ -387,24 +436,24 @@ void Graph::press(VP::Cook &frame, const VP::View &view) {
   for (std::size_t at = _placed.size(); at-- > 0;) {
     if (!VP_VIEW::contains(cut(box(_placed[at]), *_area), _pointer))
       continue;
-    const std::string &node = view.nodes[at].name;
+    const std::string &name = name_of(view, at);
     std::vector<std::string> chosen;
     if (_selected_in == _shown)
       chosen = _selection;
-    if (_shift || !selected(node)) {
+    if (_shift || !selected(name)) {
       if (!_shift)
         chosen.clear();
-      if (const auto found = std::ranges::find(chosen, node); found != chosen.end())
+      if (const auto found = std::ranges::find(chosen, name); found != chosen.end())
         chosen.erase(found);
       else
-        chosen.push_back(node);
+        chosen.push_back(name);
       select(frame.commands(), chosen);
     }
     if (_shift)
       return;
     _grab = Grab{.box = at, .from = _pointer};
     for (std::size_t box = 0; box < _placed.size(); ++box)
-      if (selected(view.nodes[box].name))
+      if (selected(name_of(view, box)))
         _grab->moving.emplace_back(box, _placed[box].offset);
     return;
   }
@@ -427,12 +476,12 @@ void Graph::drag(const VP::View &view, glm::vec2 to) {
     return;
   if (!grab.moved)
     for (std::size_t at = 0; at < _placed.size(); ++at)
-      _arranged.places.try_emplace(view.nodes[at].name, _placed[at].offset);
+      _arranged.places.try_emplace(name_of(view, at), _placed[at].offset);
   grab.moved = true;
   const glm::ivec2 by(glm::round((to - grab.from) / _pan_zoom.zoom));
   for (const auto &[box, offset] : grab.moving)
     if (box < _placed.size()) {
-      _arranged.places.insert_or_assign(view.nodes[box].name, offset + by);
+      _arranged.places.insert_or_assign(name_of(view, box), offset + by);
       _placed[box].offset = offset + by; // so this frame shows it there
     }
 }
@@ -453,23 +502,26 @@ void Graph::release(VP::Cook &frame, const VP::View *view, glm::uvec2 cell) {
   }
   if (!view || grab.box >= _placed.size())
     return;
-  if (const std::string &node = view->nodes[grab.box].name; _selection.size() > 1)
-    select(frame.commands(), std::span(&node, 1));
+  if (const std::string &name = name_of(*view, grab.box); _selection.size() > 1)
+    select(frame.commands(), std::span(&name, 1));
   open(frame, *view, grab.box, cell);
 }
 
-// A file's row opens the file, as a line typed would; the name's row opens none.
+// A file's row opens the file, as a line typed would: a node's from its folder, a view's
+// manifest where it is hosted from; the name's row opens none.
 void Graph::open(VP::Cook &frame, const VP::View &view, std::size_t at, glm::uvec2 cell) {
-  const VP::Node &node = view.nodes[at];
+  const std::span<const std::string> files = rows_of(view, at);
   const float row =
       ((_pointer.y - on_screen(glm::vec2(_placed[at].offset)).y) / _pan_zoom.zoom -
        static_cast<float>(pad)) /
       static_cast<float>(cell.y);
-  if (node.files.empty() || row < 1.0f)
+  if (files.empty() || row < 1.0f)
     return;
-  const auto file = std::min(static_cast<std::size_t>(row) - 1, node.files.size() - 1);
-  frame.commands().send(std::format(
-      "open {}", (folder_of(view, node.name) / node.files[file]).generic_string()));
+  const auto file = std::min(static_cast<std::size_t>(row) - 1, files.size() - 1);
+  const std::filesystem::path path =
+      at < view.nodes.size() ? folder_of(view, view.nodes[at].name) / files[file]
+                             : _view_files[at - view.nodes.size()];
+  frame.commands().send(std::format("open {}", path.generic_string()));
 }
 
 // The wheel zooms, about the pointer, which stays over the same place of the graph; its
@@ -502,15 +554,16 @@ void Graph::select_touched(VP::CommandPort &commands,
   const std::size_t before = chosen.size();
   const VP_VIEW::Rect swept = select_box(from);
   for (std::size_t at = 0; at < _placed.size(); ++at)
-    if (const std::string &node = view.nodes[at].name;
-        touches(box(_placed[at]), swept) && !selected(node))
-      chosen.push_back(node);
+    if (const std::string &name = name_of(view, at);
+        touches(box(_placed[at]), swept) && !selected(name))
+      chosen.push_back(name);
   if (chosen.size() != before)
     select(commands, chosen);
 }
 
 // The nodes selected and every node inside them, deepest first, as node remove takes no
-// node that holds one. A connection a node going writes is let go, and one it reads is
+// node that holds one, then the views selected, which view close stops hosting, as is the
+// same for a node deleted. A connection a box going writes is let go, and one it reads is
 // made again without it, so the nodes that stay keep reading. Each is a line of this
 // command, so the log keeps them as one group (V08), and their boxes leave the .ini.
 // What it reads of the view is copied first, since each line replaces the view.
@@ -521,11 +574,16 @@ void Graph::erase(VP::Call &call, const VP::View &view) {
           return node.name == chosen || node.name.starts_with(chosen + '.');
         }))
       going.push_back(node.name);
-  if (going.empty())
+  std::vector<std::string> closing;
+  for (const VP::Child &child : view.children)
+    if (std::ranges::find(_selection, child.name) != _selection.end())
+      closing.push_back(child.name);
+  if (going.empty() && closing.empty())
     throw std::runtime_error(
         "no node is selected; select or a press on a box selects one");
   const auto goes = [&](const VP::Endpoint &end) {
-    return !end.view() && std::ranges::find(going, end.node) != going.end();
+    const std::vector<std::string> &names = end.view() ? closing : going;
+    return std::ranges::find(names, end.node) != names.end();
   };
   const std::vector<VP::Connection> connections = view.connections;
   for (const VP::Connection &connection : connections) {
@@ -546,6 +604,10 @@ void Graph::erase(VP::Call &call, const VP::View &view) {
   for (const std::string &node : going) {
     call.commands().send(std::format("node remove {}", node));
     _arranged.places.erase(node);
+  }
+  for (const std::string &name : closing) {
+    call.commands().send(std::format("view close {}", name));
+    _arranged.places.erase(name);
   }
   _selection.clear();
   _grab.reset();
@@ -579,12 +641,12 @@ void Graph::write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
   const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
   std::uint32_t written = 0;
   for (std::size_t at = 0; at < _placed.size(); ++at) {
-    const bool chosen = selected(view.nodes[at].name);
+    const bool chosen = selected(name_of(view, at));
     const auto inset = glm::ivec2(chosen ? selected_width : border_width);
     const VP_VIEW::Rect outer = box(_placed[at]);
-    const std::uint32_t edge = chosen ? VP_VIEW::role("accent")
-                                      : color_of(view.nodes[at]).value_or(
-                                            VP_VIEW::role("border"));
+    const std::uint32_t edge =
+        chosen ? VP_VIEW::role("accent")
+               : color_of(view, at).value_or(VP_VIEW::role("border"));
     const VP_VIEW::Rect border =
         cut({.offset = outer.offset, .extent = outer.extent, .role = edge}, *_area);
     if (border.extent.x == 0)
@@ -634,17 +696,17 @@ VP_VIEW::Rect Graph::select_box(glm::vec2 from) const {
 void Graph::write_labels(VP::Cook &frame, const VP::View &view, glm::uvec2 cell) {
   Labels written{frame.write(_labels), frame.write(_characters)};
   for (std::size_t at = 0; at < _placed.size(); ++at) {
-    const VP::Node &node = view.nodes[at];
+    const std::span<const std::string> files = rows_of(view, at);
     const glm::vec2 text = glm::vec2(_placed[at].offset) +
                            glm::vec2(static_cast<float>(name_margin * cell.x), pad);
     write_row(on_screen(text),
-              node.name,
-              color_of(node).value_or(VP_VIEW::role("accent")),
+              name_of(view, at),
+              color_of(view, at).value_or(VP_VIEW::role("accent")),
               cell,
               written);
-    for (std::size_t row = 0; row < node.files.size(); ++row)
+    for (std::size_t row = 0; row < files.size(); ++row)
       write_row(on_screen(text + glm::vec2(0.0f, static_cast<float>((row + 1) * cell.y))),
-                node.files[row],
+                files[row],
                 VP_VIEW::role("text"),
                 cell,
                 written);
@@ -718,8 +780,21 @@ void Graph::write_curve(std::span<VP_VIEW::Curve> curves,
     curves[written++] = {.from = from, .to = to, .role = VP_VIEW::role("accent")};
 }
 
-std::optional<std::uint32_t> Graph::color_of(const VP::Node &node) const {
-  return _arranged.colors[static_cast<std::size_t>(kind_of(node))];
+const std::string &Graph::name_of(const VP::View &view, std::size_t box) const {
+  return box < view.nodes.size() ? view.nodes[box].name
+                                 : view.children[box - view.nodes.size()].name;
+}
+
+std::span<const std::string> Graph::rows_of(const VP::View &view, std::size_t box) const {
+  if (box < view.nodes.size())
+    return view.nodes[box].files;
+  return std::span(&_view_rows[box - view.nodes.size()], 1);
+}
+
+std::optional<std::uint32_t> Graph::color_of(const VP::View &view,
+                                             std::size_t box) const {
+  const Kind kind = box < view.nodes.size() ? kind_of(view.nodes[box]) : Kind::view;
+  return _arranged.colors[static_cast<std::size_t>(kind)];
 }
 
 glm::vec2 Graph::on_screen(glm::vec2 at) const {

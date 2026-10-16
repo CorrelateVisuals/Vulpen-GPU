@@ -10,6 +10,7 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Labels.h"
+#include "shared/Presented.h"
 #include "shared/Scroll.h"
 #include "shared/Words.h"
 
@@ -105,12 +106,17 @@ std::vector<std::string_view> lines_of(std::string_view text) {
   return lines;
 }
 
-// The last line view list answers: the view hosted most recently, as `<name> <file>`.
-std::string_view newest(std::string_view children) {
+// Of the lines view list answers, a view each as `<name> <file>`, the one lines go to:
+// the view presented while it is still hosted, else the one hosted most recently; empty
+// for none.
+std::string_view followed(std::string_view hosted, std::string_view shown) {
   std::string_view newest;
-  for (const std::string_view line : lines_of(children))
+  for (const std::string_view line : lines_of(hosted)) {
+    if (!shown.empty() && line.substr(0, line.find(' ')) == shown)
+      return line;
     if (!line.empty())
       newest = line;
+  }
   return newest;
 }
 
@@ -230,8 +236,10 @@ struct Mark {
 // scrolls it; turned sideways or with shift, or a drag on the bar above the rule, scrolls
 // its rows across, while the line typed keeps its caret in view. The terminal vulpen was
 // started from takes lines then too, as the CLI's does, but its end ends no run.
-// A line that names no view goes to the view hosted most recently, as view new and view
-// load leave it, so it needs no name and every log line still has one. The prompt shows
+// A line that names no view goes to the view presented, whose window a connection of its
+// view takes, as the frame began, while it is still hosted; else to the one hosted most
+// recently, as view new and view load leave it. So it needs no name, every log line still
+// has one, and it works on the view the window shows, as the graph does. The prompt shows
 // that view's folder, as a shell shows the one it is in.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
@@ -263,9 +271,25 @@ class CommandLine final : public VP::Operator {
   }
 
   void cook(VP::Cook &frame) override {
+    follow(frame);
     if (_window)
       in_window(frame);
     on_terminal(frame);
+  }
+
+  // Once the frame shows another view presented, or another hosted most recently, as at
+  // the first frame, the view lines go to is found again; a frame between asks nothing.
+  void follow(VP::Cook &frame) {
+    const VP::View &view = frame.view();
+    const std::string_view shown = presented(view);
+    const std::string_view newest =
+        view.children.empty() ? std::string_view() : view.children.back().name;
+    if (_followed && shown == _presented && newest == _newest)
+      return;
+    _followed = true;
+    _presented = shown;
+    _newest = newest;
+    current(followed(frame.commands().send(": view list"), _presented));
   }
 
   void on_terminal(VP::Cook &frame) {
@@ -408,11 +432,11 @@ class CommandLine final : public VP::Operator {
     return _typed->focus == _name;
   }
 
-  // Sends a line to the view it names, else to the one hosted most recently, and
-  // returns what its command answers.
+  // Sends a line to the view it names, else to the one lines go to, and returns what its
+  // command answers; the line may host a view or close one, which the next line follows.
   std::string run(VP::Cook &frame, std::string_view line) {
     std::string answer = frame.commands().send(address(line));
-    current(newest(frame.commands().send(": view list")));
+    current(followed(frame.commands().send(": view list"), _presented));
     return answer;
   }
 
@@ -442,12 +466,12 @@ class CommandLine final : public VP::Operator {
   }
 
   // From where vulpen started, as a shell names a folder; the host has no name to show.
-  void current(std::string_view newest) {
-    const std::size_t space = newest.find(' ');
-    _view = newest.substr(0, space);
+  void current(std::string_view hosted) {
+    const std::size_t space = hosted.find(' ');
+    _view = hosted.substr(0, space);
     _folder = space == std::string_view::npos
                   ? std::string()
-                  : std::filesystem::path(newest.substr(space + 1))
+                  : std::filesystem::path(hosted.substr(space + 1))
                         .parent_path()
                         .lexically_proximate(std::filesystem::current_path())
                         .generic_string();
@@ -867,6 +891,10 @@ class CommandLine final : public VP::Operator {
   VP::Command _clear;
   std::string _view;   // the view a line that names none goes to; empty for the host
   std::string _folder; // that view's, as the prompt shows it
+  // As the frame before showed them: the view presented, and the one hosted last.
+  std::string _presented;
+  std::string _newest;
+  bool _followed = false; // until the first frame finds the view lines go to
   bool _prompted = false;
   bool _window = false;
   // In a window: what it reads and writes, and the line being typed.

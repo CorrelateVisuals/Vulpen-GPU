@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <span>
 #include <string>
@@ -25,9 +26,9 @@
 // two copies of the part in one binary never clash.
 namespace {
 
-// A node where the graph shows it: its box, from the graph's top left before it moves or
-// zooms, a row for its name and one for each of its files, and its column, counted from
-// the nodes that read nothing.
+// A node, or a view the view shown hosts, where the graph shows it: its box, from the
+// graph's top left before it moves or zooms, a row for its name and one for each of its
+// files, and its column, counted from the boxes that read nothing.
 struct Placed {
   glm::ivec2 offset{};
   glm::uvec2 extent{};
@@ -52,9 +53,12 @@ struct Grab {
   bool moved = false;
 };
 
-// The graph of the view its view hosted most recently, as the terminal's lines go to it:
-// a box a node, with its name and its files, and a curve a connection, from the writer's
-// right side to the reader's left. The manifest holds no places (V04), so the graph alone
+// The graph of the view presented, whose window a connection of its view takes, else of
+// the one its view hosted most recently, as the terminal's lines go to it: a box a node,
+// with its name and its files, a box each view it hosts, with its name and the file it is
+// hosted from, and a curve a connection, from the writer's right side to the reader's
+// left, a view's from where its host takes its window. The manifest holds no places
+// (V04), so the graph alone
 // lays it out: a node a column past every node it reads from, down each column in the
 // manifest's order, and below its boxes a lane for each connection that passes the
 // column. A box dragged stays where it is put, and the first drag places every box where
@@ -69,7 +73,9 @@ struct Grab {
 // opens the file of a file's row in the editor; a drag on a box selected moves every box
 // selected. With shift, a drag on the ground draws a select box, and letting go adds
 // every box it touches to the selection.
-// It owns the selection, which select, selected and delete reach as lines do (V06), and
+// It owns the selection, of nodes and of the views the view shown hosts, which select,
+// selected and delete reach as lines do (V06), delete closing a view as it removes a
+// node, and
 // takes keys from the keys part while it has the focus, which a press in its area gives
 // it. Its own shaders draw the ground, lines that move and zoom with the graph over the
 // whole area, as the POC's grid did; it writes Rects, Labels and Curves for the parts
@@ -85,6 +91,7 @@ public:
 private:
   void key(VP::Cook &frame, std::string_view key);
   void show(VP::Cook &frame, const VP::View *view, std::string_view name);
+  void name_views(const VP::View &view);
   void lay_out(const VP::View &view, glm::uvec2 cell);
   void place_columns(glm::uvec2 cell);
   void home(glm::uvec2 cell);
@@ -117,7 +124,11 @@ private:
                    glm::vec2 to) const;
   // Where a place of the graph shows this frame, in pixels from the window's top left.
   glm::vec2 on_screen(glm::vec2 at) const;
-  std::optional<std::uint32_t> color_of(const VP::Node &node) const;
+  // A box's name, the rows under it and its color: a node's, or past the nodes those of
+  // a view the view hosts, in the order hosted.
+  const std::string &name_of(const VP::View &view, std::size_t box) const;
+  std::span<const std::string> rows_of(const VP::View &view, std::size_t box) const;
+  std::optional<std::uint32_t> color_of(const VP::View &view, std::size_t box) const;
   VP_VIEW::Rect box(const Placed &placed) const;
   VP_VIEW::Rect select_box(glm::vec2 from) const;
 
@@ -143,7 +154,13 @@ private:
   std::vector<std::int32_t> _downs; // each column's next row
   std::vector<std::size_t> _ends;   // a connection's writer and reader, two a pair
   std::vector<Lane> _lanes;         // a pair's in the order of its columns
-  std::string _shown; // the view the tab names; empty for none
+  std::string _shown;     // the view the tab names; empty for none
+  std::string _presented; // as the frame showed it; empty for none
+  bool _cooked = false;   // since the first frame, which finds the view presented
+  // The file each view the view shown hosts is hosted from, and the row its box shows of
+  // it, found again only when they change, so a frame allocates nothing for them.
+  std::vector<std::filesystem::path> _view_files;
+  std::vector<std::string> _view_rows;
   // The nodes selected, by name, in the view named, which select may name before the
   // graph shows it, as a script's does before the first frame.
   std::vector<std::string> _selection;

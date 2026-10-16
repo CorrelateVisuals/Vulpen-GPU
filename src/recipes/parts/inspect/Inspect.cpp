@@ -27,8 +27,9 @@ class Inspect final : public VP::Operator {
                        "lists the view as folders: each node with its files, and each "
                        "view it hosts");
     _info = node.command("info [<node>]",
-                         "shows a node's words, and the connections it writes and reads; "
-                         "with none, each selected node's under its header");
+                         "shows a node's words, or a hosted view's, and the connections "
+                         "it writes and reads; with none, each selected one's under its "
+                         "header");
   }
 
   void command(VP::Call &call) override {
@@ -40,7 +41,8 @@ class Inspect final : public VP::Operator {
       info_selected(call);
   }
 
-  // Each as the manifest's section of it would read, header first.
+  // Each as the manifest's section of it would read, header first: a node's, or a view's
+  // the view hosts.
   static void info_selected(VP::Call &call) {
     const std::vector<VP::Usage> usages = call.commands().usages();
     if (std::ranges::find(usages, "selected", &VP::Usage::usage) == usages.end())
@@ -51,7 +53,9 @@ class Inspect final : public VP::Operator {
     for (std::size_t at = 0; at < selected.size();) {
       const std::size_t end = std::min(selected.find('\n', at), selected.size());
       const std::string node = selected.substr(at, end - at);
-      call.reply(std::format("[node \"{}\"]", node));
+      const std::vector<VP::Child> &hosted = call.view().children;
+      const bool view = std::ranges::find(hosted, node, &VP::Child::name) != hosted.end();
+      call.reply(std::format("[{} \"{}\"]", view ? "view" : "node", node));
       info(call, call.view(), node);
       at = end + 1;
     }
@@ -99,8 +103,17 @@ class Inspect final : public VP::Operator {
         list(view, inner, depth + 1, rows);
   }
 
-  // In the manifest's words, so what info shows is what a node section would hold.
+  // In the manifest's words, so what info shows is what a node section would hold, or a
+  // view section, its file whole, with the connections that take its window.
   static void info(VP::Call &call, const VP::View &view, std::string_view name) {
+    if (const auto child = std::ranges::find(view.children, name, &VP::Child::name);
+        child != view.children.end()) {
+      call.reply(std::format("file = {}", child->file.string()));
+      for (const VP::Connection &connection : view.connections)
+        if (connection.from.view() && connection.from.node == name)
+          call.reply(std::format("writes its window as {}", connection.name));
+      return;
+    }
     const auto node = std::ranges::find(view.nodes, name, &VP::Node::name);
     if (node == view.nodes.end())
       return inside(call, view, name);

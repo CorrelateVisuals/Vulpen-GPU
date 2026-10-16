@@ -31,16 +31,17 @@ constexpr std::string_view color_key = "color ";
 constexpr std::string_view kept_header =
     "# The graph editor's look at this view, which a restart keeps: each box placed by\n"
     "# hand, from the graph's top left at zoom 1, and the role a kind of node's boxes\n"
-    "# are drawn in, as color dispatch = number: draw, dispatch, code, data or group,\n"
-    "# and a role theme.ini names. The graph part writes it as boxes move, keeping the\n"
-    "# colors; delete it to lay the boxes out from the graph again.\n";
+    "# are drawn in, as color dispatch = number: draw, dispatch, code, data, group or\n"
+    "# view, and a role theme.ini names. The graph part writes it as boxes move,\n"
+    "# keeping the colors; delete it to lay the boxes out from the graph again.\n";
 
 // What a node's files make it, which its box's color can tell: a draw, by a .vert or a
 // .frag; a dispatch, by a .comp; code with no shader of its own, C++ or GLSL; files
-// with no code, data; and nothing of its own, a group of the nodes inside it.
-enum class Kind : std::uint8_t { draw, dispatch, code, data, group };
-constexpr auto kind_names =
-    std::to_array<std::string_view>({"draw", "dispatch", "code", "data", "group"});
+// with no code, data; and nothing of its own, a group of the nodes inside it. A box of a
+// view the view hosts is a view.
+enum class Kind : std::uint8_t { draw, dispatch, code, data, group, view };
+constexpr auto kind_names = std::to_array<std::string_view>(
+    {"draw", "dispatch", "code", "data", "group", "view"});
 
 // What a person arranged, which the graph's .ini keeps through a restart: each box placed
 // by hand, by its node's name, and the role of each kind of node's boxes, as theme.ini
