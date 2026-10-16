@@ -140,13 +140,14 @@ set_target_properties(baseclasses-triangle PROPERTIES COMPILE_WARNING_AS_ERROR O
   OUTPUT_NAME triangle RUNTIME_OUTPUT_DIRECTORY ${triangle_out}$<0:>)
 add_dependencies(baseclasses-triangle commit)
 
-# Every folder under src/runtime/examples/ with a view.vlp is a view the build compiles.
+# Every folder under src/runtime/examples/ and projects/ with a view.vlp is a view the
+# build compiles; a project made while vulpen runs builds at the next live build.
 include(src/runtime/cmake/nodes.cmake)
-file(GLOB examples LIST_DIRECTORIES true CONFIGURE_DEPENDS
-     ${PROJECT_SOURCE_DIR}/src/runtime/examples/*)
-foreach(example IN LISTS examples)
-  if(EXISTS ${example}/view.vlp)
-    vulpen_view(${example})
+file(GLOB views LIST_DIRECTORIES true CONFIGURE_DEPENDS
+     ${PROJECT_SOURCE_DIR}/src/runtime/examples/* ${PROJECT_SOURCE_DIR}/projects/*)
+foreach(view IN LISTS views)
+  if(EXISTS ${view}/view.vlp)
+    vulpen_view(${view})
   endif()
 endforeach()
 # The nodes the fail-loud test gets wrong on purpose. They build only as modules, so no

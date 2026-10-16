@@ -342,8 +342,8 @@ std::vector<VP::Param> kept_params(const VP::Node &fresh, const VP::Node &mine) 
 }
 
 // Works on recipe and view folders through the file port: lists recipes, starts nodes
-// from the template, drops and syncs recipes, and makes and loads views. A drop copies
-// files, and then adds nodes, so the view owns its copy from the first edit on (V03).
+// from the template, and drops and syncs recipes. A drop copies files, and then adds
+// nodes, so the view owns its copy from the first edit on (V03).
 class Library final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // A part's folder is <recipes>/library/<kind>/<name>.
@@ -366,9 +366,6 @@ class Library final : public VP::Operator {
         node.command("recipe sync <node>",
                      "brings a dropped recipe up to the library's, while what it copied "
                      "is unchanged; its params and connections stay");
-    _new = node.command("view new <file>",
-                        "hosts a new, empty view in a folder, and saves its view.vlp");
-    _load = node.command("view load <file>", "hosts the view in a folder's view.vlp");
   }
 
   void command(VP::Call &call) override {
@@ -382,8 +379,6 @@ class Library final : public VP::Operator {
       drop(call);
     else if (call.is(_sync))
       sync(call);
-    else if (call.is(_new) || call.is(_load))
-      host(call, call.is(_new));
   }
 
   // A recipe is a folder in a kind's folder, but the shared code's; the contracts' folder
@@ -725,29 +720,6 @@ class Library final : public VP::Operator {
     return lines;
   }
 
-  // A view is named for its folder, which the build tree mirrors, and no two hosted views
-  // share a name, so one hosted already is named, as its tab names it.
-  static void host(VP::Call &call, bool fresh) {
-    std::filesystem::path folder(call.arguments().front());
-    if (folder.filename().empty())
-      folder = folder.parent_path();
-    const std::string name = folder.filename().string();
-    if (const VP::View *const hosted = call.view(name))
-      throw std::runtime_error(std::format(
-          "a view named {} is hosted already, from {}", name, hosted->file.string()));
-    const bool exists = holds(call.files(), folder, manifest);
-    if (fresh && exists)
-      throw std::runtime_error(
-          std::format("{} holds a view already; view load hosts it", folder.string()));
-    if (!fresh && !exists)
-      throw std::runtime_error(std::format(
-          "{} holds no {}; view new starts a view there", folder.string(), manifest));
-    call.commands().send(
-        std::format(": view add {} {}", name, (folder / manifest).string()));
-    if (fresh)
-      call.commands().send(std::format("{}: view save", name));
-  }
-
   std::filesystem::path _library;
   std::array<VP::File, template_files.size()> _templates;
   VP::Command _list;
@@ -755,8 +727,6 @@ class Library final : public VP::Operator {
   VP::Command _dispatch;
   VP::Command _drop;
   VP::Command _sync;
-  VP::Command _new;
-  VP::Command _load;
 };
 
 } // namespace

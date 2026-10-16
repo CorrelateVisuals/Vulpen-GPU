@@ -155,6 +155,20 @@ std::vector<std::string> Ports::list(std::string_view folder) {
   return names;
 }
 
+void Ports::copy(std::string_view from, std::string_view to) {
+  Files::copy(absolute(from), absolute(to));
+}
+
+void Ports::rename(std::string_view from, std::string_view to) {
+  Files::rename(absolute(from), absolute(to));
+}
+
+void Ports::save(const View &view, std::string_view file) {
+  View moved = view;
+  moved.file = absolute(file);
+  Manifest::save(moved);
+}
+
 // As a view loads it, so a recipe read here is what a drop copies.
 View Ports::manifest(std::string_view file) {
   View view = Manifest::load(absolute(file));

@@ -1,0 +1,9 @@
+# The projects part: one node whose operator is Projects. Its folder param names where the
+# projects are, from this folder: projects/ at the top of the repository.
+[manifest]
+version = 1
+
+[node "projects"]
+operator = Projects
+file     = Projects.cpp
+param    = folder=../../../../../../projects

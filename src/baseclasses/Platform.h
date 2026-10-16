@@ -23,6 +23,12 @@ public:
   static void save(const std::filesystem::path &file, std::string_view text);
   // Deletes a file, and its folder once nothing is left in it. Throws naming the file.
   static void remove(const std::filesystem::path &file);
+  // Copies a file, or a folder with all it holds, to a path where nothing is yet: into a
+  // temp beside it first, then renamed there, as save does, so a killed run leaves the
+  // whole copy or none of it (RA04). Throws naming the path.
+  static void copy(const std::filesystem::path &from, const std::filesystem::path &to);
+  // Moves a file or a folder to a path where nothing is yet. Throws naming the path.
+  static void rename(const std::filesystem::path &from, const std::filesystem::path &to);
 };
 
 // The wall clock in the machine's time zone, for the people who read the log.

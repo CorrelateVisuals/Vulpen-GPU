@@ -158,7 +158,7 @@ std::vector<std::string> names(std::string_view word,
     if (node != nodes.end())
       for (const VP::Param &param : node->params)
         names.push_back(param.key);
-  } else if (kind == "<file>") {
+  } else if (kind == "<file>" || kind == "<view>") {
     names = paths(call.files(), begun);
   } else {
     names.emplace_back(word);

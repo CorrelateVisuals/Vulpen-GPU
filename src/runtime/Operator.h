@@ -241,6 +241,14 @@ public:
   virtual void remove(std::string_view file) = 0;
   // The names in a folder, sorted, a folder's ending in /; none when it does not exist.
   virtual std::vector<std::string> list(std::string_view folder) = 0;
+  // A file, or a folder with all it holds, at a path where nothing is yet; whole or not
+  // at all.
+  virtual void copy(std::string_view from, std::string_view to) = 0;
+  // A file or a folder moved to a path where nothing is yet.
+  virtual void rename(std::string_view from, std::string_view to) = 0;
+  // A view's manifest at another file, as view save writes it, keeping the comments the
+  // file there holds, as a copy of the view's folder brings them.
+  virtual void save(const View &view, std::string_view file) = 0;
   // A manifest's graph as a view runs it: each node with its folder and files, and in
   // the library each recipe a node uses unfolded into it (V11). Throws naming the
   // manifest's first mistake.

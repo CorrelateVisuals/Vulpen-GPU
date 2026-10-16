@@ -1,4 +1,5 @@
-# Build and run Vulpen: .\run.ps1 [--release] [--cli | --ide | view.vlp] [vulpen's options]
+# Build and run Vulpen: .\run.ps1 [--release] [--cli | --ide | --<project> | view.vlp]
+#                                  [vulpen's options]
 $ErrorActionPreference = 'Stop'
 
 $default = '--ide' # what runs when no view is named; --cli runs the cli alone
@@ -7,8 +8,12 @@ $preset = 'debug'
 $rest = @($args)
 if ($rest.Count -gt 0 -and $rest[0] -eq '--release') { $preset = 'release'; $rest = @($rest | Select-Object -Skip 1) }
 $recipes = Join-Path $PSScriptRoot 'src\runtime\recipes'
-# An app's flag is the script's own and stands for the app's view.vlp, so vulpen knows no
-# app by name (V05). Each of vulpen's options takes a value, so any other word is a view.
+$projects = Join-Path $PSScriptRoot 'projects'
+$options = '--log', '--frames', '--fps', '--first-frame', '--source', '--size'
+# An app's flag and a project's are the script's own and stand for its view.vlp, so
+# vulpen knows no app or project by name (V05). vulpen's options come before a project, so
+# one named like an option runs by its path; each takes a value, and any other word is a
+# view.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
 # level nothing unless it fails (C09).
 $arguments = @()
@@ -17,10 +22,14 @@ $verbose = $false
 for ($i = 0; $i -lt $rest.Count; $i++) {
     if ($rest[$i] -in '--cli', '--ide') {
         $arguments += Join-Path $recipes "$($rest[$i] -replace '^--')\view.vlp"; $named = $true
-    } elseif ($rest[$i] -like '--*') {
+    } elseif ($rest[$i] -in $options) {
         if ($rest[$i] -eq '--log' -and $rest[$i + 1] -eq 'debug') { $verbose = $true }
         $arguments += $rest[$i]
         if ($i + 1 -lt $rest.Count) { $i++; $arguments += $rest[$i] }
+    } elseif ($rest[$i] -like '--*') {
+        $project = Join-Path $projects "$($rest[$i] -replace '^--')\view.vlp"
+        # vulpen names an option it does not know.
+        if (Test-Path -LiteralPath $project) { $arguments += $project; $named = $true } else { $arguments += $rest[$i] }
     } else {
         $arguments += $rest[$i]; $named = $true
     }

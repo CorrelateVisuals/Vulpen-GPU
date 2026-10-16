@@ -46,7 +46,20 @@ target_compile_definitions(vulpen PRIVATE
 # A view: each folder in it is a node, but its contracts/ and its shared/ (RV05, RV09).
 function(vulpen_view folder)
   get_filename_component(view ${folder} NAME)
+  vulpen_name(${view} ${folder})
   vulpen_nodes(${view} ${folder} ${folder})
+endfunction()
+
+# The build tree mirrors each view by its name, where the runtime finds its modules, so
+# two views of one name, as a project named like an example, would build into one place:
+# the build fails, naming both (A02).
+function(vulpen_name view folder)
+  get_property(taken GLOBAL PROPERTY vulpen_view_${view})
+  if(taken)
+    message(FATAL_ERROR "${folder} and ${taken} are both views named ${view}, and the "
+                        "build tree holds one view of each name; rename one")
+  endif()
+  set_property(GLOBAL PROPERTY vulpen_view_${view} ${folder})
 endfunction()
 
 # The recipes build as one view named library, which runtime/Manifest.cpp names the same:
@@ -54,6 +67,7 @@ endfunction()
 # the library, so an app runs from the library's recipes as they are (V11). The library's
 # parts/shared/ is the code parts share, which no node is (RV09).
 function(vulpen_recipes folder)
+  vulpen_name(library ${folder})
   file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/library/parts/*
        ${folder}/library/components/* ${folder}/*)
   foreach(recipe IN LISTS recipes)

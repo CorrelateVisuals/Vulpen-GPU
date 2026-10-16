@@ -66,7 +66,8 @@ private:
 // registers with its usage, whose placeholders give its completion, and its help, or
 // not at all (RV04). A usage's last placeholder may end in ..., taking one argument or
 // more, and stand in brackets, which a line may leave out: node add <name>
-// [<word=value>...]. A <file> argument reaches its command resolved, as an absolute path.
+// [<word=value>...]. A <file> argument reaches its command resolved, as an absolute path,
+// and so does a <view> that holds a /; one without names a project, and comes as typed.
 //
 // A line addresses a hosted view by its name, as `<name>: <command>`, and `:` alone
 // addresses the view vulpen started with, which a line naming none addresses too. A line

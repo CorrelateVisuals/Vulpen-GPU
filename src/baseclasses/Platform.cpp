@@ -409,6 +409,44 @@ void Files::remove(const std::filesystem::path &file) {
     std::filesystem::remove(file.parent_path(), failed);
 }
 
+// A temp a killed copy left goes first, so it never blocks the next. A copy inside what
+// it copies would copy itself without end.
+void Files::copy(const std::filesystem::path &from, const std::filesystem::path &to) {
+  std::error_code failed;
+  if (std::filesystem::exists(to, failed))
+    throw std::runtime_error(std::format("{} exists already", to.string()));
+  const std::filesystem::path inside =
+      to.lexically_normal().lexically_relative(from.lexically_normal());
+  if (!inside.empty() && *inside.begin() != "..")
+    throw std::runtime_error(std::format(
+        "{} is inside {}, so it cannot hold a copy of it", to.string(), from.string()));
+  std::filesystem::path temp = to;
+  temp += ".tmp";
+  std::filesystem::remove_all(temp, failed);
+  if (!failed && to.has_parent_path())
+    std::filesystem::create_directories(to.parent_path(), failed);
+  if (!failed)
+    std::filesystem::copy(from, temp, std::filesystem::copy_options::recursive, failed);
+  if (!failed)
+    std::filesystem::rename(temp, to, failed);
+  if (failed) {
+    std::error_code gone; // the temp may never have been made
+    std::filesystem::remove_all(temp, gone);
+    throw std::runtime_error(std::format(
+        "{}: cannot be copied to {}: {}", from.string(), to.string(), failed.message()));
+  }
+}
+
+void Files::rename(const std::filesystem::path &from, const std::filesystem::path &to) {
+  std::error_code failed;
+  if (std::filesystem::exists(to, failed))
+    throw std::runtime_error(std::format("{} exists already", to.string()));
+  std::filesystem::rename(from, to, failed);
+  if (failed)
+    throw std::runtime_error(std::format(
+        "{}: cannot be renamed to {}: {}", from.string(), to.string(), failed.message()));
+}
+
 Library::Library(Library &&other) noexcept
     : _handle(std::exchange(other._handle, nullptr)), _copy(std::move(other._copy)) {}
 

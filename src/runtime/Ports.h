@@ -58,6 +58,9 @@ private:
   void save(std::string_view file, std::string_view text) override;
   void remove(std::string_view file) override;
   std::vector<std::string> list(std::string_view folder) override;
+  void copy(std::string_view from, std::string_view to) override;
+  void rename(std::string_view from, std::string_view to) override;
+  void save(const View &view, std::string_view file) override;
   View manifest(std::string_view file) override;
   std::span<const Event> events() const override;
   glm::vec2 pointer() const override;

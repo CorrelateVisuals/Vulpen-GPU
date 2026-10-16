@@ -35,7 +35,9 @@ view's child views run, and leave and come back by edits that save the manifest
 unchanged. And a drop copies a recipe whose sync brings it up to the library's while it
 is unchanged, keeping the params the view set, and refuses once the view changed the
 copy; a sync of a copy of recipes that use others takes out the nodes, files and folders
-the library let go, and names the params that went with them.
+the library let go, and names the params that went with them. A copy a view saves as a
+new project takes the view's edits, and leaves the view's own files as last saved, and a
+rename saves the view and moves its folder whole.
 
 Each view is written into a folder named mistakes, beside a link to each node's folder
 it names, so it finds the nodes the build compiles from mistakes/ beside this script,
@@ -456,17 +458,26 @@ def children(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def cli_copy(folder: Path) -> Path:
+    """A copy of the CLI and the parts it uses, in folder/recipes, which runs as the
+    library does, since the build tree mirrors it by the same names; returns that
+    folder."""
+    root = Path(__file__).resolve().parents[2] / "runtime" / "recipes"
+    recipes = folder / "recipes"
+    for part in ("command-line", "inspect", "library", "projects"):
+        shutil.copytree(root / "library" / "parts" / part,
+                        recipes / "library" / "parts" / part)
+    shutil.copytree(root / "cli", recipes / "cli")
+    return recipes
+
+
 def drops(vulpen: str, folder: Path) -> str | None:
     """Why a drop, or a sync of it, did not do what the library says, or None. The CLI
     runs from a copy of the library, which also holds a recipe of one data file, so no
     build serves it; its node runs nothing and fails only on its param, which it never
     reads."""
-    root = Path(__file__).resolve().parents[2] / "runtime" / "recipes"
-    recipes = folder / "drops" / "recipes"
+    recipes = cli_copy(folder / "drops")
     library = recipes / "library"
-    for part in ("command-line", "inspect", "library"):
-        shutil.copytree(root / "library" / "parts" / part, library / "parts" / part)
-    shutil.copytree(root / "cli", recipes / "cli")
     notes = library / "parts" / "notes"
     notes.mkdir()
     (notes / "view.vlp").write_text(
@@ -518,6 +529,24 @@ def drops(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def projects(vulpen: str, folder: Path) -> str | None:
+    """Why view save as or view rename left an edit in another project than the one it
+    belongs to, or None. The CLI's projects are in a folder of the test's own."""
+    recipes = cli_copy(folder / "projects")
+    home = folder / "projects" / "home"
+    part = recipes / "library" / "parts" / "projects" / "view.vlp"
+    part.write_text(re.sub(r"folder=\S+", f"folder={home.as_posix()}",
+                           part.read_text(encoding="utf-8")), encoding="utf-8")
+    typed = "view new first\nnode add group\nview save as second\nview rename third\n"
+    _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed)
+    first, third = home / "first" / "view.vlp", home / "third" / "view.vlp"
+    if (problems(output) or "{!!!}" in output or not first.is_file()
+            or "group" in first.read_text(encoding="utf-8") or (home / "second").exists()
+            or not third.is_file() or '[node "group"]' not in third.read_text(encoding="utf-8")):
+        return f"projects: an edit went to another project than its own:\n{output}"
+    return None
+
+
 def main() -> None:
     vulpen = sys.argv[1]
     cut = cut_spirv(vulpen)
@@ -535,7 +564,8 @@ def main() -> None:
                             presented(vulpen, folder),
                             input_lines(vulpen, folder),
                             children(vulpen, folder),
-                            drops(vulpen, folder)):
+                            drops(vulpen, folder),
+                            projects(vulpen, folder)):
                 if problem:
                     failed.append(problem)
     finally:

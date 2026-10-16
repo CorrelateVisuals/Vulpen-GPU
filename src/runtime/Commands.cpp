@@ -30,6 +30,7 @@ constexpr std::array kinds{
     std::string_view{"key"},        // the node's params
     std::string_view{"value"},      // any word: nothing to complete
     std::string_view{"file"},       // the folders and files where the path resolves
+    std::string_view{"view"},       // a project by name, or a folder by path, as a file
     std::string_view{"recipe"},     // the recipes of the library
 };
 // After the last placeholder: one argument or more.
@@ -201,8 +202,12 @@ struct Commands::Spec {
   CommandHandler *handler = nullptr;
   Primitive primitive = Primitive::no;
 
-  bool names_file(std::size_t argument) const {
-    return placeholders[std::min(argument, placeholders.size() - 1)] == "file";
+  // A <view> without a / names a project, which its command finds, so only a path
+  // resolves, and the log names it from its own folder.
+  bool names_file(std::size_t argument, std::string_view word) const {
+    const std::string_view kind =
+        placeholders[std::min(argument, placeholders.size() - 1)];
+    return kind == "file" || (kind == "view" && word.find('/') != std::string_view::npos);
   }
 };
 
@@ -305,7 +310,7 @@ std::string Commands::run(std::string_view line) {
     kept.insert(kept.begin(), address + ':');
   std::vector<std::size_t> files;
   for (std::size_t index = 0; index < arguments.size(); ++index) {
-    if (spec->names_file(index))
+    if (spec->names_file(index, arguments[index]))
       files.push_back(kept.size());
     kept.emplace_back(arguments[index]);
   }
@@ -337,7 +342,7 @@ Commands::resolve(const Spec &spec, std::vector<std::string_view> &arguments) co
   std::vector<std::string> paths;
   paths.reserve(arguments.size());
   for (std::size_t index = 0; index < arguments.size(); ++index)
-    if (spec.names_file(index))
+    if (spec.names_file(index, arguments[index]))
       arguments[index] = paths.emplace_back(resolved(arguments[index]).string());
   return paths;
 }
