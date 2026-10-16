@@ -72,10 +72,6 @@ void Graph::bind(VP::Bind &node) {
                          "in place of those selected; with none, none");
   _selected = node.command(
       "selected", "lists the nodes and views the graph has selected, a line each");
-  _delete = node.command("delete",
-                         "removes the nodes the graph has selected, the nodes inside "
-                         "them and their connections, and closes the views selected; "
-                         "their folders stay");
   _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
   _labels = node.upload<VP_VIEW::Label>("labels", label_room);
   _characters = node.upload<VP_VIEW::Character>("characters", character_room);
@@ -92,7 +88,7 @@ void Graph::bind(VP::Bind &node) {
 }
 
 // The current view, where the terminals' lines go, the one vulpen started with too. The
-// keys once it is known, and before it is read for the frame, as delete changes it.
+// keys once it is known, and before it is read for the frame, as a removal changes it.
 void Graph::cook(VP::Cook &frame) {
   const std::string shown(frame.commands().current());
   const VP::View *view = frame.view(shown);
@@ -163,18 +159,17 @@ void Graph::command(VP::Call &call) {
     for (const std::string &name : _selection)
       if (boxed(name))
         call.reply(name);
-  } else if (call.is(_delete)) {
-    erase(call, call.view());
   }
 }
 
-// delete or backspace deletes what is selected; escape lets go of it, and with none of
+// delete or backspace removes what is selected; escape lets go of it, and with none of
 // the focus, as the editor and the terminal do. The home key brings the graph home once
 // the frame has laid the boxes out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
-  if ((key == "delete" || key == "backspace") && chosen) {
-    frame.commands().send(std::format("{}: delete", _shown));
+  const VP::View *const view = frame.view(_shown);
+  if ((key == "delete" || key == "backspace") && chosen && view) {
+    erase(frame, *view);
   } else if (key == "escape" && chosen) {
     frame.commands().send(std::format("{}: select", _shown));
   } else if (key == "escape") {
@@ -508,57 +503,30 @@ void Graph::select_touched(VP::CommandPort &commands,
     select(commands, chosen);
 }
 
-// The nodes selected and every node inside them, deepest first, as node remove takes no
-// node that holds one, then the views selected, which view close stops hosting, as is the
-// same for a node deleted. A connection a box going writes is let go, and one it reads is
-// made again without it, so the nodes that stay keep reading. Each is a line of this
-// command, so the log keeps them as one group (V08), and their boxes leave the .ini.
-// What it reads of the view is copied first, since each line replaces the view.
-void Graph::erase(VP::Call &call, const VP::View &view) {
-  std::vector<std::string> going;
-  for (const VP::Node &node : view.nodes)
-    if (std::ranges::any_of(_selection, [&](const std::string &chosen) {
-          return node.name == chosen || node.name.starts_with(chosen + '.');
+// The nodes and the views selected go, a line each, as node remove takes a node with the
+// nodes inside it and the part it has in connections, and view close stops hosting a
+// view; a node inside another selected goes with that one. Their boxes leave the .ini.
+// What it reads of the view is read first, since each line replaces the view.
+void Graph::erase(VP::Cook &frame, const VP::View &view) {
+  std::vector<std::string> lines;
+  for (const std::string &name : _selection) {
+    if (std::ranges::any_of(_selection, [&](const std::string &other) {
+          return name.starts_with(other + '.');
         }))
-      going.push_back(node.name);
-  std::vector<std::string> closing;
-  for (const VP::Child &child : view.children)
-    if (std::ranges::find(_selection, child.name) != _selection.end())
-      closing.push_back(child.name);
-  if (going.empty() && closing.empty())
-    throw std::runtime_error(
-        "no node is selected; select or a press on a box selects one");
-  const auto goes = [&](const VP::Endpoint &end) {
-    const std::vector<std::string> &names = end.view() ? closing : going;
-    return std::ranges::find(names, end.node) != names.end();
-  };
-  const std::vector<VP::Connection> connections = view.connections;
-  for (const VP::Connection &connection : connections) {
-    if (!goes(connection.from) && std::ranges::none_of(connection.to, goes))
       continue;
-    call.commands().send(std::format("disconnect {}", connection.name));
-    std::string staying;
-    for (const VP::Endpoint &end : connection.to)
-      if (!goes(end))
-        staying.append(" ").append(end.text());
-    if (!goes(connection.from) && !staying.empty())
-      call.commands().send(std::format(
-          "connect {} {}{}", connection.name, connection.from.text(), staying));
+    const bool hosted =
+        std::ranges::find(view.children, name, &VP::Child::name) != view.children.end();
+    lines.push_back(
+        std::format("{}: {} {}", _shown, hosted ? "view close" : "node remove", name));
+    std::erase_if(_arranged.places, [&](const auto &place) {
+      return place.first == name || place.first.starts_with(name + '.');
+    });
   }
-  std::ranges::stable_sort(going, std::greater{}, [](const std::string &name) {
-    return std::ranges::count(name, '.');
-  });
-  for (const std::string &node : going) {
-    call.commands().send(std::format("node remove {}", node));
-    _arranged.places.erase(node);
-  }
-  for (const std::string &name : closing) {
-    call.commands().send(std::format("view close {}", name));
-    _arranged.places.erase(name);
-  }
+  for (const std::string &line : lines)
+    frame.commands().send(line);
   _selection.clear();
   _grab.reset();
-  keep(call.files());
+  keep(frame.files());
 }
 
 // A save the disk refuses is named in the log, and the graph goes on.

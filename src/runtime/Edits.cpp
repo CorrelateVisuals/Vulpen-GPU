@@ -373,22 +373,26 @@ void node_add(View &view, Arguments arguments, std::string_view where) {
   Edits::add(view, std::move(node));
 }
 
-// Its folder stays, as every file does until a person deletes it.
+// The node goes whole, with the nodes inside it: a connection one of them writes goes,
+// and one they read stays with the readers that stay, so one line removes it, which a
+// replay expands alike (V08). Their folders stay, as every file does until a person
+// deletes it.
 void node_remove(View &view, Arguments arguments, std::string_view) {
-  // The argument, not the node's own name, which the erase below moves.
-  const std::string_view name = arguments.front();
+  // A copy of the argument, not the node's own name, which the erase below moves.
+  const std::string name(arguments.front());
   existing(view, name);
-  for (const Connection &connection : view.connections)
-    if (connection.from.node == name ||
-        std::ranges::find(connection.to, name, &Endpoint::node) != connection.to.end())
-      throw std::runtime_error(std::format(
-          "node {} is connected through {}; disconnect it first", name, connection.name));
-  const std::string inside = std::string(name) + '.';
-  for (const Node &node : view.nodes)
-    if (node.name.starts_with(inside))
-      throw std::runtime_error(
-          std::format("node {} holds node {}; remove that first", name, node.name));
-  std::erase_if(view.nodes, [&](const Node &node) { return node.name == name; });
+  const auto goes = [&](std::string_view node) {
+    return node == name || node.starts_with(name + '.');
+  };
+  const auto ends_here = [&](const Endpoint &end) {
+    return !end.view() && goes(end.node);
+  };
+  for (Connection &connection : view.connections)
+    std::erase_if(connection.to, ends_here);
+  std::erase_if(view.connections, [&](const Connection &connection) {
+    return ends_here(connection.from) || connection.to.empty();
+  });
+  std::erase_if(view.nodes, [&](const Node &node) { return goes(node.name); });
 }
 
 void node_set(View &view, Arguments arguments, std::string_view where) {
@@ -488,10 +492,10 @@ constexpr std::array edits{
          "adds a node, given the manifest's node words; its files are what its folder "
          "holds",
          node_add},
-    Edit{
-        "node remove <node>",
-        "removes a node that no connection names and no node is inside; its folder stays",
-        node_remove},
+    Edit{"node remove <node>",
+         "removes a node with the nodes inside it, the connections they write, and them "
+         "from the connections they read; its folder stays",
+         node_remove},
     Edit{"node set <node> <word=value>...",
          "gives a node the words named, clearing those given empty; param and image "
          "words replace them all",

@@ -72,9 +72,9 @@ struct Grab {
 // opens the file of a file's row in the editor; a drag on a box selected moves every box
 // selected. With shift, a drag on the ground draws a select box, and letting go adds
 // every box it touches to the selection.
-// It owns the selection, of nodes and of the views the view shown hosts, which select,
-// selected and delete reach as lines do (V06), delete closing a view as it removes a
-// node, and
+// It owns the selection, of nodes and of the views the view shown hosts, which select and
+// selected reach as lines do (V06), and which delete or backspace removes as node remove
+// and view close do, and
 // takes keys from the keys part while it has the focus, which a press in its area gives
 // it. Its own shaders draw the ground, lines that move and zoom with the graph over the
 // whole area, as the POC's grid did; it writes Rects, Labels and Curves for the parts
@@ -105,7 +105,7 @@ private:
   void select(VP::CommandPort &commands, std::span<const std::string> nodes) const;
   void
   select_touched(VP::CommandPort &commands, const VP::View &view, glm::vec2 from) const;
-  void erase(VP::Call &call, const VP::View &view);
+  void erase(VP::Cook &frame, const VP::View &view);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
   void write(VP::Cook &frame, const VP::View &view, glm::uvec2 cell);
@@ -137,7 +137,6 @@ private:
   std::string _name; // as the focus names it
   VP::Command _select;
   VP::Command _selected;
-  VP::Command _delete;
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;
