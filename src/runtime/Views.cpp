@@ -80,7 +80,7 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
         host.view = std::make_unique<View>(std::move(view));
         host.flat = unfolded(*host.view);
         host.schedule =
-            std::make_unique<Schedule>(wiring, *host.flat, Schedule::Into::window);
+            std::make_unique<Schedule>(wiring, "", *host.flat, Schedule::Into::window);
         return hosted;
       }()),
       _schedules{_hosted.front()->schedule.get()} {
@@ -154,7 +154,7 @@ bool Views::rebuild() {
     if (hosted.edited) {
       const bool added = !hosted.schedule;
       hosted.schedule = std::make_unique<Schedule>(
-          _wiring, *hosted.edited_flat, into, hosted.schedule.get());
+          _wiring, hosted.name, *hosted.edited_flat, into, hosted.schedule.get());
       hosted.view = std::move(hosted.edited);
       hosted.flat = std::move(hosted.edited_flat);
       if (added)
@@ -167,7 +167,7 @@ bool Views::rebuild() {
     } else if (into != hosted.into) {
       // The same view, its draws' pipelines made again for what they draw into now.
       hosted.schedule = std::make_unique<Schedule>(
-          _wiring, *hosted.flat, into, hosted.schedule.get());
+          _wiring, hosted.name, *hosted.flat, into, hosted.schedule.get());
       changed = true;
     }
     hosted.into = into;

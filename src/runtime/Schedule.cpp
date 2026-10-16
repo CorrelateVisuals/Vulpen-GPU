@@ -118,8 +118,12 @@ bool Schedule::shows(const View &view) {
   });
 }
 
-Schedule::Schedule(const Wiring &wiring, const View &view, Into into, Schedule *replaced)
-    : _wiring(wiring), _view(view),
+Schedule::Schedule(const Wiring &wiring,
+                   std::string_view name,
+                   const View &view,
+                   Into into,
+                   Schedule *replaced)
+    : _wiring(wiring), _name(name), _view(view),
       _window(into == Into::image
                   ? wiring.pipelines.render_pass(pixel_format(window_format)->format)
               : into == Into::window ? wiring.render_pass
@@ -637,7 +641,7 @@ void Schedule::log(Level level,
                    Tag tag,
                    const Bound &bound,
                    std::string_view text) const {
-  _wiring.log.write(level, bound.log, tag, bound.node->name, text);
+  _wiring.log.write(level, bound.log, tag, _name, bound.node->name, text);
 }
 
 const Schedule::Held *Schedule::held(std::string_view name) const {

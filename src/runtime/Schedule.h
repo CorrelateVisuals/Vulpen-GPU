@@ -66,8 +66,11 @@ public:
   // (A02); a node with a mistake is left out, with its errors. From the schedule it
   // replaces, it takes what the build left alone: operators whose module stayed,
   // pipelines of unchanged SPIR-V that still fit what they draw into, and buffers of
-  // unchanged shape, contents included. The view must outlive it.
+  // unchanged shape, contents included. The view must outlive it. name: the view's, as
+  // a line addresses it, empty for the one vulpen started with, which each line about
+  // one of its nodes keeps.
   Schedule(const Wiring &wiring,
+           std::string_view name,
            const View &view,
            Into into,
            Schedule *replaced = nullptr);
@@ -152,6 +155,7 @@ private:
   std::string image_name(std::string_view node, std::string_view port) const;
 
   const Wiring _wiring;
+  const std::string _name;
   const View &_view;
   // What its draws into its window record in; null while that is a window none opened,
   // or while they draw nowhere.

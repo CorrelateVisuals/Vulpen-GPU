@@ -43,10 +43,14 @@ inline std::optional<Level> level_named(std::string_view name) {
 enum class Tag { run, gpu, swp, nod, mem, mod, out };
 
 // A line as the log printed it after its time, mark first, and the level it was written
-// at, so a node can show the log as the terminal does.
+// at, so a node can show the log as the terminal does; for a line about a node, the view
+// the node runs in, by the name a line addresses it with, so a node that shows the log
+// can tell views apart. Empty for a line about no node, or about a node of the view
+// vulpen started with.
 struct Logged {
   Level level = Level::info;
   std::string text;
+  std::string view;
 };
 
 // The bottom of the tree: every module logs, so this header includes nothing of ours.
@@ -70,11 +74,12 @@ public:
 
   Level level() const;
   void write(Level level, Tag tag, std::string_view text) const;
-  // A line about a node: its own level wins over the process level (V09), and its name
-  // leads the text.
+  // A line about a node: its own level wins over the process level (V09), its name leads
+  // the text, and the line keeps the view it runs in (Logged).
   void write(Level level,
              Level shown,
              Tag tag,
+             std::string_view view,
              std::string_view node,
              std::string_view text) const;
   // Swaps the lines printed since the last take into lines, and returns how many lead
@@ -83,10 +88,17 @@ public:
   std::size_t take(std::vector<Logged> &lines) const;
 
 private:
-  void print(Level level, Tag tag, std::string_view node, std::string_view text) const;
+  void print(Level level,
+             Tag tag,
+             std::string_view view,
+             std::string_view node,
+             std::string_view text) const;
   void print_repeats() const;
   void emit(std::string_view tag, const char *color, std::string_view text) const;
-  void keep(Level level, std::string_view mark, std::string_view text) const;
+  void keep(Level level,
+            std::string_view view,
+            std::string_view mark,
+            std::string_view text) const;
 
   const Level _level;
   const bool _colors;
@@ -95,6 +107,7 @@ private:
   // nothing (CPP10).
   mutable std::string _line;
   mutable std::string _previous;
+  mutable std::string _previous_view; // the view of the line before, which a repeat keeps
   mutable std::uint64_t _repeats = 0;
   mutable std::time_t _second = 0;
   mutable std::vector<Logged> _kept; // the first _count since the last take
