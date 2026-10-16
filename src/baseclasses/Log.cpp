@@ -117,7 +117,7 @@ void Log::print(Level level,
   const std::string_view after_mark =
       std::string_view(_line).substr(mark.text.size() + 1);
   emit(mark.text, mark.color, after_mark);
-  keep(level, view, mark.text, after_mark);
+  keep(level, mark.text, after_mark);
   _line.swap(_previous);
   _previous_view.assign(view);
 }
@@ -132,7 +132,7 @@ void Log::print_repeats() const {
   _repeats = 0;
   const std::string_view counted{text.data(), end};
   emit(repeat.text, repeat.color, counted);
-  keep(Level::info, _previous_view, repeat.text, counted);
+  keep(Level::info, repeat.text, counted);
 }
 
 std::size_t Log::take(std::vector<Logged> &lines) const {
@@ -141,16 +141,12 @@ std::size_t Log::take(std::vector<Logged> &lines) const {
 }
 
 // Into a line kept before, so its text's room is reused.
-void Log::keep(Level level,
-               std::string_view view,
-               std::string_view mark,
-               std::string_view text) const {
+void Log::keep(Level level, std::string_view mark, std::string_view text) const {
   if (_count == _kept.size())
     _kept.emplace_back();
   Logged &line = _kept[_count++];
   line.level = level;
   line.text.assign(mark).append(" ").append(text);
-  line.view.assign(view);
 }
 
 // A tag takes its color, and each further line of the text starts under the first.
