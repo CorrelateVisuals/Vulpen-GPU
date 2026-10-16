@@ -152,7 +152,10 @@ def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
                       or (target.suffix in HEADER_SUFFIXES
                           and target.parent in (root / CONTRACTS,
                                                 shared_root(SOURCE / file) / SHARED))
-                      or any(fnmatchcase(name, pattern) for pattern in reach)):
+                      # The table lists engine files; since the library is under runtime/,
+                      # its patterns would else reach another recipe's code too (RV00).
+                      or (not node_root(target)
+                          and any(fnmatchcase(name, pattern) for pattern in reach))):
                 problems.append(f"{file} -> {name}: node code includes only its own folder, a "
                                 "contract, shared code's header, and what the map lists for "
                                 "node code (RV00, RV05, RV09)")
