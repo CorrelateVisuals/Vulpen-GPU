@@ -222,9 +222,8 @@ struct Mark {
 // command port; its param on says where it is. On the terminal it is the CLI: each line
 // typed or piped in runs, what it answers is printed, and the run ends with the input.
 // In a window it takes keys from the keys part while it has the focus, which a press in
-// its area gives it, and shows what lines answer and the log above the line typed, but
-// the lines about another view than the one lines go to, in the Rect its area gives, with
-// a tab for the panel it sits in, named by its title param;
+// its area gives it, and shows what lines answer and the log above the line typed, in
+// the Rect its area gives, with a tab for the panel it sits in, named by its title param;
 // a drag selects in what it shows, as a double click does a word and one more press its
 // row, which control with c copies, and the wheel or a drag on the bar at its right edge
 // scrolls it; turned sideways or with shift, or a drag on the bar above the rule, scrolls
@@ -234,7 +233,7 @@ struct Mark {
 // view takes, as the frame began, while it is still hosted; else to the one hosted most
 // recently, as view new and view load leave it. So it needs no name, every log line still
 // has one, and it works on the view the window shows, as the graph does. The prompt shows
-// that view's folder, as a shell shows the one it is in.
+// that view's folder, as a shell shows the one it is in, and the log keeps to that view.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _help = node.command(
@@ -264,9 +263,32 @@ class CommandLine final : public VP::Operator {
 
   void cook(VP::Cook &frame) override {
     follow(frame);
+    keep_log(frame);
     if (_window)
       in_window(frame);
     on_terminal(frame);
+  }
+
+  // The log keeps to the view lines go to and the views it hosts, so with views running
+  // side by side, the terminal vulpen was started from and the rows here show the one
+  // worked on, and every view's problems; told only when they change, so a frame
+  // allocates nothing for them.
+  void keep_log(VP::Cook &frame) {
+    const VP::View *const followed = _view.empty() ? nullptr : frame.hosted(_view);
+    const std::span<const VP::Child> inside =
+        followed ? std::span(followed->children) : std::span<const VP::Child>();
+    const std::size_t count = _view.empty() ? 0 : 1 + inside.size();
+    bool same = _kept.size() == count && (count == 0 || _kept.front() == _view);
+    for (std::size_t at = 0; same && at < inside.size(); ++at)
+      same = _kept[at + 1] == inside[at].name;
+    if (same)
+      return;
+    _kept.clear();
+    if (!_view.empty())
+      _kept.push_back(_view);
+    for (const VP::Child &child : inside)
+      _kept.push_back(child.name);
+    frame.commands().keep_log_to(_kept);
   }
 
   // Once the frame shows another view presented, or another hosted most recently, as at
@@ -305,10 +327,8 @@ class CommandLine final : public VP::Operator {
   // go while another part had the focus never came, so out of focus control counts as up.
   void in_window(VP::Cook &frame) {
     fit(0);
-    const VP::View *const followed = _view.empty() ? nullptr : frame.hosted(_view);
     for (const VP::Logged &line : frame.commands().log())
-      if (belongs(line, followed))
-        show(line.text, role_of(line));
+      show(line.text, role_of(line));
     point(frame);
     if (!focused())
       _control = false;
@@ -361,20 +381,6 @@ class CommandLine final : public VP::Operator {
           frame.commands().send(std::format("focus {}", _name));
       }
     }
-  }
-
-  // Whether a line of the log joins the rows: one about a node of a view the terminal
-  // does not follow stays out, as it comes, so with views running side by side the rows
-  // show the one lines go to, and the views it hosts. A line about no node, or about the
-  // app's own, joins them, and so does a problem of any view, which never hides (A02).
-  bool belongs(const VP::Logged &line, const VP::View *followed) const {
-    if (line.view.empty() || line.view == _view || line.level <= VP::Level::warn)
-      return true;
-    const auto hosts = [&](const VP::View &view) {
-      return std::ranges::find(view.children, line.view, &VP::Child::name) !=
-             view.children.end();
-    };
-    return followed && hosts(*followed);
   }
 
   // The second press in a row selects the word pressed, and any more the row; a drag
@@ -895,6 +901,7 @@ class CommandLine final : public VP::Operator {
   std::string _presented;
   std::string _newest;
   bool _followed = false; // until the first frame finds the view lines go to
+  std::vector<std::string> _kept; // the views the log keeps to, as it was told
   bool _prompted = false;
   bool _window = false;
   // In a window: what it reads and writes, and the line being typed.
