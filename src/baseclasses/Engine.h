@@ -35,6 +35,8 @@ public:
   void close();
   // What draws render into; null without a window.
   VkRenderPass render_pass() const;
+  // Before each run, and before what a frame used goes: one frame is in flight, and the
+  // next records over its commands.
   void wait() const;
   // Zeroes the new buffers first, so a run starts from the same bytes every time (C01),
   // and copies in the images the CPU filled. The dispatches and the draws into images run

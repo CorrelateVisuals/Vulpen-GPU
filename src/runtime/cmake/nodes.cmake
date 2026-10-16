@@ -2,10 +2,7 @@
 # which compiles its shaders to SPIR-V and its C++ to one module (live) or into vulpen
 # (release), at paths that mirror the view under <build>/views/, so the runtime finds them
 # by path alone. Included by the top-level CMakeLists.txt after the vulpen and gates
-# targets.
-find_program(GLSLANG glslangValidator REQUIRED)
-find_program(SPIRV_VAL spirv-val REQUIRED)
-
+# targets, and vulpen_spirv, which compiles a shader.
 string(COMPARE EQUAL "${CMAKE_BUILD_TYPE}" Debug live_default)
 option(VULPEN_LIVE "Swap the nodes' C++ and GLSL while vulpen runs" ${live_default})
 
@@ -104,18 +101,8 @@ function(vulpen_node view folder root)
   file(GLOB shaders CONFIGURE_DEPENDS ${folder}/*.comp ${folder}/*.vert ${folder}/*.frag)
   set(spirv "")
   foreach(shader IN LISTS shaders)
+    vulpen_spirv(${shader} ${out} ${include_flags})
     get_filename_component(name ${shader} NAME)
-    add_custom_command(OUTPUT ${out}/${name}.spv
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${out}
-      COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet ${include_flags}
-              --depfile ${out}/${name}.d -o ${out}/${name}.spv ${shader}
-      DEPENDS ${shader} DEPFILE ${out}/${name}.d VERBATIM)
-    # A driver may take invalid SPIR-V without a word, or crash on it. The stamp exists
-    # only once spirv-val passed, so the build fails while any shader does not (RV02).
-    add_custom_command(OUTPUT ${out}/${name}.spv.valid
-      COMMAND ${SPIRV_VAL} --target-env vulkan1.2 ${out}/${name}.spv
-      COMMAND ${CMAKE_COMMAND} -E touch ${out}/${name}.spv.valid
-      DEPENDS ${out}/${name}.spv VERBATIM)
     list(APPEND spirv ${out}/${name}.spv.valid)
   endforeach()
   if(spirv)

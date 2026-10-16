@@ -26,8 +26,11 @@ if(VULPEN_SANITIZERS)
   add_link_options(-fsanitize=${VULPEN_SANITIZERS})
 endif()
 
-add_executable(vulpen
-  src/main.cpp
+# The baseclasses, the GPU layer, are a library of their own, which vulpen and the
+# baseclasses' triangle link, so they build and run without the runtime (RA00). An object
+# library, as an archive would leave out the objects vulpen itself never calls, which a
+# live build's modules may call (src/runtime/cmake/nodes.cmake).
+add_library(baseclasses OBJECT
   src/baseclasses/Engine.cpp
   src/baseclasses/Log.cpp
   src/baseclasses/Mechanics.cpp
@@ -36,7 +39,16 @@ add_executable(vulpen
   src/baseclasses/Platform.cpp
   src/baseclasses/Resources.cpp
   src/baseclasses/Shader.cpp
-  src/baseclasses/Swapchain.cpp
+  src/baseclasses/Swapchain.cpp)
+target_compile_options(baseclasses PRIVATE "${warnings}")
+target_include_directories(baseclasses PUBLIC src)
+# Vendored code is not ours to warn about (RA02).
+target_include_directories(baseclasses SYSTEM PRIVATE src/external-libraries)
+target_link_libraries(baseclasses PUBLIC Vulkan::Vulkan PRIVATE glfw ${CMAKE_DL_LIBS})
+set_target_properties(baseclasses PROPERTIES COMPILE_WARNING_AS_ERROR ON)
+
+add_executable(vulpen
+  src/main.cpp
   src/runtime/Binder.cpp
   src/runtime/Checks.cpp
   src/runtime/Commands.cpp
@@ -48,8 +60,6 @@ add_executable(vulpen
   src/runtime/Schedule.cpp
   src/runtime/Views.cpp)
 target_compile_options(vulpen PRIVATE "${warnings}")
-target_include_directories(vulpen PRIVATE src)
-# Vendored code is not ours to warn about (RA02).
 target_include_directories(vulpen SYSTEM PRIVATE src/external-libraries)
 # GLFW builds from its pinned source; the vendored copy leaves out its docs, tests and
 # examples, so they must stay off.
@@ -58,7 +68,7 @@ set(GLFW_BUILD_TESTS OFF)
 set(GLFW_BUILD_EXAMPLES OFF)
 set(GLFW_INSTALL OFF)
 add_subdirectory(src/external-libraries/glfw EXCLUDE_FROM_ALL)
-target_link_libraries(vulpen PRIVATE Vulkan::Vulkan glfw ${CMAKE_DL_LIBS})
+target_link_libraries(vulpen PRIVATE baseclasses)
 # The $<0:> stops multi-config generators (Visual Studio) from adding a Debug/ or
 # Release/ folder, so the run scripts find the binary at out/build/<preset>/.
 set_target_properties(vulpen PROPERTIES COMPILE_WARNING_AS_ERROR ON
@@ -83,17 +93,52 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(tools ${PROJECT_SOURCE_DIR}/src/tools)
 add_custom_target(gates COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py ${CMAKE_BINARY_DIR}
                   VERBATIM)
+add_dependencies(baseclasses gates)
 add_dependencies(vulpen gates)
 if(NOT MSVC) # it reads the objects with objdump
   add_custom_target(globals ALL
     COMMAND ${Python3_EXECUTABLE} ${tools}/mutable-globals.py ${CMAKE_BINARY_DIR} VERBATIM)
-  add_dependencies(globals vulpen barriers) # barriers: src/tools/tests/tests.cmake
+  # barriers: src/tools/tests/tests.cmake
+  add_dependencies(globals vulpen baseclasses-triangle barriers)
 endif()
 add_custom_target(statistics ALL
   COMMAND ${Python3_EXECUTABLE} ${tools}/fetch-statistics.py
           "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
   COMMAND_EXPAND_LISTS VERBATIM)
 add_dependencies(statistics vulpen)
+
+# GLSL to SPIR-V at <out>/<name>.spv, as Shader loads it; the arguments after out are the
+# compiler's include flags. A driver may take invalid SPIR-V without a word, or crash on
+# it, so <name>.spv.valid, which a target depends on, exists only once spirv-val passed,
+# and the build fails while any shader does not (RV02).
+find_program(GLSLANG glslangValidator REQUIRED)
+find_program(SPIRV_VAL spirv-val REQUIRED)
+function(vulpen_spirv shader out)
+  get_filename_component(name ${shader} NAME)
+  add_custom_command(OUTPUT ${out}/${name}.spv
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${out}
+    COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet ${ARGN}
+            --depfile ${out}/${name}.d -o ${out}/${name}.spv ${shader}
+    DEPENDS ${shader} DEPFILE ${out}/${name}.d VERBATIM)
+  add_custom_command(OUTPUT ${out}/${name}.spv.valid
+    COMMAND ${SPIRV_VAL} --target-env vulkan1.2 ${out}/${name}.spv
+    COMMAND ${CMAKE_COMMAND} -E touch ${out}/${name}.spv.valid
+    DEPENDS ${out}/${name}.spv VERBATIM)
+endfunction()
+
+# The baseclasses' triangle, with its shaders beside it, where it finds them (RP02).
+set(triangle ${PROJECT_SOURCE_DIR}/src/baseclasses/examples/triangle)
+set(triangle_out ${CMAKE_BINARY_DIR}/baseclasses/examples/triangle)
+vulpen_spirv(${triangle}/Triangle.vert ${triangle_out})
+vulpen_spirv(${triangle}/Triangle.frag ${triangle_out})
+add_executable(baseclasses-triangle ${triangle}/main.cpp
+  ${triangle_out}/Triangle.vert.spv.valid ${triangle_out}/Triangle.frag.spv.valid)
+target_compile_options(baseclasses-triangle PRIVATE "${warnings}")
+target_include_directories(baseclasses-triangle PRIVATE ${generated})
+target_link_libraries(baseclasses-triangle PRIVATE baseclasses)
+set_target_properties(baseclasses-triangle PROPERTIES COMPILE_WARNING_AS_ERROR ON
+  OUTPUT_NAME triangle RUNTIME_OUTPUT_DIRECTORY ${triangle_out}$<0:>)
+add_dependencies(baseclasses-triangle commit)
 
 # Every folder under src/runtime/examples/ with a view.vlp is a view the build compiles.
 include(src/runtime/cmake/nodes.cmake)
