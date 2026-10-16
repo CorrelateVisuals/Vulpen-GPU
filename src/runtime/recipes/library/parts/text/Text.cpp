@@ -213,6 +213,7 @@ void Text::bind(VP::Bind &node) {
                        "selects the next place the file shown holds the words, joined by "
                        "single blanks, after the caret, and from its start past its end");
   _name = node.name();
+  _view = node.view_name();
   _area = &node.input<VP_VIEW::Rect>("area");
   _font = &node.input<VP_VIEW::Font>("font");
   _typed = &node.input<VP_VIEW::Typed>("typed");
@@ -614,11 +615,10 @@ void Text::close(VP::Call &call, bool force) {
         std::format("{} has changes: {}write saves them, and close force drops them",
                     label_of(_documents[at]),
                     at == _shown ? "" : "a press on its tab, then "));
-  // The param names the file shown no longer, so open names it again as a change. The
-  // editor runs in the view vulpen started with.
+  // The param names the file shown no longer, so open names it again as a change.
   if (_documents[at].path == _file) {
     _file.clear();
-    call.commands().send(std::format(": param unset {} file", _name));
+    call.commands().send(std::format("{}: param unset {} file", _view, _name));
   }
   _documents.erase(_documents.begin() + static_cast<std::ptrdiff_t>(at));
   if (at < _shown)

@@ -21,6 +21,14 @@ namespace {
 
 using Arguments = std::span<const std::string_view>;
 
+// What an edit knows besides the view and its words: the file and line it comes from,
+// which a node it changes keeps, and the views hosted beside the view, whose windows a
+// connection may take as it takes those of the views the view hosts.
+struct Around {
+  std::string_view where;
+  std::span<const std::string> beside;
+};
+
 constexpr std::string_view blanks = " \t\r";
 // The folders at a view's top that hold the contracts and the code its nodes share (RV05,
 // RV09).
@@ -362,8 +370,8 @@ void clear(Node &node, std::string_view key) {
     unknown_word(key);
 }
 
-void node_add(View &view, Arguments arguments, std::string_view where) {
-  Node node{.name = std::string(arguments.front()), .where = std::string(where)};
+void node_add(View &view, Arguments arguments, const Around &around) {
+  Node node{.name = std::string(arguments.front()), .where = std::string(around.where)};
   for (const std::string_view word : arguments.subspan(1)) {
     const auto [key, value] = key_and_value(word);
     if (key == "file")
@@ -377,7 +385,7 @@ void node_add(View &view, Arguments arguments, std::string_view where) {
 // and one they read stays with the readers that stay, so one line removes it, which a
 // replay expands alike (V08). Their folders stay, as every file does until a person
 // deletes it.
-void node_remove(View &view, Arguments arguments, std::string_view) {
+void node_remove(View &view, Arguments arguments, const Around &) {
   // A copy of the argument, not the node's own name, which the erase below moves.
   const std::string name(arguments.front());
   existing(view, name);
@@ -395,10 +403,10 @@ void node_remove(View &view, Arguments arguments, std::string_view) {
   std::erase_if(view.nodes, [&](const Node &node) { return goes(node.name); });
 }
 
-void node_set(View &view, Arguments arguments, std::string_view where) {
+void node_set(View &view, Arguments arguments, const Around &around) {
   Node &node = existing(view, arguments.front());
   Node changed = node;
-  changed.where = where;
+  changed.where = around.where;
   const Arguments words = arguments.subspan(1);
   for (const std::string_view word : words)
     clear(changed, key_and_value(word).first);
@@ -410,15 +418,15 @@ void node_set(View &view, Arguments arguments, std::string_view where) {
 }
 
 // A connection's errors name the connection, so it leaves the nodes' lines alone.
-void connect_ports(View &view, Arguments arguments, std::string_view) {
+void connect_ports(View &view, Arguments arguments, const Around &around) {
   Connection connection{.name = std::string(arguments[0]),
                         .from = Edits::endpoint(arguments[1])};
   for (const std::string_view to : arguments.subspan(2))
     connection.to.push_back(Edits::endpoint(to));
-  Edits::connect(view, std::move(connection));
+  Edits::connect(view, std::move(connection), around.beside);
 }
 
-void disconnect(View &view, Arguments arguments, std::string_view) {
+void disconnect(View &view, Arguments arguments, const Around &) {
   if (std::erase_if(view.connections, [&](const Connection &connection) {
         return connection.name == arguments.front();
       }) == 0)
@@ -427,28 +435,28 @@ void disconnect(View &view, Arguments arguments, std::string_view) {
 
 // A node inside a recipe a node uses keeps its params in that node, as the manifest
 // writes them.
-void param_set(View &view, Arguments arguments, std::string_view where) {
+void param_set(View &view, Arguments arguments, const Around &around) {
   check_name("param", arguments[1]);
   check_value(arguments[1], arguments[2]);
   if (!node_named(view, arguments[0]) && user_of(view, arguments[0])) {
     auto [user, key] = user_param(view, arguments[0], arguments[1]);
     set_param(user.params, key, arguments[2]);
-    user.where = where;
+    user.where = around.where;
     return;
   }
   Node &node = existing(view, arguments[0]);
   set_param(node.params, arguments[1], arguments[2]);
-  node.where = where;
+  node.where = around.where;
 }
 
-void param_unset(View &view, Arguments arguments, std::string_view where) {
+void param_unset(View &view, Arguments arguments, const Around &around) {
   const auto unset = [&](std::vector<Param> &params,
                          std::string_view key,
                          std::string &by) {
     if (std::erase_if(params, [&](const Param &param) { return param.key == key; }) == 0)
       throw std::runtime_error(
           std::format("node {} sets no param {}", arguments[0], arguments[1]));
-    by = where;
+    by = around.where;
   };
   if (!node_named(view, arguments[0]) && user_of(view, arguments[0])) {
     auto [user, key] = user_param(view, arguments[0], arguments[1]);
@@ -459,16 +467,17 @@ void param_unset(View &view, Arguments arguments, std::string_view where) {
 }
 
 // The file arrives absolute, as the command port resolves a <file>.
-void view_add(View &view, Arguments arguments, std::string_view where) {
+void view_add(View &view, Arguments arguments, const Around &around) {
   Edits::child(view,
                Child{.name = std::string(arguments[0]),
                      .file = std::filesystem::path(arguments[1]),
-                     .where = std::string(where)});
+                     .where = std::string(around.where)});
 }
 
 // The connections that take the view's window go first, as they would take it from
-// nothing, so a view presented is no longer; nothing takes its place.
-void view_close(View &view, Arguments arguments, std::string_view) {
+// nothing, so a view presented is no longer; nothing takes its place. A view beside it
+// that takes it lets go too, as the views follow the host's edit.
+void view_close(View &view, Arguments arguments, const Around &) {
   if (std::erase_if(view.children, [&](const Child &child) {
         return child.name == arguments.front();
       }) == 0)
@@ -482,8 +491,7 @@ void view_close(View &view, Arguments arguments, std::string_view) {
 struct Edit {
   std::string_view usage;
   std::string_view help;
-  // where: the file and line the edit comes from, which a node it changes keeps.
-  void (*change)(View &view, Arguments arguments, std::string_view where);
+  void (*change)(View &view, Arguments arguments, const Around &around);
 };
 
 // Each edit's usage and help (RV04), and what it changes.
@@ -594,7 +602,9 @@ void Edits::child(View &view, Child child) {
   view.children.push_back(std::move(child));
 }
 
-void Edits::connect(View &view, Connection connection) {
+void Edits::connect(View &view,
+                    Connection connection,
+                    std::span<const std::string> beside) {
   check_path("connection", connection.name);
   if (std::ranges::find(view.connections, connection.name, &Connection::name) !=
       view.connections.end())
@@ -604,13 +614,14 @@ void Edits::connect(View &view, Connection connection) {
     throw std::runtime_error(
         std::format("connection {} needs a from and at least one to", connection.name));
   const Endpoint &from = connection.from;
-  if (from.view() && std::ranges::find(view.children, from.node, &Child::name) ==
-                         view.children.end())
-    throw std::runtime_error(
-        std::format("connection {} is from {}, but this view hosts no view {}",
-                    connection.name,
-                    from.text(),
-                    from.node));
+  if (from.view() &&
+      std::ranges::find(view.children, from.node, &Child::name) == view.children.end() &&
+      std::ranges::find(beside, from.node) == beside.end())
+    throw std::runtime_error(std::format(
+        "connection {} is from {}, but this view hosts no view {}, nor is one beside it",
+        connection.name,
+        from.text(),
+        from.node));
   if (!from.view() && !has_node(view, from.node))
     throw std::runtime_error(std::format(
         "connection {} is from {}, which is no node", connection.name, from.node));
@@ -648,10 +659,15 @@ void Edits::command(Call &call) {
   const View *const found = _views.find(address);
   if (!found)
     throw std::runtime_error(std::format("no view is named {}", address));
+  std::vector<std::string> beside;
+  if (const std::optional<std::string> host = _views.host_of(address))
+    for (const Child &child : _views.find(*host)->children)
+      if (child.name != address)
+        beside.push_back(child.name);
   View edited = *found;
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index]))
-      edits[index].change(edited, call.arguments(), _port.where());
+      edits[index].change(edited, call.arguments(), {_port.where(), beside});
   _views.replace(address, std::move(edited));
 }
 

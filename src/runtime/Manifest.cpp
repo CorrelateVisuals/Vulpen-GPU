@@ -449,8 +449,13 @@ std::string text(const View &view, const Notes &notes) {
     section(text, notes, "view", child.name, words(child, view.file.parent_path()));
   for (const Node &node : view.nodes)
     section(text, notes, "node", node.name, words(node));
+  // A manifest names only what is inside its view (V03), so not the window of a view
+  // beside it, which a connection takes only while both are hosted.
   for (const Connection &connection : view.connections)
-    section(text, notes, "connection", connection.name, words(connection));
+    if (!connection.from.view() ||
+        std::ranges::find(view.children, connection.from.node, &Child::name) !=
+            view.children.end())
+      section(text, notes, "connection", connection.name, words(connection));
   if (const auto end = notes.find(""); end != notes.end())
     text.append("\n").append(end->second.above);
   return text;

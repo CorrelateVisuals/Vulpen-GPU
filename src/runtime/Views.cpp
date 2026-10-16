@@ -59,6 +59,8 @@ struct Views::Hosted {
   std::unique_ptr<Schedule> schedule;   // null until the frame after it was hosted
   // Where its schedule's draws into its window go.
   Schedule::Into into = Schedule::Into::window;
+  // It has taken the window of a view beside it, so it keeps the window until it closes.
+  bool presented = false;
   bool removed = false; // its schedule goes before the next frame
 
   const View &current() const {
@@ -113,8 +115,9 @@ const View &Views::view() const {
 }
 
 bool Views::shows() const {
+  const Hosted *const owner = this->owner();
   return std::ranges::any_of(_hosted, [&](const std::unique_ptr<Hosted> &hosted) {
-    return !hosted->removed && target(*hosted) == nullptr &&
+    return !hosted->removed && target(*hosted, owner) == nullptr &&
            Schedule::shows(hosted->next());
   });
 }
@@ -122,8 +125,13 @@ bool Views::shows() const {
 // One rebuild for all the changes since the last frame, so a script is checked as a
 // whole, and a replay costs about what a load does. The new schedule takes from the old
 // one, which still reads the old view, so the old view goes last. A view comes after the
-// view hosting it, so where its draws go follows its host's view as rebuilt.
+// view hosting it, so where its draws go follows its host's view as rebuilt. The window's
+// owner is chosen once, before any view is built, as shows() chose it, so a view built
+// now for the first time is none of the views it chooses from.
 bool Views::rebuild() {
+  for (const std::unique_ptr<Hosted> &hosted : _hosted)
+    hosted->presented = hosted->presented || (!hosted->removed && presents(*hosted));
+  _owner = owner();
   bool changed = false;
   for (auto at = _hosted.begin(); at != _hosted.end();) {
     Hosted &hosted = **at;
@@ -136,21 +144,20 @@ bool Views::rebuild() {
       changed = true;
       continue;
     }
-    const std::optional<const Hosted *> to = target(hosted);
+    const std::optional<const Hosted *> to = target(hosted, _owner);
     const Schedule::Into into = !to   ? Schedule::Into::none
                                 : *to ? Schedule::Into::image
                                       : Schedule::Into::window;
     // So a project that shows nothing says why.
     if ((into == Schedule::Into::none) != (hosted.into == Schedule::Into::none) &&
         Schedule::shows(hosted.next()))
-      _wiring.log.write(Level::info,
-                        Tag::run,
-                        std::format("child {}: {}",
-                                    hosted.name,
-                                    into == Schedule::Into::none
-                                        ? "draws nowhere, since its host draws there "
-                                          "and no connection takes its window"
-                                        : "draws again"));
+      _wiring.log.write(
+          Level::info,
+          Tag::run,
+          into == Schedule::Into::none
+              ? std::format(
+                    "child {}: draws nowhere, since {}", hosted.name, nowhere(hosted))
+              : std::format("child {}: draws again", hosted.name));
     if (hosted.edited) {
       const bool added = !hosted.schedule;
       hosted.schedule = std::make_unique<Schedule>(
@@ -185,44 +192,115 @@ std::span<Schedule *const> Views::schedules() const {
   return _schedules;
 }
 
-// A view comes after the view hosting it, so going back from the last, each view's work
-// comes before its host's.
 void Views::gather(std::vector<Pass> &passes) const {
-  const auto drawing = [&](const Hosted *into) {
-    return _hosted | std::views::filter([this, into](const std::unique_ptr<Hosted> &at) {
-             return !at->removed && at->schedule && target(*at) == into;
-           });
-  };
-  // A view that draws nowhere still runs its work: its C++ cooks and its dispatches run.
-  for (const std::unique_ptr<Hosted> &hosted : _hosted | std::views::reverse) {
-    if (hosted->removed || !hosted->schedule)
-      continue;
-    hosted->schedule->work(passes);
-    if (target(*hosted) != hosted.get())
-      continue;
-    // Its host's schedule made the image as it made the connection that takes it.
-    if (const Offscreen *const image =
-            this->hosted(hosted->parent)->schedule->window_of(hosted->name))
-      for (const std::unique_ptr<Hosted> &into : drawing(hosted.get()))
-        into->schedule->draws(passes, image);
-  }
-  for (const std::unique_ptr<Hosted> &into : drawing(nullptr))
-    into->schedule->draws(passes, nullptr);
+  std::vector<const Hosted *> gathered;
+  gather(*_hosted.front(), passes, gathered);
+  draw_into(nullptr, nullptr, passes);
 }
 
-std::optional<const Views::Hosted *> Views::target(const Hosted &hosted) const {
+// A view comes after the view hosting it, so going back from the last, each view it hosts
+// comes before the views hosted before it, as each view's work comes before its own.
+void Views::gather(const Hosted &hosted,
+                   std::vector<Pass> &passes,
+                   std::vector<const Hosted *> &gathered) const {
+  gathered.push_back(&hosted);
+  for (const std::unique_ptr<Hosted> &other : _hosted | std::views::reverse)
+    if (!other->removed && std::ranges::find(gathered, other.get()) == gathered.end() &&
+        ((!other->name.empty() && other->parent == hosted.name) ||
+         taker(*other) == &hosted))
+      gather(*other, passes, gathered);
+  // A view that draws nowhere still runs its work: its C++ cooks and its dispatches run.
+  if (!hosted.schedule)
+    return;
+  hosted.schedule->work(passes);
+  // The view taking its window made the image as it made the connection that takes it.
+  if (const Hosted *const by = taker(hosted); by && by->schedule)
+    if (const Offscreen *const image = by->schedule->window_of(hosted.name))
+      draw_into(&hosted, image, passes);
+}
+
+void Views::draw_into(const Hosted *into,
+                      const Offscreen *image,
+                      std::vector<Pass> &passes) const {
+  for (const std::unique_ptr<Hosted> &at : _hosted)
+    if (!at->removed && at->schedule && target(*at, _owner) == into)
+      at->schedule->draws(passes, image);
+}
+
+// The host first, so a view its host and one beside it both take goes to its host.
+const Views::Hosted *Views::taker(const Hosted &hosted) const {
   if (hosted.name.empty())
     return nullptr;
+  for (const std::unique_ptr<Hosted> &other : _hosted)
+    if (!other->removed && other.get() != &hosted &&
+        (other->name == hosted.parent ||
+         (!other->name.empty() && other->parent == hosted.parent)) &&
+        std::ranges::any_of(other->next().connections, [&](const Connection &connection) {
+          return connection.from.view() && connection.from.node == hosted.name;
+        }))
+      return other.get();
+  return nullptr;
+}
+
+bool Views::presents(const Hosted &hosted) const {
+  const auto beside = [&](const Connection &connection) {
+    const Hosted *const from =
+        connection.from.view() ? this->hosted(connection.from.node) : nullptr;
+    return from && from != &hosted && from->parent == hosted.parent;
+  };
+  return !hosted.name.empty() && std::ranges::any_of(hosted.next().connections, beside);
+}
+
+bool Views::draws(const Hosted &hosted) const {
+  return Schedule::shows(hosted.next()) ||
+         std::ranges::any_of(_hosted, [&](const std::unique_ptr<Hosted> &other) {
+           return !other->removed && !other->name.empty() &&
+                  other->parent == hosted.name && !taker(*other) && draws(*other);
+         });
+}
+
+// A view without a schedule is built this frame for the first time.
+const Views::Hosted *Views::owner() const {
+  const auto top = [](const Hosted &hosted) {
+    return !hosted.removed && !hosted.name.empty() && hosted.parent.empty();
+  };
+  for (const std::unique_ptr<Hosted> &hosted : _hosted)
+    if (top(*hosted) && hosted->schedule && (hosted->presented || presents(*hosted)))
+      return hosted.get();
+  const Hosted *holding = hosted(_port.current());
+  while (holding && !holding->parent.empty())
+    holding = hosted(holding->parent);
+  if (holding && top(*holding) && holding->schedule && draws(*holding))
+    return holding;
+  for (const bool ran : {true, false})
+    for (const std::unique_ptr<Hosted> &hosted : _hosted)
+      if (top(*hosted) && (hosted->schedule || !ran) && draws(*hosted))
+        return hosted.get();
+  return nullptr;
+}
+
+std::optional<const Views::Hosted *> Views::target(const Hosted &hosted,
+                                                   const Hosted *owner) const {
+  if (hosted.name.empty())
+    return nullptr;
+  if (taker(hosted))
+    return &hosted;
   const Hosted *const host = this->hosted(hosted.parent);
   if (!host)
     return nullptr;
-  if (std::ranges::any_of(host->next().connections, [&](const Connection &connection) {
-        return connection.from.view() && connection.from.node == hosted.name;
-      }))
-    return &hosted;
-  if (Schedule::shows(host->next()))
+  if (Schedule::shows(host->next()) || (host->name.empty() && &hosted != owner))
     return std::nullopt;
-  return target(*host);
+  return target(*host, owner);
+}
+
+// Walking up as target does, to where it stopped.
+std::string_view Views::nowhere(const Hosted &hosted) const {
+  const Hosted &host = *this->hosted(hosted.parent);
+  if (Schedule::shows(host.next()))
+    return "its host draws there and no connection takes its window";
+  if (host.name.empty())
+    return "the window shows another view";
+  return nowhere(host);
 }
 
 std::vector<std::filesystem::path> Views::roots() const {
@@ -397,11 +475,29 @@ void Views::follow(const std::string &host, const View &view) {
     _hosted.erase(_hosted.begin() + static_cast<std::ptrdiff_t>(before), _hosted.end());
     throw;
   }
+  std::vector<std::string> gone;
   for (const std::unique_ptr<Hosted> &hosted : _hosted)
     if (!hosted->removed && hosted->parent == host && !hosted->name.empty() &&
         std::ranges::find(view.children, hosted->name, &Child::name) ==
-            view.children.end())
+            view.children.end()) {
       unhost(*hosted);
+      gone.push_back(hosted->name);
+    }
+  // A view beside one that goes lets go of its window, as its host does on view close,
+  // so nothing samples an image no view draws into. By index, as a replace may host.
+  for (const std::string &name : gone)
+    for (std::size_t index = 0; index < _hosted.size(); ++index) {
+      const Hosted &beside = *_hosted[index];
+      const auto from_it = [&](const Connection &connection) {
+        return connection.from.view() && connection.from.node == name;
+      };
+      if (beside.removed || beside.parent != host || beside.name.empty() ||
+          std::ranges::none_of(beside.current().connections, from_it))
+        continue;
+      View kept = beside.current();
+      std::erase_if(kept.connections, from_it);
+      replace(beside.name, std::move(kept));
+    }
 }
 
 void Views::unhost(Hosted &hosted) {

@@ -27,7 +27,9 @@ C++ fills an image with reach a shader pixel for pixel, through the node's own T
 through a connection and as 16-bit floats, stay through a rebuild, and come back after
 image clear when the node fills them again. The image a draw renders into reaches a
 dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
-with no window, and so does the window of a view its host takes, drawn that frame. The
+with no window, and so does the window of a view its host takes, drawn that frame, and
+that of a view one beside it takes, as a GUI presents a project, though hosted after it,
+which a save of the view taking it leaves out (V03). The
 library's palette, font, rects and glyphs draw the fixture's sign in
 a window without an error, where a display is, over that image, which the image part
 shows in the window's Rect. A
@@ -424,6 +426,36 @@ def presented(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def beside(vulpen: str, folder: Path) -> str | None:
+    """Why the window of a view that a view beside it takes, hosted after it, did not
+    reach that view's dispatch, pixel for pixel and drawn that frame, or why a save of
+    the view taking it named the window, which its manifest does not host (V03), or
+    None. Both views' folders in the build tree are links to the fixture's."""
+    stage, watch = "mistakes-stage", "mistakes-watch"
+    host = view_in(folder, "beside", HEAD + f'[view "{stage}"]\n[view "{watch}"]\n')
+    for name, node, text in ((stage, "scene", '[node "scene"]\nvertex_count = 6\n'),
+                             (watch, "look", LOOK.replace("Look", "Watch"))):
+        (host.parent / name).mkdir()
+        (host.parent / name / node).symlink_to(FIXTURE / node, target_is_directory=True)
+        (host.parent / name / "view.vlp").write_text(HEAD + text, encoding="utf-8")
+    script = host.parent / "lines.txt"
+    script.write_text(f"{watch}: connect stage {stage}: look.painted\n{watch}: view save\n",
+                      encoding="utf-8")
+    built = [mirror(vulpen).parent / name for name in (stage, watch)]
+    try:
+        for link in built:
+            link.symlink_to(mirror(vulpen), target_is_directory=True)
+        code, output = run(vulpen, [host, "--frames", 4, "--fps", 0, "--size", "64x48",
+                                    "--source", script])
+    finally:
+        for link in built:
+            link.unlink(missing_ok=True)
+    saved = (host.parent / watch / "view.vlp").read_text(encoding="utf-8")
+    if code != 0 or problems(output) or f"{stage}:" in saved:
+        return f"beside: expected each pixel scene drew that frame, and a save without it, got exit {code}:\n{output}\n{saved}"
+    return None
+
+
 def input_lines(vulpen: str, folder: Path) -> str | None:
     """Why the input command's lines did not reach a node as the window's events would,
     or None: in their order, in the first frame, and only in it."""
@@ -562,6 +594,7 @@ def main() -> None:
                             images(vulpen, folder), text(vulpen, folder),
                             offscreen(vulpen, folder),
                             presented(vulpen, folder),
+                            beside(vulpen, folder),
                             input_lines(vulpen, folder),
                             children(vulpen, folder),
                             drops(vulpen, folder),

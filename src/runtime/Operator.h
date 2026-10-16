@@ -379,6 +379,10 @@ public:
   // The node's name, as a line to its view names it, so the node can send a command
   // about itself, as param set, which the log keeps and a replay repeats.
   virtual std::string name() const = 0;
+  // The name of the view the node runs in, as a line addresses it with `<name>:`, empty
+  // for the one vulpen started with, so a line the node sends about itself reaches its
+  // own view, whichever view the line that ran its command addressed.
+  virtual std::string view_name() const = 0;
   // The engine, for a node that includes its headers by hand: what the node makes with
   // it, it destroys, and nothing it borrows outlives the next bind (the runtime
   // boundary in docs/plans/native-cpp.md).

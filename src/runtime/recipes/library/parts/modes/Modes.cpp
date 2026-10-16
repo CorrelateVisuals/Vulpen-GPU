@@ -75,6 +75,7 @@ class Modes final : public VP::Operator {
     _to = node.param<std::string>("to");
     std::ranges::replace(_to, ',', ' ');
     _name = node.name();
+    _view = node.view_name();
     _area = &node.input<VP_VIEW::Rect>("area");
     _typed = &node.input<VP_VIEW::Typed>("typed");
     _edit = &node.output<VP_VIEW::Rect>("edit");
@@ -88,8 +89,8 @@ class Modes final : public VP::Operator {
     _toggle_mode = node.command("mode toggle", "switches to the other mode");
   }
 
-  // Lines go to the view this node runs in, the one vulpen started with (`:`), whichever
-  // view the line that ran the command addressed.
+  // Lines go to the view this node runs in, whichever view the line that ran the command
+  // addressed.
   void command(VP::Call &call) override {
     if (call.is(_edit_mode) || call.is(_perform_mode))
       switch_mode(call, call.is(_perform_mode));
@@ -109,9 +110,9 @@ class Modes final : public VP::Operator {
     if (made != own.connections.end()) {
       if (made->from.view() && made->from.node == name)
         return;
-      commands.send(std::format(": disconnect {}", presenting));
+      commands.send(std::format("{}: disconnect {}", _view, presenting));
     }
-    commands.send(std::format(": connect {} {}: {}", presenting, name, _to));
+    commands.send(std::format("{}: connect {} {}: {}", _view, presenting, name, _to));
   }
 
   // Perform mode leaves the panels no room, so the part in focus lets it go, and takes
@@ -119,7 +120,7 @@ class Modes final : public VP::Operator {
   // to nothing; the current view's project it presents first, as the frame would, so a
   // mode line just after a view load finds the view.
   void switch_mode(VP::Call &call, bool perform) {
-    const VP::View &own = *call.view("");
+    const VP::View &own = *call.view(_view);
     if (perform && shown_by(own).empty()) {
       const std::string project(project_of(
           [&](std::string_view name) { return call.view(name); },
@@ -133,12 +134,12 @@ class Modes final : public VP::Operator {
     VP::CommandPort &commands = call.commands();
     if (perform && !_perform) {
       _returning = _typed->focus;
-      commands.send(": focus");
+      commands.send(std::format("{}: focus", _view));
     } else if (!perform && !_returning.empty()) {
-      commands.send(std::format(": focus {}", std::exchange(_returning, {})));
+      commands.send(std::format("{}: focus {}", _view, std::exchange(_returning, {})));
     }
-    commands.send(
-        std::format(": param set {} mode {}", _name, perform ? "perform" : "edit"));
+    commands.send(std::format(
+        "{}: param set {} mode {}", _view, _name, perform ? "perform" : "edit"));
   }
 
   // Perform mode gives way to edit mode as escape asks, once nothing is presented nor
@@ -158,7 +159,7 @@ class Modes final : public VP::Operator {
                                                                      : presented;
     const bool presenting = !wanted.empty() && wanted != presented;
     if (presenting)
-      present(frame.commands(), *frame.view(""), wanted);
+      present(frame.commands(), *frame.view(_view), wanted);
     _started = true;
     name_tabs(view, presented);
     bool leave = false;
@@ -197,6 +198,7 @@ class Modes final : public VP::Operator {
   bool _perform = false;
   std::string _to; // the ports present connects a view's window to, blank between
   std::string _name;
+  std::string _view; // the one it runs in, which its lines change
   std::string _returning; // in focus as perform mode began, and again in edit mode
   bool _started = false; // after the first frame, which may present the view hosted last
   const VP_VIEW::Rect *_area = nullptr;

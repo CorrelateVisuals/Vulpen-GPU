@@ -54,6 +54,9 @@ public:
   std::string name() const override {
     return _bound.node->name;
   }
+  std::string view_name() const override {
+    return _schedule._name;
+  }
   const Engine &engine() const override {
     return _schedule._wiring.engine;
   }

@@ -36,6 +36,7 @@ class Split final : public VP::Operator {
       throw std::runtime_error(
           std::format("param ratio = {}: a share from 0 to 1", _ratio));
     _name = node.name();
+    _view = node.view_name();
     _area = &node.input<VP_VIEW::Rect>("area");
     _first = &node.output<VP_VIEW::Rect>("first");
     _second = &node.output<VP_VIEW::Rect>("second");
@@ -69,7 +70,8 @@ class Split final : public VP::Operator {
       if (event.down && VP_VIEW::contains(seam(), _pointer))
         _dragging = true;
       else if (!event.down && std::exchange(_dragging, false))
-        frame.commands().send(std::format("param set {} ratio {:.3f}", _name, _ratio));
+        frame.commands().send(
+            std::format("{}: param set {} ratio {:.3f}", _view, _name, _ratio));
     }
   }
 
@@ -110,6 +112,7 @@ class Split final : public VP::Operator {
   glm::length_t _along = 0; // 0 for x, 1 for y
   float _ratio = 0;
   std::string _name;
+  std::string _view; // the one it runs in, where its ratio is set
   const VP_VIEW::Rect *_area = nullptr;
   VP_VIEW::Rect *_first = nullptr;
   VP_VIEW::Rect *_second = nullptr;

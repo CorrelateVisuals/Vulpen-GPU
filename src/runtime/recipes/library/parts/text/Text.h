@@ -108,6 +108,7 @@ class Text final : public VP::Operator {
   VP::Command _close_force;
   VP::Command _find;
   std::string _name; // as the focus names it
+  std::string _view; // the one it runs in, where its file param is unset
   // What the file param names, from the node's folder; empty while it is not set.
   std::string _file;
   bool _opening = false; // the param named another file, which opens where the port is

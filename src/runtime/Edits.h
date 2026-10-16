@@ -28,11 +28,15 @@ public:
   // One node word, as a manifest line or a word=value argument gives it.
   static void word(Node &node, std::string_view key, std::string_view value);
   // node.port, where the node's name may hold the names of the nodes it is inside, or
-  // view: for the window of a view this one hosts.
+  // view: for the window of a view this one hosts, or of one beside it.
   static Endpoint endpoint(std::string_view text);
   static void add(View &view, Node node);
   static void child(View &view, Child child);
-  static void connect(View &view, Connection connection);
+  // beside: the views hosted beside the view, whose windows a connection may take while
+  // both are hosted, as a GUI presents a project; a manifest names none of them (V03).
+  static void connect(View &view,
+                      Connection connection,
+                      std::span<const std::string> beside = {});
 
 private:
   void command(Call &call) override;
