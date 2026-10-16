@@ -1,11 +1,13 @@
 #include "runtime/Ports.h"
 
+#include "baseclasses/Log.h"
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
 #include "runtime/Manifest.h"
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cstdio>
 #include <filesystem>
@@ -65,6 +67,81 @@ std::uint32_t presses_of(std::string_view word) {
     throw std::runtime_error(std::format(
         "{} is no count of presses: 1 for one, 2 for a double click's second", word));
   return presses;
+}
+
+// What a terminal sends for a key: a byte for most, control and a letter one below the
+// blank, and for the arrows, home, end and delete an escape sequence, which ends in a
+// byte from @ to ~: a letter, or ~ after a number.
+constexpr unsigned char escape = 0x1b;
+constexpr unsigned char erase = 0x7f;
+constexpr unsigned char first_text = 0x20;
+constexpr char sequence_end_first = '@';
+constexpr char sequence_end_last = '~';
+constexpr char control_letter = 'a' - 1; // control+a is byte 1
+constexpr std::array<std::pair<std::string_view, std::string_view>, 11> sequences{{
+    {"A", "up"},
+    {"B", "down"},
+    {"C", "right"},
+    {"D", "left"},
+    {"H", "home"},
+    {"F", "end"},
+    {"1~", "home"},
+    {"7~", "home"},
+    {"4~", "end"},
+    {"8~", "end"},
+    {"3~", "delete"},
+}};
+
+void press(std::vector<Event> &events, std::string_view name) {
+  for (const bool down : {true, false})
+    events.push_back({.kind = Event::Kind::key, .down = down, .name = std::string(name)});
+}
+
+// The key the bytes start with, as a window names it, into events; returns how many
+// bytes it took, none while they end inside it. A sequence no key here sends is passed
+// over.
+std::size_t key(std::string_view bytes, std::vector<Event> &events) {
+  const auto first = static_cast<unsigned char>(bytes.front());
+  if (first == escape) {
+    if (bytes.size() < 2)
+      return 0;
+    if (bytes[1] != '[' && bytes[1] != 'O') {
+      press(events, "escape");
+      return 1;
+    }
+    std::size_t end = 2;
+    while (end < bytes.size() &&
+           (bytes[end] < sequence_end_first || bytes[end] > sequence_end_last))
+      ++end;
+    if (end == bytes.size())
+      return 0;
+    const std::string_view sequence = bytes.substr(2, end - 1);
+    for (const auto &[sent, name] : sequences)
+      if (sent == sequence)
+        press(events, name);
+    return end + 1;
+  }
+  if (first == '\r' || first == '\n')
+    press(events, "enter");
+  else if (first == '\t')
+    press(events, "tab");
+  else if (first == erase || first == '\b')
+    press(events, "backspace");
+  else if (first < first_text) {
+    events.push_back({.kind = Event::Kind::key, .down = true, .name = "control"});
+    press(events, std::string(1, static_cast<char>(first + control_letter)));
+    events.push_back({.kind = Event::Kind::key, .down = false, .name = "control"});
+  } else {
+    const auto text_end = std::ranges::find_if(bytes, [](char byte) {
+      const auto value = static_cast<unsigned char>(byte);
+      return value < first_text || value == erase;
+    });
+    const auto length = static_cast<std::size_t>(text_end - bytes.begin());
+    events.push_back(
+        {.kind = Event::Kind::text, .name = std::string(bytes.substr(0, length))});
+    return length;
+  }
+  return 1;
 }
 
 } // namespace
@@ -180,10 +257,22 @@ View Ports::manifest(std::string_view file) {
   return Manifest::flatten(view);
 }
 
+Ports::Ports(const Log &log) : _log(log) {}
+
+Ports::~Ports() {
+  if (!_raw)
+    return;
+  std::fwrite(Terminal::clear_row.data(), 1, Terminal::clear_row.size(), stdout);
+  std::fflush(stdout);
+  _log.clears_row(false);
+}
+
 void Ports::frame() {
   ++_frames;
   _lines.clear();
   _read = false;
+  _keys.clear();
+  _keyed = false;
   _events.clear();
   std::swap(_events, _pending);
   for (const Event &event : _events)
@@ -248,6 +337,36 @@ void Ports::copy(std::string_view text) {
     _window->copy(_clipboard);
 }
 
+bool Ports::typed() const {
+  return Terminal::typed();
+}
+
+// Once a frame, for every node that asks.
+std::span<const Event> Ports::keys() {
+  if (_keyed || _ended)
+    return _keys;
+  _keyed = true;
+  if (!_raw) {
+    _raw = std::make_unique<RawTerminal>();
+    _log.clears_row(true);
+  }
+  const std::optional<std::string> text = Terminal::input();
+  if (!text) {
+    _ended = true;
+    return _keys;
+  }
+  _bytes += *text;
+  std::size_t at = 0;
+  while (at < _bytes.size()) {
+    const std::size_t took = key(std::string_view(_bytes).substr(at), _keys);
+    if (took == 0)
+      break;
+    at += took;
+  }
+  _bytes.erase(0, at);
+  return _keys;
+}
+
 // Once a frame, for every node that asks. A line ends at its break; one that standard
 // input ends in counts too.
 std::span<const std::string> Ports::lines() {
@@ -276,7 +395,10 @@ bool Ports::ended() const {
   return _ended;
 }
 
+// In place of the line typed, which is drawn again after.
 void Ports::print(std::string_view text) {
+  if (_raw)
+    std::fwrite(Terminal::clear_row.data(), 1, Terminal::clear_row.size(), stdout);
   std::fwrite(text.data(), 1, text.size(), stdout);
   if (!text.ends_with('\n'))
     std::fputc('\n', stdout);
@@ -288,6 +410,17 @@ void Ports::prompt(std::string_view text) {
     return;
   std::fwrite(text.data(), 1, text.size(), stdout);
   std::fflush(stdout);
+}
+
+// As much around the caret as a row holds, so a long line scrolls across as in a window.
+void Ports::line(std::string_view text, std::size_t caret) {
+  const std::size_t room = std::max<std::size_t>(Terminal::columns(), 2) - 1;
+  const std::size_t start = std::min(caret > room ? caret - room : 0, text.size());
+  Terminal::draw(text.substr(start, room), caret - start);
+}
+
+std::size_t Ports::columns() const {
+  return Terminal::columns();
 }
 
 // What the window hands on for each, so a headless run makes the same events (V07).

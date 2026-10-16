@@ -2,8 +2,10 @@
 
 #include <vulkan/vulkan.h>
 
+#include <cstddef>
 #include <ctime>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -127,6 +129,30 @@ public:
   // Whether a person types at standard input: a terminal this run holds, not a pipe or a
   // file.
   static bool typed();
+  // How many characters a row of standard output holds, as a row past it wraps; a common
+  // width where it says none.
+  static std::size_t columns();
+  // Text that ends where it starts, the cursor at caret, in place of the row the cursor
+  // is on, as a line being typed shows.
+  static void draw(std::string_view text, std::size_t caret);
+  // Back to the start of the row and clears it, so text prints in place of a line being
+  // typed, which is drawn again after.
+  static constexpr std::string_view clear_row = "\r\033[K";
+};
+
+// The terminal a person types at, each key taken as it comes, with no echo and no
+// signal from a key, until it goes, which gives the terminal back as it found it; a line
+// break still prints as one. Throws naming the call that failed (A02).
+class RawTerminal {
+public:
+  RawTerminal();
+  ~RawTerminal();
+  RawTerminal(const RawTerminal &) = delete;
+  RawTerminal &operator=(const RawTerminal &) = delete;
+
+private:
+  struct Saved;
+  std::unique_ptr<Saved> _saved; // what it found, to give back
 };
 
 } // namespace VP

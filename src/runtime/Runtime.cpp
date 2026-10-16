@@ -181,7 +181,7 @@ private:
   std::optional<Window> _window; // outlives the engine, which draws into it
   std::optional<Engine> _engine;
   Modules _modules; // outlives the schedules, whose operators run its code
-  Ports _ports;
+  Ports _ports{_log};
   Feed _feed{_ports};
   Commands _commands;
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists

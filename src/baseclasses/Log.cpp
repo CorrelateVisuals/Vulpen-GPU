@@ -149,8 +149,14 @@ void Log::keep(Level level, std::string_view mark, std::string_view text) const 
   line.text.assign(mark).append(" ").append(text);
 }
 
+void Log::clears_row(bool clears) const {
+  _clears_row = clears;
+}
+
 // A tag takes its color, and each further line of the text starts under the first.
 void Log::emit(std::string_view tag, const char *color, std::string_view text) const {
+  if (_clears_row)
+    std::fwrite(Terminal::clear_row.data(), 1, Terminal::clear_row.size(), stdout);
   std::array<char, time_width + 1> time{};
   if (const std::time_t now = std::time(nullptr); now != _second) {
     _second = now;

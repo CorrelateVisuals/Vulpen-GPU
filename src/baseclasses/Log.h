@@ -85,6 +85,9 @@ public:
   // None prints every line, as at the start. Like a write, it changes only what the log
   // prints next, so it is const too.
   void keep_to(std::span<const std::string> views) const;
+  // While a person types a line at the terminal, each line the log prints takes the
+  // line's place, which its owner then draws again; const, as keep_to is.
+  void clears_row(bool clears) const;
   // Swaps the lines printed since the last take into lines, and returns how many lead
   // it; what lines held is written over next, so a frame's take allocates nothing once
   // the lines have grown (CPP10), and what the log keeps stays bounded (A03).
@@ -114,6 +117,7 @@ private:
   mutable std::time_t _second = 0;
   mutable std::vector<Logged> _kept; // the first _count since the last take
   mutable std::size_t _count = 0;
+  mutable bool _clears_row = false;
 };
 
 } // namespace VP

@@ -308,6 +308,8 @@ class CommandLine final : public VP::Operator {
 
   void on_terminal(VP::Cook &frame) {
     VP::TerminalPort &terminal = frame.terminal();
+    if (!_window && terminal.typed())
+      return typing(frame, terminal);
     const std::span<const std::string> lines = terminal.lines();
     for (const std::string &line : lines)
       if (const std::string answer = run(frame, line); !answer.empty())
@@ -320,6 +322,28 @@ class CommandLine final : public VP::Operator {
       terminal.prompt(prompt());
       _prompted = true;
     }
+  }
+
+  // A person at the terminal: each key edits the line as in a window, and the line is
+  // drawn again after the keys, and after the log, which prints in its place. control+c
+  // ends the run, as its signal did, and control+d on an empty line, as the end of input
+  // does.
+  void typing(VP::Cook &frame, VP::TerminalPort &terminal) {
+    _terminal = &terminal;
+    const std::span<const VP::Event> keys = terminal.keys();
+    bool ends = terminal.ended();
+    for (const VP::Event &event : keys) {
+      const bool empty = _line.empty();
+      edit(frame, event);
+      ends = ends || (_control && event.down &&
+                      (event.name == "c" || (event.name == "d" && empty)));
+    }
+    if (ends)
+      frame.commands().send("quit");
+    else if (!keys.empty() || !frame.commands().log().empty() || !_prompted)
+      terminal.line(prompt() + _line, prompt().size() + _caret);
+    _prompted = true;
+    _terminal = nullptr;
   }
 
   // The log since the frame before and the keys pressed, then all of it drawn anew. With
@@ -517,7 +541,7 @@ class CommandLine final : public VP::Operator {
     const std::string_view key = event.name;
     if (key == "tab")
       return complete_word(frame);
-    if (key == "escape" && _anchor == _end)
+    if (key == "escape" && _window && _anchor == _end)
       frame.commands().send("focus"); // the next escape reaches what takes the rest
     else if (key == "escape")
       _anchor = _end;
@@ -628,7 +652,8 @@ class CommandLine final : public VP::Operator {
     for (const std::string_view candidate : candidates)
       widest = std::max(widest, shown(candidate).size());
     const std::size_t width = widest + column_gap.size();
-    const auto room = static_cast<std::size_t>(std::max(grid().columns, 0));
+    const auto room = _terminal ? _terminal->columns()
+                                : static_cast<std::size_t>(std::max(grid().columns, 0));
     const std::size_t across =
         std::max<std::size_t>(1, (room + column_gap.size()) / width);
     const std::size_t down = (candidates.size() + across - 1) / across;
@@ -649,6 +674,11 @@ class CommandLine final : public VP::Operator {
   // Each line of the text a row, the oldest dropped past the scrollback's room, which may
   // take the widest along.
   void show(std::string_view text, std::uint32_t role) {
+    if (_terminal) { // printed in place of the line typed, which is drawn again after
+      if (!text.empty())
+        _terminal->print(text);
+      return;
+    }
     const std::size_t dropped = _dropped;
     for (const std::string_view line : lines_of(text)) {
       _scrollback.push_back({std::string(line), role});
@@ -904,6 +934,7 @@ class CommandLine final : public VP::Operator {
   std::vector<std::string> _kept; // the views the log keeps to, as it was told
   bool _prompted = false;
   bool _window = false;
+  VP::TerminalPort *_terminal = nullptr; // while a person's keys edit the line there
   // In a window: what it reads and writes, and the line being typed.
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;

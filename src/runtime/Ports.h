@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
@@ -13,6 +14,8 @@
 namespace VP {
 
 class Commands;
+class Log;
+class RawTerminal;
 class Window;
 
 // The general ports a node reads besides commands (V05): input from the window or the
@@ -24,6 +27,12 @@ class Ports final : public InputPort,
                     public TerminalPort,
                     public CommandHandler {
 public:
+  // log: what clears the line typed at the terminal before it prints.
+  explicit Ports(const Log &log);
+  // The line typed goes first, so what prints after the run starts on a clean row.
+  ~Ports();
+  Ports(const Ports &) = delete;
+  Ports &operator=(const Ports &) = delete;
   // Before a frame cooks: what came in for the last one is gone, and what came since is
   // this frame's.
   void frame();
@@ -69,20 +78,29 @@ private:
   bool names_key(std::string_view name) const override;
   std::string clipboard() const override;
   void copy(std::string_view text) override;
+  bool typed() const override;
+  std::span<const Event> keys() override;
   std::span<const std::string> lines() override;
   bool ended() const override;
   void print(std::string_view text) override;
   void prompt(std::string_view text) override;
+  void line(std::string_view text, std::size_t caret) override;
+  std::size_t columns() const override;
   void command(Call &call) override;
 
   // By id, from a counter, so a handle a bind no longer gave matches no file.
   std::map<std::uint32_t, Open> _open;
   std::uint32_t _opened = 0;
   std::uint64_t _frames = 0;
+  const Log &_log;
   std::vector<std::string> _lines; // this frame's
   std::string _partial;            // a line still being typed
   bool _read = false;              // whether this frame read standard input
   bool _ended = false;
+  std::unique_ptr<RawTerminal> _raw; // once a node asks for keys, while a person types
+  std::vector<Event> _keys;          // this frame's
+  std::string _bytes;                // a key's first bytes, which wait for the rest
+  bool _keyed = false;               // whether this frame read keys
   std::vector<Event> _events;  // this frame's
   std::vector<Event> _pending; // the next frame's
   glm::vec2 _pointer{};

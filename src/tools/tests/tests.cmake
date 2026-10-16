@@ -64,6 +64,10 @@ set_tests_properties(vulpen triangle PROPERTIES
 # The ide app's terminal, driven by typed keys; with no display, it is skipped (V07).
 vulpen_test(ide ${python} ${tests}/ide.py ${vulpen_file})
 set_tests_properties(ide PROPERTIES SKIP_REGULAR_EXPRESSION "no display")
+# A person typing at the CLI's terminal, in a pseudo-terminal, which Windows has not.
+if(NOT WIN32)
+  vulpen_test(keys ${python} ${tests}/keys.py ${vulpen_file})
+endif()
 
 add_executable(barriers ${tests}/Barriers.cpp ${PROJECT_SOURCE_DIR}/src/baseclasses/Passes.cpp)
 target_include_directories(barriers PRIVATE ${PROJECT_SOURCE_DIR}/src)

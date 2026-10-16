@@ -274,6 +274,13 @@ protected:
 // Lines typed on standard input and text for standard output, so a CLI needs no window.
 class TerminalPort {
 public:
+  // Whether a person types at the terminal, a terminal this run holds, not a pipe or a
+  // file; then keys come one by one, and lines come from none.
+  virtual bool typed() const = 0;
+  // The keys a person typed since the last frame, named as a window names them, and the
+  // text typed. The first ask takes the terminal's keys as they come, with no echo,
+  // until the run ends, which gives the terminal back as it found it.
+  virtual std::span<const Event> keys() = 0;
   // The lines that came in since the last frame, without their line breaks. Only a node
   // that asks makes the port read standard input, so a run nobody types to never reads
   // it, and a run in the background is never stopped for it.
@@ -285,6 +292,12 @@ public:
   // Text where the next line is typed, with no line break. It shows only where a person
   // types, so a piped script's output stays as it was.
   virtual void prompt(std::string_view text) = 0;
+  // The line being typed, in place of the one before, scrolled across to show the caret,
+  // with the cursor there. What prints after, and the log, takes its place, so it is
+  // drawn again.
+  virtual void line(std::string_view text, std::size_t caret) = 0;
+  // How many characters a row holds.
+  virtual std::size_t columns() const = 0;
 
 protected:
   ~TerminalPort() = default;

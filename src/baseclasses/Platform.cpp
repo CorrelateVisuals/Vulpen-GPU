@@ -11,12 +11,15 @@
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <poll.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #include <unistd.h>
 #endif
 
 #include <algorithm>
 #include <array>
 #include <cerrno>
+#include <cstdio>
 #include <cstdlib>
 #include <format>
 #include <fstream>
@@ -31,6 +34,7 @@ namespace VP {
 namespace {
 
 constexpr std::size_t input_chunk = 4096; // bytes of standard input one read takes
+constexpr std::size_t common_columns = 80; // as a terminal starts
 // At most this much input a frame, so input that never pauses cannot hold a frame.
 constexpr std::size_t input_per_call = 16 * input_chunk;
 // What the desktop knows the window by, as Wayland's app id and X11's class, so a dock
@@ -248,6 +252,20 @@ bool Terminal::typed() {
   return GetFileType(GetStdHandle(STD_INPUT_HANDLE)) == FILE_TYPE_CHAR;
 }
 
+std::size_t Terminal::columns() {
+  CONSOLE_SCREEN_BUFFER_INFO shown{};
+  return GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &shown)
+             ? static_cast<std::size_t>(shown.srWindow.Right - shown.srWindow.Left + 1)
+             : common_columns;
+}
+
+// A console types nothing yet (input), so it stays as it is.
+struct RawTerminal::Saved {};
+
+RawTerminal::RawTerminal() = default;
+
+RawTerminal::~RawTerminal() = default;
+
 // A console shows ANSI colors once asked to; a pipe or a file has no console mode.
 bool Terminal::colors() {
   const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -353,6 +371,34 @@ bool Terminal::typed() {
   return isatty(STDIN_FILENO) == 1 && !held_elsewhere();
 }
 
+std::size_t Terminal::columns() {
+  winsize size{};
+  return ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_col > 0 ? size.ws_col
+                                                                         : common_columns;
+}
+
+struct RawTerminal::Saved {
+  termios mode;
+};
+
+// A read takes what came without waiting, as poll asks anyway.
+RawTerminal::RawTerminal() {
+  termios mode{};
+  if (tcgetattr(STDIN_FILENO, &mode) != 0)
+    throw std::system_error(errno, std::generic_category(), "tcgetattr");
+  _saved = std::make_unique<Saved>(Saved{mode});
+  mode.c_lflag &= ~static_cast<tcflag_t>(ICANON | ECHO | ISIG | IEXTEN);
+  mode.c_iflag &= ~static_cast<tcflag_t>(IXON | ICRNL);
+  mode.c_cc[VMIN] = 0;
+  mode.c_cc[VTIME] = 0;
+  if (tcsetattr(STDIN_FILENO, TCSANOW, &mode) != 0)
+    throw std::system_error(errno, std::generic_category(), "tcsetattr");
+}
+
+RawTerminal::~RawTerminal() {
+  tcsetattr(STDIN_FILENO, TCSANOW, &_saved->mode);
+}
+
 bool Terminal::colors() {
   const char *const no_color = std::getenv("NO_COLOR");
   const char *const term = std::getenv("TERM");
@@ -414,6 +460,16 @@ void Shell::start(const std::string &program, std::span<const std::string> argum
 }
 
 #endif
+
+// The row starts anew, so the cursor goes back to its start and forward to the caret.
+void Terminal::draw(std::string_view text, std::size_t caret) {
+  std::fwrite(clear_row.data(), 1, clear_row.size(), stdout);
+  std::fwrite(text.data(), 1, text.size(), stdout);
+  std::fputc('\r', stdout);
+  if (caret > 0)
+    std::fprintf(stdout, "\033[%zuC", caret);
+  std::fflush(stdout);
+}
 
 void Files::save(const std::filesystem::path &file, std::string_view text) {
   std::error_code failed;
