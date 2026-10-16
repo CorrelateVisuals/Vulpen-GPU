@@ -1,6 +1,6 @@
 # A window with one triangle. C++ turns its corners and tints it every frame; the
-# shaders draw what C++ wrote. Run ./run.sh src/examples/triangle/view.vlp, then save
-# any file of this view while it runs.
+# shaders draw what C++ wrote. Run ./run.sh src/runtime/examples/triangle/view.vlp, then
+# save any file of this view while it runs.
 
 [manifest]
 version = 1

@@ -32,7 +32,7 @@ endif()
 set(vulpen_file $<TARGET_FILE:vulpen>)
 set(python ${launch} ${Python3_EXECUTABLE})
 set(tests ${CMAKE_CURRENT_LIST_DIR})
-set(examples ${PROJECT_SOURCE_DIR}/src/examples)
+set(examples ${PROJECT_SOURCE_DIR}/src/runtime/examples)
 
 # A window under TSan reports only noise: GTK, which draws its decorations, takes locks
 # TSan cannot see. So tsan builds test without a display, and skip what needs one.

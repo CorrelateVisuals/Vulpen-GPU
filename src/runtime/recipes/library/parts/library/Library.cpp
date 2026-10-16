@@ -346,7 +346,7 @@ std::vector<VP::Param> kept_params(const VP::Node &fresh, const VP::Node &mine) 
 // files, and then adds nodes, so the view owns its copy from the first edit on (V03).
 class Library final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    // A part's folder is <library>/<kind>/<name>.
+    // A part's folder is <recipes>/library/<kind>/<name>.
     _library = std::filesystem::path(node.folder()).parent_path().parent_path();
     for (std::size_t index = 0; index < template_files.size(); ++index)
       _templates[index] =
@@ -408,13 +408,14 @@ class Library final : public VP::Operator {
   }
 
   // The folder of the view a command addresses, where its nodes' folders are (RV08). The
-  // library's recipes are its own (V11), so a view of the library is never one.
+  // library's recipes and the apps beside it use recipes as they are (V11), so a view of
+  // theirs is never one.
   std::filesystem::path view_folder(VP::Call &call) const {
     const std::filesystem::path folder = call.view().file.parent_path();
-    if (inside(folder, _library))
+    if (inside(folder, _library.parent_path()))
       throw std::runtime_error(std::format(
-          "{} is in the library, whose recipes are its own; view new or view load hosts "
-          "a view to work on",
+          "{} is in the library or an app beside it, whose recipes are their own; view "
+          "new or view load hosts a view to work on",
           call.view().file.string()));
     return folder;
   }

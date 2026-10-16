@@ -67,7 +67,7 @@ LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
 INNER = '[view "inner"]\n'  # a hosted view, empty while its folder holds no view.vlp
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
-PARTS = Path(__file__).resolve().parents[2] / "recipes" / "parts"
+PARTS = Path(__file__).resolve().parents[2] / "runtime" / "recipes" / "library" / "parts"
 # The library's parts that put text and an image on screen: the image first, in the
 # window's Rect, then rects and glyphs, so the sign and its text draw over it.
 TEXT = ("palette", "font", "viewport", "image", "rects", "glyphs")
@@ -169,22 +169,22 @@ CASES = {
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
-# A library of manifests only, for the recipe cases: each runs as the view at its path,
-# from the library's folder.
+# Recipes of manifests only, for the recipe cases: each runs as the view at its path from
+# the recipes' folder, a part in the library or an app beside it.
 LIBRARY = {
-    "parts/loop": '[node "loop"]\n\n[node "loop.again"]\nrecipe = loop\n',
-    "parts/part": '[node "part"]\n',
-    "apps/missing": '[node "missing"]\n\n[node "missing.x"]\nrecipe = nothing\n',
-    "apps/param": '[node "param"]\n\n[node "param.x"]\nrecipe = part\nparam = nothing.amount=1\n',
-    "apps/port": ('[node "port"]\n\n[node "port.x"]\nrecipe = part\n\n'
-                  + connection("values", "port.x.nothing.values", "port.x.values")),
+    "library/parts/loop": '[node "loop"]\n\n[node "loop.again"]\nrecipe = loop\n',
+    "library/parts/part": '[node "part"]\n',
+    "missing": '[node "missing"]\n\n[node "missing.x"]\nrecipe = nothing\n',
+    "param": '[node "param"]\n\n[node "param.x"]\nrecipe = part\nparam = nothing.amount=1\n',
+    "port": ('[node "port"]\n\n[node "port.x"]\nrecipe = part\n\n'
+             + connection("values", "port.x.nothing.values", "port.x.values")),
 }
 RECIPE_CASES = {
-    "apps/missing": ("missing/view.vlp:6: node missing.x: ",
-                     "/recipes/parts/nothing/view.vlp: cannot be read"),
-    "parts/loop": "the recipes it uses form a cycle through loop (RV06)",
-    "apps/param": "it sets param nothing.amount, but recipe part has no node part.nothing",
-    "apps/port": "connection values joins port.x.nothing, which is no node",
+    "missing": ("missing/view.vlp:6: node missing.x: ",
+                "/recipes/library/parts/nothing/view.vlp: cannot be read"),
+    "library/parts/loop": "the recipes it uses form a cycle through loop (RV06)",
+    "param": "it sets param nothing.amount, but recipe part has no node part.nothing",
+    "port": "connection values joins port.x.nothing, which is no node",
 }
 
 
@@ -248,14 +248,14 @@ def judge(name: str, code: int, output: str, cause: str | tuple[str, ...]) -> st
 
 
 def recipes(vulpen: str, folder: Path) -> list[str]:
-    """Why each recipe case failed: each runs the library recipe at its path as a view."""
-    library = folder / "library" / "recipes"
+    """Why each recipe case failed: each runs the recipe at its path as a view."""
+    recipes = folder / "library" / "recipes"
     for path, text in LIBRARY.items():
-        (library / path).mkdir(parents=True)
-        (library / path / "view.vlp").write_text(HEAD + "\n" + text, encoding="utf-8")
+        (recipes / path).mkdir(parents=True)
+        (recipes / path / "view.vlp").write_text(HEAD + "\n" + text, encoding="utf-8")
     failed = []
     for path, cause in RECIPE_CASES.items():
-        code, output = run(vulpen, [library / path / "view.vlp", "--frames", 1, "--fps", 0])
+        code, output = run(vulpen, [recipes / path / "view.vlp", "--frames", 1, "--fps", 0])
         if problem := judge(path, code, output, cause):
             failed.append(problem)
     return failed
@@ -353,7 +353,7 @@ def windowed(vulpen: str, folder: Path, name: str, parts: tuple[str, ...], nodes
                        ((PARTS / part / "view.vlp").read_text(encoding="utf-8")
                         for part in parts))
     view = view_in(folder, name, HEAD + nodes + sections + connections)
-    built = mirror(vulpen).parent / "library" / "parts"
+    built = mirror(vulpen).parent / "library" / "library" / "parts"
     links = [mirror(vulpen) / part for part in parts]
     try:
         for part, link in zip(parts, links):
@@ -461,11 +461,12 @@ def drops(vulpen: str, folder: Path) -> str | None:
     runs from a copy of the library, which also holds a recipe of one data file, so no
     build serves it; its node runs nothing and fails only on its param, which it never
     reads."""
-    root = Path(__file__).resolve().parents[2] / "recipes"
-    library = folder / "drops" / "recipes"
+    root = Path(__file__).resolve().parents[2] / "runtime" / "recipes"
+    recipes = folder / "drops" / "recipes"
+    library = recipes / "library"
     for part in ("command-line", "inspect", "library"):
-        shutil.copytree(root / "parts" / part, library / "parts" / part)
-    shutil.copytree(root / "apps" / "cli", library / "apps" / "cli")
+        shutil.copytree(root / "library" / "parts" / part, library / "parts" / part)
+    shutil.copytree(root / "cli", recipes / "cli")
     notes = library / "parts" / "notes"
     notes.mkdir()
     (notes / "view.vlp").write_text(
@@ -477,7 +478,7 @@ def drops(vulpen: str, folder: Path) -> str | None:
 
     def cli(*lines: str) -> str:
         typed = "\n".join([f"view load {project}", *lines, "view save"]) + "\n"
-        _, output = run(vulpen, [library / "apps" / "cli" / "view.vlp"], typed=typed)
+        _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed)
         return output
 
     steps = [

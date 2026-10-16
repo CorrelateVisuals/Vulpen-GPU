@@ -52,24 +52,25 @@ function(vulpen_view folder)
   vulpen_nodes(${view} ${folder} ${folder})
 endfunction()
 
-# The library (V02) builds as one view named library, which runtime/Manifest.cpp names the
-# same: each recipe of its kinds (RV06) is a node's folder, so an app runs from the
-# library. Its parts/shared/ is the code parts share, which no node is (RV09).
-function(vulpen_library folder)
-  foreach(kind parts components apps)
-    file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/${kind}/*)
-    foreach(recipe IN LISTS recipes)
-      if(IS_DIRECTORY ${recipe} AND NOT recipe STREQUAL "${folder}/parts/shared")
-        vulpen_node(library ${recipe} ${folder})
-        vulpen_nodes(library ${recipe} ${folder})
-      endif()
-    endforeach()
+# The recipes build as one view named library, which runtime/Manifest.cpp names the same:
+# each recipe of the library's kinds (RV06) is a node's folder, and so is each app beside
+# the library, so an app runs from the library's recipes as they are (V11). The library's
+# parts/shared/ is the code parts share, which no node is (RV09).
+function(vulpen_recipes folder)
+  file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/library/parts/*
+       ${folder}/library/components/* ${folder}/*)
+  foreach(recipe IN LISTS recipes)
+    if(IS_DIRECTORY ${recipe} AND NOT recipe STREQUAL "${folder}/library"
+       AND NOT recipe STREQUAL "${folder}/library/parts/shared")
+      vulpen_node(library ${recipe} ${folder})
+      vulpen_nodes(library ${recipe} ${folder})
+    endif()
   endforeach()
 endfunction()
 
 # The nodes inside a folder: each folder of it, and the nodes inside those. A folder with
 # a view.vlp of its own is a view the first hosts (V03), and builds as a view.
-# root: the view's folder, or the library's, where contracts/ is (RV05).
+# root: the view's folder, where contracts/ is (RV05), or the recipes' folder.
 function(vulpen_nodes view folder root)
   file(GLOB entries LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/*)
   foreach(entry IN LISTS entries)
@@ -92,11 +93,11 @@ function(vulpen_node view folder root)
   file(RELATIVE_PATH relative ${root} ${folder})
   string(MAKE_C_IDENTIFIER "${view}_${relative}" target)
   set(out ${CMAKE_BINARY_DIR}/views/${view}/${relative})
-  # Where contracts/ and shared/ resolve from: the top of the view, and in the library
-  # shared/ from parts/, beside the parts that include it (RV05, RV09).
+  # Where contracts/ and shared/ resolve from: the top of the view, or of the library, which
+  # keeps shared/ in parts/, beside the parts that include it (RV05, RV09).
   set(includes ${PROJECT_SOURCE_DIR}/src ${root})
   if(view STREQUAL "library")
-    list(APPEND includes ${root}/parts)
+    set(includes ${PROJECT_SOURCE_DIR}/src ${root}/library ${root}/library/parts)
   endif()
   list(TRANSFORM includes PREPEND -I OUTPUT_VARIABLE include_flags)
 

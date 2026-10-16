@@ -95,9 +95,10 @@ add_custom_target(statistics ALL
   COMMAND_EXPAND_LISTS VERBATIM)
 add_dependencies(statistics vulpen)
 
-# Every folder under src/examples/ with a view.vlp is a view the build compiles.
+# Every folder under src/runtime/examples/ with a view.vlp is a view the build compiles.
 include(src/runtime/cmake/nodes.cmake)
-file(GLOB examples LIST_DIRECTORIES true CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/examples/*)
+file(GLOB examples LIST_DIRECTORIES true CONFIGURE_DEPENDS
+     ${PROJECT_SOURCE_DIR}/src/runtime/examples/*)
 foreach(example IN LISTS examples)
   if(EXISTS ${example}/view.vlp)
     vulpen_view(${example})
@@ -108,7 +109,7 @@ endforeach()
 if(VULPEN_LIVE)
   vulpen_view(${PROJECT_SOURCE_DIR}/src/tools/tests/mistakes)
 endif()
-vulpen_library(${PROJECT_SOURCE_DIR}/src/recipes)
+vulpen_recipes(${PROJECT_SOURCE_DIR}/src/runtime/recipes)
 vulpen_link_modules(${generated}/linked-modules.h)
 
 include(src/tools/tests/tests.cmake)

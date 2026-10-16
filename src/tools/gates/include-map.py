@@ -5,12 +5,12 @@ The map is the one page a person reads to steer the engine's structure: a new en
 file or include edge lands only once someone writes it there, and the graph stays
 acyclic, so code never includes from code that builds on it.
 
-Node code, any file of the library (src/recipes/) or of a view, under a folder that
-holds a view.vlp, is not engine and has no row: a new node's file builds with no edit to
-the map. Each of its includes must be a file in its own folder, a contract from the
-contracts/ folder at the top of the library or of its view, shared code from the shared/
-folder in the library's parts/ or at the top of its view, or what the map's node table
-lists. Engine code never includes node code.
+Node code, any file of the library (src/runtime/recipes/library/) or of a view, under a
+folder that holds a view.vlp, is not engine and has no row: a new node's file builds
+with no edit to the map. Each of its includes must be a file in its own folder, a
+contract from the contracts/ folder at the top of the library or of its view, shared
+code from the shared/ folder in the library's parts/ or at the top of its view, or what
+the map's node table lists. Engine code never includes node code.
 
 Usage: python3 src/tools/gates/include-map.py
 """
@@ -26,7 +26,7 @@ VENDORED = SOURCE / "external-libraries"  # not our code, so not our structure
 SUFFIXES = {".h", ".hpp", ".cpp", ".glsl", ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]', re.MULTILINE)
 CODE_SPAN = re.compile(r"`([^`]+)`")
-LIBRARY = SOURCE / "recipes"  # every recipe, and the contracts and code they share
+LIBRARY = SOURCE / "runtime" / "recipes" / "library"  # the recipes, and what they share
 MANIFEST = "view.vlp"  # a folder holding one is a view's
 # The only files more than one node includes, at the top of the library or of a view, but
 # the library keeps shared/ in parts/ (RV05, RV09); a node includes their GLSL or C++

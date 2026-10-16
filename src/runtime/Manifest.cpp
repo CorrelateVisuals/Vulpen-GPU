@@ -24,9 +24,12 @@ namespace {
 
 constexpr std::uint32_t manifest_version = 1;
 constexpr std::string_view blanks = " \t\r";
-// The library's folders by the kind of recipe each holds (RV06), and the view it builds
-// as, which src/runtime/cmake/nodes.cmake names the same.
-constexpr std::array<std::string_view, 3> recipe_kinds{"parts", "components", "apps"};
+// The recipes' folder holds the library, whose folders hold its recipes by kind (RV06),
+// and beside it the apps, which use those recipes as they are (V11). All of it builds as
+// one view, which src/runtime/cmake/nodes.cmake names the same.
+constexpr std::string_view recipes_folder = "recipes";
+constexpr std::string_view library_folder = "library";
+constexpr std::array<std::string_view, 2> recipe_kinds{"parts", "components"};
 constexpr std::string_view library_view = "library";
 constexpr std::string_view manifest_file = "view.vlp";
 // The folders at a view's top that hold the contracts and the code its nodes share (RV05,
@@ -41,13 +44,19 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
-// A recipe of the library run as a view is in <library>/<kind>/<name>/view.vlp.
+// A recipe of the library run as a view is in <recipes>/library/<kind>/<name>/view.vlp,
+// and an app in <recipes>/<name>/view.vlp, beside the library; both build from <recipes>.
 std::optional<std::filesystem::path> library_of(const std::filesystem::path &file) {
-  const std::filesystem::path kind = file.parent_path().parent_path();
-  if (kind.parent_path().filename() != "recipes" ||
-      std::ranges::find(recipe_kinds, kind.filename().string()) == recipe_kinds.end())
+  const std::filesystem::path above = file.parent_path().parent_path();
+  if (above.filename() == recipes_folder &&
+      std::filesystem::is_directory(above / library_folder))
+    return above;
+  const std::filesystem::path library = above.parent_path();
+  if (library.filename() != library_folder ||
+      library.parent_path().filename() != recipes_folder ||
+      std::ranges::find(recipe_kinds, above.filename().string()) == recipe_kinds.end())
     return std::nullopt;
-  return kind.parent_path();
+  return library.parent_path();
 }
 
 // The build tree mirrors a view by this name: its folder's, or the library's.
@@ -56,8 +65,8 @@ std::string name_of(const std::filesystem::path &file) {
                           : file.parent_path().filename().string();
 }
 
-// Where a manifest's node names start (RV08): a view's folder, or in the library the
-// folder of the recipe's kind, so a recipe's own node is the recipe's folder.
+// Where a manifest's node names start (RV08): a view's folder, or among the recipes the
+// folder of the recipe's kind or the apps' folder, so a recipe's own node is its folder.
 std::filesystem::path base_of(const View &view) {
   const std::filesystem::path folder = view.file.parent_path();
   return library_of(view.file) ? folder.parent_path() : folder;
@@ -75,8 +84,9 @@ std::filesystem::path path_of(std::string_view name) {
 }
 
 // The library's recipe of that name, in the first kind that holds it.
-std::filesystem::path recipe_folder(const std::filesystem::path &library,
+std::filesystem::path recipe_folder(const std::filesystem::path &recipes,
                                     const std::string &recipe) {
+  const std::filesystem::path library = recipes / library_folder;
   for (const std::string_view kind : recipe_kinds)
     if (std::filesystem::is_directory(library / kind / recipe))
       return library / kind / recipe;

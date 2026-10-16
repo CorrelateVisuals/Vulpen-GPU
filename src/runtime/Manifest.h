@@ -31,7 +31,7 @@ public:
   // the library lacks, uses that form a cycle (RV06), a node inside no node.
   static View flatten(const View &view);
   // The folder a view's files are in, which the live scan watches: the view's own, or
-  // the whole library for a recipe of the library run as a view.
+  // every recipe's, the library's and the apps', for a recipe or an app run as a view.
   static std::filesystem::path root(const View &view);
 };
 

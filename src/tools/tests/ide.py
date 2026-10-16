@@ -55,10 +55,11 @@ from pathlib import Path
 
 from harness import display, problems, run
 
-IDE = Path(__file__).resolve().parents[2] / "recipes" / "apps" / "ide" / "view.vlp"
+RUNTIME = Path(__file__).resolve().parents[2] / "runtime"
+IDE = RUNTIME / "recipes" / "ide" / "view.vlp"
 # The ide's font is the library's part, so it keeps its zoom in the library's folder.
-ZOOMED = Path(__file__).resolve().parents[2] / "recipes/parts/font/.vulpen/font.ini"
-TRIANGLE = Path(__file__).resolve().parents[2] / "examples" / "triangle"
+ZOOMED = RUNTIME / "recipes/library/parts/font/.vulpen/font.ini"
+TRIANGLE = RUNTIME / "examples" / "triangle"
 PRESENT = [f"view load {TRIANGLE}"]  # presented as it comes
 PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode toggle
 # Back to edit mode, out of the terminal's focus, and out of the run.
@@ -70,7 +71,7 @@ COMPLETE = f"complete view load {TRIANGLE.parent}/tri"
 COMPLETED = f"{TRIANGLE}/"
 # Every scripted event reaches the first frame, so the presses are placed for its size.
 SIZE = re.compile(r"\{swp\} presents \d+ images of (\d+)x(\d+)")
-WAVE = Path(__file__).resolve().parents[2] / "examples" / "wave"
+WAVE = RUNTIME / "examples" / "wave"
 # The wave box at the graph's top left and probe's beside it, so both show whole in any
 # window from 1280 pixels wide, and the graph starts unmoved at zoom 1.
 ARRANGED = {"place wave": [0, 0], "place probe": [200, 0]}

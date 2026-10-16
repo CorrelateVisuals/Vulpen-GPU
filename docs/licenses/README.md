@@ -23,4 +23,4 @@ A font lives in the folder of the part that reads it, beside its license, so a d
 
 | Font | Release | File | License |
 |---|---|---|---|
-| [Roboto Mono](https://github.com/googlefonts/robotomono) | Version 3.001, from Google Fonts | `src/recipes/parts/font/RobotoMono-Regular.ttf` | SIL OFL 1.1, [OFL.txt](../../src/recipes/parts/font/OFL.txt) |
+| [Roboto Mono](https://github.com/googlefonts/robotomono) | Version 3.001, from Google Fonts | `src/runtime/recipes/library/parts/font/RobotoMono-Regular.ttf` | SIL OFL 1.1, [OFL.txt](../../src/runtime/recipes/library/parts/font/OFL.txt) |
