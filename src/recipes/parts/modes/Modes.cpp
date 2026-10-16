@@ -18,6 +18,15 @@ namespace {
 constexpr std::string_view presenting = "present";
 constexpr std::string_view escape = "escape";
 
+// The view present shows, as the view's connections are; empty for none.
+std::string_view shown_by(const VP::View &view) {
+  const auto made =
+      std::ranges::find(view.connections, presenting, &VP::Connection::name);
+  return made != view.connections.end() && made->from.view()
+             ? std::string_view(made->from.node)
+             : std::string_view();
+}
+
 // Chooses what reaches the window. In edit mode the dock gets the Rect its area gives;
 // in perform mode the view presented gets all of it and the dock none, so the dock draws
 // and takes nothing (no room, no work). The mode is its param, so a save keeps it and a
@@ -25,7 +34,10 @@ constexpr std::string_view escape = "escape";
 // its to param names, so the log keeps one connection a switch (V08); a view it hosts
 // draws nowhere else, since its view draws into the window itself, and keeps running.
 // Each view hosted is presented as it comes, and has a tab that presents it when pressed,
-// and a close mark that closes it, as view close does.
+// and a close mark that closes it, as view close does. Perform mode needs a view
+// presented, so it refuses while none is, and gives way to edit mode once none is; it
+// hides the log, so it gives way too once the log shows an error, as a line refused's,
+// which the terminal then shows.
 // It takes the keys no part in focus takes: escape leaves perform mode, and in edit mode
 // ends the run, once the part in focus let go of its selection and of the focus.
 class Modes final : public VP::Operator {
@@ -59,18 +71,24 @@ class Modes final : public VP::Operator {
     if (call.is(_present))
       present(call, call.arguments().front());
     else if (call.is(_edit_mode) || call.is(_perform_mode))
-      switch_mode(call.commands(), call.is(_perform_mode));
+      switch_mode(call, call.is(_perform_mode));
     else if (call.is(_toggle_mode))
-      switch_mode(call.commands(), !_perform);
+      switch_mode(call, !_perform);
   }
 
   // At once, from the connections as the lines so far left them, so the connection lands
-  // before the next frame and the view never shows anywhere but in the images.
+  // before the next frame and the view never shows anywhere but in the images. Only a view
+  // this view hosts itself: one a view it hosts hosts in turn shows through that view, as
+  // that view composes its window (V03).
   void present(VP::Call &call, std::string_view name) {
     const VP::View &own = *call.view("");
     if (std::ranges::find(own.children, name, &VP::Child::name) == own.children.end())
       throw std::runtime_error(
-          std::format("no view named {} is hosted; view list lists them", name));
+          call.view(name)
+              ? std::format("{} is hosted by a view this view hosts, and shows through it",
+                            name)
+              : std::format("no view named {} is hosted; : view list lists those here",
+                            name));
     const auto made =
         std::ranges::find(own.connections, presenting, &VP::Connection::name);
     if (made != own.connections.end()) {
@@ -82,8 +100,19 @@ class Modes final : public VP::Operator {
   }
 
   // Perform mode leaves the panels no room, so the part in focus lets it go, and takes
-  // it back in edit mode.
-  void switch_mode(VP::CommandPort &commands, bool perform) {
+  // it back in edit mode. With nothing presented it refuses, rather than give the window
+  // to nothing; a view hosted that this part has not presented yet it presents first, as
+  // the frame would, so a mode line just after a view load finds the view.
+  void switch_mode(VP::Call &call, bool perform) {
+    if (perform && shown_by(*call.view("")).empty()) {
+      const std::string next(unseen(*call.view("")));
+      if (next.empty())
+        throw std::runtime_error(
+            "nothing is presented to perform; present <name> shows a view this view "
+            "hosts");
+      present(call, next);
+    }
+    VP::CommandPort &commands = call.commands();
     if (perform && !_perform) {
       _returning = _typed->focus;
       commands.send(": focus");
@@ -94,41 +123,59 @@ class Modes final : public VP::Operator {
         std::format(": param set {} mode {}", _name, perform ? "perform" : "edit"));
   }
 
+  // Perform mode gives way to edit mode as escape asks, once nothing is presented nor
+  // about to be, as after view close of the view presented, and once the log printed an
+  // error since the frame before, which perform mode would hide.
   void cook(VP::Cook &frame) override {
     const VP::View &view = frame.view();
-    const auto made =
-        std::ranges::find(view.connections, presenting, &VP::Connection::name);
-    const bool connected = made != view.connections.end();
-    const std::string_view presented =
-        connected && made->from.view() ? std::string_view(made->from.node) : "";
-    present_new(frame, view, presented);
+    const std::string_view presented = shown_by(view);
+    const bool presenting = present_new(frame, view, presented);
     name_tabs(view, presented);
+    bool leave = false;
     for (const VP::Event &event : _typed->to(""))
-      if (event.kind == VP::Event::Kind::key && event.down && event.name == escape)
-        frame.commands().send(_perform ? "mode edit" : "quit");
+      if (event.kind == VP::Event::Kind::key && event.down && event.name == escape) {
+        leave = leave || _perform;
+        if (!_perform)
+          frame.commands().send("quit");
+      }
+    const auto erred = [](const VP::Logged &line) {
+      return line.level == VP::Level::error;
+    };
+    if (_perform && (leave || (presented.empty() && !presenting) ||
+                     std::ranges::any_of(frame.commands().log(), erred)))
+      frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;
     *_shown = _perform ? *_area : VP_VIEW::Rect{};
   }
 
+  // The newest view hosted that this part has not seen yet; empty for none.
+  std::string_view unseen(const VP::View &view) const {
+    std::string_view newest;
+    for (const VP::Child &child : view.children)
+      if (std::ranges::find(_seen, child.name) == _seen.end())
+        newest = child.name;
+    return newest;
+  }
+
   // The newest view hosted since the frame before. At the first frame, which a swap of
   // this part starts again, only when none is presented, so a swap changes nothing shown.
-  void present_new(VP::Cook &frame, const VP::View &view, std::string_view presented) {
+  // Whether it presented one.
+  bool present_new(VP::Cook &frame, const VP::View &view, std::string_view presented) {
     const auto seen = [&](const VP::Child &child) {
       return std::ranges::find(_seen, child.name) != _seen.end();
     };
     if (_started && std::ranges::all_of(view.children, seen) &&
         _seen.size() == view.children.size())
-      return;
-    std::string_view newest;
-    for (const VP::Child &child : view.children)
-      if (!seen(child))
-        newest = child.name;
-    if (!newest.empty() && (_started || presented.empty()))
+      return false;
+    const std::string_view newest = unseen(view);
+    const bool presenting = !newest.empty() && (_started || presented.empty());
+    if (presenting)
       frame.commands().send(std::format("present {}", newest));
     _started = true;
     _seen.clear();
     for (const VP::Child &child : view.children)
       _seen.push_back(child.name);
+    return presenting;
   }
 
   // Only when the views hosted or the one presented changed, so a frame allocates

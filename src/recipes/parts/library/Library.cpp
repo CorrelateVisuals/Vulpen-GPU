@@ -724,11 +724,16 @@ class Library final : public VP::Operator {
     return lines;
   }
 
-  // A view is named for its folder, which the build tree mirrors.
+  // A view is named for its folder, which the build tree mirrors, and no two hosted views
+  // share a name, so one hosted already is named, as its tab names it.
   static void host(VP::Call &call, bool fresh) {
     std::filesystem::path folder(call.arguments().front());
     if (folder.filename().empty())
       folder = folder.parent_path();
+    const std::string name = folder.filename().string();
+    if (const VP::View *const hosted = call.view(name))
+      throw std::runtime_error(std::format(
+          "a view named {} is hosted already, from {}", name, hosted->file.string()));
     const bool exists = holds(call.files(), folder, manifest);
     if (fresh && exists)
       throw std::runtime_error(
@@ -736,7 +741,6 @@ class Library final : public VP::Operator {
     if (!fresh && !exists)
       throw std::runtime_error(std::format(
           "{} holds no {}; view new starts a view there", folder.string(), manifest));
-    const std::string name = folder.filename().string();
     call.commands().send(
         std::format(": view add {} {}", name, (folder / manifest).string()));
     if (fresh)
