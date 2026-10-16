@@ -1,10 +1,10 @@
-# The terminal component: command-line, rects and glyphs, with a list for completions and
-# hit to pick one with a press: the command port on screen, as the CLI is the command
-# port on stdout. Its host connects the Rect it fills to its command-line's area, a
-# palette to its rects and glyphs, and a font to its glyphs, its command-line and its
-# completions, so one theme and one atlas serve every panel, and the keys part's typed to
-# its command-line's, which takes them while it has the focus. Its command-line's tabs name
-# it, and the view its lines go to, for a panel's tab strip.
+# The terminal component: command-line, rects and glyphs: the command port on screen, as
+# the CLI is the command port on stdout. Its host connects the Rect it fills to its
+# command-line's area, a palette to its rects and glyphs, and a font to its glyphs and its
+# command-line, so one theme and one atlas serve every panel, and the keys part's typed to
+# its command-line's, which takes them while it has the focus. Tab prints what may come
+# among the rows it shows, as a shell does. Its command-line's tabs name it, and the view
+# its lines go to, for a panel's tab strip.
 [manifest]
 version = 1
 
@@ -21,19 +21,6 @@ recipe = rects
 [node "terminal.glyphs"]
 recipe = glyphs
 
-[node "terminal.completions"]
-recipe = list
-
-# After the text, so the completions show over it.
-[node "terminal.completion-rects"]
-recipe = rects
-
-[node "terminal.completion-glyphs"]
-recipe = glyphs
-
-[node "terminal.hit"]
-recipe = hit
-
 [connection "rects"]
 from = terminal.command-line.rects
 to   = terminal.rects.rects
@@ -45,34 +32,3 @@ to   = terminal.glyphs.labels
 [connection "characters"]
 from = terminal.command-line.characters
 to   = terminal.glyphs.characters
-
-[connection "items"]
-from = terminal.command-line.items
-to   = terminal.completions.items
-to   = terminal.hit.items
-
-[connection "place"]
-from = terminal.command-line.place
-to   = terminal.completions.place
-
-[connection "completion-rects"]
-from = terminal.completions.rects
-to   = terminal.completion-rects.rects
-
-[connection "completion-labels"]
-from = terminal.completions.labels
-to   = terminal.completion-glyphs.labels
-
-[connection "completion-characters"]
-from = terminal.completions.characters
-to   = terminal.completion-glyphs.characters
-
-# Where list showed each completion, so a press on one types the rest of its word.
-[connection "shown"]
-from = terminal.completions.shown
-to   = terminal.hit.rects
-
-# A completion has no close mark, so none is pressed.
-[connection "marks"]
-from = terminal.completions.marks
-to   = terminal.hit.marks

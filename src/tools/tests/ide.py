@@ -114,7 +114,7 @@ def typed(width: int, height: int) -> list[str]:
         "input key down tab",  # a word not begun: every command's first word
         "input text no",
         "input key down tab",  # one candidate: node, finished
-        "input key down tab",  # several: listed
+        "input key down tab",  # several: printed among the rows
         "input key down home",
         "input key down delete",
         "input key down end",
@@ -132,14 +132,12 @@ def typed(width: int, height: int) -> list[str]:
         "input key up control",
         "input text node",
         "input key down tab",
-        "input key down tab",  # node's words listed, from the word's column
+        "input key down tab",  # node's words printed
         f"input pointer {width // 2} {seam}",
         "input button down left",
         f"input pointer {width // 2} {height * 5 // 12}",
         "input button up left",  # one param set, which rebuilds the app
-        # Over the rows the terminal shows, selecting them; Tab's completions show there
-        # only once complete answers, frames after a script's press, which lands in the
-        # first.
+        # Over the rows the terminal shows, Tab's lists among them, selecting them.
         f"input pointer 70 {height - 60}",
         "input button down left",
         f"input pointer 300 {height - 100}",

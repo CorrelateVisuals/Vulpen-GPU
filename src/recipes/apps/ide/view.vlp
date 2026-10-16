@@ -202,8 +202,6 @@ to   = ide.terminal-panel.rects.palette
 to   = ide.terminal-panel.glyphs.palette
 to   = ide.terminal.rects.palette
 to   = ide.terminal.glyphs.palette
-to   = ide.terminal.completion-rects.palette
-to   = ide.terminal.completion-glyphs.palette
 
 [connection "font"]
 from = ide.font.font
@@ -214,7 +212,6 @@ to   = ide.graph.glyphs.font
 to   = ide.perform-panel.glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
-to   = ide.terminal.completion-glyphs.font
 
 [connection "atlas"]
 from = ide.font.atlas
@@ -225,7 +222,6 @@ to   = ide.graph.glyphs.atlas
 to   = ide.perform-panel.glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
-to   = ide.terminal.completion-glyphs.atlas
 
 [connection "metrics"]
 from = ide.font.metrics
@@ -240,4 +236,3 @@ to   = ide.perform-panel.tabs.font
 to   = ide.terminal-panel.bar.font
 to   = ide.terminal-panel.tabs.font
 to   = ide.terminal.command-line.font
-to   = ide.terminal.completions.font

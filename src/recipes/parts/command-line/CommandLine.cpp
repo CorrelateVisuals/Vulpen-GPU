@@ -34,7 +34,8 @@
 namespace {
 
 constexpr std::string_view clear_screen = "\x1b[2J\x1b[H"; // ANSI: erase it, then home
-constexpr std::string_view help_gap = "  "; // between a usage and what it does
+// Between the columns the terminal prints: a usage and what it does, or candidates.
+constexpr std::string_view column_gap = "  ";
 constexpr std::size_t help_depth = 2; // words a group's head holds at most: input key
 constexpr std::string_view prompt_end = "> ";
 // What complete reads as a word not begun, since a line's words cannot be empty.
@@ -175,14 +176,6 @@ std::string_view shared_start(std::span<const std::string_view> words) {
   return shared;
 }
 
-// What a press on a completion sends: the rest of its word, typed as keys would type
-// it; nothing for a placeholder, which is never typed in, or a word typed whole.
-std::string rest_typed(std::string_view candidate, std::size_t typed) {
-  if (placeholder(candidate) || candidate.size() <= typed)
-    return {};
-  return std::format("input text {}", candidate.substr(typed));
-}
-
 // A log line's color: problems in their own, so they stand out as on the console; what
 // a node writes as text, as what lines answer; and the engine's own muted, so the lines
 // typed, their answers and the nodes' lines stand out from it.
@@ -260,8 +253,6 @@ class CommandLine final : public VP::Operator {
     _font = &node.input<VP_VIEW::Font>("font");
     _typed = &node.input<VP_VIEW::Typed>("typed");
     _name = node.name();
-    _items = &node.output<VP_VIEW::Items>("items");
-    _place = &node.output<VP_VIEW::Rect>("place");
     _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
     _labels = node.upload<VP_VIEW::Label>("labels", label_room);
     _characters = node.upload<VP_VIEW::Character>("characters", character_room);
@@ -489,13 +480,11 @@ class CommandLine final : public VP::Operator {
   }
 
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one
-  // sent before, completes the word at the caret, or with control copies or pastes; any
-  // other closes the completions, and escape with none open lets go of the selection,
-  // and with none of the focus.
+  // sent before, completes the word at the caret, or with control copies or pastes;
+  // escape lets go of the selection, and with none of the focus.
   void edit(VP::Cook &frame, const VP::Event &event) {
     if (event.kind == VP::Event::Kind::text) {
       type(event.name);
-      _items->clear();
       return;
     }
     if (event.kind == VP::Event::Kind::key && event.name == "control")
@@ -505,11 +494,10 @@ class CommandLine final : public VP::Operator {
     const std::string_view key = event.name;
     if (key == "tab")
       return complete_word(frame);
-    if (key == "escape" && _items->empty() && _anchor == _end)
+    if (key == "escape" && _anchor == _end)
       frame.commands().send("focus"); // the next escape reaches what takes the rest
-    else if (key == "escape" && _items->empty())
+    else if (key == "escape")
       _anchor = _end;
-    _items->clear();
     if (_control && key == "c" && _anchor != _end)
       frame.input().copy(selected());
     else if (_control && key == "v")
@@ -575,17 +563,15 @@ class CommandLine final : public VP::Operator {
   }
 
   // As a shell does: the word at the caret takes what every candidate shares, a word
-  // only one candidate fits is finished, and several show in the list until the next
-  // key, where a press on one types the rest of it. A placeholder, as <name>, shows what
-  // may come but is never typed in. A folder is finished with no blank, so Tab again
-  // lists what it holds, and a path's candidates show from its last /, under the name
-  // they complete.
+  // only one candidate fits is finished, and several are listed. A placeholder, as
+  // <name>, shows what may come but is never typed in. A folder is finished with no
+  // blank, so Tab again lists what it holds.
   void complete_word(VP::Cook &frame) {
     const std::string_view before = std::string_view(_line).substr(0, _caret);
-    _word = before.find_last_of(' ') + 1; // 0 when there is none
-    const std::string_view word = before.substr(_word);
+    const std::size_t start = before.find_last_of(' ') + 1; // 0 when there is none
+    const std::string_view word = before.substr(start);
     const std::string answer = frame.commands().send(address(std::format(
-        "complete {}{}", before.substr(0, _word), word.empty() ? no_word : word)));
+        "complete {}{}", before.substr(0, start), word.empty() ? no_word : word)));
     const std::vector<std::string_view> candidates = lines_of(answer);
     std::vector<std::string_view> typeable;
     std::ranges::copy_if(
@@ -602,14 +588,39 @@ class CommandLine final : public VP::Operator {
     if (candidates.size() == 1 && typeable.size() == 1) {
       if (!folder)
         _line.insert(_caret++, 1, ' ');
-      return _items->clear();
+      return;
     }
-    _word += name;
-    _items->clear();
+    if (!candidates.empty())
+      list(candidates, name);
+  }
+
+  // As a shell lists them, under the line as typed, which shows the newest rows: in
+  // columns down, then across, each as wide as the widest and a gap, as many as the rows
+  // hold. A path's show from where its folder ends, a placeholder whole.
+  void list(std::span<const std::string_view> candidates, std::size_t folder) {
+    const auto shown = [&](std::string_view candidate) {
+      return placeholder(candidate) ? candidate : candidate.substr(folder);
+    };
+    std::size_t widest = 0;
     for (const std::string_view candidate : candidates)
-      _items->push_back(
-          {.label = std::string(placeholder(candidate) ? candidate : candidate.substr(name)),
-           .command = rest_typed(candidate, typed)});
+      widest = std::max(widest, shown(candidate).size());
+    const std::size_t width = widest + column_gap.size();
+    const auto room = static_cast<std::size_t>(std::max(grid().columns, 0));
+    const std::size_t across =
+        std::max<std::size_t>(1, (room + column_gap.size()) / width);
+    const std::size_t down = (candidates.size() + across - 1) / across;
+    _scroll.move(static_cast<float>(_scrollback.size()));
+    show(prompt() + _line, VP_VIEW::role("accent"));
+    for (std::size_t row = 0; row < down; ++row) {
+      std::string text;
+      for (std::size_t at = row; at < candidates.size(); at += down) {
+        const std::string_view name = shown(candidates[at]);
+        text.append(name);
+        if (at + down < candidates.size())
+          text.append(width - name.size(), ' ');
+      }
+      show(text, VP_VIEW::role("text"));
+    }
   }
 
   // Each line of the text a row, the oldest dropped past the scrollback's room, which may
@@ -659,7 +670,6 @@ class CommandLine final : public VP::Operator {
     const VP_VIEW::Rect &area = *_area;
     const glm::ivec2 cell(_font->cell);
     const auto [columns, left, line, rule, bottom, above, room] = grid();
-    *_place = {};
     if (!room) {
       frame.write(_rects, 0);
       frame.write(_labels, 0);
@@ -677,7 +687,6 @@ class CommandLine final : public VP::Operator {
                 .role = VP_VIEW::role("border")};
     std::uint32_t count = 2;
     Labels text{frame.write(_labels), frame.write(_characters)};
-    const auto rows = static_cast<std::size_t>(above / cell.y);
     const std::size_t shown = rows_shown(grid());
     const glm::uvec2 row_extent(static_cast<std::uint32_t>(columns * cell.x), cell.y);
     const std::size_t first = _columns.first();
@@ -706,7 +715,6 @@ class CommandLine final : public VP::Operator {
     frame.write(_rects, count);
     frame.write(_labels, text.label_count);
     frame.write(_characters, text.character_count);
-    place_list(left, columns - prompt_columns, cell, rule, rows);
   }
 
   // Behind what is selected of a row shown, cut at the columns the area shows.
@@ -753,31 +761,6 @@ class CommandLine final : public VP::Operator {
     return {.offset = {typed + caret * cell.x, line},
             .extent = {caret_width, static_cast<std::uint32_t>(cell.y)},
             .role = VP_VIEW::role("accent")};
-  }
-
-  // The completions, as many as fit, just above the rule, from the word they complete.
-  void place_list(std::int32_t left,
-                  std::int32_t room,
-                  glm::ivec2 cell,
-                  std::int32_t rule,
-                  std::size_t rows) {
-    if (_items->empty())
-      return;
-    std::size_t longest = 0;
-    for (const VP_VIEW::Item &item : *_items)
-      longest = std::max(longest, item.label.size());
-    const auto count = static_cast<std::int32_t>(std::min(_items->size(), rows));
-    const auto wide = static_cast<std::int32_t>(
-                          std::min(longest, static_cast<std::size_t>(room))) *
-                      cell.x;
-    const std::int32_t word = static_cast<std::int32_t>(_word) -
-                              static_cast<std::int32_t>(_first);
-    const std::int32_t typed = left + static_cast<std::int32_t>(prompt().size()) * cell.x;
-    const std::int32_t x =
-        std::clamp(typed + word * cell.x, typed, typed + (room * cell.x) - wide);
-    *_place = {.offset = {x, rule - margin - count * cell.y},
-               .extent = glm::uvec2(static_cast<std::uint32_t>(wide),
-                                    static_cast<std::uint32_t>(count * cell.y))};
   }
 
   void command(VP::Call &call) override {
@@ -842,7 +825,7 @@ class CommandLine final : public VP::Operator {
       call.reply(help.empty() ? words
                               : std::string(words)
                                     .append(width - words.size(), ' ')
-                                    .append(help_gap)
+                                    .append(column_gap)
                                     .append(help));
   }
 
@@ -901,10 +884,8 @@ class CommandLine final : public VP::Operator {
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;
-  std::string _name;                // as the focus names it
-  glm::vec2 _pointer{};             // as the events so far left it
-  VP_VIEW::Items *_items = nullptr; // the completions shown, empty for none
-  VP_VIEW::Rect *_place = nullptr;  // where they show
+  std::string _name;    // as the focus names it
+  glm::vec2 _pointer{}; // as the events so far left it
   std::string _title;
   VP_VIEW::Items *_tabs = nullptr; // the one a panel shows for it
   VP::Upload<VP_VIEW::Rect> _rects;
@@ -923,7 +904,6 @@ class CommandLine final : public VP::Operator {
   std::string _line;
   std::size_t _caret = 0;
   std::size_t _first = 0; // the first character of the line shown
-  std::size_t _word = 0;  // where the word the completions complete starts
   std::vector<std::string> _history;
   std::size_t _recalled = 0; // the line recalled; past the history for a new one
 };
