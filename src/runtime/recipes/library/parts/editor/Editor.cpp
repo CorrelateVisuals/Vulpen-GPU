@@ -41,18 +41,32 @@ std::optional<std::pair<std::string, std::string>> running(VP::Call &call,
                    std::string(target.substr(colon + 1))};
 }
 
-// Where the view holds a file of that name, in a node's folder (RV08), as the prompt
-// names a folder, from where vulpen started; empty for nowhere.
-std::string held(const VP::View &view, const std::string &name) {
-  for (const VP::Node &node : view.nodes)
-    if (std::ranges::find(node.files, name) != node.files.end()) {
+// The files of that name a view holds, in its nodes' folders (RV08), as it runs, each
+// recipe a node uses unfolded, so the ide's nodes hold their recipes' files; as the view
+// holds them, while its manifest cannot be read, as a new project's before its save. A
+// recipe two nodes use shows once.
+std::vector<std::filesystem::path> held(VP::Call &call, const std::string &name) {
+  VP::View view = call.view();
+  try {
+    view = call.files().manifest(view.file.string());
+  } catch (const std::runtime_error &) {
+    for (VP::Node &node : view.nodes) {
       std::string folder = node.name;
       std::ranges::replace(folder, '.', '/');
-      return (view.file.parent_path() / folder / name)
-          .lexically_proximate(std::filesystem::current_path())
-          .generic_string();
+      node.folder = view.file.parent_path() / folder;
     }
-  return {};
+  }
+  std::vector<std::filesystem::path> found;
+  for (const VP::Node &node : view.nodes)
+    if (std::ranges::find(node.files, name) != node.files.end() &&
+        std::ranges::find(found, node.folder / name) == found.end())
+      found.push_back(node.folder / name);
+  return found;
+}
+
+// A path as the prompt names a folder, from where vulpen started.
+std::string shown(const std::filesystem::path &path) {
+  return path.lexically_proximate(std::filesystem::current_path()).generic_string();
 }
 
 // The person's editor: open hands a file or a folder to the program its program param
@@ -69,41 +83,71 @@ class Editor final : public VP::Operator {
     _window = node.sets("window") ? node.param<std::string>("window") : std::string();
     _folders = node.sets("folders") ? node.param<std::string>("folders") : std::string();
     _name = node.name();
-    _open = node.command("open [<file>]",
+    _open = node.command("open [<path>]",
                          "opens a file in the editor in a window while one runs, and a "
                          "folder in the graph there, else either in the person's editor; "
                          "with none, the view's manifest there, or its folder here");
   }
 
-  // A path that names nothing is refused, whichever editor takes it, so a misspelt one
-  // fails loud rather than opening as a new, empty file (A02).
+  // A word without a / names a file the view holds, as a project's name does for view
+  // load, which two of that name make a mistake; a path names any. A path that names
+  // nothing is refused, whichever editor takes it, so a misspelt one fails loud rather
+  // than opening as a new, empty file (A02).
   void command(VP::Call &call) override {
-    if (!call.arguments().empty() && !named(call.files(), call.arguments()[0])) {
-      const std::filesystem::path path(call.arguments()[0]);
-      const std::string there = held(call.view(), path.filename().string());
+    const std::string path = path_of(call);
+    const auto folders = running(call, _folders);
+    const auto window = running(call, _window);
+    if (folders && !path.empty() && folder(call.files(), path))
+      call.commands().send(std::format(
+          "{}: param set {} folder {}", folders->first, folders->second, path));
+    else if (window)
+      in_window(call, window->first, window->second, path);
+    else
+      in_program(call, path);
+  }
+
+  // The file or folder open names, or none.
+  std::string path_of(VP::Call &call) const {
+    if (call.arguments().empty())
+      return {};
+    const std::string word(call.arguments()[0]);
+    if (word.find('/') == std::string::npos) {
+      const std::vector<std::filesystem::path> found = held(call, word);
+      if (found.size() == 1)
+        return found.front().string();
+      std::string files;
+      for (const std::filesystem::path &file : found)
+        files.append(files.empty() ? "" : ", ").append(shown(file));
+      throw std::runtime_error(
+          found.empty()
+              ? std::format("the view holds no file named {}; a path names any, as ./{} "
+                            "from where vulpen started",
+                            word,
+                            word)
+              : std::format("the view holds {} files named {}: {}; a path names one",
+                            found.size(),
+                            word,
+                            files));
+    }
+    if (!named(call.files(), word)) {
+      const std::filesystem::path path(word);
+      const std::vector<std::filesystem::path> there =
+          held(call, path.filename().string());
       throw std::runtime_error(std::format(
           "{} names nothing, as a typed path counts from where vulpen started{}",
           path.string(),
-          there.empty() ? "" : std::format("; the view holds {}", there)));
+          there.empty() ? "" : std::format("; the view holds {}", shown(there.front()))));
     }
-    const auto folders = running(call, _folders);
-    const auto window = running(call, _window);
-    if (folders && !call.arguments().empty() && folder(call.files(), call.arguments()[0]))
-      call.commands().send(std::format("{}: param set {} folder {}",
-                                       folders->first,
-                                       folders->second,
-                                       call.arguments()[0]));
-    else if (window)
-      in_window(call, window->first, window->second);
-    else
-      in_program(call);
+    return word;
   }
 
   // The editor in the window opens files, so a folder, or a file it cannot read, is
   // refused here, naming the program's way, before the editor's param names it.
-  void in_window(VP::Call &call, std::string_view view, std::string_view editor) const {
-    const std::string file = call.arguments().empty() ? call.view().file.string()
-                                                      : std::string(call.arguments()[0]);
+  void in_window(VP::Call &call,
+                 std::string_view view,
+                 std::string_view editor,
+                 const std::string &path) const {
+    const std::string file = path.empty() ? call.view().file.string() : path;
     try {
       call.files().read(file);
     } catch (const std::runtime_error &failure) {
@@ -117,10 +161,9 @@ class Editor final : public VP::Operator {
     call.commands().send(std::format("{}: param set {} file {}", view, editor, file));
   }
 
-  void in_program(VP::Call &call) const {
+  void in_program(VP::Call &call, const std::string &path) const {
     const std::vector<std::string> arguments{
-        call.arguments().empty() ? call.view().file.parent_path().string()
-                                 : std::string(call.arguments()[0])};
+        path.empty() ? call.view().file.parent_path().string() : path};
     try {
       call.processes().start(_program, arguments);
     } catch (const std::runtime_error &failure) {

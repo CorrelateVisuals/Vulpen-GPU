@@ -31,6 +31,7 @@ constexpr std::array kinds{
     std::string_view{"value"},      // any word: nothing to complete
     std::string_view{"file"},       // the folders and files where the path resolves
     std::string_view{"view"},       // a project by name, or a folder by path, as a file
+    std::string_view{"path"},       // a file the view holds by name, or any by path
     std::string_view{"recipe"},     // the recipes of the library
 };
 // After the last placeholder: one argument or more.
@@ -215,7 +216,8 @@ struct Commands::Spec {
   bool names_file(std::size_t argument, std::string_view word) const {
     const std::string_view kind =
         placeholders[std::min(argument, placeholders.size() - 1)];
-    return kind == "file" || (kind == "view" && word.find('/') != std::string_view::npos);
+    return kind == "file" ||
+           ((kind == "view" || kind == "path") && word.find('/') != std::string_view::npos);
   }
 };
 

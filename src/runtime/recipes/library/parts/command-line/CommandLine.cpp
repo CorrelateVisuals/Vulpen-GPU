@@ -122,9 +122,32 @@ std::vector<std::string> paths(VP::FilePort &files, std::string_view begun) {
   return paths;
 }
 
+// The names of the files the view holds, as a word without a / names one: its nodes',
+// as it runs, each recipe unfolded, or as the view holds them while its manifest cannot
+// be read. A name with a blank is left out, as a path's is.
+std::vector<std::string> held(VP::Call &call) {
+  const VP::View *view = &call.view();
+  VP::View unfolded;
+  try {
+    unfolded = call.files().manifest(view->file.string());
+    view = &unfolded;
+  } catch (const std::runtime_error &) {
+    // A manifest not saved yet, or one with a mistake, which open names: the files as
+    // the view holds them.
+  }
+  std::vector<std::string> names;
+  for (const VP::Node &node : view->nodes)
+    for (const std::string &file : node.files)
+      if (file.find(' ') == std::string::npos)
+        names.push_back(file);
+  std::ranges::sort(names);
+  names.erase(std::ranges::unique(names).begin(), names.end());
+  return names;
+}
+
 // What a placeholder stands for: the view's nodes or connections, the params of the
-// node named just before a key, or the paths a word begun may become. Any other answers
-// as itself.
+// node named just before a key, the paths a word begun may become, or, for a word
+// without a /, the files the view holds. Any other answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -143,8 +166,11 @@ std::vector<std::string> names(std::string_view word,
     if (node != nodes.end())
       for (const VP::Param &param : node->params)
         names.push_back(param.key);
-  } else if (kind == "<file>" || kind == "<view>") {
+  } else if (kind == "<file>" || kind == "<view>" ||
+             (kind == "<path>" && begun.find('/') != std::string_view::npos)) {
     names = paths(call.files(), begun);
+  } else if (kind == "<path>") {
+    names = held(call);
   } else {
     names.emplace_back(word);
   }
