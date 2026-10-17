@@ -1,9 +1,12 @@
 # The graph-editor component: the relations part, which finds what links the files the
-# graph shows, the graph part, which draws its ground, and over it curves, rects and
-# glyphs: its curves first, then its boxes over them, then their names.
-# The host connects a Rect to graph.area, the font's metrics to graph.font and the keys
-# part's typed to graph.typed, the theme to the graph and the three drawing parts, and the
-# font and its atlas to glyphs; a panel shows graph.tabs.
+# graph shows; a bar, which keeps a row along the bottom of the Rect its host gives for a
+# button a layer of curves, and the rest for the graph part, which draws its ground; over
+# it curves, rects and glyphs: its curves first, then its boxes over them, then their
+# names; and the buttons, as a panel shows its tabs, a list with rects and glyphs of its
+# own and a hit, whose press sends the line turning a layer on or off.
+# The host connects a Rect to bar.area, the font's metrics to bar.font, graph.font and
+# buttons.font, the keys part's typed to graph.typed, the theme to the graph and the five
+# drawing parts, and the font and its atlas to the two glyphs; a panel shows graph.tabs.
 [manifest]
 version = 1
 
@@ -11,6 +14,10 @@ version = 1
 
 [node "graph-editor.relations"]
 recipe = relations
+
+[node "graph-editor.bar"]
+recipe = bar
+param  = edge=bottom
 
 [node "graph-editor.graph"]
 recipe = graph
@@ -24,10 +31,27 @@ recipe = rects
 [node "graph-editor.glyphs"]
 recipe = glyphs
 
+[node "graph-editor.buttons"]
+recipe = list
+param  = axis=x
+
+[node "graph-editor.button-rects"]
+recipe = rects
+
+[node "graph-editor.button-glyphs"]
+recipe = glyphs
+
+[node "graph-editor.hit"]
+recipe = hit
+
 # What links the files shown, and the folder shown in place of the view.
 [connection "relations"]
 from = graph-editor.relations.relations
 to   = graph-editor.graph.relations
+
+[connection "area"]
+from = graph-editor.bar.rest
+to   = graph-editor.graph.area
 
 [connection "curves"]
 from = graph-editor.graph.curves
@@ -50,3 +74,34 @@ to   = graph-editor.glyphs.labels
 [connection "characters"]
 from = graph-editor.graph.characters
 to   = graph-editor.glyphs.characters
+
+# A button a layer, lit while it shows.
+[connection "layers"]
+from = graph-editor.graph.layers
+to   = graph-editor.buttons.items
+to   = graph-editor.hit.items
+
+[connection "strip"]
+from = graph-editor.bar.strip
+to   = graph-editor.buttons.place
+
+[connection "button-rects"]
+from = graph-editor.buttons.rects
+to   = graph-editor.button-rects.rects
+
+[connection "button-labels"]
+from = graph-editor.buttons.labels
+to   = graph-editor.button-glyphs.labels
+
+[connection "button-characters"]
+from = graph-editor.buttons.characters
+to   = graph-editor.button-glyphs.characters
+
+# Where each button shows, so a press on one sends its line.
+[connection "shown"]
+from = graph-editor.buttons.shown
+to   = graph-editor.hit.rects
+
+[connection "marks"]
+from = graph-editor.buttons.marks
+to   = graph-editor.hit.marks

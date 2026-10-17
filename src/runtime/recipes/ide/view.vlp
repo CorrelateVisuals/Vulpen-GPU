@@ -135,7 +135,7 @@ to   = ide.graph-panel.bar.area
 
 [connection "graph-area"]
 from = ide.graph-panel.bar.rest
-to   = ide.graph.graph.area
+to   = ide.graph.bar.area
 
 [connection "graph-tabs"]
 from = ide.graph.graph.tabs
@@ -192,6 +192,8 @@ to   = ide.graph.graph.palette
 to   = ide.graph.curves.palette
 to   = ide.graph.rects.palette
 to   = ide.graph.glyphs.palette
+to   = ide.graph.button-rects.palette
+to   = ide.graph.button-glyphs.palette
 to   = ide.perform-panel.rects.palette
 to   = ide.perform-panel.glyphs.palette
 to   = ide.terminal-panel.rects.palette
@@ -205,6 +207,7 @@ to   = ide.editor-panel.glyphs.font
 to   = ide.editor.glyphs.font
 to   = ide.graph-panel.glyphs.font
 to   = ide.graph.glyphs.font
+to   = ide.graph.button-glyphs.font
 to   = ide.perform-panel.glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
@@ -215,6 +218,7 @@ to   = ide.editor-panel.glyphs.atlas
 to   = ide.editor.glyphs.atlas
 to   = ide.graph-panel.glyphs.atlas
 to   = ide.graph.glyphs.atlas
+to   = ide.graph.button-glyphs.atlas
 to   = ide.perform-panel.glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
@@ -226,7 +230,9 @@ to   = ide.editor-panel.tabs.font
 to   = ide.editor.text.font
 to   = ide.graph-panel.bar.font
 to   = ide.graph-panel.tabs.font
+to   = ide.graph.bar.font
 to   = ide.graph.graph.font
+to   = ide.graph.buttons.font
 to   = ide.perform-panel.bar.font
 to   = ide.perform-panel.tabs.font
 to   = ide.terminal-panel.bar.font

@@ -153,7 +153,12 @@ struct Building {
   std::array<std::size_t, 2> outside{no_box, no_box};
   std::vector<Ports> ports;
   std::filesystem::path base;
+  std::uint32_t layers = 0; // shown, a bit each, by VP_VIEW::Layer
 };
+
+bool shows(const Building &building, VP_VIEW::Layer layer) {
+  return (building.layers >> static_cast<std::size_t>(layer) & 1u) != 0;
+}
 
 // The box showing a node: its own, or that of the node holding it that a box shows; none
 // for a node outside the node whose inside shows.
@@ -207,7 +212,9 @@ std::pair<std::size_t, std::string> shown(const Boxes &boxes,
 // between two boxes, from where its writer shows to where the reader does. A connection
 // inside one box, or wholly outside, draws nothing at this level.
 void connect(Boxes &boxes, Building &building, const VP::View &flat) {
-  for (std::size_t wire = 0; wire < flat.connections.size(); ++wire) {
+  for (std::size_t wire = 0;
+       wire < flat.connections.size() && shows(building, VP_VIEW::Layer::flow);
+       ++wire) {
     const VP::Connection &connection = flat.connections[wire];
     const auto [writer, written] = shown(boxes, building, flat, connection.from);
     for (const VP::Endpoint &to : connection.to) {
@@ -259,6 +266,8 @@ void relate(Boxes &boxes,
             std::span<const VP_VIEW::Relation> relations,
             std::size_t wires) {
   for (const VP_VIEW::Relation &relation : relations) {
+    if (!shows(building, relation.layer))
+      continue;
     std::vector<std::size_t> froms = boxes_showing(building, relation.from);
     std::vector<std::size_t> tos = boxes_showing(building, relation.to);
     if (froms.empty() == tos.empty() && froms.empty())
@@ -396,17 +405,20 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
 // and relations reach in at its left and out at its right; with none, the boxes of the
 // nodes at the top and of the views the view hosts, as the view as edited names them. A
 // node of the view as edited is its own; one a recipe brings is not, nor the frame, nor
-// a folder or a file. The paths outside are named from base.
+// a folder or a file. The paths outside are named from base, and only the layers shown
+// draw.
 Boxes boxes_of(const VP::View &edited,
                const VP::View &flat,
                std::string_view scope,
                std::span<const VP_VIEW::Relation> relations,
                const std::filesystem::path &base,
-               bool folders) {
+               bool folders,
+               std::uint32_t layers) {
   Boxes boxes;
   Building building{.folders = folders,
                     .parents = parents_of(flat, folders ? '/' : '.'),
-                    .base = base};
+                    .base = base,
+                    .layers = layers};
   building.box_of_node.assign(flat.nodes.size(), no_box);
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     building.nodes_in.emplace(flat.nodes[at].folder.generic_string(), at);

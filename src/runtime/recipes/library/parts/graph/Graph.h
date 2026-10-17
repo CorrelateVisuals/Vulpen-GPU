@@ -13,6 +13,7 @@
 #include "shared/PanZoom.h"
 #include "Arranged.h"
 #include "Boxes.h"
+#include "Layers.h"
 #include "Layout.h"
 
 #include <cstddef>
@@ -143,6 +144,8 @@ private:
   VP::Upload<VP_VIEW::Character> _characters;
   VP::Upload<VP_VIEW::Curve> _curves;
   VP_VIEW::Items *_tabs = nullptr;
+  VP_VIEW::Items *_buttons = nullptr; // a layer each, along the graph's bottom edge
+  Shown _layers = every_layer;        // as its relations param names them
   std::string _shown; // the view the tab names; empty for the one vulpen started with
   // The boxes of the view shown, built again only when the views they were built from
   // change, which each edit replaces, and laid out again only then, as the font's cell
@@ -153,6 +156,7 @@ private:
   std::string _built_inside;
   std::string _built_folder;
   std::uint64_t _built_changes = 0;
+  Shown _built_layers = every_layer;
   Layout _layout;
   glm::uvec2 _laid_cell{};
   bool _laid = false;

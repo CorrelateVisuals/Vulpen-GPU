@@ -1,3 +1,6 @@
+// The graph part's operator. It runs past 800 lines (CPP12), as a class in the unnamed
+// namespace, so that two copies of the part never clash, keeps its methods to one file;
+// what needs none of its state lives in the headers beside it.
 #include "Graph.h"
 
 #include "runtime/View.h"
@@ -88,6 +91,10 @@ void Graph::bind(VP::Bind &node) {
   _view = node.view_name();
   _inside = node.sets("inside") ? node.param<std::string>("inside") : std::string();
   _relations = &node.input<VP_VIEW::Relations>("relations");
+  _layers = node.sets("relations") ? layers_of(node.param<std::string>("relations"))
+                                   : every_layer;
+  _buttons = &node.output<VP_VIEW::Items>("layers");
+  buttons(*_buttons, _layers, _view, _name);
   _select = node.command("select [<node>...]",
                          "selects nodes of the view the graph shows, or views it hosts, "
                          "in place of those selected; with none, none");
@@ -120,7 +127,8 @@ void Graph::cook(VP::Cook &frame) {
   const VP::View *const edited = folder ? &_relations->tree : frame.view(shown);
   const VP::View *const flat = folder ? &_relations->tree : frame.unfolded(shown);
   if (edited != _built_edited || flat != _built_flat || _inside != _built_inside ||
-      _relations->folder != _built_folder || _relations->changes != _built_changes)
+      _relations->folder != _built_folder || _relations->changes != _built_changes ||
+      _layers != _built_layers)
     build(edited, flat);
   const glm::uvec2 cell = _font->cell;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
@@ -257,6 +265,7 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
   _built_inside = _inside;
   _built_folder = folder;
   _built_changes = _relations->changes;
+  _built_layers = _layers;
   _boxes = {};
   if (edited && flat && (folder.empty() || !flat->nodes.empty())) {
     const bool inside = std::ranges::find(flat->nodes, _inside, &VP::Node::name) !=
@@ -267,7 +276,8 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
                       _relations->relations,
                       folder.empty() ? edited->file.parent_path()
                                      : std::filesystem::path(folder).parent_path(),
-                      !folder.empty());
+                      !folder.empty(),
+                      _layers);
   }
   name_tab();
   _laid = false;
