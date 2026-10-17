@@ -194,6 +194,7 @@ void Graph::cook(VP::Cook &frame) {
   if (room && std::exchange(_homing, false)) {
     home(cell);
     _home_zoom = _pan_zoom.zoom;
+    _at_home = _left.empty();
     if (!_left.empty())
       focus(std::exchange(_left, {}));
   }
@@ -369,13 +370,14 @@ void Graph::arrange(VP::Cook &frame, const std::filesystem::path &beside) {
   }
 }
 
-// A box pressed may be one the boxes no longer hold. A level shown anew starts at home. A
-// folder always shows its own inside, as the relations part reads a folder a level at a
-// time; the paths past it are named from the folder holding it, and a view's from its
-// folder.
+// A box pressed may be one the boxes no longer hold. A level shown anew starts at home,
+// and one still at home goes there again, as the relations arriving after its boxes may
+// widen it or order its columns anew. A folder always shows its own inside, as the
+// relations part reads a folder a level at a time; the paths past it are named from the
+// folder holding it, and a view's from its folder.
 void Graph::build(const VP::View *edited, const VP::View *flat) {
   const std::string &folder = _relations->folder;
-  if (_inside != _built_inside || folder != _built_folder)
+  if (_inside != _built_inside || folder != _built_folder || _at_home)
     _homing = true;
   _built_edited = edited;
   _built_flat = flat;
@@ -467,6 +469,7 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
       drag(event.at);
     } else if (_dragging) {
       _pan_zoom.pan += event.at - _pointer;
+      _at_home = false;
     }
     _pointer = event.at;
   } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
@@ -690,6 +693,7 @@ std::size_t Graph::row_under(std::size_t at) const {
 // half as near as home, or as far as it goes, a level up.
 void Graph::turn(VP::Cook &frame, glm::vec2 turn) {
   _pan_zoom.wheel(turn.y, _pointer - glm::vec2(_area->offset));
+  _at_home = false;
   if (turn.y < 0.0f && (_pan_zoom.zoom < _home_zoom * leave_share ||
                         _pan_zoom.zoom <= PanZoom::least)) {
     leave(frame);

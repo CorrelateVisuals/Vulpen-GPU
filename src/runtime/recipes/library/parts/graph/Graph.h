@@ -237,6 +237,8 @@ private:
   float _home_zoom = 1.0f; // as near as home is, past half of which zooming out goes up
   // Until the frame home is worked out in, which needs the boxes laid out in the area.
   bool _homing = false;
+  // Shown from home, which no drag on the ground and no wheel has left since.
+  bool _at_home = false;
   // The box a level up was left from, which the level shown next shows in focus: a node's
   // or a view's name, or a folder, as an absolute path; empty for none.
   std::string _left;
