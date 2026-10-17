@@ -116,10 +116,12 @@ std::size_t view_box(const Boxes &boxes, std::string_view name) {
 }
 
 // The ports of a box, in the order the connections name them: those it reads and those
-// it writes, each once.
+// it writes, each once; and by row, of what lies outside, the file or folder a relation
+// reaching in or out there names, which a second press on the row opens.
 struct Ports {
   std::vector<std::string> read;
   std::vector<std::string> written;
+  std::vector<std::filesystem::path> opens;
 };
 
 // A port named once, however many connections name it; where it is among the others.
@@ -129,6 +131,17 @@ std::size_t port_row(std::vector<std::string> &ports, std::string_view port) {
     return static_cast<std::size_t>(found - ports.begin());
   ports.emplace_back(port);
   return ports.size() - 1;
+}
+
+// A row of what lies outside naming a path a relation reaches, which opens it; what lies
+// outside at the left lists only what it writes, and at the right only what it reads,
+// so each row names one.
+std::size_t
+outside_row(Ports &ports, bool left, std::string_view name, std::string_view path) {
+  const std::size_t row = port_row(left ? ports.written : ports.read, name);
+  ports.opens.resize(std::max(ports.opens.size(), row + 1));
+  ports.opens[row] = path;
+  return row;
 }
 
 // The node its parent's name names, by the longest name of a node it is inside: the
@@ -298,13 +311,15 @@ void relate(Boxes &boxes,
       froms.push_back(outside_of(boxes, building, true));
       if (froms.back() == no_box)
         continue;
-      from_row = port_row(building.ports[froms.back()].written, named(relation.from));
+      from_row = outside_row(
+          building.ports[froms.back()], true, named(relation.from), relation.from);
     }
     if (tos.empty()) {
       tos.push_back(outside_of(boxes, building, false));
       if (tos.back() == no_box)
         continue;
-      to_row = port_row(building.ports[tos.back()].read, named(relation.to));
+      to_row =
+          outside_row(building.ports[tos.back()], false, named(relation.to), relation.to);
     }
     const auto layer = static_cast<std::size_t>(relation.layer);
     for (const std::size_t from : froms)
@@ -355,7 +370,8 @@ void list_rows(Boxes &boxes,
     boxes.rows.push_back(
         {.text = at < ports.read.size() ? ports.read[at] : std::string(),
          .written = at < ports.written.size() ? ports.written[at] : std::string(),
-         .role = VP_VIEW::role("muted")});
+         .role = VP_VIEW::role("muted"),
+         .opens = at < ports.opens.size() ? ports.opens[at] : std::filesystem::path()});
   const auto node = std::ranges::find(building.box_of_node, box);
   std::size_t contents = boxes.rows.size();
   if (node != building.box_of_node.end()) {

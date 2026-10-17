@@ -658,7 +658,8 @@ void Graph::release(VP::Cook &frame, bool room) {
 
 // A second press on a row that names a file opens it, as a line typed would: a node's
 // file, from its folder in the view or the library, the manifest of the recipe a node
-// uses, that of a view where it is hosted from, or a file's own box; a box's name and
+// uses, that of a view where it is hosted from, a file's own box, or a row of what lies
+// outside naming what a relation reaches, a folder showing in the graph; a box's name and
 // its ports open none. Whether one was opened.
 bool Graph::open(VP::Cook &frame, std::size_t at) {
   const std::size_t row = row_under(at);
