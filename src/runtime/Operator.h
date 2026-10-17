@@ -504,6 +504,14 @@ private:
                             std::span<const std::byte> pixels,
                             glm::uvec2 size) = 0;
   virtual bool image_empty(std::uint32_t index) const = 0;
+
+public:
+  // Keeps the pointer's presses and the wheel for the nodes inside the node this one is
+  // in, as an open menu keeps them from what it covers: from the frame after it calls it
+  // until the frame after the last it did, every other node, of every view, sees the
+  // pointer move but nothing pressed, let go or turned. Last, so a module built before it
+  // reaches the others where it found them, as a dev build swaps modules into a run.
+  virtual void hold_pointer() = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the

@@ -287,11 +287,14 @@ private:
   void hold(std::string_view what) override {
     _schedule._wiring.commands.hold(_bound.node->name, what);
   }
+  void hold_pointer() override {
+    _schedule._wiring.ports.hold_pointer(_schedule._name, _bound.node->name);
+  }
   CommandPort &commands() override {
     return _schedule._wiring.commands;
   }
   InputPort &input() override {
-    return _schedule._wiring.ports;
+    return _schedule._wiring.ports.input(_schedule._name, _bound.node->name);
   }
   TerminalPort &terminal() override {
     return _schedule._wiring.ports;

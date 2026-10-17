@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <iterator>
 #include <optional>
 #include <stdexcept>
 #include <system_error>
@@ -264,7 +265,38 @@ View Ports::manifest(std::string_view file) {
   return Manifest::flatten(view);
 }
 
-Ports::Ports(const Log &log) : _log(log) {}
+// What a node reads of the input while a node outside the one it is in holds the
+// pointer: everything but the presses and the wheel, so nothing under an open menu takes
+// them.
+class Ports::Unheld final : public InputPort {
+public:
+  explicit Unheld(Ports &ports) : _ports(ports) {}
+
+private:
+  std::span<const Event> events() const override {
+    return _ports._unheld;
+  }
+  glm::vec2 pointer() const override {
+    return _ports._pointer;
+  }
+  bool names_key(std::string_view name) const override {
+    return key_named(name);
+  }
+  std::string clipboard() const override {
+    return _ports.clipboard();
+  }
+  void copy(std::string_view text) override {
+    _ports.copy(text);
+  }
+  bool windowed() const override {
+    return _ports.windowed();
+  }
+
+  Ports &_ports;
+};
+
+Ports::Ports(const Log &log)
+    : _log(log), _unheld_input(std::make_unique<Unheld>(*this)) {}
 
 Ports::~Ports() {
   if (!_raw)
@@ -285,6 +317,28 @@ void Ports::frame() {
   for (const Event &event : _events)
     if (event.kind == Event::Kind::pointer)
       _pointer = event.at;
+  std::swap(_held, _holding);
+  _holding.holds = false;
+  _unheld.clear();
+  if (_held.holds)
+    std::ranges::copy_if(_events, std::back_inserter(_unheld), [](const Event &event) {
+      return event.kind != Event::Kind::button && event.kind != Event::Kind::wheel;
+    });
+}
+
+InputPort &Ports::input(std::string_view view, std::string_view node) {
+  if (!_held.holds || (view == _held.view && node.starts_with(_held.inside)))
+    return *this;
+  return *_unheld_input;
+}
+
+// The node's own name up to its last dot, so the nodes beside it inside the one it is in
+// keep the pointer with it, as a menu's list of items does.
+void Ports::hold_pointer(std::string_view view, std::string_view node) {
+  const std::size_t dot = node.rfind('.');
+  _holding.view.assign(view);
+  _holding.inside.assign(node.substr(0, dot == std::string_view::npos ? 0 : dot + 1));
+  _holding.holds = true;
 }
 
 void Ports::add(Event event) {

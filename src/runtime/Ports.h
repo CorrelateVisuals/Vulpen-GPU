@@ -36,6 +36,10 @@ public:
   // Before a frame cooks: what came in for the last one is gone, and what came since is
   // this frame's.
   void frame();
+  // The input as a node of a view reads it this frame: all of it, unless a node outside
+  // the one it is in held the pointer the frame before (Cook::hold_pointer).
+  InputPort &input(std::string_view view, std::string_view node);
+  void hold_pointer(std::string_view view, std::string_view node);
   // An event for the next frame, from the window or the input command; the pointer's
   // moves in a row keep only the last.
   void add(Event event);
@@ -58,6 +62,16 @@ private:
     std::filesystem::file_time_type written = std::filesystem::file_time_type::min();
     std::uint64_t checked = 0; // the frame it was last compared with the disk
     std::uint32_t nodes = 1;   // that hold it
+  };
+
+  // What a node outside a hold reads of the input, in Ports.cpp.
+  class Unheld;
+  // The nodes a hold keeps the pointer for: those of a view whose names start with
+  // inside. Swapped a frame, so their names never allocate again (CPP10).
+  struct Holder {
+    std::string view;
+    std::string inside;
+    bool holds = false;
   };
 
   Open &opened(File file);
@@ -104,6 +118,10 @@ private:
   bool _keyed = false;               // whether this frame read keys
   std::vector<Event> _events;  // this frame's
   std::vector<Event> _pending; // the next frame's
+  Holder _holding;             // asked for this frame
+  Holder _held;                // asked for the frame before, which this frame keeps
+  std::vector<Event> _unheld;  // while it does, this frame's but presses and the wheel
+  std::unique_ptr<Unheld> _unheld_input;
   glm::vec2 _pointer{};
   const Window *_window = nullptr; // borrowed from the runtime, which owns it (A01)
   std::string _clipboard;          // what was copied last, for a run with no window
