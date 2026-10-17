@@ -65,10 +65,10 @@ class Projects final : public VP::Operator {
     // param.
     _folder = (std::filesystem::path(node.folder()) / node.param<std::string>("folder"))
                   .lexically_normal();
-    _new = node.command("view new <view>",
+    _new = node.command("view new <project>",
                         "hosts a new, empty view, a project's by name or a folder's by "
                         "path, and saves its view.vlp");
-    _load = node.command("view load <view>",
+    _load = node.command("view load <project>",
                          "hosts the view of a project by name, or of a folder by path");
     _save_as = node.command("view save as <name>",
                             "copies the view, its edits too, into a new project and "
@@ -87,7 +87,7 @@ class Projects final : public VP::Operator {
       rename(call);
   }
 
-  // A <view> comes resolved when it is a path, and as typed when it names a project.
+  // A <project> comes resolved when it is a path, and as typed when it names one.
   std::filesystem::path folder_of(std::string_view word) const {
     const std::filesystem::path path(word);
     if (path.is_relative()) {

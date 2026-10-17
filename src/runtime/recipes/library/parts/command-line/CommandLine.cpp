@@ -145,9 +145,20 @@ std::vector<std::string> held(VP::Call &call) {
   return names;
 }
 
-// What a placeholder stands for: the view's nodes or connections, the params of the
-// node named just before a key, the paths a word begun may become, or, for a word
-// without a /, the files the view holds. Any other answers as itself.
+// Every view hosted, at any depth, by the name a line addresses it with: those the view
+// vulpen started with hosts, then those each of them hosts, each once.
+void hosted(VP::Call &call, std::string_view host, std::vector<std::string> &names) {
+  if (const VP::View *const view = call.view(host))
+    for (const VP::Child &child : view->children)
+      if (std::ranges::find(names, child.name) == names.end()) {
+        names.push_back(child.name);
+        hosted(call, child.name, names);
+      }
+}
+
+// What a placeholder stands for: the view's nodes or connections, the views hosted, the
+// params of the node named just before a key, the paths a word begun may become, or, for
+// a word without a /, the files the view holds. Any other answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -166,7 +177,9 @@ std::vector<std::string> names(std::string_view word,
     if (node != nodes.end())
       for (const VP::Param &param : node->params)
         names.push_back(param.key);
-  } else if (kind == "<file>" || kind == "<view>" ||
+  } else if (kind == "<view>") {
+    hosted(call, {}, names);
+  } else if (kind == "<file>" || kind == "<project>" ||
              (kind == "<path>" && begun.find('/') != std::string_view::npos)) {
     names = paths(call.files(), begun);
   } else if (kind == "<path>") {

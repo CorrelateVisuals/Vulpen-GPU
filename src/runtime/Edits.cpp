@@ -518,7 +518,7 @@ constexpr std::array edits{
          "hosts the view a view.vlp holds, or an empty one that view save writes; a line "
          "`<name>: <command>` addresses it",
          view_add},
-    Edit{"view close <name>",
+    Edit{"view close <view>",
          "stops hosting a view, letting go of the connections that take its window; its "
          "files stay",
          view_close},

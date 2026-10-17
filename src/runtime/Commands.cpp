@@ -30,7 +30,8 @@ constexpr std::array kinds{
     std::string_view{"key"},        // the node's params
     std::string_view{"value"},      // any word: nothing to complete
     std::string_view{"file"},       // the folders and files where the path resolves
-    std::string_view{"view"},       // a project by name, or a folder by path, as a file
+    std::string_view{"view"},       // a view hosted, by its name, at any depth
+    std::string_view{"project"},    // a project by name, or a folder by path, as a file
     std::string_view{"path"},       // a file the view holds by name, or any by path
     std::string_view{"recipe"},     // the recipes of the library
 };
@@ -214,13 +215,14 @@ struct Commands::Spec {
   CommandHandler *handler = nullptr;
   Primitive primitive = Primitive::no;
 
-  // A <view> without a / names a project, which its command finds, so only a path
+  // A <project> without a / names a project, which its command finds, so only a path
   // resolves, and the log names it from its own folder.
   bool names_file(std::size_t argument, std::string_view word) const {
     const std::string_view kind =
         placeholders[std::min(argument, placeholders.size() - 1)];
     return kind == "file" ||
-           ((kind == "view" || kind == "path") && word.find('/') != std::string_view::npos);
+           ((kind == "project" || kind == "path") &&
+            word.find('/') != std::string_view::npos);
   }
 };
 
@@ -240,7 +242,7 @@ Commands::Commands(const Log &log, FilePort &files, ProcessPort &processes)
       _log_save(add("log save <file>",
                     "writes the session's edits to a file, which source replays",
                     *this)),
-      _switch(add("view switch [<name>]",
+      _switch(add("view switch [<view>]",
                   "makes a hosted view the current one, where the lines typed go and "
                   "which every face shows; with none, the view vulpen started with",
                   *this)) {}
