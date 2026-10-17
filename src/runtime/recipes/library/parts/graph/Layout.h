@@ -276,7 +276,7 @@ private:
         placed.inside + (inner.empty() ? 0 : room.y + apart));
     placed.extent = placed.least;
     if (const auto sized = arranged.sizes.find(boxes.boxes[box].name);
-        boxes.boxes[box].kept && sized != arranged.sizes.end())
+        sized != arranged.sizes.end())
       placed.extent = glm::max(placed.extent, glm::uvec2(glm::max(sized->second, 0)));
   }
 
@@ -295,7 +295,7 @@ private:
     const glm::ivec2 start = level == no_box ? margin_of(cell) : glm::ivec2(0);
     stack(inner, count, cell, start);
     const bool moved = std::ranges::any_of(inner, [&](std::size_t box) {
-      return boxes.boxes[box].kept && arranged.places.contains(boxes.boxes[box].name);
+      return arranged.places.contains(boxes.boxes[box].name);
     });
     std::int32_t below = moved ? 0 : channels(boxes, level, count, cell, start, false);
     widen(level, count, cell, start);
@@ -322,7 +322,7 @@ private:
       Placed &placed = _placed[box];
       placed.offset.x = _lefts[placed.column];
       if (const auto found = arranged.places.find(boxes.boxes[box].name);
-          boxes.boxes[box].kept && found != arranged.places.end())
+          found != arranged.places.end())
         placed.offset =
             level == no_box ? found->second : glm::max(found->second, glm::ivec2(0));
     }

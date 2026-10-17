@@ -292,11 +292,13 @@ void line_relations(Listed &listed,
 
 // The folder shown as a view's nodes, as the graph shows its inside: a node for it and
 // one each folder in it, holding their files, and one each folder in those, which their
-// boxes list; named by its path from the folder holding the one shown, joined by /.
-// Hidden ones too, as .git, so a repository shows whole.
-VP::View tree_of(VP::FilePort &files, const std::filesystem::path &shown) {
+// boxes list; named by its path from base, joined by /, the folder holding its
+// repository's top, so a folder keeps its name whichever level shows it, as the graph
+// keeps its place by it. Hidden ones too, as .git, so a repository shows whole.
+VP::View tree_of(VP::FilePort &files,
+                 const std::filesystem::path &shown,
+                 const std::filesystem::path &base) {
   VP::View tree;
-  const std::filesystem::path base = shown.parent_path();
   std::vector<std::filesystem::path> level{shown};
   for (const bool listed : {true, true, false}) {
     std::vector<std::filesystem::path> inner;
@@ -396,8 +398,10 @@ void Relations::start(VP::FilePort &files, const VP::View *view) {
   _reading = true;
   _frames = 0;
   _listed.clear();
-  _tree = _folder.empty() ? VP::View{} : tree_of(files, _folder);
   _top = _folder.empty() ? std::string() : top_of(files, _folder);
+  _tree = _folder.empty()
+              ? VP::View{}
+              : tree_of(files, _folder, std::filesystem::path(_top).parent_path());
   _walk.clear();
   _walked = 0;
   _sources.clear();

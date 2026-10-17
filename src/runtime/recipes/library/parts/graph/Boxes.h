@@ -61,9 +61,6 @@ struct Box {
   // too; a node of a recipe a node uses is not, nor a folder or a file, nor what lies
   // outside, as select names none of them.
   bool own = false;
-  // Its place kept in the .ini by its name, as every box of a view is, which a drag on
-  // it moves; a folder's are not, as a folder has no .ini.
-  bool kept = false;
   bool holds = false;    // it holds nodes or files, whose boxes zooming into it or a
                          // second press on it shows
   std::size_t first = 0; // its rows, in Boxes::rows
@@ -187,8 +184,7 @@ std::size_t outside_of(Boxes &boxes, Building &building, bool left) {
         {.name = boxes.frame == no_box
                      ? side
                      : std::format("{} {}", boxes.boxes[boxes.frame].name, side),
-         .title = std::string(outside_title),
-         .kept = !building.folders});
+         .title = std::string(outside_title)});
     building.ports.emplace_back();
   }
   return outside;
@@ -429,7 +425,6 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
                              .title = file,
                              .parent = boxes.frame,
                              .kind = kind_of({.files = {file}}),
-                             .kept = !building.folders,
                              .opens = path});
     }
 }
@@ -440,9 +435,8 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
 // and relations reach in at its left and out at its right; with none, the boxes of the
 // nodes at the top, of the view's manifest, and of the views the view hosts, as the view
 // as edited names them, each as hosted lists its top nodes. A node of the view as edited
-// is its own, the frame too; one a recipe brings is not, nor a folder or a file. Every
-// box of a view keeps its place. The paths outside are named from base, and only the
-// layers shown draw.
+// is its own, the frame too; one a recipe brings is not, nor a folder or a file. The
+// paths outside are named from base, and only the layers shown draw.
 Boxes boxes_of(const VP::View &edited,
                const VP::View &flat,
                std::string_view scope,
@@ -473,7 +467,6 @@ Boxes boxes_of(const VP::View &edited,
          .kind = kind_of(node),
          .own = !folders && std::ranges::find(edited.nodes, node.name, &VP::Node::name) !=
                                 edited.nodes.end(),
-         .kept = !folders,
          .holds = holds(flat, building.parents, at)});
   };
   if (inside != no_box) {
@@ -490,15 +483,13 @@ Boxes boxes_of(const VP::View &edited,
     boxes.boxes.push_back({.name = std::format("/{}", manifest),
                            .title = manifest,
                            .kind = kind_of({.files = {manifest}}),
-                           .kept = true,
                            .opens = edited.file});
   for (const VP::Child &child : edited.children)
     if (inside == no_box && boxes.boxes.size() < node_room)
       boxes.boxes.push_back({.name = child.name,
                              .title = child.name,
                              .kind = Kind::view,
-                             .own = true,
-                             .kept = true});
+                             .own = true});
   building.ports.resize(boxes.boxes.size());
   connect(boxes, building, flat);
   relate(boxes, building, relations, flat.connections.size());

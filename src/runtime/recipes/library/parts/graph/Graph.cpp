@@ -161,8 +161,13 @@ void Graph::cook(VP::Cook &frame) {
   if (_tabs->empty() || shown != _shown) {
     if (!_tabs->empty() && folder)
       show_view(frame);
-    show(frame, frame.view(shown), shown);
+    show(shown);
   }
+  if (const VP::View *const view = frame.view(shown); folder || view)
+    arrange(frame,
+            folder ? std::filesystem::path(_relations->top) : view->file.parent_path());
+  else
+    arrange(frame, {});
   for (const VP::Event &event : _typed->to(_name))
     if (event.kind == VP::Event::Kind::key && event.down)
       key(frame, event.name);
@@ -310,35 +315,45 @@ void Graph::focus(std::string_view left) {
   }
 }
 
+// Its name is its path from the folder holding the repository's top.
 std::filesystem::path Graph::folder_of(std::size_t box) const {
-  return (std::filesystem::path(_relations->folder).parent_path() / _boxes.boxes[box].name)
+  return (std::filesystem::path(_relations->top).parent_path() / _boxes.boxes[box].name)
       .lexically_normal();
 }
 
-// The tab names the view, and the boxes its .ini kept show where they were left, from
-// home. An .ini that holds a mistake is named in the log and kept as it is, so no save
-// writes over what a person typed; the graph then lays the view out from the graph alone.
-// A selection in another view goes, and the boxes are built anew, as another view may
-// have taken the place in memory of the one they were built from.
-void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
+// The tab names the view, which shows from home. A selection in another view goes, and
+// the boxes are built anew, as another view may have taken the place in memory of the
+// one they were built from.
+void Graph::show(std::string_view name) {
   _shown = name;
   if (_selected_in != name)
     _selection.clear();
-  _raised.clear();
   name_tab();
-  _arranged = {};
-  _ini.clear();
-  _refused = false;
   _homing = true;
   _grab.reset();
   _select_from.reset();
   _built_edited = nullptr;
   _built_flat = nullptr;
-  if (!view)
+}
+
+// What the boxes shown keep in an .ini: a view's, beside its manifest, or a folder's, at
+// the top of its repository, as `.vulpen/` there, which every folder of the repository
+// shares, its boxes named by their paths; read again as what shows moves to another.
+// An .ini that holds a mistake is named in the log and kept as it is, so no save writes
+// over what a person typed; the graph then lays the boxes out from the graph alone.
+void Graph::arrange(VP::Cook &frame, const std::filesystem::path &beside) {
+  const std::filesystem::path folder = beside.empty() ? beside : beside / kept_folder;
+  if (const std::string ini = folder.empty() ? std::string() : (folder / kept_file).string();
+      ini != _ini)
+    _ini = ini;
+  else
     return;
-  const std::filesystem::path folder = view->file.parent_path() / kept_folder;
-  _ini = (folder / kept_file).string();
-  const std::vector<std::string> kept = frame.files().list(folder.string());
+  _arranged = {};
+  _refused = false;
+  _raised.clear();
+  _laid = false;
+  const std::vector<std::string> kept =
+      folder.empty() ? std::vector<std::string>{} : frame.files().list(folder.string());
   if (std::ranges::find(kept, kept_file) == kept.end())
     return;
   try {
@@ -347,7 +362,7 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
     _arranged = {};
     _refused = true;
     frame.log(VP::Level::error,
-              std::format("{}; the graph lays the view out from the graph alone, and "
+              std::format("{}; the graph lays the boxes out from the graph alone, and "
                           "keeps the file as it is",
                           mistake.what()));
   }
@@ -469,13 +484,13 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
 }
 
 // It takes the focus. On a box, the box drawn last over the others: a second press opens
-// the file of the row pressed, or goes into the box's inside, or out of the frame's. A box a line selects: shift adds it to the
-// selection or takes it out, or it is selected, unless it is already, and grabbed with
-// every box selected, so a drag moves them all. Any other box: the selection goes, and it
-// is raised and grabbed alone, or, where a drag cannot move it, as a folder's, grabbed
-// so letting go opens its row. On the ground, the frame's inside too, with shift, a
-// select box from there to the pointer until the button is let go; without, the
-// selection goes, and the graph follows the pointer until then.
+// the file of the row pressed, or goes into the box's inside, or out of the frame's. A
+// box a line selects: shift adds it to the selection or takes it out, or it is selected,
+// unless it is already, and grabbed with every box selected, so a drag moves them all.
+// Any other box, as a folder's or a file's: the selection goes, and it is raised and
+// grabbed alone. On the ground, the frame's inside too, with shift, a select box from
+// there to the pointer until the button is let go; without, the selection goes, and the
+// graph follows the pointer until then.
 void Graph::press(VP::Cook &frame, std::uint32_t presses) {
   if (_typed->focus != _name)
     frame.commands().send(std::format("focus {}", _name));
@@ -494,11 +509,9 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
         return;
       if (chosen_here)
         select(frame.commands(), {});
+      raise(pressed.name);
       _grab = Grab{.box = at, .from = _pointer};
-      if (pressed.kept) {
-        raise(pressed.name);
-        _grab->moving.emplace_back(at, _layout.placed()[at].offset);
-      }
+      _grab->moving.emplace_back(at, _layout.placed()[at].offset);
       return;
     }
     std::vector<std::string> chosen;
@@ -551,7 +564,7 @@ void Graph::grab_corner(VP::Cook &frame, const Under &under) {
 // first drag places every box of the view where it shows, so a box moved moves no other,
 // and a node added later takes its column's place. A box inside another stays inside it,
 // which grows to hold it, and moves with it, so a box selected inside one selected moves
-// once. A box a drag cannot move moves the graph, as the ground does.
+// once.
 void Graph::drag(glm::vec2 to) {
   Grab &grab = *_grab;
   const std::span<const Placed> placed = _layout.placed();
@@ -560,11 +573,6 @@ void Graph::drag(glm::vec2 to) {
     return;
   if (grab.corner) {
     pull(to);
-    return;
-  }
-  if (grab.moving.empty()) {
-    _pan_zoom.pan += to - (grab.moved ? _pointer : grab.from);
-    grab.moved = true;
     return;
   }
   if (!grab.moved)
@@ -618,12 +626,11 @@ void Graph::pull(glm::vec2 to) {
   _laid = false;
 }
 
-// Every box a drag may move, where it shows now, unless it was placed already.
+// Every box, where it shows now, unless it was placed already.
 void Graph::place_all() {
   const std::span<const Placed> placed = _layout.placed();
   for (std::size_t at = 0; at < placed.size(); ++at)
-    if (_boxes.boxes[at].kept)
-      _arranged.places.try_emplace(_boxes.boxes[at].name, placed[at].offset);
+    _arranged.places.try_emplace(_boxes.boxes[at].name, placed[at].offset);
 }
 
 // A box dragged is saved at once. A select box selects what it touches. A box pressed
@@ -637,8 +644,7 @@ void Graph::release(VP::Cook &frame, bool room) {
     return;
   const Grab grab = *std::exchange(_grab, std::nullopt);
   if (grab.moved) {
-    if (!grab.moving.empty() || grab.corner)
-      save(frame);
+    save(frame);
     return;
   }
   if (grab.corner)
@@ -894,8 +900,7 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
 // dragged: two short arms along its edges from each, muted, and in the accent color the
 // one under the pointer.
 void Graph::write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const {
-  if (_hovered.box == no_box || !_boxes.boxes[_hovered.box].kept ||
-      (_grab && !_grab->corner) || _dragging || _select_from)
+  if (_hovered.box == no_box || (_grab && !_grab->corner) || _dragging || _select_from)
     return;
   const VP_VIEW::Rect shown = box(_hovered.box);
   const glm::vec2 low(shown.offset);
@@ -1122,8 +1127,8 @@ std::size_t Graph::hit(glm::vec2 at) const {
   return no_box;
 }
 
-// A corner of a box a drag may make larger, its own or one past a frame's rows, where the
-// box drawn over the others lies, or none.
+// A corner of a box, its own or one past a frame's rows, where the box drawn over the
+// others lies, or none.
 Under Graph::under(glm::vec2 point) const {
   if (!inside(*_area, point))
     return {};
@@ -1138,7 +1143,7 @@ Under Graph::under(glm::vec2 point) const {
         corner_reach, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
     const bool left = point.x < low.x + reach;
     const bool top = point.y < low.y + reach;
-    if (_boxes.boxes[at].kept && VP_VIEW::contains(shown, point) &&
+    if (VP_VIEW::contains(shown, point) &&
         (left || point.x >= high.x - reach) && (top || point.y >= high.y - reach))
       return {at, glm::bvec2(left, top)};
     if (VP_VIEW::contains(cut(solid(at), *_area), point))

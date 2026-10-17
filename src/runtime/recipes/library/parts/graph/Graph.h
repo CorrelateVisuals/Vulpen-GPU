@@ -33,8 +33,8 @@
 namespace {
 
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
-// where it was then, none for a box a drag cannot move, which moves the graph instead,
-// and whether it has been dragged, or is a press let go where it was. Or a corner of a
+// where it was then, and whether it has been dragged, or is a press let go where it was.
+// Or a corner of a
 // box pressed, which a drag pulls while the opposite corner stays: whether it is a left
 // one and whether a top one, and the box's size and place then.
 struct Grab {
@@ -109,7 +109,8 @@ public:
 
 private:
   void key(VP::Cook &frame, std::string_view key);
-  void show(VP::Cook &frame, const VP::View *view, std::string_view name);
+  void show(std::string_view name);
+  void arrange(VP::Cook &frame, const std::filesystem::path &beside);
   void build(const VP::View *edited, const VP::View *flat);
   void name_tab();
   void show_view(VP::Cook &frame) const;
