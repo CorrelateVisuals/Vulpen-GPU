@@ -195,7 +195,7 @@ void Graph::cook(VP::Cook &frame) {
   // A press may send a line that edits the view shown, as open does the ide's own, or
   // closes it; the boxes, built from the view before, stay until the next frame.
   for (const VP::Event &event : frame.input().events())
-    follow(frame, room, event, cell);
+    follow(frame, room, event);
   lay_out(); // as a drag placed a box
   frame.set(_pan, _pan_zoom.pan);
   frame.set(_zoom, _pan_zoom.zoom);
@@ -445,7 +445,7 @@ void Graph::home(glm::uvec2 cell) {
 
 // In the order the events came, so a press is tested where the pointer was then. With
 // no view in its area it takes no press and no wheel, only where the pointer went.
-void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec2 cell) {
+void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
   if (event.kind == VP::Event::Kind::pointer) {
     if (_grab && room) {
       drag(event.at);
@@ -455,7 +455,7 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec
     _pointer = event.at;
   } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
     if (!event.down)
-      release(frame, room, cell);
+      release(frame, room);
     else if (room && inside(*_area, _pointer))
       press(frame, event.presses);
   } else if (event.kind == VP::Event::Kind::wheel && room && inside(*_area, _pointer)) {
@@ -468,8 +468,8 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec
   }
 }
 
-// It takes the focus. On a box, the box drawn last over the others: a second press goes
-// into its inside, or out of the frame's. A box a line selects: shift adds it to the
+// It takes the focus. On a box, the box drawn last over the others: a second press opens
+// the file of the row pressed, or goes into the box's inside, or out of the frame's. A box a line selects: shift adds it to the
 // selection or takes it out, or it is selected, unless it is already, and grabbed with
 // every box selected, so a drag moves them all. Any other box: the selection goes, and it
 // is raised and grabbed alone, or, where a drag cannot move it, as a folder's, grabbed
@@ -486,7 +486,7 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
     return;
   }
   if (const std::size_t at = pressed_at.box; at != no_box) {
-    if (presses == 2 && enter(frame, at))
+    if (presses == 2 && (open(frame, at) || enter(frame, at)))
       return;
     const Box &pressed = _boxes.boxes[at];
     if (!pressed.own) {
@@ -627,8 +627,8 @@ void Graph::place_all() {
 }
 
 // A box dragged is saved at once. A select box selects what it touches. A box pressed
-// and let go where it was stays the one selected, and opens the file of its row pressed.
-void Graph::release(VP::Cook &frame, bool room, glm::uvec2 cell) {
+// and let go where it was stays the one selected.
+void Graph::release(VP::Cook &frame, bool room) {
   _dragging = false;
   if (const std::optional<glm::vec2> from = std::exchange(_select_from, std::nullopt);
       from && room)
@@ -647,26 +647,26 @@ void Graph::release(VP::Cook &frame, bool room, glm::uvec2 cell) {
     return;
   if (const Box &pressed = _boxes.boxes[grab.box]; pressed.own && _selection.size() > 1)
     select(frame.commands(), std::span(&pressed.name, 1));
-  open(frame, grab.box, cell);
 }
 
-// A row that names a file opens it, as a line typed would: a node's file, from its folder
-// in the view or the library, the manifest of the recipe a node uses, or that of a view
-// where it is hosted from; a box's name and its ports open none.
-void Graph::open(VP::Cook &frame, std::size_t at, glm::uvec2 cell) {
+// A second press on a row that names a file opens it, as a line typed would: a node's
+// file, from its folder in the view or the library, the manifest of the recipe a node
+// uses, that of a view where it is hosted from, or a file's own box; a box's name and
+// its ports open none. Whether one was opened.
+bool Graph::open(VP::Cook &frame, std::size_t at) {
   const float row =
       ((_pointer.y - on_screen(glm::vec2(_layout.placed()[at].at)).y) / _pan_zoom.zoom -
        static_cast<float>(pad)) /
-      static_cast<float>(cell.y);
+      static_cast<float>(_laid_cell.y);
   const std::span<const BoxRow> rows = rows_in(_boxes, at);
-  if (row < 1.0f && !_boxes.boxes[at].opens.empty())
-    frame.commands().send(
-        std::format("open {}", _boxes.boxes[at].opens.generic_string()));
-  if (row < 1.0f || static_cast<std::size_t>(row) > rows.size())
-    return;
-  if (const BoxRow &pressed = rows[static_cast<std::size_t>(row) - 1];
-      !pressed.opens.empty())
-    frame.commands().send(std::format("open {}", pressed.opens.generic_string()));
+  std::filesystem::path opened;
+  if (row < 1.0f)
+    opened = _boxes.boxes[at].opens;
+  else if (static_cast<std::size_t>(row) <= rows.size())
+    opened = rows[static_cast<std::size_t>(row) - 1].opens;
+  if (!opened.empty())
+    frame.commands().send(std::format("open {}", opened.generic_string()));
+  return !opened.empty();
 }
 
 // The wheel zooms, about the pointer, which stays over the same place of the graph; its

@@ -81,8 +81,9 @@ struct Under {
 // the pointer, and , up a level, as the wheel and a second press do. A drag on the
 // ground, or on the frame's inside, which shows the ground, moves the graph and the wheel
 // zooms it about the pointer, as the Perform panel's image moves, and neither is kept. A
-// press on a box selects it, shift adding it or taking it out, and opens the file of a
-// row that names one in the editor; a drag on a box selected moves every box selected,
+// press on a box selects it, shift adding it or taking it out, and a second press opens
+// the file of a row that names one in the editor; a drag on a box selected moves every
+// box selected,
 // and one on a box no line selects, as what lies outside, moves that box. A drag on a
 // corner of a box makes it larger, or smaller down to the size its rows and the boxes
 // inside it need, and its corners show while the pointer is over it. The box selected
@@ -114,7 +115,7 @@ private:
   void show_view(VP::Cook &frame) const;
   void show_folder(VP::Cook &frame, const std::filesystem::path &folder) const;
   void home(glm::uvec2 cell);
-  void follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec2 cell);
+  void follow(VP::Cook &frame, bool room, const VP::Event &event);
   void press(VP::Cook &frame, std::uint32_t presses);
   void go_in(VP::Cook &frame);
   void focus(std::string_view left);
@@ -124,8 +125,8 @@ private:
   void drag(glm::vec2 to);
   void pull(glm::vec2 to);
   void place_all();
-  void release(VP::Cook &frame, bool room, glm::uvec2 cell);
-  void open(VP::Cook &frame, std::size_t at, glm::uvec2 cell);
+  void release(VP::Cook &frame, bool room);
+  bool open(VP::Cook &frame, std::size_t at);
   void turn(VP::Cook &frame, glm::vec2 turn);
   bool enter(VP::Cook &frame, std::size_t at);
   void leave(VP::Cook &frame);

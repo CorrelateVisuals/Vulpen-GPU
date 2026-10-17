@@ -337,22 +337,28 @@ bool same(const VP::View &a, const VP::View &b) {
 
 } // namespace
 
+// A rebuild binds the part again, as any edit of its view does, as a file opened in the
+// editor sets its param; the reading goes on, and what it read stays, unless the folder
+// or the documents to read changed, so a big folder's curves do not go while it is read
+// again.
 void Relations::bind(VP::Bind &node) {
   _relations = &node.output<VP_VIEW::Relations>("relations");
   _relations->node = node.name();
   _relations->view = node.view_name();
   // As open names it, a / after it or not.
+  std::string folder;
   if (node.sets("folder")) {
-    std::filesystem::path folder =
+    const std::filesystem::path named =
         std::filesystem::path(node.param<std::string>("folder")).lexically_normal();
-    _folder = (folder.filename().empty() ? folder.parent_path() : folder).string();
-  } else {
-    _folder.clear();
+    folder = (named.filename().empty() ? named.parent_path() : named).string();
   }
-  _docs = (std::filesystem::path(node.folder()) / node.param<std::string>("docs"))
-              .lexically_normal()
-              .string();
-  _stale = true;
+  std::string docs = (std::filesystem::path(node.folder()) / node.param<std::string>("docs"))
+                         .lexically_normal()
+                         .string();
+  if (folder != _folder || docs != _docs)
+    _stale = true;
+  _folder = std::move(folder);
+  _docs = std::move(docs);
 }
 
 // Read as the folder or the view shown changes, as an edit replaces the view: the folder
