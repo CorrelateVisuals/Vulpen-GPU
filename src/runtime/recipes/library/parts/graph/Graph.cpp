@@ -898,10 +898,16 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
 
 // The corners of the box the pointer is over, which a drag pulls, while nothing else is
 // dragged: two short arms along its edges from each, muted, and in the accent color the
-// one under the pointer.
+// one under the pointer; on a box selected, whose border is the accent's, in a tint of
+// it, and the one under the pointer in the text's color, so they mark its border rather
+// than break it.
 void Graph::write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const {
   if (_hovered.box == no_box || (_grab && !_grab->corner) || _dragging || _select_from)
     return;
+  const bool chosen =
+      _boxes.boxes[_hovered.box].own && selected(_boxes.boxes[_hovered.box].name);
+  const std::uint32_t arms = chosen ? VP_VIEW::role("highlight") : VP_VIEW::role("muted");
+  const std::uint32_t pulled = chosen ? VP_VIEW::role("text") : VP_VIEW::role("accent");
   const VP_VIEW::Rect shown = box(_hovered.box);
   const glm::vec2 low(shown.offset);
   const glm::vec2 high = low + glm::vec2(shown.extent);
@@ -909,9 +915,7 @@ void Graph::write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written
       std::min(corner_arm, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
   for (const bool left : {true, false})
     for (const bool top : {true, false}) {
-      const std::uint32_t role = _hovered.corner == glm::bvec2(left, top)
-                                     ? VP_VIEW::role("accent")
-                                     : VP_VIEW::role("muted");
+      const std::uint32_t role = _hovered.corner == glm::bvec2(left, top) ? pulled : arms;
       const glm::vec2 at{left ? low.x : high.x, top ? low.y : high.y};
       const glm::vec2 inward{left ? 1.0f : -1.0f, top ? 1.0f : -1.0f};
       for (const glm::vec2 along : {glm::vec2(arm, corner_width), glm::vec2(corner_width, arm)})
