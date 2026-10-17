@@ -406,6 +406,22 @@ private:
   virtual const void *input_object(std::string_view port, const Kind &kind) = 0;
 };
 
+// What a node costs a frame, in milliseconds: its operator's cook on the CPU, and its pass
+// on the GPU, between two timestamps the CPU reads once the frame's fence passed (VK02),
+// so a frame later. Each smoothed over about a second, so a person can read it, and as
+// the last frame took it, so a spike shows (C03). Times differ from run to run, so only
+// what a person reads may show them, never a node's output (C01).
+struct Cost {
+  std::string_view node; // as the view runs it, each recipe a node uses unfolded
+  float cpu = 0.0f;
+  float cpu_last = 0.0f;
+  float gpu = 0.0f;
+  float gpu_last = 0.0f;
+  bool cooks = false; // it has an operator, which cooked
+  bool runs = false;  // it has a pass, which the GPU runs
+  bool timed = false; // the GPU timed the pass, as one without timestamps cannot
+};
+
 // What a node's C++ gets every frame, before the GPU runs the node's pass.
 class Cook {
 public:
@@ -470,6 +486,10 @@ public:
   // with its folder and files, and each recipe a node of the library uses unfolded, its
   // own node naming it, so the graph shows the code a recipe brings. Null as above.
   virtual const View *unfolded(std::string_view name) const = 0;
+  // What each node of a view costs, by the view's name as above, in the order the view
+  // runs them; none for a view of no such name. Read it while the node cooks; a rebuild
+  // replaces it.
+  virtual std::span<const Cost> costs(std::string_view view) const = 0;
 
 protected:
   ~Cook() = default;
@@ -506,6 +526,8 @@ public:
   // started with, as `:` addresses it; null when no view has the name. So a command acts
   // at once on another view than the one it addresses, as on its own node's.
   virtual const View *view(std::string_view name) const = 0;
+  // What each node of the view the command addresses costs, in the order it runs them.
+  virtual std::span<const Cost> costs() const = 0;
   virtual FilePort &files() = 0;
   virtual ProcessPort &processes() = 0;
 

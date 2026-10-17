@@ -23,6 +23,7 @@ class Pipelines;
 class Ports;
 struct Connection;
 struct Copy;
+struct Cost;
 struct Node;
 struct Offscreen;
 struct Pass;
@@ -94,11 +95,20 @@ public:
   // by a Texture that samples it, which then samples nothing until the node fills it
   // again. Throws when no node's C++ fills it.
   void clear_image(std::string_view node, std::string_view port);
-  // The dispatches and the draws into images of their own, in graph order.
-  void work(std::vector<Pass> &passes) const;
+  // The dispatches and the draws into images of their own, in graph order. Where each
+  // lands among the frame's passes is kept, so its time finds its node; a frame gathers a
+  // view's work before its draws, so the work starts that anew.
+  void work(std::vector<Pass> &passes);
   // The draws into its window, in graph order, each recording into the image given, or
   // into the window when none is.
-  void draws(std::vector<Pass> &passes, const Offscreen *into) const;
+  void draws(std::vector<Pass> &passes, const Offscreen *into);
+  // What each node costs, in graph order: its cook, as cook times it, and its pass, as
+  // time hands it on.
+  std::span<const Cost> costs() const;
+  // How long each of the frame's passes took on the GPU, in milliseconds, by its place
+  // among them, NaN for one not timed: read once the frame's fence passed, before
+  // anything rebuilds, so the passes are the ones this schedule's work and draws gave.
+  void time(std::span<const float> took);
   // The image the draws into the window of a view this one hosts render into, while a
   // connection takes it; null while none does.
   const Offscreen *window_of(std::string_view view) const;
@@ -136,6 +146,7 @@ private:
   void make_targets();
   void size_targets(VkExtent2D size);
   void make_passes();
+  void cost_from(const Schedule *replaced);
   void upload(const Bound &writer,
               std::uint32_t texture,
               std::span<const std::byte> pixels,
@@ -179,6 +190,9 @@ private:
   std::vector<Buffer> _staged;
   std::vector<Buffer> _in_flight;
   std::vector<Pass> _passes;
+  std::vector<std::size_t> _passed; // by _passes, its node's place in _bound
+  std::vector<std::size_t> _landed; // by _passes, its place among the frame's
+  std::vector<Cost> _costs;         // by _bound
 };
 
 } // namespace VP

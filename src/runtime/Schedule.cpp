@@ -4,6 +4,7 @@
 #include "runtime/Bound.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <format>
 #include <map>
@@ -16,6 +17,10 @@
 namespace VP {
 
 namespace {
+
+// Where a pass lands among the frame's passes while no frame gathers it, as the draws of
+// a view that draws nowhere.
+constexpr std::size_t no_pass = static_cast<std::size_t>(-1);
 
 // The files of the node's folder that are shaders, by their extension.
 std::vector<std::string> shaders_of(const Node &node) {
@@ -146,6 +151,7 @@ Schedule::Schedule(const Wiring &wiring,
   make_blocks();
   make_targets();
   make_passes();
+  cost_from(replaced);
   // Each error names the line that last added or changed the node, if a file holds it,
   // else the view's file, in its folder as the lines are. A node left out answers no
   // command either.
@@ -573,6 +579,30 @@ void Schedule::make_passes() {
         pass.writes.push_back(buffer);
     }
     _passes.push_back(std::move(pass));
+    _passed.push_back(static_cast<std::size_t>(&bound - _bound.data()));
+  }
+}
+
+// A node keeps what it cost through a rebuild, as an edit changes nothing it does, so
+// its smoothed times go on from where they were.
+void Schedule::cost_from(const Schedule *replaced) {
+  _costs.reserve(_bound.size());
+  for (const Bound &bound : _bound)
+    _costs.push_back({.node = bound.node->name});
+  for (const std::size_t at : _passed)
+    _costs[at].runs = true;
+  if (!replaced)
+    return;
+  for (Cost &cost : _costs) {
+    const auto old = std::ranges::find(replaced->_costs, cost.node, &Cost::node);
+    if (old == replaced->_costs.end())
+      continue;
+    cost.cpu = old->cpu;
+    cost.cpu_last = old->cpu_last;
+    cost.cooks = old->cooks;
+    cost.gpu = old->gpu;
+    cost.gpu_last = old->gpu_last;
+    cost.timed = old->timed && cost.runs;
   }
 }
 
@@ -614,17 +644,36 @@ std::vector<Copy> Schedule::take_copies() {
   return std::exchange(_copies, {});
 }
 
-void Schedule::work(std::vector<Pass> &passes) const {
-  for (const Pass &pass : _passes)
-    if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || pass.offscreen)
-      passes.push_back(pass);
+void Schedule::work(std::vector<Pass> &passes) {
+  _landed.assign(_passes.size(), no_pass);
+  for (std::size_t at = 0; at < _passes.size(); ++at)
+    if (_passes[at].bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || _passes[at].offscreen) {
+      _landed[at] = passes.size();
+      passes.push_back(_passes[at]);
+    }
 }
 
-void Schedule::draws(std::vector<Pass> &passes, const Offscreen *into) const {
-  for (const Pass &pass : _passes)
-    if (pass.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS && !pass.offscreen) {
-      passes.push_back(pass);
+void Schedule::draws(std::vector<Pass> &passes, const Offscreen *into) {
+  if (_landed.size() != _passes.size())
+    _landed.assign(_passes.size(), no_pass);
+  for (std::size_t at = 0; at < _passes.size(); ++at)
+    if (_passes[at].bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS &&
+        !_passes[at].offscreen) {
+      _landed[at] = passes.size();
+      passes.push_back(_passes[at]);
       passes.back().offscreen = into;
+    }
+}
+
+std::span<const Cost> Schedule::costs() const {
+  return _costs;
+}
+
+void Schedule::time(std::span<const float> took) {
+  for (std::size_t at = 0; at < _landed.size(); ++at)
+    if (_landed[at] < took.size() && !std::isnan(took[_landed[at]])) {
+      Cost &cost = _costs[_passed[at]];
+      smooth(cost.gpu, cost.gpu_last, cost.timed, took[_landed[at]]);
     }
 }
 

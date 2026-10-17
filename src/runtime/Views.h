@@ -68,6 +68,7 @@ private:
 
   const View *find(std::string_view name) override;
   const View *unfolded(std::string_view name) override;
+  std::span<const Cost> costs(std::string_view name) override;
   void replace(std::string_view name, View view) override;
   std::optional<std::string> host_of(std::string_view name) override;
   void command(Call &call) override;

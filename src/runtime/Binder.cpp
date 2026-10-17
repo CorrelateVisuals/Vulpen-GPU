@@ -6,6 +6,7 @@
 #include "runtime/Ports.h"
 
 #include <algorithm>
+#include <chrono>
 #include <format>
 #include <optional>
 #include <span>
@@ -307,6 +308,9 @@ private:
   const View *unfolded(std::string_view name) const override {
     return _schedule._wiring.commands.unfolded(name);
   }
+  std::span<const Cost> costs(std::string_view view) const override {
+    return _schedule._wiring.commands.costs(view);
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }
@@ -411,17 +415,29 @@ void Schedule::drop_operators(const std::vector<std::string> &modules) {
   });
 }
 
+// Each node's cook is timed, a node in error none.
 void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
   size_targets(resolution);
   for (const auto &entry : _buffers)
     if (entry.second.memory() == Memory::readback)
       entry.second.invalidate();
-  for (Bound &bound : _bound) {
-    if (!bound.errors.empty() || !bound.op)
+  for (std::size_t at = 0; at < _bound.size(); ++at) {
+    Bound &bound = _bound[at];
+    Cost &cost = _costs[at];
+    if (!bound.errors.empty() || !bound.op) {
+      cost.cooks = false;
       continue;
+    }
     Cooker cooker(*this, bound, frame, {resolution.width, resolution.height});
+    const auto started = std::chrono::steady_clock::now();
     try {
       bound.op->cook(cooker);
+      smooth(cost.cpu,
+             cost.cpu_last,
+             cost.cooks,
+             std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() -
+                                                      started)
+                 .count());
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
       drop_commands(bound);

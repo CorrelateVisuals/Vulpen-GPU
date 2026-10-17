@@ -155,6 +155,9 @@ private:
   const View *view(std::string_view name) const override {
     return _views ? _views->find(name) : nullptr;
   }
+  std::span<const Cost> costs() const override {
+    return _views ? _views->costs(_address) : std::span<const Cost>();
+  }
   FilePort &files() override {
     return _files;
   }
@@ -478,6 +481,10 @@ const View *Commands::view(std::string_view name) {
 
 const View *Commands::unfolded(std::string_view name) {
   return _views ? _views->unfolded(name) : nullptr;
+}
+
+std::span<const Cost> Commands::costs(std::string_view name) {
+  return _views ? _views->costs(name) : std::span<const Cost>();
 }
 
 bool Commands::quitting() const {

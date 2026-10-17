@@ -367,6 +367,11 @@ const View *Views::unfolded(std::string_view name) {
   return found ? &found->next() : nullptr;
 }
 
+std::span<const Cost> Views::costs(std::string_view name) {
+  const Hosted *const found = hosted(name);
+  return found && found->schedule ? found->schedule->costs() : std::span<const Cost>();
+}
+
 // An edit that leaves the view unable to unfold, or naming a view that cannot be hosted,
 // is refused, and changes nothing.
 void Views::replace(std::string_view name, View view) {

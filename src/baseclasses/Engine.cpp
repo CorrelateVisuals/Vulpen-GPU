@@ -5,7 +5,9 @@
 #include "baseclasses/Resources.h"
 #include "baseclasses/Swapchain.h"
 
+#include <limits>
 #include <optional>
+#include <vector>
 
 namespace VP {
 
@@ -20,6 +22,9 @@ constexpr VkPipelineStageFlags shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_B
 // transparent.
 constexpr VkClearColorValue transparent{.float32 = {0.0f, 0.0f, 0.0f, 0.0f}};
 constexpr float far_depth = 1.0f;
+constexpr double nanoseconds_per_millisecond = 1e6;
+// A timestamp's value, then whether it is there, as the query pool hands them back.
+constexpr std::size_t per_query = 2;
 
 void barrier(VkCommandBuffer commands,
              VkPipelineStageFlags source_stage,
@@ -109,15 +114,29 @@ struct Engine::Gpu {
   Gpu(const Log &log, const Window *window)
       : log(log), mechanics(log, window),
         resources(mechanics.instance(), mechanics.physical_device(), mechanics.device()),
-        pipelines(mechanics.device(), resources) {
+        pipelines(mechanics.device(), resources),
+        tick(mechanics.timestamp_bits() == 0
+                 ? 0.0
+                 : mechanics.timestamp_period() / nanoseconds_per_millisecond),
+        valid(mechanics.timestamp_bits() >= 64
+                  ? ~std::uint64_t{0}
+                  : (std::uint64_t{1} << mechanics.timestamp_bits()) - 1) {
     if (window)
       swapchain.emplace(log, mechanics, *window);
   }
+  ~Gpu() {
+    vkDestroyQueryPool(mechanics.device(), queries, nullptr);
+  }
+  Gpu(const Gpu &) = delete;
+  Gpu &operator=(const Gpu &) = delete;
 
   void record(VkCommandBuffer commands, std::span<const Pass> passes);
   void draw(VkCommandBuffer commands,
             const Target &target,
             std::span<const Pass> passes) const;
+  void begin_timing(VkCommandBuffer commands, std::size_t passes);
+  void stamp(VkCommandBuffer commands, std::size_t pass, bool after) const;
+  void read_times();
 
   const Log &log;
   Mechanics mechanics;
@@ -125,6 +144,16 @@ struct Engine::Gpu {
   Pipelines pipelines;
   std::optional<Swapchain> swapchain;
   Hazards hazards;
+  // Two timestamps a pass, read back once the frame's fence passed (VK02); none where
+  // the queue keeps no time.
+  const double tick;         // milliseconds a timestamp's tick is
+  const std::uint64_t valid; // the bits of a timestamp that count
+  VkQueryPool queries = VK_NULL_HANDLE;
+  std::uint32_t query_room = 0; // timestamps the pool holds
+  std::uint32_t queried = 0;    // passes the last run timed, until they are read
+  // Kept between frames, so a frame allocates nothing for them (CPP10).
+  std::vector<std::uint64_t> stamps;
+  std::vector<float> times;
 };
 
 Engine::Engine(const Log &log, const Window *window)
@@ -154,8 +183,13 @@ VkRenderPass Engine::render_pass() const {
   return _gpu->swapchain ? _gpu->swapchain->render_pass() : VK_NULL_HANDLE;
 }
 
-void Engine::wait() const {
+void Engine::wait() {
   _gpu->mechanics.wait();
+  _gpu->read_times();
+}
+
+std::span<const float> Engine::times() const {
+  return _gpu->times;
 }
 
 void Engine::run(std::span<const VkBuffer> clears,
@@ -167,6 +201,7 @@ void Engine::run(std::span<const VkBuffer> clears,
                  VkExtent2D size) {
   Mechanics &mechanics = _gpu->mechanics;
   const VkCommandBuffer commands = mechanics.record();
+  _gpu->begin_timing(commands, passes.size());
   for (const VkBuffer buffer : clears)
     vkCmdFillBuffer(commands, buffer, 0, VK_WHOLE_SIZE, 0);
   if (!clears.empty())
@@ -202,7 +237,7 @@ void Engine::run(std::span<const VkBuffer> clears,
 // In order, so each pass runs after those that write what it reads. The draws that
 // follow one another into the same image record in one render pass, even with no
 // instances, so the image is cleared and ready to sample; draws into the window wait for
-// the window's.
+// the window's. Draws into an image with no size yet record nothing, which takes no time.
 void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes) {
   hazards.clear();
   for (std::size_t first = 0; first < passes.size();) {
@@ -212,28 +247,92 @@ void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes)
     while (draw && end < passes.size() && passes[end].bind_point == pass.bind_point &&
            passes[end].offscreen == pass.offscreen)
       ++end;
+    const std::size_t at = first;
     const std::span<const Pass> run = passes.subspan(first, end - first);
     first = end;
-    if (draw && (!pass.offscreen || !pass.offscreen->framebuffer))
+    if (draw && !pass.offscreen)
       continue;
-    if (hazards.before(run))
+    const bool records = !draw || pass.offscreen->framebuffer;
+    if (records && hazards.before(run))
       barrier(commands,
               shader_stages,
               VK_ACCESS_SHADER_WRITE_BIT,
               shader_stages,
               VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-    if (draw)
+    if (records && draw)
       begin(commands, *pass.offscreen);
-    for (const Pass &each : run) {
-      bind(commands, pipelines, each);
-      if (!draw)
-        vkCmdDispatch(commands, each.groups, 1, 1);
-      else if (instances_of(each) != 0)
-        vkCmdDraw(commands, each.vertex_count, instances_of(each), 0, 0);
+    for (std::size_t each = 0; each < run.size(); ++each) {
+      stamp(commands, at + each, false);
+      if (records)
+        bind(commands, pipelines, run[each]);
+      if (records && !draw)
+        vkCmdDispatch(commands, run[each].groups, 1, 1);
+      else if (records && instances_of(run[each]) != 0)
+        vkCmdDraw(commands, run[each].vertex_count, instances_of(run[each]), 0, 0);
+      stamp(commands, at + each, true);
     }
-    if (draw)
+    if (records && draw)
       vkCmdEndRenderPass(commands);
   }
+}
+
+// Room for two timestamps a pass, made anew when the passes outgrow it, which the
+// frame's fence made safe, and reset before the frame writes them.
+void Engine::Gpu::begin_timing(VkCommandBuffer commands, std::size_t passes) {
+  queried = tick == 0.0 ? 0 : static_cast<std::uint32_t>(passes);
+  const std::uint32_t needed = 2 * queried;
+  if (needed == 0)
+    return;
+  if (needed > query_room) {
+    vkDestroyQueryPool(mechanics.device(), queries, nullptr);
+    queries = VK_NULL_HANDLE;
+    const VkQueryPoolCreateInfo info{.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+                                     .queryType = VK_QUERY_TYPE_TIMESTAMP,
+                                     .queryCount = needed};
+    check(vkCreateQueryPool(mechanics.device(), &info, nullptr, &queries),
+          "vkCreateQueryPool");
+    query_room = needed;
+  }
+  vkCmdResetQueryPool(commands, queries, 0, needed);
+}
+
+// The first as the GPU takes the pass up, the second once it and every command before it
+// are done.
+void Engine::Gpu::stamp(VkCommandBuffer commands, std::size_t pass, bool after) const {
+  if (queried != 0)
+    vkCmdWriteTimestamp(commands,
+                        after ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                              : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        queries,
+                        static_cast<std::uint32_t>(2 * pass + (after ? 1 : 0)));
+}
+
+// Once the frame's fence passed, so no read waits (VK02): a pass took the time between its
+// two timestamps where both are there, the tick's bits that count wrapping round.
+void Engine::Gpu::read_times() {
+  times.assign(queried, std::numeric_limits<float>::quiet_NaN());
+  if (queried == 0)
+    return;
+  stamps.resize(2 * per_query * queried);
+  const VkResult result =
+      vkGetQueryPoolResults(mechanics.device(),
+                            queries,
+                            0,
+                            2 * queried,
+                            stamps.size() * sizeof(std::uint64_t),
+                            stamps.data(),
+                            per_query * sizeof(std::uint64_t),
+                            VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
+  if (result != VK_NOT_READY)
+    check(result, "vkGetQueryPoolResults");
+  for (std::uint32_t pass = 0; pass < queried; ++pass) {
+    const std::uint64_t *const before = &stamps[2 * per_query * pass];
+    const std::uint64_t *const after = before + per_query;
+    if (before[1] != 0 && after[1] != 0)
+      times[pass] = static_cast<float>(
+          static_cast<double>((after[0] - before[0]) & valid) * tick);
+  }
+  queried = 0;
 }
 
 // Draws read what the clears and dispatches wrote; the CPU's uploads are visible to the
@@ -250,12 +349,16 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
   fill(commands, target.extent);
   // A draw given nothing this frame records nothing, while its pipeline and buffers stay,
   // so what is hidden costs no draw and shows again the frame it is given something.
-  for (const Pass &pass : passes) {
-    if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || pass.offscreen ||
-        instances_of(pass) == 0)
+  for (std::size_t at = 0; at < passes.size(); ++at) {
+    const Pass &pass = passes[at];
+    if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || pass.offscreen)
       continue;
-    bind(commands, pipelines, pass);
-    vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
+    stamp(commands, at, false);
+    if (instances_of(pass) != 0) {
+      bind(commands, pipelines, pass);
+      vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
+    }
+    stamp(commands, at, true);
   }
   vkCmdEndRenderPass(commands);
 }

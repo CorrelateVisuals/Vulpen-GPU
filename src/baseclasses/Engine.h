@@ -36,8 +36,14 @@ public:
   // What draws render into; null without a window.
   VkRenderPass render_pass() const;
   // Before each run, and before what a frame used goes: one frame is in flight, and the
-  // next records over its commands.
-  void wait() const;
+  // next records over its commands. Then it reads how long the last run's passes took.
+  void wait();
+  // How long each pass of the last run took on the GPU, in milliseconds, between a
+  // timestamp as the GPU took it up and one once it was done, by its place among the
+  // passes given; NaN for one not timed, as where the queue keeps no time. Passes run
+  // side by side where no barrier parts them, so their times may overlap. Valid from
+  // wait() until the next run.
+  std::span<const float> times() const;
   // Zeroes the new buffers first, so a run starts from the same bytes every time (C01),
   // and copies in the images the CPU filled. The dispatches and the draws into images run
   // next, in the order given, the draws that follow one another into one image in one

@@ -30,6 +30,10 @@ public:
   // Whether the device's one queue can draw frames and show them on the window this
   // surface is of.
   bool presents(VkSurfaceKHR surface) const;
+  // How many nanoseconds a tick of a timestamp is, and how many of its bits count, none
+  // where the queue keeps no time, which then may write no timestamp.
+  float timestamp_period() const;
+  std::uint32_t timestamp_bits() const;
 
   // One frame in flight: the frame loop waits on nothing but this fence (VK02).
   void wait() const;

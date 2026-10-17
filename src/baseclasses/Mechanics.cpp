@@ -283,6 +283,16 @@ bool Mechanics::presents(VkSurfaceKHR surface) const {
          (families_of(_choice.device)[_choice.family].queueFlags & VK_QUEUE_GRAPHICS_BIT);
 }
 
+float Mechanics::timestamp_period() const {
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(_choice.device, &properties);
+  return properties.limits.timestampPeriod;
+}
+
+std::uint32_t Mechanics::timestamp_bits() const {
+  return families_of(_choice.device)[_choice.family].timestampValidBits;
+}
+
 // A window at start gets a device and queue that present to it, through a surface made
 // only for the choice: the window's output makes its own.
 Mechanics::Choice

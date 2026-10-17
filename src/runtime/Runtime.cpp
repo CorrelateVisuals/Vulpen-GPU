@@ -432,6 +432,10 @@ void Runtime::loop() {
         break;
     }
     _engine->wait();
+    // While the schedules whose passes the frame before ran still run: a swap or a
+    // rebuild below may replace them.
+    for (Schedule *const schedule : _views->schedules())
+      schedule->time(_engine->times());
     if (_live)
       watch();
     prepare();
