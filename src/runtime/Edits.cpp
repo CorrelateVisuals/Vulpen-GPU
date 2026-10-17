@@ -8,6 +8,7 @@
 #include <charconv>
 #include <filesystem>
 #include <format>
+#include <iterator>
 #include <map>
 #include <optional>
 #include <set>
@@ -403,6 +404,30 @@ void node_remove(View &view, Arguments arguments, const Around &) {
   std::erase_if(view.nodes, [&](const Node &node) { return goes(node.name); });
 }
 
+// The node goes with the nodes inside it, in their order, just before the other: the
+// order a view lists its nodes in is the order it draws them and, where neither reads
+// the other, cooks them, which a save keeps (V00).
+void node_move(View &view, Arguments arguments, const Around &) {
+  const std::string name(arguments[0]);
+  const std::string before(arguments[1]);
+  existing(view, name);
+  existing(view, before);
+  const auto goes = [&](std::string_view node) {
+    return node == name || node.starts_with(name + '.');
+  };
+  if (goes(before))
+    throw std::runtime_error(
+        std::format("{} is {} or inside it, so it cannot go before it", before, name));
+  const auto moving = std::ranges::stable_partition(
+      view.nodes, [&](const Node &node) { return !goes(node.name); });
+  std::vector<Node> moved(std::make_move_iterator(moving.begin()),
+                          std::make_move_iterator(moving.end()));
+  view.nodes.erase(moving.begin(), moving.end());
+  view.nodes.insert(std::ranges::find(view.nodes, before, &Node::name),
+                    std::make_move_iterator(moved.begin()),
+                    std::make_move_iterator(moved.end()));
+}
+
 void node_set(View &view, Arguments arguments, const Around &around) {
   Node &node = existing(view, arguments.front());
   Node changed = node;
@@ -504,6 +529,10 @@ constexpr std::array edits{
          "removes a node with the nodes inside it, the connections they write, and them "
          "from the connections they read; its folder stays",
          node_remove},
+    Edit{"node move <node> <node>",
+         "lists a node, with the nodes inside it, just before another, so it draws under "
+         "that one",
+         node_move},
     Edit{"node set <node> <word=value>...",
          "gives a node the words named, clearing those given empty; param and image "
          "words replace them all",
