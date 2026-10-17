@@ -45,8 +45,10 @@ sideways; the editor run scrolls the note past its end with the wheel, and back 
 drag on its scroll bar. In both, three presses in a row select a word, then its row.
 A run types into a note in the editor, opens the file menu along the window's top and
 presses its write, which types write into the terminal and sends it, so the note must
-hold what was typed. No node of any run may stop, as one whose menu.ini or keymap
-names a line no command takes would.
+hold what was typed. Another drags the terminal's tab strip onto the editor's right edge
+and moves the graph's panel below the Perform panel by panel move, so the ide's docks are
+edited twice, and must rebuild with no line refused. No node of any run may stop, as one
+whose menu.ini or keymap names a line no command takes would.
 The zoom a person keeps in the library's font folder is set aside while it runs, and put
 back after. Where no display exists it is skipped (V07).
 
@@ -239,6 +241,19 @@ def menu(note: Path) -> list[str]:
     ]
 
 
+def docked(width: int, height: int) -> list[str]:
+    row = round((height - MENUBAR - 4) * 0.65)  # the dock's top row, under the menubar
+    strip = MENUBAR + row + 4 + STRIP // 2  # the terminal's tab strip, past the seam
+    editor = round((width - 4) * 0.5)  # the editor's right edge, at the top row's seam
+    return [
+        "ide: panel move ide.graph-panel ide.perform-panel bottom",  # the two swap
+        f"input pointer {width // 4} {strip}",
+        "input button down left",
+        f"input pointer {editor - 10} {MENUBAR + row // 2}",
+        "input button up left",  # the terminal beside the editor, at its right
+    ]
+
+
 def graph(wave: Path, width: int, height: int) -> list[str]:
     left = round((width - 4) * 0.5) + 4  # past the top row's seam: the graph's area
     # The dock's top row, under the menubar, and above the graph's row of buttons, as
@@ -383,6 +398,9 @@ def test() -> None:
         if (held := typed_into.read_text(encoding="utf-8")) != TYPED + NOTE:
             sys.exit(f"ide: expected the file menu's write to write {TYPED + NOTE!r}, "
                      f"got {held!r}")
+        if "{!!!}" in (moved := drive(folder, "docked", docked(width, height))):
+            sys.exit(f"ide: expected the panels to move with no line refused, got:\n"
+                     f"{moved}")
         performed = drive(folder, "performed view", PERFORM)
         if "{!!!}" in performed:
             sys.exit(f"ide: expected the chord to give the triangle the window, got:\n"

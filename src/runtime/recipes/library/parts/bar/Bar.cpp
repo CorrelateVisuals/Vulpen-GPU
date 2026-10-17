@@ -1,6 +1,7 @@
 #include "contracts/Font.h"
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
+#include "shared/Halves.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -9,8 +10,6 @@
 #include <string>
 
 namespace {
-
-constexpr std::uint32_t pad = 4; // in pixels, either side of the text cells a bar holds
 
 // Cuts a bar off one edge of the Rect its area gives, size text cells across: rows at the
 // top or bottom, columns at the left or right, so it follows the font. It hands on the
@@ -35,8 +34,7 @@ class Bar final : public VP::Operator {
 
   void cook(VP::Cook &) override {
     const std::uint32_t whole = _area->extent[_along];
-    const std::uint32_t length =
-        _size == 0 ? 0 : std::min(_size * _font->cell[_along] + 2 * pad, whole);
+    const std::uint32_t length = bar_length(_size, _font->cell[_along], whole);
     *_strip = *_area;
     *_rest = *_area;
     _strip->extent[_along] = length;

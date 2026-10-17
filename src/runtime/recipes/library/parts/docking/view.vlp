@@ -1,0 +1,11 @@
+# The docking part: one node whose operator is Docking; it registers panel move, which
+# moves a panel of a dock beside another as edits of the docks that seat them, and which a
+# drag of a panel's tab strip onto another panel sends. Its host hands its area the Rect
+# it gives its outermost dock, on the same connection, its font the font's metrics, and
+# draws its rects over the panels: a frame round where a drop would put the panel dragged.
+[manifest]
+version = 1
+
+[node "docking"]
+operator = Docking
+file     = Docking.cpp

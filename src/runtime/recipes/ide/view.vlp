@@ -99,6 +99,15 @@ recipe = terminal
 recipe = menu
 param  = menus.line=ide.terminal.command-line
 
+# A panel's tab strip dragged onto another panel moves it to that panel's edge it is let
+# go nearest, as edits of the docks, which a save of the ide keeps; listed after the
+# menubar, so the frame where it would land draws over every panel.
+[node "ide.docking"]
+recipe = docking
+
+[node "ide.docking-rects"]
+recipe = rects
+
 # What is presented, over the whole window in perform mode; in edit mode it has no room.
 [node "ide.screen"]
 recipe = image
@@ -111,9 +120,15 @@ to   = ide.modes.area
 from = ide.modes.edit
 to   = ide.menubar.bar.area
 
+# The outermost dock's Rect, from which docking finds where every panel shows.
 [connection "dock"]
 from = ide.menubar.bar.rest
 to   = ide.dock.split.area
+to   = ide.docking.area
+
+[connection "docking"]
+from = ide.docking.rects
+to   = ide.docking-rects.rects
 
 [connection "perform"]
 from = ide.modes.perform
@@ -219,6 +234,7 @@ to   = ide.menubar.names-rects.palette
 to   = ide.menubar.names-glyphs.palette
 to   = ide.menubar.items-rects.palette
 to   = ide.menubar.items-glyphs.palette
+to   = ide.docking-rects.palette
 
 [connection "font"]
 from = ide.font.font
@@ -267,3 +283,4 @@ to   = ide.terminal.command-line.font
 to   = ide.menubar.bar.font
 to   = ide.menubar.names.font
 to   = ide.menubar.items.font
+to   = ide.docking.font

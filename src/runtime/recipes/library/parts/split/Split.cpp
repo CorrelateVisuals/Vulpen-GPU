@@ -1,6 +1,7 @@
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
+#include "shared/Halves.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,8 +14,7 @@
 
 namespace {
 
-constexpr std::int32_t seam_width = 4; // in pixels: the gap a press grabs
-constexpr std::uint32_t backing = 2;   // the ground under both Rects, then the seam
+constexpr std::uint32_t backing = 2; // the ground under both Rects, then the seam
 // A ratio keeps the three decimals param set writes, while dragged too, so letting go
 // moves nothing.
 constexpr float ratio_steps = 1000.0f;
@@ -46,10 +46,10 @@ class Split final : public VP::Operator {
   void cook(VP::Cook &frame) override {
     for (const VP::Event &event : frame.input().events())
       follow(frame, event);
-    const std::int32_t first = first_length();
-    *_first = part(0, first);
-    *_second = part(first + seam_length(), room() - first);
-    const VP_VIEW::Rect seam = this->seam();
+    const Halves split = halves(*_area, _along, _ratio);
+    *_first = split.first;
+    *_second = split.second;
+    const VP_VIEW::Rect &seam = split.seam;
     const bool lit = _dragging || VP_VIEW::contains(seam, _pointer);
     const std::span<VP_VIEW::Rect> rects = frame.write(_rects, backing);
     rects[0] = {.offset = _area->offset,
@@ -67,7 +67,7 @@ class Split final : public VP::Operator {
       if (_dragging)
         _ratio = ratio_at(_pointer[_along]);
     } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
-      if (event.down && VP_VIEW::contains(seam(), _pointer))
+      if (event.down && VP_VIEW::contains(halves(*_area, _along, _ratio).seam, _pointer))
         _dragging = true;
       else if (!event.down && std::exchange(_dragging, false))
         frame.commands().send(
@@ -77,36 +77,15 @@ class Split final : public VP::Operator {
 
   // The ratio that puts the seam's middle at a point along the axis.
   float ratio_at(float at) const {
-    const std::int32_t room = this->room();
+    const Halves split = halves(*_area, _along, _ratio);
+    const auto room = static_cast<std::int32_t>(split.first.extent[_along] +
+                                                split.second.extent[_along]);
     if (room == 0)
       return _ratio;
     const float first = at - static_cast<float>(_area->offset[_along]) -
                         static_cast<float>(seam_width) / 2.0f;
     const float ratio = std::clamp(first / static_cast<float>(room), 0.0f, 1.0f);
     return std::round(ratio * ratio_steps) / ratio_steps;
-  }
-
-  // Along the axis: the seam, as wide as the area allows, and the room it leaves.
-  std::int32_t seam_length() const {
-    return std::min(seam_width, static_cast<std::int32_t>(_area->extent[_along]));
-  }
-  std::int32_t room() const {
-    return static_cast<std::int32_t>(_area->extent[_along]) - seam_length();
-  }
-  std::int32_t first_length() const {
-    return static_cast<std::int32_t>(std::lround(static_cast<float>(room()) * _ratio));
-  }
-
-  VP_VIEW::Rect seam() const {
-    return part(first_length(), seam_length());
-  }
-
-  // The area from start along the axis, length long, and whole across it.
-  VP_VIEW::Rect part(std::int32_t start, std::int32_t length) const {
-    VP_VIEW::Rect rect = *_area;
-    rect.offset[_along] += start;
-    rect.extent[_along] = static_cast<std::uint32_t>(length);
-    return rect;
   }
 
   glm::length_t _along = 0; // 0 for x, 1 for y
