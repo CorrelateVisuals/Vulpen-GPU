@@ -34,10 +34,11 @@ glm::ivec2 margin_of(glm::uvec2 cell) {
           static_cast<std::int32_t>(cell.y)};
 }
 
-// The middle of a box's row from its top, its name's row before the first.
+// The middle of a box's row from its top, its name's row before the first, where a
+// relation ends.
 float row_y(std::size_t row, glm::uvec2 cell) {
-  return static_cast<float>(pad) +
-         (static_cast<float>(row) + 1.5f) * static_cast<float>(cell.y);
+  const float rows = row == title_row ? -1.0f : static_cast<float>(row);
+  return static_cast<float>(pad) + (rows + 1.5f) * static_cast<float>(cell.y);
 }
 
 // Where a box shows at zoom 1, and how large it is with the boxes inside it.

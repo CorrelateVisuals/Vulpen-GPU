@@ -58,15 +58,16 @@ std::string held(const VP::View &view, const std::string &name) {
 // The person's editor: open hands a file or a folder to the program its program param
 // names, or, while the view its window param names runs, a file to the editor there,
 // through that editor's file param, as a seam's drag sets a split's ratio, and while the
-// view its graph param names runs, a folder to the graph there, through its folder param.
-// So open is one command with one owner, whichever takes the file or the folder (V06).
+// view its folders param names runs, a folder to the node there, through its folder
+// param, as the relations part the graph shows a folder from. So open is one command
+// with one owner, whichever takes the file or the folder (V06).
 class Editor final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _program = node.param<std::string>("program");
     // <view>:<node>, with no view for the one vulpen started with; unset, every file goes
     // to the program, and every folder.
     _window = node.sets("window") ? node.param<std::string>("window") : std::string();
-    _graph = node.sets("graph") ? node.param<std::string>("graph") : std::string();
+    _folders = node.sets("folders") ? node.param<std::string>("folders") : std::string();
     _name = node.name();
     _open = node.command("open [<file>]",
                          "opens a file in the editor in a window while one runs, and a "
@@ -85,11 +86,13 @@ class Editor final : public VP::Operator {
           path.string(),
           there.empty() ? "" : std::format("; the view holds {}", there)));
     }
-    const auto graph = running(call, _graph);
+    const auto folders = running(call, _folders);
     const auto window = running(call, _window);
-    if (graph && !call.arguments().empty() && folder(call.files(), call.arguments()[0]))
-      call.commands().send(std::format(
-          "{}: param set {} folder {}", graph->first, graph->second, call.arguments()[0]));
+    if (folders && !call.arguments().empty() && folder(call.files(), call.arguments()[0]))
+      call.commands().send(std::format("{}: param set {} folder {}",
+                                       folders->first,
+                                       folders->second,
+                                       call.arguments()[0]));
     else if (window)
       in_window(call, window->first, window->second);
     else
@@ -128,7 +131,7 @@ class Editor final : public VP::Operator {
 
   std::string _program;
   std::string _window;
-  std::string _graph;
+  std::string _folders;
   std::string _name;
   VP::Command _open;
 };

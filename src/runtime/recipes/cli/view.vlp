@@ -18,8 +18,8 @@ recipe = library
 recipe = projects
 
 # open starts the person's editor, or, while the ide runs, gives a file to its editor and
-# a folder to its graph.
+# a folder to its graph, through the relations part the graph shows a folder from.
 [node "cli.editor"]
 recipe = editor
 param  = window=ide:ide.editor.text
-param  = graph=ide:ide.graph.graph
+param  = folders=ide:ide.graph.relations

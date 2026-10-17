@@ -1,1 +1,13 @@
-# The relations part: one node whose operator is Relations; it draws nothing.
+# The relations part: one node whose operator is Relations; it draws nothing. It finds
+# what links the files of the view the graph shows, or of the folder its folder param
+# names, which open sets while the ide runs, and hands them to the graph as Relations.
+# Its docs param names the folder, from this one, whose documents define the ids a file
+# cites: docs/architecture/ at the top of the repository.
+[manifest]
+version = 1
+
+[node "relations"]
+operator = Relations
+file     = Relations.cpp
+file     = Relations.h
+param    = docs=../../../../../../docs/architecture

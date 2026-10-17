@@ -1,5 +1,6 @@
-# The graph-editor component: the graph part, which draws its ground, and over it
-# curves, rects and glyphs: its curves first, then its boxes over them, then their names.
+# The graph-editor component: the relations part, which finds what links the files the
+# graph shows, the graph part, which draws its ground, and over it curves, rects and
+# glyphs: its curves first, then its boxes over them, then their names.
 # The host connects a Rect to graph.area, the font's metrics to graph.font and the keys
 # part's typed to graph.typed, the theme to the graph and the three drawing parts, and the
 # font and its atlas to glyphs; a panel shows graph.tabs.
@@ -7,6 +8,9 @@
 version = 1
 
 [node "graph-editor"]
+
+[node "graph-editor.relations"]
+recipe = relations
 
 [node "graph-editor.graph"]
 recipe = graph
@@ -19,6 +23,11 @@ recipe = rects
 
 [node "graph-editor.glyphs"]
 recipe = glyphs
+
+# What links the files shown, and the folder shown in place of the view.
+[connection "relations"]
+from = graph-editor.relations.relations
+to   = graph-editor.graph.relations
 
 [connection "curves"]
 from = graph-editor.graph.curves

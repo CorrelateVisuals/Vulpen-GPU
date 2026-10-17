@@ -6,6 +6,7 @@
 #include <glm/geometric.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <filesystem>
 #include <format>
@@ -33,6 +34,15 @@ constexpr float mark_size = 6.0f;               // a port's mark, in pixels at z
 constexpr float least_reach = 32.0f;            // a bend's handles, at least, in pixels
 // A cubic's handles, of its radius, that keep it on a quarter circle.
 constexpr float quarter = 0.5523f;
+// The role each layer's curves are drawn in, by VP_VIEW::Layer: a connection in the
+// accent color, and each kind of relation in a hue the editor shows code in, so the
+// theme keeps every color.
+constexpr std::array<std::uint32_t, VP_VIEW::layer_names.size()> layer_roles{
+    VP_VIEW::role("accent"),
+    VP_VIEW::role("directive"),
+    VP_VIEW::role("keyword"),
+    VP_VIEW::role("number"),
+    VP_VIEW::role("string")};
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
 // Zoomed in to this many times as near as home is, the graph shows the inside of the box
 // under the pointer, as the POC did; zoomed out past this share of it, a level up.
@@ -77,7 +87,7 @@ void Graph::bind(VP::Bind &node) {
   _name = node.name();
   _view = node.view_name();
   _inside = node.sets("inside") ? node.param<std::string>("inside") : std::string();
-  _folder = node.sets("folder") ? node.param<std::string>("folder") : std::string();
+  _relations = &node.input<VP_VIEW::Relations>("relations");
   _select = node.command("select [<node>...]",
                          "selects nodes of the view the graph shows, or views it hosts, "
                          "in place of those selected; with none, none");
@@ -93,27 +103,24 @@ void Graph::bind(VP::Bind &node) {
   _zoom = node.value<float>("zoom");
 }
 
-// The current view, where the terminals' lines go, the one vulpen started with too, or a
-// folder open showed in its place, read again as the level shown changes, until a view
-// is switched to. The keys once it is known, and before it is read for the frame, as a
-// removal changes it.
+// The current view, where the terminals' lines go, the one vulpen started with too, or the
+// folder the relations part reads in its place, until a view is switched to. The keys
+// once it is known, and before it is read for the frame, as a removal changes it.
 void Graph::cook(VP::Cook &frame) {
   const std::string shown(frame.commands().current());
+  const bool folder = !_relations->folder.empty();
   if (_tabs->empty() || shown != _shown) {
-    if (!_tabs->empty() && !_folder.empty())
-      frame.commands().send(std::format("{}: param unset {} folder", _view, _name));
+    if (!_tabs->empty() && folder)
+      show_view(frame);
     show(frame, frame.view(shown), shown);
   }
   for (const VP::Event &event : _typed->to(_name))
     if (event.kind == VP::Event::Kind::key && event.down)
       key(frame, event.name);
-  const bool folder = !_folder.empty();
-  if (folder && (_folder != _built_folder || _inside != _built_inside))
-    _folder_view = folder_view(frame.files(), _folder, _inside);
-  const VP::View *const edited = folder ? &_folder_view : frame.view(shown);
-  const VP::View *const flat = folder ? &_folder_view : frame.unfolded(shown);
+  const VP::View *const edited = folder ? &_relations->tree : frame.view(shown);
+  const VP::View *const flat = folder ? &_relations->tree : frame.unfolded(shown);
   if (edited != _built_edited || flat != _built_flat || _inside != _built_inside ||
-      _folder != _built_folder)
+      _relations->folder != _built_folder || _relations->changes != _built_changes)
     build(edited, flat);
   const glm::uvec2 cell = _font->cell;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
@@ -239,29 +246,44 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
 }
 
 // A box pressed may be one the boxes no longer hold. A level shown anew starts at home. A
-// folder always shows an inside: the one its inside param names, or its own.
+// folder always shows an inside: the one the inside param names, or the folder's own;
+// the paths past it are named from the folder holding it, and a view's from its folder.
 void Graph::build(const VP::View *edited, const VP::View *flat) {
-  if (_inside != _built_inside || _folder != _built_folder)
+  const std::string &folder = _relations->folder;
+  if (_inside != _built_inside || folder != _built_folder)
     _homing = true;
   _built_edited = edited;
   _built_flat = flat;
   _built_inside = _inside;
-  _built_folder = _folder;
-  const bool folder = !_folder.empty();
-  _boxes = edited && flat ? boxes_of(*edited,
-                                     *flat,
-                                     folder ? _folder_view.nodes.front().name : _inside,
-                                     folder)
-                          : Boxes{};
+  _built_folder = folder;
+  _built_changes = _relations->changes;
+  _boxes = {};
+  if (edited && flat && (folder.empty() || !flat->nodes.empty())) {
+    const bool inside = std::ranges::find(flat->nodes, _inside, &VP::Node::name) !=
+                        flat->nodes.end();
+    _boxes = boxes_of(*edited,
+                      *flat,
+                      folder.empty() || inside ? _inside : flat->nodes.front().name,
+                      _relations->relations,
+                      folder.empty() ? edited->file.parent_path()
+                                     : std::filesystem::path(folder).parent_path(),
+                      !folder.empty());
+  }
   name_tab();
   _laid = false;
   _grab.reset();
 }
 
+// The view again, in place of the folder the relations part reads.
+void Graph::show_view(VP::Cook &frame) const {
+  frame.commands().send(
+      std::format("{}: param unset {} folder", _relations->view, _relations->node));
+}
+
 // The tab names the view shown and the node whose inside shows, or the folder shown.
 void Graph::name_tab() {
   std::string label(title);
-  if (!_shown.empty() && _folder.empty())
+  if (!_shown.empty() && _relations->folder.empty())
     label += std::format(" - {}", _shown);
   if (_boxes.frame != no_box)
     label += std::format(" - {}", _boxes.boxes[_boxes.frame].name);
@@ -431,6 +453,9 @@ void Graph::open(VP::Cook &frame, std::size_t at, glm::uvec2 cell) {
        static_cast<float>(pad)) /
       static_cast<float>(cell.y);
   const std::span<const BoxRow> rows = rows_in(_boxes, at);
+  if (row < 1.0f && !_boxes.boxes[at].opens.empty())
+    frame.commands().send(
+        std::format("open {}", _boxes.boxes[at].opens.generic_string()));
   if (row < 1.0f || static_cast<std::size_t>(row) > rows.size())
     return;
   if (const BoxRow &pressed = rows[static_cast<std::size_t>(row) - 1];
@@ -481,13 +506,12 @@ void Graph::leave(VP::Cook &frame) {
   if (_boxes.frame == no_box || !_built_flat)
     return;
   const std::string &left = _boxes.boxes[_boxes.frame].name;
-  if (!_folder.empty()) {
-    const std::size_t slash = left.rfind('/');
-    frame.commands().send(
-        slash == std::string::npos
-            ? std::format("{}: param unset {} folder", _view, _name)
-            : std::format(
-                  "{}: param set {} inside {}", _view, _name, left.substr(0, slash)));
+  if (!_relations->folder.empty()) {
+    if (const std::size_t slash = left.rfind('/'); slash == std::string::npos)
+      show_view(frame);
+    else
+      frame.commands().send(
+          std::format("{}: param set {} inside {}", _view, _name, left.substr(0, slash)));
     return;
   }
   const std::size_t holder = parent_of(_built_flat->nodes, left);
@@ -729,16 +753,17 @@ void Graph::write_row(glm::vec2 at,
 void Graph::write_curves(VP::Cook &frame) {
   const std::span<VP_VIEW::Curve> curves = frame.write(_curves);
   std::uint32_t written = 0;
+  std::uint32_t role = 0;
   const auto add = [&](glm::vec2 from, glm::vec2 to, glm::vec2 leave, glm::vec2 arrive) {
     if (written < curves.size())
-      curves[written++] = {.from = from,
-                           .to = to,
-                           .leave = leave,
-                           .arrive = arrive,
-                           .role = VP_VIEW::role("accent")};
+      curves[written++] = {
+          .from = from, .to = to, .leave = leave, .arrive = arrive, .role = role};
   };
   const std::span<const Waypoint> waypoints = _layout.waypoints();
-  for (const Route &route : _layout.routes()) {
+  const std::span<const Route> routes = _layout.routes();
+  for (std::size_t end = 0; end < routes.size(); ++end) {
+    const Route &route = routes[end];
+    role = layer_roles[static_cast<std::size_t>(_boxes.ends[end].layer)];
     const std::span<const Waypoint> way = waypoints.subspan(route.first, route.count);
     for (std::size_t at = 0; at + 1 < way.size(); ++at) {
       const glm::vec2 from = on_screen(way[at].at);

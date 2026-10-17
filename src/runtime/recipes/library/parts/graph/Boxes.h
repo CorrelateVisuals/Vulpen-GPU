@@ -1,7 +1,7 @@
 #pragma once
 
 #include "contracts/Palette.h"
-#include "runtime/Operator.h"
+#include "contracts/Relation.h"
 #include "runtime/View.h"
 #include "Arranged.h"
 
@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <map>
 #include <span>
 #include <string>
 #include <string_view>
@@ -19,17 +20,19 @@
 
 // Only Graph.cpp includes this header, so what it holds stays in the unnamed namespace of
 // the one file that builds the part, as the class does: the boxes the graph shows, a
-// level of the view at a time, what each lists, and the ends of the connections between
-// them.
+// level of the view or of a folder at a time, what each lists, and the ends of the
+// connections and the relations between them.
 namespace {
 
 constexpr std::uint32_t node_room = 256; // boxes shown at most; the rest are cut
 constexpr std::size_t no_box = static_cast<std::size_t>(-1);
+// An end on a box's name, as a relation's, rather than on a row.
+constexpr std::size_t title_row = no_box;
 // What a view's box calls what it draws into its window, which a connection may take.
 constexpr std::string_view window_port = "window";
 constexpr std::string_view manifest_name = "view.vlp";
 // The title of the boxes standing for what lies outside the node the graph shows the
-// inside of, whose ports a connection reaching in or out leaves or reaches.
+// inside of, whose rows a connection or a relation reaching in or out leaves or reaches.
 constexpr std::string_view outside_title = "outside";
 // Where an end shows while the box of what lies outside is not made yet.
 constexpr std::size_t outside_box = no_box - 1;
@@ -44,38 +47,44 @@ struct BoxRow {
   std::filesystem::path opens; // what a press on it opens; empty for none
 };
 
-// A node, a view the view shown hosts, or what lies outside the node the graph shows the
-// inside of, and the rows it lists: its ports first, then the recipe it uses, then the
-// nodes inside it, then its files. A box of a node holding nodes lists them, and shows
-// them once the graph shows its inside, framed by its box.
+// A node, a view the view shown hosts, a folder or a file of the folder shown, or what
+// lies outside the node or folder the graph shows the inside of, and the rows it lists:
+// its ports first, then the recipe it uses, then the nodes inside it, then its files. A
+// box holding nodes lists them, and shows them once the graph shows its inside, framed
+// by its box.
 struct Box {
   std::string name;  // as select, the .ini and a line name it
   std::string title; // its first row: its name, past the box it is in
   std::size_t parent = no_box;
   Kind kind = Kind::group;
   // A node of the view, or a view it hosts, which a press selects and a drag places; a
-  // node of a recipe a node uses is not, nor the frame, nor what lies outside it.
+  // node of a recipe a node uses is not, nor the frame, a folder or a file, nor what
+  // lies outside.
   bool own = false;
   bool holds = false;    // it holds nodes, whose insides zooming into it or a second
                          // press on it shows
   std::size_t first = 0; // its rows, in Boxes::rows
   std::size_t rows = 0;
   std::size_t ports = 0; // of its rows, the first, a port read or written on each
+  std::filesystem::path opens; // a file's, which a press on its name opens
 };
 
-// A curve: from the row of a writer's port to the row of a reader's, a reader each.
+// A curve: from the row of a writer's port to the row of a reader's, a reader each, or a
+// relation's, from the box showing a file to the box showing what it names, in its layer.
 struct End {
-  std::size_t wire = 0; // the connection, whose curves share their lanes
+  std::size_t wire = 0; // the connection, or a box's relations of a layer, whose curves
+                        // share their lanes
   std::size_t from = 0;
   std::size_t from_row = 0;
   std::size_t to = 0;
   std::size_t to_row = 0;
+  VP_VIEW::Layer layer = VP_VIEW::Layer::flow;
 };
 
-// What the graph shows of a view, built again only when the view or the level shown
-// changes, so a frame allocates nothing for it: each box after the box it is inside, so
-// the boxes drawn last lie over the others, then the views it hosts, or what lies
-// outside.
+// What the graph shows of a view or a folder, built again only when it or the level
+// shown changes, so a frame allocates nothing for it: each box after the box it is
+// inside, so the boxes drawn last lie over the others, then the views it hosts, or what
+// lies outside.
 struct Boxes {
   std::vector<Box> boxes;
   std::vector<BoxRow> rows;
@@ -131,15 +140,19 @@ std::size_t parent_of(const std::vector<VP::Node> &nodes,
 }
 
 // What the graph knows of the view's nodes while it builds the boxes: whether they are a
-// folder's, each node's parent, the box showing it, and what lies outside the node whose
-// inside shows, at the left, where connections reach in from, and at the right, where
-// they reach out to.
+// folder's, each node's parent, the box showing it, the nodes by their folders, the boxes
+// of the files of the folder shown, and what lies outside the node whose inside shows,
+// at the left, where connections reach in from, and at the right, where they reach out
+// to; and where the paths outside it are named from.
 struct Building {
   bool folders = false;
   std::vector<std::size_t> parents;
   std::vector<std::size_t> box_of_node;
+  std::multimap<std::string, std::size_t, std::less<>> nodes_in; // by folder
+  std::map<std::string, std::size_t, std::less<>> file_boxes;    // by path
   std::array<std::size_t, 2> outside{no_box, no_box};
   std::vector<Ports> ports;
+  std::filesystem::path base;
 };
 
 // The box showing a node: its own, or that of the node holding it that a box shows; none
@@ -151,8 +164,7 @@ std::size_t holder_of(const Building &building, std::size_t node) {
   return no_box;
 }
 
-// The box of what lies outside, at the left or the right, made as a connection first
-// needs it.
+// The box of what lies outside, at the left or the right, made as a curve first needs it.
 std::size_t outside_of(Boxes &boxes, Building &building, bool left) {
   std::size_t &outside = building.outside[left ? 0 : 1];
   if (outside == no_box && boxes.boxes.size() < node_room) {
@@ -217,9 +229,83 @@ void connect(Boxes &boxes, Building &building, const VP::View &flat) {
   }
 }
 
+// The boxes showing a path: a file's box, or each box showing a node whose folder holds
+// it, the deepest such folder's, as two nodes using one recipe share its folder; none
+// for a path no box shows.
+std::vector<std::size_t> boxes_showing(const Building &building, std::string_view path) {
+  std::vector<std::size_t> showing;
+  if (const auto file = building.file_boxes.find(path); file != building.file_boxes.end())
+    return {file->second};
+  for (std::filesystem::path folder = std::filesystem::path(path).parent_path();
+       showing.empty() && folder.has_relative_path(); folder = folder.parent_path()) {
+    const auto [first, last] = building.nodes_in.equal_range(folder.generic_string());
+    for (auto node = first; node != last; ++node)
+      if (const std::size_t box = holder_of(building, node->second);
+          box != no_box && std::ranges::find(showing, box) == showing.end())
+        showing.push_back(box);
+  }
+  return showing;
+}
+
+// A curve a relation between two boxes, from the name of each box showing the file that
+// says it to the name of each showing what it names, or to a row of what lies outside
+// naming it from where the graph shows, as one reaching in comes from such a row; a
+// relation inside one box, or wholly outside, draws nothing at this level. One box's
+// relations of a layer share their lanes, once each, and so do every box's of a layer
+// reaching out, one track a layer, as most of a view's do, to its contracts and the
+// principles its comments cite.
+void relate(Boxes &boxes,
+            Building &building,
+            std::span<const VP_VIEW::Relation> relations,
+            std::size_t wires) {
+  for (const VP_VIEW::Relation &relation : relations) {
+    std::vector<std::size_t> froms = boxes_showing(building, relation.from);
+    std::vector<std::size_t> tos = boxes_showing(building, relation.to);
+    if (froms.empty() == tos.empty() && froms.empty())
+      continue;
+    const auto named = [&](const std::string &path) {
+      return std::filesystem::path(path).lexically_proximate(building.base).generic_string();
+    };
+    std::size_t from_row = title_row;
+    std::size_t to_row = title_row;
+    if (froms.empty()) {
+      froms.push_back(outside_of(boxes, building, true));
+      if (froms.back() == no_box)
+        continue;
+      from_row = port_row(building.ports[froms.back()].written, named(relation.from));
+    }
+    if (tos.empty()) {
+      tos.push_back(outside_of(boxes, building, false));
+      if (tos.back() == no_box)
+        continue;
+      to_row = port_row(building.ports[tos.back()].read, named(relation.to));
+    }
+    const auto layer = static_cast<std::size_t>(relation.layer);
+    for (const std::size_t from : froms)
+      for (const std::size_t to : tos) {
+        // A box showing both ends holds it, as each box using one recipe holds the
+        // recipe's own includes.
+        if (std::ranges::find(tos, from) != tos.end())
+          break;
+        const std::size_t by = tos.front() == building.outside[1] ? node_room : from;
+        const End end{.wire = wires + by * VP_VIEW::layer_names.size() + layer,
+                      .from = from,
+                      .from_row = from_row,
+                      .to = to,
+                      .to_row = to_row,
+                      .layer = relation.layer};
+        if (from != to && std::ranges::none_of(boxes.ends, [&](const End &other) {
+              return other.wire == end.wire && other.from == from && other.to == to &&
+                     other.to_row == to_row && other.from_row == from_row;
+            }))
+          boxes.ends.push_back(end);
+      }
+  }
+}
+
 // Each box's rows: its ports, a reader's and a writer's side by side, then the recipe its
 // node uses, whose row opens the recipe's manifest, then the nodes inside it, unless it
-// frames them, then its files, each opening itself.
+// frames them, then its files, each opening itself, unless they are boxes of their own.
 void list_rows(Boxes &boxes,
                std::size_t box,
                const Building &building,
@@ -250,7 +336,8 @@ void list_rows(Boxes &boxes,
              .role = VP_VIEW::role("muted")});
       }
     for (const std::string &file : node_of.files)
-      boxes.rows.push_back({.text = file, .opens = node_of.folder / file});
+      if (!building.folders || box != boxes.frame)
+        boxes.rows.push_back({.text = file, .opens = node_of.folder / file});
   }
   if (child)
     boxes.rows.push_back(
@@ -270,21 +357,59 @@ std::size_t scope_of(const VP::View &flat,
              : no_box;
 }
 
+// Each node's parent, by the name each joins, a name looked up once.
+std::vector<std::size_t> parents_of(const VP::View &flat, char joins) {
+  std::map<std::string_view, std::size_t, std::less<>> named;
+  for (std::size_t at = 0; at < flat.nodes.size(); ++at)
+    named.emplace(flat.nodes[at].name, at);
+  std::vector<std::size_t> parents(flat.nodes.size(), no_box);
+  for (std::size_t at = 0; at < flat.nodes.size(); ++at) {
+    const std::string_view name = flat.nodes[at].name;
+    for (std::size_t dot = name.rfind(joins); dot != std::string_view::npos && dot > 0;
+         dot = name.rfind(joins, dot - 1))
+      if (const auto found = named.find(name.substr(0, dot)); found != named.end()) {
+        parents[at] = found->second;
+        break;
+      }
+  }
+  return parents;
+}
+
+// The files of the folder whose inside shows, a box each, as the POC showed them, so a
+// relation between two shows as a curve, a press on the name opening it.
+void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
+  for (const std::string &file : folder.files)
+    if (boxes.boxes.size() < node_room) {
+      const std::filesystem::path path = folder.folder / file;
+      building.file_boxes.emplace(path.generic_string(), boxes.boxes.size());
+      boxes.boxes.push_back({.name = std::format("{}/{}", folder.name, file),
+                             .title = file,
+                             .parent = boxes.frame,
+                             .kind = kind_of({.files = {file}}),
+                             .opens = path});
+    }
+}
+
 // The boxes of a view as it runs, each recipe a node uses unfolded, or of a folder, a
 // level at a time: with a scope that holds nodes, its box framing the boxes of the nodes
-// inside it, and beside it what lies outside it, as connections reach in at its left and
-// out at its right; with none, the boxes of the nodes at the top and of the views the
-// view hosts, as the view as edited names them. A node of the view as edited is its own;
-// one a recipe brings is not, nor the frame, nor a folder, which no line selects.
+// inside it, and of a folder's files, and beside it what lies outside it, as connections
+// and relations reach in at its left and out at its right; with none, the boxes of the
+// nodes at the top and of the views the view hosts, as the view as edited names them. A
+// node of the view as edited is its own; one a recipe brings is not, nor the frame, nor
+// a folder or a file. The paths outside are named from base.
 Boxes boxes_of(const VP::View &edited,
                const VP::View &flat,
                std::string_view scope,
+               std::span<const VP_VIEW::Relation> relations,
+               const std::filesystem::path &base,
                bool folders) {
   Boxes boxes;
-  Building building{.folders = folders};
-  for (const VP::Node &node : flat.nodes)
-    building.parents.push_back(parent_of(flat.nodes, node.name, folders ? '/' : '.'));
+  Building building{.folders = folders,
+                    .parents = parents_of(flat, folders ? '/' : '.'),
+                    .base = base};
   building.box_of_node.assign(flat.nodes.size(), no_box);
+  for (std::size_t at = 0; at < flat.nodes.size(); ++at)
+    building.nodes_in.emplace(flat.nodes[at].folder.generic_string(), at);
   const std::size_t inside = scope_of(flat, building.parents, scope);
   const auto add = [&](std::size_t at, std::size_t parent) {
     if (boxes.boxes.size() >= node_room)
@@ -309,12 +434,15 @@ Boxes boxes_of(const VP::View &edited,
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     if (building.parents[at] == inside)
       add(at, inside == no_box ? no_box : boxes.frame);
+  if (folders && inside != no_box)
+    file_boxes(boxes, building, flat.nodes[inside]);
   for (const VP::Child &child : edited.children)
     if (inside == no_box && boxes.boxes.size() < node_room)
       boxes.boxes.push_back(
           {.name = child.name, .title = child.name, .kind = Kind::view, .own = true});
   building.ports.resize(boxes.boxes.size());
   connect(boxes, building, flat);
+  relate(boxes, building, relations, flat.connections.size());
   for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
     const auto child = std::ranges::find(edited.children, boxes.boxes[box].name,
                                          &VP::Child::name);
@@ -327,44 +455,6 @@ Boxes boxes_of(const VP::View &edited,
                   : nullptr);
   }
   return boxes;
-}
-
-// A folder as a view's nodes, so the graph shows it as it shows a view: a node a folder,
-// named by its path from the folder holding the one opened, joined by /, holding its
-// files as the file port lists them, the hidden ones, as .git, left out as a manifest
-// leaves them. Only the folder whose inside shows, inside if it names one in the folder
-// opened, else that one, the folders in it with their files, and theirs by name, so a
-// box lists what it holds; deeper ones are read once shown.
-VP::View folder_view(VP::FilePort &files,
-                     const std::filesystem::path &opened,
-                     std::string_view inside) {
-  const std::filesystem::path base = opened.parent_path();
-  const std::filesystem::path named = base / std::string(inside);
-  const std::filesystem::path within = named.lexically_relative(opened);
-  const bool in = !inside.empty() && !within.empty() && *within.begin() != ".." &&
-                  !files.list(named.string()).empty();
-  const std::filesystem::path shown = in ? named : opened;
-  VP::View view;
-  const auto add = [&](const std::filesystem::path &folder, bool read) {
-    view.nodes.push_back(
-        {.name = folder.lexically_relative(base).generic_string(), .folder = folder});
-    std::vector<std::string> held;
-    if (!read)
-      return held;
-    for (const std::string &name : files.list(folder.string())) {
-      if (name.starts_with('.'))
-        continue;
-      if (name.ends_with('/'))
-        held.push_back(name.substr(0, name.size() - 1));
-      else
-        view.nodes.back().files.push_back(name);
-    }
-    return held;
-  };
-  for (const std::string &inner : add(shown, true))
-    for (const std::string &deeper : add(shown / inner, true))
-      add(shown / inner / deeper, false);
-  return view;
 }
 
 } // namespace

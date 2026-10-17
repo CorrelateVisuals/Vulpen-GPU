@@ -1,7 +1,8 @@
 # The editor part: one node whose operator is Editor, which owns open. Its program param
 # names the person's editor, which open starts on a file or a folder; its window param,
 # when set, names an editor in a window, as <view>:<node>, which takes the file instead
-# while that view runs, and its graph param a graph, which takes a folder so.
+# while that view runs, and its folders param a node that takes a folder so, as the
+# relations part the graph shows a folder from.
 [manifest]
 version = 1
 

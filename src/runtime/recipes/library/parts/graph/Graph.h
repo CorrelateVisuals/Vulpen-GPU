@@ -6,6 +6,7 @@
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
+#include "contracts/Relation.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "shared/Labels.h"
@@ -85,6 +86,7 @@ private:
   void show(VP::Cook &frame, const VP::View *view, std::string_view name);
   void build(const VP::View *edited, const VP::View *flat);
   void name_tab();
+  void show_view(VP::Cook &frame) const;
   void home(glm::uvec2 cell);
   void follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec2 cell);
   void press(VP::Cook &frame, std::uint32_t presses);
@@ -124,14 +126,13 @@ private:
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;
+  // What links the files shown, and the folder shown in place of the view, if any.
+  const VP_VIEW::Relations *_relations = nullptr;
   std::string _name; // as the focus names it
   std::string _view; // the one it runs in, where its inside param is set
   // The node whose inside the graph shows, in the view shown; with none, or one that view
   // does not hold, the top.
   std::string _inside;
-  // A folder open showed in place of the view, as a view's nodes, a folder a node; empty
-  // for none.
-  std::string _folder;
   VP::Command _select;
   VP::Command _selected;
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
@@ -151,7 +152,7 @@ private:
   const VP::View *_built_flat = nullptr;
   std::string _built_inside;
   std::string _built_folder;
-  VP::View _folder_view;
+  std::uint64_t _built_changes = 0;
   Layout _layout;
   glm::uvec2 _laid_cell{};
   bool _laid = false;
