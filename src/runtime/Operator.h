@@ -406,11 +406,11 @@ private:
   virtual const void *input_object(std::string_view port, const Kind &kind) = 0;
 };
 
-// What a node costs a frame, in milliseconds: its operator's cook on the CPU, and its pass
-// on the GPU, between two timestamps the CPU reads once the frame's fence passed (VK02),
-// so a frame later. Each smoothed over about a second, so a person can read it, and as
-// the last frame took it, so a spike shows (C03). Times differ from run to run, so only
-// what a person reads may show them, never a node's output (C01).
+// What a node costs a frame, in milliseconds: its operator's cook on the CPU, and its
+// pass on the GPU, between two timestamps the CPU reads once the frame's fence passed
+// (VK02), so a frame later. Each smoothed over about a second, so a person can read it,
+// and as the last frame took it, so a spike shows (C03). Times differ from run to run,
+// so only what a person reads may show them, never a node's output (C01).
 struct Cost {
   std::string_view node; // as the view runs it, each recipe a node uses unfolded
   float cpu = 0.0f;

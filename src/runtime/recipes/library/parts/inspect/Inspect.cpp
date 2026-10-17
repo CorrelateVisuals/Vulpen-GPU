@@ -55,7 +55,8 @@ Tree tree_of(std::span<const VP::Cost> costs) {
       for (std::size_t other = 0; other < costs.size(); ++other)
         if (costs[other].node == name.substr(0, dot))
           tree.parents[at] = other;
-    tree.inside[tree.parents[at] == no_node ? costs.size() : tree.parents[at]].push_back(at);
+    const std::size_t parent = tree.parents[at];
+    tree.inside[parent == no_node ? costs.size() : parent].push_back(at);
     for (std::size_t up = at; up != no_node; up = tree.parents[up]) {
       Sum &sum = tree.sums[up];
       sum.cpu += costs[at].cooks ? costs[at].cpu : 0.0f;
@@ -96,15 +97,16 @@ class Inspect final : public VP::Operator {
                          "it writes and reads; with none, each selected one's under its "
                          "header");
     _stats = node.command("probe stats [<node>]",
-                          "prints what each node costs a frame on the CPU and the GPU, in "
-                          "milliseconds smoothed over about a second, as a tree, a node "
-                          "holding others counting theirs, each bar to the costliest "
-                          "beside it; with a node, that node's");
+                          "prints what each node costs a frame on the CPU and the GPU, "
+                          "in milliseconds smoothed over about a second, as a tree, a "
+                          "node holding others counting theirs, each bar to the "
+                          "costliest beside it; with a node, that node's");
   }
 
   void command(VP::Call &call) override {
     if (call.is(_stats))
-      stats(call, call.arguments().empty() ? std::string_view() : call.arguments().front());
+      stats(call,
+            call.arguments().empty() ? std::string_view() : call.arguments().front());
     else if (call.is(_ls))
       ls(call, call.view());
     else if (call.is(_info) && !call.arguments().empty())
@@ -250,8 +252,8 @@ class Inspect final : public VP::Operator {
     if (!under.empty()) {
       const auto found = std::ranges::find(costs, under, &VP::Cost::node);
       if (found == costs.end())
-        throw std::runtime_error(
-            std::format("no node named {} runs in the view; probe stats lists them", under));
+        throw std::runtime_error(std::format(
+            "no node named {} runs in the view; probe stats lists them", under));
       roots.assign(1, static_cast<std::size_t>(found - costs.begin()));
     }
     Rows rows;
@@ -260,7 +262,8 @@ class Inspect final : public VP::Operator {
     std::size_t width = 0;
     for (const auto &[name, columns] : rows)
       width = std::max(width, name.size());
-    call.reply(std::format("{:<{}}  {:<{}} {}", "ms a frame", width, "cpu", 8 + bar_room, "gpu"));
+    call.reply(std::format(
+        "{:<{}}  {:<{}} {}", "ms a frame", width, "cpu", 8 + bar_room, "gpu"));
     for (const auto &[name, columns] : rows)
       call.reply(std::format("{:<{}}  {}", name, width, columns));
     Sum frame;
@@ -277,9 +280,9 @@ class Inspect final : public VP::Operator {
         frame.untimed ? ", a ? marking a pass the GPU did not time" : ""));
   }
 
-  // A node's row, then the rows of the nodes inside it, each bar to the costliest of those
-  // beside it; a node that neither cooks nor runs a pass, nor holds one that does, as
-  // one holding only files, costs nothing and has none.
+  // A node's row, then the rows of the nodes inside it, each bar to the costliest of
+  // those beside it; a node that neither cooks nor runs a pass, nor holds one that does,
+  // as one holding only files, costs nothing and has none.
   static void cost_rows(std::span<const VP::Cost> costs,
                         const Tree &tree,
                         std::size_t at,

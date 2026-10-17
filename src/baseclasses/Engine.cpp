@@ -307,22 +307,23 @@ void Engine::Gpu::stamp(VkCommandBuffer commands, std::size_t pass, bool after) 
                         static_cast<std::uint32_t>(2 * pass + (after ? 1 : 0)));
 }
 
-// Once the frame's fence passed, so no read waits (VK02): a pass took the time between its
-// two timestamps where both are there, the tick's bits that count wrapping round.
+// Once the frame's fence passed, so no read waits (VK02): a pass took the time between
+// its two timestamps where both are there, the tick's bits that count wrapping round.
 void Engine::Gpu::read_times() {
   times.assign(queried, std::numeric_limits<float>::quiet_NaN());
   if (queried == 0)
     return;
   stamps.resize(2 * per_query * queried);
-  const VkResult result =
-      vkGetQueryPoolResults(mechanics.device(),
-                            queries,
-                            0,
-                            2 * queried,
-                            stamps.size() * sizeof(std::uint64_t),
-                            stamps.data(),
-                            per_query * sizeof(std::uint64_t),
-                            VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
+  constexpr VkQueryResultFlags flags =
+      VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT;
+  const VkResult result = vkGetQueryPoolResults(mechanics.device(),
+                                                queries,
+                                                0,
+                                                2 * queried,
+                                                stamps.size() * sizeof(std::uint64_t),
+                                                stamps.data(),
+                                                per_query * sizeof(std::uint64_t),
+                                                flags);
   if (result != VK_NOT_READY)
     check(result, "vkGetQueryPoolResults");
   for (std::uint32_t pass = 0; pass < queried; ++pass) {

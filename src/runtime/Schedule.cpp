@@ -647,7 +647,8 @@ std::vector<Copy> Schedule::take_copies() {
 void Schedule::work(std::vector<Pass> &passes) {
   _landed.assign(_passes.size(), no_pass);
   for (std::size_t at = 0; at < _passes.size(); ++at)
-    if (_passes[at].bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || _passes[at].offscreen) {
+    if (_passes[at].bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS ||
+        _passes[at].offscreen) {
       _landed[at] = passes.size();
       passes.push_back(_passes[at]);
     }
