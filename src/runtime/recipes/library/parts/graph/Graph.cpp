@@ -25,10 +25,14 @@ constexpr std::uint32_t select_rects = 4; // the select box's edges
 constexpr std::uint32_t rect_room = (box_rects + mark_room) * node_room + select_rects;
 constexpr std::uint32_t label_room = 4096;      // the names, rows and ports together
 constexpr std::uint32_t character_room = 32768; // their characters
-constexpr std::uint32_t curve_room = 1024;      // a curve a reader of a connection
+// A curve a line and a corner of each reader's way, as many as its levels have.
+constexpr std::uint32_t curve_room = 8192;
 constexpr std::int32_t border_width = 1;        // in pixels
 constexpr std::int32_t selected_width = 2;      // a selected box's border, in pixels
 constexpr float mark_size = 6.0f;               // a port's mark, in pixels at zoom 1
+constexpr float least_reach = 32.0f;            // a bend's handles, at least, in pixels
+// A cubic's handles, of its radius, that keep it on a quarter circle.
+constexpr float quarter = 0.5523f;
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
 constexpr std::string_view title = "graph";
 
@@ -625,27 +629,63 @@ void Graph::write_row(glm::vec2 at,
               row.substr(skip));
 }
 
-// From the middle of the writer's port row on its box's right side to the middle of the
-// reader's on its left.
+// Each curve along its waypoints: straight from one to the next, round each corner on a
+// quarter circle as wide as half a lane, so two lanes side by side turn apart, or less
+// where a line is too short for it; and where it bends, from one to the next with its
+// handles reaching half the way across, and at least least_reach, so one running back to
+// the left still bends round. A curve goes whole, even with an end out of view: the
+// curves part cuts it at the area's edge, which the ground hands it, so a curve to a box
+// dragged out runs to the edge.
 void Graph::write_curves(VP::Cook &frame) {
   const std::span<VP_VIEW::Curve> curves = frame.write(_curves);
   std::uint32_t written = 0;
-  for (const End &end : _boxes.ends)
-    write_curve(curves,
-                written,
-                port_of(end.from, end.from_row, true),
-                port_of(end.to, end.to_row, false));
+  const auto add = [&](glm::vec2 from, glm::vec2 to, glm::vec2 leave, glm::vec2 arrive) {
+    if (written < curves.size())
+      curves[written++] = {.from = from,
+                           .to = to,
+                           .leave = leave,
+                           .arrive = arrive,
+                           .role = VP_VIEW::role("accent")};
+  };
+  const std::span<const Waypoint> waypoints = _layout.waypoints();
+  for (const Route &route : _layout.routes()) {
+    const std::span<const Waypoint> way = waypoints.subspan(route.first, route.count);
+    for (std::size_t at = 0; at + 1 < way.size(); ++at) {
+      const glm::vec2 from = on_screen(way[at].at);
+      const glm::vec2 to = on_screen(way[at + 1].at);
+      if (way[at].bends) {
+        const glm::vec2 reach{std::max(std::abs(to.x - from.x) / 2.0f, least_reach),
+                              0.0f};
+        add(from, to, reach, reach);
+        continue;
+      }
+      const glm::vec2 along = glm::normalize(to - from);
+      const glm::vec2 start = from + along * corner(way, at);
+      const float round = corner(way, at + 1);
+      const glm::vec2 end = to - along * round;
+      if (end != start)
+        add(start, end, (end - start) / 3.0f, (end - start) / 3.0f);
+      if (round > 0.0f) {
+        const glm::vec2 next = glm::normalize(on_screen(way[at + 2].at) - to);
+        add(end, to + next * round, along * round * quarter, next * round * quarter);
+      }
+    }
+  }
   frame.write(_curves, written);
 }
 
-// Whole, even with an end out of view: the curves part cuts it at the area's edge, which
-// the ground hands it, so a curve to a box dragged out runs to the edge.
-void Graph::write_curve(std::span<VP_VIEW::Curve> curves,
-                        std::uint32_t &written,
-                        glm::vec2 from,
-                        glm::vec2 to) const {
-  if (written < curves.size())
-    curves[written++] = {.from = from, .to = to, .role = VP_VIEW::role("accent")};
+// The radius of the corner a curve turns at a waypoint, on screen: none at its ends,
+// where it bends, or where it goes on straight.
+float Graph::corner(std::span<const Waypoint> way, std::size_t at) const {
+  if (at == 0 || at + 1 >= way.size() || way[at - 1].bends || way[at].bends)
+    return 0.0f;
+  const glm::vec2 in = way[at].at - way[at - 1].at;
+  const glm::vec2 out = way[at + 1].at - way[at].at;
+  if (in.x * out.y - in.y * out.x == 0.0f)
+    return 0.0f;
+  const float half_lane = static_cast<float>(_laid_cell.x) / 2.0f;
+  return std::min({half_lane, glm::length(in) / 2.0f, glm::length(out) / 2.0f}) *
+         _pan_zoom.zoom;
 }
 
 std::size_t Graph::own_box(std::size_t box) const {

@@ -44,9 +44,10 @@ struct Grab {
 // own (RV08), so a node using a recipe shows the code the recipe brings; a box each view
 // it hosts, with its name, its window and the file it is hosted from; and a curve a
 // reader of a connection, from the writer's port on its box's right side to the reader's
-// on its left, a view's from its window where its host takes it. The manifest holds no
-// places (V04), so the graph alone lays it out: the boxes inside each box, and those at
-// the top, a column past every box beside them they read from, down each column in the
+// on its left, a view's from its window where its host takes it, at right angles in the
+// lanes between the boxes, so it runs over none and no other's lane. The manifest holds
+// no places (V04), so the graph alone lays it out: the boxes inside each box, and those
+// at the top, a column past every box beside them they read from, down each column in the
 // manifest's order. A box dragged stays where it is put, and the first drag places every
 // box where it shows, so a change to the graph moves none; the boxes placed are a look at
 // the graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's
@@ -102,10 +103,7 @@ private:
                  glm::uvec2 cell,
                  Labels &written) const;
   void write_curves(VP::Cook &frame);
-  void write_curve(std::span<VP_VIEW::Curve> curves,
-                   std::uint32_t &written,
-                   glm::vec2 from,
-                   glm::vec2 to) const;
+  float corner(std::span<const Waypoint> way, std::size_t at) const;
   // Where a place of the graph shows this frame, in pixels from the window's top left.
   glm::vec2 on_screen(glm::vec2 at) const;
   // The middle of a box's port row, at its left edge or its right, on screen.

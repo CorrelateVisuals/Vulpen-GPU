@@ -53,6 +53,7 @@ struct Box {
 
 // A curve: from the row of a writer's port to the row of a reader's, a reader each.
 struct End {
+  std::size_t wire = 0; // the connection, whose curves share their lanes
   std::size_t from = 0;
   std::size_t from_row = 0;
   std::size_t to = 0;
@@ -168,7 +169,8 @@ void connect(Boxes &boxes,
                ? boxes.boxes.size()
                : box_of_node[static_cast<std::size_t>(node - flat.nodes.begin())];
   };
-  for (const VP::Connection &connection : flat.connections) {
+  for (std::size_t wire = 0; wire < flat.connections.size(); ++wire) {
+    const VP::Connection &connection = flat.connections[wire];
     const std::size_t from = box_of(connection.from);
     if (from >= boxes.boxes.size())
       continue;
@@ -176,7 +178,8 @@ void connect(Boxes &boxes,
         ports[from].written, connection.from.view() ? window_port : connection.from.port);
     for (const VP::Endpoint &to : connection.to)
       if (const std::size_t reader = box_of(to); reader < boxes.boxes.size())
-        boxes.ends.push_back({.from = from,
+        boxes.ends.push_back({.wire = wire,
+                              .from = from,
                               .from_row = from_row,
                               .to = reader,
                               .to_row = port_row(ports[reader].read, to.port)});

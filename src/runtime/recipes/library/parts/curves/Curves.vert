@@ -5,20 +5,14 @@
 layout(location = 0) flat out vec4 fill;
 layout(location = 1) flat out vec4 room; // the area's left, top, right and bottom
 
-// Its handles reach half the way across, and at least this far, so a curve that runs
-// back to the left still bends round.
-const float least_reach = 32.0;
-
-// Along a cubic that leaves its start heading right and reaches its end from the left,
-// as a wire from a writer to a reader does, a quad a segment, half_width either side.
+// Along the cubic its writer's handles shape, a quad a segment, half_width either side.
 void main() {
   const Curve curve = pass.curves.at[gl_InstanceIndex];
   const vec2 corner = quad_corner(gl_VertexIndex);
   const float t = (float(gl_VertexIndex / quad_vertices) + corner.x) / float(segments);
-  const vec2 handle = vec2(max(abs(curve.to.x - curve.from.x) * 0.5, least_reach), 0.0);
   const vec2 a = curve.from;
-  const vec2 b = curve.from + handle;
-  const vec2 c = curve.to - handle;
+  const vec2 b = curve.from + curve.leave;
+  const vec2 c = curve.to - curve.arrive;
   const vec2 d = curve.to;
   const float s = 1.0 - t;
   const vec2 point =
