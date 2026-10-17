@@ -111,8 +111,8 @@ void upload(VkCommandBuffer commands, const Copy &copy) {
 
 // Each part borrows the ones made before it, so they are destroyed in reverse.
 struct Engine::Gpu {
-  Gpu(const Log &log, const Window *window)
-      : log(log), mechanics(log, window),
+  Gpu(const Log &log, const Window *window, std::string_view prefer)
+      : log(log), mechanics(log, window, prefer),
         resources(mechanics.instance(), mechanics.physical_device(), mechanics.device()),
         pipelines(mechanics.device(), resources),
         tick(mechanics.timestamp_bits() == 0
@@ -156,8 +156,16 @@ struct Engine::Gpu {
   std::vector<float> times;
 };
 
-Engine::Engine(const Log &log, const Window *window)
-    : _gpu(std::make_unique<Gpu>(log, window)) {}
+Engine::Engine(const Log &log, const Window *window, std::string_view prefer)
+    : _gpu(std::make_unique<Gpu>(log, window, prefer)) {}
+
+std::string Engine::device() const {
+  return _gpu->mechanics.describe();
+}
+
+std::string_view Engine::kind() const {
+  return _gpu->mechanics.kind();
+}
 
 Engine::~Engine() {
   _gpu->mechanics.wait_idle();

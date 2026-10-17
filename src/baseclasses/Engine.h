@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string>
+#include <string_view>
 
 namespace VP {
 
@@ -21,12 +23,16 @@ class Window;
 class Engine {
 public:
   // Without a window the engine only dispatches (V07); with one, each frame also draws
-  // into the window and presents.
-  Engine(const Log &log, const Window *window);
+  // into the window and presents. prefer: the kind of GPU taken first, as integrated or
+  // discrete; empty takes the fastest kind.
+  Engine(const Log &log, const Window *window, std::string_view prefer = {});
   ~Engine();
   Engine(const Engine &) = delete;
   Engine &operator=(const Engine &) = delete;
 
+  // The GPU it runs on, as the log names it, and its kind, as discrete or integrated.
+  std::string device() const;
+  std::string_view kind() const;
   const Resources &resources() const;
   const Pipelines &pipelines() const;
   // The window output, open while a node draws: the window must outlive it. Between

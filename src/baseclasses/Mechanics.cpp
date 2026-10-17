@@ -148,27 +148,40 @@ const char *unfit(VkPhysicalDevice device, VkSurfaceKHR surface) {
   return nullptr;
 }
 
+std::string_view kind_of(VkPhysicalDevice device) {
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(device, &properties);
+  const auto type = static_cast<std::size_t>(properties.deviceType);
+  return type < device_types.size() ? device_types[type] : device_types[0];
+}
+
 // As the log names a device: "name: type, Vulkan 1.3.280".
 std::string describe(VkPhysicalDevice device) {
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(device, &properties);
-  const auto type = static_cast<std::size_t>(properties.deviceType);
   return std::format("{}: {}, Vulkan {}.{}.{}",
                      properties.deviceName,
-                     type < device_types.size() ? device_types[type] : device_types[0],
+                     kind_of(device),
                      VK_API_VERSION_MAJOR(properties.apiVersion),
                      VK_API_VERSION_MINOR(properties.apiVersion),
                      VK_API_VERSION_PATCH(properties.apiVersion));
 }
 
-std::size_t rank(VkPhysicalDevice device) {
+// The kind a person prefers first, then the fastest.
+std::size_t rank(VkPhysicalDevice device, std::string_view prefer) {
+  if (!prefer.empty() && kind_of(device) == prefer)
+    return 0;
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(device, &properties);
-  return static_cast<std::size_t>(std::ranges::find(preference, properties.deviceType) -
-                                  preference.begin());
+  return 1 + static_cast<std::size_t>(
+                 std::ranges::find(preference, properties.deviceType) -
+                 preference.begin());
 }
 
-VkPhysicalDevice pick_device(VkInstance instance, VkSurfaceKHR surface, const Log &log) {
+VkPhysicalDevice pick_device(VkInstance instance,
+                             VkSurfaceKHR surface,
+                             const Log &log,
+                             std::string_view prefer) {
   std::uint32_t count = 0;
   vkEnumeratePhysicalDevices(instance, &count, nullptr);
   std::vector<VkPhysicalDevice> devices(count);
@@ -186,7 +199,8 @@ VkPhysicalDevice pick_device(VkInstance instance, VkSurfaceKHR surface, const Lo
         std::format("no GPU meets the Vulkan floor: 1.2 with buffer device address and "
                     "descriptor indexing (RV01){}; --log debug says why for each GPU",
                     surface ? ", and presents to the window" : ""));
-  const VkPhysicalDevice best = *std::ranges::min_element(devices, {}, rank);
+  const VkPhysicalDevice best = *std::ranges::min_element(
+      devices, {}, [&](VkPhysicalDevice device) { return rank(device, prefer); });
   log.write(Level::info, Tag::gpu, "runs on " + describe(best));
   return best;
 }
@@ -228,8 +242,8 @@ void check(VkResult result, const char *call) {
     throw std::runtime_error(std::format("{} failed: VkResult {}", call, int{result}));
 }
 
-Mechanics::Mechanics(const Log &log, const Window *window)
-    : _instance(create_instance(log)), _choice(choose(_instance, window, log)),
+Mechanics::Mechanics(const Log &log, const Window *window, std::string_view prefer)
+    : _instance(create_instance(log)), _choice(choose(_instance, window, log, prefer)),
       _device(create_device(_choice.device, _choice.family)) {
   vkGetDeviceQueue(_device, _choice.family, 0, &_queue);
   const VkCommandPoolCreateInfo pool{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -295,14 +309,24 @@ std::uint32_t Mechanics::timestamp_bits() const {
 
 // A window at start gets a device and queue that present to it, through a surface made
 // only for the choice: the window's output makes its own.
-Mechanics::Choice
-Mechanics::choose(VkInstance instance, const Window *window, const Log &log) {
+Mechanics::Choice Mechanics::choose(VkInstance instance,
+                                    const Window *window,
+                                    const Log &log,
+                                    std::string_view prefer) {
   const VkSurfaceKHR surface = window ? window->surface(instance) : VK_NULL_HANDLE;
-  const VkPhysicalDevice device = pick_device(instance, surface, log);
+  const VkPhysicalDevice device = pick_device(instance, surface, log, prefer);
   const Choice choice{.device = device, .family = *queue_family(device, surface)};
   if (surface)
     vkDestroySurfaceKHR(instance, surface, nullptr);
   return choice;
+}
+
+std::string Mechanics::describe() const {
+  return VP::describe(_choice.device);
+}
+
+std::string_view Mechanics::kind() const {
+  return kind_of(_choice.device);
 }
 
 void Mechanics::wait() const {

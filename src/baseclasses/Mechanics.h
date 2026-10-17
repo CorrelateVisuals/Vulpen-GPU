@@ -3,6 +3,8 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <string>
+#include <string_view>
 
 namespace VP {
 
@@ -18,11 +20,17 @@ void check(VkResult result, const char *call);
 // choice to a device that presents to it.
 class Mechanics {
 public:
-  Mechanics(const Log &log, const Window *window);
+  // prefer: the kind of GPU taken first of those that meet the floor, as integrated or
+  // discrete; empty takes the fastest kind.
+  Mechanics(const Log &log, const Window *window, std::string_view prefer);
   ~Mechanics();
   Mechanics(const Mechanics &) = delete;
   Mechanics &operator=(const Mechanics &) = delete;
 
+  // The device it runs on, as the log names it, and its kind: discrete, integrated,
+  // virtual, cpu or other.
+  std::string describe() const;
+  std::string_view kind() const;
   VkInstance instance() const;
   VkPhysicalDevice physical_device() const;
   VkDevice device() const;
@@ -51,7 +59,10 @@ private:
     std::uint32_t family = 0;
   };
 
-  static Choice choose(VkInstance instance, const Window *window, const Log &log);
+  static Choice choose(VkInstance instance,
+                       const Window *window,
+                       const Log &log,
+                       std::string_view prefer);
 
   const VkInstance _instance;
   const Choice _choice;

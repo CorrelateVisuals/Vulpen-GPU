@@ -140,6 +140,87 @@ private:
   Press _press;
 };
 
+// The kind of GPU the launches of a view take first, as a person chooses for the
+// machine, kept in .vulpen/gpu.ini beside the manifest vulpen starts with and read before
+// the engine picks its device. Vulkan cannot move a running device, so gpu toggle records
+// the choice for the next launch and says so, as the POC's GPU cell did, rather than seem
+// to switch.
+class Preference final : public CommandHandler {
+public:
+  Preference(Commands &commands,
+             const Log &log,
+             const Engine &engine,
+             std::filesystem::path file,
+             std::string prefer)
+      : _log(log), _engine(engine), _file(std::move(file)), _prefer(std::move(prefer)),
+        _show(commands.add(
+            "gpu", "says which GPU runs, and which kind the next launch prefers", *this)),
+        _toggle(commands.add("gpu toggle",
+                             "makes the next launch prefer the other kind of GPU, "
+                             "integrated or discrete, than it would take now; this run "
+                             "stays on its own",
+                             *this)) {}
+
+  // The kind a file's prefer line names, empty for none; a kind no GPU is stops the run,
+  // naming the file (A02).
+  static std::string read(const std::filesystem::path &file) {
+    const auto trimmed = [](std::string_view text) {
+      const std::size_t first = text.find_first_not_of(" \t\r");
+      return first == std::string_view::npos
+                 ? std::string_view()
+                 : text.substr(first, text.find_last_not_of(" \t\r") - first + 1);
+    };
+    const std::string text = text_of(file);
+    for (std::size_t at = 0; at < text.size();) {
+      const std::size_t end = std::min(text.find('\n', at), text.size());
+      const std::string_view line = std::string_view(text).substr(at, end - at);
+      at = end + 1;
+      const std::size_t equals = line.find('=');
+      if (equals == std::string_view::npos || trimmed(line.substr(0, equals)) != key)
+        continue;
+      const std::string_view kind = trimmed(line.substr(equals + 1));
+      if (kind != integrated && kind != discrete)
+        throw std::runtime_error(std::format(
+            "{}: {} = {} is no kind of GPU: {} or {}", file.string(), key, kind,
+            integrated, discrete));
+      return std::string(kind);
+    }
+    return {};
+  }
+
+private:
+  static constexpr std::string_view key = "prefer";
+  static constexpr std::string_view integrated = "integrated";
+  static constexpr std::string_view discrete = "discrete";
+
+  void command(Call &call) override {
+    if (call.is(_toggle)) {
+      const std::string_view now = _prefer.empty() ? _engine.kind() : _prefer;
+      _prefer = now == discrete ? integrated : discrete;
+      Files::save(_file,
+                  std::format("# The kind of GPU vulpen takes first here; gpu toggle "
+                              "writes it.\n{} = {}\n",
+                              key,
+                              _prefer));
+      _log.write(Level::warn,
+                 Tag::gpu,
+                 std::format("the next launch prefers the {} GPU; this run stays on {}",
+                             _prefer,
+                             _engine.device()));
+    }
+    const std::string next =
+        _prefer.empty() ? "takes the fastest" : "prefers the " + _prefer;
+    call.reply(std::format("runs on {}; the next launch {} GPU", _engine.device(), next));
+  }
+
+  const Log &_log;
+  const Engine &_engine;
+  const std::filesystem::path _file;
+  std::string _prefer; // empty for the fastest
+  Command _show;
+  Command _toggle;
+};
+
 // Owns every module and runs the loop.
 class Runtime {
 public:
@@ -190,6 +271,7 @@ private:
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
   std::optional<Views> _views;
   std::optional<Edits> _edits; // goes before the views it changes
+  std::optional<Preference> _preference; // goes before the engine it names
   std::unique_ptr<Live> _live;
   // Every view's, in the order a frame runs them; the passes are gathered only when a
   // schedule changed, so a frame allocates nothing for them (CPP10).
@@ -387,7 +469,11 @@ bool Runtime::start() {
   if (shows)
     _window.emplace(title(view), window_size);
   _ports.attach(_window ? &*_window : nullptr);
-  _engine.emplace(_log, _window ? &*_window : nullptr);
+  // The kind of GPU a person chose for the launches of this view.
+  const std::filesystem::path choice = view.file.parent_path() / ".vulpen" / "gpu.ini";
+  std::string prefer = Preference::read(choice);
+  _engine.emplace(_log, _window ? &*_window : nullptr, prefer);
+  _preference.emplace(_commands, _log, *_engine, choice, std::move(prefer));
   _wiring.emplace(Wiring{.engine = *_engine,
                          .pipelines = _engine->pipelines(),
                          .resources = _engine->resources(),
