@@ -36,6 +36,24 @@ constexpr std::string_view panel_suffix = "-panel";
 // The Rects a dock's split hands its two halves, in the order the ratio counts them.
 constexpr std::array<std::string_view, 2> half_ports{"first", "second"};
 constexpr std::array<std::string_view, 4> sides{"left", "right", "top", "bottom"};
+// Into a panel, which then holds both under one strip of their tabs.
+constexpr std::string_view middle = "middle";
+// How far in from a panel's edges, as a share of it, a drop goes into it.
+constexpr float middle_from = 0.25f;
+// The ports a panel takes its content's room and tabs at, and the nodes of a stack: its
+// switch, which hands one content the room, and its tabs, which joins theirs.
+constexpr std::string_view rest_port = "rest";
+constexpr std::string_view tabs_node = ".tabs";
+constexpr std::string_view hit_node = ".hit";
+constexpr std::string_view items_port = "items";
+constexpr std::string_view tabs_port = "tabs";
+constexpr std::string_view switch_node = ".switch";
+constexpr std::string_view switch_tabs_node = ".tabs";
+// The recipes a move adds: a stack for a panel holding two contents, a panel for one torn
+// out of a stack, and a dock to seat it.
+constexpr std::string_view stack_recipe = "stack";
+constexpr std::string_view panel_recipe = "panel";
+constexpr std::string_view dock_recipe = "dock";
 constexpr float even = 0.5f;      // a moved dock's ratio: half its place for each panel
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 constexpr std::int32_t ring = 2;  // how wide the frame where a drop puts a panel is
@@ -75,6 +93,13 @@ std::string_view param_of(const VP::Node &node, std::string_view key) {
   return found == node.params.end() ? std::string_view() : std::string_view(found->value);
 }
 
+// What a panel holds: the ports its room goes to, and the port its tabs come from, as a
+// stack's half holds a content too.
+struct Content {
+  std::vector<VP::Endpoint> area;
+  VP::Endpoint tabs;
+};
+
 // The connection that hands a node's port its Rect; null for none.
 const VP::Connection *feeding(const VP::View &view, std::string_view node) {
   for (const VP::Connection &connection : view.connections)
@@ -107,13 +132,101 @@ std::optional<Seating> seating_of(const VP::View &view, std::string_view seated)
   return seating;
 }
 
+// The connection from a port; null for none.
+const VP::Connection *
+from(const VP::View &view, std::string_view node, std::string_view port) {
+  const auto found = std::ranges::find_if(view.connections, [&](const VP::Connection &c) {
+    return c.from.node == node && c.from.port == port;
+  });
+  return found == view.connections.end() ? nullptr : &*found;
+}
+
+// The connection into a port; null for none.
+const VP::Connection *
+into(const VP::View &view, std::string_view node, std::string_view port) {
+  const auto found = std::ranges::find_if(view.connections, [&](const VP::Connection &c) {
+    return std::ranges::any_of(c.to, [&](const VP::Endpoint &to) {
+      return to.node == node && to.port == port;
+    });
+  });
+  return found == view.connections.end() ? nullptr : &*found;
+}
+
+// What a panel holds: what its bar's rest feeds and what feeds its tabs.
+std::optional<Content> content_of(const VP::View &view, std::string_view panel) {
+  const std::string bar = std::string(panel) + std::string(bar_node);
+  const VP::Connection *const room = from(view, bar, rest_port);
+  const VP::Connection *const tabs =
+      into(view, std::string(panel) + std::string(tabs_node), items_port);
+  if (!room || !tabs)
+    return std::nullopt;
+  return Content{.area = room->to, .tabs = tabs->from};
+}
+
+// What a stack's half holds: what its switch's half feeds, but the stack's own tabs, and
+// what feeds its tabs.
+std::optional<Content>
+half_of(const VP::View &view, std::string_view stack, std::size_t half) {
+  const std::string tabs_of = std::string(stack) + std::string(switch_tabs_node);
+  const VP::Connection *const room =
+      from(view, std::string(stack) + std::string(switch_node), half_ports[half]);
+  const VP::Connection *const tabs =
+      into(view, tabs_of, std::format("{}-{}", half_ports[half], tabs_port));
+  if (!room || !tabs)
+    return std::nullopt;
+  Content content{.area = room->to, .tabs = tabs->from};
+  std::erase_if(content.area,
+                [&](const VP::Endpoint &to) { return to.node == tabs_of; });
+  return content;
+}
+
+// The stack a panel's room goes to, by its switch; empty for none.
+std::string stack_of(const VP::View &view, const Content &held) {
+  const std::string_view node = held.area.front().node;
+  if (!node.ends_with(switch_node))
+    return {};
+  const std::string stack(node.substr(0, node.size() - switch_node.size()));
+  const auto found = std::ranges::find(view.nodes, stack, &VP::Node::name);
+  return found != view.nodes.end() && found->recipe == stack_recipe ? stack
+                                                                     : std::string();
+}
+
+// The node a content is, past the node the view's nodes are inside: terminal for
+// ide.terminal.command-line, perform for ide.perform.
+std::string_view content_name(const Content &content) {
+  const std::string_view node = content.area.front().node;
+  const std::size_t dot = node.find('.');
+  if (dot == std::string_view::npos)
+    return node;
+  const std::string_view inside = node.substr(dot + 1);
+  return inside.substr(0, inside.find('.'));
+}
+
+// The node a node is inside, as ide of ide.editor-panel; empty at the top.
+std::string_view parent_of(std::string_view node) {
+  return node.substr(0, std::min(node.rfind('.'), node.size()));
+}
+
+// The node name wanted, or with a number after it while a node has it.
+std::string free_node(const VP::View &view, std::string_view wanted) {
+  std::string name(wanted);
+  for (std::size_t count = 2;
+       std::ranges::find(view.nodes, name, &VP::Node::name) != view.nodes.end();
+       ++count)
+    name = std::format("{}{}", wanted, count);
+  return name;
+}
+
 // A connection named for what it seats, as the manifest's own are, past the last dot.
 std::string_view short_name(std::string_view node) {
   return node.substr(node.rfind('.') + 1);
 }
 
-// The half of a panel's place a drop at a side gives the panel dropped.
+// The half of a panel's place a drop at a side gives the panel dropped, or all of it, as
+// a drop into its middle shares it.
 VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
+  if (side == middle)
+    return area;
   const glm::length_t along = side == "left" || side == "right" ? 0 : 1;
   const Halves split = halves(area, along, even);
   return side == "left" || side == "top" ? split.first : split.second;
@@ -122,9 +235,13 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // Moves a panel of a dock beside another, at its left, right, top or bottom, as edits of
 // the docks that seat them in its own view's manifest: the dock seating the panel moves
 // with it, its other half taking its place, into the place of the panel dropped on, and
-// holds the two, halved; one log group, which a save keeps and a replay rebuilds (V08). A
-// drag of a panel's tab strip onto another panel sends it, the side the edge of that
-// panel the pointer is nearest. It hides a panel and shows it again, as its dock's ratio
+// holds the two, halved; one log group, which a save keeps and a replay rebuilds (V08).
+// Into another's middle, the panel's content joins the other's in a stack, which holds
+// both under one strip, and the panel goes; from a panel holding several, the content it
+// shows leaves, into a panel of its own when dropped beside one, which it adds before
+// itself, as it lists before what draws over the panels. A drag of a panel's tab strip
+// onto another panel sends it, the side the edge of that panel the pointer is nearest,
+// or the middle well inside it. It hides a panel and shows it again, as its dock's ratio
 // gives its half no room and back, and hands on a button a panel, lit while it shows,
 // whose press hides or shows it, as the POC's menubar cells did. It finds where each
 // panel and its strip show as the splits and the bars lay them out, from the Rect its
@@ -134,7 +251,8 @@ class Docking final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _move = node.command("panel move <node> <node> <value>",
                          "moves a panel beside another, at its left, right, top or "
-                         "bottom, as edits of the docks that seat them");
+                         "bottom, or into it, middle, which then holds both; of a panel "
+                         "holding several, the one it shows");
     _hide = node.command("panel hide <node>",
                          "gives a panel no room, its dock's ratio leaving its half none, "
                          "or the dock's own when nothing beside it shows");
@@ -264,7 +382,9 @@ class Docking final : public VP::Operator {
         continue;
       const glm::vec2 in = (_pointer - glm::vec2(area.offset)) / glm::vec2(area.extent);
       const std::array<float, 4> near{in.x, 1.0f - in.x, in.y, 1.0f - in.y};
-      return std::pair(at, sides[std::ranges::min_element(near) - near.begin()]);
+      const auto nearest = std::ranges::min_element(near);
+      return std::pair(at,
+                       *nearest > middle_from ? middle : sides[nearest - near.begin()]);
     }
     return std::nullopt;
   }
@@ -346,34 +466,60 @@ class Docking final : public VP::Operator {
   }
 
   // The panels are its own view's, whichever view the line addressed, and every edit
-  // names that view. The dock seating the panel moves with it: its other half takes its
-  // place, and it takes the target's place, its halves the two, so every dock stays
-  // listed before the panels whose ground it draws first, and a connection is named for
-  // what it seats, as the manifest's own are.
+  // names that view, in one group. A panel holding one content moves whole: beside the
+  // target, or into it, which then holds both; a panel holding several, as a stack, lets
+  // go of the one it shows, which goes into the target, or into a panel of its own
+  // beside it.
   void move(VP::Call &call) {
     const std::string panel(call.arguments()[0]);
     const std::string target(call.arguments()[1]);
-    const std::string_view side = call.arguments()[2];
-    if (std::ranges::find(sides, side) == sides.end())
-      throw std::runtime_error(
-          std::format("side {}: left, right, top or bottom of {}", side, target));
+    const std::string side(call.arguments()[2]);
+    if (side != middle && std::ranges::find(sides, side) == sides.end())
+      throw std::runtime_error(std::format(
+          "side {}: left, right, top, bottom or middle of {}", side, target));
+    const VP::View &view = *call.view(_view);
+    const VP::Connection *const into = feeding(view, panel + std::string(bar_node));
+    const std::optional<Content> held = content_of(view, panel);
+    if (panel == target || !into || !into->from.node.ends_with(split_node) || !held ||
+        !feeding(view, target + std::string(bar_node)) || !content_of(view, target))
+      throw std::runtime_error(std::format(
+          "{} moves beside or into another panel a dock seats, not {}; ls lists the "
+          "nodes",
+          panel,
+          target));
+    if (!stack_of(view, *held).empty()) {
+      const Content going = unstack(call, panel);
+      if (side == middle)
+        join(call, going, target);
+      else
+        seat_new(call, going, panel, target, side);
+    } else if (side == middle) {
+      const Content going = *held;
+      leave(call, panel);
+      send(call, std::format("node remove {}", panel));
+      join(call, going, target);
+    } else {
+      move_beside(call, panel, target, side);
+    }
+  }
+
+  // The dock seating the panel moves with it: its other half takes its place, and it
+  // takes the target's place, its halves the two, so every dock stays listed before the
+  // panels whose ground it draws first, and a connection is named for what it seats, as
+  // the manifest's own are.
+  void move_beside(VP::Call &call,
+                   const std::string &panel,
+                   const std::string &target,
+                   std::string_view side) {
     const VP::View &view = *call.view(_view);
     const VP::Connection *const into = feeding(view, panel + std::string(bar_node));
     const VP::Connection *const beside = feeding(view, target + std::string(bar_node));
-    if (panel == target || !into || !beside || !into->from.node.ends_with(split_node))
-      throw std::runtime_error(std::format(
-          "{} moves beside another panel a dock seats, not {}; ls lists the nodes",
-          panel,
-          target));
     const std::string split = into->from.node;
     const std::string_view other =
         into->from.port == half_ports[0] ? half_ports[1] : half_ports[0];
-    const auto rest =
-        std::ranges::find_if(view.connections, [&](const VP::Connection &connection) {
-          return connection.from.node == split && connection.from.port == other;
-        });
+    const VP::Connection *const rest = from(view, split, other);
     const VP::Connection *const above = feeding(view, split);
-    if (rest == view.connections.end() || !above)
+    if (!rest || !above)
       throw std::runtime_error(
           std::format("{} seats {} alone, or has no Rect", split, panel));
     // Copied first: each edit replaces the view these point into.
@@ -391,6 +537,18 @@ class Docking final : public VP::Operator {
              target + std::string(bar_node),
              {split, std::string(area_port)});
     }
+    seat_halves(call, split, panel, target, side);
+    const bool across = side == "left" || side == "right";
+    send(call, std::format("param set {} axis {}", split, across ? "x" : "y"));
+    send(call, std::format("param set {} ratio {}", split, even));
+  }
+
+  // A split's halves seat the panel and the target, the panel at the side given.
+  void seat_halves(VP::Call &call,
+                   const std::string &split,
+                   const std::string &panel,
+                   const std::string &target,
+                   std::string_view side) {
     const bool first = side == "left" || side == "top";
     const std::array halves_of{first ? panel : target, first ? target : panel};
     for (std::size_t at = 0; at < halves_of.size(); ++at)
@@ -398,9 +556,152 @@ class Docking final : public VP::Operator {
               {.name = free_name(call, short_name(halves_of[at])),
                .from = {split, std::string(half_ports[at])},
                .to = {{halves_of[at] + std::string(bar_node), std::string(area_port)}}});
-    const bool across = side == "left" || side == "right";
-    send(call, std::format("param set {} axis {}", split, across ? "x" : "y"));
-    send(call, std::format("param set {} ratio {}", split, even));
+  }
+
+  // The dock seating the panel goes, its other half taking its place.
+  void leave(VP::Call &call, const std::string &panel) {
+    const VP::View &view = *call.view(_view);
+    const std::string split = feeding(view, panel + std::string(bar_node))->from.node;
+    const std::string_view half = feeding(view, panel + std::string(bar_node))->from.port;
+    const VP::Connection *const rest =
+        from(view, split, half == half_ports[0] ? half_ports[1] : half_ports[0]);
+    const VP::Connection *const above = feeding(view, split);
+    if (!rest || !above)
+      throw std::runtime_error(
+          std::format("{} seats {} alone, or has no Rect", split, panel));
+    const VP::Connection seats = *above;
+    const VP::Endpoint kept = rest->to.front();
+    send(call, std::format("node remove {}", parent_of(split)));
+    if (named(*call.view(_view), seats.name))
+      send(call, std::format("disconnect {}", seats.name));
+    reseat(call, seats, split, kept);
+  }
+
+  // The stack the panel holds goes, the content it hid taking its place in the panel;
+  // the content it showed, which it returns, is left unconnected, for its new place.
+  Content unstack(VP::Call &call, const std::string &panel) {
+    const VP::View &view = *call.view(_view);
+    const std::string stack = stack_of(view, *content_of(view, panel));
+    const auto node = std::ranges::find(view.nodes, stack, &VP::Node::name);
+    const std::size_t shown = param_of(*node, "switch.shown") == half_ports[1] ? 1 : 0;
+    const std::optional<Content> going = half_of(view, stack, shown);
+    const std::optional<Content> staying = half_of(view, stack, 1 - shown);
+    if (!going || !staying)
+      throw std::runtime_error(std::format("{} holds no content in a half", stack));
+    const VP::Connection room = *from(view, panel + std::string(bar_node), rest_port);
+    const VP::Connection tabs =
+        *into(view, panel + std::string(tabs_node), items_port);
+    send(call, std::format("node remove {}", stack));
+    connect(call, {.name = room.name, .from = room.from, .to = staying->area});
+    const std::string named_tabs =
+        std::format("{}-{}", content_name(*staying), tabs_port);
+    connect(call,
+            {.name = free_name(call, named_tabs), .from = staying->tabs, .to = tabs.to});
+    return *going;
+  }
+
+  // A stack in the target's place holds what it held and the content, which shows.
+  void join(VP::Call &call, const Content &content, const std::string &target) {
+    const VP::View &view = *call.view(_view);
+    const Content held = *content_of(view, target);
+    const VP::Connection room = *from(view, target + std::string(bar_node), rest_port);
+    const VP::Connection tabs = *into(view, target + std::string(tabs_node), items_port);
+    const std::string stack =
+        free_node(view, std::format("{}.{}", parent_of(target), stack_recipe));
+    const std::string switcher = stack + std::string(switch_node);
+    const std::string tabs_of = stack + std::string(switch_tabs_node);
+    send(call,
+         std::format("node add {} recipe={} param=switch.shown={}",
+                     stack,
+                     stack_recipe,
+                     half_ports[1]));
+    send(call, std::format("disconnect {}", room.name));
+    send(call, std::format("disconnect {}", tabs.name));
+    connect(call,
+            {.name = room.name,
+             .from = room.from,
+             .to = {{switcher, std::string(area_port)}}});
+    const std::array contents{held, content};
+    for (std::size_t half = 0; half < contents.size(); ++half) {
+      const std::string_view name = content_name(contents[half]);
+      // The first half's room goes to the tabs too, by which they find the switch.
+      VP::Connection room_of{.name = free_name(call, std::format("{}-area", name)),
+                             .from = {switcher, std::string(half_ports[half])},
+                             .to = contents[half].area};
+      if (half == 0)
+        room_of.to.push_back({tabs_of, std::string(half_ports[0])});
+      connect(call, room_of);
+      connect(call,
+              {.name = free_name(call, std::format("{}-{}", name, tabs_port)),
+               .from = contents[half].tabs,
+               .to = {{tabs_of, std::format("{}-{}", half_ports[half], tabs_port)}}});
+    }
+    connect(call,
+            {.name = free_name(call, std::format("{}-{}", short_name(stack), tabs_port)),
+             .from = {tabs_of, std::string(tabs_port)},
+             .to = tabs.to});
+  }
+
+  // A new panel holds the content, in a new dock in the target's place, both listed
+  // before what draws over the panels, the dock before the target, so its ground draws
+  // first; the panel takes what the one the content left takes, its theme, its font and
+  // its atlas, but its room and its tabs, and the dock the theme that panel's ground
+  // took.
+  void seat_new(VP::Call &call,
+                const Content &content,
+                const std::string &source,
+                const std::string &target,
+                std::string_view side) {
+    const VP::View &view = *call.view(_view);
+    const std::string parent(parent_of(target));
+    const std::string panel =
+        free_node(view, std::format("{}.{}-panel", parent, content_name(content)));
+    const std::string dock = free_node(view, std::format("{}.{}", parent, dock_recipe));
+    const std::string own = source + ".";
+    std::vector<VP::Connection> grown;
+    for (const VP::Connection &connection : view.connections) {
+      VP::Connection more = connection;
+      for (const VP::Endpoint &to : connection.to) {
+        const bool room = to.node == source + std::string(bar_node) && to.port == area_port;
+        if (!to.node.starts_with(own) || room || to.port == items_port)
+          continue;
+        more.to.push_back({panel + to.node.substr(source.size()), to.port});
+        if (to.node == own + "rects")
+          more.to.push_back({dock + ".rects", to.port});
+      }
+      if (more.to.size() != connection.to.size())
+        grown.push_back(std::move(more));
+    }
+    const VP::Connection seats = *feeding(view, target + std::string(bar_node));
+    send(call, std::format("node add {} recipe={}", panel, panel_recipe));
+    send(call, std::format("node move {} {}", panel, _name));
+    send(call,
+         std::format("node add {} recipe={} param=split.axis={} param=split.ratio={}",
+                     dock,
+                     dock_recipe,
+                     side == "left" || side == "right" ? "x" : "y",
+                     even));
+    send(call, std::format("node move {} {}", dock, target));
+    for (const VP::Connection &connection : grown) {
+      send(call, std::format("disconnect {}", connection.name));
+      connect(call, connection);
+    }
+    send(call, std::format("disconnect {}", seats.name));
+    reseat(call,
+           seats,
+           target + std::string(bar_node),
+           {dock + std::string(split_node), std::string(area_port)});
+    seat_halves(call, dock + std::string(split_node), panel, target, side);
+    const std::string_view name = content_name(content);
+    connect(call,
+            {.name = free_name(call, std::format("{}-area", name)),
+             .from = {panel + std::string(bar_node), std::string(rest_port)},
+             .to = content.area});
+    connect(call,
+            {.name = free_name(call, std::format("{}-{}", name, tabs_port)),
+             .from = content.tabs,
+             .to = {{panel + std::string(tabs_node), std::string(items_port)},
+                    {panel + std::string(hit_node), std::string(items_port)}}});
   }
 
   // What a connection fed, at the node given, it now feeds at the endpoint given, named

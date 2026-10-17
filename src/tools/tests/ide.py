@@ -47,8 +47,10 @@ A run types into a note in the editor, opens the file menu of the menus a right 
 opens in the graph, by its line, and presses its write, which types write into the
 terminal and sends it, so the note must hold what was typed. Another moves the graph's panel below the Perform panel by panel
 move, hides both, so their dock hides too, shows the graph's again, which the Perform
-panel must not follow, and drags the terminal's tab strip onto the editor's right edge, so
-the ide's docks are edited over and over, and must rebuild with no line refused. No node of any run may stop, as one
+panel must not follow, moves the Perform panel into the graph's, which then holds both,
+and out again, the one it shows, into a panel of its own right of the terminal, and drags
+the terminal's tab strip onto the editor's right edge, so the ide's docks are edited over
+and over, and must rebuild with no line refused. No node of any run may stop, as one
 whose menu.ini or keymap names a line no command takes would.
 The zoom a person keeps in the library's font folder is set aside while it runs, and put
 back after. Where no display exists it is skipped (V07).
@@ -254,6 +256,8 @@ def docked(width: int, height: int) -> list[str]:
         "ide: panel hide ide.graph-panel",
         "ide: panel hide ide.perform-panel",  # their dock hides in the top row
         "ide: panel show ide.graph-panel",  # their dock shows again, the graph's alone
+        "ide: panel move ide.perform-panel ide.graph-panel middle",  # one strip, two tabs
+        "ide: panel move ide.graph-panel ide.terminal-panel right",  # Perform, its own
         f"input pointer {width // 4} {strip}",
         "input button down left",
         f"input pointer {editor - 10} {MENUBAR + row // 2}",

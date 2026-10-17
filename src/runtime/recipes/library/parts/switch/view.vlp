@@ -1,0 +1,9 @@
+# The switch part: one node whose operator is Switch; it hands the Rect its area gives to
+# first or second, the half its shown param names, and none to the other.
+[manifest]
+version = 1
+
+[node "switch"]
+operator = Switch
+file     = Switch.cpp
+param    = shown=first

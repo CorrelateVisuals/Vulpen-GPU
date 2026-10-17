@@ -1,0 +1,17 @@
+# The stack component: switch and switch-tabs, two contents in one place, as a panel holds
+# both under one strip of their tabs. Its host connects the Rect they share to
+# switch.area, switch.first to the first content's room and to tabs.first, by which the
+# tabs find the switch, switch.second to the second's room, their tabs to tabs.first-tabs
+# and tabs.second-tabs, and tabs.tabs to the panel's tabs; switch.shown names the half
+# that shows, which a press on the other's tab sets. A stack in a half holds more, as
+# docks nest.
+[manifest]
+version = 1
+
+[node "stack"]
+
+[node "stack.switch"]
+recipe = switch
+
+[node "stack.tabs"]
+recipe = switch-tabs
