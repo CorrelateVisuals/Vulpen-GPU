@@ -116,23 +116,29 @@ class Inspect final : public VP::Operator {
   }
 
   // Each as the manifest's section of it would read, header first: a node's, or a view's
-  // the view hosts.
+  // the view hosts; a file or a folder selected has none.
   static void info_selected(VP::Call &call) {
     const std::vector<VP::Usage> usages = call.commands().usages();
     if (std::ranges::find(usages, "selected", &VP::Usage::usage) == usages.end())
       throw std::runtime_error("nothing here selects nodes; info <node> shows one");
     const std::string selected = call.commands().send("selected");
-    if (selected.empty())
-      throw std::runtime_error("no node is selected; info <node> shows one");
+    const VP::View &view = call.view();
+    bool shown = false;
     for (std::size_t at = 0; at < selected.size();) {
       const std::size_t end = std::min(selected.find('\n', at), selected.size());
       const std::string node = selected.substr(at, end - at);
-      const std::vector<VP::Child> &hosted = call.view().children;
-      const bool view = std::ranges::find(hosted, node, &VP::Child::name) != hosted.end();
-      call.reply(std::format("[{} \"{}\"]", view ? "view" : "node", node));
-      info(call, call.view(), node);
       at = end + 1;
+      const bool hosted =
+          std::ranges::find(view.children, node, &VP::Child::name) != view.children.end();
+      if (!hosted &&
+          std::ranges::find(view.nodes, node, &VP::Node::name) == view.nodes.end())
+        continue;
+      call.reply(std::format("[{} \"{}\"]", hosted ? "view" : "node", node));
+      info(call, view, node);
+      shown = true;
     }
+    if (!shown)
+      throw std::runtime_error("no node is selected; info <node> shows one");
   }
 
   // The view as the folders its nodes are (RV08): each node a folder under the node it is

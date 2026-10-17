@@ -34,15 +34,18 @@
 namespace {
 
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
-// where it was then, and whether it has been dragged, or is a press let go where it was.
-// Or a corner of a
-// box pressed, which a drag pulls while the opposite corner stays: whether it is a left
-// one and whether a top one, and the box's size and place then.
+// where it was then, and whether it has been dragged, or is a press let go where it was,
+// and once it is, where every box was as the drag began, and the frame's size if a person
+// gave it one. Or a corner of a box pressed, which a drag pulls while the opposite corner
+// stays: whether it is a left one and whether a top one, and the box's size and place
+// then.
 struct Grab {
   std::size_t box = 0;
   glm::vec2 from{};
   std::vector<std::pair<std::size_t, glm::ivec2>> moving;
   bool moved = false;
+  std::vector<glm::ivec2> started;
+  std::optional<glm::ivec2> sized;
   std::optional<glm::bvec2> corner;
   glm::ivec2 extent{};
   glm::ivec2 offset{};
@@ -75,13 +78,14 @@ struct Under {
 // look at the graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's
 // manifest, and a restart shows them as they were left; so do the colors a person gives
 // each kind of node there, which draw its boxes' borders and names. The graph starts at
-// home, as a view or a level is shown and as h brings it there: unmoved at zoom 1 while
-// every box shows whole there, else moved and zoomed out until they all do; but a level
-// gone up to shows the box it was left from in focus, under the pointer, two steps of
-// the wheel short of going into it again. . goes into the box selected, or the one under
-// the pointer, and , up a level, as the wheel and a second press do. A drag on the
-// ground, or on the frame's inside, which shows the ground, moves the graph and the wheel
-// zooms it about the pointer, as the Perform panel's image moves, and neither is kept. A
+// home, as a view or a level is shown, as h brings it there and as its area changes size
+// while there: every box in the middle of the area, zoomed out until they all show whole;
+// but a level the wheel went up to shows the box it was left from in focus, under the
+// pointer, two steps of the wheel short of going into it again. . goes into the box
+// selected, or the one under the pointer, and , up a level, as the wheel and a second
+// press do, , showing it from home. A drag on the ground, or on the frame's inside, which
+// shows the ground, moves the graph and the wheel zooms it about the pointer, as the
+// Perform panel's image moves, and neither is kept. A
 // press on a box selects it, shift adding it or taking it out, and a second press opens
 // the file of a row that names one in the editor; a drag on a box selected moves every
 // box selected,
@@ -97,15 +101,16 @@ struct Under {
 // the CPU, on the theme's ramp from cold to hot, against the costliest box beside it or
 // a budget, and the pointer over it shows the times in the tip; two buttons after the
 // layers' turn it on and off.
-// It owns the selection, of nodes and of the views the view shown hosts, which select and
-// selected reach as lines do (V06), and which delete or backspace removes as node remove
-// and view close do, and takes keys from the keys part while it has the focus, which a
-// press in its area gives it. Its own shaders draw the ground, lines that move and zoom
-// with the graph over the whole area, as the POC's grid did; it writes Rects, Labels and
-// Curves for the parts that draw over them, and only what lies in its area: a box cut at
-// its edge, and a row of text with the area as its room, which glyphs cuts at the edge; a
-// curve goes whole, and the curves part cuts it at the edge of the ground the graph hands
-// it.
+// It owns the selection, of nodes, of the views the view shown hosts and of the files and
+// folders it shows, which select and selected reach as lines do (V06), control with a
+// selects whole, and of which delete or backspace removes the nodes and the views, as
+// node remove and view close do, and takes keys from the keys part while it has the
+// focus, which a press in its area gives it. Its own shaders draw the ground, lines that
+// move and zoom with the graph over the whole area, as the POC's grid did, and the
+// frame's inside a little over them; it writes Rects, Labels and Curves for the parts
+// that draw over them, and only what lies in its area: a box cut at its edge, and a row
+// of text with the area as its room, which glyphs cuts at the edge; a curve goes whole,
+// and the curves part cuts it at the edge of the ground the graph hands it.
 class Graph final : public VP::Operator {
 public:
   void bind(VP::Bind &node) override;
@@ -130,7 +135,8 @@ private:
   void grab_corner(VP::Cook &frame, const Under &under);
   void drag(glm::vec2 to);
   void pull(glm::vec2 to);
-  void place_all();
+  void grow_frame(const Grab &grab, glm::ivec2 grown);
+  void place_all(Grab &grab);
   void release(VP::Cook &frame, bool room);
   bool open(VP::Cook &frame, std::size_t at);
   void turn(VP::Cook &frame, glm::vec2 turn);
@@ -157,9 +163,10 @@ private:
   void write_tip();
   std::size_t more_under() const;
   std::size_t row_under(std::size_t at) const;
-  // The curve nearest a point on screen, near enough, where no box lies; none while a
-  // drag goes on.
-  std::size_t curve_under(glm::vec2 point) const;
+  // The curves near enough a point on screen, where no box lies; none while a drag goes
+  // on.
+  void curves_under(glm::vec2 point);
+  bool hovered(std::size_t end) const;
   float corner(std::span<const Waypoint> way, std::size_t at) const;
   // Where a place of the graph shows this frame, in pixels from the window's top left.
   glm::vec2 on_screen(glm::vec2 at) const;
@@ -199,10 +206,11 @@ private:
   VP::Upload<VP_VIEW::Curve> _curves;
   VP_VIEW::Items *_tabs = nullptr;
   VP_VIEW::Items *_buttons = nullptr; // a layer each, along the graph's bottom edge
-  // The details of the curve under the pointer, a row an Item, and where they show.
+  // The details of the curves under the pointer, a row an Item, and where they show.
   VP_VIEW::Items *_tip = nullptr;
   VP_VIEW::Rect *_tip_place = nullptr;
-  std::size_t _hovered_end = no_box;
+  // The curves the pointer is over, by end, each with how near, the nearest first.
+  std::vector<std::pair<float, std::size_t>> _hovered_curves;
   std::size_t _hovered_more = no_box; // a box whose row for the rest the pointer is over
   Heating _heating; // what the boxes show the cost of, and what each costs this frame
   std::filesystem::path _base; // where the paths of the boxes built are named from
@@ -240,10 +248,11 @@ private:
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over
   PanZoom _pan_zoom;
-  float _home_zoom = 1.0f; // as near as home is, past half of which zooming out goes up
+  float _home_zoom = 1.0f; // as near as home is, a quarter of which zooming out goes up
+  glm::uvec2 _homed{};     // the area's size home was worked out for
   // Until the frame home is worked out in, which needs the boxes laid out in the area.
   bool _homing = false;
-  // Shown from home, which no drag on the ground and no wheel has left since.
+  // Shown from home, which no drag on the ground or on a box and no wheel has left since.
   bool _at_home = false;
   // The box a level up was left from, which the level shown next shows in focus: a node's
   // or a view's name, or a folder, as an absolute path; empty for none.
@@ -255,6 +264,7 @@ private:
   Under _hovered;         // what the pointer is over, once the frame laid the boxes out
   bool _dragging = false; // the ground, which the graph follows
   bool _shift = false;    // held, so a press adds a box to the selection or takes it out
+  bool _control = false;  // held, so a selects every box
 };
 
 } // namespace

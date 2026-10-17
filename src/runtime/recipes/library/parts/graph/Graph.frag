@@ -4,6 +4,7 @@
 
 layout(location = 0) flat in vec2 origin; // where the graph's top left shows
 layout(location = 1) flat in vec4 ink;
+layout(location = 2) flat in int filled;
 layout(location = 0) out vec4 color;
 
 // A line every spacing pixels of the graph, which the zoom scales, and every
@@ -16,6 +17,8 @@ const float major_ink = 0.6;
 // the ground never crowds and no line jumps away.
 const float fade_from = 4.0;
 const float fade_to = 16.0;
+// A box's inside, over the lines, so they show through it and it reads as a box.
+const float inside_ink = 0.3;
 
 // How much of a pixel the nearest line covers, of either axis, with lines apart pixels
 // apart from the origin; a line on a whole pixel covers it alone.
@@ -28,6 +31,10 @@ float covered(vec2 at, float apart) {
 // From each pixel's top left, as a Rect counts, worked out from the zoom with no
 // derivatives, so every GPU draws the same lines (GLSL02).
 void main() {
+  if (filled != 0) {
+    color = ink * inside_ink;
+    return;
+  }
   const vec2 at = gl_FragCoord.xy - 0.5 - origin;
   const float apart = spacing * pass.zoom;
   const float fade = clamp((apart - fade_from) / (fade_to - fade_from), 0.0, 1.0);

@@ -16,13 +16,15 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <limits>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 // Only Graph.cpp includes this header, so what it holds stays in the unnamed namespace of
-// the one file that builds the part, as the class does: which curve the pointer is over,
-// and the tip that tells a developer what that curve stands for.
+// the one file that builds the part, as the class does: which curves the pointer is over,
+// and the tip that tells a developer what they stand for.
 namespace {
 
 constexpr float least_reach = 32.0f;    // a bend's handles, at least, in pixels
@@ -46,18 +48,20 @@ float away(glm::vec2 point, glm::vec2 from, glm::vec2 to) {
   return glm::length(point - (from + along * t));
 }
 
-// The end whose curve is nearest a point on screen, within curve_reach pixels, measured
-// as drawn: along its lines, and along a bend in pieces; of two as near, the one drawn
-// later, as it shows over the other; none for none. The graph shows at the area's
-// offset, moved and zoomed.
-std::size_t curve_near(std::span<const Route> routes,
-                       std::span<const Waypoint> waypoints,
-                       const PanZoom &pan_zoom,
-                       glm::vec2 offset,
-                       glm::vec2 point) {
-  std::size_t nearest = no_box;
-  float least = curve_reach;
+// The ends whose curves pass within curve_reach pixels of a point on screen, each with
+// how near, measured as drawn: along its lines, and along a bend in pieces; the nearest
+// first, so every curve of a lane the pointer is over, as many share one, is found, not
+// only the one drawn over the others. The graph shows at the area's offset, moved and
+// zoomed.
+void curves_near(std::span<const Route> routes,
+                 std::span<const Waypoint> waypoints,
+                 const PanZoom &pan_zoom,
+                 glm::vec2 offset,
+                 glm::vec2 point,
+                 std::vector<std::pair<float, std::size_t>> &near) {
+  near.clear();
   for (std::size_t end = 0; end < routes.size(); ++end) {
+    float least = std::numeric_limits<float>::max();
     const std::span<const Waypoint> way =
         waypoints.subspan(routes[end].first, routes[end].count);
     for (std::size_t at = 0; at + 1 < way.size(); ++at) {
@@ -74,15 +78,14 @@ std::size_t curve_near(std::span<const Route> routes,
                                                    3.0f * s * t * t * (to - reach) +
                                                    t * t * t * to
                                              : to;
-        if (const float distance = away(point, before, next); distance <= least) {
-          least = distance;
-          nearest = end;
-        }
+        least = std::min(least, away(point, before, next));
         before = next;
       }
     }
+    if (least <= curve_reach)
+      near.emplace_back(least, end);
   }
-  return nearest;
+  std::ranges::sort(near);
 }
 
 // The cells a tip leaves either side of its rows inside the area, two a side.
@@ -99,10 +102,32 @@ void cut_tip(VP_VIEW::Items &tip, std::size_t room) {
   tip.push_back({.label = std::format("and {} more", more)});
 }
 
+// What the curve of an end joins, on a row: a connection's name and its writer, or a
+// relation's layer and the rows it joins, from what is used to what uses it, as the row
+// of a header to the box of a file including it.
+std::string joins(const Boxes &boxes, std::size_t end, const VP::View &flat) {
+  const End &told = boxes.ends[end];
+  if (told.layer == VP_VIEW::Layer::flow)
+    return told.wire < flat.connections.size()
+               ? std::format("connection {} from {}",
+                             flat.connections[told.wire].name,
+                             flat.connections[told.wire].from.text())
+               : std::string();
+  const auto title = [&](std::size_t box, std::size_t row) {
+    return row == title_row
+               ? boxes.boxes[box].title
+               : rows_in(boxes, box)[row].text + rows_in(boxes, box)[row].written;
+  };
+  return std::format("{}: {} to {}",
+                     VP_VIEW::layer_names[static_cast<std::size_t>(told.layer)],
+                     title(told.from, told.from_row),
+                     title(told.to, told.to_row));
+}
+
 // What the curve of an end stands for, a row an Item: a connection's name, its writer
-// and its readers, as the manifest names them; or a relation's layer and the boxes it
-// joins, then each relation it draws, its file, named from base, the line that says it,
-// and what there names the other.
+// and its readers, as the manifest names them; or what it joins, then each relation it
+// draws, the file that says it, named from base, the line that says it, and what there
+// names the other.
 void tell(VP_VIEW::Items &tip,
           const Boxes &boxes,
           std::size_t end,
@@ -120,16 +145,7 @@ void tell(VP_VIEW::Items &tip,
       tip.push_back({.label = std::format("to {}", reader.text())});
     return;
   }
-  const auto title = [&](std::size_t box, std::size_t row) {
-    return row == title_row
-               ? boxes.boxes[box].title
-               : rows_in(boxes, box)[row].text + rows_in(boxes, box)[row].written;
-  };
-  tip.push_back(
-      {.label = std::format("{}: {} to {}",
-                            VP_VIEW::layer_names[static_cast<std::size_t>(told.layer)],
-                            title(told.from, told.from_row),
-                            title(told.to, told.to_row))});
+  tip.push_back({.label = joins(boxes, end, flat)});
   for (const std::size_t at : boxes.told[end])
     if (at < relations.size())
       tip.push_back(

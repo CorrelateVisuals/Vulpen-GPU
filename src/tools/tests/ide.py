@@ -21,7 +21,7 @@ which nothing may refuse; a third then presses escape three times, back to edit 
 of the terminal's focus and out of the run, which must end before its frames do; every
 other run must run all of them, so the end of standard input, which every run finds at
 once, ends none. The last two host a copy of the wave example, its boxes placed by the
-.ini put beside it where both show whole, so the graph starts at home unmoved, with
+.ini put beside it, which home centers in the graph's area at zoom 1, with
 Wave.comp open in the editor: a press on a box's name selects it, a drag moves the box
 selected, a drag on the ground lets go of the selection and moves the graph, shift with a
 press selects the box again, the wheel zooms the graph, and shift with a drag on the
@@ -74,9 +74,14 @@ COMPLETED = f"{TRIANGLE}/"
 # Every scripted event reaches the first frame, so the presses are placed for its size.
 SIZE = re.compile(r"\{swp\} presents \d+ images of (\d+)x(\d+)")
 WAVE = RUNTIME.parents[1] / "projects" / "wave"
-# The wave box at the graph's top left and probe's beside it, so both show whole in any
-# window from 1280 pixels wide, and the graph starts unmoved at zoom 1.
-ARRANGED = {"place wave": [0, 0], "place probe": [200, 0]}
+# The wave box, probe's and the manifest's in a row, each larger than its rows need, so
+# where they reach is known, and home, which centers them in the graph's area, shows them
+# at zoom 1 in any window from 1280 by 720 pixels.
+ARRANGED = {"place wave": [0, 0], "size wave": [120, 90],
+            "place probe": [200, 0], "size probe": [120, 90],
+            "place /view.vlp": [400, 0], "size /view.vlp": [120, 30]}
+REACH = (520, 90)
+HOME_MARGIN = (16, 18)  # the least room home leaves round them: half a column's gap, a row
 MOVED = ("place wave",)
 COLORED = "color dispatch = number"  # a person's line, which the graph's saves keep
 # The graph's area starts below its panel's tab strip, a text row and 4 pixels either
@@ -210,7 +215,11 @@ def edits(width: int) -> list[str]:
 
 def graph(wave: Path, width: int, height: int) -> list[str]:
     left = round((width - 4) * 0.5) + 4  # past the top row's seam: the graph's area
-    box = (left + 40, NAME)
+    # Above its row of buttons, as tall as its tab strip, over the Perform panel.
+    bottom = round((round((height - 4) * 0.65) - 4) * 0.5) - STRIP
+    shown = (left + max((width - left - REACH[0]) // 2, HOME_MARGIN[0]),
+             STRIP + max((bottom - STRIP - REACH[1]) // 2, HOME_MARGIN[1]))
+    box = (shown[0] + 40, shown[1] + NAME - STRIP)  # on wave's name
     moved = (box[0] + 30, box[1])  # the box dragged right
     ground = (width - 40, 150)  # below and right of both boxes
     panned = (moved[0] + 20, moved[1] + 10)  # where it shows once the graph moved
