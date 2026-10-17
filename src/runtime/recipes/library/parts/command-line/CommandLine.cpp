@@ -9,6 +9,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Caret.h"
 #include "shared/Labels.h"
 #include "shared/Scroll.h"
 #include "shared/Words.h"
@@ -48,7 +49,6 @@ constexpr std::size_t scrollback_rows = 1000; // the oldest go first (A03)
 constexpr std::size_t history_lines = 100;
 constexpr std::int32_t margin = 4; // around the text
 constexpr std::uint32_t rule_width = 1;
-constexpr std::uint32_t caret_width = 2;
 constexpr std::uint32_t label_room = 256;
 constexpr std::size_t rows_most = label_room - 2; // the prompt and the line take two
 // The ground, the rule above the line, the caret, the scroll bars' thumbs, and the
@@ -776,7 +776,8 @@ class CommandLine final : public VP::Operator {
     const VP_VIEW::Rect caret =
         lay_out_line(text, start, left, columns - prompt_columns, cell, line);
     // The caret shows only in focus, so it marks where typing goes.
-    if (focused())
+    const bool typed = !_typed->to(_name).empty();
+    if (focused() && _blink.shows(frame.index(), caret.offset, typed))
       rects[count++] = caret;
     const VP_VIEW::Rect region = rows_area(grid());
     for (const Scroll *scroll : {&_scroll, &_columns})
@@ -829,7 +830,7 @@ class CommandLine final : public VP::Operator {
              std::string_view(_line).substr(_first, columns));
     const auto caret = static_cast<std::int32_t>(_caret - _first);
     return {.offset = {typed + caret * cell.x, line},
-            .extent = {caret_width, static_cast<std::uint32_t>(cell.y)},
+            .extent = {Caret::width, static_cast<std::uint32_t>(cell.y)},
             .role = VP_VIEW::role("accent")};
   }
 
@@ -970,6 +971,7 @@ class CommandLine final : public VP::Operator {
   bool _sideways = false;   // shift held, as the window says, so the wheel scrolls across
   std::string _line;
   std::size_t _caret = 0;
+  Caret _blink;           // the caret's mark, as it blinks
   std::size_t _first = 0; // the first character of the line shown
   std::vector<std::string> _history;
   std::size_t _recalled = 0; // the line recalled; past the history for a new one

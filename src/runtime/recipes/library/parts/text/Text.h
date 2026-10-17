@@ -6,6 +6,7 @@
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
+#include "shared/Caret.h"
 #include "shared/Labels.h"
 #include "shared/Scroll.h"
 #include "Syntax.h"
@@ -130,6 +131,7 @@ class Text final : public VP::Operator {
   bool _sideways = false; // shift held, as the window says, so the wheel scrolls across
   bool _control = false;  // held, so c, x and v copy, cut and paste
   bool _follow = false;   // the caret moved, so the next layout scrolls it into view
+  Caret _blink;           // the caret's mark, as it blinks
 };
 
 } // namespace

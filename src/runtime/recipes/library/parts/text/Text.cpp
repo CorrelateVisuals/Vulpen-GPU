@@ -13,7 +13,6 @@
 namespace {
 
 constexpr std::int32_t margin = 4; // around the text, as the terminal's
-constexpr std::uint32_t caret_width = 2;
 constexpr std::size_t row_room = 256; // rows shown at most; a taller area shows these
 constexpr std::uint32_t label_room = 16384; // a run of one role a Label, in rows shown
 constexpr std::uint32_t character_room = 131072; // the rows' characters together
@@ -466,11 +465,13 @@ void Text::lay_out(VP::Cook &frame, const Grid &grid) {
   std::size_t count = 1 + select(document, grid, rows, rects.subspan(1));
   const Spot caret = document.caret;
   if (focused() && caret.row >= top && caret.row < top + rows && caret.column >= left &&
-      caret.column < left + grid.columns)
-    rects[count++] = {
-        .offset = cell_at(grid, caret.row - top, caret.column - left),
-        .extent = {caret_width, static_cast<std::uint32_t>(grid.cell.y)},
-        .role = VP_VIEW::role("accent")};
+      caret.column < left + grid.columns) {
+    const glm::ivec2 at = cell_at(grid, caret.row - top, caret.column - left);
+    if (_blink.shows(frame.index(), at, !_typed->to(_name).empty()))
+      rects[count++] = {.offset = at,
+                        .extent = {Caret::width, static_cast<std::uint32_t>(grid.cell.y)},
+                        .role = VP_VIEW::role("accent")};
+  }
   for (const Scroll *scroll : {&document.scroll, &document.columns})
     if (const std::optional<VP_VIEW::Rect> thumb = scroll->thumb(scroll->track(*_area)))
       rects[count++] = *thumb;
