@@ -14,6 +14,7 @@
 #include "Arranged.h"
 #include "Boxes.h"
 #include "Covered.h"
+#include "Hover.h"
 #include "Layers.h"
 #include "Layout.h"
 
@@ -140,8 +141,6 @@ private:
                  Labels &written) const;
   void write_curves(VP::Cook &frame);
   void write_tip();
-  void tell_connection(const End &end);
-  void tell_relations(std::size_t end);
   // The curve nearest a point on screen, near enough, where no box lies; none while a
   // drag goes on.
   std::size_t curve_under(glm::vec2 point) const;

@@ -21,6 +21,7 @@ file           = Graph.frag
 file           = Graph.glsl
 file           = Graph.h
 file           = Graph.vert
+file           = Hover.h
 file           = Layers.h
 file           = Layout.h
 vertex_count   = 6
