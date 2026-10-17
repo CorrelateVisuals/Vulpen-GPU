@@ -9,11 +9,11 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <format>
 #include <fstream>
-#include <iterator>
 #include <optional>
 #include <stdexcept>
 #include <system_error>
@@ -202,10 +202,17 @@ void Ports::save(File file, std::string_view text) {
 std::string Ports::read(std::string_view file) {
   const std::filesystem::path path = absolute(file);
   std::ifstream in(path, std::ios::binary);
+  // Read in one go, not a character at a time, as a folder's reading reads megabytes; a
+  // folder, or anything else no regular file, has no size. A file that shrank since its
+  // size was asked keeps what was there.
   std::error_code gone;
-  if (!in || !std::filesystem::is_regular_file(path, gone))
+  const std::uintmax_t size = std::filesystem::file_size(path, gone);
+  if (!in || gone)
     throw std::runtime_error(std::format("{}: cannot be read", file));
-  return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+  std::string text(size, '\0');
+  in.read(text.data(), static_cast<std::streamsize>(text.size()));
+  text.resize(static_cast<std::size_t>(in.gcount()));
+  return text;
 }
 
 void Ports::save(std::string_view file, std::string_view text) {
