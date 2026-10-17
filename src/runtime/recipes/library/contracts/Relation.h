@@ -31,14 +31,16 @@ struct Relation {
 };
 
 // What the relations part hands the graph: the relations among the files of the view
-// shown, or of the folder its folder param names, which the graph then shows in place of
-// the view, as a view's nodes, a node a folder, named by its path from the folder holding
-// the one opened, joined by /; and the node and its view, so the graph sends the line
-// that shows the view again.
+// shown, or of the folder its folder param names, whose inside the graph then shows in
+// place of the view, as a view's nodes: a node for it, one each folder in it, and one
+// each folder in those, named by its path from the folder holding the one shown, joined
+// by /; the folder going up stops at, the repository's top; and the node and its view, so
+// the graph sends the line that shows another folder, or the view again.
 struct Relations {
   std::string node;
   std::string view;
   std::string folder; // absolute; empty for the view
+  std::string top;    // absolute; empty for the view
   VP::View tree;      // the folder's
   std::vector<Relation> relations;
   std::uint64_t changes = 0; // the readings that changed what it holds, so far

@@ -96,6 +96,20 @@ std::optional<std::string> host_of(VP::Cook &frame, std::string_view name) {
   return std::nullopt;
 }
 
+// The view vulpen hosts whose folder this is, by the name lines address it with, empty
+// for the one vulpen started with; none for a folder no view is.
+std::optional<std::string> view_in(VP::Cook &frame, const std::filesystem::path &folder) {
+  std::vector<std::string> views{std::string()};
+  for (std::size_t at = 0; at < views.size(); ++at)
+    if (const VP::View *const view = frame.view(views[at])) {
+      if (view->file.parent_path().lexically_normal() == folder.lexically_normal())
+        return views[at];
+      for (const VP::Child &child : view->children)
+        views.push_back(child.name);
+    }
+  return std::nullopt;
+}
+
 // The Rect from one corner to the other, rounded to whole pixels.
 VP_VIEW::Rect between(glm::vec2 from, glm::vec2 to, std::uint32_t role) {
   const glm::ivec2 low(glm::round(from));
@@ -283,8 +297,9 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
 }
 
 // A box pressed may be one the boxes no longer hold. A level shown anew starts at home. A
-// folder always shows an inside: the one the inside param names, or the folder's own;
-// the paths past it are named from the folder holding it, and a view's from its folder.
+// folder always shows its own inside, as the relations part reads a folder a level at a
+// time; the paths past it are named from the folder holding it, and a view's from its
+// folder.
 void Graph::build(const VP::View *edited, const VP::View *flat) {
   const std::string &folder = _relations->folder;
   if (_inside != _built_inside || folder != _built_folder)
@@ -298,11 +313,9 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
   _built_hosted = _hosted;
   _boxes = {};
   if (edited && flat && (folder.empty() || !flat->nodes.empty())) {
-    const bool inside = std::ranges::find(flat->nodes, _inside, &VP::Node::name) !=
-                        flat->nodes.end();
     _boxes = boxes_of(*edited,
                       *flat,
-                      folder.empty() || inside ? _inside : flat->nodes.front().name,
+                      folder.empty() ? _inside : flat->nodes.front().name,
                       _relations->relations,
                       _hosted,
                       folder.empty() ? edited->file.parent_path()
@@ -322,12 +335,27 @@ void Graph::show_view(VP::Cook &frame) const {
       std::format("{}: param unset {} folder", _relations->view, _relations->node));
 }
 
-// The tab names the view shown and the node whose inside shows, or the folder shown.
+// A folder's inside, which the relations part reads, in place of what shows.
+void Graph::show_folder(VP::Cook &frame, const std::filesystem::path &folder) const {
+  frame.commands().send(std::format("{}: param set {} folder {}",
+                                    _relations->view,
+                                    _relations->node,
+                                    folder.generic_string()));
+}
+
+// The tab names the view shown and the node whose inside shows, or the folder shown, from
+// the folder holding its repository's top, so the repository's name leads it.
 void Graph::name_tab() {
   std::string label(title);
-  if (!_shown.empty() && _relations->folder.empty())
+  const std::filesystem::path folder(_relations->folder);
+  if (!folder.empty())
+    label += std::format(
+        " - {}",
+        folder.lexically_relative(std::filesystem::path(_relations->top).parent_path())
+            .generic_string());
+  else if (!_shown.empty())
     label += std::format(" - {}", _shown);
-  if (_boxes.frame != no_box)
+  if (_boxes.frame != no_box && folder.empty())
     label += std::format(" - {}", _boxes.boxes[_boxes.frame].name);
   _tabs->assign(1, {.label = std::move(label), .current = true});
 }
@@ -601,41 +629,55 @@ void Graph::turn(VP::Cook &frame, glm::vec2 turn) {
 }
 
 // A box's inside, as a second press or the wheel goes into it: a view's, as view switch,
-// or a node's holding nodes, as the inside param, which a line sets as a press does
-// (V06); and out of the frame's, a level up. False for a box with no inside.
+// a node's holding nodes or files, as the inside param, which a line sets as a press does
+// (V06), and a folder's, as the relations part's folder param, or, for a folder a view
+// vulpen hosts is, that view; and out of the frame's, a level up. False for a box with
+// no inside.
 bool Graph::enter(VP::Cook &frame, std::size_t at) {
   const Box &entered = _boxes.boxes[at];
-  if (entered.kind == Kind::view)
+  if (entered.kind == Kind::view) {
     frame.commands().send(std::format("view switch {}", entered.name));
-  else if (at == _boxes.frame)
+  } else if (at == _boxes.frame) {
     leave(frame);
-  else if (entered.holds)
+  } else if (entered.holds && !_relations->folder.empty()) {
+    const std::filesystem::path folder =
+        std::filesystem::path(_relations->folder).parent_path() / entered.name;
+    if (const std::optional<std::string> view = view_in(frame, folder); !view)
+      show_folder(frame, folder);
+    else if (*view == _shown)
+      show_view(frame);
+    else
+      frame.commands().send(view->empty() ? std::string("view switch")
+                                          : std::format("view switch {}", *view));
+  } else if (entered.holds) {
     frame.commands().send(
         std::format("{}: param set {} inside {}", _view, _name, entered.name));
+  }
   return entered.kind == Kind::view || entered.holds;
 }
 
 // Out of the node whose inside shows, to the inside of the node holding it, or the top;
-// out of a view's top to the view hosting it, as view switch shows it; out of a folder to
-// the one holding it, or from the folder opened, to the view again.
+// out of a view's top to the view hosting it, as view switch shows it, and out of the top
+// of the view vulpen started with to the folder holding its folder, where its folder is a
+// box; out of a folder to the one holding it, up to the top of its repository.
 void Graph::leave(VP::Cook &frame) {
   if (!_built_flat)
     return;
+  if (const std::filesystem::path folder(_relations->folder); !folder.empty()) {
+    if (folder != std::filesystem::path(_relations->top) && folder != folder.parent_path())
+      show_folder(frame, folder.parent_path());
+    return;
+  }
   if (_boxes.frame == no_box) {
+    const VP::View *const view = frame.view(_shown);
     if (const std::optional<std::string> host = host_of(frame, _shown))
       frame.commands().send(host->empty() ? std::string("view switch")
                                           : std::format("view switch {}", *host));
+    else if (view && !view->file.empty())
+      show_folder(frame, view->file.parent_path().parent_path());
     return;
   }
   const std::string &left = _boxes.boxes[_boxes.frame].name;
-  if (!_relations->folder.empty()) {
-    if (const std::size_t slash = left.rfind('/'); slash == std::string::npos)
-      show_view(frame);
-    else
-      frame.commands().send(
-          std::format("{}: param set {} inside {}", _view, _name, left.substr(0, slash)));
-    return;
-  }
   const std::size_t holder = parent_of(_built_flat->nodes, left);
   frame.commands().send(
       holder == no_box ? std::format("{}: param unset {} inside", _view, _name)

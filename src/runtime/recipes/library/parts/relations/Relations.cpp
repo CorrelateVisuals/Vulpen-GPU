@@ -6,7 +6,9 @@
 #include <array>
 #include <cctype>
 #include <filesystem>
+#include <format>
 #include <functional>
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -16,10 +18,18 @@
 
 namespace {
 
-constexpr std::uint64_t every = 120;      // frames between readings of what is small
-constexpr std::size_t small = 1 << 20;    // bytes a reading reads, at most, to be small
-constexpr std::size_t largest = 1 << 19;  // bytes of a file read for its lines, at most
-constexpr std::size_t folder_room = 2048; // folders of a tree read, at most
+constexpr std::uint64_t every = 120;     // frames between readings of what is small
+constexpr std::size_t largest = 1 << 19; // bytes of a file read for its lines, at most
+// What a reading costs, in bytes of files read, a folder listed counting as a page's:
+// what a frame reads, at most, past a reading's first, so no frame waits on a reading
+// whole (VK02), about a millisecond's; what the first reads, at most, so a small
+// reading's curves come with the boxes, and one that small is read again every two
+// seconds; and what one reads at all, so its memory stays bounded (A03).
+constexpr std::size_t listing = 1 << 12;
+constexpr std::size_t budget = 1 << 16;
+constexpr std::size_t small = 1 << 20;
+constexpr std::size_t reading_room = 1 << 26;
+constexpr std::size_t folder_room = 8192; // folders a reading walks, at most
 constexpr std::string_view blanks = " \t\r";
 
 // What a file's lines say links it to another, as its name or its extension tells.
@@ -49,25 +59,32 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
-// The names in each folder looked in during a reading, each folder listed once.
+// The names in each folder looked in during a reading, each folder listed once, kept in
+// the part between the frames a reading takes.
 class Listed {
 public:
-  explicit Listed(VP::FilePort &files) : _files(files) {}
+  Listed(VP::FilePort &files, std::map<std::string, std::vector<std::string>> &names)
+      : _files(files), _names(names) {}
 
-  // Whether a file or a folder is there.
-  bool there(const std::filesystem::path &path) {
-    const std::string folder = path.parent_path().string();
+  // What a folder holds, as the file port lists it.
+  const std::vector<std::string> &names(const std::string &folder) {
     auto found = _names.find(folder);
     if (found == _names.end())
       found = _names.emplace(folder, _files.list(folder)).first;
+    return found->second;
+  }
+
+  // Whether a file or a folder is there.
+  bool there(const std::filesystem::path &path) {
+    const std::vector<std::string> &held = names(path.parent_path().string());
     const std::string name = path.filename().string();
-    return std::ranges::find(found->second, name) != found->second.end() ||
-           std::ranges::find(found->second, name + '/') != found->second.end();
+    return std::ranges::find(held, name) != held.end() ||
+           std::ranges::find(held, name + '/') != held.end();
   }
 
 private:
   VP::FilePort &_files;
-  std::map<std::string, std::vector<std::string>> _names;
+  std::map<std::string, std::vector<std::string>> &_names;
 };
 
 // Where a name a file says leads: from the file's folder, or, where it climbs, from a
@@ -252,28 +269,43 @@ void line_relations(Listed &listed,
   }
 }
 
-// The folder opened as a view's nodes, as the graph shows it: a node each folder in it,
-// all the way down, named by its path from the folder holding it, joined by /, holding
-// its files; the hidden ones left out, as a manifest leaves them, and folder_room
-// folders at most.
-VP::View tree_of(VP::FilePort &files, const std::filesystem::path &opened) {
+// The folder shown as a view's nodes, as the graph shows its inside: a node for it and
+// one each folder in it, holding their files, and one each folder in those, which their
+// boxes list; named by its path from the folder holding the one shown, joined by /.
+// Hidden ones too, as .git, so a repository shows whole.
+VP::View tree_of(VP::FilePort &files, const std::filesystem::path &shown) {
   VP::View tree;
-  const std::filesystem::path base = opened.parent_path();
-  std::vector<std::filesystem::path> folders{opened};
-  for (std::size_t at = 0; at < folders.size() && at < folder_room; ++at) {
-    VP::Node node{.name = folders[at].lexically_relative(base).generic_string(),
-                  .folder = folders[at]};
-    for (const std::string &name : files.list(folders[at].string())) {
-      if (name.starts_with('.'))
-        continue;
-      if (name.ends_with('/'))
-        folders.push_back(folders[at] / name.substr(0, name.size() - 1));
-      else
-        node.files.push_back(name);
+  const std::filesystem::path base = shown.parent_path();
+  std::vector<std::filesystem::path> level{shown};
+  for (const bool listed : {true, true, false}) {
+    std::vector<std::filesystem::path> inner;
+    for (const std::filesystem::path &folder : level) {
+      VP::Node node{.name = folder.lexically_relative(base).generic_string(),
+                    .folder = folder};
+      for (const std::string &name : listed ? files.list(folder.string())
+                                            : std::vector<std::string>{})
+        if (name.ends_with('/'))
+          inner.push_back(folder / name.substr(0, name.size() - 1));
+        else
+          node.files.push_back(name);
+      tree.nodes.push_back(std::move(node));
     }
-    tree.nodes.push_back(std::move(node));
+    level = std::move(inner);
   }
   return tree;
+}
+
+// The folder going up from the one shown stops at: the nearest holding .git, the top of
+// its repository; outside one, the one shown.
+std::string top_of(VP::FilePort &files, const std::filesystem::path &shown) {
+  for (std::filesystem::path folder = shown;; folder = folder.parent_path()) {
+    const std::vector<std::string> names = files.list(folder.string());
+    if (std::ranges::find(names, ".git/") != names.end() ||
+        std::ranges::find(names, ".git") != names.end())
+      return folder.string();
+    if (folder == folder.parent_path())
+      return shown.string();
+  }
 }
 
 bool same(const VP::View &a, const VP::View &b) {
@@ -302,55 +334,140 @@ void Relations::bind(VP::Bind &node) {
   _stale = true;
 }
 
-// Read again as the folder or the view shown changes, as an edit replaces the view, and
-// every so often while the last reading was small, so a file changed on disk shows.
+// Read as the folder or the view shown changes, as an edit replaces the view: the folder
+// at once, so the graph shows its boxes, and the relations as much as a small reading
+// reads, so they come with the boxes, and the rest a little a frame; and again every so
+// often while the last reading was small, a little a frame, so a file changed on disk
+// shows. No frame waits on a large reading whole (VK02).
 void Relations::cook(VP::Cook &frame) {
   const std::string shown(frame.commands().current());
   const VP::View *const view = _folder.empty() ? frame.unfolded(shown) : nullptr;
-  const bool changed = _stale || view != _read_view || shown != _shown;
-  if (!changed && (++_frames < every || _bytes > small))
+  if (_stale || view != _read_view || shown != _shown) {
+    _stale = false;
+    _read_view = view;
+    _shown = shown;
+    start(frame.files(), view);
+    if (step(frame.files(), small))
+      publish(frame);
+    else
+      publish_tree();
     return;
-  _stale = false;
-  _read_view = view;
-  _shown = shown;
+  }
+  if (!_reading && (++_frames < every || _bytes > small))
+    return;
+  if (!_reading)
+    start(frame.files(), view);
+  ++_frames;
+  if (step(frame.files(), budget))
+    publish(frame);
+}
+
+// A reading begun: the folder's tree and the top going up stops at, the folder to walk
+// for the files below it, or the files of the view, a recipe's once however many nodes
+// use it, and the ids the documents define.
+void Relations::start(VP::FilePort &files, const VP::View *view) {
+  _reading = true;
   _frames = 0;
-  _bytes = 0;
-  VP::FilePort &files = frame.files();
-  Listed listed(files);
-  VP::View tree = _folder.empty() ? VP::View{} : tree_of(files, _folder);
-  std::vector<std::filesystem::path> sources;
-  for (const VP::Node &node : _folder.empty() && view ? view->nodes : tree.nodes)
-    for (const std::string &file : node.files)
+  _listed.clear();
+  _tree = _folder.empty() ? VP::View{} : tree_of(files, _folder);
+  _top = _folder.empty() ? std::string() : top_of(files, _folder);
+  _walk.clear();
+  _walked = 0;
+  _sources.clear();
+  if (!_folder.empty())
+    _walk.emplace_back(_folder);
+  for (std::size_t node = 0; _folder.empty() && view && node < view->nodes.size(); ++node)
+    for (const std::string &file : view->nodes[node].files)
       if (language_of(file) != Language::none)
-        sources.push_back(node.folder / file);
-  std::ranges::sort(sources); // a recipe's file, once however many nodes use it
-  sources.erase(std::ranges::unique(sources).begin(), sources.end());
-  std::map<std::string, std::string, std::less<>> ids;
+        _sources.push_back(view->nodes[node].folder / file);
+  std::ranges::sort(_sources);
+  _sources.erase(std::ranges::unique(_sources).begin(), _sources.end());
+  _next = 0;
+  _read = 0;
+  _found.clear();
+  _ids.clear();
   for (const std::string &name : files.list(_docs))
     if (name.ends_with(".md"))
       define(files.read((std::filesystem::path(_docs) / name).string()),
              (std::filesystem::path(_docs) / name).generic_string(),
-             ids);
-  std::vector<VP_VIEW::Relation> relations;
-  for (const std::filesystem::path &source : sources) {
+             _ids);
+}
+
+// The reading, from where it got, until it has cost a budget: first the folders below
+// the folder shown, each listed once, for the files to read, past the hidden ones, which
+// hold the state of tools, as .git, and no line read here; then the files. Returns
+// whether the reading is done, as it is once it read reading_room bytes.
+bool Relations::step(VP::FilePort &files, std::size_t bytes) {
+  Listed listed(files, _listed);
+  std::size_t taken = 0;
+  for (; _walked < _walk.size() && taken < bytes; ++_walked, taken += listing) {
+    const std::filesystem::path folder = _walk[_walked];
+    _read += listing;
+    for (const std::string &name : listed.names(folder.string()))
+      if (name.starts_with('.'))
+        continue;
+      else if (name.ends_with('/') && _walk.size() < folder_room)
+        _walk.push_back(folder / name.substr(0, name.size() - 1));
+      else if (!name.ends_with('/') && language_of(name) != Language::none)
+        _sources.push_back(folder / name);
+  }
+  for (; _next < _sources.size() && taken < bytes && _read < reading_room; ++_next) {
     std::string text;
     try {
-      text = files.read(source.string());
+      text = files.read(_sources[_next].string());
     } catch (const std::runtime_error &) {
       continue; // gone since it was listed
     }
-    _bytes += text.size();
+    taken += text.size();
+    _read += text.size();
     if (text.size() <= largest)
-      find(listed, source, text, ids, relations);
+      find(listed, _sources[_next], text, _ids, _found);
   }
-  std::ranges::sort(relations);
-  relations.erase(std::ranges::unique(relations).begin(), relations.end());
-  if (relations == _relations->relations && _folder == _relations->folder &&
-      same(tree, _relations->tree))
+  return _walked == _walk.size() && (_next == _sources.size() || _read >= reading_room);
+}
+
+// The folder shown, at once, while its relations are still read: no curve, rather than
+// those of what was shown before.
+void Relations::publish_tree() {
+  _relations->folder = _folder;
+  _relations->top = _top;
+  _relations->tree = _tree;
+  _relations->relations.clear();
+  ++_relations->changes;
+}
+
+// The reading handed to the graph, if it changed anything; what it read, and in how many
+// frames, goes to the log at debug, so a person sees what a folder costs (C03, C09).
+void Relations::publish(VP::Cook &frame) {
+  _reading = false;
+  // A folder shows its repository, so what lies past its top, as the system's files a
+  // build's CMake names, is no relation of it.
+  if (!_top.empty())
+    std::erase_if(_found, [&](const VP_VIEW::Relation &relation) {
+      const std::filesystem::path within =
+          std::filesystem::path(relation.to).lexically_relative(_top);
+      return within.empty() || *within.begin() == "..";
+    });
+  std::ranges::sort(_found);
+  _found.erase(std::ranges::unique(_found).begin(), _found.end());
+  frame.log(VP::Level::debug,
+            std::format("read {} files and {} folders of {}, {} KB in {} frames, "
+                        "finding {} relations",
+                        _next,
+                        _walked,
+                        _folder.empty() ? std::format("view {}", _shown) : _folder,
+                        _read >> 10,
+                        _frames + 1,
+                        _found.size()));
+  _frames = 0;
+  _bytes = _read;
+  if (_found == _relations->relations && _folder == _relations->folder &&
+      _top == _relations->top && same(_tree, _relations->tree))
     return;
   _relations->folder = _folder;
-  _relations->tree = std::move(tree);
-  _relations->relations = std::move(relations);
+  _relations->top = _top;
+  _relations->tree = std::move(_tree);
+  _relations->relations = std::move(_found);
   ++_relations->changes;
 }
 

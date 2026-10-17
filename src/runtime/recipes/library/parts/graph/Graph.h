@@ -106,6 +106,7 @@ private:
   void build(const VP::View *edited, const VP::View *flat);
   void name_tab();
   void show_view(VP::Cook &frame) const;
+  void show_folder(VP::Cook &frame, const std::filesystem::path &folder) const;
   void home(glm::uvec2 cell);
   void follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec2 cell);
   void press(VP::Cook &frame, std::uint32_t presses);
