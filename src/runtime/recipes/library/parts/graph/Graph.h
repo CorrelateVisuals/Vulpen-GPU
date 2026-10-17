@@ -39,27 +39,31 @@ struct Grab {
 
 // The graph of the current view, as the terminals' lines go to it, which view switch
 // moves and a second press on a view's box moves into it, as the view runs, each recipe a
-// node uses unfolded: a box a node, with its name, its ports, the recipe it uses and its
-// files, and inside it the boxes of the nodes inside it, as their folders are inside its
-// own (RV08), so a node using a recipe shows the code the recipe brings; a box each view
-// it hosts, with its name, its window and the file it is hosted from; and a curve a
-// reader of a connection, from the writer's port on its box's right side to the reader's
-// on its left, a view's from its window where its host takes it, at right angles in the
-// lanes between the boxes, so it runs over none and no other's lane. The manifest holds
-// no places (V04), so the graph alone lays it out: the boxes inside each box, and those
-// at the top, a column past every box beside them they read from, down each column in the
-// manifest's order. A box dragged stays where it is put, and the first drag places every
-// box where it shows, so a change to the graph moves none; the boxes placed are a look at
-// the graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's
-// manifest, and a restart shows them as they were left; so do the colors a person gives
-// each kind of node there, which draw its boxes' borders and names. The graph starts at
-// home, as a view is shown and as h brings it there: unmoved at zoom 1 while every box
-// shows whole there, else moved and zoomed out until they all do. A drag on the ground
-// moves the graph and the wheel zooms it about the pointer, as the Perform panel's image
-// moves, and neither is kept. A press on a box selects it, or the box of the node whose
-// recipe holds it, shift adding it or taking it out, and opens the file of a row that
-// names one in the editor; a drag on a box selected moves every box selected. With
-// shift, a drag on the ground draws a select box, and letting go adds every box it
+// node uses unfolded, a level at a time, as the POC showed it: the nodes at the top and
+// the views the view hosts, or the inside of the node its inside param names, that node's
+// box framing the boxes of the nodes inside it, and beside it what lies outside at either
+// side, where connections reach in and out. A box a node, with its name, its ports, those
+// its insides read and write across its edge too, the recipe it uses, the nodes inside it
+// and its files; a box each view it hosts, with its name, its window and the file it is
+// hosted from; and a curve a reader of a connection, from the writer's port on its box's
+// right side to the reader's on its left, a view's from its window where its host takes
+// it, at right angles in the lanes between the boxes, so it runs over none and no other's
+// lane. A second press on a box holding nodes, or zooming in on it, shows its inside, and
+// one on the frame, or zooming out, the level above, through the inside param, which a
+// line sets as a press does (V06). The manifest holds no places (V04), so the graph alone
+// lays it out: the boxes inside the frame, or those at the top, a column past every box
+// beside them they read from, down each column in the manifest's order. A box dragged
+// stays where it is put, and the first drag places every box where it shows, so a change
+// to the graph moves none; the boxes placed are a look at the graph, not its plumbing, so
+// they go in .vulpen/graph.ini beside the view's manifest, and a restart shows them as
+// they were left; so do the colors a person gives each kind of node there, which draw its
+// boxes' borders and names. The graph starts at home, as a view or a level is shown and
+// as h brings it there: unmoved at zoom 1 while every box shows whole there, else moved
+// and zoomed out until they all do. A drag on the ground moves the graph and the wheel
+// zooms it about the pointer, as the Perform panel's image moves, and neither is kept. A
+// press on a box selects it, shift adding it or taking it out, and opens the file of a
+// row that names one in the editor; a drag on a box selected moves every box selected.
+// With shift, a drag on the ground draws a select box, and letting go adds every box it
 // touches to the selection.
 // It owns the selection, of nodes and of the views the view shown hosts, which select and
 // selected reach as lines do (V06), and which delete or backspace removes as node remove
@@ -80,13 +84,16 @@ private:
   void key(VP::Cook &frame, std::string_view key);
   void show(VP::Cook &frame, const VP::View *view, std::string_view name);
   void build(const VP::View *edited, const VP::View *flat);
+  void name_tab();
   void home(glm::uvec2 cell);
   void follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec2 cell);
   void press(VP::Cook &frame, std::uint32_t presses);
   void drag(glm::vec2 to);
   void release(VP::Cook &frame, bool room, glm::uvec2 cell);
   void open(VP::Cook &frame, std::size_t at, glm::uvec2 cell);
-  void turn(glm::vec2 turn);
+  void turn(VP::Cook &frame, glm::vec2 turn);
+  bool enter(VP::Cook &frame, std::size_t at);
+  void leave(VP::Cook &frame);
   bool selected(std::string_view node) const;
   void select(VP::CommandPort &commands, std::span<const std::string> nodes) const;
   void select_touched(VP::CommandPort &commands, glm::vec2 from) const;
@@ -118,6 +125,10 @@ private:
   const VP_VIEW::Font *_font = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;
   std::string _name; // as the focus names it
+  std::string _view; // the one it runs in, where its inside param is set
+  // The node whose inside the graph shows, in the view shown; with none, or one that view
+  // does not hold, the top.
+  std::string _inside;
   VP::Command _select;
   VP::Command _selected;
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
@@ -135,6 +146,7 @@ private:
   Boxes _boxes;
   const VP::View *_built_edited = nullptr;
   const VP::View *_built_flat = nullptr;
+  std::string _built_inside;
   Layout _layout;
   glm::uvec2 _laid_cell{};
   bool _laid = false;
@@ -146,6 +158,7 @@ private:
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over
   PanZoom _pan_zoom;
+  float _home_zoom = 1.0f; // as near as home is, past half of which zooming out goes up
   // Until the frame home is worked out in, which needs the boxes laid out in the area.
   bool _homing = false;
   std::optional<Grab> _grab;

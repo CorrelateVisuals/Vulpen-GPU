@@ -34,6 +34,10 @@ constexpr float least_reach = 32.0f;            // a bend's handles, at least, i
 // A cubic's handles, of its radius, that keep it on a quarter circle.
 constexpr float quarter = 0.5523f;
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
+// Zoomed in to this many times as near as home is, the graph shows the inside of the box
+// under the pointer, as the POC did; zoomed out past this share of it, a level up.
+constexpr float enter_times = 3.0f;
+constexpr float leave_share = 0.5f;
 constexpr std::string_view title = "graph";
 
 // What of a Rect lies inside another; no extent when nothing does.
@@ -71,6 +75,8 @@ void Graph::bind(VP::Bind &node) {
   _font = &node.input<VP_VIEW::Font>("font");
   _typed = &node.input<VP_VIEW::Typed>("typed");
   _name = node.name();
+  _view = node.view_name();
+  _inside = node.sets("inside") ? node.param<std::string>("inside") : std::string();
   _select = node.command("select [<node>...]",
                          "selects nodes of the view the graph shows, or views it hosts, "
                          "in place of those selected; with none, none");
@@ -97,7 +103,7 @@ void Graph::cook(VP::Cook &frame) {
       key(frame, event.name);
   const VP::View *const edited = frame.view(shown);
   const VP::View *const flat = frame.unfolded(shown);
-  if (edited != _built_edited || flat != _built_flat)
+  if (edited != _built_edited || flat != _built_flat || _inside != _built_inside)
     build(edited, flat);
   const glm::uvec2 cell = _font->cell;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
@@ -110,8 +116,10 @@ void Graph::cook(VP::Cook &frame) {
     }
   };
   lay_out();
-  if (room && std::exchange(_homing, false))
+  if (room && std::exchange(_homing, false)) {
     home(cell);
+    _home_zoom = _pan_zoom.zoom;
+  }
   // A press may send a line that edits the view shown, as open does the ide's own, or
   // closes it; the boxes, built from the view before, stay until the next frame.
   for (const VP::Event &event : frame.input().events())
@@ -192,10 +200,7 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
   _shown = name;
   if (_selected_in != name)
     _selection.clear();
-  _tabs->assign(
-      1,
-      {.label = name.empty() ? std::string(title) : std::format("{} - {}", title, name),
-       .current = true});
+  name_tab();
   _arranged = {};
   _ini.clear();
   _refused = false;
@@ -223,13 +228,27 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
   }
 }
 
-// A box pressed may be one the boxes no longer hold.
+// A box pressed may be one the boxes no longer hold. A level shown anew starts at home.
 void Graph::build(const VP::View *edited, const VP::View *flat) {
+  if (_inside != _built_inside)
+    _homing = true;
   _built_edited = edited;
   _built_flat = flat;
-  _boxes = edited && flat ? boxes_of(*edited, *flat) : Boxes{};
+  _built_inside = _inside;
+  _boxes = edited && flat ? boxes_of(*edited, *flat, _inside) : Boxes{};
+  name_tab();
   _laid = false;
   _grab.reset();
+}
+
+// The tab names the view shown, and the node whose inside shows.
+void Graph::name_tab() {
+  std::string label(title);
+  if (!_shown.empty())
+    label += std::format(" - {}", _shown);
+  if (_boxes.frame != no_box)
+    label += std::format(" - {}", _boxes.boxes[_boxes.frame].name);
+  _tabs->assign(1, {.label = std::move(label), .current = true});
 }
 
 // Unmoved at zoom 1 while every box shows whole there, as the graph first shows them;
@@ -272,7 +291,7 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec
     else if (room && inside(*_area, _pointer))
       press(frame, event.presses);
   } else if (event.kind == VP::Event::Kind::wheel && room && inside(*_area, _pointer)) {
-    turn(event.turn);
+    turn(frame, event.turn);
   } else if (event.kind == VP::Event::Kind::key && event.name == "shift") {
     _shift = event.down;
   } else if (event.kind == VP::Event::Kind::focus && !event.down) {
@@ -281,26 +300,25 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec
   }
 }
 
-// It takes the focus. On a box, the box drawn last over the others, which stands for the
-// box of the node whose recipe holds it: a second press on a view's box goes into it, as
-// view switch; shift adds a box to the selection or takes it out; else it is selected,
-// unless it is already, and grabbed with every box selected, so a drag moves them all. On
-// the ground with shift, a select box from there to the pointer until the button is let
-// go; without, the selection goes, and the graph follows the pointer until then.
+// It takes the focus. On a box, the box drawn last over the others: a second press goes
+// into its inside, or out of the frame's; else it stands for the box of the node whose
+// recipe holds it, and shift adds that box to the selection or takes it out, or it is
+// selected, unless it is already, and grabbed with every box selected, so a drag moves
+// them all. On the ground with shift, a select box from there to the pointer until the
+// button is let go; without, the selection goes, and the graph follows the pointer until
+// then.
 void Graph::press(VP::Cook &frame, std::uint32_t presses) {
   if (_typed->focus != _name)
     frame.commands().send(std::format("focus {}", _name));
   for (std::size_t at = _layout.placed().size(); at-- > 0;) {
     if (!VP_VIEW::contains(cut(box(at), *_area), _pointer))
       continue;
+    if (presses == 2 && enter(frame, at))
+      return;
     const std::size_t own = own_box(at);
     if (own == no_box)
       return;
     const Box &pressed = _boxes.boxes[own];
-    if (presses == 2 && pressed.kind == Kind::view) {
-      frame.commands().send(std::format("view switch {}", pressed.name));
-      return;
-    }
     std::vector<std::string> chosen;
     if (_selected_in == _shown)
       chosen = _selection;
@@ -404,9 +422,54 @@ void Graph::open(VP::Cook &frame, std::size_t at, glm::uvec2 cell) {
 }
 
 // The wheel zooms, about the pointer, which stays over the same place of the graph; its
-// turn sideways does nothing yet.
-void Graph::turn(glm::vec2 turn) {
+// turn sideways does nothing yet. Zoomed in to three times as near as home, or as near
+// as it goes, the graph shows the inside of the box under the pointer; zoomed out past
+// half as near as home, or as far as it goes, a level up.
+void Graph::turn(VP::Cook &frame, glm::vec2 turn) {
   _pan_zoom.wheel(turn.y, _pointer - glm::vec2(_area->offset));
+  if (turn.y < 0.0f && (_pan_zoom.zoom < _home_zoom * leave_share ||
+                        _pan_zoom.zoom <= PanZoom::least)) {
+    leave(frame);
+    return;
+  }
+  if (turn.y <= 0.0f ||
+      _pan_zoom.zoom < std::min(_home_zoom * enter_times, PanZoom::most))
+    return;
+  for (std::size_t at = _layout.placed().size(); at-- > 0;)
+    if (VP_VIEW::contains(cut(box(at), *_area), _pointer)) {
+      if (at != _boxes.frame)
+        enter(frame, at);
+      return;
+    }
+}
+
+// A box's inside, as a second press or the wheel goes into it: a view's, as view switch,
+// or a node's holding nodes, as the inside param, which a line sets as a press does
+// (V06); and out of the frame's, a level up. False for a box with no inside.
+bool Graph::enter(VP::Cook &frame, std::size_t at) {
+  const Box &entered = _boxes.boxes[at];
+  if (entered.kind == Kind::view)
+    frame.commands().send(std::format("view switch {}", entered.name));
+  else if (at == _boxes.frame)
+    leave(frame);
+  else if (entered.holds)
+    frame.commands().send(
+        std::format("{}: param set {} inside {}", _view, _name, entered.name));
+  return entered.kind == Kind::view || entered.holds;
+}
+
+// Out of the node whose inside shows, to the inside of the node holding it, or the top.
+void Graph::leave(VP::Cook &frame) {
+  if (_boxes.frame == no_box || !_built_flat)
+    return;
+  const std::size_t holder =
+      parent_of(_built_flat->nodes, _boxes.boxes[_boxes.frame].name);
+  frame.commands().send(
+      holder == no_box ? std::format("{}: param unset {} inside", _view, _name)
+                       : std::format("{}: param set {} inside {}",
+                                     _view,
+                                     _name,
+                                     _built_flat->nodes[holder].name));
 }
 
 bool Graph::selected(std::string_view node) const {

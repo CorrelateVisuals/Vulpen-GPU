@@ -3,9 +3,11 @@
 # box a node and one each view it hosts, and a curve a connection, and writes them as
 # Rects, Labels and Curves for rects, glyphs and curves to draw; its own shaders draw the
 # ground under them, lines that move and zoom with the graph, in the theme its host
-# connects to its palette. Its tab names the view it shows. A press selects a box, which
-# select, selected and delete reach as lines do, and the keys its typed hands on while it
-# has the focus delete what is selected.
+# connects to its palette. Its tab names the view it shows. It shows a level at a time,
+# the inside of the node its inside param names, if any, which a second press on a box or
+# zooming into it sets. A press selects a box, which select, selected and delete reach as
+# lines do, and the keys its typed hands on while it has the focus delete what is
+# selected.
 [manifest]
 version = 1
 
