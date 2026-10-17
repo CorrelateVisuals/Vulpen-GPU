@@ -1,5 +1,5 @@
 # The rects part: one shader node with no C++; it draws every Rect it is given in its
-# palette color, a quad an instance, as many as the Rects' writer wrote.
+# palette color, or between two, a quad an instance, as many as the Rects' writer wrote.
 [manifest]
 version = 1
 

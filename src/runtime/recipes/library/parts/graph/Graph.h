@@ -14,6 +14,7 @@
 #include "Arranged.h"
 #include "Boxes.h"
 #include "Covered.h"
+#include "Heat.h"
 #include "Hover.h"
 #include "Layers.h"
 #include "Layout.h"
@@ -91,7 +92,11 @@ struct Under {
 // shift, a drag on the ground draws a select box, and letting go adds every box it
 // touches to the selection. The curve under the pointer, where no box lies, shows over
 // the others, brighter, and its details, a connection's ends or the lines that say the
-// relations it stands for, go as rows to a tooltip beside the pointer.
+// relations it stands for, go as rows to a tooltip beside the pointer. With its heat param
+// on, each box is filled by what its node and those inside it cost a frame, on the GPU or
+// the CPU, on the theme's ramp from cold to hot, against the costliest box beside it or
+// a budget, and the pointer over it shows the times in the tip; two buttons after the
+// layers' turn it on and off.
 // It owns the selection, of nodes and of the views the view shown hosts, which select and
 // selected reach as lines do (V06), and which delete or backspace removes as node remove
 // and view close do, and takes keys from the keys part while it has the focus, which a
@@ -199,6 +204,7 @@ private:
   VP_VIEW::Rect *_tip_place = nullptr;
   std::size_t _hovered_end = no_box;
   std::size_t _hovered_more = no_box; // a box whose row for the rest the pointer is over
+  Heating _heating; // what the boxes show the cost of, and what each costs this frame
   std::filesystem::path _base; // where the paths of the boxes built are named from
   Shown _layers = every_layer;        // as its relations param names them
   std::string _shown; // the view the tab names; empty for the one vulpen started with

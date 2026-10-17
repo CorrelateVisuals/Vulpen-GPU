@@ -7,7 +7,7 @@
 # the inside of the node its inside param names, if any, which a second press on a box or
 # zooming into it sets. A press selects a box, which select, selected and delete reach as
 # lines do, and the keys its typed hands on while it has the focus delete what is
-# selected.
+# selected. Its heat param, gpu or cpu, fills each box by what its node costs a frame.
 [manifest]
 version = 1
 
@@ -21,6 +21,7 @@ file           = Graph.frag
 file           = Graph.glsl
 file           = Graph.h
 file           = Graph.vert
+file           = Heat.h
 file           = Hover.h
 file           = Layers.h
 file           = Layout.h

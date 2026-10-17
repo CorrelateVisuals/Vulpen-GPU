@@ -64,16 +64,18 @@ constexpr std::string_view enter_key = "."; // into the box selected, or under t
 constexpr std::string_view leave_key = ","; // up a level
 constexpr std::string_view title = "graph";
 
-// What of a Rect lies inside another; no extent when nothing does.
+// What of a Rect lies inside another, in its colors; no extent when nothing does.
 VP_VIEW::Rect cut(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
   const glm::ivec2 to = rect.offset + glm::ivec2(rect.extent);
   const glm::ivec2 by_to = by.offset + glm::ivec2(by.extent);
   const glm::ivec2 from{std::max(rect.offset.x, by.offset.x),
                         std::max(rect.offset.y, by.offset.y)};
   const glm::ivec2 end{std::min(to.x, by_to.x), std::min(to.y, by_to.y)};
-  if (end.x <= from.x || end.y <= from.y)
-    return {.offset = from, .role = rect.role};
-  return {.offset = from, .extent = glm::uvec2(end - from), .role = rect.role};
+  VP_VIEW::Rect shown = rect;
+  shown.offset = from;
+  shown.extent =
+      end.x <= from.x || end.y <= from.y ? glm::uvec2(0) : glm::uvec2(end - from);
+  return shown;
 }
 
 // Whether two Rects share a pixel.
@@ -137,6 +139,9 @@ void Graph::bind(VP::Bind &node) {
   _tip = &node.output<VP_VIEW::Items>("tip");
   _tip_place = &node.output<VP_VIEW::Rect>("tip-place");
   buttons(*_buttons, _layers, _view, _name);
+  _heating.heat = node.sets("heat") ? heat_of(node.param<std::string>("heat")) : Heat{};
+  heat_buttons(*_buttons, _heating.heat, _view, _name);
+  _heating.stale();
   _select = node.command("select [<node>...]",
                          "selects nodes of the view the graph shows, or views it hosts, "
                          "in place of those selected; with none, none");
@@ -209,6 +214,7 @@ void Graph::cook(VP::Cook &frame) {
     _hovered = under(_pointer);
     _hovered_more = more_under();
     _hovered_end = curve_under(_pointer);
+    _heating.weigh(frame, _boxes, _shown, !_relations->folder.empty());
     write(frame, cell);
     write_tip();
     return;
@@ -328,6 +334,7 @@ std::filesystem::path Graph::folder_of(std::size_t box) const {
 // one they were built from.
 void Graph::show(std::string_view name) {
   _shown = name;
+  _heating.stale();
   if (_selected_in != name)
     _selection.clear();
   name_tab();
@@ -386,6 +393,7 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
   _built_changes = _relations->changes;
   _built_layers = _layers;
   _built_hosted = _hosted;
+  _heating.stale();
   _boxes = {};
   _hovered_end = no_box;
   if (edited && flat && (folder.empty() || !flat->nodes.empty())) {
@@ -892,8 +900,17 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
       rects[written++] = shows;
   };
   add(between(from, {to.x, below}, edge));
-  add(between(from + width, {to.x - width, holds ? below : to.y - width},
-              VP_VIEW::role("panel")));
+  // The frame, which holds every box beside it, takes a fill of heat only by a budget.
+  const std::vector<Weight> &weights = _heating.weights;
+  const Fill fill =
+      at < weights.size() && (at != _boxes.frame || _heating.heat.budget > 0.0f)
+          ? fill_of(weights[at], _heating.heat, _heating.most)
+          : Fill{};
+  VP_VIEW::Rect inside =
+      between(from + width, {to.x - width, holds ? below : to.y - width}, fill.role);
+  inside.blend_role = fill.blend_role;
+  inside.blend = fill.blend;
+  add(inside);
   if (holds) {
     add(between({from.x, below}, {from.x + width, to.y}, edge));
     add(between({to.x - width, below}, to, edge));
@@ -1133,6 +1150,9 @@ void Graph::write_tip() {
               _boxes.boxes[_hovered_more].hidden,
               static_cast<std::size_t>(std::max(
                   static_cast<std::int32_t>(_area->extent.x) / cell.x - tip_margin, 1)));
+  else if (_heating.heat.on != Heat::On::none && _hovered.box < _heating.weights.size() &&
+           !_hovered.corner)
+    tell_cost(*_tip, _boxes.boxes[_hovered.box].title, _heating.weights[_hovered.box]);
   else if (_hovered_end < _boxes.ends.size() && _built_flat)
     tell(*_tip, _boxes, _hovered_end, *_built_flat, _relations->relations, _base);
   if (_tip->empty() || cell.y <= 0)

@@ -14,10 +14,15 @@ struct alignas(8) Rect {
   glm::ivec2 offset{};
   glm::uvec2 extent{};
   std::uint32_t role = 0;
+  std::uint32_t blend_role = 0;
+  float blend = 0.0f;
 
   static constexpr auto members() {
-    return std::array{
-        VP_MEMBER(Rect, offset), VP_MEMBER(Rect, extent), VP_MEMBER(Rect, role)};
+    return std::array{VP_MEMBER(Rect, offset),
+                      VP_MEMBER(Rect, extent),
+                      VP_MEMBER(Rect, role),
+                      VP_MEMBER(Rect, blend_role),
+                      VP_MEMBER(Rect, blend)};
   }
 };
 
