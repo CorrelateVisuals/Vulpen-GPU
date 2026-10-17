@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -26,6 +27,8 @@ constexpr std::int32_t pad = 4;         // in pixels, above and below a box's ro
 constexpr std::int32_t column_gap = 4;  // in cells, between columns besides their lanes
 constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its box
 constexpr std::size_t no_gap = static_cast<std::size_t>(-1); // a track's, in a channel
+// How much wider than tall a level whose columns wrap aims to be, as a window is.
+constexpr float wrap_aspect = 1.6f;
 
 // Where the graph alone puts its first box: half a column's gap in from the left and a
 // row down, so a home that fits shows the boxes as far in.
@@ -291,7 +294,7 @@ private:
                      const std::vector<std::size_t> &inner,
                      const Arranged &arranged,
                      glm::uvec2 cell) {
-    std::size_t count = order(level, inner);
+    std::size_t count = wrap(inner, order(level, inner), cell);
     const glm::ivec2 start = level == no_box ? margin_of(cell) : glm::ivec2(0);
     stack(inner, count, cell, start);
     const bool moved = std::ranges::any_of(inner, [&](std::size_t box) {
@@ -418,6 +421,49 @@ private:
     for (const std::size_t box : inner)
       count = std::max(count, _placed[box].column + 1);
     return count;
+  }
+
+  // A column taller than the level should be goes on beside itself, a box at a time, as
+  // the boxes no relation orders stack in the first, so a folder of many files reads as a
+  // block rather than a tower; the columns after it move right, so every connection and
+  // relation still runs left to right. A column may reach as tall as a level as large as
+  // its boxes and the room between them would be at wrap_aspect, or its tallest box.
+  // Returns how many columns there are.
+  std::size_t wrap(const std::vector<std::size_t> &inner,
+                   std::size_t count,
+                   glm::uvec2 cell) {
+    const auto across = static_cast<float>(column_gap * cell.x);
+    float room = 0.0f;
+    std::int32_t tallest = 0;
+    for (const std::size_t box : inner) {
+      const Placed &placed = _placed[box];
+      room += (static_cast<float>(placed.extent.x) + across) *
+              static_cast<float>(placed.extent.y + cell.y);
+      tallest = std::max(tallest, static_cast<std::int32_t>(placed.extent.y));
+    }
+    const std::int32_t reach =
+        std::max(tallest, static_cast<std::int32_t>(std::sqrt(room / wrap_aspect)));
+    _wrapped.resize(_placed.size());
+    std::size_t next = 0; // the first column of those a column wraps into
+    for (std::size_t column = 0; column < count; ++column) {
+      std::size_t beside = 0;
+      std::int32_t down = 0;
+      for (const std::size_t box : inner) {
+        if (_placed[box].column != column)
+          continue;
+        const auto tall = static_cast<std::int32_t>(_placed[box].extent.y + cell.y);
+        if (down > 0 && down + tall > reach) {
+          ++beside;
+          down = 0;
+        }
+        _wrapped[box] = next + beside;
+        down += tall;
+      }
+      next += beside + 1;
+    }
+    for (const std::size_t box : inner)
+      _placed[box].column = _wrapped[box];
+    return next;
   }
 
   // The level's connections, their tracks, the channel above the columns pushing the
@@ -820,6 +866,7 @@ private:
   std::vector<std::int32_t> _gaps;
   std::vector<std::int32_t> _ins;
   std::vector<std::size_t> _sorted; // its boxes, left to right, where a person placed any
+  std::vector<std::size_t> _wrapped; // by box, the column it wraps into
   std::vector<Wire> _wires;
   std::vector<Turn> _turning;
 };
