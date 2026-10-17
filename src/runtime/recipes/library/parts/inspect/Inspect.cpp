@@ -2,7 +2,9 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <cmath>
 #include <format>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -12,10 +14,73 @@
 namespace {
 
 constexpr std::string_view note_gap = "  "; // between a folder and what it is
+constexpr std::size_t bar_room = 10;        // a bar's #, for the costliest beside it
+// Half a microsecond, in milliseconds: a time below it prints as 0.000, so it has no bar.
+constexpr float least_shown = 0.0005f;
+constexpr std::size_t no_node = static_cast<std::size_t>(-1);
 
 // A row ls answers: a folder or a file, indented under the folder it is in, and what
 // the folder is, empty for none.
 using Rows = std::vector<std::pair<std::string, std::string>>;
+
+// What a node and the nodes inside it cost together, in milliseconds a frame, smoothed:
+// whether any of them cooks or has a pass, and whether a pass of theirs went untimed.
+struct Sum {
+  float cpu = 0.0f;
+  float gpu = 0.0f;
+  bool cooks = false;
+  bool runs = false;
+  bool untimed = false;
+};
+
+// What the nodes of a view cost, as probe stats prints them: each node's parent, the
+// nodes inside each, the roots last, and each node's sum.
+struct Tree {
+  std::vector<std::size_t> parents;
+  std::vector<std::vector<std::size_t>> inside;
+  std::vector<Sum> sums;
+};
+
+// A node's parent is the node whose name its own starts with, up to a dot, the longest
+// such, as a view names the nodes inside a node (RV08).
+Tree tree_of(std::span<const VP::Cost> costs) {
+  Tree tree{.parents = std::vector<std::size_t>(costs.size(), no_node),
+            .inside = std::vector<std::vector<std::size_t>>(costs.size() + 1),
+            .sums = std::vector<Sum>(costs.size())};
+  for (std::size_t at = 0; at < costs.size(); ++at) {
+    const std::string_view name = costs[at].node;
+    for (std::size_t dot = name.rfind('.');
+         dot != std::string_view::npos && tree.parents[at] == no_node;
+         dot = dot == 0 ? std::string_view::npos : name.rfind('.', dot - 1))
+      for (std::size_t other = 0; other < costs.size(); ++other)
+        if (costs[other].node == name.substr(0, dot))
+          tree.parents[at] = other;
+    tree.inside[tree.parents[at] == no_node ? costs.size() : tree.parents[at]].push_back(at);
+    for (std::size_t up = at; up != no_node; up = tree.parents[up]) {
+      Sum &sum = tree.sums[up];
+      sum.cpu += costs[at].cooks ? costs[at].cpu : 0.0f;
+      sum.gpu += costs[at].timed ? costs[at].gpu : 0.0f;
+      sum.cooks = sum.cooks || costs[at].cooks;
+      sum.runs = sum.runs || costs[at].runs;
+      sum.untimed = sum.untimed || (costs[at].runs && !costs[at].timed);
+    }
+  }
+  return tree;
+}
+
+// A time and a bar of # as long as its share of the most, or blanks for none; ? for a
+// pass the GPU did not time.
+std::string column(float milliseconds, float most, bool has, bool untimed) {
+  if (!has)
+    return std::string(8 + bar_room, ' ');
+  if (untimed && milliseconds == 0.0f)
+    return std::format("{:>7} {:<{}}", "?", "", bar_room);
+  const auto bars = milliseconds >= least_shown
+                        ? static_cast<std::size_t>(std::lround(
+                              static_cast<float>(bar_room) * milliseconds / most))
+                        : 0;
+  return std::format("{:7.3f} {:<{}}", milliseconds, std::string(bars, '#'), bar_room);
+}
 
 // Reads the graph and answers ls and info, so a view can be read without a window and a
 // front end needs no mirror of the graph of its own. info with no node asks for the nodes
@@ -30,10 +95,17 @@ class Inspect final : public VP::Operator {
                          "shows a node's words, or a hosted view's, and the connections "
                          "it writes and reads; with none, each selected one's under its "
                          "header");
+    _stats = node.command("probe stats [<node>]",
+                          "prints what each node costs a frame on the CPU and the GPU, in "
+                          "milliseconds smoothed over about a second, as a tree, a node "
+                          "holding others counting theirs, each bar to the costliest "
+                          "beside it; with a node, that node's");
   }
 
   void command(VP::Call &call) override {
-    if (call.is(_ls))
+    if (call.is(_stats))
+      stats(call, call.arguments().empty() ? std::string_view() : call.arguments().front());
+    else if (call.is(_ls))
       ls(call, call.view());
     else if (call.is(_info) && !call.arguments().empty())
       info(call, call.view(), call.arguments().front());
@@ -166,8 +238,76 @@ class Inspect final : public VP::Operator {
     throw std::runtime_error(std::format("no node is named {}", name));
   }
 
+  // The view as it runs, each node a row under the node it is inside, as ls lists them:
+  // its cost on the CPU and on the GPU, each with its bar, then the frame's. A node in
+  // a recipe a node uses is the using node's.
+  static void stats(VP::Call &call, std::string_view under) {
+    const std::span<const VP::Cost> costs = call.costs();
+    if (costs.empty())
+      throw std::runtime_error("the view runs no node yet");
+    const Tree tree = tree_of(costs);
+    std::vector<std::size_t> roots = tree.inside.back();
+    if (!under.empty()) {
+      const auto found = std::ranges::find(costs, under, &VP::Cost::node);
+      if (found == costs.end())
+        throw std::runtime_error(
+            std::format("no node named {} runs in the view; probe stats lists them", under));
+      roots.assign(1, static_cast<std::size_t>(found - costs.begin()));
+    }
+    Rows rows;
+    for (const std::size_t root : roots)
+      cost_rows(costs, tree, root, roots, 0, rows);
+    std::size_t width = 0;
+    for (const auto &[name, columns] : rows)
+      width = std::max(width, name.size());
+    call.reply(std::format("{:<{}}  {:<{}} {}", "ms a frame", width, "cpu", 8 + bar_room, "gpu"));
+    for (const auto &[name, columns] : rows)
+      call.reply(std::format("{:<{}}  {}", name, width, columns));
+    Sum frame;
+    for (const std::size_t root : roots) {
+      frame.cpu += tree.sums[root].cpu;
+      frame.gpu += tree.sums[root].gpu;
+      frame.runs = frame.runs || tree.sums[root].runs;
+      frame.untimed = frame.untimed || tree.sums[root].untimed;
+    }
+    call.reply(std::format(
+        "in all: {:.3f} ms on the CPU{}{}",
+        frame.cpu,
+        frame.runs ? std::format(", {:.3f} ms on the GPU", frame.gpu) : std::string(),
+        frame.untimed ? ", a ? marking a pass the GPU did not time" : ""));
+  }
+
+  // A node's row, then the rows of the nodes inside it, each bar to the costliest of those
+  // beside it; a node that neither cooks nor runs a pass, nor holds one that does, as
+  // one holding only files, costs nothing and has none.
+  static void cost_rows(std::span<const VP::Cost> costs,
+                        const Tree &tree,
+                        std::size_t at,
+                        std::span<const std::size_t> beside,
+                        std::size_t depth,
+                        Rows &rows) {
+    if (!tree.sums[at].cooks && !tree.sums[at].runs)
+      return;
+    float most_cpu = 0.0f;
+    float most_gpu = 0.0f;
+    for (const std::size_t other : beside) {
+      most_cpu = std::max(most_cpu, tree.sums[other].cpu);
+      most_gpu = std::max(most_gpu, tree.sums[other].gpu);
+    }
+    const std::string_view name = costs[at].node;
+    const Sum &sum = tree.sums[at];
+    rows.emplace_back(
+        std::string(2 * depth, ' ')
+            .append(depth == 0 ? name : name.substr(name.rfind('.') + 1)),
+        column(sum.cpu, most_cpu, sum.cooks, false) + ' ' +
+            column(sum.gpu, most_gpu, sum.runs, sum.untimed));
+    for (const std::size_t inner : tree.inside[at])
+      cost_rows(costs, tree, inner, tree.inside[at], depth + 1, rows);
+  }
+
   VP::Command _ls;
   VP::Command _info;
+  VP::Command _stats;
 };
 
 } // namespace
