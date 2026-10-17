@@ -290,6 +290,71 @@ void line_relations(Listed &listed,
   }
 }
 
+// A file's lines, each with its number, counted from 1.
+template <class Line> void each_line(std::string_view text, const Line &line) {
+  std::uint32_t number = 0;
+  for (std::size_t at = 0; at < text.size();) {
+    const std::size_t end = std::min(text.find('\n', at), text.size());
+    line(text.substr(at, end - at), ++number);
+    at = end + 1;
+  }
+}
+
+bool cpp(const std::filesystem::path &file) {
+  static constexpr auto endings =
+      std::to_array<std::string_view>({".h", ".hpp", ".cpp", ".cc", ".inl"});
+  return std::ranges::find(endings, file.extension().string()) != endings.end();
+}
+
+bool shader(const std::filesystem::path &file) {
+  static constexpr auto endings =
+      std::to_array<std::string_view>({".glsl", ".vert", ".frag", ".comp"});
+  return std::ranges::find(endings, file.extension().string()) != endings.end();
+}
+
+// The names a C++ file binds to its node's shaders' pass block: those quoted after the
+// calls of the Bind that reach it, value, upload, readback and texture.
+void bind_names(std::string_view text,
+                const std::filesystem::path &file,
+                std::vector<Bound> &bound) {
+  static constexpr auto calls = std::to_array<std::string_view>(
+      {".value<", ".upload<", ".readback<", ".texture<"});
+  each_line(text, [&](std::string_view line, std::uint32_t number) {
+    for (const std::string_view call : calls)
+      for (std::size_t at = line.find(call); at != std::string_view::npos;
+           at = line.find(call, at + call.size())) {
+        const std::size_t open = line.find("(\"", at + call.size());
+        const std::size_t close =
+            open == std::string_view::npos ? open : line.find('"', open + 2);
+        if (close != std::string_view::npos)
+          bound.push_back({.file = file,
+                           .name = std::string(line.substr(open + 2, close - open - 2)),
+                           .line = number});
+      }
+  });
+}
+
+// The names a shader's pass block declares, the last word of each member, past its
+// comments, before an array's size.
+std::vector<std::string> declared_names(std::string_view text) {
+  std::vector<std::string> names;
+  const std::size_t pass = text.find("uniform Pass");
+  const std::size_t open = text.find('{', pass);
+  const std::size_t close = text.find('}', open);
+  if (pass == std::string_view::npos || open == std::string_view::npos ||
+      close == std::string_view::npos)
+    return names;
+  each_line(text.substr(open + 1, close - open - 1), [&](std::string_view line, std::uint32_t) {
+    line = trim(line.substr(0, line.find("//")));
+    if (!line.ends_with(';'))
+      return;
+    line = trim(line.substr(0, std::min(line.find('['), line.size() - 1)));
+    const std::size_t word = line.find_last_of(" \t*");
+    names.emplace_back(line.substr(word == std::string_view::npos ? 0 : word + 1));
+  });
+  return names;
+}
+
 // The folder shown as a view's nodes, as the graph shows its inside: a node for it and
 // one each folder in it, holding their files, and one each folder in those, which their
 // boxes list; named by its path from base, joined by /, the folder holding its
@@ -417,6 +482,8 @@ void Relations::start(VP::FilePort &files, const VP::View *view) {
   _read = 0;
   _found.clear();
   _ids.clear();
+  _bound.clear();
+  _declared.clear();
   for (const std::string &name : files.list(_docs))
     if (name.ends_with(".md"))
       define(files.read((std::filesystem::path(_docs) / name).string()),
@@ -451,8 +518,13 @@ bool Relations::step(VP::FilePort &files, std::size_t bytes) {
     }
     taken += text.size();
     _read += text.size();
-    if (text.size() <= largest)
-      find(listed, _sources[_next], text, _ids, _found);
+    if (text.size() > largest)
+      continue;
+    find(listed, _sources[_next], text, _ids, _found);
+    if (cpp(_sources[_next]))
+      bind_names(text, _sources[_next], _bound);
+    else if (shader(_sources[_next]))
+      _declared.emplace(_sources[_next], declared_names(text));
   }
   return _walked == _walk.size() && (_next == _sources.size() || _read >= reading_room);
 }
@@ -467,9 +539,10 @@ void Relations::publish_tree() {
   ++_relations->changes;
 }
 
-// The reading handed to the graph, if it changed anything, a relation once however many
-// lines of its file say it, at the first; what it read, and in how many frames, goes to
-// the log at debug, so a person sees what a folder costs (C03, C09).
+// The reading handed to the graph, if it changed anything, a relation once for each name
+// that says it, at the first line saying it, so a tip lists each include, id or bound
+// name once; what it read, and in how many frames, goes to the log at debug, so a person
+// sees what a folder costs (C03, C09).
 void Relations::publish(VP::Cook &frame) {
   _reading = false;
   // A folder shows its repository, so what lies past its top, as the system's files a
@@ -480,15 +553,24 @@ void Relations::publish(VP::Cook &frame) {
           std::filesystem::path(relation.to).lexically_relative(_top);
       return within.empty() || *within.begin() == "..";
     });
-  std::ranges::sort(_found);
-  _found.erase(std::ranges::unique(_found,
-                                   {},
-                                   [](const VP_VIEW::Relation &relation) {
-                                     return std::tie(
-                                         relation.from, relation.to, relation.layer);
-                                   })
-                   .begin(),
-               _found.end());
+  // A name C++ binds links its file to the shader of its folder declaring it.
+  for (const Bound &bind : _bound)
+    for (const auto &[file, names] : _declared)
+      if (file.parent_path() == bind.file.parent_path() &&
+          std::ranges::find(names, bind.name) != names.end())
+        _found.push_back({.from = bind.file.generic_string(),
+                          .to = file.generic_string(),
+                          .layer = VP_VIEW::Layer::code,
+                          .line = bind.line,
+                          .said = bind.name});
+  const auto said = [](const VP_VIEW::Relation &relation) {
+    return std::tie(relation.from, relation.to, relation.layer, relation.said);
+  };
+  std::ranges::sort(_found, {}, [](const VP_VIEW::Relation &relation) {
+    return std::tie(
+        relation.from, relation.to, relation.layer, relation.said, relation.line);
+  });
+  _found.erase(std::ranges::unique(_found, {}, said).begin(), _found.end());
   frame.log(VP::Level::debug,
             std::format("read {} files and {} folders of {}, {} KB in {} frames, "
                         "finding {} relations",
