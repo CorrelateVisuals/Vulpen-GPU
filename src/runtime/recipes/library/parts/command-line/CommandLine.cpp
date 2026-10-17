@@ -511,8 +511,9 @@ class CommandLine final : public VP::Operator {
 
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one
   // sent before, completes the word at the caret, or with control copies, pastes or
-  // clears, sending clear from here, so what it answers comes back here; escape lets go
-  // of the selection, and with none of the focus.
+  // clears, sending clear from here, so what it answers comes back here, or takes the
+  // word before the caret with backspace; escape lets go of the selection, and with none
+  // of the focus.
   void edit(VP::Cook &frame, const VP::Event &event) {
     if (event.kind == VP::Event::Kind::text) {
       type(event.name);
@@ -537,8 +538,10 @@ class CommandLine final : public VP::Operator {
       show(run(frame, "clear"), VP_VIEW::role("text"));
     else if (key == "enter")
       submit(frame);
-    else if (key == "backspace" && _caret > 0)
-      _line.erase(--_caret, 1);
+    else if (key == "backspace" && _caret > 0) {
+      const std::size_t from = _control ? word_before(_line, _caret) : _caret - 1;
+      _line.erase(from, std::exchange(_caret, from) - from);
+    }
     else if (key == "delete" && _caret < _line.size())
       _line.erase(_caret, 1);
     else if (key == "left" && _caret > 0)

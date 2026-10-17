@@ -160,19 +160,25 @@ void split(Document &document) {
   break_row(document, std::min(line.find_first_not_of(' '), document.caret.column));
 }
 
-// A key that changes the text: a break, an indent, or the selection or a character gone.
-bool changed_by(Document &document, std::string_view key) {
+// A key that changes the text: a break, an indent, or the selection or a character gone;
+// with control, backspace takes the word before the caret, or at a row's start its break.
+bool changed_by(Document &document, std::string_view key, bool control) {
   const auto [from, to] = selection(document);
+  const Spot caret = document.caret;
   if (key == "enter")
     split(document);
   else if (key == "tab")
-    insert(document, std::string(indent - document.caret.column % indent, ' '));
+    insert(document, std::string(indent - caret.column % indent, ' '));
   else if ((key == "backspace" || key == "delete") && from != to)
     erase(document, from, to);
+  else if (key == "backspace" && control && caret.column > 0)
+    erase(document,
+          {caret.row, word_before(document.lines[caret.row], caret.column)},
+          caret);
   else if (key == "backspace")
-    erase(document, before(document, document.caret), document.caret);
+    erase(document, before(document, caret), caret);
   else if (key == "delete")
-    erase(document, document.caret, after(document, document.caret));
+    erase(document, caret, after(document, caret));
   else
     return false;
   return true;
@@ -391,7 +397,7 @@ void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) 
     if (!_shift)
       document.anchor = *to;
   } else if (!(_control && clip(input, document, event.name)) &&
-             !changed_by(document, event.name)) {
+             !changed_by(document, event.name, _control)) {
     return;
   }
   _follow = true;

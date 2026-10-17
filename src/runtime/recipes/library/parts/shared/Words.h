@@ -42,4 +42,16 @@ inline std::pair<std::size_t, std::size_t> word_at(std::string_view row,
   return {from, to};
 }
 
+// Where control with backspace deletes back to from a column, so the editor and the
+// terminal delete alike (RV09): past the blanks before it, then the other bytes, then the
+// word before them, so a path, a dotted name or a link goes a part at a time, a folder
+// with its slash, and blanks with the word before them.
+inline std::size_t word_before(std::string_view row, std::size_t column) {
+  column = std::min(column, row.size());
+  for (const Run run : {Run::blank, Run::other, Run::word})
+    while (column > 0 && run_of(row[column - 1]) == run)
+      --column;
+  return column;
+}
+
 } // namespace
