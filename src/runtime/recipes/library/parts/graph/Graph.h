@@ -33,12 +33,23 @@ namespace {
 
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
 // where it was then, none for a box a drag cannot move, which moves the graph instead,
-// and whether it has been dragged, or is a press let go where it was.
+// and whether it has been dragged, or is a press let go where it was. Or a corner of a
+// box pressed, which a drag pulls while the opposite corner stays: whether it is a left
+// one and whether a top one, and the box's size and place then.
 struct Grab {
   std::size_t box = 0;
   glm::vec2 from{};
   std::vector<std::pair<std::size_t, glm::ivec2>> moving;
   bool moved = false;
+  std::optional<glm::bvec2> corner;
+  glm::ivec2 extent{};
+  glm::ivec2 offset{};
+};
+
+// The box under a point, and the corner of it the point is on, if any.
+struct Under {
+  std::size_t box = no_box;
+  std::optional<glm::bvec2> corner;
 };
 
 // The graph of the current view, as the terminals' lines go to it, which view switch
@@ -68,10 +79,12 @@ struct Grab {
 // zooms it about the pointer, as the Perform panel's image moves, and neither is kept. A
 // press on a box selects it, shift adding it or taking it out, and opens the file of a
 // row that names one in the editor; a drag on a box selected moves every box selected,
-// and one on a box no line selects, as what lies outside, moves that box. The box
-// selected or pressed last shows over the others, hiding the boxes and the rows behind
-// it. With shift, a drag on the ground draws a select box, and letting go adds every box
-// it touches to the selection.
+// and one on a box no line selects, as what lies outside, moves that box. A drag on a
+// corner of a box makes it larger, or smaller down to the size its rows and the boxes
+// inside it need, and its corners show while the pointer is over it. The box selected
+// or pressed last shows over the others, hiding the boxes and the rows behind it. With
+// shift, a drag on the ground draws a select box, and letting go adds every box it
+// touches to the selection.
 // It owns the selection, of nodes and of the views the view shown hosts, which select and
 // selected reach as lines do (V06), and which delete or backspace removes as node remove
 // and view close do, and takes keys from the keys part while it has the focus, which a
@@ -96,7 +109,10 @@ private:
   void home(glm::uvec2 cell);
   void follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec2 cell);
   void press(VP::Cook &frame, std::uint32_t presses);
+  void grab_corner(VP::Cook &frame, const Under &under);
   void drag(glm::vec2 to);
+  void pull(glm::vec2 to);
+  void place_all();
   void release(VP::Cook &frame, bool room, glm::uvec2 cell);
   void open(VP::Cook &frame, std::size_t at, glm::uvec2 cell);
   void turn(VP::Cook &frame, glm::vec2 turn);
@@ -110,6 +126,7 @@ private:
   void keep(VP::FilePort &files);
   void write(VP::Cook &frame, glm::uvec2 cell);
   void write_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written, std::size_t at) const;
+  void write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const;
   void write_select_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const;
   void write_labels(VP::Cook &frame, glm::uvec2 cell);
   void write_row(glm::vec2 at,
@@ -126,6 +143,8 @@ private:
   glm::vec2 port_of(std::size_t box, std::size_t row, bool right) const;
   // The box drawn last over a point on screen, or none, for the ground.
   std::size_t hit(glm::vec2 at) const;
+  // That box, or one whose corner the point is on, as a frame's below its rows.
+  Under under(glm::vec2 at) const;
   // Drawn over the others from now on, until another is.
   void raise(std::string_view name);
   std::optional<std::uint32_t> color_of(std::size_t box) const;
@@ -193,6 +212,7 @@ private:
   // Where a press on the ground with shift began the select box, until it is let go.
   std::optional<glm::vec2> _select_from;
   glm::vec2 _pointer{};   // as the events so far left it
+  Under _hovered;         // what the pointer is over, once the frame laid the boxes out
   bool _dragging = false; // the ground, which the graph follows
   bool _shift = false;    // held, so a press adds a box to the selection or takes it out
 };

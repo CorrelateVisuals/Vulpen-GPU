@@ -47,8 +47,10 @@ struct Placed {
   // from the graph's top left for a box at the top.
   glm::ivec2 offset{};
   glm::uvec2 extent{};
+  glm::uvec2 least{};      // as large as its rows and the boxes inside it, at least
   glm::ivec2 at{};         // from the graph's top left
   std::int32_t inside = 0; // from its top, where the boxes inside it start
+  bool frames = false;     // it holds boxes, which show through below its rows
   std::size_t column = 0;  // among the boxes inside the box it is in
 };
 
@@ -240,7 +242,8 @@ private:
 
   // The boxes inside one, in columns or where a person put them, and its own size: as
   // wide as its widest row with a cell either side, and as tall as its rows with pad
-  // above and below them, then the boxes inside it, with half a row around them.
+  // above and below them, then the boxes inside it, with half a row around them; or
+  // larger, as a person made it.
   void arrange(const Boxes &boxes,
                std::size_t box,
                const Arranged &arranged,
@@ -265,11 +268,16 @@ private:
     const glm::ivec2 room =
         inner.empty() ? glm::ivec2(0) : columns(boxes, box, inner, arranged, cell);
     Placed &placed = _placed[box];
-    placed.extent = glm::uvec2(
+    placed.frames = !inner.empty();
+    placed.least = glm::uvec2(
         std::max(static_cast<std::int32_t>(widest) * static_cast<std::int32_t>(cell.x),
                  room.x) +
             2 * margin,
         placed.inside + (inner.empty() ? 0 : room.y + apart));
+    placed.extent = placed.least;
+    if (const auto sized = arranged.sizes.find(boxes.boxes[box].name);
+        boxes.boxes[box].kept && sized != arranged.sizes.end())
+      placed.extent = glm::max(placed.extent, glm::uvec2(glm::max(sized->second, 0)));
   }
 
   // A box a column past every box beside it that it reads from, each column as wide as

@@ -26,7 +26,9 @@ namespace {
 constexpr std::uint32_t box_rects = 5;
 constexpr std::uint32_t mark_room = 8; // marks a box, on average
 constexpr std::uint32_t select_rects = 4; // the select box's edges
-constexpr std::uint32_t rect_room = (box_rects + mark_room) * node_room + select_rects;
+constexpr std::uint32_t corner_rects = 8; // two a corner of the box the pointer is over
+constexpr std::uint32_t rect_room =
+    (box_rects + mark_room) * node_room + select_rects + corner_rects;
 constexpr std::uint32_t label_room = 4096;      // the names, rows and ports together
 constexpr std::uint32_t character_room = 32768; // their characters
 // A curve a line and a corner of each reader's way, as many as its levels have.
@@ -47,6 +49,11 @@ constexpr std::array<std::uint32_t, VP_VIEW::layer_names.size()> layer_roles{
     VP_VIEW::role("number"),
     VP_VIEW::role("string")};
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
+// A corner a drag pulls: how far in from it a press takes it, and its mark's arms, in
+// pixels, never past a quarter of the box, so a small box still moves.
+constexpr float corner_reach = 8.0f;
+constexpr float corner_arm = 10.0f;
+constexpr float corner_width = 2.0f;
 // Zoomed in to this many times as near as home is, the graph shows the inside of the box
 // under the pointer, as the POC did; zoomed out past this share of it, a level up.
 constexpr float enter_times = 3.0f;
@@ -153,6 +160,7 @@ void Graph::cook(VP::Cook &frame) {
   frame.set(_pan, _pan_zoom.pan);
   frame.set(_zoom, _pan_zoom.zoom);
   if (room) {
+    _hovered = under(_pointer);
     write(frame, cell);
     return;
   }
@@ -365,7 +373,12 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
   if (_typed->focus != _name)
     frame.commands().send(std::format("focus {}", _name));
   const bool chosen_here = _selected_in == _shown && !_selection.empty();
-  if (const std::size_t at = hit(_pointer); at != no_box) {
+  const Under pressed_at = under(_pointer);
+  if (pressed_at.corner) {
+    grab_corner(frame, pressed_at);
+    return;
+  }
+  if (const std::size_t at = pressed_at.box; at != no_box) {
     if (presses == 2 && enter(frame, at))
       return;
     const Box &pressed = _boxes.boxes[at];
@@ -411,6 +424,22 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
   _dragging = true;
 }
 
+// A corner pressed selects its box as a press on it does, or raises one no line selects,
+// and grabs the corner.
+void Graph::grab_corner(VP::Cook &frame, const Under &under) {
+  const Box &pressed = _boxes.boxes[under.box];
+  if (pressed.own && !selected(pressed.name))
+    select(frame.commands(), std::span(&pressed.name, 1));
+  else if (!pressed.own)
+    raise(pressed.name);
+  const Placed &placed = _layout.placed()[under.box];
+  _grab = Grab{.box = under.box,
+               .from = _pointer,
+               .corner = under.corner,
+               .extent = glm::ivec2(placed.extent),
+               .offset = placed.offset};
+}
+
 // Once the pointer moved a few pixels, so a press that wobbles is still a press. The
 // first drag places every box of the view where it shows, so a box moved moves no other,
 // and a node added later takes its column's place. A box inside another stays inside it,
@@ -422,15 +451,17 @@ void Graph::drag(glm::vec2 to) {
   if (grab.box >= placed.size() ||
       (!grab.moved && glm::length(to - grab.from) < drag_least))
     return;
+  if (grab.corner) {
+    pull(to);
+    return;
+  }
   if (grab.moving.empty()) {
     _pan_zoom.pan += to - (grab.moved ? _pointer : grab.from);
     grab.moved = true;
     return;
   }
   if (!grab.moved)
-    for (std::size_t at = 0; at < placed.size(); ++at)
-      if (_boxes.boxes[at].kept)
-        _arranged.places.try_emplace(_boxes.boxes[at].name, placed[at].offset);
+    place_all();
   grab.moved = true;
   const glm::ivec2 by(glm::round((to - grab.from) / _pan_zoom.zoom));
   const auto moving = [&](std::size_t box) {
@@ -451,6 +482,43 @@ void Graph::drag(glm::vec2 to) {
   _laid = false; // so this frame shows them there
 }
 
+// The corner grabbed follows the pointer and the opposite one stays, the box never
+// smaller than its rows and the boxes inside it need, and a size it needs anyway leaves
+// the .ini. A left or a top corner moves the box too, so the first such drag places
+// every box where it shows, as a move does, and a box inside another stays inside it.
+void Graph::pull(glm::vec2 to) {
+  Grab &grab = *_grab;
+  const Box &pulled = _boxes.boxes[grab.box];
+  const glm::bvec2 corner = *grab.corner;
+  const glm::ivec2 by(glm::round((to - grab.from) / _pan_zoom.zoom));
+  const glm::ivec2 least(_layout.placed()[grab.box].least);
+  const glm::ivec2 size = glm::max(
+      grab.extent + glm::ivec2(corner.x ? -by.x : by.x, corner.y ? -by.y : by.y), least);
+  if (size == least)
+    _arranged.sizes.erase(pulled.name);
+  else
+    _arranged.sizes.insert_or_assign(pulled.name, size);
+  if (corner.x || corner.y) {
+    if (!grab.moved)
+      place_all();
+    const glm::ivec2 offset =
+        grab.offset + glm::ivec2(corner.x ? grab.extent.x - size.x : 0,
+                                 corner.y ? grab.extent.y - size.y : 0);
+    _arranged.places.insert_or_assign(
+        pulled.name, pulled.parent == no_box ? offset : glm::max(offset, glm::ivec2(0)));
+  }
+  grab.moved = true;
+  _laid = false;
+}
+
+// Every box a drag may move, where it shows now, unless it was placed already.
+void Graph::place_all() {
+  const std::span<const Placed> placed = _layout.placed();
+  for (std::size_t at = 0; at < placed.size(); ++at)
+    if (_boxes.boxes[at].kept)
+      _arranged.places.try_emplace(_boxes.boxes[at].name, placed[at].offset);
+}
+
 // A box dragged is saved at once. A select box selects what it touches. A box pressed
 // and let go where it was stays the one selected, and opens the file of its row pressed.
 void Graph::release(VP::Cook &frame, bool room, glm::uvec2 cell) {
@@ -462,10 +530,12 @@ void Graph::release(VP::Cook &frame, bool room, glm::uvec2 cell) {
     return;
   const Grab grab = *std::exchange(_grab, std::nullopt);
   if (grab.moved) {
-    if (!grab.moving.empty())
+    if (!grab.moving.empty() || grab.corner)
       save(frame);
     return;
   }
+  if (grab.corner)
+    return;
   if (!room || grab.box >= _boxes.boxes.size())
     return;
   if (const Box &pressed = _boxes.boxes[grab.box]; pressed.own && _selection.size() > 1)
@@ -593,9 +663,10 @@ void Graph::erase(VP::Cook &frame, const VP::View &view) {
         std::ranges::find(view.children, name, &VP::Child::name) != view.children.end();
     lines.push_back(
         std::format("{}: {} {}", _shown, hosted ? "view close" : "node remove", name));
-    std::erase_if(_arranged.places, [&](const auto &place) {
-      return place.first == name || place.first.starts_with(name + '.');
-    });
+    for (auto *kept : {&_arranged.places, &_arranged.sizes})
+      std::erase_if(*kept, [&](const auto &box) {
+        return box.first == name || box.first.starts_with(name + '.');
+      });
   }
   for (const std::string &line : lines)
     frame.commands().send(line);
@@ -631,6 +702,7 @@ void Graph::write(VP::Cook &frame, glm::uvec2 cell) {
   std::uint32_t written = 0;
   for (const std::size_t at : _order)
     write_box(rects, written, at);
+  write_corners(rects, written);
   if (_select_from)
     write_select_box(rects, written);
   frame.write(_rects, written); // the used length, which rects draws
@@ -651,7 +723,7 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
   const std::uint32_t edge =
       chosen ? VP_VIEW::role("accent") : color_of(at).value_or(VP_VIEW::role("border"));
   const Placed &placed = _layout.placed()[at];
-  const bool holds = placed.inside < static_cast<std::int32_t>(placed.extent.y);
+  const bool holds = placed.frames;
   const glm::vec2 from = on_screen(glm::vec2(placed.at));
   const glm::vec2 to = on_screen(glm::vec2(placed.at + glm::ivec2(placed.extent)));
   const float below = holds ? on_screen(glm::vec2(placed.at) +
@@ -679,6 +751,35 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
         const glm::vec2 middle = port_of(at, row, right);
         add(between(middle - half, middle + half, VP_VIEW::role("accent")));
       }
+}
+
+// The corners of the box the pointer is over, which a drag pulls, while nothing else is
+// dragged: two short arms along its edges from each, muted, and in the accent color the
+// one under the pointer.
+void Graph::write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const {
+  if (_hovered.box == no_box || !_boxes.boxes[_hovered.box].kept ||
+      (_grab && !_grab->corner) || _dragging || _select_from)
+    return;
+  const VP_VIEW::Rect shown = box(_hovered.box);
+  const glm::vec2 low(shown.offset);
+  const glm::vec2 high = low + glm::vec2(shown.extent);
+  const float arm =
+      std::min(corner_arm, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
+  for (const bool left : {true, false})
+    for (const bool top : {true, false}) {
+      const std::uint32_t role = _hovered.corner == glm::bvec2(left, top)
+                                     ? VP_VIEW::role("accent")
+                                     : VP_VIEW::role("muted");
+      const glm::vec2 at{left ? low.x : high.x, top ? low.y : high.y};
+      const glm::vec2 inward{left ? 1.0f : -1.0f, top ? 1.0f : -1.0f};
+      for (const glm::vec2 along : {glm::vec2(arm, corner_width), glm::vec2(corner_width, arm)})
+        if (const VP_VIEW::Rect mark = cut(between(glm::min(at, at + inward * along),
+                                                   glm::max(at, at + inward * along),
+                                                   role),
+                                           *_area);
+            mark.extent.x != 0 && written < rects.size())
+          rects[written++] = mark;
+    }
 }
 
 // Its four edges, as wide as a box's border and in the accent color, over the boxes.
@@ -861,6 +962,31 @@ std::size_t Graph::hit(glm::vec2 at) const {
   return no_box;
 }
 
+// A corner of a box a drag may make larger, its own or one past a frame's rows, where the
+// box drawn over the others lies, or none.
+Under Graph::under(glm::vec2 point) const {
+  if (!inside(*_area, point))
+    return {};
+  for (std::size_t drawn = _order.size(); drawn-- > 0;) {
+    const std::size_t at = _order[drawn];
+    if (at >= _layout.placed().size())
+      continue;
+    const VP_VIEW::Rect shown = box(at);
+    const glm::vec2 low(shown.offset);
+    const glm::vec2 high = low + glm::vec2(shown.extent);
+    const float reach = std::min(
+        corner_reach, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
+    const bool left = point.x < low.x + reach;
+    const bool top = point.y < low.y + reach;
+    if (_boxes.boxes[at].kept && VP_VIEW::contains(shown, point) &&
+        (left || point.x >= high.x - reach) && (top || point.y >= high.y - reach))
+      return {at, glm::bvec2(left, top)};
+    if (VP_VIEW::contains(cut(solid(at), *_area), point))
+      return {at, std::nullopt};
+  }
+  return {};
+}
+
 // Last in the order raised, so it is drawn last among the boxes beside it, and so is each
 // box holding it, so it shows over every box.
 void Graph::raise(std::string_view name) {
@@ -897,7 +1023,7 @@ VP_VIEW::Rect Graph::box(std::size_t at) const {
 
 VP_VIEW::Rect Graph::solid(std::size_t at) const {
   const Placed &placed = _layout.placed()[at];
-  const auto rows = std::min(placed.inside, static_cast<std::int32_t>(placed.extent.y));
+  const auto rows = placed.frames ? placed.inside : static_cast<std::int32_t>(placed.extent.y);
   return between(on_screen(glm::vec2(placed.at)),
                  on_screen(glm::vec2(placed.at) +
                            glm::vec2(static_cast<float>(placed.extent.x),
