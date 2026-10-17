@@ -75,7 +75,10 @@ struct Under {
 // manifest, and a restart shows them as they were left; so do the colors a person gives
 // each kind of node there, which draw its boxes' borders and names. The graph starts at
 // home, as a view or a level is shown and as h brings it there: unmoved at zoom 1 while
-// every box shows whole there, else moved and zoomed out until they all do. A drag on the
+// every box shows whole there, else moved and zoomed out until they all do; but a level
+// gone up to shows the box it was left from in focus, under the pointer, two steps of
+// the wheel short of going into it again. . goes into the box selected, or the one under
+// the pointer, and , up a level, as the wheel and a second press do. A drag on the
 // ground, or on the frame's inside, which shows the ground, moves the graph and the wheel
 // zooms it about the pointer, as the Perform panel's image moves, and neither is kept. A
 // press on a box selects it, shift adding it or taking it out, and opens the file of a
@@ -113,6 +116,10 @@ private:
   void home(glm::uvec2 cell);
   void follow(VP::Cook &frame, bool room, const VP::Event &event, glm::uvec2 cell);
   void press(VP::Cook &frame, std::uint32_t presses);
+  void go_in(VP::Cook &frame);
+  void focus(std::string_view left);
+  // A folder box's folder, as an absolute path.
+  std::filesystem::path folder_of(std::size_t box) const;
   void grab_corner(VP::Cook &frame, const Under &under);
   void drag(glm::vec2 to);
   void pull(glm::vec2 to);
@@ -225,6 +232,9 @@ private:
   float _home_zoom = 1.0f; // as near as home is, past half of which zooming out goes up
   // Until the frame home is worked out in, which needs the boxes laid out in the area.
   bool _homing = false;
+  // The box a level up was left from, which the level shown next shows in focus: a node's
+  // or a view's name, or a folder, as an absolute path; empty for none.
+  std::string _left;
   std::optional<Grab> _grab;
   // Where a press on the ground with shift began the select box, until it is let go.
   std::optional<glm::vec2> _select_from;

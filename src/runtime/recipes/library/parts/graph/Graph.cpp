@@ -57,6 +57,11 @@ constexpr float corner_width = 2.0f;
 // under the pointer, as the POC did; zoomed out past this share of it, a level up.
 constexpr float enter_times = 3.0f;
 constexpr float leave_share = 0.5f;
+// The steps of the wheel a level gone up to stops short of going in again, so a little
+// more zoom goes back where the zooming out began.
+constexpr int focus_steps = 2;
+constexpr std::string_view enter_key = "."; // into the box selected, or under the pointer
+constexpr std::string_view leave_key = ","; // up a level
 constexpr std::string_view title = "graph";
 
 // What of a Rect lies inside another; no extent when nothing does.
@@ -184,6 +189,8 @@ void Graph::cook(VP::Cook &frame) {
   if (room && std::exchange(_homing, false)) {
     home(cell);
     _home_zoom = _pan_zoom.zoom;
+    if (!_left.empty())
+      focus(std::exchange(_left, {}));
   }
   // A press may send a line that edits the view shown, as open does the ide's own, or
   // closes it; the boxes, built from the view before, stay until the next frame.
@@ -258,8 +265,54 @@ void Graph::key(VP::Cook &frame, std::string_view key) {
   } else if (key == "escape") {
     frame.commands().send("focus");
   } else if (key == PanZoom::home_key) {
+    _left.clear();
     _homing = true;
+  } else if (key == leave_key) {
+    leave(frame);
+  } else if (key == enter_key) {
+    go_in(frame);
   }
+}
+
+// The box selected last that has an inside, or the one under the pointer.
+void Graph::go_in(VP::Cook &frame) {
+  for (auto name = _selection.rbegin(); name != _selection.rend() && _selected_in == _shown;
+       ++name)
+    if (const auto found = std::ranges::find(_boxes.boxes, *name, &Box::name);
+        found != _boxes.boxes.end() &&
+        enter(frame, static_cast<std::size_t>(found - _boxes.boxes.begin())))
+      return;
+  if (const std::size_t at = hit(_pointer); at != no_box && at != _boxes.frame)
+    enter(frame, at);
+}
+
+// The box left shown in the middle of the pointer, or of the area with the pointer out
+// of it, as near as two steps of the wheel short of going into it, but never farther
+// than home. Home stays as near as home was, so the steps to go up again stay as many.
+void Graph::focus(std::string_view left) {
+  const bool folders = !_relations->folder.empty();
+  for (std::size_t at = 0; at < _layout.placed().size(); ++at) {
+    if (folders ? folder_of(at) != std::filesystem::path(left).lexically_normal()
+                : _boxes.boxes[at].name != left)
+      continue;
+    const Placed &placed = _layout.placed()[at];
+    _pan_zoom.zoom =
+        std::max(std::min(_home_zoom * enter_times, PanZoom::most) /
+                     std::pow(PanZoom::step, static_cast<float>(focus_steps)),
+                 _home_zoom);
+    const glm::vec2 middle =
+        inside(*_area, _pointer)
+            ? _pointer
+            : glm::vec2(_area->offset) + glm::vec2(_area->extent) / 2.0f;
+    const glm::vec2 centre = glm::vec2(placed.at) + glm::vec2(placed.extent) / 2.0f;
+    _pan_zoom.pan = middle - glm::vec2(_area->offset) - centre * _pan_zoom.zoom;
+    return;
+  }
+}
+
+std::filesystem::path Graph::folder_of(std::size_t box) const {
+  return (std::filesystem::path(_relations->folder).parent_path() / _boxes.boxes[box].name)
+      .lexically_normal();
 }
 
 // The tab names the view, and the boxes its .ini kept show where they were left, from
@@ -641,13 +694,15 @@ void Graph::turn(VP::Cook &frame, glm::vec2 turn) {
 // no inside.
 bool Graph::enter(VP::Cook &frame, std::size_t at) {
   const Box &entered = _boxes.boxes[at];
+  if (at == _boxes.frame) {
+    leave(frame);
+    return true;
+  }
+  _left.clear(); // a level gone into starts at home
   if (entered.kind == Kind::view) {
     frame.commands().send(std::format("view switch {}", entered.name));
-  } else if (at == _boxes.frame) {
-    leave(frame);
   } else if (entered.holds && !_relations->folder.empty()) {
-    const std::filesystem::path folder =
-        std::filesystem::path(_relations->folder).parent_path() / entered.name;
+    const std::filesystem::path folder = folder_of(at);
     if (const std::optional<std::string> view = view_in(frame, folder); !view)
       show_folder(frame, folder);
     else if (*view == _shown)
@@ -665,25 +720,32 @@ bool Graph::enter(VP::Cook &frame, std::size_t at) {
 // Out of the node whose inside shows, to the inside of the node holding it, or the top;
 // out of a view's top to the view hosting it, as view switch shows it, and out of the top
 // of the view vulpen started with to the folder holding its folder, where its folder is a
-// box; out of a folder to the one holding it, up to the top of its repository.
+// box; out of a folder to the one holding it, up to the top of its repository. The level
+// shown next shows the box left in focus.
 void Graph::leave(VP::Cook &frame) {
   if (!_built_flat)
     return;
   if (const std::filesystem::path folder(_relations->folder); !folder.empty()) {
-    if (folder != std::filesystem::path(_relations->top) && folder != folder.parent_path())
+    if (folder != std::filesystem::path(_relations->top) && folder != folder.parent_path()) {
+      _left = folder.lexically_normal().generic_string();
       show_folder(frame, folder.parent_path());
+    }
     return;
   }
   if (_boxes.frame == no_box) {
     const VP::View *const view = frame.view(_shown);
-    if (const std::optional<std::string> host = host_of(frame, _shown))
+    if (const std::optional<std::string> host = host_of(frame, _shown)) {
+      _left = _shown;
       frame.commands().send(host->empty() ? std::string("view switch")
                                           : std::format("view switch {}", *host));
-    else if (view && !view->file.empty())
+    } else if (view && !view->file.empty()) {
+      _left = view->file.parent_path().lexically_normal().generic_string();
       show_folder(frame, view->file.parent_path().parent_path());
+    }
     return;
   }
   const std::string &left = _boxes.boxes[_boxes.frame].name;
+  _left = left;
   const std::size_t holder = parent_of(_built_flat->nodes, left);
   frame.commands().send(
       holder == no_box ? std::format("{}: param unset {} inside", _view, _name)
