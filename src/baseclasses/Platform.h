@@ -94,7 +94,8 @@ bool key_named(std::string_view name);
 // A desktop window through GLFW. Only a view that draws opens one (V07).
 class Window {
 public:
-  // Throws, naming why, when no display can hold a window.
+  // Maximized, size what restoring it gives. Throws, naming why, when no display can
+  // hold a window.
   Window(const std::string &title, VkExtent2D size);
   ~Window();
   Window(const Window &) = delete;

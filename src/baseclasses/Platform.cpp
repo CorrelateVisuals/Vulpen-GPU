@@ -556,6 +556,8 @@ Window::Window(const std::string &title, VkExtent2D size) {
   if (!glfwInit())
     glfw_failed("glfwInit");
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  // It fills the screen as it opens, as an editor does; size is what it is restored to.
+  glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
   glfwWindowHintString(GLFW_WAYLAND_APP_ID, app_id);
   glfwWindowHintString(GLFW_X11_CLASS_NAME, app_id);
   glfwWindowHintString(GLFW_X11_INSTANCE_NAME, app_id);
