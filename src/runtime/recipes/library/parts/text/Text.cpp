@@ -263,13 +263,15 @@ void Text::cook(VP::Cook &frame) {
     frame.hold(_unsaved);
 }
 
-// The text keeps clear of the scroll bars.
+// The text keeps clear of the scroll bars, and of a strip as wide as a bar at its left,
+// so it sits as far in from either side.
 Grid Text::grid() const {
   const glm::ivec2 cell(_font->cell);
-  const glm::ivec2 room = glm::ivec2(_area->extent) - 2 * margin - Scroll::width;
+  const glm::ivec2 room =
+      glm::ivec2(_area->extent) - 2 * margin - glm::ivec2(2, 1) * Scroll::width;
   if (cell.x <= 0 || cell.y <= 0 || room.x < cell.x || room.y < cell.y)
     return {};
-  return {.origin = _area->offset + margin,
+  return {.origin = _area->offset + margin + glm::ivec2(Scroll::width, 0),
           .cell = cell,
           .rows = std::min(static_cast<std::size_t>(room.y / cell.y), row_room),
           .columns = static_cast<std::size_t>(room.x / cell.x)};

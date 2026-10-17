@@ -509,12 +509,14 @@ class CommandLine final : public VP::Operator {
     return _folder + std::string(prompt_end);
   }
 
-  // As the area, the font and the prompt are now, the text clear of the scroll bars.
+  // As the area, the font and the prompt are now, the text clear of the scroll bars, and
+  // of a strip as wide as a bar at its left, so it sits as far in from either side.
   Grid grid() const {
     const glm::ivec2 size(_area->extent);
     const glm::ivec2 cell(_font->cell);
-    Grid grid{.columns = cell.x == 0 ? 0 : (size.x - 2 * margin - Scroll::width) / cell.x,
-              .left = _area->offset.x + margin,
+    Grid grid{.columns =
+                  cell.x == 0 ? 0 : (size.x - 2 * margin - 2 * Scroll::width) / cell.x,
+              .left = _area->offset.x + Scroll::width + margin,
               .line = _area->offset.y + size.y - margin - cell.y};
     grid.rule = grid.line - margin;
     grid.bottom = grid.rule - Scroll::width - margin;
