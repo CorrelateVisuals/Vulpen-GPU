@@ -1,7 +1,7 @@
 # The modes part: one node whose operator is Modes. It hands the Rect its area gives to
 # the dock in edit mode, and to what is presented in perform mode; present connects the
 # window of a view its view hosts to the images its to param names, ports joined by
-# commas, which its host sets. Its buttons are edit, perform and gpu, for a bar.
+# commas, which its host sets. Its buttons are edit, run and gpu, for a bar.
 [manifest]
 version = 1
 

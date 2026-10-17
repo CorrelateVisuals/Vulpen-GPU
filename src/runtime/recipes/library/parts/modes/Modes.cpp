@@ -74,9 +74,9 @@ std::string_view project_of(const Find &view_of,
 // line refused's, which the terminal then shows.
 // It takes the keys no part in focus takes: escape leaves perform mode, and in edit mode
 // ends the run, once the part in focus let go of its selection and of the focus. It hands
-// on the buttons of the run, for a bar: edit and perform, the mode in force lit, and gpu,
-// which makes the next launch prefer the other kind of GPU (gpu toggle), as the POC's
-// menubar cells did.
+// on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
+// Perform panel's own button, the mode in force lit, and gpu, which makes the next launch
+// prefer the other kind of GPU (gpu toggle), as the POC's menubar cells did.
 class Modes final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string mode = node.param<std::string>("mode");
@@ -95,7 +95,7 @@ class Modes final : public VP::Operator {
     // The mode is a param, so a change rebinds the node: the buttons are written here.
     node.output<VP_VIEW::Items>("buttons") = {
         {.label = "edit", .command = "mode edit", .current = !_perform},
-        {.label = "perform", .command = "mode perform", .current = _perform},
+        {.label = "run", .command = "mode perform", .current = _perform},
         {.label = "gpu", .command = "gpu toggle"}};
     _edit_mode = node.command("mode edit",
                               "gives the window to the dock, which shows what is "
