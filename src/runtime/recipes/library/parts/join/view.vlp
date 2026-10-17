@@ -1,0 +1,8 @@
+# The join part: one node whose operator is Join; it hands on as items the Items its
+# first and its second give, the first's then the second's, as one row of buttons.
+[manifest]
+version = 1
+
+[node "join"]
+operator = Join
+file     = Join.cpp

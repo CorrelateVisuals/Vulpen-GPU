@@ -3,8 +3,9 @@
 # shows: ./run.sh --ide. Only child recipes and the wires between them, built by
 # addition: each row is recipes placed side by side and connected, never a bigger recipe
 # with nodes removed. Built so far: Look, Keys, Modes, the menubar along the window's
-# top, the dock below it, with the editor in its top row beside the graph over the
-# Perform panel, and the terminal in its bottom row.
+# top, a button a panel and the run's, the dock below it, with the editor in its top row
+# beside the graph over the Perform panel, and the terminal in its bottom row, and the
+# menus a right press opens in the graph.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -13,8 +14,8 @@
 #   Terminal   panel + terminal
 #   Graph      panel + graph-editor
 #   Perform    panel + image          the window of the view presented
-#   Menubar    menu                   a row at the top
-#   Popup      menu                   a column at the pointer
+#   Menubar    panel + join           a button a panel and the run's, along the top
+#   Menu       menu                   the menus of menu.ini, at a right press in the graph
 #   Tooltip    tooltip
 #   Modes      modes + image          edit or perform: the dock, or the view presented
 [manifest]
@@ -43,6 +44,15 @@ recipe = viewport
 [node "ide.modes"]
 recipe = modes
 param  = to=ide.perform.picture,ide.screen.picture
+
+# The window's top: a button a panel, lit while it shows, whose press hides it or brings
+# it back, then the run's, edit, perform and gpu, as the POC's menubar cells, a panel's
+# tabs; it hands the rest to the dock.
+[node "ide.menubar"]
+recipe = panel
+
+[node "ide.buttons"]
+recipe = join
 
 # Listed before the panels it seats, so its ground is drawn first.
 [node "ide.dock"]
@@ -92,18 +102,17 @@ recipe = panel
 [node "ide.terminal"]
 recipe = terminal
 
-# A menu a name along the window's top, as menu.ini gives them, over the dock it hands the
-# rest to; listed after the panels, so a menu's items drop over them. An item that wants a
-# word types its line into the terminal's.
-[node "ide.menubar"]
-recipe = menu
-param  = menus.line=ide.terminal.command-line
-
 # A panel's tab strip dragged onto another panel moves it to that panel's edge it is let
-# go nearest, as edits of the docks, which a save of the ide keeps; listed after the
-# menubar, so the frame where it would land draws over every panel.
+# go nearest, as edits of the docks, which a save of the ide keeps. Listed after the
+# panels and before what draws over them, so a panel a drag adds goes before it.
 [node "ide.docking"]
 recipe = docking
+
+# The menus of menu.ini, which a right press in the graph opens there; listed after the
+# panels, so they drop over them. An item types its line into the terminal's.
+[node "ide.menu"]
+recipe = menu
+param  = menus.line=ide.terminal.command-line
 
 [node "ide.docking-rects"]
 recipe = rects
@@ -125,6 +134,19 @@ to   = ide.menubar.bar.area
 from = ide.menubar.bar.rest
 to   = ide.dock.split.area
 to   = ide.docking.area
+
+[connection "panel-buttons"]
+from = ide.docking.buttons
+to   = ide.buttons.first
+
+[connection "run-buttons"]
+from = ide.modes.buttons
+to   = ide.buttons.second
+
+[connection "buttons"]
+from = ide.buttons.items
+to   = ide.menubar.tabs.items
+to   = ide.menubar.hit.items
 
 [connection "docking"]
 from = ide.docking.rects
@@ -160,9 +182,11 @@ to   = ide.side.split.area
 from = ide.side.split.first
 to   = ide.graph-panel.bar.area
 
+# The graph's room, where a right press opens the menus too.
 [connection "graph-area"]
 from = ide.graph-panel.bar.rest
 to   = ide.graph.bar.area
+to   = ide.menu.menus.area
 
 [connection "graph-tabs"]
 from = ide.graph.graph.tabs
@@ -203,7 +227,7 @@ to   = ide.terminal.command-line.typed
 to   = ide.graph.graph.typed
 to   = ide.perform.typed
 to   = ide.modes.typed
-to   = ide.menubar.menus.typed
+to   = ide.menu.menus.typed
 
 [connection "palette"]
 from = ide.palette.palette
@@ -230,10 +254,12 @@ to   = ide.terminal-panel.rects.palette
 to   = ide.terminal-panel.glyphs.palette
 to   = ide.terminal.rects.palette
 to   = ide.terminal.glyphs.palette
-to   = ide.menubar.names-rects.palette
-to   = ide.menubar.names-glyphs.palette
-to   = ide.menubar.items-rects.palette
-to   = ide.menubar.items-glyphs.palette
+to   = ide.menubar.rects.palette
+to   = ide.menubar.glyphs.palette
+to   = ide.menu.names-rects.palette
+to   = ide.menu.names-glyphs.palette
+to   = ide.menu.items-rects.palette
+to   = ide.menu.items-glyphs.palette
 to   = ide.docking-rects.palette
 
 [connection "font"]
@@ -247,8 +273,9 @@ to   = ide.graph.tip.glyphs.font
 to   = ide.perform-panel.glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
-to   = ide.menubar.names-glyphs.font
-to   = ide.menubar.items-glyphs.font
+to   = ide.menubar.glyphs.font
+to   = ide.menu.names-glyphs.font
+to   = ide.menu.items-glyphs.font
 
 [connection "atlas"]
 from = ide.font.atlas
@@ -261,8 +288,9 @@ to   = ide.graph.tip.glyphs.atlas
 to   = ide.perform-panel.glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
-to   = ide.menubar.names-glyphs.atlas
-to   = ide.menubar.items-glyphs.atlas
+to   = ide.menubar.glyphs.atlas
+to   = ide.menu.names-glyphs.atlas
+to   = ide.menu.items-glyphs.atlas
 
 [connection "metrics"]
 from = ide.font.metrics
@@ -281,6 +309,7 @@ to   = ide.terminal-panel.bar.font
 to   = ide.terminal-panel.tabs.font
 to   = ide.terminal.command-line.font
 to   = ide.menubar.bar.font
-to   = ide.menubar.names.font
-to   = ide.menubar.items.font
+to   = ide.menubar.tabs.font
+to   = ide.menu.names.font
+to   = ide.menu.items.font
 to   = ide.docking.font

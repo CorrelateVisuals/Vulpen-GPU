@@ -12,7 +12,9 @@ namespace {
 // How a dock lays out, so the split and the bar parts lay it out, and the docking part
 // finds where each panel and its tab strip show, alike (RV09): a split divides a Rect in
 // two along an axis, the first taking its ratio of the room the seam between them
-// leaves, and a bar cuts rows of text off a Rect's edge, a pad either side of them.
+// leaves, a ratio of 0 or 1 giving one half the whole and the other none, with no seam,
+// as a panel hidden; and a bar cuts rows of text off a Rect's edge, a pad either side of
+// them.
 constexpr std::int32_t seam_width = 4; // in pixels: the gap a press on a split grabs
 constexpr std::uint32_t bar_pad = 4;   // in pixels, either side of a bar's text cells
 
@@ -36,7 +38,8 @@ inline VP_VIEW::Rect part_of(const VP_VIEW::Rect &area,
 // Along the axis, 0 for x and 1 for y; the seam as wide as the area allows.
 inline Halves halves(const VP_VIEW::Rect &area, glm::length_t along, float ratio) {
   const auto whole = static_cast<std::int32_t>(area.extent[along]);
-  const std::int32_t seam = std::min(seam_width, whole);
+  const std::int32_t seam =
+      ratio > 0.0f && ratio < 1.0f ? std::min(seam_width, whole) : 0;
   const std::int32_t room = whole - seam;
   const auto first =
       static_cast<std::int32_t>(std::lround(static_cast<float>(room) * ratio));

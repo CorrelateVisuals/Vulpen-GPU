@@ -40,9 +40,11 @@ VP_VIEW::Rect grown(const VP_VIEW::Rect &rect, std::int32_t by, std::uint32_t ro
 // Lays out the Items it is handed in the Rect its place gives: stacked, a row each, over
 // a framed fill, or with axis x side by side, each as wide as its label, over a ground,
 // the current one in the content's color, so it joins the content it names; an Item
-// with a close command shows a close mark at its end. With below = yes the column drops
+// with a close command shows a close mark at its end. With drop = below the column drops
 // below its place instead, as wide as its widest label and as tall as its Items, inside
-// the window, as a menu's items drop below its name. It hands on where each Item shows,
+// the window, as a menu drops below where it was opened; with drop = right it opens right
+// of its place, its first row level with it, as a menu's items open beside its name. It
+// hands on where each Item shows,
 // and where its mark does, so hit finds the one pressed, and where the current one does,
 // so what it opens shows below it. Tab strips, menus and tips are this part, so none of
 // them places its entries itself.
@@ -53,10 +55,10 @@ class List final : public VP::Operator {
       throw std::runtime_error(
           std::format("param axis = {}: x, side by side, or y, stacked", axis));
     _side_by_side = axis == "x";
-    const std::string below = node.param<std::string>("below");
-    if (below != "yes" && below != "no")
-      throw std::runtime_error(std::format("param below = {}: yes or no", below));
-    _below = below == "yes";
+    const std::string drop = node.param<std::string>("drop");
+    if (drop != "no" && drop != "below" && drop != "right")
+      throw std::runtime_error(std::format("param drop = {}: no, below or right", drop));
+    _drop = drop == "below" ? Drop::below : drop == "right" ? Drop::right : Drop::no;
     _items = &node.input<VP_VIEW::Items>("items");
     _place = &node.input<VP_VIEW::Rect>("place");
     _font = &node.input<VP_VIEW::Font>("font");
@@ -75,7 +77,7 @@ class List final : public VP::Operator {
     _shown->clear();
     _marks->clear();
     const VP_VIEW::Rect place =
-        _below ? dropped(cell, frame.resolution()) : *_place;
+        _drop == Drop::no ? *_place : dropped(cell, frame.resolution());
     if (cell.x != 0 && cell.y != 0) {
       if (_side_by_side)
         side_by_side(place, cell);
@@ -91,8 +93,9 @@ class List final : public VP::Operator {
   }
 
   // Below the place, from its left edge, its frame under the place's bottom edge, as wide
-  // as the widest label, or the place, and as tall as the Items, moved in to stay inside
-  // the window; none while the place is empty, as a menu shut.
+  // as the widest label, or the place; or right of it, its frame beyond the place's right
+  // edge, its first row level with the place's top. As tall as the Items, moved in to
+  // stay inside the window; none while the place is empty, as a menu shut.
   VP_VIEW::Rect dropped(glm::uvec2 cell, glm::uvec2 window) const {
     const VP_VIEW::Rect &place = *_place;
     if (place.extent.x == 0 || _items->empty())
@@ -103,14 +106,16 @@ class List final : public VP::Operator {
     constexpr std::int32_t edge = margin + frame_width;
     const auto rows = static_cast<std::uint32_t>(
         std::min(_items->size(), static_cast<std::size_t>(row_room)));
+    const bool below = _drop == Drop::below;
     const glm::uvec2 extent(
         std::max(static_cast<std::uint32_t>(widest) * cell.x,
-                 place.extent.x - std::min(place.extent.x, 2u * edge)),
+                 below ? place.extent.x - std::min(place.extent.x, 2u * edge) : 0u),
         rows * cell.y);
     const glm::ivec2 most = glm::ivec2(window) - glm::ivec2(extent) - edge;
-    const glm::ivec2 below =
-        place.offset + glm::ivec2(edge, static_cast<std::int32_t>(place.extent.y) + edge);
-    return {.offset = glm::max(glm::min(below, most), glm::ivec2(edge)),
+    const glm::ivec2 from =
+        below ? glm::ivec2(edge, static_cast<std::int32_t>(place.extent.y) + edge)
+              : glm::ivec2(static_cast<std::int32_t>(place.extent.x) + edge, 0);
+    return {.offset = glm::max(glm::min(place.offset + from, most), glm::ivec2(edge)),
             .extent = extent};
   }
 
@@ -196,8 +201,11 @@ class List final : public VP::Operator {
     frame.write(_characters, written.character_count); // the used length glyphs draws
   }
 
+  // Where a column goes: in its place, or dropped below or right of it, as wide as its
+  // labels.
+  enum class Drop : std::uint8_t { no, below, right };
   bool _side_by_side = false;
-  bool _below = false; // a column below its place, as wide as its labels
+  Drop _drop = Drop::no;
   const VP_VIEW::Items *_items = nullptr;
   const VP_VIEW::Rect *_place = nullptr;
   const VP_VIEW::Font *_font = nullptr;

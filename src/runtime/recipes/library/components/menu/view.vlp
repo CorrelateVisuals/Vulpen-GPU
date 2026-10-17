@@ -1,12 +1,11 @@
-# The menu component: menus, bar, list, hit, rects and glyphs. Its bar cuts a strip one
-# text row tall off the top of the Rect its host connects to bar.area, and hands on the
-# rest as bar.rest; the strip shows a name a menu, as menu.ini gives them, and a press on
-# one drops its items below it, over what lies there, which takes no press while it
-# shows, until a press anywhere or escape shuts it. A press on an item sends its line; an
-# item whose line wants a word types it into the node the menus' line param names. Its
-# host connects the keys part's typed to menus.typed, the font's metrics to bar.font,
-# names.font and items.font, the theme to the rects and the glyphs, and the font and its
-# atlas to the glyphs, and lists it after what its items drop over, so they draw over it.
+# The menu component: menus, list, hit, rects and glyphs. A right press in the Rect its
+# host connects to menus.area drops a column of names there, a menu each, as menu.ini
+# gives them, over what lies there, which takes no press while it shows; a press on a name
+# opens that menu's items beside it, and a press on an item sends its line, typed into the
+# node the menus' line param names, until a press anywhere or escape shuts it. Its host
+# connects the keys part's typed to menus.typed, the font's metrics to names.font and
+# items.font, the theme to the rects and the glyphs, and the font and its atlas to the
+# glyphs, and lists it after what it drops over, so it draws over it.
 [manifest]
 version = 1
 
@@ -15,12 +14,9 @@ version = 1
 [node "menu.menus"]
 recipe = menus
 
-[node "menu.bar"]
-recipe = bar
-
 [node "menu.names"]
 recipe = list
-param  = axis=x
+param  = drop=below
 
 [node "menu.names-hit"]
 recipe = hit
@@ -33,7 +29,7 @@ recipe = glyphs
 
 [node "menu.items"]
 recipe = list
-param  = below=yes
+param  = drop=right
 
 [node "menu.items-hit"]
 recipe = hit
@@ -44,8 +40,9 @@ recipe = rects
 [node "menu.items-glyphs"]
 recipe = glyphs
 
-[connection "strip"]
-from = menu.bar.strip
+# Where the menus were opened, which the names drop below.
+[connection "at"]
+from = menu.menus.at
 to   = menu.names.place
 
 [connection "names"]

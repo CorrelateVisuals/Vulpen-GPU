@@ -43,11 +43,12 @@ step too, and drags their scroll bar to the oldest, before help, sent, shows the
 again, and scrolls them across with shift and the wheel and back with the wheel turned
 sideways; the editor run scrolls the note past its end with the wheel, and back with a
 drag on its scroll bar. In both, three presses in a row select a word, then its row.
-A run types into a note in the editor, opens the file menu along the window's top and
-presses its write, which types write into the terminal and sends it, so the note must
-hold what was typed. Another drags the terminal's tab strip onto the editor's right edge
-and moves the graph's panel below the Perform panel by panel move, so the ide's docks are
-edited twice, and must rebuild with no line refused. No node of any run may stop, as one
+A run types into a note in the editor, opens the file menu of the menus a right press
+opens in the graph, by its line, and presses its write, which types write into the
+terminal and sends it, so the note must hold what was typed. Another moves the graph's panel below the Perform panel by panel
+move, hides both, so their dock hides too, shows the graph's again, which the Perform
+panel must not follow, and drags the terminal's tab strip onto the editor's right edge, so
+the ide's docks are edited over and over, and must rebuild with no line refused. No node of any run may stop, as one
 whose menu.ini or keymap names a line no command takes would.
 The zoom a person keeps in the library's font folder is set aside while it runs, and put
 back after. Where no display exists it is skipped (V07).
@@ -102,10 +103,11 @@ MENUBAR = STRIP
 # blank, then the mark, a cell wide, as wave/Wave.comp's.
 MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2,
         MENUBAR + STRIP // 2)
-# The file menu, the menubar's first name, a cell in, and its write, its second item, a
-# row below the first under the strip, past the frame of 4 pixels its items drop in.
-FILE_MENU = (CELL_WIDE * 2, MENUBAR // 2)
-WRITE_ITEM = (CELL_WIDE * 3, MENUBAR + 4 + CELL + CELL // 2)
+# A line opens the menus at the graph's top left, their names in a column past a frame of
+# 4 pixels, as wide as recipe's, the widest, and the file menu's items beside its name,
+# level with it, past a frame more: write is the second.
+NAMES_WIDE = CELL_WIDE * len("recipe")
+WRITE_ITEM = (4 + NAMES_WIDE + 4 + CELL_WIDE * 2, 4 + CELL + CELL // 2)
 TYPED = "typed"  # input text drops a blank at its end
 # A node left out as its view loads, or whose operator stops, names itself in the log.
 STOPPED = re.compile(r"\{!!!\} (?:\S+ )?node [\w.-]+: ")
@@ -230,13 +232,15 @@ def edits(width: int) -> list[str]:
     ]
 
 
-def menu(note: Path) -> list[str]:
+def menu(note: Path, width: int) -> list[str]:
+    graph = (round((width - 4) * 0.5) + 4, MENUBAR + STRIP)  # the graph's area's corner
     return [
         f"open {note}",
         "focus ide.editor.text",
         f"input text {TYPED}",  # where the caret starts, as the note opens
-        f"input pointer {FILE_MENU[0]} {FILE_MENU[1]}",
-        "input button down left",  # the file menu, whose items drop the next frame
+        "menu file",  # shown with the first frame, before the press
+        f"input pointer {graph[0] + WRITE_ITEM[0]} {graph[1] + WRITE_ITEM[1]}",
+        "input button down left",
         "input button up left",
     ]
 
@@ -247,6 +251,9 @@ def docked(width: int, height: int) -> list[str]:
     editor = round((width - 4) * 0.5)  # the editor's right edge, at the top row's seam
     return [
         "ide: panel move ide.graph-panel ide.perform-panel bottom",  # the two swap
+        "ide: panel hide ide.graph-panel",
+        "ide: panel hide ide.perform-panel",  # their dock hides in the top row
+        "ide: panel show ide.graph-panel",  # their dock shows again, the graph's alone
         f"input pointer {width // 4} {strip}",
         "input button down left",
         f"input pointer {editor - 10} {MENUBAR + row // 2}",
@@ -386,15 +393,9 @@ def test() -> None:
         if numbers(zoomed) != {"zoom": [1]}:
             sys.exit(f"ide: expected the font to keep zoom = 1 after zooming in and out, "
                      f"it kept\n{zoomed}")
-        # The press on write comes a frame after the file menu opened, from a script
-        # standard input sources.
         typed_into = folder / "typed.txt"
         typed_into.write_text(NOTE, encoding="utf-8")
-        pressed = folder / "write.txt"
-        pressed.write_text(f"input pointer {WRITE_ITEM[0]} {WRITE_ITEM[1]}\n"
-                           "input button down left\ninput button up left\n",
-                           encoding="utf-8")
-        drive(folder, "menu", menu(typed_into), typed=f"source {pressed}\n")
+        drive(folder, "menu", menu(typed_into, width))
         if (held := typed_into.read_text(encoding="utf-8")) != TYPED + NOTE:
             sys.exit(f"ide: expected the file menu's write to write {TYPED + NOTE!r}, "
                      f"got {held!r}")

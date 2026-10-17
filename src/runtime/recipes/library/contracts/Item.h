@@ -16,6 +16,8 @@ struct Item {
   // What a press on its close mark sends, as a tab's content closes what the tab shows;
   // empty for no mark.
   std::string close;
+
+  bool operator==(const Item &) const = default;
 };
 
 // What a part hands a list, in the order the list shows them.

@@ -1,4 +1,5 @@
 #include "contracts/Item.h"
+#include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "shared/Ini.h"
@@ -49,6 +50,13 @@ Entry entry_of(std::string_view text, std::span<const VP::Usage> usages) {
   return entry;
 }
 
+// What a press or a line opens: the menu whose items show, none for the names alone, at a
+// corner; with none, where they show, or the area's top left as the frame lays it out.
+struct Opening {
+  std::string menu;
+  std::optional<glm::ivec2> corner;
+};
+
 // Each row an item of a menu, in the order they come.
 std::vector<Entry> entries_of(std::string_view text, std::span<const VP::Usage> usages) {
   std::vector<Entry> entries;
@@ -70,71 +78,102 @@ std::vector<Entry> entries_of(std::string_view text, std::span<const VP::Usage> 
 }
 
 // The menus menu.ini gives, a line an item, so a menu does nothing a typed line cannot
-// (V06) and a person changes it in a file. It hands on a menu a name, as names, whose
-// press opens it, and the items of the one open, as items, whose press types the item's
-// line into the node its line param names, as the terminal, and sends it there, so the
-// line goes where a typed one goes and what it answers shows there; one whose line wants
-// a word, marked ..., is begun there instead, completed up to the word, which the person
-// types, and keeps the focus. While a menu is open it holds the pointer, so nothing under
-// its items takes a press, and the focus, so escape shuts it; a press anywhere but on
-// another name shuts it too, giving the focus back. A change takes effect the next frame,
-// as the focus does, so a press on an item reaches its hit before the items go. The file
-// is read again once it changes; a mistake in it stops the node, naming the line (A02).
+// (V06) and a person changes it in a file. A right press in its area opens them there, as
+// a column of names, which it hands on as names, and the place they drop below as at; a
+// press on a name opens that menu's items beside it, which it hands on as items, and a
+// press on an item types the item's line into the node its line param names, as the
+// terminal, and sends it there, so the line goes where a typed one goes and what it
+// answers shows there; one whose line wants a word, marked ..., is begun there instead,
+// completed up to the word, which the person types, and keeps the focus. While it shows
+// it holds the pointer, so nothing under it takes a press, and the focus, so escape shuts
+// it; a press anywhere but on a name or an item shuts it too, giving the focus back, and
+// a right press in its area opens it there anew. A change takes effect the next frame, as
+// the focus does, so a press on an item reaches its hit before the items go. The file is
+// read again once it changes; a mistake in it stops the node, naming the line (A02).
 class Menus final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _menu = node.command("menu [<value>...]",
-                         "opens a menu of menu.ini, its items below its name; with an "
+                         "opens a menu of menu.ini, its items beside its name; with an "
                          "item after it, types the item's line into the terminal and "
                          "sends it, or begins it there when it wants a word; with none, "
-                         "shuts the menu open");
+                         "shuts the menus");
     _name = node.name();
     _line = node.param<std::string>("line");
     _file = node.file(menu_file);
     _typed = &node.input<VP_VIEW::Typed>("typed");
+    _area = &node.input<VP_VIEW::Rect>("area");
     _names = &node.output<VP_VIEW::Items>("names");
     _items = &node.output<VP_VIEW::Items>("items");
+    _at = &node.output<VP_VIEW::Rect>("at");
     _written = false;
   }
 
   void cook(VP::Cook &frame) override {
-    const std::string_view text = frame.files().text(_file);
-    if (!_read || text != *_read) {
-      _entries = entries_of(text, frame.commands().usages());
-      _read.emplace(text);
-      _written = false;
-    }
-    // A press on another name both shuts this one and opens that one: the name wins.
+    read(frame.files(), frame.commands());
+    // A press on a name both shuts the menus and opens that one: the name wins.
     if (_next)
       open(frame, *std::exchange(_next, std::nullopt));
     else if (_shutting)
-      open(frame, {});
+      shut(frame);
     _shutting = false;
-    if (!_open.empty())
-      hold(frame);
+    follow(frame);
+    *_at = _shown ? VP_VIEW::Rect{.offset = _corner, .extent = {1, 0}} : VP_VIEW::Rect{};
     if (!_written)
       write();
   }
 
-  // Shut with none, giving the focus back unless an item began a line.
-  void open(VP::Cook &frame, std::string menu) {
-    if (menu == _open)
+  // As it changed, or for a line before the first frame, as a script's, once every
+  // command it names has registered.
+  void read(VP::FilePort &files, VP::CommandPort &commands) {
+    const std::string_view text = files.text(_file);
+    if (_read && text == *_read)
       return;
-    if (_open.empty()) {
-      _returning = _typed->focus;
-      _begun = false;
-      frame.commands().send(std::format("focus {}", _name));
-    } else if (menu.empty() && !std::exchange(_begun, false)) {
-      frame.commands().send(std::format("focus {}", _returning));
-    }
-    _open = std::move(menu);
+    _entries = entries_of(text, commands.usages());
+    _read.emplace(text);
     _written = false;
   }
 
-  // As it holds the pointer, every press reaches it, and its own names' hit too.
-  void hold(VP::Cook &frame) {
-    frame.hold_pointer();
-    for (const VP::Event &event : frame.input().events())
-      _shutting = _shutting || (event.kind == VP::Event::Kind::button && event.down);
+  // Shown at the corner given, with the menu named open, or none.
+  void open(VP::Cook &frame, Opening opening) {
+    if (!_shown) {
+      _returning = _typed->focus;
+      _begun = false;
+      frame.commands().send(std::format("focus {}", _name));
+    }
+    _corner = opening.corner.value_or(_shown ? _corner : _area->offset);
+    _shown = true;
+    _open = std::move(opening.menu);
+    _written = false;
+  }
+
+  // Gives the focus back unless an item began a line.
+  void shut(VP::Cook &frame) {
+    if (!_shown)
+      return;
+    if (!std::exchange(_begun, false))
+      frame.commands().send(std::format("focus {}", _returning));
+    _shown = false;
+    _open.clear();
+    _written = false;
+  }
+
+  // While shut, a right press in the area opens it there. While it shows it holds the
+  // pointer, so every press reaches it, and its own hits too: a press shuts it, as its
+  // hits send what a name or an item does, which wins; a right press in the area opens it
+  // anew there, and escape shuts it.
+  void follow(VP::Cook &frame) {
+    if (_shown)
+      frame.hold_pointer();
+    for (const VP::Event &event : frame.input().events()) {
+      if (event.kind == VP::Event::Kind::pointer)
+        _pointer = event.at;
+      if (event.kind != VP::Event::Kind::button || !event.down)
+        continue;
+      if (event.name == "right" && VP_VIEW::contains(*_area, _pointer))
+        _next.emplace(Opening{.corner = glm::ivec2(_pointer)});
+      else if (_shown)
+        _shutting = true;
+    }
     for (const VP::Event &event : _typed->to(_name))
       _shutting = _shutting || (event.kind == VP::Event::Kind::key && event.down &&
                                 event.name == "escape");
@@ -145,12 +184,14 @@ class Menus final : public VP::Operator {
     _written = true;
     _names->clear();
     _items->clear();
+    if (!_shown)
+      return;
     for (const Entry &entry : _entries) {
       if (std::ranges::none_of(*_names, [&](const VP_VIEW::Item &named) {
             return named.label == entry.menu;
           }))
         _names->push_back({.label = entry.menu,
-                           .command = entry.menu == _open ? "menu" : "menu " + entry.menu,
+                           .command = "menu " + entry.menu,
                            .current = entry.menu == _open});
       if (entry.menu == _open)
         _items->push_back(
@@ -161,13 +202,15 @@ class Menus final : public VP::Operator {
 
   // An item types its line as a person would, in the terminal, so the line shows there,
   // its history keeps it and its view is the current one: enter sends it, and Tab
-  // finishes the words a line that wants one has, a blank after them.
+  // finishes the words a line that wants one has, a blank after them. A line opening a
+  // menu while the menus are shut shows them at the area's top left.
   void command(VP::Call &call) override {
     if (!call.is(_menu))
       return;
+    read(call.files(), call.commands());
     const std::span<const std::string_view> words = call.arguments();
     if (words.empty()) {
-      _next.emplace();
+      _shutting = true;
       return;
     }
     const auto named = [&](const Entry &entry) { return entry.menu == words.front(); };
@@ -175,7 +218,7 @@ class Menus final : public VP::Operator {
       throw std::runtime_error(std::format(
           "no menu is named {}; {} gives {}", words.front(), menu_file, menus()));
     if (words.size() == 1) {
-      _next.emplace(words.front());
+      _next.emplace(Opening{.menu = std::string(words.front())});
       return;
     }
     std::string item(words[1]);
@@ -193,13 +236,14 @@ class Menus final : public VP::Operator {
     call.commands().send(std::format("input key down {}", key));
     call.commands().send(std::format("input key up {}", key));
     _begun = entry->wants;
-    _next.emplace();
+    _shutting = true;
   }
 
   std::string menus() const {
     std::string menus;
-    for (const VP_VIEW::Item &named : *_names)
-      menus += std::format("{}{}", menus.empty() ? "" : ", ", named.label);
+    for (const Entry &entry : _entries)
+      if (menus.find(entry.menu) == std::string::npos)
+        menus += std::format("{}{}", menus.empty() ? "" : ", ", entry.menu);
     return menus;
   }
 
@@ -210,14 +254,19 @@ class Menus final : public VP::Operator {
   std::optional<std::string> _read; // the file the entries are from
   std::vector<Entry> _entries;
   const VP_VIEW::Typed *_typed = nullptr;
+  const VP_VIEW::Rect *_area = nullptr; // where a right press opens the menus
   VP_VIEW::Items *_names = nullptr;
   VP_VIEW::Items *_items = nullptr;
-  std::string _open;                // the menu open; empty for none
-  std::optional<std::string> _next; // the menu a line opened, for the next frame
-  bool _shutting = false;           // a press or escape, which shuts it the next frame
-  bool _begun = false;              // an item began a line, which keeps the focus
-  std::string _returning;           // the node in focus as it opened
-  bool _written = false;            // the names and items are as the above say
+  VP_VIEW::Rect *_at = nullptr;
+  bool _shown = false;               // the names show, below the corner
+  glm::ivec2 _corner{};              // where they were opened
+  std::string _open;                 // the menu whose items show; empty for none
+  std::optional<Opening> _next;      // what a press or a line opened, for the next frame
+  bool _shutting = false;            // a press or escape, which shuts it the next frame
+  bool _begun = false;               // an item began a line, which keeps the focus
+  std::string _returning;            // the node in focus as the menus opened
+  glm::vec2 _pointer{};              // as the events so far left it
+  bool _written = false;             // the names and items are as the above say
 };
 
 } // namespace
