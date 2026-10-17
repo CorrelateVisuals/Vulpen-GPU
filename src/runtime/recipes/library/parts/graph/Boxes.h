@@ -92,6 +92,9 @@ struct Boxes {
   std::vector<Box> boxes;
   std::vector<BoxRow> rows;
   std::vector<End> ends;
+  // By end, the relations its curve stands for, where the relations handed in hold them;
+  // none for a connection's.
+  std::vector<std::vector<std::size_t>> told;
   std::size_t frame = no_box; // the box of the node whose inside shows, framing the rest
 };
 
@@ -276,7 +279,9 @@ void relate(Boxes &boxes,
             Building &building,
             std::span<const VP_VIEW::Relation> relations,
             std::size_t wires) {
-  for (const VP_VIEW::Relation &relation : relations) {
+  boxes.told.resize(boxes.ends.size());
+  for (std::size_t told = 0; told < relations.size(); ++told) {
+    const VP_VIEW::Relation &relation = relations[told];
     if (!shows(building, relation.layer))
       continue;
     std::vector<std::size_t> froms = boxes_showing(building, relation.from);
@@ -314,11 +319,18 @@ void relate(Boxes &boxes,
                       .to = to,
                       .to_row = to_row,
                       .layer = relation.layer};
-        if (from != to && std::ranges::none_of(boxes.ends, [&](const End &other) {
-              return other.wire == end.wire && other.from == from && other.to == to &&
-                     other.to_row == to_row && other.from_row == from_row;
-            }))
+        if (from == to)
+          continue;
+        auto same = std::ranges::find_if(boxes.ends, [&](const End &other) {
+          return other.wire == end.wire && other.from == from && other.to == to &&
+                 other.to_row == to_row && other.from_row == from_row;
+        });
+        if (same == boxes.ends.end()) {
           boxes.ends.push_back(end);
+          boxes.told.emplace_back();
+          same = boxes.ends.end() - 1;
+        }
+        boxes.told[static_cast<std::size_t>(same - boxes.ends.begin())].push_back(told);
       }
   }
 }

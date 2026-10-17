@@ -1,3 +1,31 @@
-# The tooltip component: list, rects and glyphs showing the help of the Item under the
-# pointer. An overlay, not a panel: a tip covers what it floats over, so the dock never
-# seats it.
+# The tooltip component: list, rects and glyphs showing the rows a part hands it, a row an
+# Item, in the Rect it gives, over a framed fill. An overlay, not a panel: a tip covers
+# what it floats over, so the dock never seats it, and its host lists it after what it
+# covers, so it draws over it. The host connects the rows to list.items, where they
+# show to list.place, the font's metrics to list.font, the theme to rects and glyphs, and
+# the font and its atlas to glyphs.
+[manifest]
+version = 1
+
+[node "tooltip"]
+
+[node "tooltip.list"]
+recipe = list
+
+[node "tooltip.rects"]
+recipe = rects
+
+[node "tooltip.glyphs"]
+recipe = glyphs
+
+[connection "rects"]
+from = tooltip.list.rects
+to   = tooltip.rects.rects
+
+[connection "labels"]
+from = tooltip.list.labels
+to   = tooltip.glyphs.labels
+
+[connection "characters"]
+from = tooltip.list.characters
+to   = tooltip.glyphs.characters

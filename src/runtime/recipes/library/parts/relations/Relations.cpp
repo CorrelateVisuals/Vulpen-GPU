@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -136,38 +137,55 @@ void define(std::string_view text,
   }
 }
 
+// Where a line's relation goes, by the layer it is drawn in, and what in the line names
+// it.
+using Add = std::function<void(std::string, VP_VIEW::Layer, std::string_view)>;
+
 // The relations one line of a file says, by the file's language.
 void line_relations(Listed &listed,
                     const std::filesystem::path &folder,
                     Language language,
                     std::string_view line,
-                    const std::function<void(std::string, VP_VIEW::Layer)> &add);
+                    const Add &add);
 
-// What a file links to: the files and folders its lines name, by its language, and the
-// documents defining the ids it cites. Itself it never links to.
+// The documents defining the ids a line cites.
+void cite(std::string_view line,
+          const std::map<std::string, std::string, std::less<>> &ids,
+          const Add &add) {
+  for (std::size_t at = 0; at < line.size(); ++at)
+    if (const std::size_t length = id_length(line, at);
+        length > 0 && (at == 0 || !std::isalnum(static_cast<unsigned char>(line[at - 1])))) {
+      if (const auto found = ids.find(line.substr(at, length)); found != ids.end())
+        add(found->second, VP_VIEW::Layer::docs, line.substr(at, length));
+      at += length;
+    }
+}
+
+// What a file links to, line by line: the files and folders its lines name, by its
+// language, and the documents defining the ids it cites. Itself it never links to.
 void find(Listed &listed,
           const std::filesystem::path &file,
           std::string_view text,
           const std::map<std::string, std::string, std::less<>> &ids,
           std::vector<VP_VIEW::Relation> &relations) {
   const std::string from = file.generic_string();
-  const auto add = [&](std::string to, VP_VIEW::Layer layer) {
+  std::uint32_t line = 0;
+  const Add add = [&](std::string to, VP_VIEW::Layer layer, std::string_view said) {
     if (!to.empty() && to != from)
-      relations.push_back({.from = from, .to = std::move(to), .layer = layer});
+      relations.push_back({.from = from,
+                           .to = std::move(to),
+                           .layer = layer,
+                           .line = line,
+                           .said = std::string(said)});
   };
   const Language language = language_of(file);
   for (std::size_t at = 0; at < text.size();) {
     const std::size_t end = std::min(text.find('\n', at), text.size());
+    ++line;
     line_relations(listed, file.parent_path(), language, text.substr(at, end - at), add);
+    cite(text.substr(at, end - at), ids, add);
     at = end + 1;
   }
-  for (std::size_t at = 0; at < text.size(); ++at)
-    if (const std::size_t length = id_length(text, at);
-        length > 0 && (at == 0 || !std::isalnum(static_cast<unsigned char>(text[at - 1])))) {
-      if (const auto found = ids.find(text.substr(at, length)); found != ids.end())
-        add(found->second, VP_VIEW::Layer::docs);
-      at += length;
-    }
 }
 
 // A Python module as a path: a.b as a/b, its leading dots counting folders up from the
@@ -201,7 +219,7 @@ std::string recipe(Listed &listed, const std::filesystem::path &folder, std::str
 void cmake_line(Listed &listed,
                 const std::filesystem::path &folder,
                 std::string_view line,
-                const std::function<void(std::string, VP_VIEW::Layer)> &add) {
+                const Add &add) {
   constexpr std::string_view breaks = " \t\r()\"";
   for (std::size_t at = line.find_first_not_of(breaks); at != std::string_view::npos;) {
     const std::size_t end = std::min(line.find_first_of(breaks, at), line.size());
@@ -212,7 +230,7 @@ void cmake_line(Listed &listed,
       word.remove_prefix(1);
     if (!word.starts_with('-') && word.find_first_of("$<>#") == std::string_view::npos &&
         word.find_first_of("./") != std::string_view::npos)
-      add(resolved(listed, folder, word, true), VP_VIEW::Layer::build);
+      add(resolved(listed, folder, word, true), VP_VIEW::Layer::build, word);
     at = line.find_first_not_of(breaks, end);
   }
 }
@@ -222,7 +240,7 @@ void cmake_line(Listed &listed,
 void markdown_line(Listed &listed,
                    const std::filesystem::path &folder,
                    std::string_view line,
-                   const std::function<void(std::string, VP_VIEW::Layer)> &add) {
+                   const Add &add) {
   for (std::size_t at = line.find("]("); at != std::string_view::npos;
        at = line.find("](", at + 2)) {
     const std::size_t end = line.find(')', at + 2);
@@ -231,7 +249,7 @@ void markdown_line(Listed &listed,
     std::string_view target = line.substr(at + 2, end - at - 2);
     target = target.substr(0, target.find('#'));
     if (!target.starts_with("http") && !target.starts_with("mailto:"))
-      add(resolved(listed, folder, target, false), VP_VIEW::Layer::docs);
+      add(resolved(listed, folder, target, false), VP_VIEW::Layer::docs, target);
   }
 }
 
@@ -239,29 +257,32 @@ void line_relations(Listed &listed,
                     const std::filesystem::path &folder,
                     Language language,
                     std::string_view line,
-                    const std::function<void(std::string, VP_VIEW::Layer)> &add) {
+                    const Add &add) {
   const std::string_view said = trim(line);
   const auto after = [&](std::string_view start) {
     return said.starts_with(start) ? trim(said.substr(start.size())) : std::string_view();
   };
   if (language == Language::code && said.starts_with("#include")) {
     const std::string_view name = after("#include");
-    if (name.starts_with('"'))
-      add(resolved(listed, folder, name.substr(1, name.find('"', 1) - 1), true),
-          VP_VIEW::Layer::code);
+    if (name.starts_with('"')) {
+      const std::string_view included = name.substr(1, name.find('"', 1) - 1);
+      add(resolved(listed, folder, included, true), VP_VIEW::Layer::code, included);
+    }
   } else if (language == Language::python && (said.starts_with("import ") ||
                                               said.starts_with("from "))) {
     const std::string_view names = said.starts_with("from ") ? after("from") : after("import");
-    add(module(listed, folder, names.substr(0, names.find_first_of(" ,"))),
-        VP_VIEW::Layer::code);
+    const std::string_view imported = names.substr(0, names.find_first_of(" ,"));
+    add(module(listed, folder, imported), VP_VIEW::Layer::code, imported);
   } else if (language == Language::shell && (said.starts_with("source ") ||
                                              said.starts_with(". "))) {
     std::string_view name = said.starts_with(". ") ? after(".") : after("source");
     name = name.substr(0, name.find_first_of(blanks));
-    add(resolved(listed, folder, name, false), VP_VIEW::Layer::code);
+    add(resolved(listed, folder, name, false), VP_VIEW::Layer::code, name);
   } else if (language == Language::manifest && said.starts_with("recipe")) {
-    if (const std::size_t equals = said.find('='); equals != std::string_view::npos)
-      add(recipe(listed, folder, trim(said.substr(equals + 1))), VP_VIEW::Layer::structure);
+    if (const std::size_t equals = said.find('='); equals != std::string_view::npos) {
+      const std::string_view used = trim(said.substr(equals + 1));
+      add(recipe(listed, folder, used), VP_VIEW::Layer::structure, used);
+    }
   } else if (language == Language::cmake) {
     cmake_line(listed, folder, said.substr(0, said.find('#')), add);
   } else if (language == Language::markdown) {
@@ -436,8 +457,9 @@ void Relations::publish_tree() {
   ++_relations->changes;
 }
 
-// The reading handed to the graph, if it changed anything; what it read, and in how many
-// frames, goes to the log at debug, so a person sees what a folder costs (C03, C09).
+// The reading handed to the graph, if it changed anything, a relation once however many
+// lines of its file say it, at the first; what it read, and in how many frames, goes to
+// the log at debug, so a person sees what a folder costs (C03, C09).
 void Relations::publish(VP::Cook &frame) {
   _reading = false;
   // A folder shows its repository, so what lies past its top, as the system's files a
@@ -449,7 +471,14 @@ void Relations::publish(VP::Cook &frame) {
       return within.empty() || *within.begin() == "..";
     });
   std::ranges::sort(_found);
-  _found.erase(std::ranges::unique(_found).begin(), _found.end());
+  _found.erase(std::ranges::unique(_found,
+                                   {},
+                                   [](const VP_VIEW::Relation &relation) {
+                                     return std::tie(
+                                         relation.from, relation.to, relation.layer);
+                                   })
+                   .begin(),
+               _found.end());
   frame.log(VP::Level::debug,
             std::format("read {} files and {} folders of {}, {} KB in {} frames, "
                         "finding {} relations",

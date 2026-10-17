@@ -84,7 +84,9 @@ struct Under {
 // inside it need, and its corners show while the pointer is over it. The box selected
 // or pressed last shows over the others, hiding the boxes and the rows behind it. With
 // shift, a drag on the ground draws a select box, and letting go adds every box it
-// touches to the selection.
+// touches to the selection. The curve under the pointer, where no box lies, shows over
+// the others, brighter, and its details, a connection's ends or the lines that say the
+// relations it stands for, go as rows to a tooltip beside the pointer.
 // It owns the selection, of nodes and of the views the view shown hosts, which select and
 // selected reach as lines do (V06), and which delete or backspace removes as node remove
 // and view close do, and takes keys from the keys part while it has the focus, which a
@@ -137,6 +139,12 @@ private:
                  std::span<const VP_VIEW::Rect> over,
                  Labels &written) const;
   void write_curves(VP::Cook &frame);
+  void write_tip();
+  void tell_connection(const End &end);
+  void tell_relations(std::size_t end);
+  // The curve nearest a point on screen, near enough, where no box lies; none while a
+  // drag goes on.
+  std::size_t curve_under(glm::vec2 point) const;
   float corner(std::span<const Waypoint> way, std::size_t at) const;
   // Where a place of the graph shows this frame, in pixels from the window's top left.
   glm::vec2 on_screen(glm::vec2 at) const;
@@ -176,6 +184,11 @@ private:
   VP::Upload<VP_VIEW::Curve> _curves;
   VP_VIEW::Items *_tabs = nullptr;
   VP_VIEW::Items *_buttons = nullptr; // a layer each, along the graph's bottom edge
+  // The details of the curve under the pointer, a row an Item, and where they show.
+  VP_VIEW::Items *_tip = nullptr;
+  VP_VIEW::Rect *_tip_place = nullptr;
+  std::size_t _hovered_end = no_box;
+  std::filesystem::path _base; // where the paths of the boxes built are named from
   Shown _layers = every_layer;        // as its relations param names them
   std::string _shown; // the view the tab names; empty for the one vulpen started with
   // The boxes of the view shown, built again only when the views they were built from

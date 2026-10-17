@@ -21,11 +21,15 @@ inline constexpr auto layer_names =
     std::to_array<std::string_view>({"flow", "structure", "code", "build", "docs"});
 
 // From the file that says it to the file or folder it names, by absolute path, so a
-// relation reaching past the folder shown keeps both ends.
+// relation reaching past the folder shown keeps both ends; and where the file says it,
+// its line, counted from 1, and what there names the other, as an include's name, a
+// cited id or a link's target, which the graph shows a developer.
 struct Relation {
   std::string from;
   std::string to;
   Layer layer = Layer::code;
+  std::uint32_t line = 0;
+  std::string said;
 
   auto operator<=>(const Relation &) const = default;
 };

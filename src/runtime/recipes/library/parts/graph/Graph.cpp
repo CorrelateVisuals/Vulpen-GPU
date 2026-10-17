@@ -49,6 +49,12 @@ constexpr std::array<std::uint32_t, VP_VIEW::layer_names.size()> layer_roles{
     VP_VIEW::role("number"),
     VP_VIEW::role("string")};
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
+// How near the pointer comes to a curve, in pixels, to be over it; the pieces a bend is
+// measured in; and the rows a tip shows, at most, the last saying how many more there
+// are.
+constexpr float curve_reach = 4.0f;
+constexpr std::size_t bend_pieces = 16;
+constexpr std::size_t tip_rows = 16;
 // A corner a drag pulls: how far in from it a press takes it, and its mark's arms, in
 // pixels, never past a quarter of the box, so a small box still moves.
 constexpr float corner_reach = 8.0f;
@@ -130,6 +136,8 @@ void Graph::bind(VP::Bind &node) {
   _layers = node.sets("relations") ? layers_of(node.param<std::string>("relations"))
                                    : every_layer;
   _buttons = &node.output<VP_VIEW::Items>("layers");
+  _tip = &node.output<VP_VIEW::Items>("tip");
+  _tip_place = &node.output<VP_VIEW::Rect>("tip-place");
   buttons(*_buttons, _layers, _view, _name);
   _select = node.command("select [<node>...]",
                          "selects nodes of the view the graph shows, or views it hosts, "
@@ -193,10 +201,13 @@ void Graph::cook(VP::Cook &frame) {
   frame.set(_zoom, _pan_zoom.zoom);
   if (room) {
     _hovered = under(_pointer);
+    _hovered_end = curve_under(_pointer);
     write(frame, cell);
+    write_tip();
     return;
   }
   // No room, no work: nothing written draws nothing.
+  _tip->clear();
   frame.write(_ground, 0);
   frame.write(_rects, 0);
   frame.write(_labels, 0);
@@ -312,14 +323,16 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
   _built_layers = _layers;
   _built_hosted = _hosted;
   _boxes = {};
+  _hovered_end = no_box;
   if (edited && flat && (folder.empty() || !flat->nodes.empty())) {
+    _base = folder.empty() ? edited->file.parent_path()
+                           : std::filesystem::path(folder).parent_path();
     _boxes = boxes_of(*edited,
                       *flat,
                       folder.empty() ? _inside : flat->nodes.front().name,
                       _relations->relations,
                       _hosted,
-                      folder.empty() ? edited->file.parent_path()
-                                     : std::filesystem::path(folder).parent_path(),
+                      _base,
                       !folder.empty(),
                       _layers);
   }
@@ -979,9 +992,15 @@ void Graph::write_curves(VP::Cook &frame) {
   };
   const std::span<const Waypoint> waypoints = _layout.waypoints();
   const std::span<const Route> routes = _layout.routes();
-  for (std::size_t end = 0; end < routes.size(); ++end) {
+  // The curve under the pointer last, so it shows over the others, in the text's color.
+  for (std::size_t drawn = 0; drawn <= routes.size(); ++drawn) {
+    const std::size_t end = drawn < routes.size() ? drawn : _hovered_end;
+    if (end >= routes.size() || (drawn < routes.size() && end == _hovered_end))
+      continue;
     const Route &route = routes[end];
-    role = layer_roles[static_cast<std::size_t>(_boxes.ends[end].layer)];
+    role = end == _hovered_end
+               ? VP_VIEW::role("text")
+               : layer_roles[static_cast<std::size_t>(_boxes.ends[end].layer)];
     const std::span<const Waypoint> way = waypoints.subspan(route.first, route.count);
     for (std::size_t at = 0; at + 1 < way.size(); ++at) {
       const glm::vec2 from = on_screen(way[at].at);
@@ -1005,6 +1024,131 @@ void Graph::write_curves(VP::Cook &frame) {
     }
   }
   frame.write(_curves, written);
+}
+
+// Measured as drawn, along its lines, and along a bend in pieces; the curve drawn last
+// wins a tie, as it shows over the others.
+std::size_t Graph::curve_under(glm::vec2 point) const {
+  if (_hovered.box != no_box || _grab || _dragging || _select_from || !inside(*_area, point))
+    return no_box;
+  const auto away = [&](glm::vec2 from, glm::vec2 to) {
+    const glm::vec2 along = to - from;
+    const float length = glm::dot(along, along);
+    const float t =
+        length > 0.0f ? std::clamp(glm::dot(point - from, along) / length, 0.0f, 1.0f) : 0.0f;
+    return glm::length(point - (from + along * t));
+  };
+  std::size_t nearest = no_box;
+  float least = curve_reach;
+  const std::span<const Waypoint> waypoints = _layout.waypoints();
+  const std::span<const Route> routes = _layout.routes();
+  for (std::size_t end = 0; end < routes.size(); ++end) {
+    const std::span<const Waypoint> way =
+        waypoints.subspan(routes[end].first, routes[end].count);
+    for (std::size_t at = 0; at + 1 < way.size(); ++at) {
+      const glm::vec2 from = on_screen(way[at].at);
+      const glm::vec2 to = on_screen(way[at + 1].at);
+      // A bend's handles, as write_curves gives them.
+      const glm::vec2 reach{std::max(std::abs(to.x - from.x) / 2.0f, least_reach), 0.0f};
+      glm::vec2 before = from;
+      for (std::size_t piece = 1; piece <= (way[at].bends ? bend_pieces : 1); ++piece) {
+        const float t = static_cast<float>(piece) /
+                        static_cast<float>(way[at].bends ? bend_pieces : 1);
+        const float s = 1.0f - t;
+        const glm::vec2 next = way[at].bends ? s * s * s * from +
+                                                   3.0f * s * s * t * (from + reach) +
+                                                   3.0f * s * t * t * (to - reach) +
+                                                   t * t * t * to
+                                             : to;
+        if (const float distance = away(before, next); distance <= least) {
+          least = distance;
+          nearest = end;
+        }
+        before = next;
+      }
+    }
+  }
+  return nearest;
+}
+
+// The rows of the curve under the pointer, at the font's own size, beside the pointer,
+// below it and to its right, or where that leaves the area, above it or to its left, and
+// kept inside the area.
+void Graph::write_tip() {
+  _tip->clear();
+  *_tip_place = {};
+  if (_hovered_end >= _boxes.ends.size() || !_built_flat)
+    return;
+  if (const End &end = _boxes.ends[_hovered_end]; end.layer == VP_VIEW::Layer::flow)
+    tell_connection(end);
+  else
+    tell_relations(_hovered_end);
+  const glm::ivec2 cell(_font->cell);
+  std::size_t widest = 0;
+  for (const VP_VIEW::Item &row : *_tip)
+    widest = std::max(widest, row.label.size());
+  const glm::ivec2 pointer(glm::round(_pointer));
+  const glm::ivec2 low = _area->offset + cell;
+  const glm::ivec2 high = _area->offset + glm::ivec2(_area->extent) - cell;
+  // As wide as its widest row, or the area, which cuts the rows past it.
+  const glm::ivec2 size(
+      std::min(static_cast<std::int32_t>(widest) * cell.x, std::max(high.x - low.x, 0)),
+      static_cast<std::int32_t>(_tip->size()) * cell.y);
+  glm::ivec2 at = pointer + glm::ivec2(2 * cell.x, cell.y);
+  if (at.x + size.x > high.x)
+    at.x = pointer.x - 2 * cell.x - size.x;
+  if (at.y + size.y > high.y)
+    at.y = pointer.y - cell.y - size.y;
+  at = glm::max(at, low);
+  *_tip_place = {.offset = at, .extent = glm::uvec2(size)};
+}
+
+// A connection's name, its writer and its readers, as the manifest names them.
+void Graph::tell_connection(const End &end) {
+  if (end.wire >= _built_flat->connections.size())
+    return;
+  const VP::Connection &connection = _built_flat->connections[end.wire];
+  _tip->push_back({.label = std::format("connection {}", connection.name)});
+  _tip->push_back({.label = std::format("from {}", connection.from.text())});
+  for (const VP::Endpoint &reader : connection.to)
+    _tip->push_back({.label = std::format("to {}", reader.text())});
+  if (_tip->size() > tip_rows) {
+    const std::size_t more = _tip->size() - tip_rows + 1;
+    _tip->resize(tip_rows - 1);
+    _tip->push_back({.label = std::format("and {} more", more)});
+  }
+}
+
+// What a relation's curve stands for: its layer and its ends, then each relation, where
+// its file says it, from where the graph names paths, and what says it there.
+void Graph::tell_relations(std::size_t end) {
+  const End &told = _boxes.ends[end];
+  const auto title = [&](std::size_t box, std::size_t row) {
+    return row == title_row ? _boxes.boxes[box].title
+                            : rows_in(_boxes, box)[row].text +
+                                  rows_in(_boxes, box)[row].written;
+  };
+  _tip->push_back({.label = std::format("{}: {} to {}",
+                                        VP_VIEW::layer_names[static_cast<std::size_t>(
+                                            told.layer)],
+                                        title(told.from, told.from_row),
+                                        title(told.to, told.to_row))});
+  const std::vector<std::size_t> &relations = _boxes.told[end];
+  for (std::size_t at = 0; at < relations.size(); ++at) {
+    if (_tip->size() == tip_rows - 1 && at + 1 < relations.size()) {
+      _tip->push_back({.label = std::format("and {} more", relations.size() - at)});
+      return;
+    }
+    if (relations[at] >= _relations->relations.size())
+      continue;
+    const VP_VIEW::Relation &relation = _relations->relations[relations[at]];
+    _tip->push_back(
+        {.label = std::format(
+             "{}:{} {}",
+             std::filesystem::path(relation.from).lexically_proximate(_base).generic_string(),
+             relation.line,
+             relation.said)});
+  }
 }
 
 // The radius of the corner a curve turns at a waypoint, on screen: none at its ends,

@@ -2,11 +2,13 @@
 # graph shows; a bar, which keeps a row along the bottom of the Rect its host gives for a
 # button a layer of curves, and the rest for the graph part, which draws its ground; over
 # it curves, rects and glyphs: its curves first, then its boxes over them, then their
-# names; and the buttons, as a panel shows its tabs, a list with rects and glyphs of its
-# own and a hit, whose press sends the line turning a layer on or off.
-# The host connects a Rect to bar.area, the font's metrics to bar.font, graph.font and
-# buttons.font, the keys part's typed to graph.typed, the theme to the graph and the five
-# drawing parts, and the font and its atlas to the two glyphs; a panel shows graph.tabs.
+# names; the buttons, as a panel shows its tabs, a list with rects and glyphs of its own
+# and a hit, whose press sends the line turning a layer on or off; and last, over all of
+# it, a tooltip, which shows the details of the curve under the pointer.
+# The host connects a Rect to bar.area, the font's metrics to bar.font, graph.font,
+# buttons.font and tip.list.font, the keys part's typed to graph.typed, the theme to the
+# graph and the seven drawing parts, and the font and its atlas to the three glyphs; a
+# panel shows graph.tabs.
 [manifest]
 version = 1
 
@@ -43,6 +45,9 @@ recipe = glyphs
 
 [node "graph-editor.hit"]
 recipe = hit
+
+[node "graph-editor.tip"]
+recipe = tooltip
 
 # What links the files shown, and the folder shown in place of the view.
 [connection "relations"]
@@ -105,3 +110,12 @@ to   = graph-editor.hit.rects
 [connection "marks"]
 from = graph-editor.buttons.marks
 to   = graph-editor.hit.marks
+
+# The details of the curve under the pointer, a row each, and where they show.
+[connection "tip"]
+from = graph-editor.graph.tip
+to   = graph-editor.tip.list.items
+
+[connection "tip-place"]
+from = graph-editor.graph.tip-place
+to   = graph-editor.tip.list.place
