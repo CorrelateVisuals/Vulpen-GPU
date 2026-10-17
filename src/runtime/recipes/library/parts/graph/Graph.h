@@ -13,6 +13,7 @@
 #include "shared/PanZoom.h"
 #include "Arranged.h"
 #include "Boxes.h"
+#include "Covered.h"
 #include "Layers.h"
 #include "Layout.h"
 
@@ -31,7 +32,8 @@
 namespace {
 
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
-// where it was then, and whether it has been dragged, or is a press let go where it was.
+// where it was then, none for a box a drag cannot move, which moves the graph instead,
+// and whether it has been dragged, or is a press let go where it was.
 struct Grab {
   std::size_t box = 0;
   glm::vec2 from{};
@@ -55,18 +57,21 @@ struct Grab {
 // line sets as a press does (V06). The manifest holds no places (V04), so the graph alone
 // lays it out: the boxes inside the frame, or those at the top, a column past every box
 // beside them they read from, down each column in the manifest's order. A box dragged
-// stays where it is put, and the first drag places every box where it shows, so a change
-// to the graph moves none; the boxes placed are a look at the graph, not its plumbing, so
-// they go in .vulpen/graph.ini beside the view's manifest, and a restart shows them as
-// they were left; so do the colors a person gives each kind of node there, which draw its
-// boxes' borders and names. The graph starts at home, as a view or a level is shown and
-// as h brings it there: unmoved at zoom 1 while every box shows whole there, else moved
-// and zoomed out until they all do. A drag on the ground moves the graph and the wheel
+// stays where it is put, the frame and what lies outside too, and the first drag places
+// every box where it shows, so a change to the graph moves none; the boxes placed are a
+// look at the graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's
+// manifest, and a restart shows them as they were left; so do the colors a person gives
+// each kind of node there, which draw its boxes' borders and names. The graph starts at
+// home, as a view or a level is shown and as h brings it there: unmoved at zoom 1 while
+// every box shows whole there, else moved and zoomed out until they all do. A drag on the
+// ground, or on the frame's inside, which shows the ground, moves the graph and the wheel
 // zooms it about the pointer, as the Perform panel's image moves, and neither is kept. A
 // press on a box selects it, shift adding it or taking it out, and opens the file of a
-// row that names one in the editor; a drag on a box selected moves every box selected.
-// With shift, a drag on the ground draws a select box, and letting go adds every box it
-// touches to the selection.
+// row that names one in the editor; a drag on a box selected moves every box selected,
+// and one on a box no line selects, as what lies outside, moves that box. The box
+// selected or pressed last shows over the others, hiding the boxes and the rows behind
+// it. With shift, a drag on the ground draws a select box, and letting go adds every box
+// it touches to the selection.
 // It owns the selection, of nodes and of the views the view shown hosts, which select and
 // selected reach as lines do (V06), and which delete or backspace removes as node remove
 // and view close do, and takes keys from the keys part while it has the focus, which a
@@ -111,6 +116,7 @@ private:
                  std::string_view row,
                  std::uint32_t role,
                  glm::uvec2 cell,
+                 std::span<const VP_VIEW::Rect> over,
                  Labels &written) const;
   void write_curves(VP::Cook &frame);
   float corner(std::span<const Waypoint> way, std::size_t at) const;
@@ -118,10 +124,15 @@ private:
   glm::vec2 on_screen(glm::vec2 at) const;
   // The middle of a box's port row, at its left edge or its right, on screen.
   glm::vec2 port_of(std::size_t box, std::size_t row, bool right) const;
-  // The box a press on it selects: its own, or that of the node whose recipe holds it.
-  std::size_t own_box(std::size_t box) const;
+  // The box drawn last over a point on screen, or none, for the ground.
+  std::size_t hit(glm::vec2 at) const;
+  // Drawn over the others from now on, until another is.
+  void raise(std::string_view name);
   std::optional<std::uint32_t> color_of(std::size_t box) const;
   VP_VIEW::Rect box(std::size_t at) const;
+  // What of a box hides what lies under it: all of it, or of a frame its rows, as the
+  // ground shows through below them.
+  VP_VIEW::Rect solid(std::size_t at) const;
   VP_VIEW::Rect select_box(glm::vec2 from) const;
 
   const VP_VIEW::Rect *_area = nullptr;
@@ -164,6 +175,13 @@ private:
   // graph shows it, as a script's does before the first frame.
   std::vector<std::string> _selection;
   std::string _selected_in;
+  // The boxes raised by a press or select, by name, the last over the others, the order
+  // the boxes are drawn in, and for each what of the boxes drawn after it hides it, kept
+  // so a frame allocates nothing for them.
+  std::vector<std::string> _raised;
+  std::vector<std::size_t> _order;
+  std::vector<VP_VIEW::Rect> _covers;
+  std::vector<VP_VIEW::Rect> _over;
   Arranged _arranged;
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over

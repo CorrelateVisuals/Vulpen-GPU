@@ -15,6 +15,7 @@ version = 1
 operator       = Graph
 file           = Arranged.h
 file           = Boxes.h
+file           = Covered.h
 file           = Graph.cpp
 file           = Graph.frag
 file           = Graph.glsl
