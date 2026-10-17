@@ -4,9 +4,11 @@
 #include <algorithm>
 #include <filesystem>
 #include <format>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -19,6 +21,24 @@ bool named(VP::FilePort &files, std::filesystem::path path) {
   const std::string name = path.filename().string();
   return std::ranges::find(names, name) != names.end() ||
          std::ranges::find(names, name + '/') != names.end();
+}
+
+// Whether a path names a folder, as its folder lists it with a / after its name.
+bool folder(VP::FilePort &files, std::filesystem::path path) {
+  if (path.filename().empty())
+    path = path.parent_path();
+  const std::vector<std::string> names = files.list(path.parent_path().string());
+  return std::ranges::find(names, path.filename().string() + '/') != names.end();
+}
+
+// A target of open's, <view>:<node>, while that view runs: the view and the node.
+std::optional<std::pair<std::string, std::string>> running(VP::Call &call,
+                                                           std::string_view target) {
+  const std::size_t colon = target.find(':');
+  if (colon == std::string_view::npos || !call.view(target.substr(0, colon)))
+    return std::nullopt;
+  return std::pair{std::string(target.substr(0, colon)),
+                   std::string(target.substr(colon + 1))};
 }
 
 // Where the view holds a file of that name, in a node's folder (RV08), as the prompt
@@ -37,19 +57,21 @@ std::string held(const VP::View &view, const std::string &name) {
 
 // The person's editor: open hands a file or a folder to the program its program param
 // names, or, while the view its window param names runs, a file to the editor there,
-// through that editor's file param, as a seam's drag sets a split's ratio. So open is one
-// command with one owner, whichever editor takes the file (V06).
+// through that editor's file param, as a seam's drag sets a split's ratio, and while the
+// view its graph param names runs, a folder to the graph there, through its folder param.
+// So open is one command with one owner, whichever takes the file or the folder (V06).
 class Editor final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _program = node.param<std::string>("program");
     // <view>:<node>, with no view for the one vulpen started with; unset, every file goes
-    // to the program.
+    // to the program, and every folder.
     _window = node.sets("window") ? node.param<std::string>("window") : std::string();
+    _graph = node.sets("graph") ? node.param<std::string>("graph") : std::string();
     _name = node.name();
     _open = node.command("open [<file>]",
-                         "opens a file in the editor in a window while one runs, else a "
-                         "file or a folder in the person's editor; with none, the view's "
-                         "manifest there, or its folder here");
+                         "opens a file in the editor in a window while one runs, and a "
+                         "folder in the graph there, else either in the person's editor; "
+                         "with none, the view's manifest there, or its folder here");
   }
 
   // A path that names nothing is refused, whichever editor takes it, so a misspelt one
@@ -63,9 +85,13 @@ class Editor final : public VP::Operator {
           path.string(),
           there.empty() ? "" : std::format("; the view holds {}", there)));
     }
-    const std::size_t colon = _window.find(':');
-    if (colon != std::string::npos && call.view(_window.substr(0, colon)))
-      in_window(call, _window.substr(0, colon), _window.substr(colon + 1));
+    const auto graph = running(call, _graph);
+    const auto window = running(call, _window);
+    if (graph && !call.arguments().empty() && folder(call.files(), call.arguments()[0]))
+      call.commands().send(std::format(
+          "{}: param set {} folder {}", graph->first, graph->second, call.arguments()[0]));
+    else if (window)
+      in_window(call, window->first, window->second);
     else
       in_program(call);
   }
@@ -102,6 +128,7 @@ class Editor final : public VP::Operator {
 
   std::string _program;
   std::string _window;
+  std::string _graph;
   std::string _name;
   VP::Command _open;
 };

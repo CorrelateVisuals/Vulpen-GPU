@@ -1,6 +1,7 @@
 #pragma once
 
 #include "contracts/Palette.h"
+#include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "Arranged.h"
 
@@ -113,10 +114,13 @@ std::size_t port_row(std::vector<std::string> &ports, std::string_view port) {
   return ports.size() - 1;
 }
 
-// The node its parent's name names, by the longest name of a node it is inside.
-std::size_t parent_of(const std::vector<VP::Node> &nodes, std::string_view name) {
-  for (std::size_t dot = name.rfind('.'); dot != std::string_view::npos;
-       dot = name.rfind('.', dot - 1)) {
+// The node its parent's name names, by the longest name of a node it is inside: the
+// names of a view's nodes join their folders by dots (RV08), and those of a folder's by /.
+std::size_t parent_of(const std::vector<VP::Node> &nodes,
+                      std::string_view name,
+                      char joins = '.') {
+  for (std::size_t dot = name.rfind(joins); dot != std::string_view::npos;
+       dot = name.rfind(joins, dot - 1)) {
     const auto found = std::ranges::find(nodes, name.substr(0, dot), &VP::Node::name);
     if (found != nodes.end())
       return static_cast<std::size_t>(found - nodes.begin());
@@ -126,10 +130,12 @@ std::size_t parent_of(const std::vector<VP::Node> &nodes, std::string_view name)
   return no_box;
 }
 
-// What the graph knows of the view's nodes while it builds the boxes: each node's parent,
-// the box showing it, and what lies outside the node whose inside shows, at the left,
-// where connections reach in from, and at the right, where they reach out to.
+// What the graph knows of the view's nodes while it builds the boxes: whether they are a
+// folder's, each node's parent, the box showing it, and what lies outside the node whose
+// inside shows, at the left, where connections reach in from, and at the right, where
+// they reach out to.
 struct Building {
+  bool folders = false;
   std::vector<std::size_t> parents;
   std::vector<std::size_t> box_of_node;
   std::array<std::size_t, 2> outside{no_box, no_box};
@@ -237,11 +243,12 @@ void list_rows(Boxes &boxes,
                             .role = VP_VIEW::role("muted"),
                             .opens = node_of.folder / manifest_name});
     for (std::size_t inner = 0; inner < flat.nodes.size() && box != boxes.frame; ++inner)
-      if (building.parents[inner] == at)
+      if (building.parents[inner] == at) {
+        const std::string held = flat.nodes[inner].name.substr(node_of.name.size() + 1);
         boxes.rows.push_back(
-            {.text = std::format("node {}",
-                                 flat.nodes[inner].name.substr(node_of.name.size() + 1)),
+            {.text = building.folders ? held + '/' : std::format("node {}", held),
              .role = VP_VIEW::role("muted")});
+      }
     for (const std::string &file : node_of.files)
       boxes.rows.push_back({.text = file, .opens = node_of.folder / file});
   }
@@ -263,17 +270,20 @@ std::size_t scope_of(const VP::View &flat,
              : no_box;
 }
 
-// The boxes of a view as it runs, each recipe a node uses unfolded, a level at a time:
-// with a scope that holds nodes, its box framing the boxes of the nodes inside it, and
-// beside it what lies outside it, as connections reach in at its left and out at its
-// right; with none, the boxes of the nodes at the top and of the views the view hosts, as
-// the view as edited names them. A node of the view as edited is its own; one a recipe
-// brings is not, nor the frame.
-Boxes boxes_of(const VP::View &edited, const VP::View &flat, std::string_view scope) {
+// The boxes of a view as it runs, each recipe a node uses unfolded, or of a folder, a
+// level at a time: with a scope that holds nodes, its box framing the boxes of the nodes
+// inside it, and beside it what lies outside it, as connections reach in at its left and
+// out at its right; with none, the boxes of the nodes at the top and of the views the
+// view hosts, as the view as edited names them. A node of the view as edited is its own;
+// one a recipe brings is not, nor the frame, nor a folder, which no line selects.
+Boxes boxes_of(const VP::View &edited,
+               const VP::View &flat,
+               std::string_view scope,
+               bool folders) {
   Boxes boxes;
-  Building building;
+  Building building{.folders = folders};
   for (const VP::Node &node : flat.nodes)
-    building.parents.push_back(parent_of(flat.nodes, node.name));
+    building.parents.push_back(parent_of(flat.nodes, node.name, folders ? '/' : '.'));
   building.box_of_node.assign(flat.nodes.size(), no_box);
   const std::size_t inside = scope_of(flat, building.parents, scope);
   const auto add = [&](std::size_t at, std::size_t parent) {
@@ -287,7 +297,7 @@ Boxes boxes_of(const VP::View &edited, const VP::View &flat, std::string_view sc
          .title = node.name.substr(past),
          .parent = parent,
          .kind = kind_of(node),
-         .own = (inside == no_box || parent != no_box) &&
+         .own = !folders && (inside == no_box || parent != no_box) &&
                 std::ranges::find(edited.nodes, node.name, &VP::Node::name) !=
                     edited.nodes.end(),
          .holds = std::ranges::find(building.parents, at) != building.parents.end()});
@@ -317,6 +327,44 @@ Boxes boxes_of(const VP::View &edited, const VP::View &flat, std::string_view sc
                   : nullptr);
   }
   return boxes;
+}
+
+// A folder as a view's nodes, so the graph shows it as it shows a view: a node a folder,
+// named by its path from the folder holding the one opened, joined by /, holding its
+// files as the file port lists them, the hidden ones, as .git, left out as a manifest
+// leaves them. Only the folder whose inside shows, inside if it names one in the folder
+// opened, else that one, the folders in it with their files, and theirs by name, so a
+// box lists what it holds; deeper ones are read once shown.
+VP::View folder_view(VP::FilePort &files,
+                     const std::filesystem::path &opened,
+                     std::string_view inside) {
+  const std::filesystem::path base = opened.parent_path();
+  const std::filesystem::path named = base / std::string(inside);
+  const std::filesystem::path within = named.lexically_relative(opened);
+  const bool in = !inside.empty() && !within.empty() && *within.begin() != ".." &&
+                  !files.list(named.string()).empty();
+  const std::filesystem::path shown = in ? named : opened;
+  VP::View view;
+  const auto add = [&](const std::filesystem::path &folder, bool read) {
+    view.nodes.push_back(
+        {.name = folder.lexically_relative(base).generic_string(), .folder = folder});
+    std::vector<std::string> held;
+    if (!read)
+      return held;
+    for (const std::string &name : files.list(folder.string())) {
+      if (name.starts_with('.'))
+        continue;
+      if (name.ends_with('/'))
+        held.push_back(name.substr(0, name.size() - 1));
+      else
+        view.nodes.back().files.push_back(name);
+    }
+    return held;
+  };
+  for (const std::string &inner : add(shown, true))
+    for (const std::string &deeper : add(shown / inner, true))
+      add(shown / inner / deeper, false);
+  return view;
 }
 
 } // namespace

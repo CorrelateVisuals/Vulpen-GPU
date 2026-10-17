@@ -77,6 +77,7 @@ void Graph::bind(VP::Bind &node) {
   _name = node.name();
   _view = node.view_name();
   _inside = node.sets("inside") ? node.param<std::string>("inside") : std::string();
+  _folder = node.sets("folder") ? node.param<std::string>("folder") : std::string();
   _select = node.command("select [<node>...]",
                          "selects nodes of the view the graph shows, or views it hosts, "
                          "in place of those selected; with none, none");
@@ -92,18 +93,27 @@ void Graph::bind(VP::Bind &node) {
   _zoom = node.value<float>("zoom");
 }
 
-// The current view, where the terminals' lines go, the one vulpen started with too. The
-// keys once it is known, and before it is read for the frame, as a removal changes it.
+// The current view, where the terminals' lines go, the one vulpen started with too, or a
+// folder open showed in its place, read again as the level shown changes, until a view
+// is switched to. The keys once it is known, and before it is read for the frame, as a
+// removal changes it.
 void Graph::cook(VP::Cook &frame) {
   const std::string shown(frame.commands().current());
-  if (_tabs->empty() || shown != _shown)
+  if (_tabs->empty() || shown != _shown) {
+    if (!_tabs->empty() && !_folder.empty())
+      frame.commands().send(std::format("{}: param unset {} folder", _view, _name));
     show(frame, frame.view(shown), shown);
+  }
   for (const VP::Event &event : _typed->to(_name))
     if (event.kind == VP::Event::Kind::key && event.down)
       key(frame, event.name);
-  const VP::View *const edited = frame.view(shown);
-  const VP::View *const flat = frame.unfolded(shown);
-  if (edited != _built_edited || flat != _built_flat || _inside != _built_inside)
+  const bool folder = !_folder.empty();
+  if (folder && (_folder != _built_folder || _inside != _built_inside))
+    _folder_view = folder_view(frame.files(), _folder, _inside);
+  const VP::View *const edited = folder ? &_folder_view : frame.view(shown);
+  const VP::View *const flat = folder ? &_folder_view : frame.unfolded(shown);
+  if (edited != _built_edited || flat != _built_flat || _inside != _built_inside ||
+      _folder != _built_folder)
     build(edited, flat);
   const glm::uvec2 cell = _font->cell;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
@@ -228,23 +238,30 @@ void Graph::show(VP::Cook &frame, const VP::View *view, std::string_view name) {
   }
 }
 
-// A box pressed may be one the boxes no longer hold. A level shown anew starts at home.
+// A box pressed may be one the boxes no longer hold. A level shown anew starts at home. A
+// folder always shows an inside: the one its inside param names, or its own.
 void Graph::build(const VP::View *edited, const VP::View *flat) {
-  if (_inside != _built_inside)
+  if (_inside != _built_inside || _folder != _built_folder)
     _homing = true;
   _built_edited = edited;
   _built_flat = flat;
   _built_inside = _inside;
-  _boxes = edited && flat ? boxes_of(*edited, *flat, _inside) : Boxes{};
+  _built_folder = _folder;
+  const bool folder = !_folder.empty();
+  _boxes = edited && flat ? boxes_of(*edited,
+                                     *flat,
+                                     folder ? _folder_view.nodes.front().name : _inside,
+                                     folder)
+                          : Boxes{};
   name_tab();
   _laid = false;
   _grab.reset();
 }
 
-// The tab names the view shown, and the node whose inside shows.
+// The tab names the view shown and the node whose inside shows, or the folder shown.
 void Graph::name_tab() {
   std::string label(title);
-  if (!_shown.empty())
+  if (!_shown.empty() && _folder.empty())
     label += std::format(" - {}", _shown);
   if (_boxes.frame != no_box)
     label += std::format(" - {}", _boxes.boxes[_boxes.frame].name);
@@ -458,12 +475,22 @@ bool Graph::enter(VP::Cook &frame, std::size_t at) {
   return entered.kind == Kind::view || entered.holds;
 }
 
-// Out of the node whose inside shows, to the inside of the node holding it, or the top.
+// Out of the node whose inside shows, to the inside of the node holding it, or the top;
+// out of a folder to the one holding it, or from the folder opened, to the view again.
 void Graph::leave(VP::Cook &frame) {
   if (_boxes.frame == no_box || !_built_flat)
     return;
-  const std::size_t holder =
-      parent_of(_built_flat->nodes, _boxes.boxes[_boxes.frame].name);
+  const std::string &left = _boxes.boxes[_boxes.frame].name;
+  if (!_folder.empty()) {
+    const std::size_t slash = left.rfind('/');
+    frame.commands().send(
+        slash == std::string::npos
+            ? std::format("{}: param unset {} folder", _view, _name)
+            : std::format(
+                  "{}: param set {} inside {}", _view, _name, left.substr(0, slash)));
+    return;
+  }
+  const std::size_t holder = parent_of(_built_flat->nodes, left);
   frame.commands().send(
       holder == no_box ? std::format("{}: param unset {} inside", _view, _name)
                        : std::format("{}: param set {} inside {}",

@@ -129,6 +129,9 @@ private:
   // The node whose inside the graph shows, in the view shown; with none, or one that view
   // does not hold, the top.
   std::string _inside;
+  // A folder open showed in place of the view, as a view's nodes, a folder a node; empty
+  // for none.
+  std::string _folder;
   VP::Command _select;
   VP::Command _selected;
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
@@ -147,6 +150,8 @@ private:
   const VP::View *_built_edited = nullptr;
   const VP::View *_built_flat = nullptr;
   std::string _built_inside;
+  std::string _built_folder;
+  VP::View _folder_view;
   Layout _layout;
   glm::uvec2 _laid_cell{};
   bool _laid = false;
