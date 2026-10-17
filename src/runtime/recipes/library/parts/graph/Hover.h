@@ -85,12 +85,17 @@ std::size_t curve_near(std::span<const Route> routes,
   return nearest;
 }
 
-// A tip's rows past tip_rows go, the last row saying how many there were.
-void cut_tip(VP_VIEW::Items &tip) {
-  if (tip.size() <= tip_rows)
+// The cells a tip leaves either side of its rows inside the area, two a side.
+constexpr std::int32_t tip_margin = 4;
+
+// A tip's rows past room go, the last row saying how many there were: tip_rows at most,
+// or as many as the area holds with a cell above and below them, two at least.
+void cut_tip(VP_VIEW::Items &tip, std::size_t room) {
+  room = std::max<std::size_t>(std::min(room, tip_rows), 2);
+  if (tip.size() <= room)
     return;
-  const std::size_t more = tip.size() - tip_rows + 1;
-  tip.resize(tip_rows - 1);
+  const std::size_t more = tip.size() - room + 1;
+  tip.resize(room - 1);
   tip.push_back({.label = std::format("and {} more", more)});
 }
 
@@ -113,7 +118,6 @@ void tell(VP_VIEW::Items &tip,
     tip.push_back({.label = std::format("from {}", connection.from.text())});
     for (const VP::Endpoint &reader : connection.to)
       tip.push_back({.label = std::format("to {}", reader.text())});
-    cut_tip(tip);
     return;
   }
   const auto title = [&](std::size_t box, std::size_t row) {
@@ -134,7 +138,17 @@ void tell(VP_VIEW::Items &tip,
                std::filesystem::path(relations[at].from).lexically_proximate(base).generic_string(),
                relations[at].line,
                relations[at].said)});
-  cut_tip(tip);
+}
+
+// The names a box lists past listed_room, two blanks apart, as many a row as fit in width
+// characters, a name too long for one on a row of its own.
+void tell_more(VP_VIEW::Items &tip, std::span<const std::string> names, std::size_t width) {
+  for (const std::string &name : names) {
+    if (!tip.empty() && tip.back().label.size() + 2 + name.size() <= width)
+      tip.back().label.append("  ").append(name);
+    else
+      tip.push_back({.label = name});
+  }
 }
 
 // Where a tip shows, its rows in cells of the font's own size: beside the pointer, below

@@ -150,6 +150,8 @@ private:
                  Labels &written) const;
   void write_curves(VP::Cook &frame);
   void write_tip();
+  std::size_t more_under() const;
+  std::size_t row_under(std::size_t at) const;
   // The curve nearest a point on screen, near enough, where no box lies; none while a
   // drag goes on.
   std::size_t curve_under(glm::vec2 point) const;
@@ -196,6 +198,7 @@ private:
   VP_VIEW::Items *_tip = nullptr;
   VP_VIEW::Rect *_tip_place = nullptr;
   std::size_t _hovered_end = no_box;
+  std::size_t _hovered_more = no_box; // a box whose row for the rest the pointer is over
   std::filesystem::path _base; // where the paths of the boxes built are named from
   Shown _layers = every_layer;        // as its relations param names them
   std::string _shown; // the view the tab names; empty for the one vulpen started with

@@ -206,6 +206,7 @@ void Graph::cook(VP::Cook &frame) {
   frame.set(_zoom, _pan_zoom.zoom);
   if (room) {
     _hovered = under(_pointer);
+    _hovered_more = more_under();
     _hovered_end = curve_under(_pointer);
     write(frame, cell);
     write_tip();
@@ -660,19 +661,26 @@ void Graph::release(VP::Cook &frame, bool room) {
 // uses, that of a view where it is hosted from, or a file's own box; a box's name and
 // its ports open none. Whether one was opened.
 bool Graph::open(VP::Cook &frame, std::size_t at) {
-  const float row =
-      ((_pointer.y - on_screen(glm::vec2(_layout.placed()[at].at)).y) / _pan_zoom.zoom -
-       static_cast<float>(pad)) /
-      static_cast<float>(_laid_cell.y);
-  const std::span<const BoxRow> rows = rows_in(_boxes, at);
-  std::filesystem::path opened;
-  if (row < 1.0f)
-    opened = _boxes.boxes[at].opens;
-  else if (static_cast<std::size_t>(row) <= rows.size())
-    opened = rows[static_cast<std::size_t>(row) - 1].opens;
+  const std::size_t row = row_under(at);
+  const std::filesystem::path opened =
+      row == title_row ? _boxes.boxes[at].opens
+                       : (row < _boxes.boxes[at].rows ? rows_in(_boxes, at)[row].opens
+                                                      : std::filesystem::path());
   if (!opened.empty())
     frame.commands().send(std::format("open {}", opened.generic_string()));
   return !opened.empty();
+}
+
+// The row of a box under the pointer, among its rows; title_row for its name's, and one
+// past them below them.
+std::size_t Graph::row_under(std::size_t at) const {
+  const float row =
+      ((_pointer.y - on_screen(glm::vec2(_layout.placed()[at].at)).y) / _pan_zoom.zoom -
+       static_cast<float>(pad)) /
+          static_cast<float>(_laid_cell.y) -
+      1.0f;
+  return row < 0.0f ? title_row
+                    : std::min(static_cast<std::size_t>(row), _boxes.boxes[at].rows);
 }
 
 // The wheel zooms, about the pointer, which stays over the same place of the graph; its
@@ -1097,14 +1105,37 @@ std::size_t Graph::curve_under(glm::vec2 point) const {
       _layout.routes(), _layout.waypoints(), _pan_zoom, glm::vec2(_area->offset), point);
 }
 
-// The rows of the curve under the pointer, and where they show.
+// The box whose row for the rows past listed_room the pointer is over, while no drag goes
+// on; none for none.
+std::size_t Graph::more_under() const {
+  if (_hovered.box == no_box || _hovered.corner || _grab || _dragging || _select_from)
+    return no_box;
+  const std::size_t row = row_under(_hovered.box);
+  return row != title_row && row < _boxes.boxes[_hovered.box].rows &&
+                 rows_in(_boxes, _hovered.box)[row].more
+             ? _hovered.box
+             : no_box;
+}
+
+// The rows of the curve under the pointer, or of a box's rows past listed_room, and where
+// they show.
 void Graph::write_tip() {
   _tip->clear();
   *_tip_place = {};
-  if (_hovered_end >= _boxes.ends.size() || !_built_flat)
+  const glm::ivec2 cell(_font->cell);
+  if (_hovered_more < _boxes.boxes.size() && cell.x > 0)
+    tell_more(*_tip,
+              _boxes.boxes[_hovered_more].hidden,
+              static_cast<std::size_t>(std::max(
+                  static_cast<std::int32_t>(_area->extent.x) / cell.x - tip_margin, 1)));
+  else if (_hovered_end < _boxes.ends.size() && _built_flat)
+    tell(*_tip, _boxes, _hovered_end, *_built_flat, _relations->relations, _base);
+  if (_tip->empty() || cell.y <= 0)
     return;
-  tell(*_tip, _boxes, _hovered_end, *_built_flat, _relations->relations, _base);
-  *_tip_place = tip_place(*_tip, glm::ivec2(_font->cell), _pointer, *_area);
+  cut_tip(*_tip,
+          static_cast<std::size_t>(
+              std::max(static_cast<std::int32_t>(_area->extent.y) / cell.y - 2, 0)));
+  *_tip_place = tip_place(*_tip, cell, _pointer, *_area);
 }
 
 // The radius of the corner a curve turns at a waypoint, on screen: none at its ends,
