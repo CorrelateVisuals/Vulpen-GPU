@@ -64,8 +64,8 @@ struct Box {
   // Its place kept in the .ini by its name, as every box of a view is, which a drag on
   // it moves; a folder's are not, as a folder has no .ini.
   bool kept = false;
-  bool holds = false;    // it holds nodes, whose insides zooming into it or a second
-                         // press on it shows
+  bool holds = false;    // it holds nodes or files, whose boxes zooming into it or a
+                         // second press on it shows
   std::size_t first = 0; // its rows, in Boxes::rows
   std::size_t rows = 0;
   std::size_t ports = 0; // of its rows, the first, a port read or written on each
@@ -324,13 +324,15 @@ void relate(Boxes &boxes,
 }
 
 // Each box's rows: its ports, a reader's and a writer's side by side, then the recipe its
-// node uses, whose row opens the recipe's manifest, then the nodes inside it, unless it
-// frames them, then its files, each opening itself, unless they are boxes of their own.
+// node uses, whose row opens the recipe's manifest, then the nodes inside it, then its
+// files, each opening itself, unless it frames them, as boxes of their own. A view's box
+// lists the nodes at its top, then the file it is hosted from.
 void list_rows(Boxes &boxes,
                std::size_t box,
                const Building &building,
                const VP::View &flat,
-               const VP::Child *child) {
+               const VP::Child *child,
+               const VP::View *hosted) {
   Box &listed = boxes.boxes[box];
   const Ports &ports = building.ports[box];
   listed.first = boxes.rows.size();
@@ -356,25 +358,33 @@ void list_rows(Boxes &boxes,
              .role = VP_VIEW::role("muted")});
       }
     for (const std::string &file : node_of.files)
-      if (!building.folders || box != boxes.frame)
+      if (box != boxes.frame)
         boxes.rows.push_back({.text = file, .opens = node_of.folder / file});
   }
+  for (std::size_t top = 0; hosted && top < hosted->nodes.size(); ++top)
+    if (const std::string &name = hosted->nodes[top].name;
+        name.find('.') == std::string::npos)
+      boxes.rows.push_back(
+          {.text = std::format("node {}", name), .role = VP_VIEW::role("muted")});
   if (child)
     boxes.rows.push_back(
         {.text = child->file.filename().generic_string(), .opens = child->file});
   listed.rows = boxes.rows.size() - listed.first;
 }
 
-// The node whose inside shows: the scope named, where it holds nodes; else none, and the
-// top shows.
+// Whether a node holds nodes or files, which its inside shows as boxes.
+bool holds(const VP::View &flat, const std::vector<std::size_t> &parents, std::size_t at) {
+  return !flat.nodes[at].files.empty() || std::ranges::find(parents, at) != parents.end();
+}
+
+// The node whose inside shows: the scope named, where it holds nodes or files; else none,
+// and the top shows.
 std::size_t scope_of(const VP::View &flat,
                      const std::vector<std::size_t> &parents,
                      std::string_view scope) {
   const auto found = std::ranges::find(flat.nodes, scope, &VP::Node::name);
   const auto at = static_cast<std::size_t>(found - flat.nodes.begin());
-  return found != flat.nodes.end() && std::ranges::find(parents, at) != parents.end()
-             ? at
-             : no_box;
+  return found != flat.nodes.end() && holds(flat, parents, at) ? at : no_box;
 }
 
 // Each node's parent, by the name each joins, a name looked up once.
@@ -395,8 +405,9 @@ std::vector<std::size_t> parents_of(const VP::View &flat, char joins) {
   return parents;
 }
 
-// The files of the folder whose inside shows, a box each, as the POC showed them, so a
-// relation between two shows as a curve, a press on the name opening it.
+// The files of the node or the folder whose inside shows, a box each, as the POC showed
+// them, so a relation between two shows as a curve, a press on the name opening it. A
+// box's name is its node's and its file's joined by /, which no node's name holds.
 void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
   for (const std::string &file : folder.files)
     if (boxes.boxes.size() < node_room) {
@@ -406,22 +417,25 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
                              .title = file,
                              .parent = boxes.frame,
                              .kind = kind_of({.files = {file}}),
+                             .kept = !building.folders,
                              .opens = path});
     }
 }
 
 // The boxes of a view as it runs, each recipe a node uses unfolded, or of a folder, a
-// level at a time: with a scope that holds nodes, its box framing the boxes of the nodes
-// inside it, and of a folder's files, and beside it what lies outside it, as connections
+// level at a time: with a scope that holds nodes or files, its box framing the boxes of
+// the nodes and the files inside it, and beside it what lies outside it, as connections
 // and relations reach in at its left and out at its right; with none, the boxes of the
-// nodes at the top and of the views the view hosts, as the view as edited names them. A
-// node of the view as edited is its own, the frame too; one a recipe brings is not, nor
-// a folder or a file. Every box of a view keeps its place. The paths outside are named
-// from base, and only the layers shown draw.
+// nodes at the top, of the view's manifest, and of the views the view hosts, as the view
+// as edited names them, each as hosted lists its top nodes. A node of the view as edited
+// is its own, the frame too; one a recipe brings is not, nor a folder or a file. Every
+// box of a view keeps its place. The paths outside are named from base, and only the
+// layers shown draw.
 Boxes boxes_of(const VP::View &edited,
                const VP::View &flat,
                std::string_view scope,
                std::span<const VP_VIEW::Relation> relations,
+               std::span<const VP::View *const> hosted,
                const std::filesystem::path &base,
                bool folders,
                std::uint32_t layers) {
@@ -448,7 +462,7 @@ Boxes boxes_of(const VP::View &edited,
          .own = !folders && std::ranges::find(edited.nodes, node.name, &VP::Node::name) !=
                                 edited.nodes.end(),
          .kept = !folders,
-         .holds = std::ranges::find(building.parents, at) != building.parents.end()});
+         .holds = holds(flat, building.parents, at)});
   };
   if (inside != no_box) {
     boxes.frame = 0;
@@ -457,8 +471,15 @@ Boxes boxes_of(const VP::View &edited,
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     if (building.parents[at] == inside)
       add(at, inside == no_box ? no_box : boxes.frame);
-  if (folders && inside != no_box)
+  if (inside != no_box)
     file_boxes(boxes, building, flat.nodes[inside]);
+  if (const std::string manifest = edited.file.filename().generic_string();
+      !folders && inside == no_box && !manifest.empty() && boxes.boxes.size() < node_room)
+    boxes.boxes.push_back({.name = std::format("/{}", manifest),
+                           .title = manifest,
+                           .kind = kind_of({.files = {manifest}}),
+                           .kept = true,
+                           .opens = edited.file});
   for (const VP::Child &child : edited.children)
     if (inside == no_box && boxes.boxes.size() < node_room)
       boxes.boxes.push_back({.name = child.name,
@@ -470,15 +491,16 @@ Boxes boxes_of(const VP::View &edited,
   connect(boxes, building, flat);
   relate(boxes, building, relations, flat.connections.size());
   for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
-    const auto child = std::ranges::find(edited.children, boxes.boxes[box].name,
-                                         &VP::Child::name);
+    const auto child = static_cast<std::size_t>(
+        std::ranges::find(edited.children, boxes.boxes[box].name, &VP::Child::name) -
+        edited.children.begin());
+    const bool view = boxes.boxes[box].kind == Kind::view && child < edited.children.size();
     list_rows(boxes,
               box,
               building,
               flat,
-              boxes.boxes[box].kind == Kind::view && child != edited.children.end()
-                  ? &*child
-                  : nullptr);
+              view ? &edited.children[child] : nullptr,
+              view && child < hosted.size() ? hosted[child] : nullptr);
   }
   return boxes;
 }

@@ -81,6 +81,21 @@ bool inside(const VP_VIEW::Rect &area, glm::vec2 point) {
   return VP_VIEW::contains(area, point);
 }
 
+// The view hosting the one named, found from the view vulpen started with down the views
+// each hosts, by the names lines address them with; none for that one, or one no view
+// hosts.
+std::optional<std::string> host_of(VP::Cook &frame, std::string_view name) {
+  std::vector<std::string> hosts{std::string()};
+  for (std::size_t at = 0; at < hosts.size() && !name.empty(); ++at)
+    if (const VP::View *const host = frame.view(hosts[at]))
+      for (const VP::Child &child : host->children) {
+        if (child.name == name)
+          return hosts[at];
+        hosts.push_back(child.name);
+      }
+  return std::nullopt;
+}
+
 // The Rect from one corner to the other, rounded to whole pixels.
 VP_VIEW::Rect between(glm::vec2 from, glm::vec2 to, std::uint32_t role) {
   const glm::ivec2 low(glm::round(from));
@@ -133,9 +148,12 @@ void Graph::cook(VP::Cook &frame) {
       key(frame, event.name);
   const VP::View *const edited = folder ? &_relations->tree : frame.view(shown);
   const VP::View *const flat = folder ? &_relations->tree : frame.unfolded(shown);
+  _hosted.clear();
+  for (std::size_t child = 0; edited && !folder && child < edited->children.size(); ++child)
+    _hosted.push_back(frame.view(edited->children[child].name));
   if (edited != _built_edited || flat != _built_flat || _inside != _built_inside ||
       _relations->folder != _built_folder || _relations->changes != _built_changes ||
-      _layers != _built_layers)
+      _layers != _built_layers || _hosted != _built_hosted)
     build(edited, flat);
   const glm::uvec2 cell = _font->cell;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
@@ -277,6 +295,7 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
   _built_folder = folder;
   _built_changes = _relations->changes;
   _built_layers = _layers;
+  _built_hosted = _hosted;
   _boxes = {};
   if (edited && flat && (folder.empty() || !flat->nodes.empty())) {
     const bool inside = std::ranges::find(flat->nodes, _inside, &VP::Node::name) !=
@@ -285,6 +304,7 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
                       *flat,
                       folder.empty() || inside ? _inside : flat->nodes.front().name,
                       _relations->relations,
+                      _hosted,
                       folder.empty() ? edited->file.parent_path()
                                      : std::filesystem::path(folder).parent_path(),
                       !folder.empty(),
@@ -596,10 +616,17 @@ bool Graph::enter(VP::Cook &frame, std::size_t at) {
 }
 
 // Out of the node whose inside shows, to the inside of the node holding it, or the top;
-// out of a folder to the one holding it, or from the folder opened, to the view again.
+// out of a view's top to the view hosting it, as view switch shows it; out of a folder to
+// the one holding it, or from the folder opened, to the view again.
 void Graph::leave(VP::Cook &frame) {
-  if (_boxes.frame == no_box || !_built_flat)
+  if (!_built_flat)
     return;
+  if (_boxes.frame == no_box) {
+    if (const std::optional<std::string> host = host_of(frame, _shown))
+      frame.commands().send(host->empty() ? std::string("view switch")
+                                          : std::format("view switch {}", *host));
+    return;
+  }
   const std::string &left = _boxes.boxes[_boxes.frame].name;
   if (!_relations->folder.empty()) {
     if (const std::size_t slash = left.rfind('/'); slash == std::string::npos)

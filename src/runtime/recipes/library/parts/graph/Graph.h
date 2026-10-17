@@ -183,6 +183,10 @@ private:
   Boxes _boxes;
   const VP::View *_built_edited = nullptr;
   const VP::View *_built_flat = nullptr;
+  // The views the view shown hosts, as this frame reads them and as the boxes were built
+  // from, each view's box listing its top nodes.
+  std::vector<const VP::View *> _hosted;
+  std::vector<const VP::View *> _built_hosted;
   std::string _built_inside;
   std::string _built_folder;
   std::uint64_t _built_changes = 0;
