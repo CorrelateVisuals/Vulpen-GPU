@@ -2,8 +2,9 @@
 # command that reads or changes a view is the cli's, and this adds what the window
 # shows: ./run.sh --ide. Only child recipes and the wires between them, built by
 # addition: each row is recipes placed side by side and connected, never a bigger recipe
-# with nodes removed. Built so far: Look, Keys, Modes, the dock, with the editor in its
-# top row beside the graph over the Perform panel, and the terminal in its bottom row.
+# with nodes removed. Built so far: Look, Keys, Modes, the menubar along the window's
+# top, the dock below it, with the editor in its top row beside the graph over the
+# Perform panel, and the terminal in its bottom row.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus
@@ -91,6 +92,13 @@ recipe = panel
 [node "ide.terminal"]
 recipe = terminal
 
+# A menu a name along the window's top, as menu.ini gives them, over the dock it hands the
+# rest to; listed after the panels, so a menu's items drop over them. An item that wants a
+# word types its line into the terminal's.
+[node "ide.menubar"]
+recipe = menu
+param  = menus.line=ide.terminal.command-line
+
 # What is presented, over the whole window in perform mode; in edit mode it has no room.
 [node "ide.screen"]
 recipe = image
@@ -101,6 +109,10 @@ to   = ide.modes.area
 
 [connection "edit"]
 from = ide.modes.edit
+to   = ide.menubar.bar.area
+
+[connection "dock"]
+from = ide.menubar.bar.rest
 to   = ide.dock.split.area
 
 [connection "perform"]
@@ -176,6 +188,7 @@ to   = ide.terminal.command-line.typed
 to   = ide.graph.graph.typed
 to   = ide.perform.typed
 to   = ide.modes.typed
+to   = ide.menubar.menus.typed
 
 [connection "palette"]
 from = ide.palette.palette
@@ -202,6 +215,10 @@ to   = ide.terminal-panel.rects.palette
 to   = ide.terminal-panel.glyphs.palette
 to   = ide.terminal.rects.palette
 to   = ide.terminal.glyphs.palette
+to   = ide.menubar.names-rects.palette
+to   = ide.menubar.names-glyphs.palette
+to   = ide.menubar.items-rects.palette
+to   = ide.menubar.items-glyphs.palette
 
 [connection "font"]
 from = ide.font.font
@@ -214,6 +231,8 @@ to   = ide.graph.tip.glyphs.font
 to   = ide.perform-panel.glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
+to   = ide.menubar.names-glyphs.font
+to   = ide.menubar.items-glyphs.font
 
 [connection "atlas"]
 from = ide.font.atlas
@@ -226,6 +245,8 @@ to   = ide.graph.tip.glyphs.atlas
 to   = ide.perform-panel.glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
+to   = ide.menubar.names-glyphs.atlas
+to   = ide.menubar.items-glyphs.atlas
 
 [connection "metrics"]
 from = ide.font.metrics
@@ -243,3 +264,6 @@ to   = ide.perform-panel.tabs.font
 to   = ide.terminal-panel.bar.font
 to   = ide.terminal-panel.tabs.font
 to   = ide.terminal.command-line.font
+to   = ide.menubar.bar.font
+to   = ide.menubar.names.font
+to   = ide.menubar.items.font

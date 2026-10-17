@@ -1,2 +1,104 @@
-# The menu component: command-items, list, hit, rects and glyphs. The menubar is a menu in
-# a row and the context menu a menu in a column at the pointer, so both are one recipe.
+# The menu component: menus, bar, list, hit, rects and glyphs. Its bar cuts a strip one
+# text row tall off the top of the Rect its host connects to bar.area, and hands on the
+# rest as bar.rest; the strip shows a name a menu, as menu.ini gives them, and a press on
+# one drops its items below it, over what lies there, which takes no press while it
+# shows, until a press anywhere or escape shuts it. A press on an item sends its line; an
+# item whose line wants a word types it into the node the menus' line param names. Its
+# host connects the keys part's typed to menus.typed, the font's metrics to bar.font,
+# names.font and items.font, the theme to the rects and the glyphs, and the font and its
+# atlas to the glyphs, and lists it after what its items drop over, so they draw over it.
+[manifest]
+version = 1
+
+[node "menu"]
+
+[node "menu.menus"]
+recipe = menus
+
+[node "menu.bar"]
+recipe = bar
+
+[node "menu.names"]
+recipe = list
+param  = axis=x
+
+[node "menu.names-hit"]
+recipe = hit
+
+[node "menu.names-rects"]
+recipe = rects
+
+[node "menu.names-glyphs"]
+recipe = glyphs
+
+[node "menu.items"]
+recipe = list
+param  = below=yes
+
+[node "menu.items-hit"]
+recipe = hit
+
+[node "menu.items-rects"]
+recipe = rects
+
+[node "menu.items-glyphs"]
+recipe = glyphs
+
+[connection "strip"]
+from = menu.bar.strip
+to   = menu.names.place
+
+[connection "names"]
+from = menu.menus.names
+to   = menu.names.items
+to   = menu.names-hit.items
+
+[connection "names-shown"]
+from = menu.names.shown
+to   = menu.names-hit.rects
+
+[connection "names-marks"]
+from = menu.names.marks
+to   = menu.names-hit.marks
+
+[connection "names-rects"]
+from = menu.names.rects
+to   = menu.names-rects.rects
+
+[connection "names-labels"]
+from = menu.names.labels
+to   = menu.names-glyphs.labels
+
+[connection "names-characters"]
+from = menu.names.characters
+to   = menu.names-glyphs.characters
+
+# The open menu's name, which its items drop below.
+[connection "open"]
+from = menu.names.current
+to   = menu.items.place
+
+[connection "items"]
+from = menu.menus.items
+to   = menu.items.items
+to   = menu.items-hit.items
+
+[connection "items-shown"]
+from = menu.items.shown
+to   = menu.items-hit.rects
+
+[connection "items-marks"]
+from = menu.items.marks
+to   = menu.items-hit.marks
+
+[connection "items-rects"]
+from = menu.items.rects
+to   = menu.items-rects.rects
+
+[connection "items-labels"]
+from = menu.items.labels
+to   = menu.items-glyphs.labels
+
+[connection "items-characters"]
+from = menu.items.characters
+to   = menu.items-glyphs.characters

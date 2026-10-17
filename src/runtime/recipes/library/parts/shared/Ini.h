@@ -1,9 +1,12 @@
 #pragma once
 
+#include "runtime/Operator.h"
+
 #include <algorithm>
 #include <charconv>
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <system_error>
 #include <utility>
@@ -52,6 +55,18 @@ key_value(std::string_view row) {
   if (equals == std::string_view::npos)
     return std::nullopt;
   return std::pair{trim(row.substr(0, equals)), trim(row.substr(equals + 1))};
+}
+
+// Whether a command registered now takes a line a row sends, as a keymap's chord or a
+// menu's item does: its usage's words before the first placeholder start it, so a
+// misspelt command is found when the file is read (A02).
+inline bool registered(std::string_view line, std::span<const VP::Usage> usages) {
+  return std::ranges::any_of(usages, [&](const VP::Usage &usage) {
+    const std::string_view name =
+        trim(usage.usage.substr(0, usage.usage.find_first_of("<[")));
+    return line.starts_with(name) &&
+           (line.size() == name.size() || line[name.size()] == ' ');
+  });
 }
 
 // The numbers a value holds, between blanks; none when a word is no number.

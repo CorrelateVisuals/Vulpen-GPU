@@ -43,6 +43,10 @@ step too, and drags their scroll bar to the oldest, before help, sent, shows the
 again, and scrolls them across with shift and the wheel and back with the wheel turned
 sideways; the editor run scrolls the note past its end with the wheel, and back with a
 drag on its scroll bar. In both, three presses in a row select a word, then its row.
+A run types into a note in the editor, opens the file menu along the window's top and
+presses its write, which types write into the terminal and sends it, so the note must
+hold what was typed. No node of any run may stop, as one whose menu.ini or keymap
+names a line no command takes would.
 The zoom a person keeps in the library's font folder is set aside while it runs, and put
 back after. Where no display exists it is skipped (V07).
 
@@ -90,9 +94,19 @@ CELL = 18
 CELL_WIDE = 8  # a cell's width at that height, as Roboto Mono's advance makes it
 STRIP = CELL + 2 * 4
 NAME = STRIP + 4 + CELL // 2
-# The close mark of the editor's first tab, the window's top left: a cell in, the label,
-# a blank, then the mark, a cell wide, as wave/Wave.comp's.
-MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2, STRIP // 2)
+# The menubar's strip, along the window's top, over the dock's area.
+MENUBAR = STRIP
+# The close mark of the editor's first tab, the dock's top left: a cell in, the label, a
+# blank, then the mark, a cell wide, as wave/Wave.comp's.
+MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2,
+        MENUBAR + STRIP // 2)
+# The file menu, the menubar's first name, a cell in, and its write, its second item, a
+# row below the first under the strip, past the frame of 4 pixels its items drop in.
+FILE_MENU = (CELL_WIDE * 2, MENUBAR // 2)
+WRITE_ITEM = (CELL_WIDE * 3, MENUBAR + 4 + CELL + CELL // 2)
+TYPED = "typed"  # input text drops a blank at its end
+# A node left out as its view loads, or whose operator stops, names itself in the log.
+STOPPED = re.compile(r"\{!!!\} (?:\S+ )?node [\w.-]+: ")
 INFO = ['[node "probe"]', '[view "inner"]']  # info's headers for the boxes selected
 DELETED = "place probe"
 NESTED = '\n[view "inner"]\n'  # a view the copy hosts, empty until a save writes it
@@ -116,7 +130,8 @@ def clicks(x: int, y: int) -> list[str]:
 
 
 def typed(width: int, height: int) -> list[str]:
-    seam = round((height - 4) * 0.65) + 2  # the middle of its 4 pixels, at the dock's ratio
+    # The middle of its 4 pixels, at the dock's ratio of what the menubar leaves.
+    seam = MENUBAR + round((height - MENUBAR - 4) * 0.65) + 2
     return [
         "focus ide.terminal.command-line",  # first, so the keys part's param gives none
         "input key down tab",  # a word not begun: every command's first word
@@ -213,19 +228,33 @@ def edits(width: int) -> list[str]:
     ]
 
 
+def menu(note: Path) -> list[str]:
+    return [
+        f"open {note}",
+        "focus ide.editor.text",
+        f"input text {TYPED}",  # where the caret starts, as the note opens
+        f"input pointer {FILE_MENU[0]} {FILE_MENU[1]}",
+        "input button down left",  # the file menu, whose items drop the next frame
+        "input button up left",
+    ]
+
+
 def graph(wave: Path, width: int, height: int) -> list[str]:
     left = round((width - 4) * 0.5) + 4  # past the top row's seam: the graph's area
-    # Above its row of buttons, as tall as its tab strip, over the Perform panel.
-    bottom = round((round((height - 4) * 0.65) - 4) * 0.5) - STRIP
+    # The dock's top row, under the menubar, and above the graph's row of buttons, as
+    # tall as its tab strip, over the Perform panel.
+    row = round((height - MENUBAR - 4) * 0.65)
+    bottom = MENUBAR + round((row - 4) * 0.5) - STRIP
+    above = MENUBAR + STRIP  # the graph's area's top, below its panel's tab strip
     shown = (left + max((width - left - REACH[0]) // 2, HOME_MARGIN[0]),
-             STRIP + max((bottom - STRIP - REACH[1]) // 2, HOME_MARGIN[1]))
+             above + max((bottom - above - REACH[1]) // 2, HOME_MARGIN[1]))
     box = (shown[0] + 40, shown[1] + NAME - STRIP)  # on wave's name
     moved = (box[0] + 30, box[1])  # the box dragged right
     ground = (width - 40, 150)  # below and right of both boxes
     panned = (moved[0] + 20, moved[1] + 10)  # where it shows once the graph moved
     # Two thirds down the Perform panel, under the graph's, in the dock's top row.
-    top = round((height - 4) * 0.65)
-    below = round((top - 4) * 0.5) + 4
+    top = MENUBAR + row
+    below = MENUBAR + round((row - 4) * 0.5) + 4
     perform = (width * 3 // 4, below + (top - below) * 2 // 3)
     return [
         f"view load {wave}",
@@ -249,7 +278,7 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
         "input key down shift",
         f"input pointer {ground[0]} {ground[1]}",
         "input button down left",  # a select box, not a move
-        f"input pointer {left + 20} {STRIP + 4}",
+        f"input pointer {left + 20} {above + 4}",
         "input button up left",  # what it touches joins the selection
         "input key up shift",
         f"input pointer {perform[0]} {perform[1]}",
@@ -292,8 +321,9 @@ def drive(folder: Path, name: str, lines: list[str], frames: int = FRAMES,
     script.write_text("\n".join(lines) + "\n", encoding="utf-8")
     code, output = run(sys.argv[1], [CLI, IDE, "--frames", frames, "--fps", 0, "--log",
                                      "info", "--source", script], headless=False, typed=typed)
-    if code != 0 or problems(output):
-        sys.exit(f"ide: expected the {name} to take every key, got exit {code}:\n{output}")
+    if code != 0 or problems(output) or STOPPED.search(output):
+        sys.exit(f"ide: expected the {name} to take every key, every node running, got "
+                 f"exit {code}:\n{output}")
     if whole and RAN.findall(output) != [str(frames)]:
         sys.exit(f"ide: expected the {name} to run {frames} frames, got:\n{output}")
     return output
@@ -341,6 +371,18 @@ def test() -> None:
         if numbers(zoomed) != {"zoom": [1]}:
             sys.exit(f"ide: expected the font to keep zoom = 1 after zooming in and out, "
                      f"it kept\n{zoomed}")
+        # The press on write comes a frame after the file menu opened, from a script
+        # standard input sources.
+        typed_into = folder / "typed.txt"
+        typed_into.write_text(NOTE, encoding="utf-8")
+        pressed = folder / "write.txt"
+        pressed.write_text(f"input pointer {WRITE_ITEM[0]} {WRITE_ITEM[1]}\n"
+                           "input button down left\ninput button up left\n",
+                           encoding="utf-8")
+        drive(folder, "menu", menu(typed_into), typed=f"source {pressed}\n")
+        if (held := typed_into.read_text(encoding="utf-8")) != TYPED + NOTE:
+            sys.exit(f"ide: expected the file menu's write to write {TYPED + NOTE!r}, "
+                     f"got {held!r}")
         performed = drive(folder, "performed view", PERFORM)
         if "{!!!}" in performed:
             sys.exit(f"ide: expected the chord to give the triangle the window, got:\n"

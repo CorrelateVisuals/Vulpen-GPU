@@ -68,17 +68,6 @@ Chord chord_of(std::string_view text, const VP::InputPort &input) {
   return chord;
 }
 
-// Whether a command registered now takes the line: its usage's words before the first
-// placeholder start it, so a misspelt command is found when the keymap is read.
-bool registered(std::string_view line, std::span<const VP::Usage> usages) {
-  return std::ranges::any_of(usages, [&](const VP::Usage &usage) {
-    const std::string_view name =
-        trim(usage.usage.substr(0, usage.usage.find_first_of("<[")));
-    return line.starts_with(name) &&
-           (line.size() == name.size() || line[name.size()] == ' ');
-  });
-}
-
 // The = between a chord and its line: an = at the start or after a + is the key the
 // chord presses, as in control+= = zoom in.
 std::size_t equals_of(std::string_view text) {

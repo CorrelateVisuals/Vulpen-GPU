@@ -1,0 +1,13 @@
+# The menus part: one node whose operator is Menus; it reads menu.ini, a menu's item a
+# line, and hands on a name a menu as names, for a list along a row, and the items of the
+# one open as items, for a list that drops below its name; a press on a name opens its
+# menu with the menu command, and a press on an item sends its line. Its host names the
+# node an item whose line wants a word types it into with the line param, which has no
+# default, and connects the keys part's typed to its typed, so escape shuts a menu.
+[manifest]
+version = 1
+
+[node "menus"]
+operator = Menus
+file     = Menus.cpp
+file     = menu.ini

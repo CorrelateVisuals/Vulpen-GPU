@@ -6,6 +6,8 @@
 #include "runtime/Operator.h"
 #include "shared/Labels.h"
 
+#include <glm/common.hpp>
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -38,9 +40,12 @@ VP_VIEW::Rect grown(const VP_VIEW::Rect &rect, std::int32_t by, std::uint32_t ro
 // Lays out the Items it is handed in the Rect its place gives: stacked, a row each, over
 // a framed fill, or with axis x side by side, each as wide as its label, over a ground,
 // the current one in the content's color, so it joins the content it names; an Item
-// with a close command shows a close mark at its end. It hands on where each Item shows,
-// and where its mark does, so hit finds the one pressed. Completions and tab strips are
-// this part, as menus and popups will be, so none of them places its entries itself.
+// with a close command shows a close mark at its end. With below = yes the column drops
+// below its place instead, as wide as its widest label and as tall as its Items, inside
+// the window, as a menu's items drop below its name. It hands on where each Item shows,
+// and where its mark does, so hit finds the one pressed, and where the current one does,
+// so what it opens shows below it. Tab strips, menus and tips are this part, so none of
+// them places its entries itself.
 class List final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string axis = node.param<std::string>("axis");
@@ -48,6 +53,10 @@ class List final : public VP::Operator {
       throw std::runtime_error(
           std::format("param axis = {}: x, side by side, or y, stacked", axis));
     _side_by_side = axis == "x";
+    const std::string below = node.param<std::string>("below");
+    if (below != "yes" && below != "no")
+      throw std::runtime_error(std::format("param below = {}: yes or no", below));
+    _below = below == "yes";
     _items = &node.input<VP_VIEW::Items>("items");
     _place = &node.input<VP_VIEW::Rect>("place");
     _font = &node.input<VP_VIEW::Font>("font");
@@ -58,25 +67,55 @@ class List final : public VP::Operator {
     _shown->reserve(row_room); // so a frame never grows it (CPP10)
     _marks = &node.output<VP_VIEW::Rects>("marks");
     _marks->reserve(row_room);
+    _current = &node.output<VP_VIEW::Rect>("current");
   }
 
   void cook(VP::Cook &frame) override {
     const glm::uvec2 cell = _font->cell;
     _shown->clear();
     _marks->clear();
+    const VP_VIEW::Rect place =
+        _below ? dropped(cell, frame.resolution()) : *_place;
     if (cell.x != 0 && cell.y != 0) {
       if (_side_by_side)
-        side_by_side(cell);
+        side_by_side(place, cell);
       else
-        stacked(cell);
+        stacked(place, cell);
     }
-    back(frame);
+    *_current = {};
+    for (std::size_t at = 0; at < _shown->size(); ++at)
+      if ((*_items)[at].current)
+        *_current = (*_shown)[at];
+    back(frame, place);
     write_labels(frame, cell);
   }
 
-  // A row each, from the place's top, as many as it holds.
-  void stacked(glm::uvec2 cell) {
+  // Below the place, from its left edge, its frame under the place's bottom edge, as wide
+  // as the widest label, or the place, and as tall as the Items, moved in to stay inside
+  // the window; none while the place is empty, as a menu shut.
+  VP_VIEW::Rect dropped(glm::uvec2 cell, glm::uvec2 window) const {
     const VP_VIEW::Rect &place = *_place;
+    if (place.extent.x == 0 || _items->empty())
+      return {};
+    std::size_t widest = 0;
+    for (const VP_VIEW::Item &item : *_items)
+      widest = std::max(widest, item.label.size());
+    constexpr std::int32_t edge = margin + frame_width;
+    const auto rows = static_cast<std::uint32_t>(
+        std::min(_items->size(), static_cast<std::size_t>(row_room)));
+    const glm::uvec2 extent(
+        std::max(static_cast<std::uint32_t>(widest) * cell.x,
+                 place.extent.x - std::min(place.extent.x, 2u * edge)),
+        rows * cell.y);
+    const glm::ivec2 most = glm::ivec2(window) - glm::ivec2(extent) - edge;
+    const glm::ivec2 below =
+        place.offset + glm::ivec2(edge, static_cast<std::int32_t>(place.extent.y) + edge);
+    return {.offset = glm::max(glm::min(below, most), glm::ivec2(edge)),
+            .extent = extent};
+  }
+
+  // A row each, from the place's top, as many as it holds.
+  void stacked(const VP_VIEW::Rect &place, glm::uvec2 cell) {
     const std::uint32_t rows = std::min(
         {static_cast<std::uint32_t>(_items->size()), place.extent.y / cell.y, row_room});
     for (std::uint32_t row = 0; row < rows; ++row) {
@@ -89,8 +128,7 @@ class List final : public VP::Operator {
   // From the place's left, each as tall as the place and as wide as its label, and its
   // close mark, with a cell either side; the place's right edge cuts the last, which
   // shows what fits, its mark only when it fits whole.
-  void side_by_side(glm::uvec2 cell) {
-    const VP_VIEW::Rect &place = *_place;
+  void side_by_side(const VP_VIEW::Rect &place, glm::uvec2 cell) {
     if (place.extent.y < cell.y)
       return;
     const auto padding = static_cast<std::int32_t>(2 * cell.x);
@@ -119,8 +157,7 @@ class List final : public VP::Operator {
 
   // Nothing shown draws nothing, not even its ground, so a list with no room or no Items
   // costs no draw.
-  void back(VP::Cook &frame) {
-    const VP_VIEW::Rect &place = *_place;
+  void back(VP::Cook &frame, const VP_VIEW::Rect &place) {
     if (_shown->empty()) {
       frame.write(_rects, 0);
     } else if (_side_by_side) {
@@ -160,6 +197,7 @@ class List final : public VP::Operator {
   }
 
   bool _side_by_side = false;
+  bool _below = false; // a column below its place, as wide as its labels
   const VP_VIEW::Items *_items = nullptr;
   const VP_VIEW::Rect *_place = nullptr;
   const VP_VIEW::Font *_font = nullptr;
@@ -168,6 +206,7 @@ class List final : public VP::Operator {
   VP::Upload<VP_VIEW::Character> _characters;
   VP_VIEW::Rects *_shown = nullptr; // a Rect each Item shown, in the order of the Items
   VP_VIEW::Rects *_marks = nullptr; // and its close mark's, none for no mark
+  VP_VIEW::Rect *_current = nullptr; // where the current Item shows; none for none
 };
 
 } // namespace
