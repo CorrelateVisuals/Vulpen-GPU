@@ -1,0 +1,27 @@
+# The triangle computed, with no draw of it: the raster, a compute shader, works out every
+# cell of a 256 by 256 grid, whether the turned triangle covers it and in what color, as a
+# rasterizer would; the screen only shows the cells, a square each, as a window needs a
+# draw to show anything. No C++. Run ./run.sh --triangle-compute, then try
+# `triangle-compute: param set raster side 64` for a coarser grid.
+
+[manifest]
+version = 1
+
+# side * side invocations, a cell each: 256 * 256 = 65536. A whole turn every 600 frames,
+# and 0 holds the triangle still.
+[node "raster"]
+file        = Raster.comp
+invocations = 65536
+param       = frames_per_turn=600
+param       = side=256
+
+# As many squares as the raster writes cells, six vertices each.
+[node "screen"]
+file           = Screen.frag
+file           = Screen.vert
+vertex_count   = 6
+instance_count = cells
+
+[connection "cells"]
+from = raster.cells
+to   = screen.cells

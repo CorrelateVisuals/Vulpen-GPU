@@ -1,0 +1,17 @@
+# The triangle as a vertex buffer, the way C++ hands a GPU its geometry: the operator
+# turns the classic corners every frame and writes each with its color into a buffer the
+# vertex shader reads by the vertex's index, so the shaders only draw. One node, as the
+# triangle project is. Run ./run.sh --triangle-buffer, then save any file while it runs.
+
+[manifest]
+version = 1
+
+# The operator reads frames_per_turn: a whole turn every 600 frames, and 0 holds the
+# triangle still. Its buffer holds one corner a vertex, as vertex_count counts them.
+[node "triangle"]
+operator     = Triangle
+file         = Triangle.cpp
+file         = Triangle.frag
+file         = Triangle.vert
+vertex_count = 3
+param        = frames_per_turn=600

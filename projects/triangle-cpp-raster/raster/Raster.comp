@@ -1,0 +1,25 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cell.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(buffer_reference, std430) readonly buffer Packed {
+  uint at[];
+};
+
+layout(set = 1, binding = 0) uniform Pass {
+  uint side;      // a param: cells a row and a column, side * side invocations
+  Packed packed;  // written by the Raster operator every frame, a cell an invocation
+  CellsOut cells; // a connection: the screen's, a cell an invocation
+} pass;
+
+// The little left to the GPU: each cell's color, as C++ packed it, unpacked and placed.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const uint side = max(pass.side, 1u); // a side of 0 would divide by zero
+  const float size = 2.0 / float(side);
+  const vec2 corner = vec2(i % side, i / side) * size - 1.0;
+  pass.cells.at[i] = Cell(unpackUnorm4x8(pass.packed.at[i]), corner, size);
+}

@@ -1,0 +1,16 @@
+# The classic triangle in GLSL alone, as a first triangle is written anywhere: the vertex
+# shader holds the corners and their colors, picked by the vertex's index, and the
+# rasterizer blends the colors across the face. No C++, no buffer, one node. Run
+# ./run.sh --triangle-shaders, then save a shader while it runs.
+
+[manifest]
+version = 1
+
+# A .vert and a .frag make a draw of vertex_count vertices. frames_per_turn is a field of
+# the vertex shader's pass block, which the engine fills from the param: a whole turn
+# every 600 frames, and 0 holds the triangle still.
+[node "triangle"]
+file         = Triangle.frag
+file         = Triangle.vert
+vertex_count = 3
+param        = frames_per_turn=600

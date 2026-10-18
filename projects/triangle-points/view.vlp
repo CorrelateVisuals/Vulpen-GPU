@@ -1,0 +1,60 @@
+# Every point of the triangle a node: top, right and left each hold their place and color
+# as params and write them as one corner for the face, which reads the three by name, so
+# a point is moved or recolored by its own node, as
+# `triangle-points: param set corners.top y -0.8`. The points sit in the group corners,
+# which the graph shows as one box. No C++: each point is a copy of one small compute
+# shader, as no two nodes share a folder. Run ./run.sh --triangle-points.
+
+[manifest]
+version = 1
+
+# A group: no files of its own, the three points inside it.
+[node "corners"]
+
+# Each point's place in clip space, y pointing down, then its red, green and blue.
+[node "corners.top"]
+file        = Point.comp
+invocations = 1
+param       = x=0.0
+param       = y=-0.5
+param       = red=1.0
+param       = green=0.0
+param       = blue=0.0
+
+[node "corners.right"]
+file        = Point.comp
+invocations = 1
+param       = x=0.5
+param       = y=0.5
+param       = red=0.0
+param       = green=1.0
+param       = blue=0.0
+
+[node "corners.left"]
+file        = Point.comp
+invocations = 1
+param       = x=-0.5
+param       = y=0.5
+param       = red=0.0
+param       = green=0.0
+param       = blue=1.0
+
+# Turns the three about their middle: a whole turn every 600 frames, and 0 holds them
+# still.
+[node "face"]
+file         = Face.frag
+file         = Face.vert
+vertex_count = 3
+param        = frames_per_turn=600
+
+[connection "top"]
+from = corners.top.corner
+to   = face.top
+
+[connection "right"]
+from = corners.right.corner
+to   = face.right
+
+[connection "left"]
+from = corners.left.corner
+to   = face.left

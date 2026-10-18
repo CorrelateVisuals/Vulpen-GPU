@@ -1,0 +1,35 @@
+# The shape in C++, the pixels in compute: corners turns the classic triangle's three
+# corners every frame and hands them, each with its color, to the raster, a compute shader
+# that fills every cell of a 256 by 256 grid they cover, which the screen shows a square a
+# cell. Three corners cross to the GPU a frame, and the work a cell stays there.
+# Run ./run.sh --triangle-cpp-corners.
+
+[manifest]
+version = 1
+
+# A whole turn every 600 frames, and 0 holds the triangle still.
+[node "corners"]
+operator = Corners
+file     = Corners.cpp
+param    = frames_per_turn=600
+
+# side * side invocations, a cell each: 256 * 256 = 65536.
+[node "raster"]
+file        = Raster.comp
+invocations = 65536
+param       = side=256
+
+# As many squares as the raster writes cells, six vertices each.
+[node "screen"]
+file           = Screen.frag
+file           = Screen.vert
+vertex_count   = 6
+instance_count = cells
+
+[connection "corners"]
+from = corners.corners
+to   = raster.corners
+
+[connection "cells"]
+from = raster.cells
+to   = screen.cells

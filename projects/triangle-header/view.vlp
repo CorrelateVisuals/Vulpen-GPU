@@ -1,0 +1,25 @@
+# Two nodes, C++ and shaders apart: corners is C++ alone, its class declared in Corners.h
+# and defined in Corners.cpp, as the library's header template lays a node out, and face
+# is the draw alone. The connection between them carries contracts/Corner.glsl, which
+# contracts/Corner.h mirrors for C++, so each node reads whole on its own. Run
+# ./run.sh --triangle-header.
+
+[manifest]
+version = 1
+
+# Writes the three corners every frame: a whole turn every 600 frames, and 0 holds the
+# triangle still.
+[node "corners"]
+operator = Corners
+file     = Corners.cpp
+file     = Corners.h
+param    = frames_per_turn=600
+
+[node "face"]
+file         = Face.frag
+file         = Face.vert
+vertex_count = 3
+
+[connection "corners"]
+from = corners.corners
+to   = face.corners

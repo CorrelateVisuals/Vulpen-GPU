@@ -1,0 +1,32 @@
+# Every file a node, as far as the engine goes today: clock works out how far the triangle
+# has turned and hands it on as a C++ object, corners turns the classic corners by it and
+# writes them for the GPU, and face draws them. A draw is the one place two files share a
+# node, since a node runs one .vert and one .frag together. What two nodes share is a
+# contract: contracts/Spin.h between the C++ nodes, contracts/Corner.glsl and its C++
+# mirror contracts/Corner.h between C++ and the shaders. Run ./run.sh --triangle-files.
+
+[manifest]
+version = 1
+
+# A whole turn every 600 frames, and 0 holds the triangle still.
+[node "clock"]
+operator = Clock
+file     = Clock.cpp
+param    = frames_per_turn=600
+
+[node "corners"]
+operator = Corners
+file     = Corners.cpp
+
+[node "face"]
+file         = Face.frag
+file         = Face.vert
+vertex_count = 3
+
+[connection "spin"]
+from = clock.spin
+to   = corners.spin
+
+[connection "corners"]
+from = corners.corners
+to   = face.corners

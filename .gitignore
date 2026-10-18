@@ -15,10 +15,22 @@ __pycache__/
 *.bak
 
 # Each person's projects, and a project that is a git repository of its own; .gitkeep
-# keeps the folder, and the example projects are everyone's.
+# keeps the folder, and the example projects are everyone's, the triangle's variants with
+# them while they are judged (docs/plans/triangle-variants.md).
 /projects/*
 !/projects/.gitkeep
 !/projects/triangle/
+!/projects/triangle-buffer/
+!/projects/triangle-compute/
+!/projects/triangle-cpp-clock/
+!/projects/triangle-cpp-corners/
+!/projects/triangle-cpp-raster/
+!/projects/triangle-files/
+!/projects/triangle-header/
+!/projects/triangle-params/
+!/projects/triangle-points/
+!/projects/triangle-shaders/
+!/projects/triangle-twin/
 !/projects/wave/
 
 # What the ide's parts keep beside a view, as the graph its layout: a look at the view,

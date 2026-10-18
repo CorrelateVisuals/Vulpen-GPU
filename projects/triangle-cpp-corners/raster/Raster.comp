@@ -1,0 +1,39 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cell.glsl"
+#include "contracts/Corner.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(set = 1, binding = 0) uniform Pass {
+  uint side;       // a param: cells a row and a column, side * side invocations
+  Corners corners; // a connection: the three the corners node turned this frame
+  CellsOut cells;  // a connection: the screen's, a cell an invocation
+} pass;
+
+// Twice the area of the triangle from a to b to p, its sign the side of a to b p is on.
+float edge(vec2 a, vec2 b, vec2 p) {
+  return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+}
+
+// Each invocation one cell: inside the triangle, the corners' colors blended by how near
+// the cell's middle is to each, as a rasterizer blends them; outside, nothing at all.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const uint side = max(pass.side, 1u); // a side of 0 would divide by zero
+  const float size = 2.0 / float(side);
+  const vec2 corner = vec2(i % side, i / side) * size - 1.0;
+  const vec2 middle = corner + 0.5 * size;
+  const Corner a = pass.corners.at[0];
+  const Corner b = pass.corners.at[1];
+  const Corner c = pass.corners.at[2];
+  const vec2 at[3] = vec2[](a.position.xy, b.position.xy, c.position.xy);
+  const vec3 weights = vec3(edge(at[1], at[2], middle),
+                            edge(at[2], at[0], middle),
+                            edge(at[0], at[1], middle)) /
+                       edge(at[0], at[1], at[2]);
+  const bool inside = all(greaterThanEqual(weights, vec3(0.0)));
+  const vec3 color = mat3(a.color.rgb, b.color.rgb, c.color.rgb) * weights;
+  pass.cells.at[i] = Cell(inside ? vec4(color, 1.0) : vec4(0.0), corner, size);
+}

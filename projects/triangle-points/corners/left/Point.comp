@@ -1,0 +1,21 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Corner.glsl"
+
+layout(local_size_x = 1) in; // one point, one invocation
+
+// Every value a param of the node, which the engine writes at load and after each edit.
+layout(set = 1, binding = 0) uniform Pass {
+  float x; // in clip space, y pointing down
+  float y;
+  float red;
+  float green;
+  float blue;
+  CornersOut corner; // a connection: one of the face's corners
+} pass;
+
+void main() {
+  pass.corner.at[0] = Corner(vec4(pass.x, pass.y, 0.0, 1.0),
+                             vec4(pass.red, pass.green, pass.blue, 1.0));
+}

@@ -1,0 +1,16 @@
+# One file for both languages: shared/Triangle.h holds the triangle's corners, colors and
+# turn in the words C++ (through glm) and GLSL share, and both the operator and the vertex
+# shader include it. C++ turns the corners with it, and the shader colors them from the
+# same table, so the two never hold a copy each. Run ./run.sh --triangle-twin, then edit
+# shared/Triangle.h: both sides rebuild from the one change.
+
+[manifest]
+version = 1
+
+[node "triangle"]
+operator     = Triangle
+file         = Triangle.cpp
+file         = Triangle.frag
+file         = Triangle.vert
+vertex_count = 3
+param        = frames_per_turn=600
