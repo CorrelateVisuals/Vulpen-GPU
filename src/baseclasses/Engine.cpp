@@ -79,13 +79,16 @@ void begin(VkCommandBuffer commands, const Offscreen &offscreen) {
 
 // The image's old pixels go, so the copy waits for nothing; uploads are rare, so what
 // runs after it waits for it, whatever that is, rather than naming the stages that
-// sample.
+// sample. Zeroes go into an image a dispatch stores into, in the general layout it then
+// keeps, as a store and a sample both take it.
 void upload(VkCommandBuffer commands, const Copy &copy) {
+  const VkImageLayout written =
+      copy.from ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
   VkImageMemoryBarrier layout{
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
       .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
       .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      .newLayout = written,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .image = copy.to,
@@ -98,12 +101,16 @@ void upload(VkCommandBuffer commands, const Copy &copy) {
   const VkBufferImageCopy region{
       .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
       .imageExtent = {copy.extent.width, copy.extent.height, 1}};
-  vkCmdCopyBufferToImage(
-      commands, copy.from, copy.to, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+  if (copy.from)
+    vkCmdCopyBufferToImage(commands, copy.from, copy.to, written, 1, &region);
+  else
+    vkCmdClearColorImage(
+        commands, copy.to, written, &transparent, 1, &layout.subresourceRange);
   layout.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-  layout.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-  layout.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  layout.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  layout.dstAccessMask =
+      VK_ACCESS_SHADER_READ_BIT | (copy.from ? 0 : VK_ACCESS_SHADER_WRITE_BIT);
+  layout.oldLayout = written;
+  layout.newLayout = copy.from ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : written;
   transition(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 }
 

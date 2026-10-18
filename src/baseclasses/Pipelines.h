@@ -12,8 +12,8 @@
 
 namespace VP {
 
-// Where every image a shader samples lives, and the static samplers, which are
-// samplers[0] to samplers[3] (RV02).
+// Where every image a shader samples or stores into lives, and the static samplers,
+// which are samplers[0] to samplers[3] (RV02).
 inline constexpr std::uint32_t images_set = 0;
 inline constexpr std::uint32_t static_samplers = 4;
 
@@ -66,8 +66,9 @@ private:
   // A pool with room for a block, made when every pool is full, so a view's blocks are
   // bounded by memory alone.
   std::size_t pool() const;
-  // Points a free slot of textures[] at the view; throws when none is free.
-  std::uint32_t take_slot(VkImageView view) const;
+  // Points a free slot of textures[] at the image, and of images[] too for one a
+  // dispatch stores into; throws when none is free.
+  std::uint32_t take_slot(const Image &image) const;
 
   const VkDevice _device;
   const Resources &_resources;
@@ -76,7 +77,8 @@ private:
   VkDescriptorSetLayout _images = VK_NULL_HANDLE;
   VkDescriptorPool _image_pool = VK_NULL_HANDLE;
   VkDescriptorSet _image_set = VK_NULL_HANDLE;
-  // textures[]'s free slots, the lowest last; slot 0, unbound, is never one.
+  // textures[]'s free slots, and images[]'s, the lowest last; slot 0, unbound, is never
+  // one.
   mutable std::vector<std::uint32_t> _free;
   VkDescriptorSetLayout _pass = VK_NULL_HANDLE;
   VkPipelineLayout _layout = VK_NULL_HANDLE;
@@ -124,7 +126,8 @@ private:
 };
 
 // An image the passes sample, and its slot in textures[], which a pass block's Texture
-// holds; the slot is free again once the image goes.
+// holds, and an Image too for one a dispatch stores into; the slot is free again once the
+// image goes.
 class Sampled {
 public:
   Sampled(const Pipelines &pipelines, Image image);

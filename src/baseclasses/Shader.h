@@ -14,8 +14,10 @@ namespace VP {
 // block there, and C++ binds it there.
 inline constexpr std::uint32_t pass_set = 1;
 inline constexpr std::uint32_t pass_binding = 0;
-// The struct a pass block names an image by, as baseclasses/GpuLayout.glsl declares it.
+// The structs a pass block names an image by, one it samples and one it stores into,
+// as baseclasses/GpuLayout.glsl declares them.
 inline constexpr std::string_view texture_type = "Texture";
+inline constexpr std::string_view image_type = "Image";
 
 // What a shader does with a buffer, read from its qualifier: the node's declaration of
 // what it reads and writes, from which the barriers follow (V10).
@@ -35,6 +37,9 @@ struct Field {
   }
   bool texture() const {
     return type == texture_type;
+  }
+  bool image() const {
+    return type == image_type;
   }
   bool operator==(const Field &) const = default;
 };

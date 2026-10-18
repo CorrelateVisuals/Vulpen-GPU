@@ -21,7 +21,8 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 4> frame_mem
 constexpr float line_width = 1.0f; // the only width without the wideLines feature
 constexpr std::uint32_t textures_binding = 0;
 constexpr std::uint32_t samplers_binding = 1;
-// textures[]'s length, for every view at once; slot 0 means unbound.
+constexpr std::uint32_t images_binding = 2;
+// textures[]'s length, and images[]'s, for every view at once; slot 0 means unbound.
 constexpr std::uint32_t image_slots = 1024;
 // The static samplers, in the order baseclasses/GpuLayout.glsl names them.
 constexpr std::array<std::pair<VkFilter, VkSamplerAddressMode>, static_samplers> samplers{
@@ -70,14 +71,14 @@ VkSampler make_sampler(VkDevice device, VkFilter filter, VkSamplerAddressMode ad
   return sampler;
 }
 
-// Set 0: a slot for every image a shader samples, written as images come and go, and
-// the static samplers, which never change. Update after bind raises the device's limit
-// on sampled images to what descriptor indexing guarantees (RV01).
+// Set 0: a slot for every image a shader samples, and for every image a dispatch stores
+// into, written as images come and go, and the static samplers, which never change.
+// Update after bind raises the device's limits on sampled and storage images to what
+// descriptor indexing guarantees (RV01).
 VkDescriptorSetLayout image_layout(VkDevice device, std::span<const VkSampler> samplers) {
-  const std::array<VkDescriptorBindingFlags, 2> flags{
-      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-          VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-      0};
+  constexpr VkDescriptorBindingFlags slots = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+                                             VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+  const std::array<VkDescriptorBindingFlags, 3> flags{slots, 0, slots};
   const VkDescriptorSetLayoutBindingFlagsCreateInfo bound{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
       .bindingCount = static_cast<std::uint32_t>(flags.size()),
@@ -92,7 +93,11 @@ VkDescriptorSetLayout image_layout(VkDevice device, std::span<const VkSampler> s
                                    .descriptorCount =
                                        static_cast<std::uint32_t>(samplers.size()),
                                    .stageFlags = VK_SHADER_STAGE_ALL,
-                                   .pImmutableSamplers = samplers.data()}};
+                                   .pImmutableSamplers = samplers.data()},
+      VkDescriptorSetLayoutBinding{.binding = images_binding,
+                                   .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                   .descriptorCount = image_slots,
+                                   .stageFlags = VK_SHADER_STAGE_ALL}};
   const VkDescriptorSetLayoutCreateInfo info{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
       .pNext = &bound,
@@ -110,7 +115,9 @@ VkDescriptorPool image_pool(VkDevice device) {
   const std::array sizes{VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
                                               .descriptorCount = image_slots},
                          VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_SAMPLER,
-                                              .descriptorCount = static_samplers}};
+                                              .descriptorCount = static_samplers},
+                         VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                              .descriptorCount = image_slots}};
   const VkDescriptorPoolCreateInfo info{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
@@ -309,22 +316,31 @@ std::size_t Pipelines::pool() const {
   return _pools.size() - 1;
 }
 
-std::uint32_t Pipelines::take_slot(VkImageView view) const {
+// A stored image stays in the general layout, which a store and a sample both take, so
+// no pass moves it between the two.
+std::uint32_t Pipelines::take_slot(const Image &image) const {
   if (_free.empty())
     throw std::runtime_error(
         std::format("textures[] holds {} images, all taken", image_slots - 1));
   const std::uint32_t slot = _free.back();
   _free.pop_back();
-  const VkDescriptorImageInfo image{
-      .imageView = view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-  const VkWriteDescriptorSet write{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                   .dstSet = _image_set,
-                                   .dstBinding = textures_binding,
-                                   .dstArrayElement = slot,
-                                   .descriptorCount = 1,
-                                   .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                                   .pImageInfo = &image};
-  vkUpdateDescriptorSets(_device, 1, &write, 0, nullptr);
+  const bool stored = image.fill() == Fill::store;
+  const VkDescriptorImageInfo info{.imageView = image.view(),
+                                   .imageLayout =
+                                       stored ? VK_IMAGE_LAYOUT_GENERAL
+                                              : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+  const auto write = [&](std::uint32_t binding, VkDescriptorType type) {
+    return VkWriteDescriptorSet{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstSet = _image_set,
+                                .dstBinding = binding,
+                                .dstArrayElement = slot,
+                                .descriptorCount = 1,
+                                .descriptorType = type,
+                                .pImageInfo = &info};
+  };
+  const std::array writes{write(textures_binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                          write(images_binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)};
+  vkUpdateDescriptorSets(_device, stored ? 2 : 1, writes.data(), 0, nullptr);
   return slot;
 }
 
@@ -495,7 +511,7 @@ void PassBlock::flush() const {
 
 Sampled::Sampled(const Pipelines &pipelines, Image image)
     : _pipelines(&pipelines), _image(std::move(image)),
-      _slot(pipelines.take_slot(_image.view())) {}
+      _slot(pipelines.take_slot(_image)) {}
 
 Sampled::Sampled(Sampled &&other) noexcept
     : _pipelines(other._pipelines), _image(std::move(other._image)),

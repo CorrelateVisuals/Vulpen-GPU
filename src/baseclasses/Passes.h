@@ -34,10 +34,14 @@ struct Pass {
   const Offscreen *offscreen = nullptr;
   std::vector<VkBuffer> reads;
   std::vector<VkBuffer> writes;
+  // Whether it stores into an image, which the passes after it sample: one dispatch
+  // stores into each.
+  bool stores = false;
 };
 
 // Pixels the CPU put in a buffer, which the frame copies into an image before its
-// passes, so any of them may sample it.
+// passes, so any of them may sample it; or, from no buffer, zeroes into an image a
+// dispatch stores into, as it is made.
 struct Copy {
   VkBuffer from = VK_NULL_HANDLE;
   VkImage to = VK_NULL_HANDLE;
@@ -60,6 +64,9 @@ private:
   // Since the last barrier; kept between frames so a frame allocates nothing (CPP10).
   std::vector<VkBuffer> _written;
   std::vector<VkBuffer> _read;
+  // Whether a pass stored into an image since: every pass after it waits, as tracking
+  // its readers costs more than the barrier, with one writer an image.
+  bool _stored = false;
 };
 
 } // namespace VP

@@ -242,13 +242,13 @@ Field describe(const Module &module, const Member &member, std::uint32_t type_id
       type.at(1) == spirv::storage_physical_storage_buffer)
     return describe_buffer(
         module, {.name = member.name, .offset = member.offset}, type.at(2));
-  if (glsl_name(module, type_id) == texture_type)
-    return {
-        .name = member.name, .type = std::string(texture_type), .offset = member.offset};
+  if (const std::string name = glsl_name(module, type_id);
+      name == texture_type || name == image_type)
+    return {.name = member.name, .type = name, .offset = member.offset};
   if (value_bytes(module, type_id) == 0)
     throw std::runtime_error(
         std::format("pass block field {} has a type this build cannot set yet: use "
-                    "float, int, uint, a vector of them, a buffer or a Texture",
+                    "float, int, uint, a vector of them, a buffer, a Texture or an Image",
                     member.name));
   return {
       .name = member.name, .type = glsl_name(module, type_id), .offset = member.offset};
@@ -269,10 +269,11 @@ std::pair<std::vector<Field>, std::uint32_t> pass_block(const Module &module) {
     for (std::size_t index = 1; index < members.size(); ++index) {
       const Field &field = fields.emplace_back(
           describe(module, module.members.at(block).at(index - 1), members[index]));
-      // A Texture holds its slot as a uint.
-      const std::uint32_t bytes = field.buffer()    ? address_bytes
-                                  : field.texture() ? scalar_bytes
-                                                    : value_bytes(module, members[index]);
+      // A Texture and an Image hold their slot as a uint.
+      const std::uint32_t bytes = field.buffer() ? address_bytes
+                                  : field.texture() || field.image()
+                                      ? scalar_bytes
+                                      : value_bytes(module, members[index]);
       end = std::max(end, field.offset + bytes);
     }
     const std::uint32_t size = (end + std140_block_alignment - 1) /

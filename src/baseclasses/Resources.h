@@ -13,8 +13,9 @@ namespace VP {
 // Where a buffer lives: only on the GPU, or where the CPU writes or reads it back.
 enum class Memory { device, upload, readback };
 
-// What gives an image its pixels: a copy from what the CPU filled, or a draw.
-enum class Fill { copy, draw };
+// What gives an image its pixels: a copy from what the CPU filled, a draw, or a
+// dispatch's stores.
+enum class Fill { copy, draw, store };
 
 // What the GPU holds: one owner for every buffer and image; the rest borrow handles.
 class Buffer {
@@ -56,6 +57,7 @@ public:
   VkImageView view() const;
   VkExtent2D extent() const;
   VkFormat format() const;
+  Fill fill() const;
 
 private:
   friend class Resources;
@@ -68,6 +70,7 @@ private:
   VkImageView _view = VK_NULL_HANDLE;
   VkExtent2D _extent{};
   VkFormat _format = VK_FORMAT_UNDEFINED;
+  Fill _fill = Fill::copy;
 };
 
 class Resources {
@@ -81,7 +84,7 @@ public:
   Buffer buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const;
   Image image(VkExtent2D extent, VkFormat format, Fill fill = Fill::copy) const;
   // Whether shaders may sample, filtered, an image of the format filled so; a draw also
-  // blends into it.
+  // blends into it, and a dispatch stores into it from images[].
   bool samples(VkFormat format, Fill fill = Fill::copy) const;
 
 private:

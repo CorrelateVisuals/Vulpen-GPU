@@ -18,7 +18,8 @@ constexpr std::uint32_t block_shift = 3;      // scene's blocks are 8 pixels wid
 
 // Stops when a pixel paint drew reads back as another, or when nothing reads back: the
 // image a draw renders into must reach a dispatch after it in the same frame, at the
-// frame's size, which --size gives without a window (V07).
+// frame's size, which --size gives without a window (V07), and so must one a dispatch
+// stores into.
 class Look : public VP::Operator {
 public:
   void bind(VP::Bind &node) override {
@@ -76,9 +77,17 @@ class Watch final : public Look {
   }
 };
 
+// The same, for the image stamp stores into, which a dispatch after it samples.
+class Stamped final : public Look {
+  std::string_view drawer() const override {
+    return "stamp";
+  }
+};
+
 } // namespace
 
 VP_OPERATORS(registry) {
   registry.add<Look>("Look");
   registry.add<Watch>("Watch");
+  registry.add<Stamped>("Stamped");
 }

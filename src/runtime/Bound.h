@@ -119,6 +119,8 @@ inline constexpr std::array<PixelFormat, 10> pixel_formats{
      {"R32G32B32A32_SFLOAT", VK_FORMAT_R32G32B32A32_SFLOAT, "vec4", 16}}};
 // What an image takes when its node gives it no format.
 inline constexpr std::string_view default_format = "R8G8B8A8_UNORM";
+// What an image a dispatch stores into takes: the one format images[] declares, rgba8.
+inline constexpr std::string_view stored_format = "R8G8B8A8_UNORM";
 // What a view's window renders into while the view hosting it takes it: sRGB, as the
 // window prefers, so the view's draws blend and band as they would in a window of their
 // own.

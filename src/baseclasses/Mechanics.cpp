@@ -210,14 +210,20 @@ VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
                                       .queueFamilyIndex = family,
                                       .queueCount = 1,
                                       .pQueuePriorities = &queue_priority};
-  // What set 0's array of images needs (RV02), all of which descriptor indexing brings.
-  const VkPhysicalDeviceFeatures features{.shaderSampledImageArrayDynamicIndexing =
-                                              VK_TRUE};
+  // What set 0's arrays of images need (RV02), all of which descriptor indexing brings
+  // but indexing images[], which a GPU without it leaves to no node (Resources::samples).
+  VkPhysicalDeviceFeatures supported{};
+  vkGetPhysicalDeviceFeatures(physical_device, &supported);
+  const VkPhysicalDeviceFeatures features{
+      .shaderSampledImageArrayDynamicIndexing = VK_TRUE,
+      .shaderStorageImageArrayDynamicIndexing =
+          supported.shaderStorageImageArrayDynamicIndexing};
   const VkPhysicalDeviceVulkan12Features features12{
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       .descriptorIndexing = VK_TRUE,
       .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
       .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+      .descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
       .descriptorBindingPartiallyBound = VK_TRUE,
       .runtimeDescriptorArray = VK_TRUE,
       .bufferDeviceAddress = VK_TRUE};

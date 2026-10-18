@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <format>
+#include <stdexcept>
 
 namespace VP {
 
@@ -80,6 +81,25 @@ void Schedule::check_stages(Bound &bound) const {
                     size[0]));
 }
 
+// Before the pipeline is made, which either of these would make wrongly: a draw stores
+// into no image, as a store from a draw needs features past the Vulkan floor (RVK01),
+// and a dispatch stores into one only where this GPU indexes images[].
+void Schedule::check_stores(const Bound &bound) const {
+  const auto image = std::ranges::find_if(bound.fields, &Field::image);
+  if (image == bound.fields.end())
+    return;
+  if (is_draw(*bound.node))
+    throw std::runtime_error(
+        std::format("{}: a draw's shaders store into no image, as that needs features "
+                    "past the Vulkan floor; a dispatch stores into one",
+                    image->name));
+  if (!_wiring.resources.samples(pixel_format(stored_format)->format, Fill::store))
+    throw std::runtime_error(
+        std::format("{}: this GPU cannot store into images, as it cannot index "
+                    "images[] (shaderStorageImageArrayDynamicIndexing)",
+                    image->name));
+}
+
 // Every param is read by someone, and every value in the pass block is set by someone.
 // Without its operator, a node cannot say what the operator would have read or set.
 void Schedule::check_fields(Bound &bound) const {
@@ -99,8 +119,8 @@ void Schedule::check_fields(Bound &bound) const {
     }
   }
   for (const Field &field : bound.fields)
-    if (!field.buffer() && !field.texture() && !bound.param(field.name) &&
-        !bound.set_by_operator.contains(field.name))
+    if (!field.buffer() && !field.texture() && !field.image() &&
+        !bound.param(field.name) && !bound.set_by_operator.contains(field.name))
       bound.errors.push_back(std::format("{} in the pass block: nothing sets it; give "
                                          "the node a param {} or set it from "
                                          "the operator",
@@ -159,12 +179,14 @@ void Schedule::check_connections() {
       continue;
     }
     const bool drawn = writer.drawn && connection.from.port == writer.output;
-    if (writer.fills(connection.from.port) || drawn) {
+    const Field *const out = writer.field(connection.from.port);
+    if (writer.fills(connection.from.port) || drawn || (out && out->image())) {
       sampled(connection,
-              std::format("{} {}", connection.from.node, drawn ? "draws" : "fills"));
+              std::format("{} {}",
+                          connection.from.node,
+                          drawn ? "draws" : out && out->image() ? "stores" : "fills"));
       continue;
     }
-    const Field *const out = writer.field(connection.from.port);
     const bool written = out && out->buffer() &&
                          (writes(out->access) || writer.uploads_to(connection.from.port));
     if (writer.loaded() && !written)
@@ -248,19 +270,30 @@ void Schedule::check_images() {
                                            "samples: no Texture of its shaders, and no "
                                            "connection",
                                            filled.port));
-    for (const ImagePort &image : bound.node->images)
+    for (const ImagePort &image : bound.node->images) {
+      const Field *const field = bound.field(image.port);
+      const bool stored = field && field->image();
       if (!pixel_format(image.format))
         bound.errors.push_back(
             std::format("image {}={}: no such format; an image takes {}",
                         image.port,
                         image.format,
                         format_names()));
-      else if (!bound.fills(image.port) && image.port != bound.output)
-        bound.errors.push_back(std::format("image {}={}: neither its operator fills nor "
-                                           "its draw renders an image {}",
+      else if (stored && image.format != stored_format)
+        bound.errors.push_back(
+            std::format("image {}={}: a dispatch stores into {} images only, as "
+                        "images[] declares them",
+                        image.port,
+                        image.format,
+                        stored_format));
+      else if (!bound.fills(image.port) && image.port != bound.output && !stored)
+        bound.errors.push_back(std::format("image {}={}: neither its operator fills, "
+                                           "its draw renders nor its dispatch stores an "
+                                           "image {}",
                                            image.port,
                                            image.format,
                                            image.port));
+    }
   }
 }
 

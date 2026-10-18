@@ -75,6 +75,15 @@ struct Schedule::Rendered {
   Offscreen offscreen;
 };
 
+// An image a dispatch stores into, by its writer's node.port, as its readers' connection
+// names it: made at the frame's size, zeroed, and made again whenever the size changes;
+// none while there is no size.
+struct Schedule::Stored {
+  std::string name;
+  const Bound *writer = nullptr;
+  std::optional<Sampled> image;
+};
+
 // Of the nodes whose writers are all placed, the first in the manifest goes next, so
 // nodes the connections leave unordered, such as two draws, run as the manifest lists
 // them. Every rebuild reorders the view, so the connections are indexed once, not
@@ -208,6 +217,7 @@ void Schedule::load_shaders(Bound &bound,
     } else {
       read_shaders(bound);
     }
+    check_stores(bound);
     const VkRenderPass render_pass =
         is_draw(*bound.node) ? target_of(bound) : VK_NULL_HANDLE;
     if (unchanged && old->pipeline && old->render_pass == render_pass) {
@@ -426,12 +436,12 @@ void Schedule::keep_images(Schedule &replaced) {
     }
 }
 
-// Each block whose Texture samples the image holds its slot; any other Texture stays 0,
-// unbound, until its image is filled.
+// Each block whose Texture samples the image holds its slot, and so does the Image of
+// the dispatch storing into it; any other stays 0, unbound, until its image is there.
 void Schedule::point_readers(const std::string &name, std::uint32_t slot) {
   for (Bound &bound : _bound)
     for (const Field &field : bound.fields)
-      if (bound.block && field.texture() &&
+      if (bound.block && (field.texture() || field.image()) &&
           image_name(bound.node->name, field.name) == name) {
         std::memcpy(bound.block->bytes().data() + field.offset, &slot, sizeof slot);
         bound.block->flush();
@@ -492,18 +502,26 @@ const Image &Schedule::image_for(const Bound &writer,
   return made.sampled.image();
 }
 
-// An image for each draw whose color a connection takes to a Texture, and for each view
-// this one hosts whose window a connection takes, made as the first frame gives it a
-// size. A view's window is there while its connection is, so the hosted view's draws,
-// whose pipelines fit it, always have it to draw into.
+// An image for each draw whose color a connection takes to a Texture, for each Image a
+// dispatch stores into, and for each view this one hosts whose window a connection
+// takes, made as the first frame gives it a size. A view's window is there while its
+// connection is, so the hosted view's draws, whose pipelines fit it, always have it to
+// draw into.
 void Schedule::make_targets() {
-  for (const Bound &bound : _bound)
-    if (bound.errors.empty() && bound.pipeline && bound.drawn)
+  for (const Bound &bound : _bound) {
+    if (!bound.errors.empty() || !bound.pipeline)
+      continue;
+    if (bound.drawn)
       _rendered.push_back(std::make_unique<Rendered>(
           Rendered{.name = std::format("{}.{}", bound.node->name, bound.output),
                    .format = bound.drawn,
                    .render_pass = bound.render_pass,
                    .writer = &bound}));
+    for (const Field &field : bound.fields)
+      if (field.image())
+        _stored.push_back({.name = std::format("{}.{}", bound.node->name, field.name),
+                           .writer = &bound});
+  }
   const PixelFormat *const window = pixel_format(window_format);
   for (const Connection &connection : _view.connections)
     if (connection.from.view())
@@ -546,6 +564,36 @@ void Schedule::size_targets(VkExtent2D size) {
     point_readers(rendered->name,
                   rendered->drawn ? rendered->drawn->sampled().slot() : 0);
   }
+  for (Stored &stored : _stored)
+    size_stored(stored, size);
+}
+
+// A new image is zeroed before the passes of the frame that first runs it, so what a
+// dispatch leaves unstored samples as nothing at all, the same on every run (C01).
+void Schedule::size_stored(Stored &stored, VkExtent2D size) {
+  if (stored.image && stored.image->image().extent().width == size.width &&
+      stored.image->image().extent().height == size.height)
+    return;
+  if (stored.image) {
+    const VkImage old = stored.image->image().handle();
+    std::erase_if(_copies, [&](const Copy &copy) { return copy.to == old; });
+    stored.image.reset();
+  }
+  const PixelFormat &format = *pixel_format(stored_format);
+  if (size.width != 0 && size.height != 0) {
+    const Sampled &made = stored.image.emplace(
+        _wiring.pipelines, _wiring.resources.image(size, format.format, Fill::store));
+    _copies.push_back({.to = made.image().handle(), .extent = size});
+    log(Level::info,
+        Tag::mem,
+        *stored.writer,
+        std::format("{}: {} by {} pixels of {}, which it stores into",
+                    stored.name,
+                    size.width,
+                    size.height,
+                    format.name));
+  }
+  point_readers(stored.name, stored.image ? stored.image->slot() : 0);
 }
 
 void Schedule::make_passes() {
@@ -561,7 +609,8 @@ void Schedule::make_passes() {
                              : bound.node->invocations /
                                    bound.shaders.front().workgroup_size()[0],
               .vertex_count = draw ? bound.node->vertex_count : 0,
-              .instance_count = instance_number(*bound.node).value_or(0)};
+              .instance_count = instance_number(*bound.node).value_or(0),
+              .stores = std::ranges::any_of(bound.fields, &Field::image)};
     if (draw && !instance_number(*bound.node))
       pass.instances =
           &_used.at(buffer_name(bound.node->name, bound.node->instance_count));

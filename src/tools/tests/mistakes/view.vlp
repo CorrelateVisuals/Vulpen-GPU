@@ -103,8 +103,20 @@ file         = Paint.frag
 file         = Paint.vert
 vertex_count = 3
 
-# Stops when a pixel of paint's image reads back as another; its C++ also registers an
-# operator that checks scene's pattern, in the window of a view its view hosts.
+# Stores each pixel's place into an image, which look samples in the same frame.
+[node "stamp"]
+file        = Stamp.comp
+invocations = 64
+
+# Stores into an image from a draw, which only a dispatch may.
+[node "smear"]
+file         = Smear.frag
+file         = Smear.vert
+vertex_count = 3
+
+# Stops when a pixel of paint's image reads back as another; its C++ also registers
+# operators that check scene's pattern, in the window of a view its view hosts, and the
+# pixels stamp stores.
 [node "look"]
 operator    = Look
 file        = Look.comp

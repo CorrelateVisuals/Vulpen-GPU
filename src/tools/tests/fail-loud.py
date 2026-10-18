@@ -13,8 +13,10 @@ nothing samples, C++ uploading other than an image's count of pixels, C++ pixels
 than the image's format takes, a format there is not, image clear of a port that fills
 no image, a key there is not, a buffer C++ fills for another node's shader whose members
 sit elsewhere, given no room, or that nothing reads, a draw's image taken to no Texture,
-or given a format there is not, and a view's window taken from a view the view does not
-host, taken to a view, or taken to no Texture.
+or given a format there is not, a draw that stores into an image, an image a dispatch
+stores into given another format than images[] declares or taken to no Texture, and a
+view's window taken from a view the view does not host, taken to a view, or taken to no
+Texture.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -27,7 +29,8 @@ C++ fills an image with reach a shader pixel for pixel, through the node's own T
 through a connection and as 16-bit floats, stay through a rebuild, and come back after
 image clear when the node fills them again. The image a draw renders into reaches a
 dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
-with no window, and so does the window of a view its host takes, drawn that frame, and
+with no window, and so does the image a dispatch stores into, and the window of a view
+its host takes, drawn that frame, and
 that of a view one beside it takes, as a GUI presents a project, though hosted after it,
 which a save of the view taking it leaves out (V03). The
 library's palette, font, rects and glyphs draw the fixture's sign in
@@ -68,6 +71,7 @@ PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = pictur
 SIGN = '[node "sign"]\noperator = Sign\n'
 PAINT = '[node "paint"]\nvertex_count = 3\n'
 LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
+STAMP = '[node "stamp"]\ninvocations = 64\n'
 INNER = '[view "inner"]\n'  # a hosted view, empty while its folder holds no view.vlp
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
@@ -170,6 +174,13 @@ CASES = {
                   "connection painted is to inner:, but a view's window only leaves it"),
     "view-reader": (HEAD + INNER + SUM + connection("stage", "inner:", "sum.values"),
                     "connection stage: view inner draws an image, which values is no Texture"),
+    "store-draw": (HEAD + '[node "smear"]\nvertex_count = 3\n' + LOOK
+                   + connection("smeared", "smear.color", "look.painted"),
+                   "canvas: a draw's shaders store into no image"),
+    "store-format": (HEAD + STAMP + "image = canvas=R8_UNORM\n",
+                     "image canvas=R8_UNORM: a dispatch stores into R8G8B8A8_UNORM images only"),
+    "store-reader": (HEAD + STAMP + SUM + connection("stamped", "stamp.canvas", "sum.values"),
+                     "connection stamped: stamp stores an image, which values is no Texture"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -404,6 +415,17 @@ def offscreen(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def stored(vulpen: str, folder: Path) -> str | None:
+    """Why the image a dispatch stores into did not reach a dispatch after it in the same
+    frame, pixel for pixel, at the size --size gives a run with no window, or None."""
+    view = view_in(folder, "stored", HEAD + STAMP + LOOK.replace("Look", "Stamped")
+                   + connection("stamped", "stamp.canvas", "look.painted"))
+    code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
+    if code != 0 or problems(output):
+        return f"stored: expected each pixel stamp stored, got exit {code}:\n{output}"
+    return None
+
+
 def presented(vulpen: str, folder: Path) -> str | None:
     """Why the window of a view its host takes did not reach the host's dispatch, pixel
     for pixel and drawn that frame, at the size --size gives a run with no window, or
@@ -595,6 +617,7 @@ def main() -> None:
                             frame_block(vulpen, folder), cpp(vulpen, folder),
                             images(vulpen, folder), text(vulpen, folder),
                             offscreen(vulpen, folder),
+                            stored(vulpen, folder),
                             presented(vulpen, folder),
                             beside(vulpen, folder),
                             input_lines(vulpen, folder),

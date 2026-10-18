@@ -120,6 +120,7 @@ private:
   struct Held;
   struct Picture;
   struct Rendered; // in runtime/Schedule.cpp, the one file that reaches its parts
+  struct Stored;   // so is this
   class Binder;
   class Cooker;
 
@@ -130,6 +131,7 @@ private:
   VkRenderPass target_of(Bound &bound) const;
   void make_pipeline(Bound &bound, VkRenderPass render_pass) const;
   void check_stages(Bound &bound) const;
+  void check_stores(const Bound &bound) const;
   void check_fields(Bound &bound) const;
   void check_connections();
   void check_inputs(const Connection &connection);
@@ -145,6 +147,7 @@ private:
   void make_blocks();
   void make_targets();
   void size_targets(VkExtent2D size);
+  void size_stored(Stored &stored, VkExtent2D size);
   void make_passes();
   void cost_from(const Schedule *replaced);
   void upload(const Bound &writer,
@@ -185,6 +188,7 @@ private:
   // That draws render into, its own and the windows of views it hosts; each stays where
   // it is, as the passes that draw it point to it.
   std::vector<std::unique_ptr<Rendered>> _rendered;
+  std::vector<Stored> _stored; // that dispatches store into
   std::vector<Copy> _copies;
   // What the copies read: this frame's, and those of the frame the GPU may still run.
   std::vector<Buffer> _staged;

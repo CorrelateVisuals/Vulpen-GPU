@@ -67,6 +67,35 @@ vec4 sample_nearest(Texture image, vec2 uv) {
       sampler2D(textures[nonuniformEXT(image.index)], samplers[nearest_clamp]), uv, 0.0);
 }
 
+// Every image a dispatch stores into (RV02), each also in textures[] at the same slot, so
+// a pass after it samples it through a Texture of that index. A pass block names one by
+// an Image, which the engine makes at the frame's size, zeroed. One format,
+// R8G8B8A8_UNORM, as rgba8 declares, so a store needs no feature past the floor's but
+// storage image dynamic indexing.
+layout(set = 0, binding = 2, rgba8) uniform writeonly image2D images[];
+
+struct Image {
+  uint index;
+};
+
+// The image's size in pixels; zero for an unbound one, slot 0. An Image comes from the
+// pass block, the same for every invocation, as indexing images[] without nonuniformEXT
+// asks.
+ivec2 image_size(Image image) {
+  if (image.index == 0u)
+    return ivec2(0);
+  return imageSize(images[image.index]);
+}
+
+// color at pixel, from the top left; nothing into an unbound image, and nothing outside
+// it, which no GPU then writes differently (GLSL02).
+void store(Image image, ivec2 pixel, vec4 color) {
+  const ivec2 size = image_size(image);
+  if (any(lessThan(pixel, ivec2(0))) || any(greaterThanEqual(pixel, size)))
+    return;
+  imageStore(images[image.index], pixel, color);
+}
+
 // The two triangles of a quad, as its corners from the top left, so a draw of six
 // vertices an instance places a rectangle an instance.
 const int quad_vertices = 6;

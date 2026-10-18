@@ -1,0 +1,20 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(set = 1, binding = 0) uniform Pass {
+  Image canvas; // at the frame's size, which look samples through a connection
+} pass;
+
+// Each pixel's place, as paint draws it, which bytes R8G8B8A8_UNORM hold exactly, so a
+// reader that finds another value read another pixel; each invocation stores every
+// column a whole number of invocations from its own.
+void main() {
+  const ivec2 size = image_size(pass.canvas);
+  const int threads = int(gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+  for (int x = int(gl_GlobalInvocationID.x); x < size.x; x += threads)
+    for (int y = 0; y < size.y; ++y)
+      store(pass.canvas, ivec2(x, y), vec4(vec2(uvec2(x, y) & 255u) / 255.0, 0.0, 1.0));
+}

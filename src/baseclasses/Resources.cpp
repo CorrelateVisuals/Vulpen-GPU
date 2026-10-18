@@ -91,6 +91,7 @@ Image &Image::operator=(Image &&other) noexcept {
   std::swap(_view, other._view);
   std::swap(_extent, other._extent);
   std::swap(_format, other._format);
+  std::swap(_fill, other._fill);
   return *this;
 }
 
@@ -115,6 +116,10 @@ VkExtent2D Image::extent() const {
 
 VkFormat Image::format() const {
   return _format;
+}
+
+Fill Image::fill() const {
+  return _fill;
 }
 
 Resources::Resources(VkInstance instance,
@@ -157,10 +162,12 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
   return buffer;
 }
 
+// A stored image is zeroed by a transfer once made.
 Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
-  const VkImageUsageFlags filled = fill == Fill::draw
-                                       ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                                       : VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  const VkImageUsageFlags filled =
+      fill == Fill::draw    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      : fill == Fill::store ? VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                            : VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   const VkImageCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                                .imageType = VK_IMAGE_TYPE_2D,
                                .format = format,
@@ -179,6 +186,7 @@ Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
   image._device = _device;
   image._extent = extent;
   image._format = format;
+  image._fill = fill;
   const VkImageViewCreateInfo view{
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image = image._image,
@@ -192,17 +200,23 @@ Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
 
 // Every format an image may take can be sampled on most GPUs, but some cannot filter
 // 32-bit floats, and a linear sampler there reads what each vendor likes (GLSL02). Every
-// draw blends, and some GPUs cannot blend into 32-bit floats either.
+// draw blends, and some GPUs cannot blend into 32-bit floats either. A store indexes
+// images[], which some GPUs cannot, and which the device then does not enable.
 bool Resources::samples(VkFormat format, Fill fill) const {
   VkFormatProperties properties{};
   vkGetPhysicalDeviceFormatProperties(_physical_device, format, &properties);
   const VkFormatFeatureFlags needed =
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
-      (fill == Fill::draw ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-                                VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
-                          : VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
-  return (properties.optimalTilingFeatures & needed) == needed;
+      (fill == Fill::draw    ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                                   VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
+       : fill == Fill::store ? VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
+                                   VK_FORMAT_FEATURE_TRANSFER_DST_BIT
+                             : VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
+  VkPhysicalDeviceFeatures features{};
+  vkGetPhysicalDeviceFeatures(_physical_device, &features);
+  return (properties.optimalTilingFeatures & needed) == needed &&
+         (fill != Fill::store || features.shaderStorageImageArrayDynamicIndexing);
 }
 
 } // namespace VP

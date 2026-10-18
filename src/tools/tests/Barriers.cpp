@@ -24,6 +24,11 @@ VP::Pass pass(std::vector<VkBuffer> reads, std::vector<VkBuffer> writes) {
   return {.reads = std::move(reads), .writes = std::move(writes)};
 }
 
+// A dispatch storing into an image, which the rule cannot tell the readers of.
+VP::Pass stores() {
+  return {.stores = true};
+}
+
 struct Case {
   const char *name;
   std::vector<std::vector<VP::Pass>> runs; // each with no barrier inside it
@@ -53,6 +58,9 @@ int main() {
       {"a run",
        {{pass({}, {x})}, {pass({y}, {}), pass({x}, {})}, {pass({}, {y})}},
        {false, true, true}},
+      {"after a store",
+       {{stores()}, {pass({}, {})}, {pass({}, {})}},
+       {false, true, false}},
   };
   int failed = 0;
   VP::Hazards hazards;
