@@ -34,9 +34,11 @@ constexpr std::uint32_t mode_local_size = 17;
 constexpr std::uint32_t decoration_array_stride = 6;
 constexpr std::uint32_t decoration_non_writable = 24;
 constexpr std::uint32_t decoration_non_readable = 25;
+constexpr std::uint32_t decoration_location = 30;
 constexpr std::uint32_t decoration_binding = 33;
 constexpr std::uint32_t decoration_descriptor_set = 34;
 constexpr std::uint32_t decoration_offset = 35;
+constexpr std::uint32_t storage_input = 1;
 constexpr std::uint32_t storage_uniform = 2;
 constexpr std::uint32_t storage_output = 3;
 constexpr std::uint32_t storage_push_constant = 9;
@@ -63,10 +65,11 @@ struct Module {
   std::unordered_map<std::uint32_t, std::string> names;
   std::unordered_map<std::uint32_t, std::vector<Member>> members;
   std::unordered_map<std::uint32_t, std::vector<std::uint32_t>> types;
-  std::unordered_map<std::uint32_t, std::uint32_t> strides, sets, bindings;
+  std::unordered_map<std::uint32_t, std::uint32_t> strides, sets, bindings, locations;
   std::vector<std::pair<std::uint32_t, std::uint32_t>> uniforms; // pointer type, variable
   std::vector<std::uint32_t> push_constants;                     // pointer types
-  std::vector<std::uint32_t> outputs;                            // variables
+  // Pointer type, variable.
+  std::vector<std::pair<std::uint32_t, std::uint32_t>> outputs, inputs;
   std::array<std::uint32_t, 3> workgroup_size{};
 
   Member &member(std::uint32_t type, std::uint32_t index) {
@@ -107,6 +110,9 @@ void decorate(Module &module, std::span<const std::uint32_t> operands) {
       break;
     case spirv::decoration_binding:
       module.bindings[target] = at(operands, 2);
+      break;
+    case spirv::decoration_location:
+      module.locations[target] = at(operands, 2);
       break;
   }
 }
@@ -159,7 +165,9 @@ void read(Module &module, std::uint32_t opcode, std::span<const std::uint32_t> o
       else if (at(operands, 2) == spirv::storage_push_constant)
         module.push_constants.push_back(at(operands, 0));
       else if (at(operands, 2) == spirv::storage_output)
-        module.outputs.push_back(at(operands, 1));
+        module.outputs.emplace_back(at(operands, 0), at(operands, 1));
+      else if (at(operands, 2) == spirv::storage_input)
+        module.inputs.emplace_back(at(operands, 0), at(operands, 1));
       break;
     case spirv::op_decorate:
       decorate(module, operands);
@@ -310,17 +318,24 @@ std::pair<std::vector<Field>, std::uint32_t> frame_block(const Module &module) {
   return {std::move(fields), end};
 }
 
-// What the shader writes out of its stage, by name; a built-in, or a block GLSL leaves
-// unnamed, is none.
-std::vector<std::string> outputs_of(const Module &module) {
-  std::vector<std::string> outputs;
-  for (const std::uint32_t output : module.outputs) {
-    const auto name = module.names.find(output);
-    if (name != module.names.end() && !name->second.empty() &&
-        !name->second.starts_with(built_in))
-      outputs.push_back(name->second);
+// What the shader writes out of its stage or reads in, by name; a built-in, or a block
+// GLSL leaves unnamed, is none.
+std::vector<Varying>
+varyings_of(const Module &module,
+            const std::vector<std::pair<std::uint32_t, std::uint32_t>> &variables) {
+  std::vector<Varying> varyings;
+  for (const auto &[pointer, variable] : variables) {
+    const auto name = module.names.find(variable);
+    if (name == module.names.end() || name->second.empty() ||
+        name->second.starts_with(built_in))
+      continue;
+    const auto location = module.locations.find(variable);
+    varyings.push_back(
+        {.name = name->second,
+         .location = location == module.locations.end() ? 0 : location->second,
+         .type = glsl_name(module, module.types.at(pointer).at(2))});
   }
-  return outputs;
+  return varyings;
 }
 
 std::vector<std::uint32_t> read_words(const std::filesystem::path &spirv) {
@@ -351,7 +366,8 @@ Shader::Shader(const std::filesystem::path &spirv) : _words(read_words(spirv)) {
     word += count;
   }
   _workgroup_size = module.workgroup_size;
-  _outputs = outputs_of(module);
+  _outputs = varyings_of(module, module.outputs);
+  _inputs = varyings_of(module, module.inputs);
   std::tie(_fields, _block_size) = pass_block(module);
   std::tie(_frame, _frame_size) = frame_block(module);
 }
@@ -380,8 +396,12 @@ const std::array<std::uint32_t, 3> &Shader::workgroup_size() const {
   return _workgroup_size;
 }
 
-const std::vector<std::string> &Shader::outputs() const {
+const std::vector<Varying> &Shader::outputs() const {
   return _outputs;
+}
+
+const std::vector<Varying> &Shader::inputs() const {
+  return _inputs;
 }
 
 } // namespace VP

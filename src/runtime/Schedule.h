@@ -128,10 +128,16 @@ private:
   void load_shaders(Bound &bound, const std::filesystem::path &folder, Bound *old);
   bool check_counts(Bound &bound) const;
   void read_shaders(Bound &bound) const;
+  void fit_pipeline(Bound &bound, Bound *old, bool unchanged);
   VkRenderPass target_of(Bound &bound) const;
   void make_pipeline(Bound &bound, VkRenderPass render_pass) const;
+  void pair_draws(Schedule *replaced);
+  Bound *fragment_of(Bound &vertex);
+  void check_varyings(const Bound &vertex,
+                      Bound &fragment,
+                      const std::vector<const Connection *> &varyings) const;
   void check_stages(Bound &bound) const;
-  void check_stores(const Bound &bound) const;
+  void check_shaders(const Bound &bound) const;
   void check_fields(Bound &bound) const;
   void check_connections();
   void check_inputs(const Connection &connection);

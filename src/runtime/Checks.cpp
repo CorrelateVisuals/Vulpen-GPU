@@ -24,21 +24,26 @@ std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
 } // namespace
 
 // What the node's shaders make it, and whether it counts what that runs: a dispatch
-// its invocations, a draw its vertex_count. False when a mistake leaves nothing to run.
+// its invocations, a draw its vertex_count, as a vertex node does, and a fragment node
+// nothing. False when a mistake leaves nothing to run.
 bool Schedule::check_counts(Bound &bound) const {
   const Node &node = *bound.node;
   const std::vector<std::string> &shaders = bound.shaders_named;
   const bool dispatch = shaders.size() == 1 && count_stage(shaders, compute_stage) == 1;
-  const bool draw = shaders.size() == 2 && count_stage(shaders, vertex_stage) == 1 &&
-                    count_stage(shaders, fragment_stage) == 1;
+  const bool fragment = shaders.size() == 1 && count_stage(shaders, fragment_stage) == 1;
+  const bool vertex = shaders.size() == 1 && count_stage(shaders, vertex_stage) == 1;
+  const bool draw = vertex || (shaders.size() == 2 &&
+                               count_stage(shaders, vertex_stage) == 1 &&
+                               count_stage(shaders, fragment_stage) == 1);
   const std::size_t before = bound.errors.size();
   if (shaders.empty()) {
     if (node.invocations != 0 || node.vertex_count != 0 || !node.instance_count.empty())
       bound.errors.emplace_back("it counts invocations or vertices, but its folder holds "
                                 "no shader to run them");
-  } else if (!dispatch && !draw) {
+  } else if (!dispatch && !draw && !fragment) {
     bound.errors.push_back(std::format("its folder holds the shaders {}, but a node runs "
-                                       "one .comp, or one .vert and one .frag",
+                                       "one .comp, or one .vert and one .frag, or one "
+                                       "of these two, its varyings joining the other",
                                        joined(shaders)));
   } else if (dispatch && (node.vertex_count != 0 || node.invocations == 0)) {
     bound.errors.emplace_back(
@@ -46,6 +51,10 @@ bool Schedule::check_counts(Bound &bound) const {
   } else if (draw && (node.invocations != 0 || node.vertex_count == 0)) {
     bound.errors.emplace_back(
         "it draws, so it counts its vertex_count, and no invocations");
+  } else if (fragment && (node.invocations != 0 || node.vertex_count != 0 ||
+                          !node.instance_count.empty())) {
+    bound.errors.emplace_back(
+        "a fragment node counts nothing: the vertex node it draws with counts");
   }
   return !shaders.empty() && bound.errors.size() == before;
 }
@@ -54,6 +63,8 @@ bool Schedule::check_counts(Bound &bound) const {
 // Vulkan floor (RVK01).
 void Schedule::check_stages(Bound &bound) const {
   const Node &node = *bound.node;
+  if (is_fragment(node))
+    return;
   if (is_draw(node)) {
     for (const Field &field : bound.fields)
       if (field.buffer() && field.access != Access::read)
@@ -81,10 +92,15 @@ void Schedule::check_stages(Bound &bound) const {
                     size[0]));
 }
 
-// Before the pipeline is made, which either of these would make wrongly: a draw stores
-// into no image, as a store from a draw needs features past the Vulkan floor (RVK01),
-// and a dispatch stores into one only where this GPU indexes images[].
-void Schedule::check_stores(const Bound &bound) const {
+// Before the pipeline is made, which each of these would make wrongly: a fragment node's
+// shader reads the pass block of the vertex node it draws with, so it declares none; a
+// draw stores into no image, as a store from a draw needs features past the Vulkan floor
+// (RVK01); and a dispatch stores into one only where this GPU indexes images[].
+void Schedule::check_shaders(const Bound &bound) const {
+  if (is_fragment(*bound.node) && !bound.fields.empty())
+    throw std::runtime_error(
+        "a fragment node declares no pass block yet: the vertex node it draws with holds "
+        "the draw's, and hands on what the fragment shader needs as varyings");
   const auto image = std::ranges::find_if(bound.fields, &Field::image);
   if (image == bound.fields.end())
     return;
@@ -98,6 +114,126 @@ void Schedule::check_stores(const Bound &bound) const {
         std::format("{}: this GPU cannot store into images, as it cannot index "
                     "images[] (shaderStorageImageArrayDynamicIndexing)",
                     image->name));
+}
+
+// A vertex node draws with the fragment node its varyings reach, once both are bound, as
+// one draw: its own pass, of its pass block and counts, and the fragment node's color. It
+// keeps its pipeline while the build left both shaders alone and it fits what it draws
+// into. A fragment node no vertex node draws with is refused, as it would draw nothing.
+void Schedule::pair_draws(Schedule *replaced) {
+  for (Bound &bound : _bound) {
+    if (!is_vertex(*bound.node) || !bound.loaded())
+      continue;
+    bound.fragment = fragment_of(bound);
+    if (!bound.fragment)
+      continue;
+    Bound *const old = replaced ? replaced->find(bound.node->name) : nullptr;
+    const bool unchanged = old && old->fragment && old->spirv == bound.spirv &&
+                           old->built == bound.built &&
+                           old->fragment->spirv == bound.fragment->spirv &&
+                           old->fragment->built == bound.fragment->built;
+    try {
+      fit_pipeline(bound, old, unchanged);
+    } catch (const std::exception &failure) {
+      bound.errors.emplace_back(failure.what());
+    }
+  }
+  for (Bound &bound : _bound)
+    if (is_fragment(*bound.node) && bound.loaded() && bound.errors.empty() &&
+        std::ranges::none_of(_bound, [&](const Bound &vertex) {
+          return vertex.fragment == &bound;
+        }))
+      bound.errors.emplace_back("no vertex node draws with it: a fragment node draws "
+                                "with the vertex node whose varyings reach its inputs");
+}
+
+// The fragment node a vertex node's varyings reach, which makes one draw with it, or
+// null, with why among the errors of either.
+Schedule::Bound *Schedule::fragment_of(Bound &vertex) {
+  const std::vector<Varying> &outputs = vertex.stage(vertex_stage).outputs();
+  std::vector<const Connection *> varyings;
+  Bound *fragment = nullptr;
+  for (const Connection &connection : _view.connections) {
+    if (connection.from.node != vertex.node->name ||
+        std::ranges::find(outputs, connection.from.port, &Varying::name) == outputs.end())
+      continue;
+    varyings.push_back(&connection);
+    for (const Endpoint &to : connection.to) {
+      Bound *const reader = find(to.node);
+      if (fragment && reader != fragment) {
+        vertex.errors.push_back(std::format("its varyings reach {} and {}, but a draw "
+                                            "has one fragment node",
+                                            fragment->node->name,
+                                            to.node));
+        return nullptr;
+      }
+      fragment = reader;
+    }
+  }
+  if (!fragment || !is_fragment(*fragment->node)) {
+    vertex.errors.push_back(
+        fragment ? std::format("its varyings reach {}, whose folder holds no lone .frag "
+                               "to draw with",
+                               fragment->node->name)
+                 : "its varyings reach no fragment node: connect its outputs to the "
+                   "inputs of a node whose folder holds a lone .frag");
+    return nullptr;
+  }
+  if (std::ranges::any_of(_bound, [&](const Bound &other) {
+        return other.fragment == fragment;
+      })) {
+    vertex.errors.push_back(std::format("{} draws with another vertex node already; a "
+                                        "draw has one",
+                                        fragment->node->name));
+    return nullptr;
+  }
+  if (fragment->loaded())
+    check_varyings(vertex, *fragment, varyings);
+  if (!fragment->errors.empty()) {
+    vertex.errors.push_back(
+        std::format("its fragment node {} is left out", fragment->node->name));
+    return nullptr;
+  }
+  return fragment;
+}
+
+// The stages match a varying by its location, so both ends sit at the same one with the
+// same type, whatever the connection names them; and every input of the fragment shader
+// comes through a connection, so none reads what nothing wrote (GLSL02).
+void Schedule::check_varyings(const Bound &vertex,
+                              Bound &fragment,
+                              const std::vector<const Connection *> &varyings) const {
+  const std::vector<Varying> &outputs = vertex.stage(vertex_stage).outputs();
+  const std::vector<Varying> &inputs = fragment.stage(fragment_stage).inputs();
+  for (const Connection *const connection : varyings) {
+    const Varying &out =
+        *std::ranges::find(outputs, connection->from.port, &Varying::name);
+    for (const Endpoint &to : connection->to) {
+      const auto in = std::ranges::find(inputs, to.port, &Varying::name);
+      if (in == inputs.end())
+        fragment.errors.push_back(std::format(
+            "connection {}: {} is no input of its .frag", connection->name, to.port));
+      else if (in->location != out.location || in->type != out.type)
+        fragment.errors.push_back(std::format("connection {}: {} is a {} at location {}, "
+                                              "but {} is a {} at location {}; a "
+                                              "varying's ends share both",
+                                              connection->name,
+                                              connection->from.text(),
+                                              out.type,
+                                              out.location,
+                                              to.text(),
+                                              in->type,
+                                              in->location));
+    }
+  }
+  for (const Varying &input : inputs)
+    if (std::ranges::none_of(varyings, [&](const Connection *connection) {
+          return std::ranges::any_of(connection->to, [&](const Endpoint &to) {
+            return to.port == input.name;
+          });
+        }))
+      fragment.errors.push_back(std::format(
+          "{}: no connection brings it from {}", input.name, vertex.node->name));
 }
 
 // Every param is read by someone, and every value in the pass block is set by someone.
@@ -153,6 +289,14 @@ void Schedule::check_connections() {
       check_inputs(connection);
       continue;
     }
+    // A varying, which pair_draws checked, or one of a vertex node that did not load,
+    // which says why on its own.
+    if (is_vertex(*writer.node) &&
+        (!writer.loaded() || std::ranges::find(writer.stage(vertex_stage).outputs(),
+                                               connection.from.port,
+                                               &Varying::name) !=
+                                 writer.stage(vertex_stage).outputs().end()))
+      continue;
     // A buffer C++ fills at a port no shader of its node holds reaches shaders that hold
     // its element as C++ writes it.
     const Bound::Written *const filled = writer.upload(connection.from.port);

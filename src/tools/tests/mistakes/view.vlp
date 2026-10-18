@@ -108,6 +108,22 @@ vertex_count = 3
 file        = Stamp.comp
 invocations = 64
 
+# A vertex node, which hands each pixel's place to ink, its fragment node, as varyings.
+[node "brush"]
+file         = Brush.vert
+vertex_count = 3
+
+[node "ink"]
+file = Ink.frag
+
+# Fragment nodes that take brush's varyings at other types and locations, or declare a
+# pass block, which a fragment node may not.
+[node "smudge"]
+file = Smudge.frag
+
+[node "blot"]
+file = Blot.frag
+
 # Stores into an image from a draw, which only a dispatch may.
 [node "smear"]
 file         = Smear.frag

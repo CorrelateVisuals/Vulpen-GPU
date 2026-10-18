@@ -44,6 +44,14 @@ struct Field {
   bool operator==(const Field &) const = default;
 };
 
+// What a stage hands the next, a varying, or what a fragment shader writes, a color: by
+// name, at the location the stages match it by, of a type as GLSL names it.
+struct Varying {
+  std::string name;
+  std::uint32_t location = 0;
+  std::string type;
+};
+
 // Compiled GLSL, reflected when it loads: C++ takes the pass block's offsets from here,
 // never from a copy of its own (RA03).
 class Shader {
@@ -59,9 +67,11 @@ public:
   std::uint32_t frame_size() const;
   // Zero for any stage but compute.
   const std::array<std::uint32_t, 3> &workgroup_size() const;
-  // What it writes out of its stage, by name: a fragment shader's colors, each a port of
-  // its node. A built-in, as gl_Position, is none.
-  const std::vector<std::string> &outputs() const;
+  // What it writes out of its stage, and what it reads in: a fragment shader's colors and
+  // the varyings between stages, each a port of its node. A built-in, as gl_Position, is
+  // none.
+  const std::vector<Varying> &outputs() const;
+  const std::vector<Varying> &inputs() const;
 
 private:
   std::vector<std::uint32_t> _words;
@@ -70,7 +80,8 @@ private:
   std::vector<Field> _frame;
   std::uint32_t _frame_size = 0;
   std::array<std::uint32_t, 3> _workgroup_size{};
-  std::vector<std::string> _outputs;
+  std::vector<Varying> _outputs;
+  std::vector<Varying> _inputs;
 };
 
 } // namespace VP

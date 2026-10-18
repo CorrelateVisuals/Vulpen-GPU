@@ -14,9 +14,11 @@ than the image's format takes, a format there is not, image clear of a port that
 no image, a key there is not, a buffer C++ fills for another node's shader whose members
 sit elsewhere, given no room, or that nothing reads, a draw's image taken to no Texture,
 or given a format there is not, a draw that stores into an image, an image a dispatch
-stores into given another format than images[] declares or taken to no Texture, and a
-view's window taken from a view the view does not host, taken to a view, or taken to no
-Texture.
+stores into given another format than images[] declares or taken to no Texture, a draw
+split over two nodes whose varyings meet at other locations or types, leave an input
+unreached or reach no fragment node, or whose fragment node declares a pass block or no
+vertex node draws with, and a view's window taken from a view the view does not host,
+taken to a view, or taken to no Texture.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -29,8 +31,9 @@ C++ fills an image with reach a shader pixel for pixel, through the node's own T
 through a connection and as 16-bit floats, stay through a rebuild, and come back after
 image clear when the node fills them again. The image a draw renders into reaches a
 dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
-with no window, and so does the image a dispatch stores into, and the window of a view
-its host takes, drawn that frame, and
+with no window, and so does the image a dispatch stores into, that of a draw split over
+a vertex node and a fragment node, and the window of a view its host takes, drawn that
+frame, and
 that of a view one beside it takes, as a GUI presents a project, though hosted after it,
 which a save of the view taking it leaves out (V03). The
 library's palette, font, rects and glyphs draw the fixture's sign in
@@ -72,6 +75,18 @@ SIGN = '[node "sign"]\noperator = Sign\n'
 PAINT = '[node "paint"]\nvertex_count = 3\n'
 LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
 STAMP = '[node "stamp"]\ninvocations = 64\n'
+BRUSH = '[node "brush"]\nvertex_count = 3\n'
+
+
+def split(fragment: str, *varyings: str) -> str:
+    """A draw over two nodes, brush and the fragment node, the varyings named
+    connected, its color taken to look."""
+    return (HEAD + BRUSH + f'[node "{fragment}"]\n' + LOOK
+            + "".join(connection(name, f"brush.{name}", f"{fragment}.{name}")
+                      for name in varyings)
+            + connection("inked", f"{fragment}.color", "look.painted"))
+
+
 INNER = '[view "inner"]\n'  # a hosted view, empty while its folder holds no view.vlp
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
@@ -181,6 +196,19 @@ CASES = {
                      "image canvas=R8_UNORM: a dispatch stores into R8G8B8A8_UNORM images only"),
     "store-reader": (HEAD + STAMP + SUM + connection("stamped", "stamp.canvas", "sum.values"),
                      "connection stamped: stamp stores an image, which values is no Texture"),
+    "varying-type": (split("smudge", "uv", "shade"),
+                     "connection uv: brush.uv is a vec2 at location 0, but smudge.uv is a "
+                     "vec3 at location 0"),
+    "varying-location": (split("smudge", "uv", "shade"),
+                         "connection shade: brush.shade is a float at location 1, but "
+                         "smudge.shade is a float at location 2"),
+    "varying-unreached": (split("ink", "uv"), "shade: no connection brings it from brush"),
+    "fragment-block": (split("blot", "uv", "shade"),
+                       "node blot: a fragment node declares no pass block yet"),
+    "vertex-alone": (HEAD + BRUSH, "node brush: its varyings reach no fragment node"),
+    "fragment-alone": (HEAD + '[node "ink"]\n' + LOOK
+                       + connection("inked", "ink.color", "look.painted"),
+                       "node ink: no vertex node draws with it"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
@@ -426,6 +454,17 @@ def stored(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def halves(vulpen: str, folder: Path) -> str | None:
+    """Why the image of a draw split over a vertex node and a fragment node, brush's
+    varyings reaching ink, did not reach a dispatch after it in the same frame, pixel for
+    pixel, or None."""
+    view = view_in(folder, "halves", split("ink", "uv", "shade").replace("Look", "Inked"))
+    code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
+    if code != 0 or problems(output):
+        return f"halves: expected each pixel ink drew, got exit {code}:\n{output}"
+    return None
+
+
 def presented(vulpen: str, folder: Path) -> str | None:
     """Why the window of a view its host takes did not reach the host's dispatch, pixel
     for pixel and drawn that frame, at the size --size gives a run with no window, or
@@ -618,6 +657,7 @@ def main() -> None:
                             images(vulpen, folder), text(vulpen, folder),
                             offscreen(vulpen, folder),
                             stored(vulpen, folder),
+                            halves(vulpen, folder),
                             presented(vulpen, folder),
                             beside(vulpen, folder),
                             input_lines(vulpen, folder),

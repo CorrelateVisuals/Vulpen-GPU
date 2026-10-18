@@ -79,9 +79,21 @@ inline constexpr std::string_view fragment_stage = ".frag";
 inline constexpr std::array<std::string_view, 6> stages{
     compute_stage, vertex_stage, fragment_stage, ".geom", ".tesc", ".tese"};
 
-inline bool is_draw(const Node &node) {
+inline bool holds_stage(const Node &node, std::string_view stage) {
   return std::ranges::any_of(
-      node.files, [](const std::string &file) { return file.ends_with(vertex_stage); });
+      node.files, [&](const std::string &file) { return file.ends_with(stage); });
+}
+
+// A node whose folder holds a .vert draws, with its own .frag, or as a vertex node, with
+// the fragment node its varyings reach, whose folder holds a lone .frag.
+inline bool is_draw(const Node &node) {
+  return holds_stage(node, vertex_stage);
+}
+inline bool is_vertex(const Node &node) {
+  return is_draw(node) && !holds_stage(node, fragment_stage);
+}
+inline bool is_fragment(const Node &node) {
+  return !is_draw(node) && holds_stage(node, fragment_stage);
 }
 
 // A draw's instances when its node gives them as a number, one when it gives none;
@@ -221,8 +233,11 @@ struct Schedule::Bound {
   VkRenderPass render_pass = VK_NULL_HANDLE; // a draw's, which its pipeline fits
   // A draw's color, by the name its fragment shader gives it, and while a connection
   // takes it to a Texture, the format of the image it renders into; null for the window.
+  // A fragment node holds its draw's, as the port is its own.
   std::string output;
   const PixelFormat *drawn = nullptr;
+  // A vertex node's fragment node, with which it makes one draw; null for any other.
+  Bound *fragment = nullptr;
   std::optional<PassBlock> block;
   std::unique_ptr<Operator> op;
   std::set<std::string, std::less<>> set_by_operator;
@@ -258,6 +273,13 @@ struct Schedule::Bound {
 
   bool loaded() const {
     return !shaders.empty();
+  }
+  // Its shader of the stage, as reflection read it, which it must hold.
+  const Shader &stage(std::string_view stage) const {
+    const auto named = std::ranges::find_if(shaders_named, [&](const std::string &file) {
+      return file.ends_with(stage);
+    });
+    return shaders.at(static_cast<std::size_t>(named - shaders_named.begin()));
   }
   const Field *field(std::string_view name) const {
     const auto found = std::ranges::find(fields, name, &Field::name);

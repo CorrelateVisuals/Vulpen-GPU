@@ -84,10 +84,18 @@ class Stamped final : public Look {
   }
 };
 
+// The same, for the image of the draw brush and ink make, split over two nodes.
+class Inked final : public Look {
+  std::string_view drawer() const override {
+    return "ink";
+  }
+};
+
 } // namespace
 
 VP_OPERATORS(registry) {
   registry.add<Look>("Look");
   registry.add<Watch>("Watch");
   registry.add<Stamped>("Stamped");
+  registry.add<Inked>("Inked");
 }

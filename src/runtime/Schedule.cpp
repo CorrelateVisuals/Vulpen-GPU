@@ -123,9 +123,11 @@ std::vector<const Node *> Schedule::order(const View &view) {
   return placed;
 }
 
+// A draw's color comes from the node holding its .frag, a fragment node's for a draw
+// split over two.
 bool Schedule::shows(const View &view) {
   return std::ranges::any_of(view.nodes, [&](const Node &node) {
-    return is_draw(node) &&
+    return holds_stage(node, fragment_stage) &&
            std::ranges::none_of(view.connections, [&](const Connection &connection) {
              return connection.from.node == node.name;
            });
@@ -152,6 +154,7 @@ Schedule::Schedule(const Wiring &wiring,
   _bound.reserve(nodes.size());
   for (const Node *const node : nodes)
     _bound.push_back(bind(*node, wiring.views / view.name / node->module, replaced));
+  pair_draws(replaced);
   check_connections();
   check_images();
   make_buffers(replaced);
@@ -217,16 +220,10 @@ void Schedule::load_shaders(Bound &bound,
     } else {
       read_shaders(bound);
     }
-    check_stores(bound);
-    const VkRenderPass render_pass =
-        is_draw(*bound.node) ? target_of(bound) : VK_NULL_HANDLE;
-    if (unchanged && old->pipeline && old->render_pass == render_pass) {
-      bound.pipeline = std::move(old->pipeline);
-      bound.render_pass = render_pass;
-      log(Level::debug, Tag::nod, bound, "keeps its pipeline");
-    } else if (render_pass || !is_draw(*bound.node)) {
-      make_pipeline(bound, render_pass);
-    }
+    check_shaders(bound);
+    // A vertex node's pipeline waits for its fragment node, which binds after it.
+    if (!is_vertex(*bound.node) && !is_fragment(*bound.node))
+      fit_pipeline(bound, old, unchanged);
   } catch (const std::exception &failure) {
     bound.shaders.clear();
     bound.fields.clear();
@@ -253,51 +250,68 @@ void Schedule::read_shaders(Bound &bound) const {
   }
 }
 
+// unchanged: whether the build left the SPIR-V the old pipeline was made from alone.
+void Schedule::fit_pipeline(Bound &bound, Bound *old, bool unchanged) {
+  const VkRenderPass render_pass =
+      is_draw(*bound.node) ? target_of(bound) : VK_NULL_HANDLE;
+  if (unchanged && old->pipeline && old->render_pass == render_pass) {
+    bound.pipeline = std::move(old->pipeline);
+    bound.render_pass = render_pass;
+    log(Level::debug, Tag::nod, bound, "keeps its pipeline");
+  } else if (render_pass || !is_draw(*bound.node)) {
+    make_pipeline(bound, render_pass);
+  }
+}
+
 // A draw's one color goes into the view's window, unless a connection takes it to a
-// Texture: then into an image, in the format the node's image word gives that port. Null
-// for a format there is not, which check_images names, and for a window the view draws
-// nowhere, which makes the draw no pipeline and no pass.
+// Texture: then into an image, in the format the image word gives that port, of the node
+// it is a port of, the fragment node of a draw split over two. Null for a format there
+// is not, which check_images names, and for a window the view draws nowhere, which makes
+// the draw no pipeline and no pass.
 VkRenderPass Schedule::target_of(Bound &bound) const {
-  const std::size_t fragment =
-      bound.shaders_named.front().ends_with(fragment_stage) ? 0 : 1;
-  const std::vector<std::string> &colors = bound.shaders[fragment].outputs();
-  if (colors.size() != 1)
+  Bound &colors = bound.fragment ? *bound.fragment : bound;
+  const std::vector<Varying> &written = colors.stage(fragment_stage).outputs();
+  if (written.size() != 1)
     throw std::runtime_error(std::format(
-        "its .frag writes {} colors, but a draw writes one", colors.size()));
-  bound.output = colors.front();
-  if (!connection_of(bound.node->name, bound.output)) {
+        "its .frag writes {} colors, but a draw writes one", written.size()));
+  colors.output = written.front().name;
+  if (!connection_of(colors.node->name, colors.output)) {
     if (!_window && _into != Into::none)
       throw std::runtime_error(std::format("it draws {} into the window, but none is "
                                            "open; a connection to a Texture draws it "
                                            "into an image",
-                                           bound.output));
+                                           colors.output));
     return _window;
   }
-  const std::vector<ImagePort> &words = bound.node->images;
-  const auto word = std::ranges::find(words, bound.output, &ImagePort::port);
-  bound.drawn = pixel_format(word == words.end() ? default_format : word->format);
-  if (!bound.drawn)
+  const std::vector<ImagePort> &words = colors.node->images;
+  const auto word = std::ranges::find(words, colors.output, &ImagePort::port);
+  colors.drawn = pixel_format(word == words.end() ? default_format : word->format);
+  if (!colors.drawn)
     return VK_NULL_HANDLE;
-  if (!_wiring.resources.samples(bound.drawn->format, Fill::draw))
+  if (!_wiring.resources.samples(colors.drawn->format, Fill::draw))
     throw std::runtime_error(std::format(
-        "{}: this GPU cannot draw into {} images", bound.output, bound.drawn->name));
-  return _wiring.pipelines.render_pass(bound.drawn->format);
+        "{}: this GPU cannot draw into {} images", colors.output, colors.drawn->name));
+  return _wiring.pipelines.render_pass(colors.drawn->format);
 }
 
 // A draw's pipeline fits the render pass it records in.
 void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
+  std::string from = joined(bound.shaders_named);
   if (!is_draw(*bound.node)) {
     bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
   } else {
-    const std::size_t vertex =
-        bound.shaders_named.front().ends_with(vertex_stage) ? 0 : 1;
+    const Bound &colors = bound.fragment ? *bound.fragment : bound;
     bound.pipeline.emplace(_wiring.pipelines,
-                           bound.shaders[vertex],
-                           bound.shaders[1 - vertex],
+                           bound.stage(vertex_stage),
+                           colors.stage(fragment_stage),
                            render_pass);
+    if (bound.fragment)
+      from += std::format(" and {}'s {}",
+                          colors.node->name,
+                          colors.shaders_named.front());
   }
   bound.render_pass = render_pass;
-  log(Level::info, Tag::nod, bound, "pipeline from " + joined(bound.shaders_named));
+  log(Level::info, Tag::nod, bound, "pipeline from " + from);
   if (!bound.fields.empty())
     log(Level::debug, Tag::nod, bound, pass_block(bound.fields, bound.block_size));
 }
@@ -511,10 +525,11 @@ void Schedule::make_targets() {
   for (const Bound &bound : _bound) {
     if (!bound.errors.empty() || !bound.pipeline)
       continue;
-    if (bound.drawn)
+    const Bound &colors = bound.fragment ? *bound.fragment : bound;
+    if (colors.drawn)
       _rendered.push_back(std::make_unique<Rendered>(
-          Rendered{.name = std::format("{}.{}", bound.node->name, bound.output),
-                   .format = bound.drawn,
+          Rendered{.name = std::format("{}.{}", colors.node->name, colors.output),
+                   .format = colors.drawn,
                    .render_pass = bound.render_pass,
                    .writer = &bound}));
     for (const Field &field : bound.fields)
