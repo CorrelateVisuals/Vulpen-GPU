@@ -19,6 +19,9 @@ constexpr std::uint32_t character_room = 131072; // the rows' characters togethe
 // The ground, a selection Rect a row shown, the caret and the scroll bars' thumbs.
 constexpr std::uint32_t rect_room = row_room + 4;
 constexpr std::size_t indent = 2; // Tab types spaces to a multiple of this column
+// The tab of an editor holding no file, so it still shows as open, empty, and a strip that
+// stacks it with other contents has a tab to show it again by.
+constexpr std::string_view empty_tab = "editor";
 // UTF-8 (RFC 3629): a byte that only continues a character starts with the bits 10.
 constexpr unsigned char continuation_mask = 0xC0;
 constexpr unsigned char continuation = 0x80;
@@ -664,6 +667,8 @@ void Text::find(VP::Call &call) {
 
 void Text::name_tabs() {
   _tabs->clear();
+  if (_documents.empty())
+    _tabs->push_back({.label = std::string(empty_tab), .current = true});
   std::string changed;
   std::size_t count = 0;
   for (std::size_t at = 0; at < _documents.size(); ++at) {
