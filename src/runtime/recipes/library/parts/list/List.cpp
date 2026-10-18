@@ -27,7 +27,8 @@ constexpr std::int32_t gap = 2; // between Items side by side, where the ground 
 constexpr std::uint32_t mark_cells = 2;      // a close mark's: a blank, then the mark
 constexpr std::string_view mark_text = "x"; // which the font draws, as ASCII
 // Behind a column, a frame and the fill inside it, so it reads as raised over what it
-// covers. Behind a row, its ground, then a Rect an Item, so each reads as a tab on a bar.
+// covers, and the current Item's row, so the menu open reads apart. Behind a row, its
+// ground, then a Rect an Item, so each reads as a tab on a bar.
 constexpr std::uint32_t frame_and_fill = 2;
 constexpr std::uint32_t rect_room = 1 + row_room;
 
@@ -40,11 +41,13 @@ VP_VIEW::Rect grown(const VP_VIEW::Rect &rect, std::int32_t by, std::uint32_t ro
 // Lays out the Items it is handed in the Rect its place gives: stacked, a row each, over
 // a framed fill, or with axis x side by side, each as wide as its label, over a ground,
 // the current one in the content's color, so it joins the content it names; an Item
-// with a close command shows a close mark at its end. With drop = below the column drops
-// below its place instead, as wide as its widest label and as tall as its Items, inside
-// the window, as a menu drops below where it was opened; with drop = right it opens right
-// of its place, its first row level with it, as a menu's items open beside its name. It
-// hands on where each Item shows,
+// with a close command shows a close mark at its end; a column marks its current Item's
+// row. With drop = below the column drops below its place instead, as wide as its widest
+// label and as tall as its Items, inside the window, as a menu drops below where it was
+// opened; with drop = right it opens beside its place, its first row level with it, as a
+// menu's items open beside its name: right of it, or left where the window has no room,
+// its frame on the column's own and its fill over their shared border, so the two read as
+// one. It hands on where each Item shows,
 // and where its mark does, so hit finds the one pressed, and where the current one does,
 // so what it opens shows below it. Tab strips, menus and tips are this part, so none of
 // them places its entries itself.
@@ -93,11 +96,13 @@ class List final : public VP::Operator {
   }
 
   // Below the place, from its left edge, its frame under the place's bottom edge, as wide
-  // as the widest label, or the place; or right of it, its frame beyond the place's right
-  // edge, its first row level with the place's top. As tall as the Items, moved in to
-  // stay inside the window; none while the place is empty, as a menu shut.
-  VP_VIEW::Rect dropped(glm::uvec2 cell, glm::uvec2 window) const {
+  // as the widest label, or the place; or beside it, its first row level with the place's
+  // top, its frame on the last column of the frame of the column the place is a row of.
+  // As tall as the Items, moved in to stay inside the window; none while the place is
+  // empty, as a menu shut.
+  VP_VIEW::Rect dropped(glm::uvec2 cell, glm::uvec2 window) {
     const VP_VIEW::Rect &place = *_place;
+    _joined = 0;
     if (place.extent.x == 0 || _items->empty())
       return {};
     std::size_t widest = 0;
@@ -112,10 +117,19 @@ class List final : public VP::Operator {
                  below ? place.extent.x - std::min(place.extent.x, 2u * edge) : 0u),
         rows * cell.y);
     const glm::ivec2 most = glm::ivec2(window) - glm::ivec2(extent) - edge;
-    const glm::ivec2 from =
-        below ? glm::ivec2(edge, static_cast<std::int32_t>(place.extent.y) + edge)
-              : glm::ivec2(static_cast<std::int32_t>(place.extent.x) + edge, 0);
-    return {.offset = glm::max(glm::min(place.offset + from, most), glm::ivec2(edge)),
+    if (below) {
+      const glm::ivec2 from(edge, static_cast<std::int32_t>(place.extent.y) + edge);
+      return {.offset = glm::max(glm::min(place.offset + from, most), glm::ivec2(edge)),
+              .extent = extent};
+    }
+    constexpr std::int32_t beside = 2 * edge - frame_width;
+    const std::int32_t right =
+        place.offset.x + static_cast<std::int32_t>(place.extent.x) + beside;
+    _joined = right <= most.x ? 1 : -1;
+    const std::int32_t x =
+        _joined > 0 ? right
+                    : place.offset.x - beside - static_cast<std::int32_t>(extent.x);
+    return {.offset = {x, std::clamp(place.offset.y, edge, std::max(most.y, edge))},
             .extent = extent};
   }
 
@@ -170,9 +184,17 @@ class List final : public VP::Operator {
       rects[0] = grown(place, 0, VP_VIEW::role("panel"));
       std::ranges::copy(*_shown, rects.begin() + 1);
     } else {
-      const std::span<VP_VIEW::Rect> rects = frame.write(_rects, frame_and_fill);
+      const bool marked = _current->extent.x != 0;
+      const std::span<VP_VIEW::Rect> rects =
+          frame.write(_rects, frame_and_fill + (marked ? 1 : 0));
       rects[0] = grown(place, margin + frame_width, VP_VIEW::role("border"));
       rects[1] = grown(place, margin, VP_VIEW::role("panel"));
+      rects[1].extent.x += _joined != 0 ? frame_width : 0;
+      rects[1].offset.x -= _joined > 0 ? frame_width : 0;
+      if (marked)
+        rects[2] = {.offset = _current->offset,
+                    .extent = _current->extent,
+                    .role = VP_VIEW::role("border")};
     }
   }
 
@@ -206,6 +228,9 @@ class List final : public VP::Operator {
   enum class Drop : std::uint8_t { no, below, right };
   bool _side_by_side = false;
   Drop _drop = Drop::no;
+  // The side a column dropped beside its place opened at, its fill joining there: 1
+  // right, -1 left, 0 none.
+  std::int32_t _joined = 0;
   const VP_VIEW::Items *_items = nullptr;
   const VP_VIEW::Rect *_place = nullptr;
   const VP_VIEW::Font *_font = nullptr;
