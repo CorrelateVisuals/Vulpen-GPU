@@ -1,6 +1,6 @@
 #version 460
 
-layout(location = 0) in vec3 color; // the corners' colors, blended across the face
+layout(location = 0) in vec3 color; // a connection: face's, blended across the face
 layout(location = 0) out vec4 pixel;
 
 void main() {

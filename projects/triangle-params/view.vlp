@@ -1,31 +1,22 @@
 # The triangle as numbers in the manifest: each corner's place and color is a param of the
-# draw, which the engine writes into the pass block field of its name, so param set moves
-# or recolors a corner while it runs, a replay repeats it, and view save keeps it. No C++,
-# no buffer. Run ./run.sh --triangle-params, then try
-# `triangle-params: param set triangle top_y -0.8`.
+# draw, a vector's components joined by commas, which the engine writes into the pass
+# block field of its name, so param set moves or recolors a corner while it runs, a
+# replay repeats it, and view save keeps it. No C++, no buffer. Run
+# ./run.sh --triangle-params, then try `triangle-params: param set triangle top 0,-0.8`.
 
 [manifest]
 version = 1
 
 # The params come a corner at a time, top, right, left, each its place in clip space, y
-# pointing down, then its red, green and blue, as the pass block declares them.
+# pointing down, then its color, red, green and blue, as the pass block declares them.
 [node "triangle"]
 file         = Triangle.frag
 file         = Triangle.vert
 vertex_count = 3
 param        = frames_per_turn=600
-param        = top_x=0.0
-param        = top_y=-0.5
-param        = top_red=1.0
-param        = top_green=0.0
-param        = top_blue=0.0
-param        = right_x=0.5
-param        = right_y=0.5
-param        = right_red=0.0
-param        = right_green=1.0
-param        = right_blue=0.0
-param        = left_x=-0.5
-param        = left_y=0.5
-param        = left_red=0.0
-param        = left_green=0.0
-param        = left_blue=1.0
+param        = top=0,-0.5
+param        = top_color=1,0,0
+param        = right=0.5,0.5
+param        = right_color=0,1,0
+param        = left=-0.5,0.5
+param        = left_color=0,0,1

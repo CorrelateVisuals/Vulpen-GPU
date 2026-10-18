@@ -1,14 +1,12 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
-#include "contracts/Cell.glsl"
 
 layout(local_size_x = 64) in;
 
 layout(set = 1, binding = 0) uniform Pass {
   uint frames_per_turn; // a param: frames a whole turn takes; 0 holds the triangle still
-  uint side;            // a param: cells a row and a column, side * side invocations
-  CellsOut cells;       // a connection: the screen's, a cell an invocation
+  Image canvas;         // a connection: the screen's picture, at the window's size
 } pass;
 
 const float turn = 6.28318530718; // radians in a whole turn
@@ -36,22 +34,32 @@ float edge(vec2 a, vec2 b, vec2 p) {
   return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
 }
 
-// Each invocation one cell: inside the triangle, the corners' colors blended by how near
-// the cell's middle is to each, as a rasterizer blends them; outside, nothing at all.
+// Where a pixel's middle is, in the clip space of a square in the middle of the image:
+// its shorter side spans -1 to 1.
+vec2 square_of(ivec2 pixel, ivec2 size) {
+  const vec2 at = (vec2(pixel) + 0.5) / vec2(size) * 2.0 - 1.0;
+  return at / min(vec2(size.yx) / vec2(size), vec2(1.0));
+}
+
+// Each invocation every pixel a whole number of invocations from its own: inside the
+// triangle, the corners' colors blended by how near the pixel's middle is to each, as a
+// rasterizer blends them; outside, nothing at all.
 void main() {
-  const uint i = gl_GlobalInvocationID.x;
-  const uint side = max(pass.side, 1u); // a side of 0 would divide by zero
-  const float size = 2.0 / float(side);
-  const vec2 corner = vec2(i % side, i / side) * size - 1.0;
-  const vec2 middle = corner + 0.5 * size;
+  const ivec2 size = image_size(pass.canvas);
+  const uint pixels = uint(size.x * size.y);
+  const uint threads = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   const float angle = angle_at(pass.frames_per_turn);
   const vec2 center = (corners[0] + corners[1] + corners[2]) / 3.0;
   const vec2 a = spin(corners[0], center, angle);
   const vec2 b = spin(corners[1], center, angle);
   const vec2 c = spin(corners[2], center, angle);
-  const vec3 weights =
-      vec3(edge(b, c, middle), edge(c, a, middle), edge(a, b, middle)) / edge(a, b, c);
-  const bool inside = all(greaterThanEqual(weights, vec3(0.0)));
-  const vec3 color = mat3(colors[0], colors[1], colors[2]) * weights;
-  pass.cells.at[i] = Cell(inside ? vec4(color, 1.0) : vec4(0.0), corner, size);
+  for (uint i = gl_GlobalInvocationID.x; i < pixels; i += threads) {
+    const ivec2 pixel = ivec2(i % uint(size.x), i / uint(size.x));
+    const vec2 middle = square_of(pixel, size);
+    const vec3 weights =
+        vec3(edge(b, c, middle), edge(c, a, middle), edge(a, b, middle)) / edge(a, b, c);
+    const bool inside = all(greaterThanEqual(weights, vec3(0.0)));
+    const vec3 color = mat3(colors[0], colors[1], colors[2]) * weights;
+    store(pass.canvas, pixel, inside ? vec4(color, 1.0) : vec4(0.0));
+  }
 }

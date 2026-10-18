@@ -1,9 +1,10 @@
-# Every file a node, as far as the engine goes today: clock works out how far the triangle
-# has turned and hands it on as a C++ object, corners turns the classic corners by it and
-# writes them for the GPU, and face draws them. A draw is the one place two files share a
-# node, since a node runs one .vert and one .frag together. What two nodes share is a
-# contract: contracts/Spin.h between the C++ nodes, contracts/Corner.glsl and its C++
-# mirror contracts/Corner.h between C++ and the shaders. Run ./run.sh --triangle-files.
+# Every file a node: clock works out how far the triangle has turned and hands it on as a
+# C++ object, corners turns the classic corners by it and writes them for the GPU, face
+# places them, a vertex node, and blend colors the pixels between them, a fragment node,
+# from the color face hands it, a varying. What two nodes share is a contract:
+# contracts/Spin.h between the C++ nodes, contracts/Corner.glsl and its C++ mirror
+# contracts/Corner.h between C++ and the shaders, and between the two halves of the draw
+# the varying's type and location. Run ./run.sh --triangle-files.
 
 [manifest]
 version = 1
@@ -19,9 +20,11 @@ operator = Corners
 file     = Corners.cpp
 
 [node "face"]
-file         = Face.frag
 file         = Face.vert
 vertex_count = 3
+
+[node "blend"]
+file = Blend.frag
 
 [connection "spin"]
 from = clock.spin
@@ -30,3 +33,7 @@ to   = corners.spin
 [connection "corners"]
 from = corners.corners
 to   = face.corners
+
+[connection "color"]
+from = face.color
+to   = blend.color

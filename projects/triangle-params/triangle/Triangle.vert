@@ -5,21 +5,12 @@
 // Every field a param of the node, which the engine writes at load and after each edit.
 layout(set = 1, binding = 0) uniform Pass {
   uint frames_per_turn; // frames a whole turn takes; 0 holds the triangle still
-  float top_x;
-  float top_y;
-  float top_red;
-  float top_green;
-  float top_blue;
-  float right_x;
-  float right_y;
-  float right_red;
-  float right_green;
-  float right_blue;
-  float left_x;
-  float left_y;
-  float left_red;
-  float left_green;
-  float left_blue;
+  vec2 top;             // in clip space, y pointing down
+  vec3 top_color;
+  vec2 right;
+  vec3 right_color;
+  vec2 left;
+  vec3 left_color;
 } pass;
 
 layout(location = 0) out vec3 color;
@@ -47,12 +38,8 @@ vec2 square(vec2 at) {
 }
 
 void main() {
-  const vec2 corners[3] = vec2[](vec2(pass.top_x, pass.top_y),
-                                 vec2(pass.right_x, pass.right_y),
-                                 vec2(pass.left_x, pass.left_y));
-  const vec3 colors[3] = vec3[](vec3(pass.top_red, pass.top_green, pass.top_blue),
-                                vec3(pass.right_red, pass.right_green, pass.right_blue),
-                                vec3(pass.left_red, pass.left_green, pass.left_blue));
+  const vec2 corners[3] = vec2[](pass.top, pass.right, pass.left);
+  const vec3 colors[3] = vec3[](pass.top_color, pass.right_color, pass.left_color);
   // A vertex_count past 3 draws the triangle again, rather than reading past the arrays.
   const int corner = gl_VertexIndex % corners.length();
   const vec2 center = (corners[0] + corners[1] + corners[2]) / 3.0;
