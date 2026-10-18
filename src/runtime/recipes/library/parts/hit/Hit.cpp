@@ -22,7 +22,8 @@ constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before
 // close mark, where marks[i] is, sends its close command instead. With hover=yes the
 // pointer coming onto an Item that is not current sends its command too, as a menu's name
 // opens its items. An Item dragged onto another, both with a move, sends its move with the
-// other's last word after it, as a tab moves among its strip's. Connecting it makes
+// other's last word after it, as a tab moves among its strip's; a right press on one
+// sends its menu, as a tab's opens what to do with it. Connecting it makes
 // anything laid out as Rects pressable, so no drawing part reads the pointer, and what is
 // drawn is what is pressed.
 class Hit final : public VP::Operator {
@@ -48,8 +49,17 @@ class Hit final : public VP::Operator {
           press(frame);
         else
           release(frame);
+      } else if (event.kind == VP::Event::Kind::button && event.name == "right" &&
+                 event.down) {
+        context(frame);
       }
     }
+  }
+
+  void context(VP::Cook &frame) const {
+    const std::optional<std::size_t> at = under();
+    if (at && !(*_items)[*at].menu.empty())
+      frame.commands().send(std::string((*_items)[*at].menu));
   }
 
   // Onto another Item that moves as this one does, past a few pixels from the press.

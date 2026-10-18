@@ -22,6 +22,8 @@ constexpr char between = '/'; // a menu's name, then its item's
 // After the label of an item whose line wants a word, as a menu marks one that asks for
 // more.
 constexpr std::string_view wants_more = "...";
+// The word before what a menu opened for fills its items' lines with, as a tab's.
+constexpr std::string_view for_word = "for";
 
 // A menu.ini row: the menu, its item and the line the item types, up to its first
 // placeholder when it has one, which the person then types.
@@ -50,11 +52,14 @@ Entry entry_of(std::string_view text, std::span<const VP::Usage> usages) {
   return entry;
 }
 
-// What a press or a line opens: the menu whose items show, none for the names alone, at a
-// corner; with none, where they show, or the area's top left as the frame lays it out.
+// What a press or a line opens: the menu whose items show, none for the names alone, at
+// a corner; with none, where they show, or the area's top left as the frame lays it out;
+// and what it opens for, as a tab's file, which fills the word its items' lines want, at
+// the pointer.
 struct Opening {
   std::string menu;
   std::optional<glm::ivec2> corner;
+  std::string subject;
 };
 
 // Each row an item of a menu, in the order they come.
@@ -95,8 +100,9 @@ class Menus final : public VP::Operator {
     _menu = node.command("menu [<value>...]",
                          "opens a menu of menu.ini, its items beside its name; with an "
                          "item after it, types the item's line into the terminal and "
-                         "sends it, or begins it there when it wants a word; with none, "
-                         "shuts the menus");
+                         "sends it, or begins it there when it wants a word; with for "
+                         "and a word, opens it alone at the pointer, the word ending the "
+                         "lines of its items that want one; with none, shuts the menus");
     _name = node.name();
     _line = node.param<std::string>("line");
     _file = node.file(menu_file);
@@ -110,13 +116,21 @@ class Menus final : public VP::Operator {
 
   void cook(VP::Cook &frame) override {
     read(frame.files(), frame.commands());
+    // A line opening it for a subject came in before this frame's pointer reached this
+    // node, as a tab's right press sends it, so it opens where the frame left the
+    // pointer.
+    if (_next && !_next->subject.empty())
+      for (const VP::Event &event : frame.input().events())
+        if (event.kind == VP::Event::Kind::pointer)
+          _next->corner = glm::ivec2(event.at);
     // A press on a name both shuts the menus and opens that one: the name wins.
+    const bool opening = _next.has_value();
     if (_next)
       open(frame, *std::exchange(_next, std::nullopt));
     else if (_shutting)
       shut(frame);
     _shutting = false;
-    follow(frame);
+    follow(frame, opening);
     *_at = _shown ? VP_VIEW::Rect{.offset = _corner, .extent = {1, 0}} : VP_VIEW::Rect{};
     if (!_written)
       write();
@@ -143,6 +157,7 @@ class Menus final : public VP::Operator {
     _corner = opening.corner.value_or(_shown ? _corner : _area->offset);
     _shown = true;
     _open = std::move(opening.menu);
+    _subject = std::move(opening.subject);
     _written = false;
   }
 
@@ -154,14 +169,16 @@ class Menus final : public VP::Operator {
       frame.commands().send(std::format("focus {}", _returning));
     _shown = false;
     _open.clear();
+    _subject.clear();
     _written = false;
   }
 
   // While shut, a right press in the area opens it there. While it shows it holds the
   // pointer, so every press reaches it, and its own hits too: a press shuts it, as its
   // hits send what a name or an item does, which wins; a right press in the area opens it
-  // anew there, and escape shuts it.
-  void follow(VP::Cook &frame) {
+  // anew there, and escape shuts it. A press in the frame it opens in shuts nothing, as
+  // it is the press another node opened it for, as a tab's right press.
+  void follow(VP::Cook &frame, bool opening) {
     if (_shown)
       frame.hold_pointer();
     for (const VP::Event &event : frame.input().events()) {
@@ -171,7 +188,7 @@ class Menus final : public VP::Operator {
         continue;
       if (event.name == "right" && VP_VIEW::contains(*_area, _pointer))
         _next.emplace(Opening{.corner = glm::ivec2(_pointer)});
-      else if (_shown)
+      else if (_shown && !opening)
         _shutting = true;
     }
     for (const VP::Event &event : _typed->to(_name))
@@ -179,7 +196,8 @@ class Menus final : public VP::Operator {
                                 event.name == "escape");
   }
 
-  // Only as they change, so a frame allocates nothing for them (CPP10).
+  // Only as they change, so a frame allocates nothing for them (CPP10). Opened for a
+  // subject, the names hold its menu alone, and no item wants more.
   void write() {
     _written = true;
     _names->clear();
@@ -187,16 +205,18 @@ class Menus final : public VP::Operator {
     if (!_shown)
       return;
     for (const Entry &entry : _entries) {
-      if (std::ranges::none_of(*_names, [&](const VP_VIEW::Item &named) {
+      if ((_subject.empty() || entry.menu == _open) &&
+          std::ranges::none_of(*_names, [&](const VP_VIEW::Item &named) {
             return named.label == entry.menu;
           }))
         _names->push_back({.label = entry.menu,
                            .command = "menu " + entry.menu,
                            .current = entry.menu == _open});
       if (entry.menu == _open)
-        _items->push_back(
-            {.label = entry.wants ? entry.item + std::string(wants_more) : entry.item,
-             .command = std::format("menu {} {}", entry.menu, entry.item)});
+        _items->push_back({.label = entry.wants && _subject.empty()
+                                        ? entry.item + std::string(wants_more)
+                                        : entry.item,
+                           .command = std::format("menu {} {}", entry.menu, entry.item)});
     }
   }
 
@@ -221,6 +241,12 @@ class Menus final : public VP::Operator {
       _next.emplace(Opening{.menu = std::string(words.front())});
       return;
     }
+    if (words.size() == 3 && words[1] == for_word) {
+      _next.emplace(Opening{.menu = std::string(words.front()),
+                            .corner = glm::ivec2(_pointer),
+                            .subject = std::string(words[2])});
+      return;
+    }
     std::string item(words[1]);
     for (const std::string_view word : words.subspan(2))
       item.append(1, ' ').append(word);
@@ -230,12 +256,17 @@ class Menus final : public VP::Operator {
     if (entry == _entries.end())
       throw std::runtime_error(
           std::format("menu {} has no item {}", words.front(), item));
-    const std::string_view key = entry->wants ? "tab" : "enter";
+    // A subject is the word the line wants, so it runs whole.
+    const bool begins = entry->wants && _subject.empty();
+    const std::string_view key = begins ? "tab" : "enter";
     call.commands().send(std::format("focus {}", _line));
-    call.commands().send(std::format("input text {}", entry->line));
+    call.commands().send(std::format("input text {}{}{}",
+                                     entry->line,
+                                     entry->wants && !begins ? " " : "",
+                                     entry->wants && !begins ? _subject : ""));
     call.commands().send(std::format("input key down {}", key));
     call.commands().send(std::format("input key up {}", key));
-    _begun = entry->wants;
+    _begun = begins;
     _shutting = true;
   }
 
@@ -261,6 +292,7 @@ class Menus final : public VP::Operator {
   bool _shown = false;               // the names show, below the corner
   glm::ivec2 _corner{};              // where they were opened
   std::string _open;                 // the menu whose items show; empty for none
+  std::string _subject;              // what it opened for, as a tab's file, or none
   std::optional<Opening> _next;      // what a press or a line opened, for the next frame
   bool _shutting = false;            // a press or escape, which shuts it the next frame
   bool _begun = false;               // an item began a line, which keeps the focus

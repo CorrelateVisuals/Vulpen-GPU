@@ -20,6 +20,9 @@ struct Item {
   // after it, as a tab moves to another's place among those of its content: a line whose
   // last word names it, as tab move <file>; empty for none, which no drag moves.
   std::string move;
+  // What a right press on it sends, as a tab opens a menu of what to do with it; empty
+  // for none.
+  std::string menu;
 
   bool operator==(const Item &) const = default;
 };

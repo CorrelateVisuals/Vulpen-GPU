@@ -244,6 +244,12 @@ void Text::bind(VP::Bind &node) {
     _close_force = node.command("close force [<file>]",
                                 "closes a file an editor holds, or with none the one the "
                                 "editor in focus shows, dropping its changes");
+    _close_left = node.command("close left [<file>]",
+                               "closes the files left of a file's tab, or of the one the "
+                               "editor in focus shows, but those with changes");
+    _close_right = node.command("close right [<file>]",
+                                "closes the files right of a file's tab, or of the one "
+                                "the editor in focus shows, but those with changes");
     _find = node.command("find <value>...",
                          "selects the next place the file the editor in focus shows holds "
                          "the words, joined by single blanks, after the caret, and from "
@@ -614,16 +620,19 @@ void Text::command(VP::Call &call) {
     route(call.files());
   if (call.is(_write)) {
     target().write(call);
-  } else if (call.is(_close) || call.is(_close_force)) {
+  } else if (call.is(_close) || call.is(_close_force) || call.is(_close_left) ||
+             call.is(_close_right)) {
     const std::string_view named =
         call.arguments().empty() ? std::string_view() : call.arguments().front();
     VP_VIEW::Editor *const editor = named.empty() ? &target() : holder(named);
     if (!editor)
       throw std::runtime_error(std::format("{} is not open in an editor", named));
-    const std::string closing(named.empty() ? editor->shown() : named);
-    editor->close(call, named, call.is(_close_force));
+    if (call.is(_close_left) || call.is(_close_right))
+      editor->close_beside(call, named, call.is(_close_left));
+    else
+      editor->close(call, named, call.is(_close_force));
     // The param names it no longer, so open names it again as a change.
-    if (editor != this && closing == _file) {
+    if (!_file.empty() && !holder(_file)) {
       _file.clear();
       call.commands().send(std::format("{}: param unset {} file", _view, _name));
     }
@@ -777,6 +786,46 @@ void Text::close(VP::Call &call, std::string_view path, bool force) {
   name_tabs();
 }
 
+// Of the files beside the one named, or the one shown, those with changes stay, named in
+// what it answers, so nothing typed goes unasked; the file shown stays shown, or gives
+// way to the one named. A file the param names that goes unsets it, as close does.
+void Text::close_beside(VP::Call &call, std::string_view path, bool left) {
+  if (_documents.empty())
+    throw std::runtime_error("no file is open");
+  const auto named = path.empty()
+                         ? _documents.begin() + static_cast<std::ptrdiff_t>(_shown)
+                         : std::ranges::find(_documents, path, &Document::path);
+  if (named == _documents.end())
+    throw std::runtime_error(std::format("{} is not open in the editor", path));
+  const auto at = static_cast<std::size_t>(named - _documents.begin());
+  const std::string beside = named->path;
+  const std::string shown = _documents[_shown].path;
+  std::vector<Document> staying;
+  std::string kept;
+  for (std::size_t index = 0; index < _documents.size(); ++index) {
+    Document &document = _documents[index];
+    const bool beyond = left ? index < at : index > at;
+    if (!beyond || document.changed) {
+      if (beyond)
+        kept.append(kept.empty() ? "" : ", ").append(label_of(document));
+      staying.push_back(std::move(document));
+    } else if (document.path == _file) {
+      _file.clear();
+      call.commands().send(std::format("{}: param unset {} file", _view, _name));
+    }
+  }
+  _documents = std::move(staying);
+  auto still = std::ranges::find(_documents, shown, &Document::path);
+  if (still == _documents.end())
+    still = std::ranges::find(_documents, beside, &Document::path);
+  _shown = static_cast<std::size_t>(still - _documents.begin());
+  _dragging = false;
+  _follow = true;
+  name_tabs();
+  if (!kept.empty())
+    call.reply(std::format("kept {}, as they have changes", kept));
+}
+
 // From the selection's end to the file's end, then from its start, so a find repeated
 // steps through every place in turn.
 void Text::find(VP::Call &call) {
@@ -813,7 +862,8 @@ void Text::name_tabs() {
                       .command = std::format("open {}", _documents[at].path),
                       .current = at == _shown,
                       .close = std::format("close {}", _documents[at].path),
-                      .move = std::format("tab move {}", _documents[at].path)});
+                      .move = std::format("tab move {}", _documents[at].path),
+                      .menu = std::format("menu tab for {}", _documents[at].path)});
     if (!_documents[at].changed)
       continue;
     changed.append(count++ == 0 ? "" : ", ").append(_tabs->back().label);

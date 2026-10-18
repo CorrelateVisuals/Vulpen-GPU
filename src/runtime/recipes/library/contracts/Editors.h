@@ -28,6 +28,9 @@ public:
   virtual void write(VP::Call &call) = 0;
   // The file named, which it holds, or the one it shows; with changes only by force.
   virtual void close(VP::Call &call, std::string_view path, bool force) = 0;
+  // The files left of the one named, which it holds, or of the one it shows, or right of
+  // it, but those with changes, which it names.
+  virtual void close_beside(VP::Call &call, std::string_view path, bool left) = 0;
   virtual void find(VP::Call &call) = 0;
   // Puts the first file it holds where the second is, those between moving over a place,
   // as a tab dragged onto another moves among its strip's.
