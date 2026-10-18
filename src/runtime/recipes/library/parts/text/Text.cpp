@@ -248,6 +248,9 @@ void Text::bind(VP::Bind &node) {
                          "selects the next place the file the editor in focus shows holds "
                          "the words, joined by single blanks, after the caret, and from "
                          "its start past its end");
+    _move = node.command("tab move <file> <file>",
+                         "puts the first file's tab where the second's is, in the editor "
+                         "holding both, as a drag of one onto the other does");
   }
   _area = &node.input<VP_VIEW::Rect>("area");
   _font = &node.input<VP_VIEW::Font>("font");
@@ -626,7 +629,37 @@ void Text::command(VP::Call &call) {
     }
   } else if (call.is(_find)) {
     target().find(call);
+  } else if (call.is(_move)) {
+    const std::span<const std::string_view> files = call.arguments();
+    VP_VIEW::Editor *const editor = holder(files[0]);
+    if (!editor || !editor->holds(files[1]))
+      throw std::runtime_error(std::format("{} and {} are not open in one editor; a tab "
+                                           "moves among its editor's",
+                                           files[0],
+                                           files[1]));
+    editor->move(files[0], files[1]);
   }
+}
+
+// The file shown stays shown, wherever it goes.
+void Text::move(std::string_view path, std::string_view to) {
+  const auto at = [&](std::string_view named) {
+    return static_cast<std::size_t>(
+        std::ranges::find(_documents, named, &Document::path) - _documents.begin());
+  };
+  const std::size_t from = at(path);
+  const std::size_t place = at(to);
+  const std::string shown = _documents[_shown].path;
+  if (from < place)
+    std::rotate(_documents.begin() + static_cast<std::ptrdiff_t>(from),
+                _documents.begin() + static_cast<std::ptrdiff_t>(from) + 1,
+                _documents.begin() + static_cast<std::ptrdiff_t>(place) + 1);
+  else
+    std::rotate(_documents.begin() + static_cast<std::ptrdiff_t>(place),
+                _documents.begin() + static_cast<std::ptrdiff_t>(from),
+                _documents.begin() + static_cast<std::ptrdiff_t>(from) + 1);
+  _shown = at(shown);
+  name_tabs();
 }
 
 const std::string &Text::name() const {
@@ -779,7 +812,8 @@ void Text::name_tabs() {
     _tabs->push_back({.label = label_of(_documents[at]),
                       .command = std::format("open {}", _documents[at].path),
                       .current = at == _shown,
-                      .close = std::format("close {}", _documents[at].path)});
+                      .close = std::format("close {}", _documents[at].path),
+                      .move = std::format("tab move {}", _documents[at].path)});
     if (!_documents[at].changed)
       continue;
     changed.append(count++ == 0 ? "" : ", ").append(_tabs->back().label);

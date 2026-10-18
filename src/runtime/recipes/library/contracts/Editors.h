@@ -29,6 +29,9 @@ public:
   // The file named, which it holds, or the one it shows; with changes only by force.
   virtual void close(VP::Call &call, std::string_view path, bool force) = 0;
   virtual void find(VP::Call &call) = 0;
+  // Puts the first file it holds where the second is, those between moving over a place,
+  // as a tab dragged onto another moves among its strip's.
+  virtual void move(std::string_view path, std::string_view to) = 0;
 
 protected:
   ~Editor() = default;

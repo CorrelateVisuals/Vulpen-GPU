@@ -90,6 +90,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   void write(VP::Call &call) override;
   void close(VP::Call &call, std::string_view path, bool force) override;
   void find(VP::Call &call) override;
+  void move(std::string_view path, std::string_view to) override;
 
   VP_VIEW::Editor &target();
   VP_VIEW::Editor *holder(std::string_view path) const;
@@ -125,6 +126,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   VP::Command _close;
   VP::Command _close_force;
   VP::Command _find;
+  VP::Command _move;
   std::string _name; // as the focus names it
   std::string _view; // the one it runs in, where its file param is unset
   const VP_VIEW::Editors *_before = nullptr; // a connection's; none for none

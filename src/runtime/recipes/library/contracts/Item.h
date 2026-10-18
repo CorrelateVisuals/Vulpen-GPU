@@ -16,6 +16,10 @@ struct Item {
   // What a press on its close mark sends, as a tab's content closes what the tab shows;
   // empty for no mark.
   std::string close;
+  // What a drag of it onto another Item of its list sends, that Item's move's last word
+  // after it, as a tab moves to another's place among those of its content: a line whose
+  // last word names it, as tab move <file>; empty for none, which no drag moves.
+  std::string move;
 
   bool operator==(const Item &) const = default;
 };

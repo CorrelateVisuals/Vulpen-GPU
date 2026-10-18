@@ -2,21 +2,29 @@
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
 
+#include <glm/geometric.hpp>
+
 #include <algorithm>
 #include <cstddef>
 #include <format>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <utility>
 
 namespace {
+
+constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 
 // Finds the Rect under the pointer, and a press there sends the command of the Item
 // shown in it: rects[i] is where items[i] shows, as a list hands them on; a press on its
 // close mark, where marks[i] is, sends its close command instead. With hover=yes the
 // pointer coming onto an Item that is not current sends its command too, as a menu's name
-// opens its items. Connecting it makes anything laid out as Rects pressable, so no drawing
-// part reads the pointer, and what is drawn is what is pressed.
+// opens its items. An Item dragged onto another, both with a move, sends its move with the
+// other's last word after it, as a tab moves among its strip's. Connecting it makes
+// anything laid out as Rects pressable, so no drawing part reads the pointer, and what is
+// drawn is what is pressed.
 class Hit final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string hover = node.param<std::string>("hover");
@@ -35,11 +43,29 @@ class Hit final : public VP::Operator {
         _pointer = event.at;
         if (_hover)
           hover(frame);
-      } else if (event.kind == VP::Event::Kind::button && event.down &&
-                 event.name == "left") {
-        press(frame);
+      } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
+        if (event.down)
+          press(frame);
+        else
+          release(frame);
       }
     }
+  }
+
+  // Onto another Item that moves as this one does, past a few pixels from the press.
+  void release(VP::Cook &frame) {
+    const std::optional<std::size_t> from = std::exchange(_pressed, std::nullopt);
+    const std::optional<std::size_t> onto = under();
+    if (!from || !onto || *from == *onto || glm::distance(_pointer, _from) <= drag_from)
+      return;
+    const std::string_view moving = (*_items)[*from].move;
+    const std::string_view there = (*_items)[*onto].move;
+    const std::size_t word = moving.rfind(' ');
+    const std::size_t other = there.rfind(' ');
+    if (word == std::string_view::npos || other == std::string_view::npos ||
+        moving.substr(0, word) != there.substr(0, other))
+      return;
+    frame.commands().send(std::format("{} {}", moving, there.substr(other + 1)));
   }
 
   // Of two Rects that hold the point, the later is drawn over the other, so it answers;
@@ -52,8 +78,10 @@ class Hit final : public VP::Operator {
   }
 
   // The command is copied first, since what it runs may change the Items.
-  void press(VP::Cook &frame) const {
+  void press(VP::Cook &frame) {
     const std::optional<std::size_t> at = under();
+    _pressed = at;
+    _from = _pointer;
     if (!at)
       return;
     const VP_VIEW::Item &item = (*_items)[*at];
@@ -79,6 +107,8 @@ class Hit final : public VP::Operator {
   const VP_VIEW::Rects *_marks = nullptr;
   glm::vec2 _pointer{}; // as the events so far left it
   std::optional<std::size_t> _hovered; // the Item the pointer is on, as last seen
+  std::optional<std::size_t> _pressed; // the Item a press is on, until it is let go
+  glm::vec2 _from{};                   // where that press was
 };
 
 } // namespace
