@@ -21,7 +21,8 @@ which nothing may refuse; a third then presses escape three times, back to edit 
 of the terminal's focus and out of the run, which must end before its frames do; every
 other run must run all of them, so the end of standard input, which every run finds at
 once, ends none. The last two host a copy of the wave example, its boxes placed by the
-.ini put beside it, which home centers in the graph's area at zoom 1, with
+.ini put beside it, which home centers in the graph's area at zoom 1, the flow layer
+alone showing, so no relation reaching past the copy's folder widens them, with
 Wave.comp open in the editor: a press on a box's name selects it, a drag moves the box
 selected, a drag on the ground lets go of the selection and moves the graph, shift with a
 press selects the box again, the wheel zooms the graph, and shift with a drag on the
@@ -283,6 +284,9 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
     below = MENUBAR + round((row - 4) * 0.5) + 4
     perform = (width * 3 // 4, below + (top - below) * 2 // 3)
     return [
+        # The flow layer alone: the docs ids the copy cites reach past its folder, and
+        # the box outside, once read, would widen what home centers.
+        "ide: param set ide.graph.graph relations flow",
         f"view load {wave}",
         f"open {wave / 'wave' / 'Wave.comp'}",  # GLSL in the editor, in color
         f"input pointer {box[0]} {box[1]}",
