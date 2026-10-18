@@ -5,11 +5,13 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <charconv>
 #include <filesystem>
 #include <format>
 #include <functional>
 #include <limits>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -307,9 +309,70 @@ bool cpp(const std::filesystem::path &file) {
 }
 
 bool shader(const std::filesystem::path &file) {
-  static constexpr auto endings =
-      std::to_array<std::string_view>({".glsl", ".vert", ".frag", ".comp"});
+  static constexpr auto endings = std::to_array<std::string_view>(
+      {".glsl", ".vert", ".frag", ".comp", ".tesc", ".tese", ".geom"});
   return std::ranges::find(endings, file.extension().string()) != endings.end();
+}
+
+// The stages of a draw in the order its data goes through them, as glslang names them by
+// ending; none for a shader that is no stage of a draw.
+std::optional<std::size_t> draw_stage(const std::filesystem::path &file) {
+  static constexpr auto stages =
+      std::to_array<std::string_view>({".vert", ".tesc", ".tese", ".geom", ".frag"});
+  const auto found = std::ranges::find(stages, file.extension().string());
+  return found == stages.end() ? std::nullopt
+                               : std::optional(std::size_t(found - stages.begin()));
+}
+
+// What a stage writes out or reads in, a line each: past a layout, whose location it
+// keeps, and the words that say how it is interpolated, in or out, a type and a name,
+// before an array's size; not a block, nor a built-in, nor a compute shader's in, which
+// names no value.
+std::vector<Varying> varyings_of(std::string_view text) {
+  static constexpr auto qualifiers = std::to_array<std::string_view>(
+      {"flat", "smooth", "noperspective", "centroid", "sample", "patch", "invariant"});
+  constexpr std::string_view location = "location";
+  std::vector<Varying> varyings;
+  each_line(text, [&](std::string_view line, std::uint32_t number) {
+    line = trim(line.substr(0, line.find("//")));
+    if (!line.ends_with(';'))
+      return;
+    Varying varying{.line = number};
+    if (line.starts_with("layout")) {
+      const std::size_t close = line.find(')');
+      const std::size_t at = line.find(location);
+      if (close == std::string_view::npos)
+        return;
+      if (at != std::string_view::npos && at < close) {
+        std::uint32_t value = 0;
+        const std::size_t digits = line.find_first_of("0123456789", at);
+        if (digits < close &&
+            std::from_chars(line.data() + digits, line.data() + close, value).ec ==
+                std::errc{})
+          varying.location = value;
+      }
+      line = trim(line.substr(close + 1));
+    }
+    std::vector<std::string_view> words;
+    for (std::size_t at = 0; at < line.size();) {
+      const std::size_t end = std::min(line.find_first_of(" \t;[", at), line.size());
+      if (end > at)
+        words.push_back(line.substr(at, end - at));
+      at = line.find_first_not_of(" \t", end);
+      if (at == std::string_view::npos || line[at] == ';' || line[at] == '[')
+        break;
+    }
+    std::erase_if(words, [](std::string_view word) {
+      return std::ranges::find(qualifiers, word) != qualifiers.end();
+    });
+    if (words.size() != 3 || (words[0] != "in" && words[0] != "out") ||
+        words[2].starts_with("gl_"))
+      return;
+    varying.out = words[0] == "out";
+    varying.name = std::string(words[2]);
+    varyings.push_back(std::move(varying));
+  });
+  return varyings;
 }
 
 // The names a C++ file binds to its node's shaders' pass block: those quoted after the
@@ -484,6 +547,7 @@ void Relations::start(VP::FilePort &files, const VP::View *view) {
   _ids.clear();
   _bound.clear();
   _declared.clear();
+  _varyings.clear();
   for (const std::string &name : files.list(_docs))
     if (name.ends_with(".md"))
       define(files.read((std::filesystem::path(_docs) / name).string()),
@@ -523,8 +587,11 @@ bool Relations::step(VP::FilePort &files, std::size_t bytes) {
     find(listed, _sources[_next], text, _ids, _found);
     if (cpp(_sources[_next]))
       bind_names(text, _sources[_next], _bound);
-    else if (shader(_sources[_next]))
+    else if (shader(_sources[_next])) {
       _declared.emplace(_sources[_next], declared_names(text));
+      if (draw_stage(_sources[_next]))
+        _varyings.emplace(_sources[_next], varyings_of(text));
+    }
   }
   return _walked == _walk.size() && (_next == _sources.size() || _read >= reading_room);
 }
@@ -563,6 +630,7 @@ void Relations::publish(VP::Cook &frame) {
                           .layer = VP_VIEW::Layer::code,
                           .line = bind.line,
                           .said = bind.name});
+  relate_stages();
   const auto said = [](const VP_VIEW::Relation &relation) {
     return std::tie(relation.from, relation.to, relation.layer, relation.said);
   };
@@ -590,6 +658,33 @@ void Relations::publish(VP::Cook &frame) {
   _relations->tree = std::move(_tree);
   _relations->relations = std::move(_found);
   ++_relations->changes;
+}
+
+// A stage reads in what the nearest stage before it in its folder writes out, as its
+// fragment shader reads its vertex shader's color, matched as the stages match them, by
+// location, or by name where either gives none: a relation from the reader, at its line,
+// to the writer, so the graph draws it from what is used to what uses it.
+void Relations::relate_stages() {
+  for (const auto &[reader, ins] : _varyings) {
+    const std::size_t stage = *draw_stage(reader);
+    const std::filesystem::path *writer = nullptr;
+    for (const auto &[file, outs] : _varyings)
+      if (file.parent_path() == reader.parent_path() && *draw_stage(file) < stage &&
+          (!writer || *draw_stage(file) > *draw_stage(*writer)))
+        writer = &file;
+    if (!writer)
+      continue;
+    for (const Varying &in : ins)
+      if (!in.out && std::ranges::any_of(_varyings.at(*writer), [&](const Varying &out) {
+            return out.out && (in.location && out.location ? *in.location == *out.location
+                                                           : in.name == out.name);
+          }))
+        _found.push_back({.from = reader.generic_string(),
+                          .to = writer->generic_string(),
+                          .layer = VP_VIEW::Layer::code,
+                          .line = in.line,
+                          .said = in.name});
+  }
 }
 
 VP_OPERATORS(registry) {

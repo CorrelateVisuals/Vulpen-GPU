@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,12 +25,22 @@ struct Bound {
   std::uint32_t line = 0;
 };
 
+// What a stage of a draw writes out to the next stage, or reads in from the one before,
+// as out vec3 color, by its location, or its name where it gives none, and its line.
+struct Varying {
+  std::string name;
+  std::optional<std::uint32_t> location;
+  std::uint32_t line = 0;
+  bool out = false;
+};
+
 // Finds what links the files of the view the graph shows, the current one, or of the
 // folder its folder param names, whose inside the graph shows, which open and the graph
 // set while the ide runs: a file including or importing another, a CMake file naming
 // one, a document linking one or citing an id a document of its docs param's folder
 // defines, a manifest naming a recipe it uses, a node's C++ binding a name its shader's
-// pass block declares; and hands them to the graph as Relations,
+// pass block declares, a stage of a draw reading what the stage before it writes; and
+// hands them to the graph as Relations,
 // with the folder a level deep as a view's nodes, hidden ones too, and the top of its
 // repository. No compiler is asked: it reads the lines that say so, as they are on disk,
 // through the file port, again as what is shown changes, and every two seconds while
@@ -44,6 +55,7 @@ private:
   bool step(VP::FilePort &files, std::size_t bytes);
   void publish_tree();
   void publish(VP::Cook &frame);
+  void relate_stages();
 
   VP_VIEW::Relations *_relations = nullptr;
   std::string _folder;
@@ -72,6 +84,9 @@ private:
   // what C++ binds, and the names each shader's pass block declares, by the shader.
   std::vector<Bound> _bound;
   std::map<std::filesystem::path, std::vector<std::string>> _declared;
+  // And between a draw's stages, which only both shaders say together: what each stage
+  // writes out and reads in, by the shader.
+  std::map<std::filesystem::path, std::vector<Varying>> _varyings;
 };
 
 } // namespace
