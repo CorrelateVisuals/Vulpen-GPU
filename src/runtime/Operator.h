@@ -68,6 +68,29 @@ template <> inline constexpr std::string_view pixel_type<float> = "float";
 template <> inline constexpr std::string_view pixel_type<glm::vec2> = "vec2";
 template <> inline constexpr std::string_view pixel_type<glm::vec4> = "vec4";
 
+// A param's text as T: a number, or a glm vector's components joined by commas, as
+// `0.25,0.5,1`, so a param stays one word, as param set takes it. The engine reads a
+// param a shader's field takes so too, as the field's type. False when the text is none.
+template <class T> bool parse_param(std::string_view text, T &value) {
+  const auto number = [](std::string_view part, auto &into) {
+    const auto [end, error] = std::from_chars(part.data(), part.data() + part.size(), into);
+    return error == std::errc{} && end == part.data() + part.size();
+  };
+  if constexpr (requires { T::length(); }) {
+    for (glm::length_t index = 0; index < T::length(); ++index) {
+      const bool last = index + 1 == T::length();
+      const std::size_t comma = text.find(',');
+      if ((comma == std::string_view::npos) != last ||
+          !number(text.substr(0, comma), value[index]))
+        return false;
+      text.remove_prefix(last ? text.size() : comma + 1);
+    }
+    return true;
+  } else {
+    return number(text, value);
+  }
+}
+
 // A value in the node's pass block.
 template <class T> struct Value {
   std::uint32_t offset = 0;
@@ -339,17 +362,15 @@ public:
         "a pixel is a uint8, uint16 or float, or a glm vector of 2 or 4 of them");
     return {texture_index(port, pixel_type<T>)};
   }
-  // A number, read as the shader would read it, or a word as a std::string, such as a
-  // file's name, which only C++ reads.
+  // A number, or a glm vector of them, read as the shader would read it (parse_param),
+  // or a word as a std::string, such as a file's name, which only C++ reads.
   template <class T> T param(std::string_view name) {
     const std::string_view text = param_text(name);
     if constexpr (std::is_same_v<T, std::string>) {
       return T(text);
     } else {
       T value{};
-      const auto [end, error] =
-          std::from_chars(text.data(), text.data() + text.size(), value);
-      if (error != std::errc{} || end != text.data() + text.size())
+      if (!parse_param(text, value))
         param_invalid(name, glsl_type<T>);
       return value;
     }

@@ -299,10 +299,12 @@ def terminal(vulpen: str, folder: Path) -> str | None:
 
 
 def frame_block(vulpen: str, folder: Path) -> str | None:
-    """Why a pass did not read the frame block as the engine wrote it, or None; the
-    fixture's operator stops when it differs, from a frame far in, where time is large,
-    and with the pointer moved, which the cursor follows."""
-    view = view_in(folder, "frame", HEAD + '[node "frame"]\noperator = Frame\ninvocations = 6\n')
+    """Why a pass did not read the frame block as the engine wrote it, or its params, a
+    vec3 and a float after it among them, or None; the fixture's operator stops when one
+    differs, from a frame far in, where time is large, and with the pointer moved, which
+    the cursor follows."""
+    view = view_in(folder, "frame", HEAD + '[node "frame"]\noperator = Frame\ninvocations = 12\n'
+                   "param = tint=0.25,0.5,0.75\nparam = after=1.5\nparam = at=-2,4\n")
     (view.parent / "pointer.txt").write_text("input pointer 12.5 40\n", encoding="utf-8")
     code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--first-frame", 1_000_000,
                                 "--source", view.parent / "pointer.txt"])

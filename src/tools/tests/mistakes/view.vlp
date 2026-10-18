@@ -33,12 +33,16 @@ vertex_count = 3
 operator = Twin
 file     = Twin.cpp
 
-# Reads back the frame block, and stops when it differs from what the engine wrote.
+# Reads back the frame block and its params, and stops when they differ from what the
+# engine wrote.
 [node "frame"]
 operator    = Frame
 file        = Frame.comp
 file        = Frame.cpp
-invocations = 6
+invocations = 12
+param       = tint=0.25,0.5,0.75
+param       = after=1.5
+param       = at=-2,4
 
 # Stops unless the input command's events reach it in the frame after they were made.
 [node "input"]

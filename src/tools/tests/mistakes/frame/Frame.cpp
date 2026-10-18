@@ -11,10 +11,14 @@ constexpr double unpaced_rate = 60; // frames a second, as an unpaced run counts
 
 // Reads back what its pass saw of the frame block, a frame after the GPU wrote it, and
 // stops when it differs from what the engine wrote: an offset off, or a value missing.
-// The cursor is where the input port says the pointer is.
+// The cursor is where the input port says the pointer is. So too for its params, which
+// the engine writes for the pass and C++ reads, each its own way.
 class Frame final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _seen = node.readback<float>("seen");
+    _tint = node.param<glm::vec3>("tint");
+    _after = node.param<float>("after");
+    _at = node.param<glm::vec2>("at");
   }
   void cook(VP::Cook &frame) override {
     const std::span<const float> seen = frame.read(_seen);
@@ -37,9 +41,28 @@ class Frame final : public VP::Operator {
                                            cursor.y,
                                            time,
                                            index));
+    if (seen[6] != _tint.x || seen[7] != _tint.y || seen[8] != _tint.z ||
+        seen[9] != _after || seen[10] != _at.x || seen[11] != _at.y)
+      throw std::runtime_error(std::format("the params held {} {} {} {} {} {}, where "
+                                           "C++ read {} {} {} {} {} {}",
+                                           seen[6],
+                                           seen[7],
+                                           seen[8],
+                                           seen[9],
+                                           seen[10],
+                                           seen[11],
+                                           _tint.x,
+                                           _tint.y,
+                                           _tint.z,
+                                           _after,
+                                           _at.x,
+                                           _at.y));
   }
 
   VP::Readback<float> _seen;
+  glm::vec3 _tint{};
+  float _after = 0;
+  glm::vec2 _at{};
 };
 
 } // namespace

@@ -25,26 +25,41 @@
 // node's operator, and Checks.cpp holds what the loader refuses (A02).
 namespace VP {
 
+// The param's text as a T at out, which the field's offset gives, the T's components
+// one after another, as std140 lays a vector; false when it does not parse.
 template <class T> bool parse(std::string_view text, std::byte *out) {
   T value{};
-  const auto [end, error] =
-      std::from_chars(text.data(), text.data() + text.size(), value);
-  if (error != std::errc{} || end != text.data() + text.size())
+  if (!parse_param(text, value))
     return false;
   if (out)
     std::memcpy(out, &value, sizeof value);
   return true;
 }
 
-// A param's text as the bytes of the field's GLSL type; false when it does not parse.
+// A param's text as the bytes of the field's GLSL type, of the first of Types the field
+// is; false when it does not parse, or the field is none of them.
+template <class... Types>
+bool write_as(std::string_view text, std::string_view type, std::byte *out) {
+  bool written = false;
+  ((type == glsl_type<Types> && (written = parse<Types>(text, out), true)) || ...);
+  return written;
+}
+
+// A param's text as the bytes of the field's GLSL type, a number or a vector of them;
+// false when it does not parse.
 inline bool write_value(std::string_view text, std::string_view type, std::byte *out) {
-  if (type == glsl_type<float>)
-    return parse<float>(text, out);
-  if (type == glsl_type<std::int32_t>)
-    return parse<std::int32_t>(text, out);
-  if (type == glsl_type<std::uint32_t>)
-    return parse<std::uint32_t>(text, out);
-  return false;
+  return write_as<float,
+                  std::int32_t,
+                  std::uint32_t,
+                  glm::vec2,
+                  glm::vec3,
+                  glm::vec4,
+                  glm::ivec2,
+                  glm::ivec3,
+                  glm::ivec4,
+                  glm::uvec2,
+                  glm::uvec3,
+                  glm::uvec4>(text, type, out);
 }
 
 inline bool reads(Access access) {
