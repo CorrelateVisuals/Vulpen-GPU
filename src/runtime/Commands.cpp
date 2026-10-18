@@ -183,23 +183,51 @@ void CommandLog::open() {
     _groups.emplace_back();
 }
 
-void CommandLog::keep(std::vector<std::string> words, std::vector<std::size_t> files) {
-  _groups.back().push_back({std::move(words), std::move(files)});
+void CommandLog::keep(std::vector<std::string> words,
+                      std::vector<std::size_t> files,
+                      std::string_view view,
+                      Primitive primitive) {
+  _groups.back().push_back(
+      {std::move(words), std::move(files), std::string(view), primitive});
+  ++_size;
+}
+
+std::string CommandLog::text(const std::filesystem::path &folder) const {
+  std::string text;
+  for (const Kept &kept : _groups | std::views::join)
+    text += line(kept, folder);
+  return text;
+}
+
+std::size_t CommandLog::size() const {
+  return _size;
+}
+
+// A save writes what came before it, so its file holds it, and a replay of the save
+// would only write the file again.
+std::string CommandLog::after(std::span<const Mark> marks,
+                              const std::filesystem::path &folder) const {
+  std::string text;
+  std::size_t index = 0;
+  for (const Kept &kept : _groups | std::views::join) {
+    const auto mark = std::ranges::find(marks, kept.view, &Mark::view);
+    if (mark != marks.end() && index >= mark->kept && kept.primitive != Primitive::save)
+      text += line(kept, folder);
+    ++index;
+  }
+  return text;
 }
 
 // A file on another drive than the log's has no relative path, so it stays absolute.
-std::string CommandLog::text(const std::filesystem::path &folder) const {
+std::string CommandLog::line(const Kept &kept, const std::filesystem::path &folder) {
   std::string text;
-  for (const Kept &kept : _groups | std::views::join) {
-    for (std::size_t index = 0; index < kept.words.size(); ++index) {
-      std::filesystem::path word(kept.words[index]);
-      if (std::ranges::find(kept.files, index) != kept.files.end())
-        word = word.lexically_normal().lexically_proximate(folder.lexically_normal());
-      text.append(index == 0 ? "" : " ").append(word.generic_string());
-    }
-    text.push_back('\n');
+  for (std::size_t index = 0; index < kept.words.size(); ++index) {
+    std::filesystem::path word(kept.words[index]);
+    if (std::ranges::find(kept.files, index) != kept.files.end())
+      word = word.lexically_normal().lexically_proximate(folder.lexically_normal());
+    text.append(index == 0 ? "" : " ").append(word.generic_string());
   }
-  return text;
+  return text + '\n';
 }
 
 struct Commands::Spec {
@@ -335,10 +363,11 @@ std::string Commands::run(std::string_view line) {
   }
   const Restore depth(_depth, _depth + 1);
   const Restore addressed(_addressed, address);
+  const Restore changed(_changed, address);
   Run call(*this, _views, address, _files, _processes, spec->command, arguments);
   spec->handler->command(call);
-  if (primitive == Primitive::yes)
-    _session.keep(std::move(kept), std::move(files));
+  if (primitive != Primitive::no)
+    _session.keep(std::move(kept), std::move(files), _changed, primitive);
   return std::move(call).answer();
 }
 
@@ -491,6 +520,14 @@ std::span<const Cost> Commands::costs(std::string_view name) {
 
 bool Commands::quitting() const {
   return _quitting;
+}
+
+const CommandLog &Commands::session() const {
+  return _session;
+}
+
+void Commands::changes(std::string_view view) {
+  _changed = view;
 }
 
 std::string_view Commands::addressed() const {

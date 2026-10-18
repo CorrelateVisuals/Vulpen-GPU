@@ -20,6 +20,8 @@ class Files {
 public:
   // Build outputs resolve against it, never against the working directory (RP02).
   static std::filesystem::path executable();
+  // What a file holds, read whole; empty when it cannot be read.
+  static std::string text(const std::filesystem::path &file);
   // Writes a temp file beside the file, then renames it over the file, so a killed run
   // leaves the old file or the new one, never half of one (RA04). Makes the file's
   // folder first when it has none. Throws naming the file.

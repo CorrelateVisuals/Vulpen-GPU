@@ -26,7 +26,7 @@ verbose=false
 while (($#)); do
   case $1 in
     --cli | --ide) app "$1"; arguments+=("${views[@]}"); named=true; shift ;;
-    --log | --frames | --fps | --first-frame | --source | --size)
+    --log | --frames | --fps | --first-frame | --source | --size | --restart)
       [[ $1 == --log && ${2:-} == debug ]] && verbose=true
       arguments+=("${@:1:2}")
       shift $(($# > 1 ? 2 : 1)) ;;

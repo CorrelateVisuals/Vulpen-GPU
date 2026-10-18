@@ -49,6 +49,8 @@ endfunction()
 
 vulpen_test(vulpen ${launch} ${vulpen_file})
 vulpen_test(wave ${python} ${tests}/golden.py ${vulpen_file})
+# quit restart builds vulpen in this build's tree and runs the new vulpen in its place.
+vulpen_test(restart ${python} ${tests}/restart.py ${vulpen_file})
 if(VULPEN_TEST_DRIVER AND NOT VULPEN_SANITIZERS)
   # The same goldens on this machine's own GPU, within the tolerance between drivers.
   vulpen_test(wave-gpu ${python} ${tests}/golden.py ${vulpen_file} --own-gpu)

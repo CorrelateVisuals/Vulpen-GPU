@@ -40,30 +40,53 @@ protected:
 // Whether the log keeps a command's runs. A primitive edits a view or saves it, so
 // replaying the primitives rebuilds the graph and the files saved from it (V08). Any
 // other command only reads, or runs others, whose primitives the log keeps in its place.
-enum class Primitive : bool { no, yes };
+// A save's file holds every edit of its view before it, which a restart replays no more.
+enum class Primitive : std::uint8_t { no, edit, save };
 
 // The session as groups: each line from outside the port keeps the primitives it ran,
 // so a replay needs none of the commands that sent them (V08) and undo removes one
 // group.
 class CommandLog {
 public:
+  // Where a view's own file last held all of it: how many primitives the log kept then,
+  // as the view was hosted, read again or saved.
+  struct Mark {
+    std::string_view view; // by the name a line addresses it with, empty for the first
+    std::size_t kept = 0;
+  };
+
   // A line from outside the port, typed or read from a file: the primitives it runs
   // join one group.
   void open();
-  // files: which of the words are files, as absolute paths.
-  void keep(std::vector<std::string> words, std::vector<std::size_t> files);
+  // files: which of the words are files, as absolute paths; view: the name of the view
+  // the primitive changed.
+  void keep(std::vector<std::string> words,
+            std::vector<std::size_t> files,
+            std::string_view view,
+            Primitive primitive);
   // Every primitive kept, a line each, in order: what source replays. A file is named
   // from the folder the log is saved in, where source resolves it, so a log moves with
   // the files it names (V08).
   std::string text(const std::filesystem::path &folder) const;
+  // How many primitives it kept so far.
+  std::size_t size() const;
+  // What the views' files do not hold yet: the edits of each view marked, kept since its
+  // mark, in order, as text names them; a view not marked holds none, as one no longer
+  // hosted. What a restart replays (V08).
+  std::string after(std::span<const Mark> marks, const std::filesystem::path &folder) const;
 
 private:
   struct Kept {
     std::vector<std::string> words;
     std::vector<std::size_t> files;
+    std::string view;
+    Primitive primitive = Primitive::edit;
   };
 
+  static std::string line(const Kept &kept, const std::filesystem::path &folder);
+
   std::vector<std::vector<Kept>> _groups;
+  std::size_t _size = 0;
 };
 
 // Every change to a view is a command through this one port, so the CLI, a GUI, a
@@ -125,6 +148,16 @@ public:
   std::span<const Cost> costs(std::string_view name);
   // Whether quit, or quit force, ran, so the run ends before its next frame.
   bool quitting() const;
+  // This frame's holds, then those of the frame before, `node: what` a line, each once:
+  // the work the end of the run would lose.
+  std::vector<std::string_view> holding() const;
+  // The session's log, which says how far a view's file holds it, and what a restart
+  // replays.
+  const CommandLog &session() const;
+  // The view the running primitive changes, when not the one its line addresses, as view
+  // close changes the host of the view it closes: the log keeps the primitive under it,
+  // so a restart replays it while that view is hosted.
+  void changes(std::string_view view);
   // The file and line running, as `script.txt:7`; empty for a line typed or sent.
   std::string where() const;
   // The name of the view the running command addresses; empty for the one vulpen
@@ -145,7 +178,6 @@ private:
   };
 
   void command(Call &call) override;
-  std::vector<std::string_view> holding() const;
   const Spec *match(std::span<const std::string_view> words) const;
   std::string view_named(std::vector<std::string_view> &words) const;
   std::vector<std::string> resolve(const Spec &spec,
@@ -162,6 +194,7 @@ private:
   CommandLog _session;
   std::vector<Source> _sourcing; // the files running, innermost last
   std::string _addressed;
+  std::string _changed; // by the primitive running
   std::size_t _depth = 0; // the lines running, each sent by the one before it
   const Command _quit;
   const Command _quit_force;

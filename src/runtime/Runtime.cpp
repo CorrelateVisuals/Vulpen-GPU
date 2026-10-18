@@ -5,6 +5,7 @@
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
 #include "runtime/Edits.h"
+#include "runtime/Live.h"
 #include "runtime/Manifest.h"
 #include "runtime/Modules.h"
 #include "runtime/Ports.h"
@@ -13,13 +14,11 @@
 #include "runtime/Views.h"
 
 #include <algorithm>
-#include <atomic>
 #include <charconv>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <format>
-#include <fstream>
 #include <iterator>
 #include <memory>
 #include <optional>
@@ -35,14 +34,12 @@ namespace {
 
 constexpr const char *usage =
     "usage: vulpen <view.vlp> [<view.vlp>...] [--frames N] [--first-frame N] [--fps N]\n"
-    "              [--size WxH] [--log error|warn|info|debug] [--source FILE]";
+    "              [--size WxH] [--log error|warn|info|debug] [--source FILE]\n"
+    "              [--restart FILE]";
 constexpr std::uint32_t default_fps = 60;
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
-constexpr auto scan_interval = std::chrono::milliseconds(100);
-constexpr const char *build_log = "live-build.log";
-// In the build folder, which every build of the tree takes first, run.sh's and run.ps1's
-// too, so two never write one tree at once.
-constexpr const char *build_lock = "build.lock";
+// Beside vulpen, what quit restart hands the new vulpen to replay.
+constexpr const char *restart_file = "restart.log";
 // How soon and how near a press must follow the one before, of the same button, to count
 // one more in a row, as a double click's second does: one place for every part (C02).
 constexpr auto press_interval = std::chrono::milliseconds(500);
@@ -73,27 +70,6 @@ template <class T> T number(std::string_view flag, std::string_view text) {
   return value;
 }
 
-std::string text_of(const std::filesystem::path &file) {
-  std::ifstream in(file);
-  return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
-}
-
-// A file's lines, without their line breaks; none when it cannot be read.
-std::vector<std::filesystem::path> lines_of(const std::filesystem::path &file) {
-  std::ifstream in(file);
-  std::vector<std::filesystem::path> lines;
-  for (std::string line; std::getline(in, line);)
-    if (!line.empty())
-      lines.emplace_back(line);
-  return lines;
-}
-
-// When the file was last written; the earliest time there is while it is not there.
-std::filesystem::file_time_type written(const std::filesystem::path &file) {
-  std::error_code gone;
-  const auto time = std::filesystem::last_write_time(file, gone);
-  return gone ? std::filesystem::file_time_type::min() : time;
-}
 
 // A window's title names the view it shows.
 std::string title(const View &view) {
@@ -191,7 +167,7 @@ public:
                  ? std::string_view()
                  : text.substr(first, text.find_last_not_of(" \t\r") - first + 1);
     };
-    const std::string text = text_of(file);
+    const std::string text = Files::text(file);
     for (std::size_t at = 0; at < text.size();) {
       const std::size_t end = std::min(text.find('\n', at), text.size());
       const std::string_view line = std::string_view(text).substr(at, end - at);
@@ -250,7 +226,15 @@ public:
   Runtime(const Runtime &) = delete;
   Runtime &operator=(const Runtime &) = delete;
 
+  // What runs in this vulpen's place once quit restart built it, and the run ended for
+  // it: the new vulpen, as the build wrote it where this one was.
+  struct Relaunch {
+    std::filesystem::path program;
+    std::vector<std::string> arguments;
+  };
+
   int run();
+  const std::optional<Relaunch> &relaunch() const;
 
 private:
   struct Options {
@@ -267,8 +251,9 @@ private:
     Level log = Level::warn;
     // A file of commands, one a line, that the port runs before the first frame.
     std::filesystem::path source;
+    // As source, the session quit restart carries, whose failure ends no run.
+    std::filesystem::path restart;
   };
-  class Live;
 
   static Options parse(std::span<char *const> arguments);
   bool start();
@@ -276,11 +261,15 @@ private:
   void loop();
   void watch();
   void swap();
+  Relaunch restarted(std::uint64_t ran);
   void prepare();
   void gather();
   bool ok() const;
 
   const Options _options;
+  // Its path as it started: a build that replaces the file leaves the running one
+  // nameless.
+  const std::filesystem::path _executable = Files::executable();
   const Log _log;
   std::filesystem::path _mirror; // the build tree's views, where the schedules look
   std::optional<Window> _window; // outlives the engine, which draws into it
@@ -294,6 +283,8 @@ private:
   std::optional<Edits> _edits; // goes before the views it changes
   std::optional<Preference> _preference; // goes before the engine it names
   std::unique_ptr<Live> _live;
+  std::unique_ptr<Restart> _restart;
+  std::optional<Relaunch> _relaunch;
   // Every view's, in the order a frame runs them; the passes are gathered only when a
   // schedule changed, so a frame allocates nothing for them (CPP10).
   std::vector<Pass> _passes;
@@ -302,133 +293,6 @@ private:
 };
 
 } // namespace
-
-// Notices saves under the views' folders and runs the build off the frame thread. The
-// build, not the runtime, knows how C++ and GLSL compile (C02): nothing compiles here.
-class Runtime::Live {
-public:
-  enum class Build { none, started, succeeded, failed };
-
-  Live(std::vector<std::filesystem::path> folders, const std::filesystem::path &build)
-      : _folders(std::move(folders)), _log_file(build / build_log),
-        _lock_file(build / build_lock), _stamp_file(build / VP_MODULE_STAMP_FILE),
-        _command(std::format(
-            R"("{}" --build "{}" --target vulpen_modules --parallel > "{}" 2>&1)",
-            VP_CMAKE_COMMAND,
-            build.string(),
-            _log_file.string())),
-        _engine(lines_of(build / VP_ENGINE_SOURCES_FILE)),
-        _engine_said(written(Files::executable())), _built_from(newest()),
-        _pending(_built_from) {}
-
-  // Once a frame. A change must be seen twice, so a file still being written never
-  // builds.
-  Build poll() {
-    const auto now = std::chrono::steady_clock::now();
-    Build build = Build::none;
-    if (now >= _next_scan && !_building) {
-      _next_scan = now + scan_interval;
-      notice_engine();
-      const auto seen = newest();
-      if (seen != _built_from && seen == _pending) {
-        _built_from = seen;
-        _building = true;
-        _started = now;
-        _failure.clear();
-        _build = std::jthread([this] {
-          // A build that cannot take the lock fails, naming why, rather than ending the
-          // run as an exception leaving a thread would.
-          try {
-            const FileLock lock(_lock_file);
-            _status = Shell::run(_command);
-          } catch (const std::exception &failure) {
-            _failure = failure.what();
-            _status = -1;
-          }
-          _finished = true;
-          _building = false;
-        });
-        build = Build::started;
-      }
-      _pending = seen;
-    }
-    if (_finished.exchange(false))
-      build = _status == 0 ? Build::succeeded : Build::failed;
-    return build;
-  }
-
-  // Whether the modules just built can load: they carry the stamp of the engine headers
-  // they were built against, and this vulpen loads only its own (live code rule 6).
-  bool loads() const {
-    const std::string stamp = text_of(_stamp_file);
-    return stamp.substr(0, stamp.find_last_not_of(" \r\n") + 1) == VP_MODULE_STAMP;
-  }
-  // An engine file written since this vulpen was built and since the last call said one,
-  // the newest; empty for none. Only a restart runs the engine anew.
-  std::filesystem::path engine_changed() {
-    return std::exchange(_engine_change, {});
-  }
-  // What the last build said, or why it could not run.
-  std::string said() const {
-    return _failure.empty() ? text_of(_log_file) : _failure;
-  }
-
-  // A view hosted or no longer hosted brings its folder or takes it along.
-  void watch(std::vector<std::filesystem::path> folders) {
-    _folders = std::move(folders);
-  }
-  // Since the last build started.
-  std::chrono::duration<double> took() const {
-    return std::chrono::steady_clock::now() - _started;
-  }
-
-private:
-  // A name that starts with . is no node's and builds nothing, as the loader and the
-  // build skip it, so what a part keeps there, as the graph its layout, starts no build.
-  std::filesystem::file_time_type newest() const {
-    // Not file_time_type{}: libstdc++ puts the file clock's epoch in the year 2174.
-    auto newest = std::filesystem::file_time_type::min();
-    std::error_code gone; // a file an editor is replacing may vanish mid-scan
-    for (const std::filesystem::path &folder : _folders)
-      for (auto entry = std::filesystem::recursive_directory_iterator(folder, gone);
-           entry != std::filesystem::recursive_directory_iterator();
-           entry.increment(gone)) {
-        if (entry->path().filename().string().starts_with('.')) {
-          entry.disable_recursion_pending();
-          continue;
-        }
-        newest = std::max(newest, entry->last_write_time(gone));
-      }
-    return newest;
-  }
-
-  // Once a scan, as a build reads none of them.
-  void notice_engine() {
-    for (const std::filesystem::path &file : _engine)
-      if (const auto time = written(file); time > _engine_said) {
-        _engine_said = time;
-        _engine_change = file;
-      }
-  }
-
-  std::vector<std::filesystem::path> _folders;
-  const std::filesystem::path _log_file;
-  const std::filesystem::path _lock_file;
-  const std::filesystem::path _stamp_file;
-  const std::string _command;
-  const std::vector<std::filesystem::path> _engine; // as the build lists them
-  std::filesystem::file_time_type _engine_said; // the newest engine file's, once said
-  std::filesystem::path _engine_change;
-  std::filesystem::file_time_type _built_from;
-  std::filesystem::file_time_type _pending;
-  std::chrono::steady_clock::time_point _next_scan{};
-  std::chrono::steady_clock::time_point _started{};
-  std::atomic<bool> _building{false};
-  std::atomic<bool> _finished{false};
-  std::atomic<int> _status{0};
-  std::string _failure; // the build thread's, read once _finished says it is done
-  std::jthread _build;
-};
 
 Runtime::Runtime(std::span<char *const> arguments, std::string_view build)
     : _options(parse(arguments)), _log(_options.log, build), _commands(_log, _ports, _ports) {
@@ -464,6 +328,8 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
       options.size = size_of(argument, value);
     } else if (argument == "--source") {
       options.source = value;
+    } else if (argument == "--restart") {
+      options.restart = value;
     } else if (argument == "--log") {
       const std::optional<Level> level = level_named(value);
       if (!level)
@@ -488,11 +354,27 @@ int Runtime::run() {
     host();
     if (!_options.source.empty())
       _commands.source(_options.source);
+    // A line that no longer runs, as one an engine change refuses, leaves the views as
+    // replayed so far, rather than ending the run the session goes on in.
+    if (!_options.restart.empty())
+      try {
+        _commands.source(_options.restart);
+        _log.write(Level::info,
+                   Tag::run,
+                   std::format("restarted: replayed {}", _options.restart.string()));
+      } catch (const std::runtime_error &failure) {
+        _log.write(Level::error,
+                   Tag::run,
+                   std::format("restart: {}; the views go on as replayed so far",
+                               failure.what()));
+      }
     loop();
   } catch (const std::exception &failure) {
     _log.write(Level::error, Tag::run, failure.what());
     return 1;
   }
+  // The last frame's passes may still read the buffers a rebuild would destroy.
+  _engine->wait();
   prepare();
   return ok() ? 0 : 1;
 }
@@ -514,7 +396,7 @@ void Runtime::host() {
 
 // False when a node is in error.
 bool Runtime::start() {
-  const std::filesystem::path build = Files::executable().parent_path();
+  const std::filesystem::path build = _executable.parent_path();
   _mirror = build / "views";
   View view = Views::read(_log, _options.manifest);
   const std::filesystem::path folder = Manifest::root(view);
@@ -536,6 +418,7 @@ bool Runtime::start() {
   std::string prefer = Preference::read(choice);
   _engine.emplace(_log, _window ? &*_window : nullptr, prefer);
   _preference.emplace(_commands, _log, *_engine, choice, std::move(prefer));
+  _restart = std::make_unique<Restart>(_commands, _log, build);
   _wiring.emplace(Wiring{.engine = *_engine,
                          .pipelines = _engine->pipelines(),
                          .resources = _engine->resources(),
@@ -584,8 +467,18 @@ void Runtime::loop() {
     // rebuild below may replace them.
     for (Schedule *const schedule : _views->schedules())
       schedule->time(_engine->times());
-    if (_live)
+    if (_live && !_restart->asked())
       watch();
+    // Before this frame cooks, so the new vulpen counts on from it.
+    if (_restart->ready(_live.get()))
+      try {
+        _relaunch = restarted(frames);
+        break;
+      } catch (const std::exception &failure) {
+        _log.write(Level::error,
+                   Tag::run,
+                   std::format("quit restart: {}; the run goes on", failure.what()));
+      }
     prepare();
     _ports.frame();
     _commands.frame();
@@ -707,9 +600,51 @@ bool Runtime::ok() const {
   return std::ranges::all_of(_views->schedules(), &Schedule::ok);
 }
 
+// The view vulpen started with alone, as the replay hosts the views the arguments named;
+// the replay in place of a script; the frames on from the next; the other options as
+// they were.
+Runtime::Relaunch Runtime::restarted(std::uint64_t ran) {
+  const std::filesystem::path replay = _executable.parent_path() / restart_file;
+  Files::save(replay,
+              _views->unsaved(replay.parent_path()) +
+                  std::format("view switch {}\n", _commands.current()));
+  std::vector<std::string> arguments{_views->view().file.string(),
+                                     "--restart",
+                                     replay.string(),
+                                     "--first-frame",
+                                     std::to_string(_options.first_frame + ran),
+                                     "--fps",
+                                     std::to_string(_options.fps),
+                                     "--log",
+                                     std::string(level_names[static_cast<std::size_t>(
+                                         _options.log)])};
+  if (_options.frames != 0)
+    arguments.insert(arguments.end(),
+                     {"--frames", std::to_string(_options.frames - ran)});
+  if (_options.size.width != 0)
+    arguments.insert(
+        arguments.end(),
+        {"--size", std::format("{}x{}", _options.size.width, _options.size.height)});
+  return {_executable, std::move(arguments)};
+}
+
+const std::optional<Runtime::Relaunch> &Runtime::relaunch() const {
+  return _relaunch;
+}
+
+// The new vulpen runs only once this one is gone, its window, its GPU and its terminal
+// given back, as it takes them all anew.
 int run(std::span<char *const> arguments, std::string_view build) {
-  Runtime runtime(arguments, build);
-  return runtime.run();
+  std::optional<Runtime::Relaunch> relaunch;
+  int code = 0;
+  {
+    Runtime runtime(arguments, build);
+    code = runtime.run();
+    relaunch = runtime.relaunch();
+  }
+  if (relaunch)
+    Shell::replace(relaunch->program, relaunch->arguments);
+  return code;
 }
 
 } // namespace VP

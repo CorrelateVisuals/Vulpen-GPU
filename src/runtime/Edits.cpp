@@ -557,7 +557,7 @@ constexpr std::array edits{
 
 Edits::Edits(Commands &commands, ViewLookup &views) : _port(commands), _views(views) {
   for (const Edit &edit : edits)
-    _commands.push_back(commands.add(edit.usage, edit.help, *this, Primitive::yes));
+    _commands.push_back(commands.add(edit.usage, edit.help, *this, Primitive::edit));
 }
 
 void Edits::word(Node &node, std::string_view key, std::string_view value) {
@@ -688,6 +688,7 @@ void Edits::command(Call &call) {
   const View *const found = _views.find(address);
   if (!found)
     throw std::runtime_error(std::format("no view is named {}", address));
+  _port.changes(address);
   std::vector<std::string> beside;
   if (const std::optional<std::string> host = _views.host_of(address))
     for (const Child &child : _views.find(*host)->children)

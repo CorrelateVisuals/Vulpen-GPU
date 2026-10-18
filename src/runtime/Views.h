@@ -57,6 +57,11 @@ public:
   void gather(std::vector<Pass> &passes) const;
   // The folders the live scan watches: each view's.
   std::vector<std::filesystem::path> roots() const;
+  // What the views' manifests do not hold yet: each hosted view's edits since it was
+  // hosted, read again or saved, in the order they ran, a line each, a file named from
+  // the folder, as the log names it. Replayed on the same manifests, they rebuild the
+  // views as they are (V08), as a restart does.
+  std::string unsaved(const std::filesystem::path &folder) const;
   // After a live build: the next frame's schedules take what it rebuilt, and each node
   // the files its folder holds. A manifest is read again only when it changed since it
   // was read, so the edits since then stay; a running graph stays when its manifest does

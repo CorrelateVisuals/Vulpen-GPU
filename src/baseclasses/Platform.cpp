@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <format>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <string_view>
@@ -604,6 +605,11 @@ void Terminal::draw(std::string_view text, std::size_t caret) {
   if (caret > 0)
     std::fprintf(stdout, "\033[%zuC", caret);
   std::fflush(stdout);
+}
+
+std::string Files::text(const std::filesystem::path &file) {
+  std::ifstream in(file, std::ios::binary);
+  return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
 void Files::save(const std::filesystem::path &file, std::string_view text) {

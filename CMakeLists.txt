@@ -53,6 +53,7 @@ add_executable(vulpen
   src/runtime/Checks.cpp
   src/runtime/Commands.cpp
   src/runtime/Edits.cpp
+  src/runtime/Live.cpp
   src/runtime/Manifest.cpp
   src/runtime/Modules.cpp
   src/runtime/Ports.cpp

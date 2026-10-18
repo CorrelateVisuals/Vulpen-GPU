@@ -41,7 +41,7 @@ public:
 private:
   void command(Call &call) override;
 
-  const Commands &_port; // which says where each edit comes from, and its view
+  Commands &_port; // which says where each edit comes from, and its view
   ViewLookup &_views;
   std::vector<Command> _commands; // one per edit, in the order they register
 };

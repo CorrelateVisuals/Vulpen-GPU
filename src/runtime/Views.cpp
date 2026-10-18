@@ -56,7 +56,10 @@ struct Views::Hosted {
   std::unique_ptr<View> edited;
   std::unique_ptr<View> edited_flat;
   std::filesystem::file_time_type read; // the manifest's, when last read or saved
-  std::unique_ptr<Schedule> schedule;   // null until the frame after it was hosted
+  // How many primitives the log kept when the manifest last held all of the view: as it
+  // was hosted, read again or saved. Its edits since then are what a restart replays.
+  std::size_t marked = 0;
+  std::unique_ptr<Schedule> schedule; // null until the frame after it was hosted
   // Where its schedule's draws into its window go.
   Schedule::Into into = Schedule::Into::window;
   // It has taken the window of a view beside it, so it keeps the window until it closes.
@@ -90,7 +93,7 @@ Views::Views(const Wiring &wiring, View view, Commands &commands)
   _save = commands.add("view save",
                        "writes the view over its manifest, keeping the comments in it",
                        *this,
-                       Primitive::yes);
+                       Primitive::save);
   _list = commands.add("view list",
                        "lists the views this view hosts, with their files, in the order "
                        "hosted",
@@ -304,6 +307,14 @@ std::string_view Views::nowhere(const Hosted &hosted) const {
 }
 
 // Each once, as the apps share the recipes' folder.
+std::string Views::unsaved(const std::filesystem::path &folder) const {
+  std::vector<CommandLog::Mark> marks;
+  for (const std::unique_ptr<Hosted> &hosted : _hosted)
+    if (!hosted->removed)
+      marks.push_back({hosted->name, hosted->marked});
+  return _port.session().after(marks, folder);
+}
+
 std::vector<std::filesystem::path> Views::roots() const {
   std::vector<std::filesystem::path> roots;
   for (const std::unique_ptr<Hosted> &hosted : _hosted)
@@ -331,6 +342,7 @@ void Views::reload(Hosted &hosted) {
       hosted.edited_flat = std::move(flat);
       hosted.edited = std::move(view);
       hosted.read = time;
+      hosted.marked = _port.session().size();
       return;
     } catch (const std::exception &failure) {
       _wiring.log.write(Level::error,
@@ -458,7 +470,8 @@ void Views::host(const Child &child, const std::string &parent) {
                                       .parent = parent,
                                       .edited = std::move(view),
                                       .edited_flat = std::move(flat),
-                                      .read = stamp(child.file)}));
+                                      .read = stamp(child.file),
+                                      .marked = _port.session().size()}));
   follow(hosted.name, hosted.current());
 }
 
@@ -533,6 +546,7 @@ void Views::save(Hosted &hosted) {
                     view.file.string()));
   Manifest::save(view);
   hosted.read = stamp(view.file);
+  hosted.marked = _port.session().size();
   _wiring.log.write(
       Level::info, Tag::run, std::format("view save: {}", view.file.string()));
 }
