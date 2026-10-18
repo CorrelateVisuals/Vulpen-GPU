@@ -803,7 +803,7 @@ bool Graph::enter(VP::Cook &frame, std::size_t at) {
     return true;
   }
   _left.clear(); // a level gone into starts at home
-  if (entered.kind == Kind::view) {
+  if (entered.view) {
     frame.commands().send(std::format("view switch {}", entered.name));
   } else if (entered.holds && !_relations->folder.empty()) {
     const std::filesystem::path folder = folder_of(at);
@@ -818,7 +818,7 @@ bool Graph::enter(VP::Cook &frame, std::size_t at) {
     frame.commands().send(
         std::format("{}: param set {} inside {}", _view, _name, entered.name));
   }
-  return entered.kind == Kind::view || entered.holds;
+  return entered.view || entered.holds;
 }
 
 // Out of the node whose inside shows, to the inside of the node holding it, or the top;
@@ -974,8 +974,8 @@ void Graph::write(VP::Cook &frame, glm::uvec2 cell) {
   write_curves(frame);
 }
 
-// A border and a fill, the border in its kind's color where the .ini gives one, wider
-// and in the accent color while it is selected; one holding boxes is filled over its
+// A border and a fill, the border in the role of what the box is, wider and in the
+// accent color while it is selected; one holding boxes is filled over its
 // rows alone, and framed below them, so the boxes inside it and the curves between them
 // show. Each is cut at the area.
 void Graph::write_box(std::span<VP_VIEW::Rect> rects,
@@ -985,7 +985,7 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
   const bool chosen = selected(shown.name);
   const float width = static_cast<float>(chosen ? selected_width : border_width);
   const std::uint32_t edge =
-      chosen ? VP_VIEW::role("accent") : color_of(at).value_or(VP_VIEW::role("border"));
+      chosen ? VP_VIEW::role("accent") : shown.role.value_or(VP_VIEW::role("border"));
   const Placed &placed = _layout.placed()[at];
   const bool holds = placed.frames;
   const glm::vec2 from = on_screen(glm::vec2(placed.at));
@@ -1082,8 +1082,8 @@ VP_VIEW::Rect Graph::select_box(glm::vec2 from) const {
   return cut({.offset = low, .extent = glm::uvec2(high - low)}, *_area);
 }
 
-// A box's name a cell in from its left, between its pads, in its kind's color where the
-// .ini gives one, and each row a row below it, in its role: a port read a cell in from the
+// A box's name a cell in from its left, between its pads, in the role of what the box is,
+// and each row a row below it, in its role: a port read a cell in from the
 // left edge, and one written as far in from the right. Each box in the order drawn, its
 // rows cut at the boxes drawn after it that it lies under.
 void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
@@ -1103,7 +1103,7 @@ void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
     const glm::vec2 text = glm::vec2(placed.at) + glm::vec2(margin, pad);
     write_row(on_screen(text),
               _boxes.boxes[at].title,
-              color_of(at).value_or(VP_VIEW::role("accent")),
+              _boxes.boxes[at].role.value_or(VP_VIEW::role("accent")),
               cell,
               _over,
               written);
@@ -1342,10 +1342,6 @@ void Graph::raise(std::string_view name) {
   std::erase(_raised, name);
   _raised.emplace_back(name);
   draw_order(_boxes, _raised, _order);
-}
-
-std::optional<std::uint32_t> Graph::color_of(std::size_t box) const {
-  return _arranged.colors[static_cast<std::size_t>(_boxes.boxes[box].kind)];
 }
 
 glm::vec2 Graph::port_of(std::size_t box, std::size_t row, bool right) const {

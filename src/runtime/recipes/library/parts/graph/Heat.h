@@ -115,7 +115,7 @@ Holder holder_of(const Boxes &boxes, std::string_view node) {
   Holder holder{.framed = boxes.frame != no_box &&
                           holds(boxes.boxes[boxes.frame].name, node)};
   for (std::size_t box = 0; box < boxes.boxes.size(); ++box)
-    if (box != boxes.frame && boxes.boxes[box].kind != Kind::view &&
+    if (box != boxes.frame && !boxes.boxes[box].view &&
         holds(boxes.boxes[box].name, node))
       holder.box = box;
   return holder;
@@ -155,7 +155,7 @@ public:
         add(weights[boxes.frame], costs[at]);
     }
     for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
-      if (boxes.boxes[box].kind == Kind::view)
+      if (boxes.boxes[box].view)
         for (const VP::Cost &cost : frame.costs(boxes.boxes[box].name))
           add(weights[box], cost);
       if (box != boxes.frame)

@@ -28,7 +28,7 @@ selected, a drag on the ground lets go of the selection and moves the graph, shi
 press selects the box again, the wheel zooms the graph, and shift with a drag on the
 ground draws a select box over the box; the wheel then zooms the Perform panel's view,
 which a drag moves, and h, with the focus the press gave the panel, brings home. The .ini
-must then hold the box moved, and the color it gave dispatches. The last run hosts the
+must then hold the box moved. The last run hosts the
 triangle after the copy, which it keeps presented, and the copy hosts a view of its own,
 inner; it must read the .ini back without a word, select probe and inner as a script does,
 the graph following the copy presented, not the triangle hosted last, show both with info
@@ -93,7 +93,6 @@ ARRANGED = {"place wave": [0, 0], "size wave": [120, 90],
 REACH = (520, 90)
 HOME_MARGIN = (16, 18)  # the least room home leaves round them: half a column's gap, a row
 MOVED = ("place wave",)
-COLORED = "color dispatch = number"  # a person's line, which the graph's saves keep
 # The graph's area starts below its panel's tab strip, a text row and 4 pixels either
 # side, at the font's height; a box's name is a row a pad below its top.
 CELL = 18
@@ -426,15 +425,12 @@ def test() -> None:
         kept = wave / ".vulpen" / "graph.ini"
         kept.parent.mkdir()
         kept.write_text("".join(f"{key} = {' '.join(map(str, value))}\n"
-                                for key, value in ARRANGED.items()) + COLORED + "\n",
+                                for key, value in ARRANGED.items()),
                         encoding="utf-8")
         said = drive(folder, "graph", graph(wave, width, height))
         arranged = numbers(kept.read_text(encoding="utf-8"))
         if still := [key for key in MOVED if arranged.get(key) == ARRANGED[key]]:
             sys.exit(f"ide: expected the graph to keep {', '.join(still)} moved, it kept\n"
-                     f"{kept.read_text(encoding='utf-8')}")
-        if COLORED not in kept.read_text(encoding="utf-8").splitlines():
-            sys.exit(f"ide: expected the graph's save to keep {COLORED}, it kept\n"
                      f"{kept.read_text(encoding='utf-8')}")
         manifest = wave / "view.vlp"
         nested = manifest.read_text(encoding="utf-8") + NESTED

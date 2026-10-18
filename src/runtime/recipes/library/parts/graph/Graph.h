@@ -178,7 +178,6 @@ private:
   Under under(glm::vec2 at) const;
   // Drawn over the others from now on, until another is.
   void raise(std::string_view name);
-  std::optional<std::uint32_t> color_of(std::size_t box) const;
   VP_VIEW::Rect box(std::size_t at) const;
   // What of a box hides what lies under it: all of it, or of a frame its rows, as the
   // ground shows through below them.

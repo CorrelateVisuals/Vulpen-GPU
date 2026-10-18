@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <format>
 #include <map>
+#include <optional>
 #include <set>
 #include <span>
 #include <string>
@@ -61,7 +62,10 @@ struct Box {
   std::string name;  // as select, the .ini and a line name it
   std::string title; // its first row: its name, past the box it is in
   std::size_t parent = no_box;
-  Kind kind = Kind::group;
+  // What it is, which its border and its name show in: a node, a view, a folder or a
+  // kind of file, as the theme names their roles; none for what lies outside.
+  std::optional<std::uint32_t> role;
+  bool view = false; // a view the view shown hosts
   // A node of the view, or a view it hosts, which a press and select select, the frame
   // too; a node of a recipe a node uses is not, nor a folder or a file, nor what lies
   // outside, as select names none of them.
@@ -113,7 +117,7 @@ std::size_t view_box(const Boxes &boxes, std::string_view name) {
   return static_cast<std::size_t>(
       std::ranges::find_if(boxes.boxes,
                            [&](const Box &box) {
-                             return box.kind == Kind::view && box.name == name;
+                             return box.view && box.name == name;
                            }) -
       boxes.boxes.begin());
 }
@@ -479,6 +483,38 @@ std::string header_of(const std::set<std::string, std::less<>> &names,
   return {};
 }
 
+// The role of a file's box, by its name: hidden for a name starting with a dot, else by
+// its ending, or its whole name, as the theme names one for each language the repository
+// is written in (RC00), its docs, its manifests and its settings; file for any other.
+constexpr std::array<std::pair<std::string_view, std::uint32_t>, 18> file_roles{
+    {{".md", VP_VIEW::role("markdown")},
+     {".py", VP_VIEW::role("python")},
+     {".cpp", VP_VIEW::role("cpp")},
+     {".h", VP_VIEW::role("header")},
+     {".hpp", VP_VIEW::role("header")},
+     {".cmake", VP_VIEW::role("cmake")},
+     {"CMakeLists.txt", VP_VIEW::role("cmake")},
+     {".glsl", VP_VIEW::role("glsl")},
+     {".vert", VP_VIEW::role("vert")},
+     {".frag", VP_VIEW::role("frag")},
+     {".comp", VP_VIEW::role("comp")},
+     {".tesc", VP_VIEW::role("tesc")},
+     {".tese", VP_VIEW::role("tese")},
+     {".geom", VP_VIEW::role("geom")},
+     {".vlp", VP_VIEW::role("manifest")},
+     {".sh", VP_VIEW::role("shell")},
+     {".ps1", VP_VIEW::role("shell")},
+     {".ini", VP_VIEW::role("ini")}}};
+
+std::uint32_t file_role(std::string_view name) {
+  if (name.starts_with('.'))
+    return VP_VIEW::role("hidden");
+  const auto found = std::ranges::find_if(file_roles, [&](const auto &ending) {
+    return name.ends_with(ending.first);
+  });
+  return found == file_roles.end() ? VP_VIEW::role("file") : found->second;
+}
+
 // The files of the node or the folder whose inside shows, a box each, as the POC showed
 // them, so a relation between two shows as a curve, a press on the name opening it; but a
 // header and its sources, which include one another, one box named by their stem, a row
@@ -510,7 +546,7 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
                            .title =
                                paired.size() > 1 ? paired.front().stem().string() : file,
                            .parent = boxes.frame,
-                           .kind = kind_of({.files = {file}}),
+                           .role = file_role(file),
                            .opens = paired.front()});
     if (paired.size() > 1)
       building.paired.emplace(box, std::move(paired));
@@ -552,7 +588,9 @@ Boxes boxes_of(const VP::View &edited,
         {.name = node.name,
          .title = node.name.substr(past),
          .parent = parent,
-         .kind = kind_of(node),
+         .role = !folders                          ? VP_VIEW::role("node")
+                 : node.name.substr(past).starts_with('.') ? VP_VIEW::role("hidden")
+                                                           : VP_VIEW::role("folder"),
          .own = !folders && std::ranges::find(edited.nodes, node.name, &VP::Node::name) !=
                                 edited.nodes.end(),
          .holds = holds(flat, building.parents, at)});
@@ -570,13 +608,14 @@ Boxes boxes_of(const VP::View &edited,
       !folders && inside == no_box && !manifest.empty() && boxes.boxes.size() < node_room)
     boxes.boxes.push_back({.name = std::format("/{}", manifest),
                            .title = manifest,
-                           .kind = kind_of({.files = {manifest}}),
+                           .role = file_role(manifest),
                            .opens = edited.file});
   for (const VP::Child &child : edited.children)
     if (inside == no_box && boxes.boxes.size() < node_room)
       boxes.boxes.push_back({.name = child.name,
                              .title = child.name,
-                             .kind = Kind::view,
+                             .role = VP_VIEW::role("view"),
+                             .view = true,
                              .own = true});
   building.ports.resize(boxes.boxes.size());
   connect(boxes, building, flat);
@@ -585,7 +624,7 @@ Boxes boxes_of(const VP::View &edited,
     const auto child = static_cast<std::size_t>(
         std::ranges::find(edited.children, boxes.boxes[box].name, &VP::Child::name) -
         edited.children.begin());
-    const bool view = boxes.boxes[box].kind == Kind::view && child < edited.children.size();
+    const bool view = boxes.boxes[box].view && child < edited.children.size();
     list_rows(boxes,
               box,
               building,
