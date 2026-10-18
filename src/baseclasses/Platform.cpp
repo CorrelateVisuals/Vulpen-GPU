@@ -10,7 +10,9 @@
 #else
 #include <cxxabi.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <poll.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -28,6 +30,7 @@
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace VP {
 
@@ -319,6 +322,97 @@ void Shell::start(const std::string &program, std::span<const std::string> argum
     throw std::runtime_error(std::format("{} is not on the PATH", program));
 }
 
+namespace {
+
+constexpr DWORD lock_retry = 100; // milliseconds between tries of a lock another holds
+
+// A word as a program's command line reads it back (CommandLineToArgvW): in quotes when
+// it holds a blank or a quote, each quote in it escaped, and the backslashes before a
+// quote doubled.
+std::wstring quoted(const std::wstring &word) {
+  if (!word.empty() && word.find_first_of(L" \t\"") == std::wstring::npos)
+    return word;
+  std::wstring text = L"\"";
+  std::size_t backslashes = 0;
+  for (const wchar_t letter : word) {
+    if (letter == L'\\') {
+      ++backslashes;
+      continue;
+    }
+    text.append(letter == L'"' ? 2 * backslashes + 1 : backslashes, L'\\');
+    text.push_back(letter);
+    backslashes = 0;
+  }
+  text.append(2 * backslashes, L'\\');
+  return text + L'"';
+}
+
+} // namespace
+
+// The new process takes this one's standard streams, a pipe's too, as handles it inherits.
+void Shell::replace(const std::filesystem::path &program,
+                    std::span<const std::string> arguments) {
+  std::wstring line = quoted(program.wstring());
+  for (const std::string &argument : arguments)
+    line.append(L" ").append(quoted(std::filesystem::path(argument).wstring()));
+  const std::array streams{GetStdHandle(STD_INPUT_HANDLE),
+                           GetStdHandle(STD_OUTPUT_HANDLE),
+                           GetStdHandle(STD_ERROR_HANDLE)};
+  for (const HANDLE stream : streams)
+    SetHandleInformation(stream, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+  STARTUPINFOW startup{.cb = sizeof(STARTUPINFOW),
+                       .dwFlags = STARTF_USESTDHANDLES,
+                       .hStdInput = streams[0],
+                       .hStdOutput = streams[1],
+                       .hStdError = streams[2]};
+  PROCESS_INFORMATION started{};
+  std::fflush(nullptr);
+  if (!CreateProcessW(program.c_str(),
+                      line.data(),
+                      nullptr,
+                      nullptr,
+                      TRUE,
+                      0,
+                      nullptr,
+                      nullptr,
+                      &startup,
+                      &started))
+    throw last_error("CreateProcessW " + program.string());
+  CloseHandle(started.hThread);
+  WaitForSingleObject(started.hProcess, INFINITE);
+  DWORD code = 1;
+  GetExitCodeProcess(started.hProcess, &code);
+  CloseHandle(started.hProcess);
+  ExitProcess(code);
+}
+
+struct FileLock::Held {
+  HANDLE file = INVALID_HANDLE_VALUE;
+};
+
+// Opened with no sharing, as run.ps1 opens it, so the next to open it waits until this
+// closes it.
+FileLock::FileLock(const std::filesystem::path &file) : _held(std::make_unique<Held>()) {
+  for (;;) {
+    _held->file = CreateFileW(file.c_str(),
+                              GENERIC_READ | GENERIC_WRITE,
+                              0,
+                              nullptr,
+                              OPEN_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL,
+                              nullptr);
+    if (_held->file != INVALID_HANDLE_VALUE)
+      return;
+    if (GetLastError() != ERROR_SHARING_VIOLATION)
+      throw last_error("CreateFileW " + file.string());
+    Sleep(lock_retry);
+  }
+}
+
+FileLock::~FileLock() {
+  CloseHandle(_held->file);
+}
+
 #else
 
 std::filesystem::path Files::executable() {
@@ -340,6 +434,9 @@ std::string type_name(const char *name) {
 }
 
 namespace {
+
+// A lock file's: read and write for its owner, read for everyone else.
+constexpr mode_t lock_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
 // Whether standard input is a terminal another job holds, as a run started in the
 // background finds it: a read would stop the run (SIGTTIN), and what is typed there is
@@ -457,6 +554,44 @@ void Shell::start(const std::string &program, std::span<const std::string> argum
                               line)
                       .c_str()) != 0)
     throw std::runtime_error(std::format("{} is not on the PATH", program));
+}
+
+// The streams flush first, as nothing else ends this process to flush them.
+void Shell::replace(const std::filesystem::path &program,
+                    std::span<const std::string> arguments) {
+  std::vector<std::string> words{program.string()};
+  words.insert(words.end(), arguments.begin(), arguments.end());
+  std::vector<char *> argv;
+  for (std::string &word : words)
+    argv.push_back(word.data());
+  argv.push_back(nullptr);
+  std::fflush(nullptr);
+  execv(words.front().c_str(), argv.data());
+  throw std::system_error(errno, std::generic_category(), "execv " + words.front());
+}
+
+struct FileLock::Held {
+  int file = -1;
+};
+
+// flock, as run.sh's flock command takes it, so a second lock waits even in one process:
+// it locks an open file, not the process. Closed on exec, so neither a program the shell
+// runs nor the vulpen a restart runs holds it.
+FileLock::FileLock(const std::filesystem::path &file) : _held(std::make_unique<Held>()) {
+  _held->file = open(file.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, lock_mode);
+  if (_held->file < 0)
+    throw std::system_error(errno, std::generic_category(), "open " + file.string());
+  while (flock(_held->file, LOCK_EX) != 0)
+    if (errno != EINTR) {
+      const std::system_error failure(
+          errno, std::generic_category(), "flock " + file.string());
+      close(_held->file);
+      throw failure;
+    }
+}
+
+FileLock::~FileLock() {
+  close(_held->file);
 }
 
 #endif

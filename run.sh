@@ -43,8 +43,15 @@ done
 $named || { app "$default"; arguments=("${views[@]}" "${arguments[@]}"); }
 
 # CMake reads the presets from the current folder; vulpen itself runs from the
-# caller's, since nothing in it may depend on the working directory.
-build() { cd "$root" && cmake --preset "$preset" && cmake --build --preset "$preset" --parallel; }
+# caller's, since nothing in it may depend on the working directory. One build at a time
+# on a tree, as two at once corrupt it: the build folder's build.lock, which a running
+# vulpen's builds take too, held in a subshell, so it is let go before vulpen starts.
+build() (
+  cd "$root" && mkdir -p "out/build/$preset"
+  exec 9>"out/build/$preset/build.lock"
+  if command -v flock >/dev/null; then flock 9; fi
+  cmake --preset "$preset" && cmake --build --preset "$preset" --parallel
+)
 if $verbose; then
   (build)
 elif ! said=$(build 2>&1); then

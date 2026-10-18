@@ -19,7 +19,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Passes.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Pipelines.cpp` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` |
 | `baseclasses/Pipelines.h` | `baseclasses/Resources.h` `baseclasses/Shader.h` |
-| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<cxxabi.h>` `<dlfcn.h>` `<poll.h>` `<sys/ioctl.h>` `<termios.h>` `<time.h>` `<unistd.h>` `<windows.h>` `baseclasses/Platform.h` |
+| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<cxxabi.h>` `<dlfcn.h>` `<fcntl.h>` `<poll.h>` `<sys/file.h>` `<sys/ioctl.h>` `<termios.h>` `<time.h>` `<unistd.h>` `<windows.h>` `baseclasses/Platform.h` |
 | `baseclasses/Platform.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
 | `baseclasses/Resources.h` | `<vulkan/vulkan.h>` |

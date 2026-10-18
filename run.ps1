@@ -42,7 +42,16 @@ for ($i = 0; $i -lt $rest.Count; $i++) {
 if (-not $named) { $arguments = @(App $default) + $arguments }
 
 # CMake reads the presets from the current folder; vulpen itself runs from the
-# caller's, since nothing in it may depend on the working directory.
+# caller's, since nothing in it may depend on the working directory. One build at a time
+# on a tree, as two at once corrupt it: the build folder's build.lock, opened unshared,
+# which a running vulpen's builds open so too, and let go before vulpen starts.
+$built = Join-Path $PSScriptRoot "out\build\$preset"
+New-Item -ItemType Directory -Force -Path $built | Out-Null
+$lock = $null
+while (-not $lock) {
+    try { $lock = [System.IO.File]::Open((Join-Path $built 'build.lock'), 'OpenOrCreate', 'ReadWrite', 'None') }
+    catch [System.IO.IOException] { Start-Sleep -Milliseconds 100 }
+}
 Push-Location -LiteralPath $PSScriptRoot
 try {
     # Continue: a native command's stderr is part of what the build said, not a failure.
@@ -53,7 +62,7 @@ try {
     } 2>&1 | ForEach-Object { if ($verbose) { "$_" | Out-Host } else { "$_" } }
     $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0) { $said | Out-Host }
-} finally { Pop-Location }
+} finally { Pop-Location; $lock.Dispose() }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & "$PSScriptRoot\out\build\$preset\vulpen.exe" @arguments

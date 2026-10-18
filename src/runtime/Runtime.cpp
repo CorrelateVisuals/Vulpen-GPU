@@ -26,6 +26,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace VP {
@@ -39,6 +40,9 @@ constexpr std::uint32_t default_fps = 60;
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 constexpr auto scan_interval = std::chrono::milliseconds(100);
 constexpr const char *build_log = "live-build.log";
+// In the build folder, which every build of the tree takes first, run.sh's and run.ps1's
+// too, so two never write one tree at once.
+constexpr const char *build_lock = "build.lock";
 // How soon and how near a press must follow the one before, of the same button, to count
 // one more in a row, as a double click's second does: one place for every part (C02).
 constexpr auto press_interval = std::chrono::milliseconds(500);
@@ -72,6 +76,23 @@ template <class T> T number(std::string_view flag, std::string_view text) {
 std::string text_of(const std::filesystem::path &file) {
   std::ifstream in(file);
   return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+
+// A file's lines, without their line breaks; none when it cannot be read.
+std::vector<std::filesystem::path> lines_of(const std::filesystem::path &file) {
+  std::ifstream in(file);
+  std::vector<std::filesystem::path> lines;
+  for (std::string line; std::getline(in, line);)
+    if (!line.empty())
+      lines.emplace_back(line);
+  return lines;
+}
+
+// When the file was last written; the earliest time there is while it is not there.
+std::filesystem::file_time_type written(const std::filesystem::path &file) {
+  std::error_code gone;
+  const auto time = std::filesystem::last_write_time(file, gone);
+  return gone ? std::filesystem::file_time_type::min() : time;
 }
 
 // A window's title names the view it shows.
@@ -290,12 +311,15 @@ public:
 
   Live(std::vector<std::filesystem::path> folders, const std::filesystem::path &build)
       : _folders(std::move(folders)), _log_file(build / build_log),
+        _lock_file(build / build_lock), _stamp_file(build / VP_MODULE_STAMP_FILE),
         _command(std::format(
             R"("{}" --build "{}" --target vulpen_modules --parallel > "{}" 2>&1)",
             VP_CMAKE_COMMAND,
             build.string(),
             _log_file.string())),
-        _built_from(newest()), _pending(_built_from) {}
+        _engine(lines_of(build / VP_ENGINE_SOURCES_FILE)),
+        _engine_said(written(Files::executable())), _built_from(newest()),
+        _pending(_built_from) {}
 
   // Once a frame. A change must be seen twice, so a file still being written never
   // builds.
@@ -304,13 +328,23 @@ public:
     Build build = Build::none;
     if (now >= _next_scan && !_building) {
       _next_scan = now + scan_interval;
+      notice_engine();
       const auto seen = newest();
       if (seen != _built_from && seen == _pending) {
         _built_from = seen;
         _building = true;
         _started = now;
+        _failure.clear();
         _build = std::jthread([this] {
-          _status = Shell::run(_command);
+          // A build that cannot take the lock fails, naming why, rather than ending the
+          // run as an exception leaving a thread would.
+          try {
+            const FileLock lock(_lock_file);
+            _status = Shell::run(_command);
+          } catch (const std::exception &failure) {
+            _failure = failure.what();
+            _status = -1;
+          }
           _finished = true;
           _building = false;
         });
@@ -323,12 +357,25 @@ public:
     return build;
   }
 
+  // Whether the modules just built can load: they carry the stamp of the engine headers
+  // they were built against, and this vulpen loads only its own (live code rule 6).
+  bool loads() const {
+    const std::string stamp = text_of(_stamp_file);
+    return stamp.substr(0, stamp.find_last_not_of(" \r\n") + 1) == VP_MODULE_STAMP;
+  }
+  // An engine file written since this vulpen was built and since the last call said one,
+  // the newest; empty for none. Only a restart runs the engine anew.
+  std::filesystem::path engine_changed() {
+    return std::exchange(_engine_change, {});
+  }
+  // What the last build said, or why it could not run.
+  std::string said() const {
+    return _failure.empty() ? text_of(_log_file) : _failure;
+  }
+
   // A view hosted or no longer hosted brings its folder or takes it along.
   void watch(std::vector<std::filesystem::path> folders) {
     _folders = std::move(folders);
-  }
-  const std::filesystem::path &log_file() const {
-    return _log_file;
   }
   // Since the last build started.
   std::chrono::duration<double> took() const {
@@ -355,9 +402,23 @@ private:
     return newest;
   }
 
+  // Once a scan, as a build reads none of them.
+  void notice_engine() {
+    for (const std::filesystem::path &file : _engine)
+      if (const auto time = written(file); time > _engine_said) {
+        _engine_said = time;
+        _engine_change = file;
+      }
+  }
+
   std::vector<std::filesystem::path> _folders;
   const std::filesystem::path _log_file;
+  const std::filesystem::path _lock_file;
+  const std::filesystem::path _stamp_file;
   const std::string _command;
+  const std::vector<std::filesystem::path> _engine; // as the build lists them
+  std::filesystem::file_time_type _engine_said; // the newest engine file's, once said
+  std::filesystem::path _engine_change;
   std::filesystem::file_time_type _built_from;
   std::filesystem::file_time_type _pending;
   std::chrono::steady_clock::time_point _next_scan{};
@@ -365,6 +426,7 @@ private:
   std::atomic<bool> _building{false};
   std::atomic<bool> _finished{false};
   std::atomic<int> _status{0};
+  std::string _failure; // the build thread's, read once _finished says it is done
   std::jthread _build;
 };
 
@@ -561,17 +623,32 @@ void Runtime::watch() {
           Level::debug, Tag::mod, "a file changed; building the modules and shaders");
       break;
     case Live::Build::succeeded:
+      // Each module would refuse to load, and every node with C++ would drop out.
+      if (!_live->loads()) {
+        _log.write(Level::warn,
+                   Tag::mod,
+                   "live: the engine's headers changed, so the modules built now cannot "
+                   "load into this vulpen, and none swaps in; quit restart builds the "
+                   "engine and runs it");
+        break;
+      }
       swap();
       break;
     case Live::Build::failed:
       _log.write(Level::error,
                  Tag::mod,
-                 "live: the build failed, so the running code stays\n" +
-                     text_of(_live->log_file()));
+                 "live: the build failed, so the running code stays\n" + _live->said());
       break;
     case Live::Build::none:
       break;
   }
+  if (const std::filesystem::path changed = _live->engine_changed(); !changed.empty())
+    _log.write(Level::warn,
+               Tag::mod,
+               std::format("live: {} changed since this vulpen was built, and only a "
+                           "restart runs the engine anew: quit restart builds it and runs "
+                           "it",
+                           changed.string()));
 }
 
 // Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest.

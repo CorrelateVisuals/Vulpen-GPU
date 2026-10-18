@@ -18,6 +18,20 @@ foreach(header IN LISTS engine_headers)
 endforeach()
 string(SHA256 stamp "${hashes}")
 string(SUBSTRING ${stamp} 0 16 module_stamp)
+# Beside vulpen, for a live build's runtime to read before it swaps: modules built against
+# other engine headers than its own cannot load, so then it swaps none in.
+set(module_stamp_file module-stamp)
+file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${module_stamp_file} CONTENT "${module_stamp}\n")
+# The files vulpen itself compiles, one a line, which no live build builds into the
+# running vulpen, so its runtime says, once one changes, that a restart runs it.
+set(engine_sources_file engine-sources)
+get_target_property(engine_sources vulpen SOURCES)
+get_target_property(layer_sources baseclasses SOURCES)
+list(APPEND engine_sources ${layer_sources})
+list(TRANSFORM engine_sources PREPEND ${PROJECT_SOURCE_DIR}/)
+list(APPEND engine_sources ${engine_headers})
+list(JOIN engine_sources "\n" engine_list)
+file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${engine_sources_file} CONTENT "${engine_list}\n")
 
 # How a module marks its entry exported: a DLL exports only what is marked so, and GCC
 # and Clang, told to hide every symbol, export what is marked visible.
@@ -41,7 +55,9 @@ target_compile_definitions(vulpen PRIVATE
   VP_LIVE=$<BOOL:${VULPEN_LIVE}>
   VP_CMAKE_COMMAND="${CMAKE_COMMAND}"
   VP_MODULE_SUFFIX="${CMAKE_SHARED_MODULE_SUFFIX}"
-  VP_MODULE_STAMP="${module_stamp}")
+  VP_MODULE_STAMP="${module_stamp}"
+  VP_MODULE_STAMP_FILE="${module_stamp_file}"
+  VP_ENGINE_SOURCES_FILE="${engine_sources_file}")
 
 # A view: each folder in it is a node, but its contracts/ and its shared/ (RV05, RV09).
 function(vulpen_view folder)

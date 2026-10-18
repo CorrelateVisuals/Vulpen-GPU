@@ -69,6 +69,27 @@ public:
   // Starts a program the PATH holds, each argument one word whatever it holds, and does
   // not wait for it. Throws naming a program the PATH lacks (A02).
   static void start(const std::string &program, std::span<const std::string> arguments);
+  // Runs the program in this process's place, each argument one word whatever it holds,
+  // with the standard streams it has: on Linux as this very process, which keeps its
+  // terminal; on Windows as a new one, which this one waits for and ends as, so whoever
+  // started it sees one run. Returns only by throwing, naming why it could not.
+  [[noreturn]] static void replace(const std::filesystem::path &program,
+                                   std::span<const std::string> arguments);
+};
+
+// A file held for one process at a time while this lives, which the next to ask waits
+// for: one build at a time on a build tree, as two at once corrupt it. The file is made
+// when missing. Throws naming the file.
+class FileLock {
+public:
+  explicit FileLock(const std::filesystem::path &file);
+  ~FileLock();
+  FileLock(const FileLock &) = delete;
+  FileLock &operator=(const FileLock &) = delete;
+
+private:
+  struct Held;
+  std::unique_ptr<Held> _held; // the open file, whose closing lets go
 };
 
 // What a window hands on as it polls: a key by its name, typed text, the pointer in
