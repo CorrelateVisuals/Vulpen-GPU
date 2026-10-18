@@ -425,6 +425,13 @@ private:
   virtual void param_invalid(std::string_view name, std::string_view type) = 0;
   virtual void *output_object(std::string_view port, const Kind &kind) = 0;
   virtual const void *input_object(std::string_view port, const Kind &kind) = 0;
+
+public:
+  // The view the node binds in, as the lines so far left it, as a cook and a command
+  // read it, so a node finds at bind what its connections make it, before it asks for
+  // an input only a connection gives. Last, so a module built before it reaches the
+  // others where it found them, as a dev build swaps modules into a run.
+  virtual const View &view() const = 0;
 };
 
 // What a node costs a frame, in milliseconds: its operator's cook on the CPU, and its
