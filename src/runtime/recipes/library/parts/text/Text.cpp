@@ -1,6 +1,7 @@
 #include "Text.h"
 
 #include "contracts/Palette.h"
+#include "runtime/View.h"
 #include "shared/Words.h"
 
 #include <algorithm>
@@ -22,6 +23,10 @@ constexpr std::size_t indent = 2; // Tab types spaces to a multiple of this colu
 // The tab of an editor holding no file, so it still shows as open, empty, and a strip that
 // stacks it with other contents has a tab to show it again by.
 constexpr std::string_view empty_tab = "editor";
+// The ports a chain of editors joins by: the editors before a text node, and those it
+// hands on, itself last.
+constexpr std::string_view before_port = "before";
+constexpr std::string_view editors_port = "editors";
 // UTF-8 (RFC 3629): a byte that only continues a character starts with the bits 10.
 constexpr unsigned char continuation_mask = 0xC0;
 constexpr unsigned char continuation = 0x80;
@@ -210,18 +215,40 @@ void Text::bind(VP::Bind &node) {
                .string();
   if (std::exchange(_file, file) != file)
     _opening = !file.empty();
-  _write = node.command("write", "saves the file the editor shows");
-  _close = node.command("close [<file>]",
-                        "closes a file the editor holds, or with none the one it shows, "
-                        "unless it has changes");
-  _close_force = node.command("close force [<file>]",
-                              "closes a file the editor holds, or with none the one it "
-                              "shows, dropping its changes");
-  _find = node.command("find <value>...",
-                       "selects the next place the file shown holds the words, joined by "
-                       "single blanks, after the caret, and from its start past its end");
   _name = node.name();
   _view = node.view_name();
+  // The editors before it come through a connection to its before, when one brings them,
+  // and it hands them on with itself; the last of the chain, whose editors no text node's
+  // before takes, answers the editor's commands for them all.
+  const std::span<const VP::Connection> connections = node.view().connections;
+  const bool brought = std::ranges::any_of(connections, [&](const VP::Connection &c) {
+    return std::ranges::any_of(c.to, [&](const VP::Endpoint &to) {
+      return to.node == _name && to.port == before_port;
+    });
+  });
+  _head = std::ranges::none_of(connections, [&](const VP::Connection &c) {
+    return c.from.node == _name && c.from.port == editors_port &&
+           std::ranges::any_of(c.to, [](const VP::Endpoint &to) {
+             return to.port == before_port;
+           });
+  });
+  _before = brought ? &node.input<VP_VIEW::Editors>(before_port) : nullptr;
+  _editors = &node.output<VP_VIEW::Editors>(editors_port);
+  *_editors = _before ? *_before : VP_VIEW::Editors{};
+  _editors->push_back(this);
+  if (_head) {
+    _write = node.command("write", "saves the file the editor in focus shows");
+    _close = node.command("close [<file>]",
+                          "closes a file an editor holds, or with none the one the "
+                          "editor in focus shows, unless it has changes");
+    _close_force = node.command("close force [<file>]",
+                                "closes a file an editor holds, or with none the one the "
+                                "editor in focus shows, dropping its changes");
+    _find = node.command("find <value>...",
+                         "selects the next place the file the editor in focus shows holds "
+                         "the words, joined by single blanks, after the caret, and from "
+                         "its start past its end");
+  }
   _area = &node.input<VP_VIEW::Rect>("area");
   _font = &node.input<VP_VIEW::Font>("font");
   _typed = &node.input<VP_VIEW::Typed>("typed");
@@ -238,11 +265,13 @@ void Text::bind(VP::Bind &node) {
 void Text::cook(VP::Cook &frame) {
   if (std::exchange(_opening, false)) {
     try {
-      open(frame.files(), _file);
+      route(frame.files());
     } catch (const std::runtime_error &failure) {
       frame.log(VP::Level::error, failure.what());
     }
   }
+  if (_head && holder_named(_typed->focus))
+    _last = _typed->focus;
   const Grid grid = this->grid();
   if (!focused())
     _shift = _control = false;
@@ -573,17 +602,89 @@ void Text::write_lines(VP::Cook &frame,
   frame.write(_characters, written.character_count); // the used length glyphs draws
 }
 
+// Only the last of the chain registers commands, for the editors it was handed and
+// itself: write and find act on the editor in focus, or the one in focus last, and close
+// on the editor holding the file named, or with none on that one. A file the param names
+// opens first, so a script's line after open finds it.
 void Text::command(VP::Call &call) {
   if (std::exchange(_opening, false))
-    open(call.files(), _file);
-  if (_documents.empty())
-    throw std::runtime_error("no file is open");
-  if (call.is(_write))
-    write(call);
-  else if (call.is(_close) || call.is(_close_force))
-    close(call, call.is(_close_force));
-  else if (call.is(_find))
-    find(call);
+    route(call.files());
+  if (call.is(_write)) {
+    target().write(call);
+  } else if (call.is(_close) || call.is(_close_force)) {
+    const std::string_view named =
+        call.arguments().empty() ? std::string_view() : call.arguments().front();
+    VP_VIEW::Editor *const editor = named.empty() ? &target() : holder(named);
+    if (!editor)
+      throw std::runtime_error(std::format("{} is not open in an editor", named));
+    const std::string closing(named.empty() ? editor->shown() : named);
+    editor->close(call, named, call.is(_close_force));
+    // The param names it no longer, so open names it again as a change.
+    if (editor != this && closing == _file) {
+      _file.clear();
+      call.commands().send(std::format("{}: param unset {} file", _view, _name));
+    }
+  } else if (call.is(_find)) {
+    target().find(call);
+  }
+}
+
+const std::string &Text::name() const {
+  return _name;
+}
+
+bool Text::holds(std::string_view path) const {
+  return std::ranges::find(_documents, path, &Document::path) != _documents.end();
+}
+
+std::size_t Text::count() const {
+  return _documents.size();
+}
+
+std::string_view Text::shown() const {
+  return _documents.empty() ? std::string_view() : _documents[_shown].path;
+}
+
+bool Text::changed() const {
+  return !_documents.empty() && _documents[_shown].changed;
+}
+
+void Text::show(VP::FilePort &files, std::string_view path) {
+  open(files, path);
+}
+
+// The editor in focus, or the one in focus last, or with neither this one.
+VP_VIEW::Editor &Text::target() {
+  for (const std::string &wanted : {_typed->focus, _last})
+    if (VP_VIEW::Editor *const editor = holder_named(wanted))
+      return *editor;
+  return *this;
+}
+
+// The editor holding the file; none for none.
+VP_VIEW::Editor *Text::holder(std::string_view path) const {
+  const auto found = std::ranges::find_if(
+      *_editors, [&](const VP_VIEW::Editor *editor) { return editor->holds(path); });
+  return found == _editors->end() ? nullptr : *found;
+}
+
+// The editor of that name; none for none.
+VP_VIEW::Editor *Text::holder_named(std::string_view name) const {
+  const auto found = std::ranges::find_if(
+      *_editors, [&](const VP_VIEW::Editor *editor) { return editor->name() == name; });
+  return found == _editors->end() ? nullptr : *found;
+}
+
+// The file its param names: the last of the chain shows it in the editor holding it, or
+// else in the one in focus, or in focus last, as a file is open in one editor at a time;
+// any other text node in itself.
+void Text::route(VP::FilePort &files) {
+  if (!_head) {
+    open(files, _file);
+    return;
+  }
+  VP_VIEW::Editor *const holding = holder(_file);
+  (holding ? *holding : target()).show(files, _file);
 }
 
 // Read once, when it opens, so what was typed is never read over.
@@ -601,6 +702,8 @@ void Text::open(VP::FilePort &files, std::string_view path) {
 }
 
 void Text::write(VP::Call &call) {
+  if (_documents.empty())
+    throw std::runtime_error("no file is open");
   Document &document = _documents[_shown];
   call.files().save(document.path, joined(document.lines));
   document.changed = false;
@@ -608,18 +711,17 @@ void Text::write(VP::Call &call) {
   call.reply(std::format("wrote {}", document.path));
 }
 
-// The file after it shows, or the one before at the end.
 // The file named, as a tab's close mark names it, or the one shown; one with changes only
 // by force, so nothing typed goes unasked. The file shown keeps showing, and when it is
 // the one closed, the one after it, or else the one before.
-void Text::close(VP::Call &call, bool force) {
+void Text::close(VP::Call &call, std::string_view path, bool force) {
+  if (_documents.empty())
+    throw std::runtime_error("no file is open");
   std::size_t at = _shown;
-  if (!call.arguments().empty()) {
-    const auto found =
-        std::ranges::find(_documents, call.arguments().front(), &Document::path);
+  if (!path.empty()) {
+    const auto found = std::ranges::find(_documents, path, &Document::path);
     if (found == _documents.end())
-      throw std::runtime_error(
-          std::format("{} is not open in the editor", call.arguments().front()));
+      throw std::runtime_error(std::format("{} is not open in the editor", path));
     at = static_cast<std::size_t>(found - _documents.begin());
   }
   if (_documents[at].changed && !force)
@@ -645,6 +747,8 @@ void Text::close(VP::Call &call, bool force) {
 // From the selection's end to the file's end, then from its start, so a find repeated
 // steps through every place in turn.
 void Text::find(VP::Call &call) {
+  if (_documents.empty())
+    throw std::runtime_error("no file is open");
   std::string wanted;
   for (const std::string_view word : call.arguments())
     wanted.append(wanted.empty() ? "" : " ").append(word);

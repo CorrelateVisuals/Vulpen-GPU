@@ -152,6 +152,12 @@ to   = ide.menubar.hit.items
 from = ide.docking.rects
 to   = ide.docking-rects.rects
 
+# The editors, by which the docking part moves the file an editor holding several shows
+# into another editor, rather than the editor's panel.
+[connection "editors"]
+from = ide.editor.text.editors
+to   = ide.docking.editors
+
 [connection "perform"]
 from = ide.modes.perform
 to   = ide.screen.area

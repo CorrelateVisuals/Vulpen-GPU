@@ -1,3 +1,4 @@
+#include "contracts/Editors.h"
 #include "contracts/Font.h"
 #include "contracts/Item.h"
 #include "contracts/Palette.h"
@@ -54,6 +55,11 @@ constexpr std::string_view switch_tabs_node = ".tabs";
 constexpr std::string_view stack_recipe = "stack";
 constexpr std::string_view panel_recipe = "panel";
 constexpr std::string_view dock_recipe = "dock";
+// An editor a file goes into, and the ports its text nodes chain by, the editors before
+// one and those it hands on, as the text part names them.
+constexpr std::string_view editor_recipe = "text-area";
+constexpr std::string_view before_port = "before";
+constexpr std::string_view editors_port = "editors";
 constexpr float even = 0.5f;      // a moved dock's ratio: half its place for each panel
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 constexpr std::int32_t ring = 2;  // how wide the frame where a drop puts a panel is
@@ -246,9 +252,22 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // whose press hides or shows it, as the POC's menubar cells did. It finds where each
 // panel and its strip show as the splits and the bars lay them out, from the Rect its
 // area gives, which its host also hands the outermost dock, and while a drag goes on it
-// frames where a drop would put the panel dragged.
+// frames where a drop would put the panel dragged. Of an editor holding several files,
+// as the editors its host connects say, the file it shows moves: into a new editor, or
+// into the editor in the target's middle.
 class Docking final : public VP::Operator {
   void bind(VP::Bind &node) override {
+    const std::vector<VP::Connection> &connections = node.view().connections;
+    _editors = std::ranges::any_of(connections,
+                                   [&](const VP::Connection &connection) {
+                                     return std::ranges::any_of(
+                                         connection.to, [&](const VP::Endpoint &to) {
+                                           return to.node == node.name() &&
+                                                  to.port == editors_port;
+                                         });
+                                   })
+                   ? &node.input<VP_VIEW::Editors>(editors_port)
+                   : nullptr;
     _move = node.command("panel move <node> <node> <value>",
                          "moves a panel beside another, at its left, right, top or "
                          "bottom, or into it, middle, which then holds both; of a panel "
@@ -487,7 +506,9 @@ class Docking final : public VP::Operator {
           "nodes",
           panel,
           target));
-    if (!stack_of(view, *held).empty()) {
+    if (VP_VIEW::Editor *const editor = editor_of(*held); editor && editor->count() > 1) {
+      move_file(call, *editor, panel, target, side);
+    } else if (!stack_of(view, *held).empty()) {
       const Content going = unstack(call, panel);
       if (side == middle)
         join(call, going, target);
@@ -704,6 +725,92 @@ class Docking final : public VP::Operator {
                     {panel + std::string(hit_node), std::string(items_port)}}});
   }
 
+  // The editor whose tabs a panel's content hands on; none for none.
+  VP_VIEW::Editor *editor_of(const Content &content) const {
+    if (!_editors)
+      return nullptr;
+    const auto found = std::ranges::find_if(*_editors, [&](const VP_VIEW::Editor *editor) {
+      return editor->name() == content.tabs.node;
+    });
+    return found == _editors->end() ? nullptr : *found;
+  }
+
+  // The file the editor shows goes into the editor in the target's middle, or into a new
+  // one, in a panel of its own beside the target, or stacked in its middle; then it closes
+  // in the editor it left, so a file is open in one editor at a time. A file with changes
+  // stays, as closing it would drop them.
+  void move_file(VP::Call &call,
+                 VP_VIEW::Editor &editor,
+                 const std::string &panel,
+                 const std::string &target,
+                 std::string_view side) {
+    const std::string file(editor.shown());
+    if (editor.changed())
+      throw std::runtime_error(
+          std::format("{} has changes: write saves them before it moves", file));
+    const std::optional<Content> there = content_of(*call.view(_view), target);
+    VP_VIEW::Editor *const taking = side == middle && there ? editor_of(*there) : nullptr;
+    const std::string text =
+        taking ? taking->name() : add_editor(call, editor, panel, target, side);
+    send(call, std::format("param set {} file {}", text, file));
+    send(call, std::format("close {}", file));
+  }
+
+  // A text-area like the editor's, listed before the docking part as a panel is, taking
+  // what the editor's own takes but its room, its theme, its font, its atlas and its keys,
+  // and its place in the chain of editors just before the last, which answers the
+  // editor's commands; in a panel of its own beside the target, or stacked in its middle.
+  // Returns its text node.
+  std::string add_editor(VP::Call &call,
+                         const VP_VIEW::Editor &editor,
+                         const std::string &panel,
+                         const std::string &target,
+                         std::string_view side) {
+    const VP::View &view = *call.view(_view);
+    const std::string_view text_node = editor.name();
+    const std::string content(parent_of(text_node));
+    const std::string fresh = free_node(view, content);
+    const std::string text = fresh + std::string(text_node.substr(content.size()));
+    const std::string own = content + ".";
+    std::vector<VP::Connection> grown;
+    for (const VP::Connection &connection : view.connections) {
+      VP::Connection more = connection;
+      for (const VP::Endpoint &to : connection.to)
+        if (to.node.starts_with(own) && to.port != area_port && to.port != before_port)
+          more.to.push_back({fresh + to.node.substr(content.size()), to.port});
+      if (more.to.size() != connection.to.size())
+        grown.push_back(std::move(more));
+    }
+    const std::string last = _editors->back()->name();
+    const VP::Connection *const chain = into(view, last, before_port);
+    const std::optional<VP::Connection> chained =
+        chain ? std::optional(*chain) : std::nullopt;
+    send(call, std::format("node add {} recipe={}", fresh, editor_recipe));
+    send(call, std::format("node move {} {}", fresh, _name));
+    for (const VP::Connection &connection : grown) {
+      send(call, std::format("disconnect {}", connection.name));
+      connect(call, connection);
+    }
+    if (chained) {
+      send(call, std::format("disconnect {}", chained->name));
+      connect(call,
+              {.name = free_name(call, std::format("{}-before", short_name(fresh))),
+               .from = chained->from,
+               .to = {{text, std::string(before_port)}}});
+    }
+    connect(call,
+            {.name = free_name(call, std::format("{}-editors", short_name(fresh))),
+             .from = {text, std::string(editors_port)},
+             .to = {{last, std::string(before_port)}}});
+    const Content content_of_fresh{.area = {{text, std::string(area_port)}},
+                                   .tabs = {text, std::string(tabs_port)}};
+    if (side == middle)
+      join(call, content_of_fresh, target);
+    else
+      seat_new(call, content_of_fresh, panel, target, side);
+    return text;
+  }
+
   // What a connection fed, at the node given, it now feeds at the endpoint given, named
   // for what it now seats.
   void reseat(VP::Call &call,
@@ -743,6 +850,7 @@ class Docking final : public VP::Operator {
   VP::Command _hide;
   VP::Command _show;
   VP_VIEW::Items *_buttons = nullptr;
+  const VP_VIEW::Editors *_editors = nullptr; // as its host connects them; none for none
   // A dock's ratio before it hid a half, by its split, so showing it gives it back.
   std::map<std::string, float, std::less<>> _ratios;
   std::string _name;

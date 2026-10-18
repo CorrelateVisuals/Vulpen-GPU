@@ -1,5 +1,6 @@
 #pragma once
 
+#include "contracts/Editors.h"
 #include "contracts/Font.h"
 #include "contracts/Item.h"
 #include "contracts/Label.h"
@@ -64,17 +65,36 @@ struct Grid {
 // is only a front end on it.
 //
 // It holds the files open, shows one, and hands a panel a tab for each, whose press
-// shows it again; while one has changes, quit refuses, naming it. The wheel scrolls it,
+// shows it again; while one has changes, quit refuses, naming it. Several text nodes are
+// several editors: each hands on, as editors, those a connection to its before brings and
+// itself, and the one whose editors reach no text node's before registers write, close
+// and find, acting on the editor in focus, or the one in focus last, and takes open's
+// file param for them all, showing a file in the editor holding it, else in that one. The wheel scrolls it,
 // as does a drag on the bar at its right edge, and across, turned sideways or with
 // shift, as does a drag on the bar at its bottom edge; a double click selects a word,
 // and one more press the row. It takes keys from the keys part while it has the focus,
 // which a press in its area gives it, and none while it has no room. The font draws
 // ASCII, so a character past it shows as a blank cell a byte, but the caret steps over
 // it whole and no edit ever splits it.
-class Text final : public VP::Operator {
+class Text final : public VP::Operator, public VP_VIEW::Editor {
   void bind(VP::Bind &node) override;
   void cook(VP::Cook &frame) override;
   void command(VP::Call &call) override;
+
+  const std::string &name() const override;
+  bool holds(std::string_view path) const override;
+  std::size_t count() const override;
+  std::string_view shown() const override;
+  bool changed() const override;
+  void show(VP::FilePort &files, std::string_view path) override;
+  void write(VP::Call &call) override;
+  void close(VP::Call &call, std::string_view path, bool force) override;
+  void find(VP::Call &call) override;
+
+  VP_VIEW::Editor &target();
+  VP_VIEW::Editor *holder(std::string_view path) const;
+  VP_VIEW::Editor *holder_named(std::string_view name) const;
+  void route(VP::FilePort &files);
 
   Grid grid() const;
   bool focused() const;
@@ -99,9 +119,6 @@ class Text final : public VP::Operator {
                    const Grid &grid,
                    std::size_t rows);
   void open(VP::FilePort &files, std::string_view path);
-  void write(VP::Call &call);
-  void close(VP::Call &call, bool force);
-  void find(VP::Call &call);
   void name_tabs();
 
   VP::Command _write;
@@ -110,6 +127,10 @@ class Text final : public VP::Operator {
   VP::Command _find;
   std::string _name; // as the focus names it
   std::string _view; // the one it runs in, where its file param is unset
+  const VP_VIEW::Editors *_before = nullptr; // a connection's; none for none
+  VP_VIEW::Editors *_editors = nullptr;      // those, then itself
+  bool _head = false;                        // it answers the commands for all of them
+  std::string _last; // the editor in focus last, by name, which the commands act on
   // What the file param names, from the node's folder; empty while it is not set.
   std::string _file;
   bool _opening = false; // the param named another file, which opens where the port is
