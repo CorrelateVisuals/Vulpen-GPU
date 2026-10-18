@@ -1,9 +1,8 @@
 #version 460
 
-const vec4 tint = vec4(0.9, 0.5, 0.2, 1.0);
-
-layout(location = 0) out vec4 color;
+layout(location = 0) in vec3 color; // the corners' colors, blended across the face
+layout(location = 0) out vec4 pixel;
 
 void main() {
-  color = tint;
+  pixel = vec4(color, 1.0);
 }

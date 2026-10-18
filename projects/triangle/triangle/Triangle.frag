@@ -1,9 +1,8 @@
 #version 460
-#extension GL_GOOGLE_include_directive : require
-#include "Triangle.glsl"
 
-layout(location = 0) out vec4 color;
+layout(location = 0) in vec3 color; // the corners' colors, blended across the face
+layout(location = 0) out vec4 pixel;
 
 void main() {
-  color = pass.tint;
+  pixel = vec4(color, 1.0);
 }
