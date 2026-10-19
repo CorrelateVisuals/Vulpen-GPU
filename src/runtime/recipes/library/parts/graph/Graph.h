@@ -34,18 +34,15 @@
 namespace {
 
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
-// where it was then, and whether it has been dragged, or is a press let go where it was,
-// and once it is, where every box was as the drag began, and the frame's size if a person
-// gave it one. Or a corner of a box pressed, which a drag pulls while the opposite corner
-// stays: whether it is a left one and whether a top one, and the box's size, place and
-// least size then.
+// where it was then, and whether it has been dragged, or is a press let go where it was.
+// Or a corner of a box pressed, which a drag pulls while the opposite corner stays:
+// whether it is a left one and whether a top one, and the box's size, place and least
+// size then.
 struct Grab {
   std::size_t box = 0;
   glm::vec2 from{};
   std::vector<std::pair<std::size_t, glm::ivec2>> moving;
   bool moved = false;
-  std::vector<glm::ivec2> started;
-  std::optional<glm::ivec2> sized;
   std::optional<glm::bvec2> corner;
   glm::ivec2 extent{};
   glm::ivec2 offset{};
@@ -61,20 +58,20 @@ struct Under {
 // The graph of the current view, as the terminals' lines go to it, which view switch
 // moves and a second press on a view's box moves into it, as the view runs, each recipe a
 // node uses unfolded, a level at a time, as the POC showed it: the nodes at the top and
-// the views the view hosts, or the inside of the node its inside param names, that node's
-// box framing the boxes of the nodes inside it, and beside it what lies outside at either
-// side, where connections reach in and out. A box a node, with its name, its ports, those
+// the views the view hosts, or the inside of the node its inside param names, the boxes of
+// the nodes inside it, as at the top, the tab naming the node, and what lies outside at
+// either side, where connections reach in and out, the node's own ports among them. A box a node, with its name, its ports, those
 // its insides read and write across its edge too, the recipe it uses, the nodes inside it
 // and its files; a box each view it hosts, with its name, its window and the file it is
 // hosted from; and a curve a reader of a connection, from the writer's port on its box's
 // right side to the reader's on its left, a view's from its window where its host takes
 // it, at right angles in the lanes between the boxes, so it runs over none and no other's
 // lane. A second press on a box holding nodes, or zooming in on it, shows its inside, and
-// one on the frame, or zooming out, the level above, through the inside param, which a
+// one on what lies outside, or zooming out, the level above, through the inside param, which a
 // line sets as a press does (V06). The manifest holds no places (V04), so the graph alone
-// lays it out: the boxes inside the frame, or those at the top, a column past every box
+// lays it out: the boxes of the level, a column past every box
 // beside them they read from, down each column in the manifest's order. A box dragged
-// stays where it is put, the frame and what lies outside too, and the first drag places
+// stays where it is put, what lies outside too, and the first drag places
 // every box where it shows, so a change to the graph moves none; the boxes placed are a
 // look at the graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's
 // manifest, and a restart shows them as they were left; so do the colors a person gives
@@ -84,8 +81,8 @@ struct Under {
 // but a level the wheel went up to shows the box it was left from in focus, under the
 // pointer, two steps of the wheel short of going into it again. . goes into the box
 // selected, or the one under the pointer, and , up a level, as the wheel and a second
-// press do, , showing it from home. A drag on the ground, or on the frame's inside, which
-// shows the ground, moves the graph and the wheel zooms it about the pointer, as the
+// press do, , showing it from home. A drag on the ground moves the graph and the wheel
+// zooms it about the pointer, as the
 // Perform panel's image moves, and neither is kept. A
 // press on a box selects it, shift adding it or taking it out, and a second press opens
 // the file of a row that names one in the editor; a drag on a box selected moves every
@@ -107,8 +104,8 @@ struct Under {
 // selects whole, and of which delete or backspace removes the nodes and the views, as
 // node remove and view close do, and takes keys from the keys part while it has the
 // focus, which a press in its area gives it. Its own shaders draw the ground, lines that
-// move and zoom with the graph over the whole area, as the POC's grid did, and the
-// frame's inside a little over them; it writes Rects, Labels and Curves for the parts
+// move and zoom with the graph over the whole area, as the POC's grid did; it writes
+// Rects, Labels and Curves for the parts
 // that draw over them, and only what lies in its area: a box cut at its edge, and a row
 // of text with the area as its room, which glyphs cuts at the edge; a curve goes whole,
 // and the curves part cuts it at the edge of the ground the graph hands it.
@@ -136,8 +133,7 @@ private:
   void grab_corner(VP::Cook &frame, const Under &under);
   void drag(glm::vec2 to);
   void pull(glm::vec2 to);
-  void grow_frame(const Grab &grab, glm::ivec2 grown);
-  void place_all(Grab &grab);
+  void place_all();
   void release(VP::Cook &frame, bool room);
   bool open(VP::Cook &frame, std::size_t at);
   void turn(VP::Cook &frame, glm::vec2 turn);

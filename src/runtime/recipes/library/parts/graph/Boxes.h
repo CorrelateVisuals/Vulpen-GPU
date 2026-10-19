@@ -58,19 +58,19 @@ struct BoxRow {
 // A node, a view the view shown hosts, a folder or a file of the folder shown, or what
 // lies outside the node or folder the graph shows the inside of, and the rows it lists:
 // its ports first, then the recipe it uses, then the nodes inside it, then its files. A
-// box holding nodes lists them, and shows them once the graph shows its inside, framed
-// by its box.
+// box holding nodes lists them, and shows them as boxes of their own once the graph shows
+// its inside.
 struct Box {
   std::string name;  // as select, the .ini and a line name it
-  std::string title; // its first row: its name, past the box it is in
+  std::string title; // its first row: its name, past the node whose inside shows
   std::size_t parent = no_box;
   // What it is, which its border and its name show in: a node, a view, a folder or a
   // kind of file, as the theme names their roles; none for what lies outside.
   std::optional<std::uint32_t> role;
   bool view = false; // a view the view shown hosts
-  // A node of the view, or a view it hosts, which a press and select select, the frame
-  // too; a node of a recipe a node uses is not, nor a folder or a file, nor what lies
-  // outside, as select names none of them.
+  // A node of the view, or a view it hosts, which a press and select select; a node of a
+  // recipe a node uses is not, nor a folder or a file, nor what lies outside, as select
+  // names none of them.
   bool own = false;
   bool holds = false;    // it holds nodes or files, whose boxes zooming into it or a
                          // second press on it shows
@@ -109,7 +109,9 @@ struct Boxes {
   // By end, the relations its curve stands for, where the relations handed in hold them;
   // none for a connection's.
   std::vector<std::vector<std::size_t>> told;
-  std::size_t frame = no_box; // the box of the node whose inside shows, framing the rest
+  // The node or the folder whose inside shows, by name, which the tab names and no box
+  // shows; empty at the top.
+  std::string scope;
 };
 
 // A box's rows, as its first and count give them.
@@ -206,17 +208,15 @@ std::size_t holder_of(const Building &building, std::size_t node) {
 }
 
 // The box of what lies outside, at the left or the right, made as a curve first needs it.
-// Its name, which the .ini keeps its place by, is its side, after the frame's name: with
-// a blank, which no node's name holds.
+// Its name, which the .ini keeps its place by, is its side, after the name of the node
+// whose inside shows: with a blank, which no node's name holds.
 std::size_t outside_of(Boxes &boxes, Building &building, bool left) {
   std::size_t &outside = building.outside[left ? 0 : 1];
   if (outside == no_box && boxes.boxes.size() < node_room) {
     outside = boxes.boxes.size();
     const std::string side = std::format("{} {}", outside_title, left ? "left" : "right");
     boxes.boxes.push_back(
-        {.name = boxes.frame == no_box
-                     ? side
-                     : std::format("{} {}", boxes.boxes[boxes.frame].name, side),
+        {.name = boxes.scope.empty() ? side : std::format("{} {}", boxes.scope, side),
          .title = std::string(outside_title)});
     building.ports.emplace_back();
   }
@@ -225,7 +225,8 @@ std::size_t outside_of(Boxes &boxes, Building &building, bool left) {
 
 // Where an end of a connection shows, a box and the port's name there: a view's box, the
 // box showing its node, named from that box, as split.area on a dock's box, or outside,
-// named whole. No box, for a node no box shows and none is outside, as at the top.
+// named whole, as the ports of the node whose inside shows are. No box, for a node no box
+// shows and none is outside, as at the top.
 std::pair<std::size_t, std::string> shown(const Boxes &boxes,
                                           const Building &building,
                                           const VP::View &flat,
@@ -245,7 +246,7 @@ std::pair<std::size_t, std::string> shown(const Boxes &boxes,
       return {box, end.view() ? std::string(window_port) : end.port};
     return {box, std::format("{}.{}", end.node.substr(holder.size() + 1), end.port)};
   }
-  if (boxes.frame == no_box)
+  if (boxes.scope.empty())
     return {no_box, {}};
   return {outside_box,
           end.view() ? std::format("{}.{}", end.node, window_port) : end.text()};
@@ -381,8 +382,8 @@ void relate(Boxes &boxes,
 
 // Each box's rows: its ports, a reader's and a writer's side by side, then the recipe its
 // node uses, whose row opens the recipe's manifest, then the nodes inside it, then its
-// files, each opening itself, unless it frames them, as boxes of their own, listed_room
-// of them showing as its room lets them and a row for the rest, which the layout counts.
+// files, each opening itself, listed_room of them showing as its room lets them and a row
+// for the rest, which the layout counts.
 // A view's box lists the nodes at its top, then the file it is hosted from; a header and
 // its source's box, which has no ports, its files, from its first row, as their
 // relations end there.
@@ -412,7 +413,7 @@ void list_rows(Boxes &boxes,
                             .role = VP_VIEW::role("muted"),
                             .opens = node_of.folder / manifest_name});
     contents = boxes.rows.size();
-    for (std::size_t inner = 0; inner < flat.nodes.size() && box != boxes.frame; ++inner)
+    for (std::size_t inner = 0; inner < flat.nodes.size(); ++inner)
       if (building.parents[inner] == at) {
         const std::string held = flat.nodes[inner].name.substr(node_of.name.size() + 1);
         boxes.rows.push_back(
@@ -420,8 +421,7 @@ void list_rows(Boxes &boxes,
              .role = VP_VIEW::role("muted")});
       }
     for (const std::string &file : node_of.files)
-      if (box != boxes.frame)
-        boxes.rows.push_back({.text = file, .opens = node_of.folder / file});
+      boxes.rows.push_back({.text = file, .opens = node_of.folder / file});
   }
   if (const auto paired = building.paired.find(box); paired != building.paired.end())
     for (const std::filesystem::path &file : paired->second)
@@ -549,7 +549,6 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
     boxes.boxes.push_back({.name = std::format("{}/{}", folder.name, file),
                            .title =
                                paired.size() > 1 ? paired.front().stem().string() : file,
-                           .parent = boxes.frame,
                            .role = file_role(file),
                            .opens = paired.front()});
     if (paired.size() > 1)
@@ -558,13 +557,14 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
 }
 
 // The boxes of a view as it runs, each recipe a node uses unfolded, or of a folder, a
-// level at a time: with a scope that holds nodes or files, its box framing the boxes of
-// the nodes and the files inside it, and beside it what lies outside it, as connections
-// and relations reach in at its left and out at its right; with none, the boxes of the
-// nodes at the top, of the view's manifest, and of the views the view hosts, as the view
-// as edited names them, each as hosted lists its top nodes. A node of the view as edited
-// is its own, the frame too; one a recipe brings is not, nor a folder or a file. The
-// paths outside are named from base, and only the layers shown draw.
+// level at a time: with a scope that holds nodes or files, the boxes of the nodes and the
+// files inside it, named from it, and beside them what lies outside it, as connections
+// and relations reach in at their left and out at their right, the scope's own ports and
+// files among them, as the tab names the scope and no box shows it; with none, the boxes
+// of the nodes at the top, of the view's manifest, and of the views the view hosts, as the
+// view as edited names them, each as hosted lists its top nodes. A node of the view as
+// edited is its own; one a recipe brings is not, nor a folder or a file. The paths outside
+// are named from base, and only the layers shown draw.
 Boxes boxes_of(const VP::View &edited,
                const VP::View &flat,
                std::string_view scope,
@@ -582,16 +582,17 @@ Boxes boxes_of(const VP::View &edited,
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     building.nodes_in.emplace(flat.nodes[at].folder.generic_string(), at);
   const std::size_t inside = scope_of(flat, building.parents, scope);
-  const auto add = [&](std::size_t at, std::size_t parent) {
+  if (inside != no_box)
+    boxes.scope = flat.nodes[inside].name;
+  const std::size_t past = boxes.scope.empty() ? 0 : boxes.scope.size() + 1;
+  const auto add = [&](std::size_t at) {
     if (boxes.boxes.size() >= node_room)
       return;
     const VP::Node &node = flat.nodes[at];
     building.box_of_node[at] = boxes.boxes.size();
-    const std::size_t past = parent == no_box ? 0 : boxes.boxes[parent].name.size() + 1;
     boxes.boxes.push_back(
         {.name = node.name,
          .title = node.name.substr(past),
-         .parent = parent,
          .role = !folders                          ? VP_VIEW::role("node")
                  : node.name.substr(past).starts_with('.') ? VP_VIEW::role("hidden")
                                                            : VP_VIEW::role("folder"),
@@ -599,13 +600,9 @@ Boxes boxes_of(const VP::View &edited,
                                 edited.nodes.end(),
          .holds = holds(flat, building.parents, at)});
   };
-  if (inside != no_box) {
-    boxes.frame = 0;
-    add(inside, no_box);
-  }
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     if (building.parents[at] == inside)
-      add(at, inside == no_box ? no_box : boxes.frame);
+      add(at);
   if (inside != no_box)
     file_boxes(boxes, building, flat.nodes[inside]);
   if (const std::string manifest = edited.file.filename().generic_string();

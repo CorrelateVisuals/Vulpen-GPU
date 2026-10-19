@@ -98,31 +98,23 @@ float shown(const Weight &weight, Heat heat) {
   return heat.on == Heat::On::gpu ? weight.gpu : weight.cpu;
 }
 
-// Where a node of the view shown counts: in the box beside the frame whose name is its
-// own, or whose name and a dot start its own, as a box shows the nodes inside its node;
-// and in the frame, the node whose inside shows, if it is that node or inside it. A level
-// nests no box but in the frame, so one box at most holds a node.
-struct Holder {
-  std::size_t box = no_box;
-  bool framed = false;
-};
-
+// Where a node of the view shown counts: in the box whose name is its own, or whose name
+// and a dot start its own, as a box shows the nodes inside its node. A level nests no
+// box, so one box at most holds a node; none for a node no box shows.
 bool holds(std::string_view name, std::string_view node) {
   return node == name || (node.starts_with(name) && node[name.size()] == '.');
 }
 
-Holder holder_of(const Boxes &boxes, std::string_view node) {
-  Holder holder{.framed = boxes.frame != no_box &&
-                          holds(boxes.boxes[boxes.frame].name, node)};
+std::size_t holder_of(const Boxes &boxes, std::string_view node) {
+  std::size_t holder = no_box;
   for (std::size_t box = 0; box < boxes.boxes.size(); ++box)
-    if (box != boxes.frame && !boxes.boxes[box].view &&
-        holds(boxes.boxes[box].name, node))
-      holder.box = box;
+    if (!boxes.boxes[box].view && holds(boxes.boxes[box].name, node))
+      holder = box;
   return holder;
 }
 
 // What the boxes show the cost of, as the heat param names it; what each costs this
-// frame, and the most of the boxes beside the frame, which the ramp's hot end stands for;
+// frame, and the most of the boxes, which the ramp's hot end stands for;
 // and where each node of the view shown counts, found again only as the boxes, the view
 // shown or the costs' table change, so a frame allocates nothing for it.
 class Heating {
@@ -132,8 +124,8 @@ public:
     _stale = true;
   }
 
-  // While the heat shows: the nodes of the view shown each box holds, the frame every one
-  // inside it, and a view's box every node of that view. A folder's boxes are no nodes,
+  // While the heat shows: the nodes of the view shown each box holds, and a view's box
+  // every node of that view. A folder's boxes are no nodes,
   // and cost nothing.
   void weigh(VP::Cook &frame, const Boxes &boxes, std::string_view view, bool folders) {
     weights.assign(boxes.boxes.size(), {});
@@ -148,18 +140,14 @@ public:
       _from = costs.data();
       _stale = false;
     }
-    for (std::size_t at = 0; at < costs.size(); ++at) {
-      if (_holders[at].box != no_box)
-        add(weights[_holders[at].box], costs[at]);
-      if (_holders[at].framed)
-        add(weights[boxes.frame], costs[at]);
-    }
+    for (std::size_t at = 0; at < costs.size(); ++at)
+      if (_holders[at] != no_box)
+        add(weights[_holders[at]], costs[at]);
     for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
       if (boxes.boxes[box].view)
         for (const VP::Cost &cost : frame.costs(boxes.boxes[box].name))
           add(weights[box], cost);
-      if (box != boxes.frame)
-        most = std::max(most, shown(weights[box], heat));
+      most = std::max(most, shown(weights[box], heat));
     }
   }
 
@@ -168,7 +156,7 @@ public:
   float most = 0.0f;
 
 private:
-  std::vector<Holder> _holders; // by cost of the view shown
+  std::vector<std::size_t> _holders; // the box each cost of the view shown counts in
   const VP::Cost *_from = nullptr;
   bool _stale = true;
 };
