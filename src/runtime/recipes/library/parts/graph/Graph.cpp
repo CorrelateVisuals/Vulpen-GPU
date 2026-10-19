@@ -790,7 +790,10 @@ bool Graph::enter(VP::Cook &frame, std::size_t at) {
 // out of a view's top to the view hosting it, as view switch shows it, and out of the top
 // of the view vulpen started with to the folder holding its folder, where its folder is a
 // box; out of a folder to the one holding it, up to the top of its repository. The level
-// shown next shows the box left in focus, unless the caller lets go of it.
+// shown next shows the box left in focus, unless the caller lets go of it. Once a line
+// left a node's inside, the boxes show it still until the next frame builds them, so a
+// wheel turning on leaves it once, as its inside param, which it keeps as the line set it,
+// differs from the inside they show.
 void Graph::leave(VP::Cook &frame) {
   if (!_built_flat)
     return;
@@ -813,15 +816,15 @@ void Graph::leave(VP::Cook &frame) {
     }
     return;
   }
-  const std::string &left = _boxes.scope;
-  _left = left;
-  const std::size_t holder = parent_of(_built_flat->nodes, left);
+  if (_inside != _boxes.scope)
+    return;
+  _left = _boxes.scope;
+  const std::size_t holder = parent_of(_built_flat->nodes, _left);
+  _inside = holder == no_box ? std::string() : _built_flat->nodes[holder].name;
   frame.commands().send(
-      holder == no_box ? std::format("{}: param unset {} inside", _view, _name)
-                       : std::format("{}: param set {} inside {}",
-                                     _view,
-                                     _name,
-                                     _built_flat->nodes[holder].name));
+      _inside.empty()
+          ? std::format("{}: param unset {} inside", _view, _name)
+          : std::format("{}: param set {} inside {}", _view, _name, _inside));
 }
 
 bool Graph::selected(std::string_view node) const {
