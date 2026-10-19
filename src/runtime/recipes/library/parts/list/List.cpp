@@ -9,13 +9,16 @@
 #include <glm/common.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -26,11 +29,18 @@ constexpr std::int32_t frame_width = 1;
 constexpr std::int32_t gap = 2; // between Items side by side, where the ground shows
 constexpr std::uint32_t mark_cells = 2;      // a close mark's: a blank, then the mark
 constexpr std::string_view mark_text = "x"; // which the font draws, as ASCII
+// Cells a tab's label shows at most, the rest cut at its start, so a strip of long names
+// shows several; the pointer over one cut shows it whole below the tab.
+constexpr std::size_t tab_cells = 24;
+constexpr std::int32_t padding_cells = 2; // a tab's, a cell either side of its label
+constexpr float wheel_cells = 4.0f;       // a strip scrolls across a step of the wheel
 // Behind a column, a frame and the fill inside it, so it reads as raised over what it
 // covers, and the current Item's row, so the menu open reads apart. Behind a row, its
-// ground, then a Rect an Item, so each reads as a tab on a bar.
+// ground, then a Rect an Item, so each reads as a tab on a bar, and a tab's whole label
+// in a frame and a fill of its own.
 constexpr std::uint32_t frame_and_fill = 2;
-constexpr std::uint32_t rect_room = 1 + row_room;
+constexpr std::uint32_t rect_room = 1 + row_room + frame_and_fill;
+constexpr std::uint32_t label_room = 2 * row_room + 1; // a label and a mark an Item, a tip
 
 VP_VIEW::Rect grown(const VP_VIEW::Rect &rect, std::int32_t by, std::uint32_t role) {
   return {.offset = rect.offset - by,
@@ -38,11 +48,28 @@ VP_VIEW::Rect grown(const VP_VIEW::Rect &rect, std::int32_t by, std::uint32_t ro
           .role = role};
 }
 
+std::int32_t right_of(const VP_VIEW::Rect &rect) {
+  return rect.offset.x + static_cast<std::int32_t>(rect.extent.x);
+}
+
+// What of a Rect lies across a strip, as tall as it is; none outside it.
+VP_VIEW::Rect within(VP_VIEW::Rect rect, const VP_VIEW::Rect &strip) {
+  const std::int32_t from = std::max(rect.offset.x, strip.offset.x);
+  const std::int32_t to = std::min(right_of(rect), right_of(strip));
+  rect.offset.x = from;
+  rect.extent = to > from ? glm::uvec2(static_cast<std::uint32_t>(to - from), rect.extent.y)
+                          : glm::uvec2(0);
+  return rect;
+}
+
 // Lays out the Items it is handed in the Rect its place gives: stacked, a row each, over
-// a framed fill, or with axis x side by side, each as wide as its label, over a ground,
-// the current one in the content's color, so it joins the content it names; an Item
-// with a close command shows a close mark at its end; a column marks its current Item's
-// row. With drop = below the column drops below its place instead, as wide as its widest
+// a framed fill, or with axis x side by side, each as wide as its label, up to tab_cells
+// of it, the rest cut at its start, over a ground, the current one in the content's
+// color, so it joins the content it names, the strip scrolling across as the wheel turns
+// over it, with no bar, and to show the current one as it changes, its end cells left
+// free for a mark its host draws there, and the pointer over a label cut showing it whole
+// below its tab; an Item with a close command shows a close mark at its end; a column
+// marks its current Item's row. With drop = below the column drops below its place instead, as wide as its widest
 // label and as tall as its Items, inside the window, as a menu drops below where it was
 // opened; with drop = right it opens beside its place, its first row level with it, as a
 // menu's items open beside its name: right of it, or left where the window has no room,
@@ -62,28 +89,31 @@ class List final : public VP::Operator {
     if (drop != "no" && drop != "below" && drop != "right")
       throw std::runtime_error(std::format("param drop = {}: no, below or right", drop));
     _drop = drop == "below" ? Drop::below : drop == "right" ? Drop::right : Drop::no;
+    _end = node.param<std::uint32_t>("end");
     _items = &node.input<VP_VIEW::Items>("items");
     _place = &node.input<VP_VIEW::Rect>("place");
     _font = &node.input<VP_VIEW::Font>("font");
     _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
-    _labels = node.upload<VP_VIEW::Label>("labels", 2 * row_room); // a label, a mark
+    _labels = node.upload<VP_VIEW::Label>("labels", label_room);
     _characters = node.upload<VP_VIEW::Character>("characters", character_room);
     _shown = &node.output<VP_VIEW::Rects>("shown");
     _shown->reserve(row_room); // so a frame never grows it (CPP10)
     _marks = &node.output<VP_VIEW::Rects>("marks");
     _marks->reserve(row_room);
     _current = &node.output<VP_VIEW::Rect>("current");
+    _laid.reserve(row_room);
   }
 
   void cook(VP::Cook &frame) override {
     const glm::uvec2 cell = _font->cell;
     _shown->clear();
     _marks->clear();
+    _tip.reset();
     const VP_VIEW::Rect place =
         _drop == Drop::no ? *_place : dropped(cell, frame.resolution());
     if (cell.x != 0 && cell.y != 0) {
       if (_side_by_side)
-        side_by_side(place, cell);
+        side_by_side(frame, place, cell);
       else
         stacked(place, cell);
     }
@@ -144,34 +174,94 @@ class List final : public VP::Operator {
     }
   }
 
-  // From the place's left, each as tall as the place and as wide as its label, and its
-  // close mark, with a cell either side; the place's right edge cuts the last, which
-  // shows what fits, its mark only when it fits whole.
-  void side_by_side(const VP_VIEW::Rect &place, glm::uvec2 cell) {
+  // The tabs from the strip's left, as far as it is scrolled, each as tall as the place
+  // and as wide as its label, up to tab_cells, and its close mark, with a cell either
+  // side; the strip is the place but its end cells. What lies outside the strip is cut,
+  // a tab wholly outside it showing nowhere, and its mark only whole. The pointer over a
+  // tab whose label is cut shows it whole.
+  void side_by_side(VP::Cook &frame, const VP_VIEW::Rect &place, glm::uvec2 cell) {
     if (place.extent.y < cell.y)
       return;
-    const auto padding = static_cast<std::int32_t>(2 * cell.x);
     const auto across = static_cast<std::int32_t>(cell.x);
-    const std::int32_t right = place.offset.x + static_cast<std::int32_t>(place.extent.x);
-    std::int32_t left = place.offset.x;
+    VP_VIEW::Rect strip = place;
+    strip.extent.x -= std::min(strip.extent.x, _end * cell.x);
+    _laid.clear();
+    std::int32_t reach = 0;
+    std::optional<std::size_t> current;
     for (const VP_VIEW::Item &item : *_items) {
-      const std::int32_t room = right - left;
-      if (room <= padding || _shown->size() == row_room)
-        return;
-      const std::size_t cells = item.label.size() + (item.close.empty() ? 0 : mark_cells);
-      const auto wide = static_cast<std::int32_t>(cells) * across + padding;
-      _shown->push_back(
-          {.offset = {left, place.offset.y},
-           .extent = {static_cast<std::uint32_t>(std::min(wide, room)), place.extent.y},
+      if (_laid.size() == row_room)
+        break;
+      const std::size_t cells = std::min(item.label.size(), tab_cells) +
+                                (item.close.empty() ? 0 : mark_cells);
+      const auto wide = (static_cast<std::int32_t>(cells) + padding_cells) * across;
+      if (item.current)
+        current = _laid.size();
+      _laid.push_back(
+          {.offset = {reach, place.offset.y},
+           .extent = {static_cast<std::uint32_t>(wide), place.extent.y},
            .role = item.current ? VP_VIEW::role("background") : VP_VIEW::role("panel")});
-      // The mark's cell is the last before the tab's right padding.
-      const std::int32_t mark = left + wide - padding;
-      _marks->push_back(item.close.empty() || mark + across > right
-                            ? VP_VIEW::Rect{}
-                            : VP_VIEW::Rect{.offset = {mark, place.offset.y},
-                                            .extent = {cell.x, place.extent.y}});
-      left += wide + gap;
+      reach += wide + gap;
     }
+    scroll(frame, strip, std::max(reach - gap, 0), current, across);
+    const auto shift = strip.offset.x - static_cast<std::int32_t>(std::lround(_pan));
+    for (std::size_t at = 0; at < _laid.size(); ++at) {
+      VP_VIEW::Rect &tab = _laid[at];
+      tab.offset.x += shift;
+      _shown->push_back(within(tab, strip));
+      // The mark's cell is the last before the tab's right padding.
+      const VP_VIEW::Rect mark{.offset = {right_of(tab) - padding_cells * across, tab.offset.y},
+                               .extent = {cell.x, place.extent.y}};
+      _marks->push_back((*_items)[at].close.empty() || within(mark, strip).extent != mark.extent
+                            ? VP_VIEW::Rect{}
+                            : mark);
+      if ((*_items)[at].label.size() > tab_cells && VP_VIEW::contains(_shown->back(), _pointer)) {
+        _tip = at;
+        _tip_row = tip_row(tab, (*_items)[at].label.size(), cell, place, frame.resolution());
+      }
+    }
+  }
+
+  // Below the tab, as long as its label, from where the label starts, moved in to keep
+  // its frame inside the place and the window.
+  static VP_VIEW::Rect tip_row(const VP_VIEW::Rect &tab,
+                               std::size_t length,
+                               glm::uvec2 cell,
+                               const VP_VIEW::Rect &place,
+                               glm::uvec2 window) {
+    constexpr std::int32_t edge = margin + frame_width;
+    const auto wide = static_cast<std::int32_t>(length * cell.x);
+    const std::int32_t most =
+        std::min(right_of(place), static_cast<std::int32_t>(window.x)) - edge - wide;
+    const std::int32_t x = std::max(std::min(tab.offset.x + static_cast<std::int32_t>(cell.x), most),
+                                    place.offset.x + edge);
+    return {.offset = {x, tab.offset.y + static_cast<std::int32_t>(tab.extent.y) + edge},
+            .extent = {static_cast<std::uint32_t>(wide), cell.y}};
+  }
+
+  // As the wheel turns over the strip, either way, and as the current tab changes, or how
+  // many there are, so it shows whole; never past the first tab or the last.
+  void scroll(VP::Cook &frame,
+              const VP_VIEW::Rect &strip,
+              std::int32_t reach,
+              std::optional<std::size_t> current,
+              std::int32_t across) {
+    for (const VP::Event &event : frame.input().events())
+      if (event.kind == VP::Event::Kind::pointer)
+        _pointer = event.at;
+      else if (event.kind == VP::Event::Kind::wheel && VP_VIEW::contains(strip, _pointer))
+        _pan -= (event.turn.x != 0.0f ? event.turn.x : event.turn.y) * wheel_cells *
+                static_cast<float>(across);
+    const auto room = static_cast<float>(strip.extent.x);
+    if (current != _followed || _laid.size() != _followed_count) {
+      _followed = current;
+      _followed_count = _laid.size();
+      if (current) {
+        const VP_VIEW::Rect &tab = _laid[*current];
+        _pan = std::min(_pan, static_cast<float>(tab.offset.x));
+        _pan = std::max(_pan, static_cast<float>(right_of(tab)) - room);
+      }
+    }
+    _pan = std::clamp(_pan, 0.0f, std::max(static_cast<float>(reach) - room, 0.0f));
   }
 
   // Nothing shown draws nothing, not even its ground, so a list with no room or no Items
@@ -180,9 +270,15 @@ class List final : public VP::Operator {
     if (_shown->empty()) {
       frame.write(_rects, 0);
     } else if (_side_by_side) {
-      const std::span<VP_VIEW::Rect> rects = frame.write(_rects, 1 + _shown->size());
+      const auto tabs = static_cast<std::uint32_t>(_shown->size());
+      const std::span<VP_VIEW::Rect> rects =
+          frame.write(_rects, 1 + tabs + (_tip ? frame_and_fill : 0));
       rects[0] = grown(place, 0, VP_VIEW::role("panel"));
       std::ranges::copy(*_shown, rects.begin() + 1);
+      if (_tip) {
+        rects[1 + tabs] = grown(_tip_row, margin + frame_width, VP_VIEW::role("border"));
+        rects[2 + tabs] = grown(_tip_row, margin, VP_VIEW::role("panel"));
+      }
     } else {
       const bool marked = _current->extent.x != 0;
       const std::span<VP_VIEW::Rect> rects =
@@ -198,29 +294,61 @@ class List final : public VP::Operator {
     }
   }
 
-  // Each label in its Item's Rect: the row itself, or a cell in from either side of a tab
-  // and centered top to bottom, and a tab's close mark in its cell, muted. What its room
-  // lacks is cut.
+  // Each label in its Item's Rect: the row itself, or a tab's, and a tab's close mark in
+  // its cell, muted, and the label of the tab the pointer is over whole below it. What
+  // its room lacks is cut.
   void write_labels(VP::Cook &frame, glm::uvec2 cell) {
     Labels written{frame.write(_labels), frame.write(_characters)};
     for (std::uint32_t at = 0; at < _shown->size(); ++at) {
-      VP_VIEW::Rect text = (*_shown)[at];
-      if (_side_by_side) {
-        text.offset += glm::ivec2(glm::uvec2(cell.x, (text.extent.y - cell.y) / 2));
-        text.extent = {text.extent.x - 2 * cell.x, cell.y};
+      if (!_side_by_side) {
+        const VP_VIEW::Rect &row = (*_shown)[at];
+        written.add(
+            {.offset = row.offset, .extent = row.extent, .role = VP_VIEW::role("text")},
+            std::string_view((*_items)[at].label).substr(0, row.extent.x / cell.x));
+        continue;
       }
-      const std::string_view label = (*_items)[at].label;
-      written.add(
-          {.offset = text.offset, .extent = text.extent, .role = VP_VIEW::role("text")},
-          label.substr(0, text.extent.x / cell.x));
-      if (at < _marks->size() && (*_marks)[at].extent.x != 0)
-        written.add({.offset = {(*_marks)[at].offset.x, text.offset.y},
+      const std::int32_t middle =
+          _laid[at].offset.y + static_cast<std::int32_t>(_laid[at].extent.y - cell.y) / 2;
+      tab_label(written, at, middle, cell);
+      if (const VP_VIEW::Rect &mark = (*_marks)[at]; mark.extent.x != 0)
+        written.add({.offset = {mark.offset.x, middle},
                      .extent = {cell.x, cell.y},
                      .role = VP_VIEW::role("muted")},
                     mark_text);
     }
+    if (_tip)
+      written.add({.offset = _tip_row.offset,
+                    .extent = _tip_row.extent,
+                    .role = VP_VIEW::role("text")},
+                  (*_items)[*_tip].label);
     frame.write(_labels, written.label_count);
     frame.write(_characters, written.character_count); // the used length glyphs draws
+  }
+
+  // A tab's label a cell in from its left, cut at its start past tab_cells, and where the
+  // strip cuts its tab, a character at a time.
+  void tab_label(Labels &written, std::size_t at, std::int32_t top, glm::uvec2 cell) {
+    const VP_VIEW::Rect &shows = (*_shown)[at];
+    if (shows.extent.x == 0)
+      return;
+    fit(_fitted, (*_items)[at].label, tab_cells);
+    const auto wide = static_cast<std::int32_t>(cell.x);
+    const std::int32_t start = _laid[at].offset.x + wide;
+    const std::int32_t from = std::max(start, shows.offset.x);
+    const std::int32_t to = std::min(
+        {start + static_cast<std::int32_t>(std::min(_fitted.size(), tab_cells)) * wide,
+         right_of(shows)});
+    if (to <= from)
+      return;
+    const auto first = static_cast<std::size_t>((from - start) / wide);
+    const auto last =
+        std::min(_fitted.size(), static_cast<std::size_t>((to - start + wide - 1) / wide));
+    const std::int32_t offset = start + static_cast<std::int32_t>(first) * wide;
+    written.add({.offset = {offset, top},
+                 .extent = {static_cast<std::uint32_t>(to - offset), cell.y},
+                 .role = VP_VIEW::role("text"),
+                 .cut = {static_cast<std::uint32_t>(from - offset), 0}},
+                std::string_view(_fitted).substr(first, last - first));
   }
 
   // Where a column goes: in its place, or dropped below or right of it, as wide as its
@@ -240,6 +368,19 @@ class List final : public VP::Operator {
   VP_VIEW::Rects *_shown = nullptr; // a Rect each Item shown, in the order of the Items
   VP_VIEW::Rects *_marks = nullptr; // and its close mark's, none for no mark
   VP_VIEW::Rect *_current = nullptr; // where the current Item shows; none for none
+  // Side by side: the cells a strip leaves free at its end, how far it is scrolled, in
+  // pixels, the pointer as the events so far left it, each tab whole before the strip
+  // cuts it, the current tab it scrolled to last and how many there were then, and the
+  // tab whose whole label shows below it, and where.
+  std::uint32_t _end = 0;
+  float _pan = 0.0f;
+  glm::vec2 _pointer{};
+  std::vector<VP_VIEW::Rect> _laid;
+  std::optional<std::size_t> _followed;
+  std::size_t _followed_count = 0;
+  std::optional<std::size_t> _tip;
+  VP_VIEW::Rect _tip_row{};
+  std::string _fitted; // a tab's label as it shows, kept so a frame allocates none
 };
 
 } // namespace

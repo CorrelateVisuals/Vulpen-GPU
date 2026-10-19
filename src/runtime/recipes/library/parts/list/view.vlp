@@ -3,7 +3,9 @@
 # drop=right in a column below or right of its place, sized to them, for a rects and a
 # glyphs node to draw, and hands
 # on where each shows as shown, and where an Item's close mark shows as marks, for hit to
-# find the one pressed, and where the current one shows as current.
+# find the one pressed, and where the current one shows as current. Side by side, its
+# end param leaves so many cells free at the end of its place, for a mark its host draws
+# there.
 [manifest]
 version = 1
 
@@ -12,3 +14,4 @@ operator = List
 file     = List.cpp
 param    = axis=y
 param    = drop=no
+param    = end=0

@@ -71,22 +71,19 @@ recipe = dock
 param  = split.axis=y
 param  = split.ratio=0.5
 
-[node "ide.editor-panel"]
-recipe = panel
-
+# Each content is listed before its panel, so the panel's strip draws over it, as a
+# tab's name cut short shows whole below the tab, over the content.
 [node "ide.editor"]
 recipe = text-area
 
-# The graph of the view the terminal's lines go to, under a tab naming it.
-[node "ide.graph-panel"]
+[node "ide.editor-panel"]
 recipe = panel
 
+# The graph of the view the terminal's lines go to, under a tab naming it.
 [node "ide.graph"]
 recipe = graph-editor
 
-# A tab a project, whose press makes it the current view; the panel shows the one
-# presented.
-[node "ide.perform-panel"]
+[node "ide.graph-panel"]
 recipe = panel
 
 # A drag moves the view presented and the wheel zooms it, as in the graph, and h, while
@@ -96,11 +93,16 @@ recipe = panel
 recipe = image
 param  = moves=yes
 
-[node "ide.terminal-panel"]
+# A tab a project, whose press makes it the current view; the panel shows the one
+# presented.
+[node "ide.perform-panel"]
 recipe = panel
 
 [node "ide.terminal"]
 recipe = terminal
+
+[node "ide.terminal-panel"]
+recipe = panel
 
 # A panel's tab strip dragged onto another panel moves it to that panel's edge it is let
 # go nearest, as edits of the docks, which a save of the ide keeps. Listed after the

@@ -636,6 +636,11 @@ class Docking final : public VP::Operator {
                      stack,
                      stack_recipe,
                      half_ports[1]));
+    // Listed before the target, the content joining it too, so the panel's strip draws
+    // over both, and before what draws over the panels.
+    send(call, std::format("node move {} {}", stack, target));
+    send(call,
+         std::format("node move {}.{} {}", parent_of(target), content_name(content), target));
     send(call, std::format("disconnect {}", room.name));
     send(call, std::format("disconnect {}", tabs.name));
     connect(call,
