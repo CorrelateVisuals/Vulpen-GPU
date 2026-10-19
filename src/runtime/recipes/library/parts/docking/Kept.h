@@ -28,6 +28,7 @@ constexpr std::string_view kept_head =
 // docks seating them, the panels, the stacks holding several contents, the editors.
 constexpr std::array<std::string_view, 4> laid_recipes{"dock", "panel", "stack",
                                                        "text-area"};
+constexpr std::string_view strip_params = "bar."; // a panel's strip's, which no file keeps
 
 // Whether a line the docking part sends makes the panels other than by a param: a node
 // added, moved or removed, or a connection made or let go. The params the file keeps
@@ -38,7 +39,8 @@ bool structural(std::string_view line) {
 }
 
 // The file's text: the edits, then the params of the panels' nodes as the view holds them
-// now, a line each, as param set sets them, as a dock's seam and a panel's strip.
+// now, a line each, as param set sets them, as a dock's seam; but a panel's strip, which
+// shows at every start, so the menubar a person hid comes back as the panels do.
 std::string kept_text(std::span<const std::string> edits, const VP::View &view) {
   std::string text(kept_head);
   for (const std::string &edit : edits)
@@ -46,7 +48,8 @@ std::string kept_text(std::span<const std::string> edits, const VP::View &view) 
   for (const VP::Node &node : view.nodes)
     if (std::ranges::find(laid_recipes, node.recipe) != laid_recipes.end())
       for (const VP::Param &param : node.params)
-        if (const std::size_t dot = param.key.rfind('.'); dot != std::string::npos)
+        if (const std::size_t dot = param.key.rfind('.');
+            dot != std::string::npos && !param.key.starts_with(strip_params))
           text += std::format("param set {}.{} {} {}\n",
                               node.name,
                               std::string_view(param.key).substr(0, dot),
