@@ -43,6 +43,7 @@ constexpr std::string_view no_word = "\"\"";
 // After a usage's last placeholder: it takes one argument or more.
 constexpr std::string_view one_or_more = "...";
 constexpr std::string_view output_mark = "{out}"; // a node's lines, as the log marks them
+constexpr std::string_view find_prompt = "find: "; // the line a search's words are typed on
 
 // In a window: what it keeps, and how it lays out, in pixels.
 constexpr std::size_t scrollback_rows = 1000; // the oldest go first (A03)
@@ -255,16 +256,24 @@ struct Mark {
 // terminal registers help, complete and clear, as a command has one owner, and a
 // terminal in a window sends them as it sends any line, taking what clear answers as a
 // terminal takes it; on the terminal, the end of the input ends the run while no window
-// is open, as one a launcher gives no input still shows its window.
+// is open, as one a launcher gives no input still shows its window. In a window,
+// control+f makes its line a search, the line typed set aside: the words, which enter
+// and control+f find again in the rows above, older first, selecting the match and
+// scrolling to it, until escape gives the line back. As a find bar, on=find, it is a
+// search alone, over a host whose control+f opens it: a row at the top of its area,
+// whose words enter and control+f send as find, which the editors' owner answers, and
+// which escape closes, the focus back to the host; the rest of its area goes to the host.
 // A line that names no view goes to the current view, which view switch moves, so it
 // needs no name and every log line still has one. The prompt shows that view's folder, as
 // a shell shows the one it is in, and the log keeps to that view.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string on = node.param<std::string>("on");
-    if (!on.empty() && on != "terminal" && on != "window") // the loader names it unset
-      throw std::runtime_error(std::format("param on = {}: terminal or window", on));
-    _window = on == "window";
+    if (!on.empty() && on != "terminal" && on != "window" && on != "find")
+      throw std::runtime_error( // the loader names it unset
+          std::format("param on = {}: terminal, window or find", on));
+    _window = on != "terminal";
+    _finder = on == "find";
     if (!_window) {
       _help = node.command(
           "help", "lists every command, under the words it shares, and what each does");
@@ -282,12 +291,20 @@ class CommandLine final : public VP::Operator {
     _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
     _labels = node.upload<VP_VIEW::Label>("labels", label_room);
     _characters = node.upload<VP_VIEW::Character>("characters", character_room);
+    if (_finder) {
+      _host = node.param<std::string>("host");
+      _own_view = node.view_name();
+      _rest = &node.output<VP_VIEW::Rect>("rest");
+      return;
+    }
     _title = node.param<std::string>("title");
     _tabs = &node.output<VP_VIEW::Items>("tabs");
     name_tab();
   }
 
   void cook(VP::Cook &frame) override {
+    if (_finder)
+      return find_bar(frame);
     follow(frame);
     keep_log(frame);
     if (_window)
@@ -519,7 +536,7 @@ class CommandLine final : public VP::Operator {
   }
 
   std::string prompt() const {
-    return _folder + std::string(prompt_end);
+    return _finding ? std::string(find_prompt) : _folder + std::string(prompt_end);
   }
 
   // As the area, the font and the prompt are now, the text clear of the scroll bars, and
@@ -565,6 +582,15 @@ class CommandLine final : public VP::Operator {
     if (event.kind != VP::Event::Kind::key || !event.down)
       return;
     const std::string_view key = event.name;
+    if ((_finding || _finder) && finds(frame, key))
+      return;
+    if (_control && key == "f" && _window) {
+      _finding = true;
+      _set_aside = std::exchange(_line, _words);
+      _caret = _line.size();
+      _found.reset();
+      return;
+    }
     if (key == "tab")
       return complete_word(frame);
     if (key == "escape" && _window && _anchor == _end)
@@ -602,8 +628,11 @@ class CommandLine final : public VP::Operator {
         _line.insert(_caret++, 1, typed);
   }
 
-  // As a shell takes a paste: each break sends the line typed so far.
+  // As a shell takes a paste: each break sends the line typed so far; a search takes its
+  // first line alone, as it sends nothing.
   void paste(VP::Cook &frame, std::string_view text) {
+    if (_finding || _finder)
+      return type(text.substr(0, text.find('\n')));
     for (std::size_t end = text.find('\n'); end != std::string_view::npos;
          end = text.find('\n')) {
       type(text.substr(0, end));
@@ -847,6 +876,133 @@ class CommandLine final : public VP::Operator {
             .role = VP_VIEW::role("accent")};
   }
 
+  // The keys a search takes: enter and control+f find its words again, and escape ends
+  // it; tab, up and down do nothing, as nothing completes or recalls a search. Whether it
+  // took the key; the rest edit the words.
+  bool finds(VP::Cook &frame, std::string_view key) {
+    if (key == "enter" || (_control && key == "f")) {
+      if (_line.find_first_not_of(' ') == std::string::npos)
+        return true;
+      if (_finder)
+        _answer = frame.commands().send(std::format("{}: find {}", _own_view, _line));
+      else
+        find_above();
+    } else if (key == "escape") {
+      if (_finder) {
+        _open = false;
+        frame.commands().send(std::format("{}: focus {}", _own_view, _host));
+      } else {
+        _finding = false;
+        _words = std::exchange(_line, std::exchange(_set_aside, {}));
+        _caret = _line.size();
+      }
+    } else {
+      return key == "tab" || key == "up" || key == "down";
+    }
+    return true;
+  }
+
+  // The words in the rows above, from the match found last up to the oldest row, then on
+  // from the newest down to it, as a shell's search goes back in time: the match is
+  // selected, and scrolled to.
+  void find_above() {
+    const std::size_t rows = _scrollback.size();
+    if (rows == 0)
+      return;
+    if (_found && _found->row < _dropped) // dropped with the oldest rows since
+      _found.reset();
+    const std::size_t start = _found ? _found->row - _dropped : rows;
+    for (std::size_t step = 0; step <= rows; ++step) {
+      const std::size_t index = (start + 2 * rows - step - (_found ? 0 : 1)) % rows;
+      const std::string &text = _scrollback[index].text;
+      const bool first = step == 0 && _found;
+      const std::size_t at =
+          first ? (_found->column == 0 ? std::string::npos
+                                       : text.rfind(_line, _found->column - 1))
+                : text.rfind(_line);
+      if (at == std::string::npos || (step == rows && _found && at < _found->column))
+        continue;
+      _found = Mark{_dropped + index, at};
+      _anchor = *_found;
+      _end = {_found->row, at + _line.size()};
+      _scroll.show(index);
+      _columns.show(at);
+      return;
+    }
+  }
+
+  // Control+f in its host opens it, taking the focus; open, it takes its own keys, and
+  // its row leaves the host the rest of its area.
+  void find_bar(VP::Cook &frame) {
+    if (_typed->focus != _host)
+      _host_control = false;
+    for (const VP::Event &event : _typed->to(_host))
+      if (event.kind == VP::Event::Kind::key && event.name == "control")
+        _host_control = event.down;
+      else if (event.kind == VP::Event::Kind::key && event.down && event.name == "f" &&
+               _host_control) {
+        _open = true;
+        _answer.clear();
+        frame.commands().send(std::format("{}: focus {}", _own_view, _name));
+      }
+    if (!focused())
+      _control = false;
+    if (_open)
+      for (const VP::Event &event : _typed->to(_name)) {
+        if (event.kind == VP::Event::Kind::text)
+          _answer.clear();
+        edit(frame, event);
+      }
+    lay_out_bar(frame);
+  }
+
+  // Open, a row at the top of its area, ruled off below: the prompt and the words, the
+  // caret in focus, and what the last find answered, muted, after them; closed, none.
+  void lay_out_bar(VP::Cook &frame) {
+    const glm::ivec2 cell(_font->cell);
+    const std::int32_t height =
+        _open && cell.y > 0
+            ? std::min(cell.y + 2 * margin, static_cast<std::int32_t>(_area->extent.y))
+            : 0;
+    *_rest = {.offset = _area->offset + glm::ivec2(0, height),
+              .extent = _area->extent - glm::uvec2(0, static_cast<std::uint32_t>(height))};
+    const auto start = static_cast<std::int32_t>(find_prompt.size());
+    const std::int32_t columns =
+        cell.x == 0 ? 0 : (static_cast<std::int32_t>(_area->extent.x) - 2 * margin) / cell.x;
+    if (height < cell.y + 2 * margin || columns <= start) {
+      frame.write(_rects, 0);
+      frame.write(_labels, 0);
+      frame.write(_characters, 0);
+      return;
+    }
+    const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
+    rects[0] = {.offset = _area->offset,
+                .extent = {_area->extent.x, static_cast<std::uint32_t>(height)},
+                .role = VP_VIEW::role("panel")};
+    rects[1] = {.offset = _area->offset + glm::ivec2(0, height - 1),
+                .extent = {_area->extent.x, rule_width},
+                .role = VP_VIEW::role("border")};
+    std::uint32_t count = 2;
+    Labels text{frame.write(_labels), frame.write(_characters)};
+    const glm::ivec2 at = _area->offset + glm::ivec2(margin, margin);
+    const VP_VIEW::Rect caret =
+        lay_out_line(text, find_prompt, at.x, columns - start, cell, at.y);
+    // Two blanks past the words, as much of its first line as the row holds.
+    if (const auto past = start + static_cast<std::int32_t>(_line.size()) + 2;
+        !_answer.empty() && past < columns)
+      text.add({.offset = at + glm::ivec2(past * cell.x, 0),
+                .extent = glm::uvec2(static_cast<std::uint32_t>((columns - past) * cell.x),
+                                     cell.y),
+                .role = VP_VIEW::role("muted")},
+               lines_of(_answer).front().substr(0, static_cast<std::size_t>(columns - past)));
+    const bool typed = !_typed->to(_name).empty();
+    if (focused() && _blink.shows(frame.index(), caret.offset, typed))
+      rects[count++] = caret;
+    frame.write(_rects, count);
+    frame.write(_labels, text.label_count);
+    frame.write(_characters, text.character_count);
+  }
+
   void command(VP::Call &call) override {
     if (call.is(_help))
       help(call);
@@ -988,6 +1144,22 @@ class CommandLine final : public VP::Operator {
   std::size_t _first = 0; // the first character of the line shown
   std::vector<std::string> _history;
   std::size_t _recalled = 0; // the line recalled; past the history for a new one
+  // A search: whether the line is one, the line typed it set aside, the words searched
+  // for last, and where they were found last, which the next find goes on from.
+  bool _finding = false;
+  std::string _set_aside;
+  std::string _words;
+  std::optional<Mark> _found;
+  // As a find bar: the node whose control+f opens it, held as its keys say, the view its
+  // lines go to, whether it is open, what the last find answered, and the Rect it leaves
+  // the host.
+  bool _finder = false;
+  std::string _host;
+  bool _host_control = false;
+  std::string _own_view;
+  bool _open = false;
+  std::string _answer;
+  VP_VIEW::Rect *_rest = nullptr;
 };
 
 } // namespace

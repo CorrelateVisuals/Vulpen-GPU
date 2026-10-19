@@ -75,6 +75,11 @@ param  = split.ratio=0.5
 
 # Each content is listed before its panel, so the panel's strip draws over it, as a
 # tab's name cut short shows whole below the tab, over the content.
+# Over the editor, a row to find in it, which control+f in the editor opens.
+[node "ide.editor-find"]
+recipe = find-bar
+param  = command-line.host=ide.editor.text
+
 [node "ide.editor"]
 recipe = text-area
 
@@ -189,6 +194,11 @@ to   = ide.editor-panel.bar.area
 
 [connection "editor-area"]
 from = ide.editor-panel.bar.rest
+to   = ide.editor-find.command-line.area
+
+# What the find bar leaves the editor, all of it while it is closed.
+[connection "editor-rest"]
+from = ide.editor-find.command-line.rest
 to   = ide.editor.text.area
 
 # A tab a file open; a press on one shows it.
@@ -246,6 +256,7 @@ to   = ide.terminal-panel.hit.items
 [connection "typed"]
 from = ide.keys.typed
 to   = ide.editor.text.typed
+to   = ide.editor-find.command-line.typed
 to   = ide.terminal.command-line.typed
 to   = ide.graph.graph.typed
 to   = ide.perform.typed
@@ -261,6 +272,8 @@ to   = ide.editor-panel.rects.palette
 to   = ide.editor-panel.glyphs.palette
 to   = ide.editor.rects.palette
 to   = ide.editor.glyphs.palette
+to   = ide.editor-find.rects.palette
+to   = ide.editor-find.glyphs.palette
 to   = ide.graph-panel.rects.palette
 to   = ide.graph-panel.glyphs.palette
 to   = ide.graph.graph.palette
@@ -290,6 +303,7 @@ to   = ide.docking-glyphs.palette
 from = ide.font.font
 to   = ide.editor-panel.glyphs.font
 to   = ide.editor.glyphs.font
+to   = ide.editor-find.glyphs.font
 to   = ide.graph-panel.glyphs.font
 to   = ide.graph.glyphs.font
 to   = ide.graph.button-glyphs.font
@@ -306,6 +320,7 @@ to   = ide.docking-glyphs.font
 from = ide.font.atlas
 to   = ide.editor-panel.glyphs.atlas
 to   = ide.editor.glyphs.atlas
+to   = ide.editor-find.glyphs.atlas
 to   = ide.graph-panel.glyphs.atlas
 to   = ide.graph.glyphs.atlas
 to   = ide.graph.button-glyphs.atlas
@@ -323,6 +338,7 @@ from = ide.font.metrics
 to   = ide.editor-panel.bar.font
 to   = ide.editor-panel.tabs.font
 to   = ide.editor.text.font
+to   = ide.editor-find.command-line.font
 to   = ide.graph-panel.bar.font
 to   = ide.graph-panel.tabs.font
 to   = ide.graph.bar.font

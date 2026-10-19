@@ -1,2 +1,34 @@
 # The find-bar component: a command-line whose lines are find commands to its host's text,
 # with rects and glyphs. Its own component, so a text area without find carries none of it.
+# Control+f in the text its command-line's host param names opens it, a row at the top of
+# the Rect its host connects to its command-line's area, and its command-line hands the
+# text the rest; enter and control+f send find with the words typed, as the editors'
+# owner answers it, and escape closes it, handing the focus back. Its host connects a
+# palette to its rects and glyphs, a font to its glyphs and its command-line, and the keys
+# part's typed to its command-line.
+[manifest]
+version = 1
+
+[node "find-bar"]
+
+[node "find-bar.command-line"]
+recipe = command-line
+param  = on=find
+
+[node "find-bar.rects"]
+recipe = rects
+
+[node "find-bar.glyphs"]
+recipe = glyphs
+
+[connection "rects"]
+from = find-bar.command-line.rects
+to   = find-bar.rects.rects
+
+[connection "labels"]
+from = find-bar.command-line.labels
+to   = find-bar.glyphs.labels
+
+[connection "characters"]
+from = find-bar.command-line.characters
+to   = find-bar.glyphs.characters
