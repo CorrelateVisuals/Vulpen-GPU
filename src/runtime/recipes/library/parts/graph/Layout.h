@@ -60,12 +60,15 @@ struct Placed {
 // A piece of a curve at one level, the box holding both its ends there or the top: from
 // the box inside the level holding its writer to the one holding its reader, or from the
 // level's left edge, where it enters the level's box, or to its right edge, where it
-// leaves it. Back when it runs against the columns, as one closing a cycle does.
+// leaves it; or, where the level's box is an end itself, from the bottom of its rows, or
+// to it, so the curve stays inside it. Back when it runs against the columns, as one
+// closing a cycle does.
 struct Leg {
   std::size_t end = 0;
   std::size_t level = no_box;
-  std::size_t writer = no_box; // no_box: the level's left edge
-  std::size_t reader = no_box; // no_box: the level's right edge
+  std::size_t writer = no_box; // no_box: the level's left edge, or its rows
+  std::size_t reader = no_box; // no_box: the level's right edge, or its rows
+  bool rows = false;           // the level's box is the end no_box stands for
   bool back = false;
   // The gap it turns in after its writer, a gap before each column and one after the
   // last, and the one before its reader, the same where it turns once.
@@ -184,6 +187,12 @@ public:
     return {name_margin * static_cast<std::int32_t>(cell.x), _placed[box].inside};
   }
 
+  // Where a box's rows end, from its top: its name and the rows it lists, a pad above
+  // and below them.
+  static std::int32_t rows_end(const Boxes &boxes, std::size_t box, glm::uvec2 cell) {
+    return static_cast<std::int32_t>((1 + boxes.boxes[box].rows) * cell.y) + 2 * pad;
+  }
+
 private:
   std::vector<std::size_t> &children(std::size_t box) {
     return _children[box == no_box ? _children.size() - 1 : box];
@@ -191,16 +200,20 @@ private:
 
   // Each end's legs in the order it runs: out of each box holding its writer, up to the
   // box holding both ends, across it, and into each box holding its reader. An end whose
-  // writer holds its reader, or the other way round, has none, and bends from port to
-  // port. Then which legs between two boxes run against the columns: a depth-first walk
-  // from each box in turn finds those leading back to a box it is still walking from.
+  // writer holds its reader leaves the bottom of the writer's rows, inside it, and into
+  // each box holding the reader, and one whose reader holds its writer, the other way
+  // round, so neither runs out of the box and back. Then which legs between two boxes run
+  // against the columns: a depth-first walk from each box in turn finds those leading
+  // back to a box it is still walking from.
   void legs(const Boxes &boxes) {
     _legs.clear();
     for (std::size_t end = 0; end < boxes.ends.size(); ++end) {
       const End &ends = boxes.ends[end];
       const auto [writer, reader] = siblings(boxes, ends.from, ends.to);
-      if (writer == no_box)
+      if (writer == no_box) {
+        held(boxes, end);
         continue;
+      }
       for (std::size_t box = ends.from; box != writer; box = boxes.boxes[box].parent)
         _legs.push_back({.end = end, .level = boxes.boxes[box].parent, .writer = box});
       _legs.push_back({.end = end,
@@ -216,6 +229,34 @@ private:
     for (std::size_t box = 0; box < boxes.boxes.size(); ++box)
       if (_walked[box] == Walk::not_yet)
         walk(box);
+  }
+
+  // The legs of an end whose writer holds its reader, or the other way round: from the
+  // bottom of the holder's rows at its level, or to it, and through each box between.
+  void held(const Boxes &boxes, std::size_t end) {
+    const End &ends = boxes.ends[end];
+    const auto inside = [&](std::size_t box, std::size_t holder) {
+      for (std::size_t up = boxes.boxes[box].parent; up != no_box; up = boxes.boxes[up].parent)
+        if (up == holder)
+          return true;
+      return false;
+    };
+    const bool down = inside(ends.to, ends.from);
+    if (!down && !inside(ends.from, ends.to))
+      return;
+    const auto into = static_cast<std::ptrdiff_t>(_legs.size());
+    const std::size_t holder = down ? ends.from : ends.to;
+    for (std::size_t box = down ? ends.to : ends.from; box != holder;
+         box = boxes.boxes[box].parent) {
+      const std::size_t level = boxes.boxes[box].parent;
+      _legs.push_back({.end = end,
+                       .level = level,
+                       .writer = down ? no_box : box,
+                       .reader = down ? box : no_box,
+                       .rows = level == holder});
+    }
+    if (down)
+      std::reverse(_legs.begin() + into, _legs.end());
   }
 
   // The boxes holding a writer and a reader inside the box holding both, or the top; none
@@ -263,11 +304,10 @@ private:
       widest = std::max(widest,
                         row.text.size() + row.written.size() +
                             (row.text.empty() || row.written.empty() ? 0 : 1));
-    const auto rows = static_cast<std::int32_t>(1 + boxes.boxes[box].rows);
     const std::int32_t apart = inner.empty() ? 0 : static_cast<std::int32_t>(cell.y) / 2;
     // Known before the boxes inside it are placed, as where a curve crosses its edge is
     // from its top.
-    _placed[box].inside = rows * static_cast<std::int32_t>(cell.y) + 2 * pad + apart;
+    _placed[box].inside = rows_end(boxes, box, cell) + apart;
     const glm::ivec2 room =
         inner.empty() ? glm::ivec2(0) : columns(boxes, box, inner, arranged, cell);
     Placed &placed = _placed[box];
@@ -537,8 +577,14 @@ private:
     for (Leg &leg : _legs) {
       if (leg.level != level)
         continue;
-      leg.out = leg.writer == no_box ? 0 : _placed[leg.writer].column + 1;
-      leg.in = leg.reader == no_box ? count : _placed[leg.reader].column;
+      // From the level's rows, down the gap before its reader; to them, up the gap after
+      // its writer.
+      leg.out = leg.writer != no_box ? _placed[leg.writer].column + 1
+                : leg.rows           ? _placed[leg.reader].column
+                                     : 0;
+      leg.in = leg.reader != no_box ? _placed[leg.reader].column
+               : leg.rows           ? leg.out
+                                    : count;
       const std::size_t wire = boxes.ends[leg.end].wire;
       auto found = std::ranges::find(_wires, wire, &Wire::wire);
       if (found == _wires.end())
@@ -587,7 +633,8 @@ private:
   // it leaves.
   void cross(const Boxes &boxes, std::size_t level, glm::uvec2 cell) {
     for (const Leg &leg : _legs) {
-      if (leg.level != level || (leg.writer != no_box && leg.reader != no_box))
+      if (leg.level != level || leg.rows ||
+          (leg.writer != no_box && leg.reader != no_box))
         continue;
       const std::size_t wire = boxes.ends[leg.end].wire;
       const bool out = leg.reader == no_box;
@@ -724,6 +771,8 @@ private:
   float y_on(const Boxes &boxes, const Leg &leg, bool writes, glm::uvec2 cell) const {
     const End &end = boxes.ends[leg.end];
     const std::size_t box = writes ? leg.writer : leg.reader;
+    if (box == no_box && leg.rows)
+      return static_cast<float>(rows_end(boxes, leg.level, cell) - _placed[leg.level].inside);
     if (box == no_box)
       return crossing_at(leg.level, end.wire, !writes) -
              static_cast<float>(_placed[leg.level].inside);
@@ -768,8 +817,6 @@ private:
 
   // A leg's waypoints, through its level's lanes and along its track.
   void way(const Boxes &boxes, const Leg &leg, glm::uvec2 cell, std::size_t first) {
-    const glm::vec2 from = point_of(boxes, leg, true, cell);
-    const glm::vec2 to = point_of(boxes, leg, false, cell);
     const std::size_t wire = boxes.ends[leg.end].wire;
     const glm::vec2 origin =
         leg.level == no_box
@@ -778,6 +825,14 @@ private:
     const auto across = [&](std::size_t gap) {
       return origin.x + lane_at(leg.level, wire, gap);
     };
+    // Where it leaves the level's rows, or reaches them, in its lane.
+    const auto rows_at = [&](std::size_t gap) {
+      return glm::vec2(across(gap), origin.y + y_on(boxes, leg, leg.writer == no_box, cell));
+    };
+    const glm::vec2 from = leg.rows && leg.writer == no_box ? rows_at(leg.out)
+                                                            : point_of(boxes, leg, true, cell);
+    const glm::vec2 to = leg.rows && leg.reader == no_box ? rows_at(leg.in)
+                                                          : point_of(boxes, leg, false, cell);
     add({.at = from}, first);
     if (leg.out == leg.in && from.y != to.y) {
       add({.at = {across(leg.out), from.y}}, first);

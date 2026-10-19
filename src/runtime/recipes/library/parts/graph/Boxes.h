@@ -275,13 +275,15 @@ void connect(Boxes &boxes, Building &building, const VP::View &flat) {
 }
 
 // The boxes showing a path: a file's box, or each box showing a node whose folder holds
-// it, the deepest such folder's, as two nodes using one recipe share its folder; none
-// for a path no box shows.
+// it, the deepest such folder's, as two nodes using one recipe share its folder; of a
+// folder's, a folder named is its own, as a CMake word naming src/external-libraries
+// names that folder's box, not the one holding it. None for a path no box shows.
 std::vector<std::size_t> boxes_showing(const Building &building, std::string_view path) {
   std::vector<std::size_t> showing;
   if (const auto file = building.file_boxes.find(path); file != building.file_boxes.end())
     return {file->second};
-  for (std::filesystem::path folder = std::filesystem::path(path).parent_path();
+  const std::filesystem::path named(path);
+  for (std::filesystem::path folder = building.folders ? named : named.parent_path();
        showing.empty() && folder.has_relative_path(); folder = folder.parent_path()) {
     const auto [first, last] = building.nodes_in.equal_range(folder.generic_string());
     for (auto node = first; node != last; ++node)

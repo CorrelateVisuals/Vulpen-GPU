@@ -102,7 +102,9 @@ std::string resolved(Listed &listed,
   if (name.empty())
     return {};
   for (std::filesystem::path from = folder;; from = from.parent_path()) {
-    const std::filesystem::path path = (from / std::string(name)).lexically_normal();
+    std::filesystem::path path = (from / std::string(name)).lexically_normal();
+    if (!path.has_filename()) // a/b/.. is a/, the folder a
+      path = path.parent_path();
     if (listed.there(path))
       return path.generic_string();
     if (!climbs || from == from.parent_path())
