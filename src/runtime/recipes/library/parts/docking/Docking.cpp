@@ -66,6 +66,7 @@ constexpr float even = 0.5f;      // a moved dock's ratio: half its place for ea
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 constexpr std::int32_t ring = 2;  // how wide the frame where a drop puts a panel is
 constexpr std::uint32_t frame_rects = 4;
+constexpr std::uint32_t rect_room = 1 + frame_rects; // a divider, then a drop's frame
 // A panel's close mark, in the cells at the end of its tab strip that its tabs leave
 // free, as the panel component's list param end does, which a press hides the panel by.
 constexpr std::uint32_t close_cells = 2;
@@ -79,6 +80,15 @@ struct Seated {
   VP_VIEW::Rect area;
   VP_VIEW::Rect strip;
   std::size_t listed = 0;
+};
+
+// The bar the docking part's area is the rest of, as the menubar's, when a seam parts its
+// strip from that rest: where the seam is, which a drag hides the bar by and shows it
+// again, the bar's size now, in rows, and the size it shows at.
+struct Divider {
+  std::string bar;
+  VP_VIEW::Rect seam;
+  std::uint32_t size = 0;
 };
 
 // The dock's split seating a node, by the node its area endpoint names, as ide.top.split
@@ -262,7 +272,10 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // frames where a drop would put the panel dragged. Of an editor holding several files,
 // as the editors its host connects say, the file it shows moves: into a new editor, or
 // into the editor in the target's middle. At the end of each strip it draws a close
-// mark, whose press hides the panel, as its button does.
+// mark, whose press hides the panel, as its button does. Where the bar its area is the
+// rest of parts its strip from it by a seam, as the menubar's, it draws that seam as a
+// divider: a drag on it up past the middle of the strip hides the bar, its size 0, and
+// down past it shows it again, at the size it had, the strip's size never changing.
 class Docking final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::vector<VP::Connection> &connections = node.view().connections;
@@ -291,7 +304,7 @@ class Docking final : public VP::Operator {
     _view = node.view_name();
     _area = &node.input<VP_VIEW::Rect>("area");
     _font = &node.input<VP_VIEW::Font>("font");
-    _rects = node.upload<VP_VIEW::Rect>("rects", frame_rects);
+    _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
     _labels = node.upload<VP_VIEW::Label>("labels", close_room);
     _characters = node.upload<VP_VIEW::Character>("characters", close_room);
     _laid_out.reset(); // a rebuild may have moved every panel
@@ -302,15 +315,75 @@ class Docking final : public VP::Operator {
     if (const Laid laid{_area->offset, _area->extent, cell}; _laid_out != laid) {
       _laid_out = laid;
       seat_all(frame.view(), cell);
+      find_divider(frame.view());
     }
     for (const VP::Event &event : frame.input().events())
       follow(frame, event, cell);
-    const auto drop = dropped();
-    frame.write(_rects,
-                drop ? ring_round(frame.write(_rects),
-                                  half_at(_seated[drop->first].area, drop->second))
-                     : 0);
+    const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
+    std::uint32_t written = 0;
+    if (_divider && _divider->seam.extent.x != 0)
+      rects[written++] = divider_at(cell);
+    if (const auto drop = dropped())
+      written += ring_round(rects.subspan(written),
+                            half_at(_seated[drop->first].area, drop->second));
+    frame.write(_rects, written);
     write_marks(frame, cell);
+  }
+
+  // The bar its area is the rest of, when that bar parts its strip from the rest by a
+  // seam: the seam, just above the area, its size, and the size it showed at last; from
+  // the view as it runs, the bar's own node holding its params.
+  void find_divider(const VP::View &view) {
+    _divider.reset();
+    const VP::Connection *const root = feeding(view, _name);
+    if (!root || root->from.port != rest_port || !root->from.node.ends_with(bar_node))
+      return;
+    const auto node = std::ranges::find(view.nodes, root->from.node, &VP::Node::name);
+    if (node == view.nodes.end() || param_of(*node, "seam") != "yes")
+      return;
+    const std::string_view size = param_of(*node, "size");
+    _divider = Divider{
+        .bar = root->from.node,
+        .seam = {.offset = _area->offset - glm::ivec2(0, seam_width),
+                 .extent = {_area->extent.x,
+                            _area->extent.x == 0 ? 0u
+                                                 : static_cast<std::uint32_t>(seam_width)}},
+        .size = size.empty() ? 1u : number<std::uint32_t>(size)};
+    if (_divider->size != 0)
+      _shown_size = _divider->size;
+  }
+
+  // The divider, in the border's role, or the accent's under the pointer and while it is
+  // dragged, which it follows, between the bar's top and where the strip ends shown.
+  VP_VIEW::Rect divider_at(glm::uvec2 cell) const {
+    VP_VIEW::Rect seam = _divider->seam;
+    if (_dividing) {
+      const std::int32_t top = seam.offset.y - strip_length(_divider->size, cell);
+      seam.offset.y = std::clamp(static_cast<std::int32_t>(_pointer.y) - seam_width / 2,
+                                 top,
+                                 top + strip_length(_shown_size, cell));
+    }
+    seam.role = _dividing || VP_VIEW::contains(seam, _pointer) ? VP_VIEW::role("accent")
+                                                                : VP_VIEW::role("border");
+    return seam;
+  }
+
+  // How long a bar's strip of so many rows is, as the bar lays it out.
+  static std::int32_t strip_length(std::uint32_t rows, glm::uvec2 cell) {
+    return static_cast<std::int32_t>(bar_length(rows, cell.y, ~0u));
+  }
+
+  // Let go above the middle of the strip shown, the bar hides; below it, it shows.
+  void let_go_divider(VP::Cook &frame, glm::uvec2 cell) {
+    _dividing = false;
+    const std::int32_t top = _divider->seam.offset.y - strip_length(_divider->size, cell);
+    const std::uint32_t wanted =
+        _pointer.y < static_cast<float>(top + strip_length(_shown_size, cell) / 2)
+            ? 0
+            : _shown_size;
+    if (wanted != _divider->size)
+      frame.commands().send(
+          std::format("{}: param set {} size {}", _view, _divider->bar, wanted));
   }
 
   // Where a panel's close mark is: the cells at the end of its strip; none while the
@@ -414,7 +487,12 @@ class Docking final : public VP::Operator {
       const auto closing = std::ranges::find_if(_seated, [&](const Seated &seated) {
         return VP_VIEW::contains(close_of(seated, cell), _pointer);
       });
-      if (event.down && closing != _seated.end()) {
+      if (event.down && _divider && VP_VIEW::contains(_divider->seam, _pointer)) {
+        _dividing = true;
+        _grabbed.reset();
+      } else if (!event.down && _dividing) {
+        let_go_divider(frame, cell);
+      } else if (event.down && closing != _seated.end()) {
         frame.commands().send(std::format("{}: panel hide {}", _view, closing->panel));
         _grabbed.reset();
       } else if (event.down) {
@@ -455,7 +533,7 @@ class Docking final : public VP::Operator {
     return std::nullopt;
   }
 
-  // A frame round a Rect, ring pixels wide, inside it.
+  // A frame round a Rect, ring pixels wide, inside it. Returns how many Rects it took.
   static std::uint32_t ring_round(std::span<VP_VIEW::Rect> rects,
                                   const VP_VIEW::Rect &at) {
     const glm::ivec2 low = at.offset;
@@ -922,6 +1000,9 @@ class Docking final : public VP::Operator {
     bool operator==(const Laid &) const = default;
   };
   std::optional<Laid> _laid_out;
+  std::optional<Divider> _divider; // the bar above the area, when a seam parts it from it
+  std::uint32_t _shown_size = 1;   // the bar's size while it showed last, in rows
+  bool _dividing = false;          // its divider was pressed, and is not let go yet
   glm::vec2 _pointer{};
   glm::vec2 _from{};                   // where the press that grabbed a panel was
   std::optional<std::size_t> _grabbed; // the panel whose strip was pressed
