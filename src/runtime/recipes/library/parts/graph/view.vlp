@@ -8,7 +8,8 @@
 # zooming into it sets. A press selects a box, which select, selected and delete reach as
 # lines do, and the keys its typed hands on while it has the focus delete what is
 # selected. Its heat param, gpu or cpu, fills each box by what its node costs a frame;
-# its manhattan param, no, draws each curve straight from end to end, not in its lanes.
+# its manhattan param, no, draws each curve straight from end to end, not in its lanes;
+# its shows param names the panel a file a second press opens shows in, which it shows.
 [manifest]
 version = 1
 

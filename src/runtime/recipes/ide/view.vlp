@@ -84,6 +84,7 @@ recipe = panel
 # The graph of the view the terminal's lines go to, under a tab naming it.
 [node "ide.graph"]
 recipe = graph-editor
+param  = graph.shows=ide.editor-panel
 
 [node "ide.graph-panel"]
 recipe = panel

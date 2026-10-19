@@ -197,6 +197,7 @@ private:
   // The node whose inside the graph shows, in the view shown; with none, or one that view
   // does not hold, the top.
   std::string _inside;
+  std::string _shows; // the panel a file a press opens shows in, as its shows param names it
   VP::Command _select;
   VP::Command _selected;
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on

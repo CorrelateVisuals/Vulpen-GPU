@@ -123,6 +123,14 @@ std::optional<std::string> host_of(VP::Cook &frame, std::string_view name) {
   return std::nullopt;
 }
 
+// Whether a path names a folder, as its folder lists it with a / after its name, as the
+// editor part tells one, which open hands the graph rather than the editor.
+bool folder_named(VP::FilePort &files, const std::filesystem::path &path) {
+  const std::vector<std::string> names = files.list(path.parent_path().string());
+  return path.filename().empty() ||
+         std::ranges::find(names, path.filename().string() + '/') != names.end();
+}
+
 // The view vulpen hosts whose folder this is, by the name lines address it with, empty
 // for the one vulpen started with; none for a folder no view is.
 std::optional<std::string> view_in(VP::Cook &frame, const std::filesystem::path &folder) {
@@ -153,6 +161,7 @@ void Graph::bind(VP::Bind &node) {
   _name = node.name();
   _view = node.view_name();
   _inside = node.sets("inside") ? node.param<std::string>("inside") : std::string();
+  _shows = node.sets("shows") ? node.param<std::string>("shows") : std::string();
   _relations = &node.input<VP_VIEW::Relations>("relations");
   _layers = node.sets("relations") ? layers_of(node.param<std::string>("relations"))
                                    : every_layer;
@@ -769,16 +778,20 @@ void Graph::release(VP::Cook &frame, bool room) {
 // file, from its folder in the view or the library, the manifest of the recipe a node
 // uses, that of a view where it is hosted from, a file's own box, or a row of what lies
 // outside naming what a relation reaches, a folder showing in the graph; a box's name and
-// its ports open none. Whether one was opened.
+// its ports open none. Whether one was opened. A file goes on to the panel its shows param
+// names, which shows again if it was hidden, as a person who opens a file looks at it.
 bool Graph::open(VP::Cook &frame, std::size_t at) {
   const std::size_t row = row_under(at);
   const std::filesystem::path opened =
       row == title_row ? _boxes.boxes[at].opens
                        : (row < _boxes.boxes[at].rows ? rows_in(_boxes, at)[row].opens
                                                       : std::filesystem::path());
-  if (!opened.empty())
-    frame.commands().send(std::format("open {}", opened.generic_string()));
-  return !opened.empty();
+  if (opened.empty())
+    return false;
+  frame.commands().send(std::format("open {}", opened.generic_string()));
+  if (!_shows.empty() && !folder_named(frame.files(), opened))
+    frame.commands().send(std::format("{}: panel show {}", _view, _shows));
+  return true;
 }
 
 // The row of a box under the pointer, among its rows; title_row for its name's, more_row
