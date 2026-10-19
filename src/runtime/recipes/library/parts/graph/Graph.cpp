@@ -163,6 +163,8 @@ void Graph::bind(VP::Bind &node) {
   _heating.heat = node.sets("heat") ? heat_of(node.param<std::string>("heat")) : Heat{};
   heat_buttons(*_buttons, _heating.heat, _view, _name);
   _heating.stale();
+  _manhattan = !node.sets("manhattan") || manhattan_of(node.param<std::string>("manhattan"));
+  manhattan_button(*_buttons, _manhattan, _view, _name);
   _select = node.command("select [<node>...]",
                          "selects nodes of the view the graph shows, views it hosts, or "
                          "files and folders it shows, in place of those selected; with "
@@ -1235,9 +1237,10 @@ void Graph::write_row(glm::vec2 at,
 // quarter circle as wide as half a lane, so two lanes side by side turn apart, or less
 // where a line is too short for it; and where it bends, from one to the next with its
 // handles reaching half the way across, and at least least_reach, so one running back to
-// the left still bends round. A curve goes whole, even with an end out of view: the
-// curves part cuts it at the area's edge, which the ground hands it, so a curve to a box
-// dragged out runs to the edge.
+// the left still bends round; or, as the manhattan param asks, straight from its first
+// waypoint to its last. A curve goes whole, even with an end out of view: the curves part
+// cuts it at the area's edge, which the ground hands it, so a curve to a box dragged out
+// runs to the edge.
 void Graph::write_curves(VP::Cook &frame) {
   const std::span<VP_VIEW::Curve> curves = frame.write(_curves);
   std::uint32_t written = 0;
@@ -1261,6 +1264,12 @@ void Graph::write_curves(VP::Cook &frame) {
     role = over ? VP_VIEW::role("text")
                 : layer_roles[static_cast<std::size_t>(_boxes.ends[end].layer)];
     const std::span<const Waypoint> way = waypoints.subspan(route.first, route.count);
+    if (!_manhattan && way.size() > 1) {
+      const glm::vec2 from = on_screen(way.front().at);
+      const glm::vec2 to = on_screen(way.back().at);
+      add(from, to, (to - from) / 3.0f, (to - from) / 3.0f);
+      continue;
+    }
     for (std::size_t at = 0; at + 1 < way.size(); ++at) {
       const glm::vec2 from = on_screen(way[at].at);
       const glm::vec2 to = on_screen(way[at + 1].at);
@@ -1291,6 +1300,7 @@ void Graph::curves_under(glm::vec2 point) {
     return;
   curves_near(_layout.routes(),
               _layout.waypoints(),
+              _manhattan,
               _pan_zoom,
               glm::vec2(_area->offset),
               point,

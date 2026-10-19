@@ -219,13 +219,14 @@ void tell_cost(VP_VIEW::Items &tip, std::string_view title, const Weight &weight
                                         weight.gpu_last)});
 }
 
-// A button a kind of cost after the layers', lit while the boxes show it, whose press
-// shows it, or while it shows, none, as the param a save keeps and a replay restores
-// (V08).
+// After a divider, a button a kind of cost, the two a switch, as edit and run, lit while
+// the boxes show it, whose press shows it, or while it shows, none, as the param a save
+// keeps and a replay restores (V08).
 void heat_buttons(VP_VIEW::Items &items,
                   Heat heat,
                   std::string_view view,
                   std::string_view node) {
+  items.push_back({});
   for (std::size_t on = 0; on < heat_names.size(); ++on) {
     const bool lit = heat.on == static_cast<Heat::On>(on + 1);
     items.push_back({.label = std::string(heat_names[on]),
@@ -234,7 +235,8 @@ void heat_buttons(VP_VIEW::Items &items,
                                                   view,
                                                   node,
                                                   heat_names[on]),
-                     .current = lit});
+                     .current = lit,
+                     .toggles = true});
   }
 }
 

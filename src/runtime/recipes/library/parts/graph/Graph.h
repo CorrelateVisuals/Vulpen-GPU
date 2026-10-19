@@ -206,7 +206,8 @@ private:
   VP::Upload<VP_VIEW::Character> _characters;
   VP::Upload<VP_VIEW::Curve> _curves;
   VP_VIEW::Items *_tabs = nullptr;
-  VP_VIEW::Items *_buttons = nullptr; // a layer each, along the graph's bottom edge
+  // A layer each, a kind of cost each and manhattan, along the graph's bottom edge.
+  VP_VIEW::Items *_buttons = nullptr;
   // The details of the curves under the pointer, a row an Item, and where they show.
   VP_VIEW::Items *_tip = nullptr;
   VP_VIEW::Rect *_tip_place = nullptr;
@@ -216,6 +217,7 @@ private:
   Heating _heating; // what the boxes show the cost of, and what each costs this frame
   std::filesystem::path _base; // where the paths of the boxes built are named from
   Shown _layers = every_layer;        // as its relations param names them
+  bool _manhattan = true; // the curves turn in their lanes, as its manhattan param says
   std::string _shown; // the view the tab names; empty for the one vulpen started with
   // The boxes of the view shown, built again only when the views they were built from
   // change, which each edit replaces, and laid out again only then, as the font's cell

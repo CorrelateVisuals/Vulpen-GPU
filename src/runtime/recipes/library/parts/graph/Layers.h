@@ -12,7 +12,8 @@
 
 // Only Graph.cpp includes this header, so what it holds stays in the unnamed namespace of
 // the one file that builds the part, as the class does: which layers of curves the graph
-// shows, as its relations param names them, and the buttons that turn each on and off.
+// shows, as its relations param names them, how it draws them, as its manhattan param
+// says, and the buttons that turn each on and off.
 namespace {
 
 // The layers shown, a bit each, by VP_VIEW::Layer.
@@ -73,6 +74,28 @@ void buttons(VP_VIEW::Items &items, Shown shown, std::string_view view, std::str
                               "{}: param set {} relations {}", view, node, text_of(turned)),
          .current = (shown & (Shown{1} << layer)) != 0});
   }
+}
+
+// Whether the curves turn in their lanes, as the manhattan param says: yes, as when it is
+// unset, or no, each curve straight from end to end (A02).
+bool manhattan_of(std::string_view text) {
+  if (text != "yes" && text != "no")
+    throw std::runtime_error(std::format("param manhattan = {}: yes or no", text));
+  return text == "yes";
+}
+
+// After a divider, the button lit while the curves turn in their lanes, whose press draws
+// them straight, or, while they are, in their lanes again, as the param a save keeps.
+void manhattan_button(VP_VIEW::Items &items,
+                      bool manhattan,
+                      std::string_view view,
+                      std::string_view node) {
+  items.push_back({});
+  items.push_back({.label = "manhattan",
+                   .command = manhattan
+                                  ? std::format("{}: param set {} manhattan no", view, node)
+                                  : std::format("{}: param unset {} manhattan", view, node),
+                   .current = manhattan});
 }
 
 } // namespace

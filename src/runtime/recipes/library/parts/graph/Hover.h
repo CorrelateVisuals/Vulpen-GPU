@@ -49,12 +49,13 @@ float away(glm::vec2 point, glm::vec2 from, glm::vec2 to) {
 }
 
 // The ends whose curves pass within curve_reach pixels of a point on screen, each with
-// how near, measured as drawn: along its lines, and along a bend in pieces; the nearest
-// first, so every curve of a lane the pointer is over, as many share one, is found, not
-// only the one drawn over the others. The graph shows at the area's offset, moved and
-// zoomed.
+// how near, measured as drawn: along its lines, and along a bend in pieces, or, not
+// manhattan, from its first waypoint to its last; the nearest first, so every curve of a
+// lane the pointer is over, as many share one, is found, not only the one drawn over the
+// others. The graph shows at the area's offset, moved and zoomed.
 void curves_near(std::span<const Route> routes,
                  std::span<const Waypoint> waypoints,
+                 bool manhattan,
                  const PanZoom &pan_zoom,
                  glm::vec2 offset,
                  glm::vec2 point,
@@ -64,7 +65,11 @@ void curves_near(std::span<const Route> routes,
     float least = std::numeric_limits<float>::max();
     const std::span<const Waypoint> way =
         waypoints.subspan(routes[end].first, routes[end].count);
-    for (std::size_t at = 0; at + 1 < way.size(); ++at) {
+    if (!manhattan && way.size() > 1)
+      least = away(point,
+                   offset + pan_zoom.on_screen(way.front().at),
+                   offset + pan_zoom.on_screen(way.back().at));
+    for (std::size_t at = 0; manhattan && at + 1 < way.size(); ++at) {
       const glm::vec2 from = offset + pan_zoom.on_screen(way[at].at);
       const glm::vec2 to = offset + pan_zoom.on_screen(way[at + 1].at);
       const glm::vec2 reach = bend_reach(from, to);
