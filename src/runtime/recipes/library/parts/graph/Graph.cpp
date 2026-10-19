@@ -612,7 +612,8 @@ void Graph::grab_corner(VP::Cook &frame, const Under &under) {
                .moving = {{under.box, placed.offset}},
                .corner = under.corner,
                .extent = glm::ivec2(placed.extent),
-               .offset = placed.offset};
+               .offset = placed.offset,
+               .least = glm::ivec2(placed.least)};
 }
 
 // Once the pointer moved a few pixels, so a press that wobbles is still a press. The
@@ -674,30 +675,46 @@ void Graph::grow_frame(const Grab &grab, glm::ivec2 grown) {
 }
 
 // The corner grabbed follows the pointer and the opposite one stays, the box never
-// smaller than its rows and the boxes inside it need, and a size it needs anyway leaves
-// the .ini. A left or a top corner moves the box too, and a box inside the frame pulled
-// past its left or top grows the frame there, as a box dragged there does.
+// smaller than the least any box may be, nor than the boxes inside it, and a size its
+// rows need anyway leaves the .ini. A left or a top corner moves the box too, the boxes
+// inside it staying where they show, so it reaches no further in than the nearest of
+// them; and a box inside the frame pulled past its left or top grows the frame there, as
+// a box dragged there does.
 void Graph::pull(glm::vec2 to) {
   Grab &grab = *_grab;
   const Box &pulled = _boxes.boxes[grab.box];
   const glm::bvec2 corner = *grab.corner;
+  if ((corner.x || corner.y) && !grab.moved)
+    place_all(grab);
   const glm::ivec2 by(glm::round((to - grab.from) / _pan_zoom.zoom));
-  const glm::ivec2 least(_layout.placed()[grab.box].least);
+  // At a left or a top corner, a box holding boxes reaches in as far as the nearest of
+  // them, which stay where they show.
+  glm::ivec2 least = grab.least;
+  std::optional<glm::ivec2> nearest;
+  for (std::size_t inner = 0; inner < grab.started.size(); ++inner)
+    if (_boxes.boxes[inner].parent == grab.box)
+      nearest = glm::min(nearest.value_or(grab.started[inner]), grab.started[inner]);
+  for (const glm::length_t axis : {0, 1})
+    if (corner[axis] && nearest)
+      least[axis] =
+          std::max(least_of(_laid_cell)[axis], grab.extent[axis] - (*nearest)[axis]);
   const glm::ivec2 size = glm::max(
       grab.extent + glm::ivec2(corner.x ? -by.x : by.x, corner.y ? -by.y : by.y), least);
-  if (size == least)
+  if (size == glm::ivec2(_layout.placed()[grab.box].natural))
     _arranged.sizes.erase(pulled.name);
   else
     _arranged.sizes.insert_or_assign(pulled.name, size);
   if (corner.x || corner.y) {
-    if (!grab.moved)
-      place_all(grab);
-    const glm::ivec2 offset =
-        grab.offset + glm::ivec2(corner.x ? grab.extent.x - size.x : 0,
-                                 corner.y ? grab.extent.y - size.y : 0);
+    const glm::ivec2 moved(corner.x ? grab.extent.x - size.x : 0,
+                           corner.y ? grab.extent.y - size.y : 0);
+    const glm::ivec2 offset = grab.offset + moved;
     const glm::ivec2 grown =
         pulled.parent == no_box ? glm::ivec2(0) : glm::max(-offset, glm::ivec2(0));
     _arranged.places.insert_or_assign(pulled.name, offset + grown);
+    for (std::size_t inner = 0; inner < grab.started.size(); ++inner)
+      if (_boxes.boxes[inner].parent == grab.box)
+        _arranged.places.insert_or_assign(_boxes.boxes[inner].name,
+                                          grab.started[inner] - moved);
     grow_frame(grab, grown);
   }
   grab.moved = true;
@@ -1086,10 +1103,15 @@ VP_VIEW::Rect Graph::select_box(glm::vec2 from) const {
 // A box's name a cell in from its left, between its pads, in the role of what the box is,
 // and each row a row below it, in its role: a port read a cell in from the
 // left edge, and one written as far in from the right. Each box in the order drawn, its
-// rows cut at the boxes drawn after it that it lies under.
+// rows cut at the boxes drawn after it that it lies under, and where the box ends, a cell
+// in from its right and above the boxes inside it, a character at a time, as a person
+// makes it smaller: its name losing what it starts with, at a / or a -, after ..., so a
+// path keeps its last names, and a row what it ends with, and a port written, right of
+// the port read on its row, moving no further left than the rows start.
 void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
   Labels written{frame.write(_labels), frame.write(_characters)};
   const auto margin = static_cast<float>(name_margin * cell.x);
+  const auto wide = static_cast<float>(cell.x);
   _covers.clear();
   for (const std::size_t at : _order)
     _covers.push_back(cut(solid(at), *_area));
@@ -1102,26 +1124,47 @@ void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
         _over.push_back(cover);
     const Placed &placed = _layout.placed()[at];
     const glm::vec2 text = glm::vec2(placed.at) + glm::vec2(margin, pad);
+    const glm::ivec2 extent(placed.extent);
+    const glm::vec2 far =
+        glm::vec2(placed.at + glm::ivec2(extent.x, placed.frames ? placed.inside : extent.y));
+    const float end = far.x - margin;
+    const auto room = [&](float right) {
+      return cut(between(on_screen({text.x, static_cast<float>(placed.at.y)}),
+                         on_screen({right, far.y}),
+                         0),
+                 *_area);
+    };
+    fit(_title,
+        _boxes.boxes[at].title,
+        static_cast<std::size_t>(std::max(end - text.x, 0.0f) / wide));
     write_row(on_screen(text),
-              _boxes.boxes[at].title,
+              _title,
               _boxes.boxes[at].role.value_or(VP_VIEW::role("accent")),
               cell,
+              room(end),
               _over,
               written);
     const std::span<const BoxRow> rows = rows_in(_boxes, at);
     for (std::size_t row = 0; row < rows.size(); ++row) {
       const glm::vec2 left =
           text + glm::vec2(0.0f, static_cast<float>((row + 1) * cell.y));
+      const std::string &port = rows[row].written;
+      const float right =
+          std::max(text.x, end - static_cast<float>(port.size()) * wide);
       if (!rows[row].text.empty())
-        write_row(on_screen(left), rows[row].text, rows[row].role, cell, _over, written);
-      if (const std::string &port = rows[row].written; !port.empty())
-        write_row(on_screen({static_cast<float>(placed.at.x) +
-                                 static_cast<float>(placed.extent.x) - margin -
-                                 static_cast<float>(port.size() * cell.x),
-                             left.y}),
+        write_row(on_screen(left),
+                  rows[row].text,
+                  rows[row].role,
+                  cell,
+                  room(port.empty() ? end : right - wide),
+                  _over,
+                  written);
+      if (!port.empty())
+        write_row(on_screen({right, left.y}),
                   port,
                   rows[row].role,
                   cell,
+                  room(end),
                   _over,
                   written);
     }
@@ -1138,12 +1181,13 @@ void Graph::write_row(glm::vec2 at,
                       std::string_view row,
                       std::uint32_t role,
                       glm::uvec2 cell,
+                      const VP_VIEW::Rect &room,
                       std::span<const VP_VIEW::Rect> over,
                       Labels &written) const {
   const glm::vec2 size = glm::vec2(cell) * _pan_zoom.zoom;
   const VP_VIEW::Rect whole = cut(
       between(at, at + glm::vec2(static_cast<float>(row.size()) * size.x, size.y), role),
-      *_area);
+      room);
   if (whole.extent.x == 0 || whole.extent.y == 0)
     return;
   const Pieces shown = uncovered(whole, over);
@@ -1348,9 +1392,8 @@ void Graph::raise(std::string_view name) {
 glm::vec2 Graph::port_of(std::size_t box, std::size_t row, bool right) const {
   const Placed &placed = _layout.placed()[box];
   const float across = right ? static_cast<float>(placed.extent.x) : 0.0f;
-  const float down = static_cast<float>(pad) +
-                     (static_cast<float>(row) + 1.5f) * static_cast<float>(_laid_cell.y);
-  return on_screen(glm::vec2(placed.at) + glm::vec2(across, down));
+  return on_screen(glm::vec2(placed.at) +
+                   glm::vec2(across, _layout.row_in(box, row, _laid_cell)));
 }
 
 glm::vec2 Graph::on_screen(glm::vec2 at) const {

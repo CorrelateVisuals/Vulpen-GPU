@@ -37,8 +37,8 @@ namespace {
 // where it was then, and whether it has been dragged, or is a press let go where it was,
 // and once it is, where every box was as the drag began, and the frame's size if a person
 // gave it one. Or a corner of a box pressed, which a drag pulls while the opposite corner
-// stays: whether it is a left one and whether a top one, and the box's size and place
-// then.
+// stays: whether it is a left one and whether a top one, and the box's size, place and
+// least size then.
 struct Grab {
   std::size_t box = 0;
   glm::vec2 from{};
@@ -49,6 +49,7 @@ struct Grab {
   std::optional<glm::bvec2> corner;
   glm::ivec2 extent{};
   glm::ivec2 offset{};
+  glm::ivec2 least{};
 };
 
 // The box under a point, and the corner of it the point is on, if any.
@@ -157,6 +158,7 @@ private:
                  std::string_view row,
                  std::uint32_t role,
                  glm::uvec2 cell,
+                 const VP_VIEW::Rect &room,
                  std::span<const VP_VIEW::Rect> over,
                  Labels &written) const;
   void write_curves(VP::Cook &frame);
@@ -243,6 +245,8 @@ private:
   std::vector<std::size_t> _order;
   std::vector<VP_VIEW::Rect> _covers;
   std::vector<VP_VIEW::Rect> _over;
+  std::string _title; // a box's title as its width shows it, kept so a frame allocates
+                      // none
   Arranged _arranged;
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over

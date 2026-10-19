@@ -447,21 +447,25 @@ std::vector<Declared> declared_names(std::string_view text) {
   if (pass == std::string_view::npos || open == std::string_view::npos ||
       close == std::string_view::npos)
     return names;
-  const auto before = static_cast<std::uint32_t>(std::ranges::count(text.substr(0, open), '\n'));
-  each_line(text.substr(open + 1, close - open - 1), [&](std::string_view line, std::uint32_t number) {
+  const auto before =
+      static_cast<std::uint32_t>(std::ranges::count(text.substr(0, open), '\n'));
+  const std::string_view block = text.substr(open + 1, close - open - 1);
+  each_line(block, [&](std::string_view line, std::uint32_t number) {
     line = trim(line.substr(0, line.find("//")));
     if (!line.ends_with(';'))
       return;
     line = trim(line.substr(0, std::min(line.find('['), line.size() - 1)));
     const std::size_t word = line.find_last_of(" \t*");
-    names.push_back({.name = std::string(line.substr(word == std::string_view::npos ? 0 : word + 1)),
-                     .line = before + number});
+    names.push_back(
+        {.name = std::string(line.substr(word == std::string_view::npos ? 0 : word + 1)),
+         .line = before + number});
   });
   return names;
 }
 
 // A manifest's connections, each with the line naming its writer, past its comments.
-std::vector<Wired> wired_of(std::string_view text, const std::filesystem::path &manifest) {
+std::vector<Wired> wired_of(std::string_view text,
+                            const std::filesystem::path &manifest) {
   std::vector<Wired> wired;
   bool inside = false;
   each_line(text, [&](std::string_view line, std::uint32_t number) {
@@ -469,7 +473,8 @@ std::vector<Wired> wired_of(std::string_view text, const std::filesystem::path &
     if (line.starts_with('[')) {
       inside = line.starts_with("[connection");
       const std::size_t open = line.find('"');
-      const std::size_t close = open == std::string_view::npos ? open : line.find('"', open + 1);
+      const std::size_t close =
+          open == std::string_view::npos ? open : line.find('"', open + 1);
       if (inside && close != std::string_view::npos)
         wired.push_back({.manifest = manifest,
                          .name = std::string(line.substr(open + 1, close - open - 1))});
@@ -790,11 +795,14 @@ void Relations::relate_wires() {
     std::ranges::replace(node, '.', '/');
     return wired.manifest.parent_path() / node;
   };
-  const auto port_of = [](std::string_view end) { return end.substr(end.rfind('.') + 1); };
+  const auto port_of = [](std::string_view end) {
+    return end.substr(end.rfind('.') + 1);
+  };
   for (const Wired &wired : _wired) {
     if (wired.from.find('.') == std::string::npos)
       continue; // a view's window, which no file of this folder writes
-    const auto writer = port_file(folder_of(wired, wired.from), port_of(wired.from), true);
+    const auto writer =
+        port_file(folder_of(wired, wired.from), port_of(wired.from), true);
     for (const std::string &to : wired.to) {
       const auto reader = to.find('.') == std::string::npos
                               ? std::nullopt

@@ -26,6 +26,9 @@ namespace {
 constexpr std::int32_t pad = 4;         // in pixels, above and below a box's rows
 constexpr std::int32_t column_gap = 4;  // in cells, between columns besides their lanes
 constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its box
+// How small a person may make any box, in cells of its rows: a few characters of its
+// name's row, its rows and the boxes inside it cut where it ends.
+constexpr glm::uvec2 least_cells{4, 1};
 constexpr std::size_t no_gap = static_cast<std::size_t>(-1); // a track's, in a channel
 // How much wider than tall a level whose columns wrap aims to be, as a window is.
 constexpr float wrap_aspect = 1.6f;
@@ -35,6 +38,13 @@ constexpr float wrap_aspect = 1.6f;
 glm::ivec2 margin_of(glm::uvec2 cell) {
   return {static_cast<std::int32_t>(column_gap * cell.x) / 2,
           static_cast<std::int32_t>(cell.y)};
+}
+
+// The least any box may be, at zoom 1: least_cells of its rows, a cell either side and a
+// pad above and below them.
+glm::ivec2 least_of(glm::uvec2 cell) {
+  return glm::ivec2(least_cells * cell) +
+         glm::ivec2(2 * name_margin * static_cast<std::int32_t>(cell.x), 2 * pad);
 }
 
 // The middle of a box's row from its top, its name's row before the first, where a
@@ -50,7 +60,9 @@ struct Placed {
   // from the graph's top left for a box at the top.
   glm::ivec2 offset{};
   glm::uvec2 extent{};
-  glm::uvec2 least{};      // as large as its rows and the boxes inside it, at least
+  glm::uvec2 natural{};    // as large as its rows and the boxes inside it
+  glm::uvec2 least{};      // as small as a person may make it: least_cells, or the boxes
+                           // inside it
   glm::ivec2 at{};         // from the graph's top left
   std::int32_t inside = 0; // from its top, where the boxes inside it start
   bool frames = false;     // it holds boxes, which show through below its rows
@@ -187,6 +199,14 @@ public:
     return {name_margin * static_cast<std::int32_t>(cell.x), _placed[box].inside};
   }
 
+  // The middle of a box's row from its top, or of its last row shown where it is made
+  // smaller than its rows, so a curve to a row cut off lands on the box.
+  float row_in(std::size_t box, std::size_t row, glm::uvec2 cell) const {
+    return std::min(row_y(row, cell),
+                    static_cast<float>(_placed[box].extent.y) - static_cast<float>(pad) -
+                        static_cast<float>(cell.y) / 2.0f);
+  }
+
   // Where a box's rows end, from its top: its name and the rows it lists, a pad above
   // and below them.
   static std::int32_t rows_end(const Boxes &boxes, std::size_t box, glm::uvec2 cell) {
@@ -236,7 +256,8 @@ private:
   void held(const Boxes &boxes, std::size_t end) {
     const End &ends = boxes.ends[end];
     const auto inside = [&](std::size_t box, std::size_t holder) {
-      for (std::size_t up = boxes.boxes[box].parent; up != no_box; up = boxes.boxes[up].parent)
+      for (std::size_t up = boxes.boxes[box].parent; up != no_box;
+           up = boxes.boxes[up].parent)
         if (up == holder)
           return true;
       return false;
@@ -286,8 +307,9 @@ private:
 
   // The boxes inside one, in columns or where a person put them, and its own size: as
   // wide as its widest row with a cell either side, and as tall as its rows with pad
-  // above and below them, then the boxes inside it, with half a row around them; or
-  // larger, as a person made it.
+  // above and below them, then the boxes inside it, with half a row around them; or as
+  // a person made it, larger or smaller, down to least_cells, or the boxes inside it,
+  // what its rows lack cut where it ends.
   void arrange(const Boxes &boxes,
                std::size_t box,
                const Arranged &arranged,
@@ -312,15 +334,19 @@ private:
         inner.empty() ? glm::ivec2(0) : columns(boxes, box, inner, arranged, cell);
     Placed &placed = _placed[box];
     placed.frames = !inner.empty();
-    placed.least = glm::uvec2(
+    placed.natural = glm::uvec2(
         std::max(static_cast<std::int32_t>(widest) * static_cast<std::int32_t>(cell.x),
                  room.x) +
             2 * margin,
         placed.inside + (inner.empty() ? 0 : room.y + apart));
-    placed.extent = placed.least;
+    placed.least = glm::uvec2(glm::max(
+        least_of(cell),
+        inner.empty() ? glm::ivec2(0)
+                      : glm::ivec2(room.x + 2 * margin, placed.inside + room.y + apart)));
+    placed.extent = placed.natural;
     if (const auto sized = arranged.sizes.find(boxes.boxes[box].name);
         sized != arranged.sizes.end())
-      placed.extent = glm::max(placed.extent, glm::uvec2(glm::max(sized->second, 0)));
+      placed.extent = glm::max(placed.least, glm::uvec2(glm::max(sized->second, 0)));
   }
 
   // A box a column past every box beside it that it reads from, each column as wide as
@@ -772,13 +798,14 @@ private:
     const End &end = boxes.ends[leg.end];
     const std::size_t box = writes ? leg.writer : leg.reader;
     if (box == no_box && leg.rows)
-      return static_cast<float>(rows_end(boxes, leg.level, cell) - _placed[leg.level].inside);
+      return static_cast<float>(rows_end(boxes, leg.level, cell) -
+                                _placed[leg.level].inside);
     if (box == no_box)
       return crossing_at(leg.level, end.wire, !writes) -
              static_cast<float>(_placed[leg.level].inside);
     const auto top = static_cast<float>(_placed[box].offset.y);
     if (box == (writes ? end.from : end.to))
-      return top + row_y(writes ? end.from_row : end.to_row, cell);
+      return top + row_in(box, writes ? end.from_row : end.to_row, cell);
     return top + crossing_at(box, end.wire, writes);
   }
 
@@ -827,12 +854,15 @@ private:
     };
     // Where it leaves the level's rows, or reaches them, in its lane.
     const auto rows_at = [&](std::size_t gap) {
-      return glm::vec2(across(gap), origin.y + y_on(boxes, leg, leg.writer == no_box, cell));
+      return glm::vec2(across(gap),
+                       origin.y + y_on(boxes, leg, leg.writer == no_box, cell));
     };
-    const glm::vec2 from = leg.rows && leg.writer == no_box ? rows_at(leg.out)
-                                                            : point_of(boxes, leg, true, cell);
-    const glm::vec2 to = leg.rows && leg.reader == no_box ? rows_at(leg.in)
-                                                          : point_of(boxes, leg, false, cell);
+    const glm::vec2 from = leg.rows && leg.writer == no_box
+                               ? rows_at(leg.out)
+                               : point_of(boxes, leg, true, cell);
+    const glm::vec2 to = leg.rows && leg.reader == no_box
+                             ? rows_at(leg.in)
+                             : point_of(boxes, leg, false, cell);
     add({.at = from}, first);
     if (leg.out == leg.in && from.y != to.y) {
       add({.at = {across(leg.out), from.y}}, first);
@@ -879,7 +909,7 @@ private:
   glm::vec2 port(std::size_t box, std::size_t row, bool right, glm::uvec2 cell) const {
     const Placed &placed = _placed[box];
     const float across = right ? static_cast<float>(placed.extent.x) : 0.0f;
-    return glm::vec2(placed.at) + glm::vec2(across, row_y(row, cell));
+    return glm::vec2(placed.at) + glm::vec2(across, row_in(box, row, cell));
   }
 
   // A waypoint after the route's last, merged with it where it adds no turn: the same

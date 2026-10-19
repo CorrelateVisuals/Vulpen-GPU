@@ -83,7 +83,9 @@ private:
   void relate_stages();
   void relate_wires();
   std::optional<std::pair<std::filesystem::path, std::uint32_t>>
-  port_file(const std::filesystem::path &folder, std::string_view port, bool writes) const;
+  port_file(const std::filesystem::path &folder,
+            std::string_view port,
+            bool writes) const;
 
   VP_VIEW::Relations *_relations = nullptr;
   std::string _folder;
