@@ -1321,8 +1321,21 @@ std::size_t Graph::more_under() const {
   return row_under(_hovered.box) == more_row ? _hovered.box : no_box;
 }
 
+// The name or row of the box the pointer is over, whole, where the box cuts it short,
+// while no drag goes on; empty for none.
+std::string Graph::cut_under() const {
+  if (_hovered.box == no_box || _hovered.corner || _grab || _dragging || _select_from)
+    return {};
+  return cut_short(_boxes,
+                   _layout.placed()[_hovered.box],
+                   _hovered.box,
+                   row_under(_hovered.box),
+                   _laid_cell);
+}
+
 // The rows of the curve under the pointer, a row each of the curves when several share
-// the place, as a lane's do, or of a box's rows past listed_room, and where they show.
+// the place, as a lane's do, of a box's rows past listed_room, or of its name or row cut
+// short, whole, and where they show.
 void Graph::write_tip() {
   _tip->clear();
   *_tip_place = {};
@@ -1335,6 +1348,8 @@ void Graph::write_tip() {
                            _layout.placed()[_hovered_more].more),
               static_cast<std::size_t>(std::max(
                   static_cast<std::int32_t>(_area->extent.x) / cell.x - tip_margin, 1)));
+  else if (std::string whole = cut_under(); !whole.empty())
+    _tip->push_back({.label = std::move(whole)});
   else if (_heating.heat.on != Heat::On::none && _hovered.box < _heating.weights.size() &&
            !_hovered.corner)
     tell_cost(*_tip, _boxes.boxes[_hovered.box].title, _heating.weights[_hovered.box]);

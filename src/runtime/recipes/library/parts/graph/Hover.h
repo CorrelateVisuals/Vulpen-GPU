@@ -161,6 +161,33 @@ void tell(VP_VIEW::Items &tip,
                relations[at].said)});
 }
 
+// A box's name or one of its rows, whole, where the box cuts it short at its end, a cell
+// in from either edge, as the graph draws them: a row with a port read and a port written,
+// side by side a cell apart, the two two blanks apart; empty while it shows whole. The
+// cells are those of the layout.
+std::string cut_short(const Boxes &boxes,
+                      const Placed &placed,
+                      std::size_t at,
+                      std::size_t row,
+                      glm::uvec2 cell) {
+  if (cell.x == 0)
+    return {};
+  const auto room = static_cast<std::size_t>(
+      std::max(static_cast<std::int32_t>(placed.extent.x) -
+                   2 * name_margin * static_cast<std::int32_t>(cell.x),
+               0) /
+      static_cast<std::int32_t>(cell.x));
+  if (row == title_row)
+    return boxes.boxes[at].title.size() > room ? boxes.boxes[at].title : std::string();
+  if (row >= boxes.boxes[at].rows)
+    return {};
+  const BoxRow &shown = rows_in(boxes, at)[row];
+  const bool both = !shown.text.empty() && !shown.written.empty();
+  if (shown.text.size() + shown.written.size() + (both ? 1 : 0) <= room)
+    return {};
+  return both ? std::format("{}  {}", shown.text, shown.written) : shown.text + shown.written;
+}
+
 // The names a box lists past those it shows, two blanks apart, as many a row as fit in
 // width characters, a name too long for one on a row of its own.
 void tell_more(VP_VIEW::Items &tip, std::span<const BoxRow> rows, std::size_t width) {

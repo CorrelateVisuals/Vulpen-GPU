@@ -164,6 +164,7 @@ private:
   void write_curves(VP::Cook &frame);
   void write_tip();
   std::size_t more_under() const;
+  std::string cut_under() const;
   std::size_t row_under(std::size_t at) const;
   // The curves near enough a point on screen, where no box lies; none while a drag goes
   // on.
