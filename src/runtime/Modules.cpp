@@ -17,7 +17,7 @@ using Entry = void (*)(Registry &);
 static_assert(sizeof(Entry) == sizeof(void *));
 
 // Every module exports its entry under one name, whose stamp hashes the engine headers
-// the module was built against (docs/plans/live-code.md, rule 6).
+// the module was built against (live code's rule 6 in docs/usage.md).
 constexpr const char *module_entry = "vp_module_" VP_MODULE_STAMP;
 constexpr const char *module_file = "module" VP_MODULE_SUFFIX;
 

@@ -1,4 +1,4 @@
-# The build side of live code (docs/plans/live-code.md). Each node is a folder (RV08),
+# The build side of live code (docs/usage.md, section 6). Each node is a folder (RV08),
 # which compiles its shaders to SPIR-V and its C++ to one module (live) or into vulpen
 # (release), at paths that mirror the view under <build>/views/, so the runtime finds them
 # by path alone. Included by the top-level CMakeLists.txt after the vulpen and gates

@@ -13,7 +13,7 @@ Configures, builds and runs the `debug` preset, or `release` with `--release`; t
 
 `--log error|warn|info|debug` sets how much the run says, the build included. The default, `warn`, prints only problems and keeps a build that succeeds silent; `debug` prints the build's output too. [`src/baseclasses/Log.h`](src/baseclasses/Log.h) lists what each level adds and what each `{tag}` marks, and a node's `log` word in the manifest sets the level of the lines about that node.
 
-`./run.sh --wave --log info` runs the example project `wave` headless; `./run.sh --triangle` opens a window and draws the classic triangle, whose corners and colors come from C++, and `out/build/debug/baseclasses/examples/triangle/triangle` draws one with the baseclasses alone, without the runtime. In the `debug` preset, save any C++ or GLSL of a view while it runs and the running view swaps in the change; see [docs/plans/live-code.md](docs/plans/live-code.md).
+`./run.sh --wave --log info` runs the example project `wave` headless; `./run.sh --triangle` opens a window and draws the classic triangle, whose corners and colors come from C++, and `out/build/debug/baseclasses/examples/triangle/triangle` draws one with the baseclasses alone, without the runtime. In the `debug` preset, save any C++ or GLSL of a view while it runs and the running view swaps in the change; see [live code](docs/usage.md#6-live-code).
 
 ## Use
 
@@ -26,4 +26,4 @@ ctest --preset debug                 # after a build; also release, asan, tsan, 
 src/tools/tests/nightly.sh           # every preset, the soaks and the long fuzz
 ```
 
-[docs/plans/tests.md](docs/plans/tests.md) says what each test proves and what each preset runs.
+[Tests](docs/usage.md#17-tests) says what each test proves and what each preset runs.

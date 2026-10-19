@@ -1,4 +1,4 @@
-# The tests (docs/plans/tests.md), all in this folder: the Python that runs vulpen and
+# The tests (docs/usage.md, section 17), all in this folder: the Python that runs vulpen and
 # judges it (harness.py and one script per test), the barrier test's C++, the golden, the
 # sanitizer suppressions and layer settings the presets name, the fixture view mistakes/,
 # and nightly.sh. Included by the top-level CMakeLists.txt once vulpen and every view are
@@ -104,13 +104,13 @@ endif()
 if(NOT VULPEN_SANITIZERS)
   vulpen_test(soak ${python} ${tests}/soak.py ${vulpen_file} --minutes 10)
   set_tests_properties(soak PROPERTIES LABELS nightly TIMEOUT 900)
-  # The CLI hosts a view and drops it again 300 times (T43).
+  # The CLI hosts a view and drops it again 300 times.
   vulpen_test(child-soak ${python} ${tests}/soak.py ${vulpen_file} --children 300)
   set_tests_properties(child-soak PROPERTIES LABELS nightly TIMEOUT 1800)
   if(VULPEN_LIVE)
     vulpen_test(swap-soak ${python} ${tests}/soak.py ${vulpen_file} --swaps 500)
     set_tests_properties(swap-soak PROPERTIES LABELS nightly TIMEOUT 7200)
-    # The window opens and closes 100 times (T43); with no display, it is skipped.
+    # The window opens and closes 100 times; with no display, it is skipped.
     vulpen_test(window-soak ${python} ${tests}/soak.py ${vulpen_file} --windows 100)
     set_tests_properties(window-soak PROPERTIES LABELS nightly TIMEOUT 3600
                                                 SKIP_REGULAR_EXPRESSION "no display")

@@ -409,7 +409,7 @@ void Schedule::drop_operators(const std::vector<std::string> &modules) {
       bound.stand_ins.clear();
     }
   // An object's destructor is code of the module that made it; the writer makes it
-  // again as it binds (native C++, rule 2).
+  // again as it binds (the runtime boundary, rule 2).
   std::erase_if(_objects, [&](const Held &held) {
     if (!going(held.module))
       return false;

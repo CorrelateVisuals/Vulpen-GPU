@@ -13,7 +13,7 @@ namespace VP {
 class Commands;
 class Log;
 
-// Live code (docs/plans/live-code.md): the build of the tree runs off the frame thread,
+// Live code (docs/usage.md, section 6): the build of the tree runs off the frame thread,
 // so the frames go on while it runs, as a save under a view's folder asks for it, and as
 // quit restart does. The build, not the runtime, knows how C++ and GLSL compile (C02):
 // nothing compiles here. Every build takes the tree's build.lock first, as run.sh and

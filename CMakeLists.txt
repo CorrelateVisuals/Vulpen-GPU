@@ -18,7 +18,7 @@ if(NOT MSVC)
 endif()
 # Standard containers check their bounds in a debug build (A02).
 add_compile_definitions($<$<CONFIG:Debug>:_GLIBCXX_ASSERTIONS>)
-# The asan and tsan presets (docs/plans/tests.md): a sanitizer report ends the run.
+# The asan and tsan presets (docs/usage.md, section 17): a sanitizer report ends the run.
 set(VULPEN_SANITIZERS "" CACHE STRING "Sanitizers to build with, as -fsanitize names them")
 if(VULPEN_SANITIZERS)
   add_compile_options(-fsanitize=${VULPEN_SANITIZERS} -fno-sanitize-recover=all
