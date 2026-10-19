@@ -6,9 +6,9 @@
 
 namespace {
 
-// Joins two lists of Items into one, the first's then the second's, as a bar shows the
-// buttons two parts offer in one row; written anew only as either changes, so a frame
-// allocates nothing for them (CPP10).
+// Joins two lists of Items into one, the first's then the second's, a divider between
+// them, as a bar shows the buttons two parts offer in one row; written anew only as
+// either changes, so a frame allocates nothing for them (CPP10).
 class Join final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _first = &node.input<VP_VIEW::Items>("first");
@@ -22,6 +22,8 @@ class Join final : public VP::Operator {
       return;
     _joined.emplace(*_first, *_second);
     *_items = *_first;
+    if (!_first->empty() && !_second->empty())
+      _items->emplace_back(); // a divider, an Item with no label
     _items->insert(_items->end(), _second->begin(), _second->end());
   }
 

@@ -99,8 +99,9 @@ CELL = 18
 CELL_WIDE = 8  # a cell's width at that height, as Roboto Mono's advance makes it
 STRIP = CELL + 2 * 4
 NAME = STRIP + 4 + CELL // 2
-# The menubar's strip, along the window's top, over the dock's area.
-MENUBAR = STRIP
+# The menubar's strip, along the window's top, and the divider of 4 pixels under it,
+# over the dock's area.
+MENUBAR = STRIP + 4
 # The close mark of the editor's first tab, the dock's top left: a cell in, the label, a
 # blank, then the mark, a cell wide, as wave/Wave.comp's.
 MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2,

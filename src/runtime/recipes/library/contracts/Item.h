@@ -8,7 +8,8 @@ namespace VP_VIEW {
 // An entry a list shows, by its label, and the command a press on it sends, as a line
 // typed at the command port. Completions, menus and tab strips are lists of Items, so
 // none of them places its rows or finds the one pressed itself; the help a tooltip
-// shows joins it once a part reads it.
+// shows joins it once a part reads it. In a strip, an Item with no label is a divider,
+// a line between the Items beside it, which no press reaches.
 struct Item {
   std::string label;
   std::string command;  // empty for none
@@ -23,6 +24,9 @@ struct Item {
   // What a right press on it sends, as a tab opens a menu of what to do with it; empty
   // for none.
   std::string menu;
+  // One of the Items beside it of which one is on, as edit and run: a strip joins them,
+  // the one on filled in the accent's color.
+  bool toggles = false;
 
   bool operator==(const Item &) const = default;
 };

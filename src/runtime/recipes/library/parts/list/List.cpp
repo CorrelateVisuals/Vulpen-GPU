@@ -178,7 +178,8 @@ class List final : public VP::Operator {
   // and as wide as its label, up to tab_cells, and its close mark, with a cell either
   // side; the strip is the place but its end cells. What lies outside the strip is cut,
   // a tab wholly outside it showing nowhere, and its mark only whole. The pointer over a
-  // tab whose label is cut shows it whole.
+  // tab whose label is cut shows it whole. An Item with no label is a divider, a line in
+  // a cell of its own; Items that toggle, side by side, join with no gap between them.
   void side_by_side(VP::Cook &frame, const VP_VIEW::Rect &place, glm::uvec2 cell) {
     if (place.extent.y < cell.y)
       return;
@@ -188,18 +189,26 @@ class List final : public VP::Operator {
     _laid.clear();
     std::int32_t reach = 0;
     std::optional<std::size_t> current;
-    for (const VP_VIEW::Item &item : *_items) {
-      if (_laid.size() == row_room)
-        break;
+    for (std::size_t at = 0; at < _items->size() && _laid.size() < row_room; ++at) {
+      const VP_VIEW::Item &item = (*_items)[at];
+      if (item.label.empty()) {
+        _laid.push_back({.offset = {reach + across / 2, place.offset.y + margin},
+                         .extent = {static_cast<std::uint32_t>(frame_width),
+                                    place.extent.y - static_cast<std::uint32_t>(2 * margin)},
+                         .role = VP_VIEW::role("border")});
+        reach += across + gap;
+        continue;
+      }
       const std::size_t cells = std::min(item.label.size(), tab_cells) +
                                 (item.close.empty() ? 0 : mark_cells);
       const auto wide = (static_cast<std::int32_t>(cells) + padding_cells) * across;
       if (item.current)
         current = _laid.size();
-      _laid.push_back(
-          {.offset = {reach, place.offset.y},
-           .extent = {static_cast<std::uint32_t>(wide), place.extent.y},
-           .role = item.current ? VP_VIEW::role("background") : VP_VIEW::role("panel")});
+      if (item.toggles && at > 0 && (*_items)[at - 1].toggles)
+        reach -= gap;
+      _laid.push_back({.offset = {reach, place.offset.y},
+                       .extent = {static_cast<std::uint32_t>(wide), place.extent.y},
+                       .role = fill_of(item)});
       reach += wide + gap;
     }
     scroll(frame, strip, std::max(reach - gap, 0), current, across);
@@ -219,6 +228,24 @@ class List final : public VP::Operator {
         _tip_row = tip_row(tab, (*_items)[at].label.size(), cell, place, frame.resolution());
       }
     }
+  }
+
+  // A tab's fill: the content's color for the current one, so it joins the content it
+  // names, and for one that toggles, the accent's while it is on, so the one on of the
+  // two reads apart.
+  static std::uint32_t fill_of(const VP_VIEW::Item &item) {
+    if (item.toggles && item.current)
+      return VP_VIEW::role("accent");
+    return item.current && !item.toggles ? VP_VIEW::role("background")
+                                         : VP_VIEW::role("panel");
+  }
+
+  // A tab's label: in the background's color over the accent of one on, muted on one off
+  // of those that toggle, else as text.
+  static std::uint32_t text_of(const VP_VIEW::Item &item) {
+    if (!item.toggles)
+      return VP_VIEW::role("text");
+    return item.current ? VP_VIEW::role("background") : VP_VIEW::role("muted");
   }
 
   // Below the tab, as long as its label, from where the label starts, moved in to keep
@@ -346,7 +373,7 @@ class List final : public VP::Operator {
     const std::int32_t offset = start + static_cast<std::int32_t>(first) * wide;
     written.add({.offset = {offset, top},
                  .extent = {static_cast<std::uint32_t>(to - offset), cell.y},
-                 .role = VP_VIEW::role("text"),
+                 .role = text_of((*_items)[at]),
                  .cut = {static_cast<std::uint32_t>(from - offset), 0}},
                 std::string_view(_fitted).substr(first, last - first));
   }
