@@ -49,10 +49,11 @@ struct Labels {
 
 // What of a name shows in so many cells, as a box's title or a tab cut to its room: all
 // of it, or after ... the most of its end that fits from a / or a -, so a path keeps its
-// last names, as .../triangle-params/triangle or ...-params/triangle; with none that
-// fits, the shortest of them, and a name holding no / or -, whole, for the room to cut.
-// Written into a string the part keeps, so a frame allocates nothing once it grew
-// (CPP10).
+// last names, as .../triangle-params/triangle or ...-params/triangle, a break with a
+// blank after it going with its blank, as the graph's tab's graph - Knowledgebase-CLI
+// reads ...Knowledgebase-CLI; with none that fits, the shortest of them, and a name
+// holding no / or -, whole, for the room to cut. Written into a string the part keeps,
+// so a frame allocates nothing once it grew (CPP10).
 inline void fit(std::string &into, std::string_view name, std::size_t cells) {
   constexpr std::string_view cut_mark = "...";
   constexpr std::string_view breaks = "/-";
@@ -62,6 +63,8 @@ inline void fit(std::string &into, std::string_view name, std::size_t cells) {
        at != std::string_view::npos;
        at = name.find_first_of(breaks, at + 1)) {
     end = name.substr(at);
+    if (end.size() > 1 && end[1] == ' ')
+      end.remove_prefix(2);
     if (cut_mark.size() + end.size() <= cells)
       break;
   }
