@@ -2,6 +2,7 @@
 # Build and run Vulpen: ./run.sh [--release] [--cli | --ide | --<project> | view.vlp]
 #                                 [vulpen's options]
 set -euo pipefail
+shopt -s lastpipe # a pipe's last command runs in this shell, so what it reads stays
 
 default=--ide # what runs when no view is named; --cli runs the cli alone
 
@@ -18,10 +19,11 @@ projects=$root/projects
 # project, so one named like an option runs by its path; each takes a value, and any
 # other word is a view.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
-# level nothing unless it fails (C09). Each run's log goes to docs/logs/, which git
-# ignores, named for when it started, the newest 20 kept, so a run on another machine
-# leaves behind what went wrong, a failed build's output with it; --log-file names
-# another file, and that one alone is written.
+# level its newest line, in place while it builds on a terminal, and all of it when it
+# fails (C09), so a long build says what it builds and a quick one leaves nothing behind.
+# Each run's log goes to docs/logs/, which git ignores, named for when it started, the
+# newest 20 kept, so a run on another machine leaves behind what went wrong, a failed
+# build's output with it; --log-file names another file, and that one alone is written.
 app() { views=("$recipes/cli/view.vlp"); [[ $1 == --cli ]] || views+=("$recipes/ide/view.vlp"); }
 arguments=()
 named=false
@@ -64,10 +66,23 @@ build() (
   if command -v flock >/dev/null; then flock 9; fi
   cmake --preset "$preset" && cmake --build --preset "$preset" --parallel
 )
+# Each line kept for a failure, and shown in place cut to the terminal's width, so it
+# never wraps onto a row the next line would leave behind.
+shown() {
+  local line width
+  width=$(stty size <&2 2>/dev/null | cut -d' ' -f2) || true
+  ((${width:-0} > 1)) || width=80 # a terminal that gives no width
+  while IFS= read -r line; do
+    said+=$line$'\n'
+    [[ -t 2 ]] && printf '\r\033[K%s' "${line:0:width-1}" >&2
+  done
+  [[ ! -t 2 ]] || printf '\r\033[K' >&2
+}
+said=
 if $verbose; then
   (build) 2>&1 | tee -a "$log"
-elif ! said=$(build 2>&1); then
-  printf '%s\n' "$said" | tee -a "$log" >&2
+elif ! build 2>&1 | shown; then
+  printf '%s' "$said" | tee -a "$log" >&2
   exit 1
 fi
 exec "$root/out/build/$preset/vulpen" "${arguments[@]}"

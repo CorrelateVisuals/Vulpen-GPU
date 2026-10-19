@@ -17,10 +17,11 @@ $options = '--log', '--log-file', '--frames', '--fps', '--first-frame', '--sourc
 # project, so one named like an option runs by its path; each takes a value, and any
 # other word is a view.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
-# level nothing unless it fails (C09). Each run's log goes to docs\logs\, which git
-# ignores, named for when it started, the newest 20 kept, so a run on another machine
-# leaves behind what went wrong, a failed build's output with it; --log-file names
-# another file, and that one alone is written.
+# level its newest line, as progress while it builds, and all of it when it fails (C09),
+# so a long build says what it builds and a quick one leaves nothing behind. Each run's
+# log goes to docs\logs\, which git ignores, named for when it started, the newest 20
+# kept, so a run on another machine leaves behind what went wrong, a failed build's
+# output with it; --log-file names another file, and that one alone is written.
 function App($flag) {
     @(Join-Path $recipes 'cli\view.vlp') + @(if ($flag -eq '--ide') { Join-Path $recipes 'ide\view.vlp' })
 }
@@ -74,7 +75,11 @@ try {
     $said = & {
         cmake --preset $preset
         if ($LASTEXITCODE -eq 0) { cmake --build --preset $preset --parallel }
-    } 2>&1 | ForEach-Object { if ($verbose) { "$_" | Out-Host }; "$_" }
+    } 2>&1 | ForEach-Object {
+        if ($verbose) { "$_" | Out-Host } elseif ("$_") { Write-Progress -Activity 'build' -Status "$_" }
+        "$_"
+    }
+    Write-Progress -Activity 'build' -Completed
     $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0 -and -not $verbose) { $said | Out-Host }
 } finally { Pop-Location; $lock.Dispose() }
