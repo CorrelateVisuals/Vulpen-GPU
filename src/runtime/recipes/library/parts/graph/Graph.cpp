@@ -43,13 +43,14 @@ constexpr float mark_size = 6.0f;               // a port's mark, in pixels at z
 constexpr float quarter = 0.5523f;
 // The role each layer's curves are drawn in, by VP_VIEW::Layer: a connection in the
 // accent color, and each kind of relation in a hue the editor shows code in, so the
-// theme keeps every color.
+// theme keeps every color; what the engine carries in the types' teal, the shaders'.
 constexpr std::array<std::uint32_t, VP_VIEW::layer_names.size()> layer_roles{
     VP_VIEW::role("accent"),
     VP_VIEW::role("directive"),
     VP_VIEW::role("keyword"),
     VP_VIEW::role("number"),
-    VP_VIEW::role("string")};
+    VP_VIEW::role("string"),
+    VP_VIEW::role("type")};
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
 // A corner a drag pulls: how far in from it a press takes it, and its mark's arms, in
 // pixels, never past a quarter of the box, so a small box still moves.

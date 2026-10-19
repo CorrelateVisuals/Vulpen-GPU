@@ -319,8 +319,10 @@ void relate(Boxes &boxes,
     const VP_VIEW::Relation &relation = relations[told];
     if (!shows(building, relation.layer))
       continue;
-    const std::string &used = relation.to;
-    const std::string &user = relation.from;
+    // What the engine carries runs from the file the data leaves, as its relation says.
+    const bool carried = relation.layer == VP_VIEW::Layer::engine;
+    const std::string &used = carried ? relation.from : relation.to;
+    const std::string &user = carried ? relation.to : relation.from;
     std::vector<std::size_t> froms = boxes_showing(building, used);
     std::vector<std::size_t> tos = boxes_showing(building, user);
     if (froms.empty() && tos.empty())

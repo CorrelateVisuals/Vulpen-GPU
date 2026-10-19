@@ -15,15 +15,19 @@ namespace VP_VIEW {
 // which its relations param turns on and off: flow, a connection, which the graph reads
 // from the view itself; structure, a recipe a node uses; code, a file including or
 // importing another; build, a CMake file naming a file or a folder; docs, a document
-// linking a file, or a file citing an id a document defines.
-enum class Layer : std::uint8_t { flow, structure, code, build, docs };
-inline constexpr auto layer_names =
-    std::to_array<std::string_view>({"flow", "structure", "code", "build", "docs"});
+// linking a file, or a file citing an id a document defines; engine, data the engine
+// carries from one file to another, which no line of either shows whole, as a node's C++
+// to the shader whose pass block takes what it binds.
+enum class Layer : std::uint8_t { flow, structure, code, build, docs, engine };
+inline constexpr auto layer_names = std::to_array<std::string_view>(
+    {"flow", "structure", "code", "build", "docs", "engine"});
 
 // From the file that says it to the file or folder it names, by absolute path, so a
 // relation reaching past the folder shown keeps both ends; and where the file says it,
 // its line, counted from 1, and what there names the other, as an include's name, a
-// cited id or a link's target, which the graph shows a developer.
+// cited id or a link's target, which the graph shows a developer. In the engine layer,
+// from the file the data leaves, at the line that sends it, to the file it reaches, as
+// the graph draws a relation from what is used to what uses it.
 struct Relation {
   std::string from;
   std::string to;

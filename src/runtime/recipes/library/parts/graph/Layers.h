@@ -39,7 +39,7 @@ Shown layers_of(std::string_view text) {
     if (layer == VP_VIEW::layer_names.size())
       throw std::runtime_error(
           std::format("param relations = {}: {} is no layer; the layers are flow, "
-                      "structure, code, build and docs, joined by commas, or none",
+                      "structure, code, build, docs and engine, joined by commas, or none",
                       text,
                       word));
     shown |= Shown{1} << layer;

@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <format>
 #include <functional>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <optional>
@@ -257,6 +258,25 @@ void markdown_line(Listed &listed,
   }
 }
 
+// The shaders a line of C++ loads by their SPIR-V's name, as "Triangle.vert.spv", which
+// the build compiles from Triangle.vert beside it: C++ hands the engine what draws with
+// it, so data leaves the C++ for the shader.
+void loaded(Listed &listed,
+            const std::filesystem::path &folder,
+            std::string_view line,
+            const Add &add) {
+  constexpr std::string_view spirv = ".spv\"";
+  for (std::size_t end = line.find(spirv); end != std::string_view::npos;
+       end = line.find(spirv, end + spirv.size())) {
+    const std::size_t open = end == 0 ? std::string_view::npos : line.rfind('"', end - 1);
+    if (open == std::string_view::npos)
+      continue;
+    add(resolved(listed, folder, line.substr(open + 1, end - open - 1), false),
+        VP_VIEW::Layer::engine,
+        line.substr(open + 1, end + spirv.size() - open - 2));
+  }
+}
+
 void line_relations(Listed &listed,
                     const std::filesystem::path &folder,
                     Language language,
@@ -272,6 +292,8 @@ void line_relations(Listed &listed,
       const std::string_view included = name.substr(1, name.find('"', 1) - 1);
       add(resolved(listed, folder, included, true), VP_VIEW::Layer::code, included);
     }
+  } else if (language == Language::code) {
+    loaded(listed, folder, said, add);
   } else if (language == Language::python && (said.starts_with("import ") ||
                                               said.starts_with("from "))) {
     const std::string_view names = said.starts_with("from ") ? after("from") : after("import");
@@ -377,47 +399,96 @@ std::vector<Varying> varyings_of(std::string_view text) {
   return varyings;
 }
 
-// The names a C++ file binds to its node's shaders' pass block: those quoted after the
-// calls of the Bind that reach it, value, upload, readback and texture.
+// A call of the Bind a C++ file names a port by: whether data leaves the C++ through it,
+// and whether it reaches the node's shaders' pass block, or a C++ connection.
+struct Binding {
+  std::string_view call;
+  bool sends = false;
+  bool pass = false;
+};
+
+// The names a C++ file binds: those quoted after the calls of the Bind that reach its
+// node's shaders' pass block, value, upload, texture and readback, and those of its C++
+// connections, output and input.
 void bind_names(std::string_view text,
                 const std::filesystem::path &file,
                 std::vector<Bound> &bound) {
-  static constexpr auto calls = std::to_array<std::string_view>(
-      {".value<", ".upload<", ".readback<", ".texture<"});
+  static constexpr auto calls =
+      std::to_array<Binding>({{.call = ".value<", .sends = true, .pass = true},
+                              {.call = ".upload<", .sends = true, .pass = true},
+                              {.call = ".texture<", .sends = true, .pass = true},
+                              {.call = ".readback<", .sends = false, .pass = true},
+                              {.call = ".output<", .sends = true, .pass = false},
+                              {.call = ".input<", .sends = false, .pass = false}});
   each_line(text, [&](std::string_view line, std::uint32_t number) {
-    for (const std::string_view call : calls)
-      for (std::size_t at = line.find(call); at != std::string_view::npos;
-           at = line.find(call, at + call.size())) {
-        const std::size_t open = line.find("(\"", at + call.size());
+    for (const Binding &binding : calls)
+      for (std::size_t at = line.find(binding.call); at != std::string_view::npos;
+           at = line.find(binding.call, at + binding.call.size())) {
+        const std::size_t open = line.find("(\"", at + binding.call.size());
         const std::size_t close =
             open == std::string_view::npos ? open : line.find('"', open + 2);
         if (close != std::string_view::npos)
           bound.push_back({.file = file,
                            .name = std::string(line.substr(open + 2, close - open - 2)),
-                           .line = number});
+                           .line = number,
+                           .sends = binding.sends,
+                           .pass = binding.pass});
       }
   });
 }
 
 // The names a shader's pass block declares, the last word of each member, past its
-// comments, before an array's size.
-std::vector<std::string> declared_names(std::string_view text) {
-  std::vector<std::string> names;
+// comments, before an array's size, each with its line, counted from the file's first.
+std::vector<Declared> declared_names(std::string_view text) {
+  std::vector<Declared> names;
   const std::size_t pass = text.find("uniform Pass");
   const std::size_t open = text.find('{', pass);
   const std::size_t close = text.find('}', open);
   if (pass == std::string_view::npos || open == std::string_view::npos ||
       close == std::string_view::npos)
     return names;
-  each_line(text.substr(open + 1, close - open - 1), [&](std::string_view line, std::uint32_t) {
+  const auto before = static_cast<std::uint32_t>(std::ranges::count(text.substr(0, open), '\n'));
+  each_line(text.substr(open + 1, close - open - 1), [&](std::string_view line, std::uint32_t number) {
     line = trim(line.substr(0, line.find("//")));
     if (!line.ends_with(';'))
       return;
     line = trim(line.substr(0, std::min(line.find('['), line.size() - 1)));
     const std::size_t word = line.find_last_of(" \t*");
-    names.emplace_back(line.substr(word == std::string_view::npos ? 0 : word + 1));
+    names.push_back({.name = std::string(line.substr(word == std::string_view::npos ? 0 : word + 1)),
+                     .line = before + number});
   });
   return names;
+}
+
+// A manifest's connections, each with the line naming its writer, past its comments.
+std::vector<Wired> wired_of(std::string_view text, const std::filesystem::path &manifest) {
+  std::vector<Wired> wired;
+  bool inside = false;
+  each_line(text, [&](std::string_view line, std::uint32_t number) {
+    line = trim(line.substr(0, line.find('#')));
+    if (line.starts_with('[')) {
+      inside = line.starts_with("[connection");
+      const std::size_t open = line.find('"');
+      const std::size_t close = open == std::string_view::npos ? open : line.find('"', open + 1);
+      if (inside && close != std::string_view::npos)
+        wired.push_back({.manifest = manifest,
+                         .name = std::string(line.substr(open + 1, close - open - 1))});
+      inside = inside && close != std::string_view::npos;
+      return;
+    }
+    const std::size_t equals = line.find('=');
+    if (!inside || equals == std::string_view::npos)
+      return;
+    const std::string_view key = trim(line.substr(0, equals));
+    const std::string_view value = trim(line.substr(equals + 1));
+    if (key == "from") {
+      wired.back().from = value;
+      wired.back().line = number;
+    } else if (key == "to") {
+      wired.back().to.emplace_back(value);
+    }
+  });
+  return wired;
 }
 
 // The folder shown as a view's nodes, as the graph shows its inside: a node for it and
@@ -550,6 +621,7 @@ void Relations::start(VP::FilePort &files, const VP::View *view) {
   _bound.clear();
   _declared.clear();
   _varyings.clear();
+  _wired.clear();
   for (const std::string &name : files.list(_docs))
     if (name.ends_with(".md"))
       define(files.read((std::filesystem::path(_docs) / name).string()),
@@ -593,6 +665,8 @@ bool Relations::step(VP::FilePort &files, std::size_t bytes) {
       _declared.emplace(_sources[_next], declared_names(text));
       if (draw_stage(_sources[_next]))
         _varyings.emplace(_sources[_next], varyings_of(text));
+    } else if (!_folder.empty() && language_of(_sources[_next]) == Language::manifest) {
+      std::ranges::move(wired_of(text, _sources[_next]), std::back_inserter(_wired));
     }
   }
   return _walked == _walk.size() && (_next == _sources.size() || _read >= reading_room);
@@ -622,17 +696,9 @@ void Relations::publish(VP::Cook &frame) {
           std::filesystem::path(relation.to).lexically_relative(_top);
       return within.empty() || *within.begin() == "..";
     });
-  // A name C++ binds links its file to the shader of its folder declaring it.
-  for (const Bound &bind : _bound)
-    for (const auto &[file, names] : _declared)
-      if (file.parent_path() == bind.file.parent_path() &&
-          std::ranges::find(names, bind.name) != names.end())
-        _found.push_back({.from = bind.file.generic_string(),
-                          .to = file.generic_string(),
-                          .layer = VP_VIEW::Layer::code,
-                          .line = bind.line,
-                          .said = bind.name});
+  relate_seams();
   relate_stages();
+  relate_wires();
   const auto said = [](const VP_VIEW::Relation &relation) {
     return std::tie(relation.from, relation.to, relation.layer, relation.said);
   };
@@ -662,10 +728,30 @@ void Relations::publish(VP::Cook &frame) {
   ++_relations->changes;
 }
 
+// What C++ binds in its node's shaders' pass block, the engine carries between it and
+// the shader of its folder declaring it: from the C++, at its line, to the shader, or for
+// a readback from the shader, at the member's line, to the C++.
+void Relations::relate_seams() {
+  for (const Bound &bind : _bound)
+    for (const auto &[file, names] : _declared) {
+      const auto declared = std::ranges::find(names, bind.name, &Declared::name);
+      if (!bind.pass || file.parent_path() != bind.file.parent_path() ||
+          declared == names.end())
+        continue;
+      const std::string cpp = bind.file.generic_string();
+      const std::string glsl = file.generic_string();
+      _found.push_back({.from = bind.sends ? cpp : glsl,
+                        .to = bind.sends ? glsl : cpp,
+                        .layer = VP_VIEW::Layer::engine,
+                        .line = bind.sends ? bind.line : declared->line,
+                        .said = bind.name});
+    }
+}
+
 // A stage reads in what the nearest stage before it in its folder writes out, as its
 // fragment shader reads its vertex shader's color, matched as the stages match them, by
-// location, or by name where either gives none: a relation from the reader, at its line,
-// to the writer, so the graph draws it from what is used to what uses it.
+// location, or by name where either gives none: the engine carries it from the writer,
+// at the line writing it out, to the reader.
 void Relations::relate_stages() {
   for (const auto &[reader, ins] : _varyings) {
     const std::size_t stage = *draw_stage(reader);
@@ -676,17 +762,76 @@ void Relations::relate_stages() {
         writer = &file;
     if (!writer)
       continue;
-    for (const Varying &in : ins)
-      if (!in.out && std::ranges::any_of(_varyings.at(*writer), [&](const Varying &out) {
-            return out.out && (in.location && out.location ? *in.location == *out.location
-                                                           : in.name == out.name);
-          }))
-        _found.push_back({.from = reader.generic_string(),
-                          .to = writer->generic_string(),
-                          .layer = VP_VIEW::Layer::code,
-                          .line = in.line,
+    for (const Varying &in : ins) {
+      if (in.out)
+        continue;
+      const std::vector<Varying> &outs = _varyings.at(*writer);
+      const auto out = std::ranges::find_if(outs, [&](const Varying &out) {
+        return out.out && (in.location && out.location ? *in.location == *out.location
+                                                       : in.name == out.name);
+      });
+      if (out != outs.end())
+        _found.push_back({.from = writer->generic_string(),
+                          .to = reader.generic_string(),
+                          .layer = VP_VIEW::Layer::engine,
+                          .line = out->line,
                           .said = in.name});
+    }
   }
+}
+
+// A connection of a manifest in the folder shown, between two nodes in its folder, as
+// RV08 places them: the engine carries it from the file of the writer's node that writes
+// the port, at the line doing so, to the file of each reader's node that reads it, so a
+// project's C++ and shaders show joined where its manifest joins them.
+void Relations::relate_wires() {
+  const auto folder_of = [](const Wired &wired, std::string_view end) {
+    std::string node(end.substr(0, end.rfind('.')));
+    std::ranges::replace(node, '.', '/');
+    return wired.manifest.parent_path() / node;
+  };
+  const auto port_of = [](std::string_view end) { return end.substr(end.rfind('.') + 1); };
+  for (const Wired &wired : _wired) {
+    if (wired.from.find('.') == std::string::npos)
+      continue; // a view's window, which no file of this folder writes
+    const auto writer = port_file(folder_of(wired, wired.from), port_of(wired.from), true);
+    for (const std::string &to : wired.to) {
+      const auto reader = to.find('.') == std::string::npos
+                              ? std::nullopt
+                              : port_file(folder_of(wired, to), port_of(to), false);
+      if (writer && reader && writer->first != reader->first)
+        _found.push_back({.from = writer->first.generic_string(),
+                          .to = reader->first.generic_string(),
+                          .layer = VP_VIEW::Layer::engine,
+                          .line = writer->second,
+                          .said = wired.name});
+    }
+  }
+}
+
+// The file of a node's folder that writes a port, or reads it, and the line saying so:
+// C++ binding it as data leaving it, or reaching it, else a shader whose pass block
+// declares it, or whose stage writes it out, or reads it in; none for none.
+std::optional<std::pair<std::filesystem::path, std::uint32_t>>
+Relations::port_file(const std::filesystem::path &folder,
+                     std::string_view port,
+                     bool writes) const {
+  for (const Bound &bind : _bound)
+    if (bind.file.parent_path() == folder && bind.name == port && bind.sends == writes)
+      return std::pair(bind.file, bind.line);
+  for (const auto &[file, names] : _declared)
+    if (const auto declared = std::ranges::find(names, port, &Declared::name);
+        file.parent_path() == folder && declared != names.end())
+      return std::pair(file, declared->line);
+  for (const auto &[file, varyings] : _varyings)
+    if (const auto varying = std::ranges::find_if(varyings,
+                                                  [&](const Varying &varying) {
+                                                    return varying.name == port &&
+                                                           varying.out == writes;
+                                                  });
+        file.parent_path() == folder && varying != varyings.end())
+      return std::pair(file, varying->line);
+  return std::nullopt;
 }
 
 VP_OPERATORS(registry) {
