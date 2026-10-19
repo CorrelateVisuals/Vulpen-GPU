@@ -758,11 +758,13 @@ void Graph::turn(VP::Cook &frame, glm::vec2 turn) {
 // A box's inside, as a second press or the wheel goes into it: a view's, as view switch,
 // a node's holding nodes or files, as the inside param, which a line sets as a press does
 // (V06), and a folder's, as the relations part's folder param, or, for a folder a view
-// vulpen hosts is, that view; and from what lies outside, which has no role, a level up.
-// False for a box with no inside.
+// vulpen hosts is, that view; and from the name of what lies outside, which has no role, a
+// level up. False for a box with no inside.
 bool Graph::enter(VP::Cook &frame, std::size_t at) {
   const Box &entered = _boxes.boxes[at];
   if (!entered.role) {
+    if (row_under(at) != title_row)
+      return false;
     leave(frame);
     _left.clear(); // from home, as , goes up
     return true;

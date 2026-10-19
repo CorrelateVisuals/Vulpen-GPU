@@ -386,7 +386,8 @@ void relate(Boxes &boxes,
 // for the rest, which the layout counts.
 // A view's box lists the nodes at its top, then the file it is hosted from; a header and
 // its source's box, which has no ports, its files, from its first row, as their
-// relations end there.
+// relations end there; and what lies outside, whose rows are all ports, lists them, so
+// many count as the rest do.
 void list_rows(Boxes &boxes,
                std::size_t box,
                const Building &building,
@@ -431,8 +432,8 @@ void list_rows(Boxes &boxes,
         name.find('.') == std::string::npos)
       boxes.rows.push_back(
           {.text = std::format("node {}", name), .role = VP_VIEW::role("muted")});
-  listed.list_from = contents - listed.first;
-  listed.listed = boxes.rows.size() - contents;
+  listed.list_from = listed.role ? contents - listed.first : 0;
+  listed.listed = listed.role ? boxes.rows.size() - contents : listed.ports;
   if (child)
     boxes.rows.push_back(
         {.text = child->file.filename().generic_string(), .opens = child->file});
