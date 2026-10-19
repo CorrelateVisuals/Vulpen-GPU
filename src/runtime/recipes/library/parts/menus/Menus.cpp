@@ -222,8 +222,10 @@ class Menus final : public VP::Operator {
 
   // An item types its line as a person would, in the terminal, so the line shows there,
   // its history keeps it and its view is the current one: enter sends it, and Tab
-  // finishes the words a line that wants one has, a blank after them. A line opening a
-  // menu while the menus are shut shows them at the area's top left.
+  // finishes the words a line that wants one has, a blank after them. A menu opened for a
+  // subject, as a tab's, sends its item's line itself, whole, as the tab's own close mark
+  // sends close, so it acts while the terminal is hidden too, which takes no keys then.
+  // A line opening a menu while the menus are shut shows them at the area's top left.
   void command(VP::Call &call) override {
     if (!call.is(_menu))
       return;
@@ -256,18 +258,19 @@ class Menus final : public VP::Operator {
     if (entry == _entries.end())
       throw std::runtime_error(
           std::format("menu {} has no item {}", words.front(), item));
+    _shutting = true;
     // A subject is the word the line wants, so it runs whole.
-    const bool begins = entry->wants && _subject.empty();
-    const std::string_view key = begins ? "tab" : "enter";
+    if (!_subject.empty()) {
+      call.reply(call.commands().send(
+          entry->wants ? std::format("{} {}", entry->line, _subject) : entry->line));
+      return;
+    }
+    const std::string_view key = entry->wants ? "tab" : "enter";
     call.commands().send(std::format("focus {}", _line));
-    call.commands().send(std::format("input text {}{}{}",
-                                     entry->line,
-                                     entry->wants && !begins ? " " : "",
-                                     entry->wants && !begins ? _subject : ""));
+    call.commands().send(std::format("input text {}", entry->line));
     call.commands().send(std::format("input key down {}", key));
     call.commands().send(std::format("input key up {}", key));
-    _begun = begins;
-    _shutting = true;
+    _begun = entry->wants;
   }
 
   std::string menus() const {

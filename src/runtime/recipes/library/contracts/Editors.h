@@ -3,11 +3,16 @@
 #include "runtime/Operator.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace VP_VIEW {
+
+// Which files beside one a close takes: those left of it, those right of it, or all of
+// them with it.
+enum class Beside : std::uint8_t { left, right, all };
 
 // An editor a text part is, as the text node that answers the editor's commands reaches
 // it: a command has one owner, so one node registers them and acts on the editor in
@@ -29,8 +34,8 @@ public:
   // The file named, which it holds, or the one it shows; with changes only by force.
   virtual void close(VP::Call &call, std::string_view path, bool force) = 0;
   // The files left of the one named, which it holds, or of the one it shows, or right of
-  // it, but those with changes, which it names.
-  virtual void close_beside(VP::Call &call, std::string_view path, bool left) = 0;
+  // it, or all of them, but those with changes, which it names.
+  virtual void close_beside(VP::Call &call, std::string_view path, Beside beside) = 0;
   virtual void find(VP::Call &call) = 0;
   // Puts the first file it holds where the second is, those between moving over a place,
   // as a tab dragged onto another moves among its strip's.

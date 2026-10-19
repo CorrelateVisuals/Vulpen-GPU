@@ -89,7 +89,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   void show(VP::FilePort &files, std::string_view path) override;
   void write(VP::Call &call) override;
   void close(VP::Call &call, std::string_view path, bool force) override;
-  void close_beside(VP::Call &call, std::string_view path, bool left) override;
+  void close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside beside) override;
   void find(VP::Call &call) override;
   void move(std::string_view path, std::string_view to) override;
 
@@ -128,6 +128,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   VP::Command _close_force;
   VP::Command _close_left;
   VP::Command _close_right;
+  VP::Command _close_all;
   VP::Command _find;
   VP::Command _move;
   std::string _name; // as the focus names it
