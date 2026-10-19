@@ -51,8 +51,9 @@ struct Logged {
 };
 
 // The bottom of the tree: every module logs, so this header includes nothing of ours.
-// A header and a footer frame the log. Each line between them goes to standard output
-// under the time it was written, which shows only when the second changes:
+// A header and a footer frame the log. Each line between them goes to standard output,
+// and to a file when one is named, under the time it was written, which shows only when
+// the second changes:
 //
 //    26.09.30 10:40:12 {run} vulpen 6214db8
 //                      {nod} wave: pipeline from Wave.comp
@@ -62,8 +63,11 @@ struct Logged {
 // in a file as well as in color. A line that repeats prints once, then a count.
 class Log {
 public:
-  // title: what this binary is, which ends the header at every level (RC07).
-  Log(Level level, std::string_view title);
+  // title: what this binary is, which ends the header at every level (RC07). file: where
+  // the log keeps what it prints too, plain, so a run on another machine leaves behind
+  // what went wrong; empty for none. A file there already goes on, as quit restart's new
+  // vulpen goes on in its log. Throws naming a file it cannot save.
+  Log(Level level, std::string_view title, std::string_view file = {});
   // Prints the footer.
   ~Log();
   Log(const Log &) = delete;
@@ -103,9 +107,18 @@ private:
   void print_repeats() const;
   void emit(std::string_view tag, const char *color, std::string_view text) const;
   void keep(Level level, std::string_view mark, std::string_view text) const;
+  void add_to_file() const;
+  void save() const;
 
   const Level _level;
   const bool _colors;
+  const std::string _file;
+  // The line emit makes, and the file's text, saved whole at each save (RA04); both keep
+  // their capacity, so a line logged each frame allocates nothing once they have grown.
+  mutable std::string _out;
+  mutable std::string _text;
+  std::size_t _start = 0; // where this run's lines start in the file, past its header
+  mutable bool _unsaved = false; // a save failed, and the log said so once
   // What a write changes is only what the log prints next, so writers hold it const.
   // The two lines keep their capacity, so a line an operator logs each frame allocates
   // nothing (CPP10).

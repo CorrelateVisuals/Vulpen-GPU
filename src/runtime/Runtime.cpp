@@ -34,8 +34,8 @@ namespace {
 
 constexpr const char *usage =
     "usage: vulpen <view.vlp> [<view.vlp>...] [--frames N] [--first-frame N] [--fps N]\n"
-    "              [--size WxH] [--log error|warn|info|debug] [--source FILE]\n"
-    "              [--restart FILE]";
+    "              [--size WxH] [--log error|warn|info|debug] [--log-file FILE]\n"
+    "              [--source FILE] [--restart FILE]";
 constexpr std::uint32_t default_fps = 60;
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 // Beside vulpen, what quit restart hands the new vulpen to replay.
@@ -249,6 +249,8 @@ private:
     // frame block's resolution, so a run renders headless (V07). Zero renders none.
     VkExtent2D size{};
     Level log = Level::warn;
+    // Where the log keeps what it prints too; empty for nowhere.
+    std::filesystem::path log_file;
     // A file of commands, one a line, that the port runs before the first frame.
     std::filesystem::path source;
     // As source, the session quit restart carries, whose failure ends no run.
@@ -295,7 +297,8 @@ private:
 } // namespace
 
 Runtime::Runtime(std::span<char *const> arguments, std::string_view build)
-    : _options(parse(arguments)), _log(_options.log, build), _commands(_log, _ports, _ports) {
+    : _options(parse(arguments)), _log(_options.log, build, _options.log_file.string()),
+      _commands(_log, _ports, _ports) {
   _ports.listen(_commands);
 }
 
@@ -330,6 +333,8 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
       options.source = value;
     } else if (argument == "--restart") {
       options.restart = value;
+    } else if (argument == "--log-file") {
+      options.log_file = value;
     } else if (argument == "--log") {
       const std::optional<Level> level = level_named(value);
       if (!level)
@@ -625,6 +630,8 @@ Runtime::Relaunch Runtime::restarted(std::uint64_t ran) {
     arguments.insert(
         arguments.end(),
         {"--size", std::format("{}x{}", _options.size.width, _options.size.height)});
+  if (!_options.log_file.empty())
+    arguments.insert(arguments.end(), {"--log-file", _options.log_file.string()});
   return {_executable, std::move(arguments)};
 }
 

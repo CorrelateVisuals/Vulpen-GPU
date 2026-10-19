@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <exception>
 #include <format>
 #include <utility>
 
@@ -51,20 +52,31 @@ constexpr std::array marks{Mark{"{run}", bold},
 constexpr std::array problems{Mark{"{!!!}", red}, Mark{"{ ! }", yellow}};
 constexpr Mark repeat{"{rep}", dim};
 constexpr std::size_t count_capacity = 64;
+// Past this the file lets its oldest lines go, so memory stays bounded however long a run
+// logs (A03); the runs before a restart keep half of it.
+constexpr std::size_t file_capacity = std::size_t{1} << 20;
 
 } // namespace
 
-Log::Log(Level level, std::string_view title)
-    : _level(level), _colors(Terminal::colors()) {
+Log::Log(Level level, std::string_view title, std::string_view file)
+    : _level(level), _colors(Terminal::colors()), _file(file),
+      _text(file.empty() ? std::string() : Files::text(_file)) {
+  if (_text.size() > file_capacity / 2)
+    _text.erase(0, _text.find('\n', _text.size() - file_capacity / 2) + 1);
   for (const std::string_view line : {rule, banner, rule})
     emit({}, plain, line);
   print(Level::info, Tag::run, {}, {}, title);
+  _start = _text.size();
+  // Saved now, so a run that crashes before its first problem still leaves its build.
+  if (!_file.empty())
+    Files::save(_file, _text);
 }
 
 Log::~Log() {
   print_repeats();
   for (const std::string_view line : {rule, credit})
     emit({}, plain, line);
+  save();
 }
 
 Level Log::level() const {
@@ -120,6 +132,8 @@ void Log::print(Level level,
   keep(level, mark.text, after_mark);
   _line.swap(_previous);
   _previous_view.assign(view);
+  if (level <= Level::warn)
+    save();
 }
 
 void Log::print_repeats() const {
@@ -153,31 +167,68 @@ void Log::clears_row(bool clears) const {
   _clears_row = clears;
 }
 
-// A tag takes its color, and each further line of the text starts under the first.
+// The line is made once, plain, as the file keeps it; on a terminal its tag, which starts
+// where the time column ends, takes its color. Each further line of the text starts under
+// the first.
 void Log::emit(std::string_view tag, const char *color, std::string_view text) const {
-  if (_clears_row)
-    std::fwrite(Terminal::clear_row.data(), 1, Terminal::clear_row.size(), stdout);
   std::array<char, time_width + 1> time{};
   if (const std::time_t now = std::time(nullptr); now != _second) {
     _second = now;
     const std::tm local = local_time(now);
     std::strftime(time.data(), time.size(), time_format, &local);
   }
-  std::printf("%-*s", time_width, time.data());
+  _out.assign(time.data()).resize(time_width, ' ');
   if (!tag.empty())
-    std::printf("%s%.*s%s ",
-                _colors ? color : "",
-                static_cast<int>(tag.size()),
-                tag.data(),
-                _colors ? plain : "");
-  const int indent = time_width + static_cast<int>(tag.empty() ? 0 : tag.size() + 1);
+    _out.append(tag).append(" ");
+  const std::size_t indent = _out.size();
   for (std::size_t end = text.find('\n'); end != std::string_view::npos;
        end = text.find('\n')) {
-    std::printf("%.*s\n%*s", static_cast<int>(end), text.data(), indent, "");
+    _out.append(text.substr(0, end)).append("\n").append(indent, ' ');
     text.remove_prefix(end + 1);
   }
-  std::printf("%.*s\n", static_cast<int>(text.size()), text.data());
+  _out.append(text).append("\n");
+  if (_clears_row)
+    std::fwrite(Terminal::clear_row.data(), 1, Terminal::clear_row.size(), stdout);
+  std::size_t printed = 0;
+  if (_colors && !tag.empty()) {
+    std::printf("%.*s%s%.*s%s",
+                time_width,
+                _out.data(),
+                color,
+                static_cast<int>(tag.size()),
+                _out.data() + time_width,
+                plain);
+    printed = time_width + tag.size();
+  }
+  std::fwrite(_out.data() + printed, 1, _out.size() - printed, stdout);
   std::fflush(stdout);
+  add_to_file();
+}
+
+// Past its room, the file lets the oldest half of this run's lines go, so a long run keeps
+// its build and its last lines.
+void Log::add_to_file() const {
+  if (_file.empty())
+    return;
+  _text.append(_out);
+  if (_text.size() > file_capacity) {
+    const std::size_t middle = _start + (_text.size() - _start) / 2;
+    _text.erase(_start, _text.find('\n', middle) + 1 - _start);
+  }
+}
+
+// Whole, as every save is (RA04), at each problem and at the end, so a run that crashes
+// leaves what went wrong before it. A file that cannot be saved any more is said once, and
+// the run goes on, as the log is no part of what it runs.
+void Log::save() const {
+  if (_file.empty() || _unsaved)
+    return;
+  try {
+    Files::save(_file, _text);
+  } catch (const std::exception &failure) {
+    _unsaved = true;
+    print(Level::error, Tag::run, {}, {}, failure.what());
+  }
 }
 
 } // namespace VP
