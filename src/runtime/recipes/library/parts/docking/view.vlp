@@ -2,7 +2,9 @@
 # moves a panel of a dock beside another as edits of the docks that seat them, and which a
 # drag of a panel's tab strip onto another panel sends. Its host hands its area the Rect
 # it gives its outermost dock, on the same connection, its font the font's metrics, and
-# draws its rects over the panels: a frame round where a drop would put the panel dragged.
+# draws its rects over the panels: a frame round where a drop would put the panel dragged;
+# and its labels and characters, an x at the end of each panel's tab strip, whose press
+# hides the panel.
 [manifest]
 version = 1
 

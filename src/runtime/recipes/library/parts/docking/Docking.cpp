@@ -1,11 +1,13 @@
 #include "contracts/Editors.h"
 #include "contracts/Font.h"
 #include "contracts/Item.h"
+#include "contracts/Label.h"
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Halves.h"
+#include "shared/Labels.h"
 
 #include <glm/geometric.hpp>
 
@@ -64,6 +66,11 @@ constexpr float even = 0.5f;      // a moved dock's ratio: half its place for ea
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 constexpr std::int32_t ring = 2;  // how wide the frame where a drop puts a panel is
 constexpr std::uint32_t frame_rects = 4;
+// A panel's close mark, in the cells at the end of its tab strip that its tabs leave
+// free, as the panel component's list param end does, which a press hides the panel by.
+constexpr std::uint32_t close_cells = 2;
+constexpr std::string_view close_text = "x";
+constexpr std::uint32_t close_room = 32; // panels seated whose marks show, at most
 
 // A panel a dock seats, where it shows, and its tab strip, which a drag takes it by, and
 // where the view lists its bar, which orders the buttons.
@@ -254,7 +261,8 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // area gives, which its host also hands the outermost dock, and while a drag goes on it
 // frames where a drop would put the panel dragged. Of an editor holding several files,
 // as the editors its host connects say, the file it shows moves: into a new editor, or
-// into the editor in the target's middle.
+// into the editor in the target's middle. At the end of each strip it draws a close
+// mark, whose press hides the panel, as its button does.
 class Docking final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::vector<VP::Connection> &connections = node.view().connections;
@@ -284,6 +292,8 @@ class Docking final : public VP::Operator {
     _area = &node.input<VP_VIEW::Rect>("area");
     _font = &node.input<VP_VIEW::Font>("font");
     _rects = node.upload<VP_VIEW::Rect>("rects", frame_rects);
+    _labels = node.upload<VP_VIEW::Label>("labels", close_room);
+    _characters = node.upload<VP_VIEW::Character>("characters", close_room);
     _laid_out.reset(); // a rebuild may have moved every panel
   }
 
@@ -294,12 +304,43 @@ class Docking final : public VP::Operator {
       seat_all(frame.view(), cell);
     }
     for (const VP::Event &event : frame.input().events())
-      follow(frame, event);
+      follow(frame, event, cell);
     const auto drop = dropped();
     frame.write(_rects,
                 drop ? ring_round(frame.write(_rects),
                                   half_at(_seated[drop->first].area, drop->second))
                      : 0);
+    write_marks(frame, cell);
+  }
+
+  // Where a panel's close mark is: the cells at the end of its strip; none while the
+  // strip has no room.
+  static VP_VIEW::Rect close_of(const Seated &seated, glm::uvec2 cell) {
+    const std::uint32_t wide = close_cells * cell.x;
+    const VP_VIEW::Rect &strip = seated.strip;
+    if (strip.extent.y == 0 || strip.extent.x < wide)
+      return {};
+    return {.offset = strip.offset +
+                      glm::ivec2(static_cast<std::int32_t>(strip.extent.x - wide), 0),
+            .extent = {wide, strip.extent.y}};
+  }
+
+  // An x a panel shown, in the middle of its close mark's cells, muted, or in the text's
+  // color under the pointer.
+  void write_marks(VP::Cook &frame, glm::uvec2 cell) {
+    Labels written{frame.write(_labels), frame.write(_characters)};
+    for (const Seated &seated : _seated) {
+      const VP_VIEW::Rect mark = close_of(seated, cell);
+      if (mark.extent.x == 0)
+        continue;
+      written.add({.offset = mark.offset + glm::ivec2((mark.extent - cell) / 2u),
+                   .extent = cell,
+                   .role = VP_VIEW::contains(mark, _pointer) ? VP_VIEW::role("text")
+                                                             : VP_VIEW::role("muted")},
+                  close_text);
+    }
+    frame.write(_labels, written.label_count);
+    frame.write(_characters, written.character_count); // the used length glyphs draws
   }
 
   // From the dock its area's connection hands the same Rect, as far down as docks go;
@@ -364,13 +405,19 @@ class Docking final : public VP::Operator {
   }
 
   // A press on a strip grabs its panel, a drag past a few pixels takes it, and letting go
-  // on another panel moves it there.
-  void follow(VP::Cook &frame, const VP::Event &event) {
+  // on another panel moves it there; a press on its close mark hides it.
+  void follow(VP::Cook &frame, const VP::Event &event, glm::uvec2 cell) {
     if (event.kind == VP::Event::Kind::pointer) {
       _pointer = event.at;
       _dragging = _dragging || (_grabbed && glm::distance(_pointer, _from) > drag_from);
     } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
-      if (event.down) {
+      const auto closing = std::ranges::find_if(_seated, [&](const Seated &seated) {
+        return VP_VIEW::contains(close_of(seated, cell), _pointer);
+      });
+      if (event.down && closing != _seated.end()) {
+        frame.commands().send(std::format("{}: panel hide {}", _view, closing->panel));
+        _grabbed.reset();
+      } else if (event.down) {
         const auto pressed = std::ranges::find_if(_seated, [&](const Seated &seated) {
           return VP_VIEW::contains(seated.strip, _pointer);
         });
@@ -863,6 +910,8 @@ class Docking final : public VP::Operator {
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;
   VP::Upload<VP_VIEW::Rect> _rects;
+  VP::Upload<VP_VIEW::Label> _labels; // the close marks'
+  VP::Upload<VP_VIEW::Character> _characters;
   std::vector<Seated> _seated; // as the docks lay them out now
   // The area and the font's cell the panels were seated for; none until a frame seats
   // them, and after a rebuild.

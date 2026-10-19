@@ -2,8 +2,10 @@
 # tall off the top of the Rect its host connects to bar.area, and the content fills
 # bar.rest, so any recipe can sit in a panel. The strip shows the Items the content hands
 # tabs.items and hit.items, side by side, and a press on one sends its command: tabs are
-# the content's, so a panel registers no command. Another shape is another composition:
-# bar.size=0 leaves the strip no room, and a panel with no tabs is its content alone.
+# the content's, so a panel registers no command. Its strip's last two cells stay free
+# of tabs, for the close mark a docking part draws there, which hides the panel. Another
+# shape is another composition: bar.size=0 leaves the strip no room, and a panel with no
+# tabs is its content alone.
 [manifest]
 version = 1
 
@@ -15,6 +17,7 @@ recipe = bar
 [node "panel.tabs"]
 recipe = list
 param  = axis=x
+param  = end=2
 
 [node "panel.rects"]
 recipe = rects
