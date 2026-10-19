@@ -40,7 +40,8 @@ constexpr float wheel_cells = 4.0f;       // a strip scrolls across a step of th
 // in a frame and a fill of its own.
 constexpr std::uint32_t frame_and_fill = 2;
 constexpr std::uint32_t rect_room = 1 + row_room + frame_and_fill;
-constexpr std::uint32_t label_room = 2 * row_room + 1; // a label and a mark an Item, a tip
+// A label and a mark an Item, and a tip.
+constexpr std::uint32_t label_room = 2 * row_room + 1;
 
 VP_VIEW::Rect grown(const VP_VIEW::Rect &rect, std::int32_t by, std::uint32_t role) {
   return {.offset = rect.offset - by,
@@ -57,8 +58,9 @@ VP_VIEW::Rect within(VP_VIEW::Rect rect, const VP_VIEW::Rect &strip) {
   const std::int32_t from = std::max(rect.offset.x, strip.offset.x);
   const std::int32_t to = std::min(right_of(rect), right_of(strip));
   rect.offset.x = from;
-  rect.extent = to > from ? glm::uvec2(static_cast<std::uint32_t>(to - from), rect.extent.y)
-                          : glm::uvec2(0);
+  rect.extent = to > from
+                    ? glm::uvec2(static_cast<std::uint32_t>(to - from), rect.extent.y)
+                    : glm::uvec2(0);
   return rect;
 }
 
@@ -69,15 +71,15 @@ VP_VIEW::Rect within(VP_VIEW::Rect rect, const VP_VIEW::Rect &strip) {
 // over it, with no bar, and to show the current one as it changes, its end cells left
 // free for a mark its host draws there, and the pointer over a label cut showing it whole
 // below its tab; an Item with a close command shows a close mark at its end; a column
-// marks its current Item's row. With drop = below the column drops below its place instead, as wide as its widest
-// label and as tall as its Items, inside the window, as a menu drops below where it was
-// opened; with drop = right it opens beside its place, its first row level with it, as a
-// menu's items open beside its name: right of it, or left where the window has no room,
-// its frame on the column's own and its fill over their shared border, so the two read as
-// one. It hands on where each Item shows,
-// and where its mark does, so hit finds the one pressed, and where the current one does,
-// so what it opens shows below it. Tab strips, menus and tips are this part, so none of
-// them places its entries itself.
+// marks its current Item's row. With drop = below the column drops below its place
+// instead, as wide as its widest label and as tall as its Items, inside the window, as a
+// menu drops below where it was opened; with drop = right it opens beside its place, its
+// first row level with it, as a menu's items open beside its name: right of it, or left
+// where the window has no room, its frame on the column's own and its fill over their
+// shared border, so the two read as one. It hands on where each Item shows, and where its
+// mark does, so hit finds the one pressed, and where the current one does, so what it
+// opens shows below it. Tab strips, menus and tips are this part, so none of them places
+// its entries itself.
 class List final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string axis = node.param<std::string>("axis");
@@ -194,7 +196,8 @@ class List final : public VP::Operator {
       if (item.label.empty()) {
         _laid.push_back({.offset = {reach + across / 2, place.offset.y + margin},
                          .extent = {static_cast<std::uint32_t>(frame_width),
-                                    place.extent.y - static_cast<std::uint32_t>(2 * margin)},
+                                    place.extent.y -
+                                        static_cast<std::uint32_t>(2 * margin)},
                          .role = VP_VIEW::role("border")});
         reach += across + gap;
         continue;
@@ -218,14 +221,16 @@ class List final : public VP::Operator {
       tab.offset.x += shift;
       _shown->push_back(within(tab, strip));
       // The mark's cell is the last before the tab's right padding.
-      const VP_VIEW::Rect mark{.offset = {right_of(tab) - padding_cells * across, tab.offset.y},
-                               .extent = {cell.x, place.extent.y}};
-      _marks->push_back((*_items)[at].close.empty() || within(mark, strip).extent != mark.extent
+      const VP_VIEW::Rect mark{
+          .offset = {right_of(tab) - padding_cells * across, tab.offset.y},
+          .extent = {cell.x, place.extent.y}};
+      const VP_VIEW::Item &item = (*_items)[at];
+      _marks->push_back(item.close.empty() || within(mark, strip).extent != mark.extent
                             ? VP_VIEW::Rect{}
                             : mark);
-      if ((*_items)[at].label.size() > tab_cells && VP_VIEW::contains(_shown->back(), _pointer)) {
+      if (item.label.size() > tab_cells && VP_VIEW::contains(_shown->back(), _pointer)) {
         _tip = at;
-        _tip_row = tip_row(tab, (*_items)[at].label.size(), cell, place, frame.resolution());
+        _tip_row = tip_row(tab, item.label.size(), cell, place, frame.resolution());
       }
     }
   }
@@ -259,8 +264,9 @@ class List final : public VP::Operator {
     const auto wide = static_cast<std::int32_t>(length * cell.x);
     const std::int32_t most =
         std::min(right_of(place), static_cast<std::int32_t>(window.x)) - edge - wide;
-    const std::int32_t x = std::max(std::min(tab.offset.x + static_cast<std::int32_t>(cell.x), most),
-                                    place.offset.x + edge);
+    const std::int32_t x =
+        std::max(std::min(tab.offset.x + static_cast<std::int32_t>(cell.x), most),
+                 place.offset.x + edge);
     return {.offset = {x, tab.offset.y + static_cast<std::int32_t>(tab.extent.y) + edge},
             .extent = {static_cast<std::uint32_t>(wide), cell.y}};
   }
@@ -368,8 +374,8 @@ class List final : public VP::Operator {
     if (to <= from)
       return;
     const auto first = static_cast<std::size_t>((from - start) / wide);
-    const auto last =
-        std::min(_fitted.size(), static_cast<std::size_t>((to - start + wide - 1) / wide));
+    const auto last = std::min(_fitted.size(),
+                               static_cast<std::size_t>((to - start + wide - 1) / wide));
     const std::int32_t offset = start + static_cast<std::int32_t>(first) * wide;
     written.add({.offset = {offset, top},
                  .extent = {static_cast<std::uint32_t>(to - offset), cell.y},

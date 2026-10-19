@@ -1,3 +1,7 @@
+// The docking part's operator. It runs past 800 lines (CPP12), as a class in the unnamed
+// namespace, so that two copies of the part never clash, keeps its methods to one file:
+// the panels' moves, hides, stacks, editors, marks and divider all read the docks it
+// seats; what needs none of its state lives in the header beside it, Kept.h.
 #include "contracts/Editors.h"
 #include "contracts/Font.h"
 #include "contracts/Item.h"
@@ -8,6 +12,7 @@
 #include "runtime/View.h"
 #include "shared/Halves.h"
 #include "shared/Labels.h"
+#include "Kept.h"
 
 #include <glm/geometric.hpp>
 
@@ -16,6 +21,7 @@
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <format>
 #include <map>
 #include <optional>
@@ -271,7 +277,10 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // area gives, which its host also hands the outermost dock, and while a drag goes on it
 // frames where a drop would put the panel dragged. Of an editor holding several files,
 // as the editors its host connects say, the file it shows moves: into a new editor, or
-// into the editor in the target's middle. At the end of each strip it draws a close
+// into the editor in the target's middle. It keeps the panels as a person left them in
+// .vulpen/layout.log beside the view's manifest, saved as they change, and as the view
+// starts as its manifest has it, arranges them so again, by panel restore, so they
+// last between runs. At the end of each strip it draws a close
 // mark, whose press hides the panel, as its button does. Where the bar its area is the
 // rest of parts its strip from it by a seam, as the menubar's, it draws that seam as a
 // divider: a drag on it up past the middle of the strip hides the bar, its size 0, and
@@ -299,6 +308,11 @@ class Docking final : public VP::Operator {
     _show = node.command("panel show <node>",
                          "gives a panel hidden its room again, as its docks' ratios were "
                          "before it hid, or halved");
+    _restore = node.command("panel restore",
+                            "arranges the panels as a person left them, as .vulpen/"
+                            "layout.log beside the view's manifest keeps them");
+    _manifest = node.view().file.string();
+    _kept = (node.view().file.parent_path() / kept_folder / kept_file).string();
     _buttons = &node.output<VP_VIEW::Items>("buttons");
     _name = node.name();
     _view = node.view_name();
@@ -312,10 +326,13 @@ class Docking final : public VP::Operator {
 
   void cook(VP::Cook &frame) override {
     const glm::uvec2 cell = _font->cell;
+    if (!_started)
+      start(frame);
     if (const Laid laid{_area->offset, _area->extent, cell}; _laid_out != laid) {
       _laid_out = laid;
       seat_all(frame.view(), cell);
       find_divider(frame.view());
+      keep(frame);
     }
     for (const VP::Event &event : frame.input().events())
       follow(frame, event, cell);
@@ -328,6 +345,65 @@ class Docking final : public VP::Operator {
                             half_at(_seated[drop->first].area, drop->second));
     frame.write(_rects, written);
     write_marks(frame, cell);
+  }
+
+  // At the first frame, what the file keeps: its edits, as the view holds them already
+  // once a replay of the log arranged it, as a restart's does; and on a view as its
+  // manifest has it, the panels as kept, through panel restore, so a line arranges them
+  // (V06). With no file, nothing is saved until the panels change.
+  void start(VP::Cook &frame) {
+    _started = true;
+    VP::FilePort &files = frame.files();
+    const std::filesystem::path kept(_kept);
+    const std::vector<std::string> names = files.list(kept.parent_path().string());
+    if (std::ranges::find(names, kept.filename().string()) == names.end()) {
+      _saved = kept_text(_record, *frame.view(_view));
+      return;
+    }
+    _saved = files.read(_kept);
+    _record.clear();
+    for (std::string &line : kept_lines(_saved))
+      if (structural(line))
+        _record.push_back(std::move(line));
+    bool written = false;
+    try {
+      written = as_written(frame.view(), files.manifest(_manifest));
+    } catch (const std::runtime_error &mistake) {
+      frame.log(VP::Level::warn, mistake.what());
+    }
+    if (written)
+      frame.commands().send(std::format("{}: panel restore", _view));
+  }
+
+  // The panels as the view holds them now, saved once they changed: a panel moved, hidden
+  // or shown, a seam or the menubar's divider dragged, a stack's other half shown.
+  void keep(VP::Cook &frame) {
+    std::string text = kept_text(_record, *frame.view(_view));
+    if (text == _saved)
+      return;
+    frame.files().save(_kept, text);
+    _saved = std::move(text);
+  }
+
+  // The kept file's lines on this view, as a script's run; the first a change refuses
+  // stops it, the lines before staying, as a file kept before the manifest changed past
+  // it may hold one, and the next change saves them as they are.
+  void restore(VP::Call &call) {
+    const std::vector<std::string> lines = kept_lines(call.files().read(_kept));
+    _record.clear();
+    for (const std::string &line : lines) {
+      try {
+        call.commands().send(std::format("{}: {}", _view, line));
+      } catch (const std::runtime_error &refused) {
+        throw std::runtime_error(
+            std::format("{}: {}: {}; the panels stay as restored so far",
+                        _kept,
+                        line,
+                        refused.what()));
+      }
+      if (structural(line))
+        _record.push_back(line);
+    }
   }
 
   // The bar its area is the rest of, when that bar parts its strip from the rest by a
@@ -346,8 +422,9 @@ class Docking final : public VP::Operator {
         .bar = root->from.node,
         .seam = {.offset = _area->offset - glm::ivec2(0, seam_width),
                  .extent = {_area->extent.x,
-                            _area->extent.x == 0 ? 0u
-                                                 : static_cast<std::uint32_t>(seam_width)}},
+                            _area->extent.x == 0
+                                ? 0u
+                                : static_cast<std::uint32_t>(seam_width)}},
         .size = size.empty() ? 1u : number<std::uint32_t>(size)};
     if (_divider->size != 0)
       _shown_size = _divider->size;
@@ -558,6 +635,8 @@ class Docking final : public VP::Operator {
       hide(call, std::string(call.arguments().front()));
     else if (call.is(_show))
       show(call, std::string(call.arguments().front()));
+    else if (call.is(_restore))
+      restore(call);
   }
 
   // The dock seating the panel gives its half no room, or, when its other half shows
@@ -765,7 +844,8 @@ class Docking final : public VP::Operator {
     // over both, and before what draws over the panels.
     send(call, std::format("node move {} {}", stack, target));
     send(call,
-         std::format("node move {}.{} {}", parent_of(target), content_name(content), target));
+         std::format(
+             "node move {}.{} {}", parent_of(target), content_name(content), target));
     send(call, std::format("disconnect {}", room.name));
     send(call, std::format("disconnect {}", tabs.name));
     connect(call,
@@ -972,13 +1052,26 @@ class Docking final : public VP::Operator {
     send(call, line);
   }
 
+  // Each line on its own view; one that makes the panels other than by a param is kept,
+  // for the panels to be arranged so again at the next run.
   void send(VP::Call &call, std::string_view line) {
     call.commands().send(std::format("{}: {}", _view, line));
+    if (structural(line))
+      _record.emplace_back(line);
   }
 
   VP::Command _move;
   VP::Command _hide;
   VP::Command _show;
+  VP::Command _restore;
+  // Where the view's manifest is, and the file keeping the panels beside it; the edits
+  // that moved them since the manifest, kept, and the file as saved last, and whether the
+  // first frame read it.
+  std::string _manifest;
+  std::string _kept;
+  std::vector<std::string> _record;
+  std::string _saved;
+  bool _started = false;
   VP_VIEW::Items *_buttons = nullptr;
   const VP_VIEW::Editors *_editors = nullptr; // as its host connects them; none for none
   // A dock's ratio before it hid a half, by its split, so showing it gives it back.

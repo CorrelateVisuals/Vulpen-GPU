@@ -53,8 +53,9 @@ and out again, the one it shows, into a panel of its own right of the terminal, 
 the terminal's tab strip onto the editor's right edge, so the ide's docks are edited over
 and over, and must rebuild with no line refused. No node of any run may stop, as one
 whose menu.ini or keymap names a line no command takes would.
-The zoom a person keeps in the library's font folder is set aside while it runs, and put
-back after. Where no display exists it is skipped (V07).
+The zoom a person keeps in the library's font folder, and the panels as they left them
+beside the ide's manifest, are set aside while it runs, and put back after; every run
+starts from the manifest's panels. Where no display exists it is skipped (V07).
 
 Usage: python3 src/tools/tests/ide.py VULPEN
 """
@@ -69,8 +70,11 @@ from harness import display, problems, run
 RUNTIME = Path(__file__).resolve().parents[2] / "runtime"
 CLI = RUNTIME / "recipes" / "cli" / "view.vlp"
 IDE = RUNTIME / "recipes" / "ide" / "view.vlp"
-# The ide's font is the library's part, so it keeps its zoom in the library's folder.
+# The ide's font is the library's part, so it keeps its zoom in the library's folder;
+# its docking part keeps the panels as they were left beside the ide's manifest, which
+# each run starts without, so every run starts from the manifest's.
 ZOOMED = RUNTIME / "recipes/library/parts/font/.vulpen/font.ini"
+LAID = RUNTIME / "recipes/ide/.vulpen/layout.log"
 TRIANGLE = RUNTIME.parents[1] / "projects" / "triangle"
 PRESENT = [f"view load {TRIANGLE}"]  # presented as it comes
 PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode toggle
@@ -349,6 +353,7 @@ def drive(folder: Path, name: str, lines: list[str], frames: int = FRAMES,
           typed: str = "", whole: bool = True) -> str:
     script = folder / f"{name}.txt"
     script.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    LAID.unlink(missing_ok=True)
     code, output = run(sys.argv[1], [CLI, IDE, "--frames", frames, "--fps", 0, "--log",
                                      "info", "--source", script], headless=False, typed=typed)
     if code != 0 or problems(output) or STOPPED.search(output):
@@ -363,17 +368,18 @@ def main() -> None:
     if not display():
         print("skipped: no display to open a window on")
         return
-    kept = ZOOMED.read_bytes() if ZOOMED.exists() else None
+    kept = {path: path.read_bytes() if path.exists() else None for path in (ZOOMED, LAID)}
     ZOOMED.unlink(missing_ok=True)
     try:
         test()
     finally:
-        if kept is None:
-            ZOOMED.unlink(missing_ok=True)
-            if ZOOMED.parent.exists() and not any(ZOOMED.parent.iterdir()):
-                ZOOMED.parent.rmdir()
-        else:
-            ZOOMED.write_bytes(kept)
+        for path, held in kept.items():
+            if held is None:
+                path.unlink(missing_ok=True)
+                if path.parent.exists() and not any(path.parent.iterdir()):
+                    path.parent.rmdir()
+            else:
+                path.write_bytes(held)
 
 
 def test() -> None:
