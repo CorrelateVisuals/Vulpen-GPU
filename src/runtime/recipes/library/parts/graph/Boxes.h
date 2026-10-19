@@ -27,12 +27,15 @@
 namespace {
 
 constexpr std::uint32_t node_room = 256; // boxes shown at most; the rest are cut
-// The nodes, folders and files a box lists, at most; a row more stands for the rest,
-// which the pointer over it shows, so a folder of many files stays a box one reads.
+// The nodes, folders and files a box lists, at most, as large as its rows need; a row
+// more stands for the rest, which the pointer over it shows, so a folder of many files
+// stays a box one reads. Made larger it lists more, and smaller fewer.
 constexpr std::size_t listed_room = 10;
 constexpr std::size_t no_box = static_cast<std::size_t>(-1);
 // An end on a box's name, as a relation's, rather than on a row.
 constexpr std::size_t title_row = no_box;
+// The row standing for those a box lists that it has no room to show.
+constexpr std::size_t more_row = no_box - 2;
 // What a view's box calls what it draws into its window, which a connection may take.
 constexpr std::string_view window_port = "window";
 constexpr std::string_view manifest_name = "view.vlp";
@@ -50,7 +53,6 @@ struct BoxRow {
   std::string written; // the port written
   std::uint32_t role = VP_VIEW::role("text");
   std::filesystem::path opens; // what a press on it opens; empty for none
-  bool more = false;           // it stands for the rows past listed_room
 };
 
 // A node, a view the view shown hosts, a folder or a file of the folder shown, or what
@@ -75,8 +77,11 @@ struct Box {
   std::size_t first = 0; // its rows, in Boxes::rows
   std::size_t rows = 0;
   std::size_t ports = 0; // of its rows, the first, a port read or written on each
+  // Of its rows, those it lists, the nodes, folders and files it holds, which show as its
+  // room lets them, one row standing for the rest: from which, and how many.
+  std::size_t list_from = 0;
+  std::size_t listed = 0;
   std::filesystem::path opens; // a file's, which a press on its name opens
-  std::vector<std::string> hidden; // the rows past listed_room, as they would read
 };
 
 // A curve: from the row of a writer's port to the row of a reader's, a reader each, or a
@@ -377,9 +382,10 @@ void relate(Boxes &boxes,
 // Each box's rows: its ports, a reader's and a writer's side by side, then the recipe its
 // node uses, whose row opens the recipe's manifest, then the nodes inside it, then its
 // files, each opening itself, unless it frames them, as boxes of their own, listed_room
-// of them at most and a row for the rest. A view's box lists the nodes at its top, then
-// the file it is hosted from; a header and its source's box, which has no ports, its
-// files, from its first row, as their relations end there.
+// of them showing as its room lets them and a row for the rest, which the layout counts.
+// A view's box lists the nodes at its top, then the file it is hosted from; a header and
+// its source's box, which has no ports, its files, from its first row, as their
+// relations end there.
 void list_rows(Boxes &boxes,
                std::size_t box,
                const Building &building,
@@ -425,14 +431,8 @@ void list_rows(Boxes &boxes,
         name.find('.') == std::string::npos)
       boxes.rows.push_back(
           {.text = std::format("node {}", name), .role = VP_VIEW::role("muted")});
-  if (boxes.rows.size() - contents > listed_room) {
-    for (std::size_t past = contents + listed_room; past < boxes.rows.size(); ++past)
-      listed.hidden.push_back(boxes.rows[past].text);
-    boxes.rows.resize(contents + listed_room);
-    boxes.rows.push_back({.text = std::format("... {} more", listed.hidden.size()),
-                          .role = VP_VIEW::role("muted"),
-                          .more = true});
-  }
+  listed.list_from = contents - listed.first;
+  listed.listed = boxes.rows.size() - contents;
   if (child)
     boxes.rows.push_back(
         {.text = child->file.filename().generic_string(), .opens = child->file});

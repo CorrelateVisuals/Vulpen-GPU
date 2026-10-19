@@ -10,9 +10,11 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <limits>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -29,6 +31,8 @@ constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its
 // How small a person may make any box, in cells of its rows: a few characters of its
 // name's row, its rows and the boxes inside it cut where it ends.
 constexpr glm::uvec2 least_cells{4, 1};
+// What the row standing for the rows a box lists past those it shows reads.
+constexpr std::string_view more_text = "... {} more";
 constexpr std::size_t no_gap = static_cast<std::size_t>(-1); // a track's, in a channel
 // How much wider than tall a level whose columns wrap aims to be, as a window is.
 constexpr float wrap_aspect = 1.6f;
@@ -63,6 +67,12 @@ struct Placed {
   glm::uvec2 natural{};    // as large as its rows and the boxes inside it
   glm::uvec2 least{};      // as small as a person may make it: least_cells, or the boxes
                            // inside it
+  // Of the rows its box lists, from which they start, how many show, and how many the row
+  // standing for the rest counts; and how many rows come after them.
+  std::size_t list_from = 0;
+  std::size_t listed = 0;
+  std::size_t more = 0;
+  std::size_t after = 0;
   glm::ivec2 at{};         // from the graph's top left
   std::int32_t inside = 0; // from its top, where the boxes inside it start
   bool frames = false;     // it holds boxes, which show through below its rows
@@ -199,18 +209,47 @@ public:
     return {name_margin * static_cast<std::int32_t>(cell.x), _placed[box].inside};
   }
 
-  // The middle of a box's row from its top, or of its last row shown where it is made
-  // smaller than its rows, so a curve to a row cut off lands on the box.
+  // The middle of a box's row from its top, the row standing for the rest for one it
+  // lists past those it shows, or of its last row shown where it is made smaller than
+  // its rows, so a curve to a row cut off lands on the box.
   float row_in(std::size_t box, std::size_t row, glm::uvec2 cell) const {
-    return std::min(row_y(row, cell),
+    return std::min(row_y(slot_of(_placed[box], row), cell),
                     static_cast<float>(_placed[box].extent.y) - static_cast<float>(pad) -
                         static_cast<float>(cell.y) / 2.0f);
   }
 
-  // Where a box's rows end, from its top: its name and the rows it lists, a pad above
-  // and below them.
-  static std::int32_t rows_end(const Boxes &boxes, std::size_t box, glm::uvec2 cell) {
-    return static_cast<std::int32_t>((1 + boxes.boxes[box].rows) * cell.y) + 2 * pad;
+  // How many rows a box shows below its name: its own, those it lists that show, one for
+  // the rest, and those after them.
+  static std::size_t shown_rows(const Placed &placed) {
+    return placed.list_from + placed.listed + (placed.more != 0 ? 1 : 0) + placed.after;
+  }
+
+  // The row a box shows at a place below its name; more_row for the row standing for the
+  // rest.
+  static std::size_t row_at(const Placed &placed, std::size_t slot) {
+    const std::size_t listed_end = placed.list_from + placed.listed;
+    if (slot < listed_end)
+      return slot;
+    if (placed.more != 0 && slot == listed_end)
+      return more_row;
+    return slot + (placed.more != 0 ? placed.more - 1 : 0);
+  }
+
+  // Where a box shows a row below its name: one it lists past those it shows, at the row
+  // standing for the rest.
+  static std::size_t slot_of(const Placed &placed, std::size_t row) {
+    const std::size_t listed_end = placed.list_from + placed.listed;
+    if (row == title_row || row < listed_end)
+      return row;
+    if (row < listed_end + placed.more)
+      return listed_end;
+    return row - (placed.more != 0 ? placed.more - 1 : 0);
+  }
+
+  // Where a box's rows end, from its top: its name and the rows it shows, a pad above and
+  // below them.
+  std::int32_t rows_end(std::size_t box, glm::uvec2 cell) const {
+    return static_cast<std::int32_t>((1 + shown_rows(_placed[box])) * cell.y) + 2 * pad;
   }
 
 private:
@@ -321,15 +360,30 @@ private:
       return;
     }
     const auto margin = static_cast<std::int32_t>(name_margin * cell.x);
-    std::size_t widest = boxes.boxes[box].title.size();
-    for (const BoxRow &row : rows_in(boxes, box))
+    const Box &shown = boxes.boxes[box];
+    const std::span<const BoxRow> rows = rows_in(boxes, box);
+    {
+      Placed &listing = _placed[box];
+      listing.list_from = shown.list_from;
+      listing.listed = std::min(shown.listed, listed_room);
+      listing.more = shown.listed - listing.listed;
+      listing.after = shown.rows - shown.list_from - shown.listed;
+    }
+    std::size_t widest = shown.title.size();
+    for (std::size_t slot = 0; slot < shown_rows(_placed[box]); ++slot) {
+      const std::size_t row = row_at(_placed[box], slot);
       widest = std::max(widest,
-                        row.text.size() + row.written.size() +
-                            (row.text.empty() || row.written.empty() ? 0 : 1));
+                        row == more_row
+                            ? std::formatted_size(more_text, _placed[box].more)
+                            : rows[row].text.size() + rows[row].written.size() +
+                                  (rows[row].text.empty() || rows[row].written.empty()
+                                       ? 0
+                                       : 1));
+    }
     const std::int32_t apart = inner.empty() ? 0 : static_cast<std::int32_t>(cell.y) / 2;
     // Known before the boxes inside it are placed, as where a curve crosses its edge is
     // from its top.
-    _placed[box].inside = rows_end(boxes, box, cell) + apart;
+    _placed[box].inside = rows_end(box, cell) + apart;
     const glm::ivec2 room =
         inner.empty() ? glm::ivec2(0) : columns(boxes, box, inner, arranged, cell);
     Placed &placed = _placed[box];
@@ -345,8 +399,22 @@ private:
                       : glm::ivec2(room.x + 2 * margin, placed.inside + room.y + apart)));
     placed.extent = placed.natural;
     if (const auto sized = arranged.sizes.find(boxes.boxes[box].name);
-        sized != arranged.sizes.end())
+        sized != arranged.sizes.end()) {
       placed.extent = glm::max(placed.least, glm::uvec2(glm::max(sized->second, 0)));
+      list_in(placed, shown.listed, cell);
+    }
+  }
+
+  // As many of the rows a box lists as its height holds below its name and its own rows,
+  // the row standing for the rest taking one; every one where all of them fit, so a box
+  // made larger lists more than listed_room.
+  static void list_in(Placed &placed, std::size_t listed, glm::uvec2 cell) {
+    const std::int32_t room = static_cast<std::int32_t>(placed.extent.y) - 2 * pad;
+    const std::size_t rows = room > 0 ? static_cast<std::size_t>(room) / cell.y : 0;
+    const std::size_t own = 1 + placed.list_from + placed.after;
+    const std::size_t free = rows > own ? rows - own : 0;
+    placed.listed = free >= listed ? listed : (free > 0 ? free - 1 : 0);
+    placed.more = listed - placed.listed;
   }
 
   // A box a column past every box beside it that it reads from, each column as wide as
@@ -798,8 +866,7 @@ private:
     const End &end = boxes.ends[leg.end];
     const std::size_t box = writes ? leg.writer : leg.reader;
     if (box == no_box && leg.rows)
-      return static_cast<float>(rows_end(boxes, leg.level, cell) -
-                                _placed[leg.level].inside);
+      return static_cast<float>(rows_end(leg.level, cell) - _placed[leg.level].inside);
     if (box == no_box)
       return crossing_at(leg.level, end.wire, !writes) -
              static_cast<float>(_placed[leg.level].inside);

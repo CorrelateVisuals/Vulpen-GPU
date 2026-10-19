@@ -13,6 +13,7 @@
 #include <cmath>
 #include <filesystem>
 #include <format>
+#include <iterator>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -778,16 +779,21 @@ bool Graph::open(VP::Cook &frame, std::size_t at) {
   return !opened.empty();
 }
 
-// The row of a box under the pointer, among its rows; title_row for its name's, and one
-// past them below them.
+// The row of a box under the pointer, among its rows; title_row for its name's, more_row
+// for the row standing for those it lists past what shows, and one past them below
+// them.
 std::size_t Graph::row_under(std::size_t at) const {
-  const float row =
-      ((_pointer.y - on_screen(glm::vec2(_layout.placed()[at].at)).y) / _pan_zoom.zoom -
+  const Placed &placed = _layout.placed()[at];
+  const float slot =
+      ((_pointer.y - on_screen(glm::vec2(placed.at)).y) / _pan_zoom.zoom -
        static_cast<float>(pad)) /
           static_cast<float>(_laid_cell.y) -
       1.0f;
-  return row < 0.0f ? title_row
-                    : std::min(static_cast<std::size_t>(row), _boxes.boxes[at].rows);
+  if (slot < 0.0f)
+    return title_row;
+  const auto shown = static_cast<std::size_t>(slot);
+  return shown < Layout::shown_rows(placed) ? Layout::row_at(placed, shown)
+                                            : _boxes.boxes[at].rows;
 }
 
 // The wheel zooms, about the pointer, which stays over the same place of the graph; its
@@ -1145,9 +1151,22 @@ void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
               _over,
               written);
     const std::span<const BoxRow> rows = rows_in(_boxes, at);
-    for (std::size_t row = 0; row < rows.size(); ++row) {
+    for (std::size_t slot = 0; slot < Layout::shown_rows(placed); ++slot) {
+      const std::size_t row = Layout::row_at(placed, slot);
       const glm::vec2 left =
-          text + glm::vec2(0.0f, static_cast<float>((row + 1) * cell.y));
+          text + glm::vec2(0.0f, static_cast<float>((slot + 1) * cell.y));
+      if (row == more_row) {
+        _more.clear();
+        std::format_to(std::back_inserter(_more), more_text, placed.more);
+        write_row(on_screen(left),
+                  _more,
+                  VP_VIEW::role("muted"),
+                  cell,
+                  room(end),
+                  _over,
+                  written);
+        continue;
+      }
       const std::string &port = rows[row].written;
       const float right =
           std::max(text.x, end - static_cast<float>(port.size()) * wide);
@@ -1289,11 +1308,7 @@ bool Graph::hovered(std::size_t end) const {
 std::size_t Graph::more_under() const {
   if (_hovered.box == no_box || _hovered.corner || _grab || _dragging || _select_from)
     return no_box;
-  const std::size_t row = row_under(_hovered.box);
-  return row != title_row && row < _boxes.boxes[_hovered.box].rows &&
-                 rows_in(_boxes, _hovered.box)[row].more
-             ? _hovered.box
-             : no_box;
+  return row_under(_hovered.box) == more_row ? _hovered.box : no_box;
 }
 
 // The rows of the curve under the pointer, a row each of the curves when several share
@@ -1304,7 +1319,10 @@ void Graph::write_tip() {
   const glm::ivec2 cell(_font->cell);
   if (_hovered_more < _boxes.boxes.size() && cell.x > 0)
     tell_more(*_tip,
-              _boxes.boxes[_hovered_more].hidden,
+              rows_in(_boxes, _hovered_more)
+                  .subspan(_layout.placed()[_hovered_more].list_from +
+                               _layout.placed()[_hovered_more].listed,
+                           _layout.placed()[_hovered_more].more),
               static_cast<std::size_t>(std::max(
                   static_cast<std::int32_t>(_area->extent.x) / cell.x - tip_margin, 1)));
   else if (_heating.heat.on != Heat::On::none && _hovered.box < _heating.weights.size() &&

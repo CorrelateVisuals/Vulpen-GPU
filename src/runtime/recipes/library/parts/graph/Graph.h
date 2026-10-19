@@ -247,6 +247,7 @@ private:
   std::vector<VP_VIEW::Rect> _over;
   std::string _title; // a box's title as its width shows it, kept so a frame allocates
                       // none
+  std::string _more;  // and a box's row standing for the rest, as it counts them
   Arranged _arranged;
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over

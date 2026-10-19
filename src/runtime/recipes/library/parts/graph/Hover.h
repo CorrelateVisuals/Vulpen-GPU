@@ -156,10 +156,11 @@ void tell(VP_VIEW::Items &tip,
                relations[at].said)});
 }
 
-// The names a box lists past listed_room, two blanks apart, as many a row as fit in width
-// characters, a name too long for one on a row of its own.
-void tell_more(VP_VIEW::Items &tip, std::span<const std::string> names, std::size_t width) {
-  for (const std::string &name : names) {
+// The names a box lists past those it shows, two blanks apart, as many a row as fit in
+// width characters, a name too long for one on a row of its own.
+void tell_more(VP_VIEW::Items &tip, std::span<const BoxRow> rows, std::size_t width) {
+  for (const BoxRow &row : rows) {
+    const std::string &name = row.text;
     if (!tip.empty() && tip.back().label.size() + 2 + name.size() <= width)
       tip.back().label.append("  ").append(name);
     else
