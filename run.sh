@@ -18,16 +18,21 @@ projects=$root/projects
 # project, so one named like an option runs by its path; each takes a value, and any
 # other word is a view.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
-# level nothing unless it fails (C09).
+# level nothing unless it fails (C09). Each run's log goes to docs/logs/, which git
+# ignores, named for when it started, the newest 20 kept, so a run on another machine
+# leaves behind what went wrong, a failed build's output with it; --log-file names
+# another file, and that one alone is written.
 app() { views=("$recipes/cli/view.vlp"); [[ $1 == --cli ]] || views+=("$recipes/ide/view.vlp"); }
 arguments=()
 named=false
 verbose=false
+log=
 while (($#)); do
   case $1 in
     --cli | --ide) app "$1"; arguments+=("${views[@]}"); named=true; shift ;;
-    --log | --frames | --fps | --first-frame | --source | --size | --restart)
+    --log | --log-file | --frames | --fps | --first-frame | --source | --size | --restart)
       [[ $1 == --log && ${2:-} == debug ]] && verbose=true
+      [[ $1 == --log-file ]] && log=${2:-}
       arguments+=("${@:1:2}")
       shift $(($# > 1 ? 2 : 1)) ;;
     --*)
@@ -41,6 +46,13 @@ while (($#)); do
   esac
 done
 $named || { app "$default"; arguments=("${views[@]}" "${arguments[@]}"); }
+if [[ -z $log ]]; then
+  log=$root/docs/logs/run-$(date -u +%Y%m%dT%H%M%SZ).log
+  runs=("$root"/docs/logs/run-*.log) # by name, so oldest first
+  ((${#runs[@]} < 20)) || rm -f -- "${runs[@]:0:${#runs[@]}-19}"
+  arguments+=(--log-file "$log")
+fi
+mkdir -p -- "$(dirname -- "$log")"
 
 # CMake reads the presets from the current folder; vulpen itself runs from the
 # caller's, since nothing in it may depend on the working directory. One build at a time
@@ -53,9 +65,9 @@ build() (
   cmake --preset "$preset" && cmake --build --preset "$preset" --parallel
 )
 if $verbose; then
-  (build)
+  (build) 2>&1 | tee -a "$log"
 elif ! said=$(build 2>&1); then
-  printf '%s\n' "$said" >&2
+  printf '%s\n' "$said" | tee -a "$log" >&2
   exit 1
 fi
 exec "$root/out/build/$preset/vulpen" "${arguments[@]}"

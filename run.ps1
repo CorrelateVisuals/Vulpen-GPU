@@ -9,7 +9,7 @@ $rest = @($args)
 if ($rest.Count -gt 0 -and $rest[0] -eq '--release') { $preset = 'release'; $rest = @($rest | Select-Object -Skip 1) }
 $recipes = Join-Path $PSScriptRoot 'src\runtime\recipes'
 $projects = Join-Path $PSScriptRoot 'projects'
-$options = '--log', '--frames', '--fps', '--first-frame', '--source', '--size', '--restart'
+$options = '--log', '--log-file', '--frames', '--fps', '--first-frame', '--source', '--size', '--restart'
 # An app's flag and a project's are the script's own and stand for views, so vulpen knows
 # no app or project by name (V05): --cli for the cli's view.vlp, which vulpen starts
 # with, and --ide for the cli's and the ide's, which vulpen then hosts beside the
@@ -17,18 +17,23 @@ $options = '--log', '--frames', '--fps', '--first-frame', '--source', '--size', 
 # project, so one named like an option runs by its path; each takes a value, and any
 # other word is a view.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
-# level nothing unless it fails (C09).
+# level nothing unless it fails (C09). Each run's log goes to docs\logs\, which git
+# ignores, named for when it started, the newest 20 kept, so a run on another machine
+# leaves behind what went wrong, a failed build's output with it; --log-file names
+# another file, and that one alone is written.
 function App($flag) {
     @(Join-Path $recipes 'cli\view.vlp') + @(if ($flag -eq '--ide') { Join-Path $recipes 'ide\view.vlp' })
 }
 $arguments = @()
 $named = $false
 $verbose = $false
+$log = $null
 for ($i = 0; $i -lt $rest.Count; $i++) {
     if ($rest[$i] -in '--cli', '--ide') {
         $arguments += App $rest[$i]; $named = $true
     } elseif ($rest[$i] -in $options) {
         if ($rest[$i] -eq '--log' -and $rest[$i + 1] -eq 'debug') { $verbose = $true }
+        if ($rest[$i] -eq '--log-file') { $log = $rest[$i + 1] }
         $arguments += $rest[$i]
         if ($i + 1 -lt $rest.Count) { $i++; $arguments += $rest[$i] }
     } elseif ($rest[$i] -like '--*') {
@@ -40,6 +45,16 @@ for ($i = 0; $i -lt $rest.Count; $i++) {
     }
 }
 if (-not $named) { $arguments = @(App $default) + $arguments }
+if (-not $log) {
+    $logs = Join-Path $PSScriptRoot 'docs\logs'
+    $log = Join-Path $logs "run-$([DateTime]::UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'")).log"
+    # By name, so oldest first.
+    Get-ChildItem -LiteralPath $logs -Filter 'run-*.log' -ErrorAction SilentlyContinue |
+        Sort-Object Name | Select-Object -SkipLast 19 | Remove-Item
+    $arguments += '--log-file', $log
+}
+$folder = Split-Path -Parent $log
+if ($folder) { New-Item -ItemType Directory -Force -Path $folder | Out-Null }
 
 # CMake reads the presets from the current folder; vulpen itself runs from the
 # caller's, since nothing in it may depend on the working directory. One build at a time
@@ -59,10 +74,12 @@ try {
     $said = & {
         cmake --preset $preset
         if ($LASTEXITCODE -eq 0) { cmake --build --preset $preset --parallel }
-    } 2>&1 | ForEach-Object { if ($verbose) { "$_" | Out-Host } else { "$_" } }
+    } 2>&1 | ForEach-Object { if ($verbose) { "$_" | Out-Host }; "$_" }
     $ErrorActionPreference = 'Stop'
-    if ($LASTEXITCODE -ne 0) { $said | Out-Host }
+    if ($LASTEXITCODE -ne 0 -and -not $verbose) { $said | Out-Host }
 } finally { Pop-Location; $lock.Dispose() }
+# From the caller's folder, as vulpen names it.
+if ($LASTEXITCODE -ne 0 -or $verbose) { Add-Content -LiteralPath $log -Value $said -Encoding utf8 }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & "$PSScriptRoot\out\build\$preset\vulpen.exe" @arguments
