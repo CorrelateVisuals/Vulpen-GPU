@@ -418,20 +418,33 @@ class Docking final : public VP::Operator {
 
   // The kept file's lines on this view, as a script's run; the first a change refuses
   // stops it, the lines before staying, as a file kept before the manifest changed past
-  // it may hold one, and the next change saves them as they are.
+  // it may hold one, and the next change saves them as they are. Then every editor it
+  // brought back that the docking part added goes, so a run starts with the manifest's
+  // editors alone.
   void restore(VP::Call &call) {
     const std::vector<std::string> lines = kept_lines(call.files().read(_kept));
+    std::optional<std::string> stopped;
     for (const std::string &line : lines) {
       try {
         call.commands().send(std::format("{}: {}", _view, line));
       } catch (const std::runtime_error &refused) {
-        throw std::runtime_error(
-            std::format("{}: {}: {}; the panels stay as restored so far",
-                        _kept,
-                        line,
-                        refused.what()));
+        stopped = std::format(
+            "{}: {}: {}; the panels stay as restored so far", _kept, line, refused.what());
+        break;
       }
     }
+    if (_editors && !_editors->empty()) {
+      const std::string &head = _editors->back()->name();
+      const std::string_view own = parent_of(head);
+      std::vector<std::string> added;
+      for (const VP::Node &node : call.view(_view)->nodes)
+        if (node.recipe == editor_recipe && node.name != own)
+          added.push_back(node.name + head.substr(own.size()));
+      for (const std::string &text : added)
+        remove_editor(call, text);
+    }
+    if (stopped)
+      throw std::runtime_error(*stopped);
   }
 
   // The bar its area is the rest of, when that bar parts its strip from the rest by a
@@ -737,9 +750,17 @@ class Docking final : public VP::Operator {
 
   // The dock seating the panel gives its half no room, or, when its other half shows
   // nothing either, the dock's own dock gives the dock none, and so up, so nothing
-  // hidden keeps a seam.
+  // hidden keeps a seam. A panel holding an editor the docking part added, which holds
+  // no file, goes with it instead, and so does its button.
   void hide(VP::Call &call, const std::string &panel) {
     const VP::View &view = *call.view(_view);
+    if (const std::optional<Content> held = content_of(view, panel)) {
+      VP_VIEW::Editor *const editor = editor_of(*held);
+      if (editor && editor != _editors->back() && editor->count() == 0) {
+        remove_editor(call, editor->name());
+        return;
+      }
+    }
     std::optional<Seating> seating = seating_of(view, panel + std::string(bar_node));
     if (!seating)
       throw std::runtime_error(std::format("{} is no panel a dock seats", panel));
@@ -1115,6 +1136,42 @@ class Docking final : public VP::Operator {
     else
       seat_new(call, content_of_fresh, panel, target, side);
     return text;
+  }
+
+  // An editor the docking part added goes, by its text node, its files with it: the panel
+  // holding it alone goes too, the dock seating that panel giving its other half its
+  // place, or from a stack the stack goes, leaving its panel the content beside it; and
+  // the chain of editors closes over it, the editors before it reaching the one after.
+  void remove_editor(VP::Call &call, std::string_view text) {
+    const VP::View &view = *call.view(_view);
+    const std::string editor(parent_of(text));
+    // Copied first: each edit replaces the view these point into.
+    const VP::Connection *const area = feeding(view, text);
+    const VP::Connection *const before = into(view, text, before_port);
+    const VP::Connection *const after = from(view, text, editors_port);
+    const std::optional<VP::Connection> chained =
+        before && after ? std::optional(VP::Connection{
+                              .name = before->name, .from = before->from, .to = after->to})
+                        : std::nullopt;
+    const std::string room = area ? area->from.node : std::string();
+    const std::string port = area ? area->from.port : std::string();
+    if (room.ends_with(bar_node) && port == rest_port) {
+      const std::string panel = room.substr(0, room.size() - bar_node.size());
+      leave(call, panel);
+      send(call, std::format("node remove {}", panel));
+    } else if (room.ends_with(switch_node)) {
+      const VP::Connection *const holding = feeding(view, room);
+      if (!holding || !holding->from.node.ends_with(bar_node))
+        throw std::runtime_error(std::format("{} is in no panel", room));
+      const std::string panel =
+          holding->from.node.substr(0, holding->from.node.size() - bar_node.size());
+      send(call,
+           std::format("param set {} shown {}", room, port == half_ports[1] ? half_ports[1] : half_ports[0]));
+      unstack(call, panel);
+    }
+    send(call, std::format("node remove {}", editor));
+    if (chained)
+      connect(call, *chained);
   }
 
   // What a connection fed, at the node given, it now feeds at the endpoint given, named
