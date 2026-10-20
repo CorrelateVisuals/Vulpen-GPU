@@ -570,7 +570,8 @@ class CommandLine final : public VP::Operator {
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one
   // sent before, completes the word at the caret, or with control copies, pastes or
   // clears, sending clear from here, so what it answers comes back here, or takes the
-  // word before the caret with backspace, or after it with delete; escape lets go of the
+  // word before the caret with backspace, or after it with delete, and moves the caret
+  // as far with left and right, taking nothing; escape lets go of the
   // selection, and with none of the focus. In a window, control with a selects the whole
   // line, which what is typed or pasted next replaces, backspace or delete takes, and
   // control with c copies, any other key letting go of it.
@@ -624,9 +625,9 @@ class CommandLine final : public VP::Operator {
     else if (key == "delete" && _caret < _line.size())
       _line.erase(_caret, _control ? word_after(_line, _caret) - _caret : 1);
     else if (key == "left" && _caret > 0)
-      --_caret;
+      _caret = _control ? word_before(_line, _caret) : _caret - 1;
     else if (key == "right" && _caret < _line.size())
-      ++_caret;
+      _caret = _control ? word_after(_line, _caret) : _caret + 1;
     else if (key == "home" || key == "end")
       _caret = key == "home" ? 0 : _line.size();
     else if (key == "up" || key == "down")

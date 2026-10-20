@@ -468,13 +468,20 @@ bool Text::clip(VP::InputPort &input, Document &document, std::string_view key) 
 }
 
 // Where a key moves the caret: a character, a row or a page over, or to its row's start
-// or end. Without shift, left and right leave a selection at its start or its end.
+// or end; with control, left and right a word over, as far as control with backspace
+// and delete take, or at a row's start or end past its break. Without shift, left and
+// right leave a selection at its start or its end.
 std::optional<Spot>
 Text::moved(const Document &document, std::string_view key, const Grid &grid) const {
   const Spot caret = document.caret;
   const auto [from, to] = selection(document);
   const bool selected = from != to && !_shift;
   const std::size_t rows = key.starts_with("page") ? grid.rows : 1;
+  const std::string &row = document.lines[caret.row];
+  if (key == "left" && _control && caret.column > 0)
+    return Spot{caret.row, word_before(row, caret.column)};
+  if (key == "right" && _control && caret.column < row.size())
+    return Spot{caret.row, word_after(row, caret.column)};
   if (key == "left")
     return selected ? from : before(document, caret);
   if (key == "right")
