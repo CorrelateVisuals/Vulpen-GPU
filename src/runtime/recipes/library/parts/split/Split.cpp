@@ -3,8 +3,6 @@
 #include "runtime/Operator.h"
 #include "shared/Halves.h"
 
-#include <algorithm>
-#include <cmath>
 #include <cstdint>
 #include <format>
 #include <span>
@@ -15,9 +13,6 @@
 namespace {
 
 constexpr std::uint32_t backing = 2; // the ground under both Rects, then the seam
-// A ratio keeps the three decimals param set writes, while dragged too, so letting go
-// moves nothing.
-constexpr float ratio_steps = 1000.0f;
 
 // Divides the Rect its area gives in two along its axis, the first taking its ratio of
 // the room the seam between them leaves. A press on the seam grabs it, both Rects follow
@@ -65,7 +60,7 @@ class Split final : public VP::Operator {
     if (event.kind == VP::Event::Kind::pointer) {
       _pointer = event.at;
       if (_dragging)
-        _ratio = ratio_at(_pointer[_along]);
+        _ratio = ratio_at(*_area, _along, _ratio, _pointer[_along]);
     } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
       if (event.down && VP_VIEW::contains(halves(*_area, _along, _ratio).seam, _pointer))
         _dragging = true;
@@ -73,19 +68,6 @@ class Split final : public VP::Operator {
         frame.commands().send(
             std::format("{}: param set {} ratio {:.3f}", _view, _name, _ratio));
     }
-  }
-
-  // The ratio that puts the seam's middle at a point along the axis.
-  float ratio_at(float at) const {
-    const Halves split = halves(*_area, _along, _ratio);
-    const auto room = static_cast<std::int32_t>(split.first.extent[_along] +
-                                                split.second.extent[_along]);
-    if (room == 0)
-      return _ratio;
-    const float first = at - static_cast<float>(_area->offset[_along]) -
-                        static_cast<float>(seam_width) / 2.0f;
-    const float ratio = std::clamp(first / static_cast<float>(room), 0.0f, 1.0f);
-    return std::round(ratio * ratio_steps) / ratio_steps;
   }
 
   glm::length_t _along = 0; // 0 for x, 1 for y

@@ -97,6 +97,15 @@ struct Divider {
   std::uint32_t size = 0;
 };
 
+// A dock's split as the docks lay it out: where its area is, its axis and its ratio, and
+// so its seam, which a drag moves.
+struct Seam {
+  std::string split;
+  VP_VIEW::Rect area;
+  glm::length_t along = 0;
+  float ratio = 0.0f;
+};
+
 // The dock's split seating a node, by the node its area endpoint names, as ide.top.split
 // or ide.editor-panel.bar: which half, and the dock's ratio, which a dock that gives none
 // takes as halving.
@@ -274,8 +283,9 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // gives its half no room and back, and hands on a button a panel, lit while it shows,
 // whose press hides or shows it, as the POC's menubar cells did. It finds where each
 // panel and its strip show as the splits and the bars lay them out, from the Rect its
-// area gives, which its host also hands the outermost dock, and while a drag goes on it
-// frames where a drop would put the panel dragged. Of an editor holding several files,
+// area gives, which its host also hands the outermost dock, a seam being dragged too, as
+// its split follows it, and while a drag goes on it frames where a drop would put the
+// panel dragged. Of an editor holding several files,
 // as the editors its host connects say, the file it shows moves: into a new editor, or
 // into the editor in the target's middle. It keeps the panels as a person left them in
 // .vulpen/layout.log beside the view's manifest, saved as they change, and as the view
@@ -322,6 +332,7 @@ class Docking final : public VP::Operator {
     _labels = node.upload<VP_VIEW::Label>("labels", close_room);
     _characters = node.upload<VP_VIEW::Character>("characters", close_room);
     _laid_out.reset(); // a rebuild may have moved every panel
+    _slid.reset();     // its ratio set, as the drag let go of it sent it
   }
 
   void cook(VP::Cook &frame) override {
@@ -497,6 +508,7 @@ class Docking final : public VP::Operator {
   // then the buttons, in the order the view lists the panels, as they changed.
   void seat_all(const VP::View &view, glm::uvec2 cell) {
     _seated.clear();
+    _seams.clear();
     if (const VP::Connection *const root = feeding(view, _name))
       for (const VP::Endpoint &to : root->to)
         if (to.node != _name)
@@ -532,7 +544,10 @@ class Docking final : public VP::Operator {
       return;
     if (end.node.ends_with(split_node)) {
       const glm::length_t along = param_of(*node, "axis") == "y" ? 1 : 0;
-      const float ratio = number<float>(param_of(*node, "ratio"));
+      const float ratio = _slid && _slid->split == end.node
+                              ? _slid->ratio
+                              : number<float>(param_of(*node, "ratio"));
+      _seams.push_back({.split = end.node, .area = area, .along = along, .ratio = ratio});
       const Halves split = halves(area, along, ratio);
       for (const VP::Connection &connection : view.connections)
         if (connection.from.node == end.node && connection.from.port != "rects")
@@ -555,14 +570,24 @@ class Docking final : public VP::Operator {
   }
 
   // A press on a strip grabs its panel, a drag past a few pixels takes it, and letting go
-  // on another panel moves it there; a press on its close mark hides it.
+  // on another panel moves it there; a press on its close mark hides it. A seam pressed,
+  // which its split's drag moves, moves the panels beside it as it goes, their strips and
+  // marks with them, as the split works out its ratio, which it sets as it is let go.
   void follow(VP::Cook &frame, const VP::Event &event, glm::uvec2 cell) {
     if (event.kind == VP::Event::Kind::pointer) {
       _pointer = event.at;
       _dragging = _dragging || (_grabbed && glm::distance(_pointer, _from) > drag_from);
+      if (_slid && _slid->held) {
+        _slid->ratio =
+            ratio_at(_slid->area, _slid->along, _slid->ratio, _pointer[_slid->along]);
+        seat_all(frame.view(), cell);
+      }
     } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
       const auto closing = std::ranges::find_if(_seated, [&](const Seated &seated) {
         return VP_VIEW::contains(close_of(seated, cell), _pointer);
+      });
+      const auto seam = std::ranges::find_if(_seams, [&](const Seam &seam) {
+        return VP_VIEW::contains(halves(seam.area, seam.along, seam.ratio).seam, _pointer);
       });
       if (event.down && _divider && VP_VIEW::contains(_divider->seam, _pointer)) {
         _dividing = true;
@@ -572,6 +597,11 @@ class Docking final : public VP::Operator {
       } else if (event.down && closing != _seated.end()) {
         frame.commands().send(std::format("{}: panel hide {}", _view, closing->panel));
         _grabbed.reset();
+      } else if (event.down && seam != _seams.end()) {
+        _slid = Slid{*seam};
+        _grabbed.reset();
+      } else if (!event.down && _slid && _slid->held) {
+        _slid->held = false;
       } else if (event.down) {
         const auto pressed = std::ranges::find_if(_seated, [&](const Seated &seated) {
           return VP_VIEW::contains(seated.strip, _pointer);
@@ -1084,6 +1114,13 @@ class Docking final : public VP::Operator {
   VP::Upload<VP_VIEW::Label> _labels; // the close marks'
   VP::Upload<VP_VIEW::Character> _characters;
   std::vector<Seated> _seated; // as the docks lay them out now
+  std::vector<Seam> _seams;    // and the seams between them
+  // The seam a drag moves, and its ratio as the split works it out from the pointer, held
+  // until let go and kept until the rebuild that sets it.
+  struct Slid : Seam {
+    bool held = true;
+  };
+  std::optional<Slid> _slid;
   // The area and the font's cell the panels were seated for; none until a frame seats
   // them, and after a rebuild.
   struct Laid {
