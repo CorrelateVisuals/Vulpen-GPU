@@ -145,13 +145,22 @@ class Keys final : public VP::Operator {
 
   // A focus line takes effect here, before the keys are handed on, so every node that
   // reads them in a frame finds the same node in focus. The param gives the focus at the
-  // start, unless a line gave it first, as a script may; a rebuild leaves it.
+  // start, unless a line gave it first, as a script may; a rebuild leaves it. The
+  // modifiers held go down again for the node taking it, as their presses went to the
+  // one before, so control held from the control+f that opened a find bar still holds
+  // there, as control+v then pastes.
   void give_focus(VP::Cook &frame) {
     if (!_started && !_next)
       frame.commands().send(std::format("focus {}", _start));
     _started = true;
-    if (_next)
-      _typed->focus = *std::exchange(_next, std::nullopt);
+    if (!_next)
+      return;
+    _typed->focus = *std::exchange(_next, std::nullopt);
+    for (std::size_t bit = 0; bit < modifiers.size(); ++bit)
+      if ((_held >> bit & 1u) != 0)
+        _typed->events.push_back({.kind = VP::Event::Kind::key,
+                                  .down = true,
+                                  .name = std::string(modifiers[bit])});
   }
 
   // False for what waits for the next frame, with all that came after it, so each lands

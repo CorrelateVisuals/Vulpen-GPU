@@ -54,4 +54,14 @@ inline std::size_t word_before(std::string_view row, std::size_t column) {
   return column;
 }
 
+// Where control with delete deletes on to from a column, as word_before goes back, the
+// other way: past the blanks after it, then the other bytes, then the word after them.
+inline std::size_t word_after(std::string_view row, std::size_t column) {
+  column = std::min(column, row.size());
+  for (const Run run : {Run::blank, Run::other, Run::word})
+    while (column < row.size() && run_of(row[column]) == run)
+      ++column;
+  return column;
+}
+
 } // namespace

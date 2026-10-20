@@ -52,9 +52,9 @@ constexpr std::int32_t margin = 4; // around the text
 constexpr std::uint32_t rule_width = 1;
 constexpr std::uint32_t label_room = 256;
 constexpr std::size_t rows_most = label_room - 2; // the prompt and the line take two
-// The ground, the rule above the line, the caret, the scroll bars' thumbs, and the
-// selection a row shown.
-constexpr std::uint32_t rect_room = 5 + rows_most;
+// The ground, the rule above the line, the line selected whole, the caret, the scroll
+// bars' thumbs, and the selection a row shown.
+constexpr std::uint32_t rect_room = 6 + rows_most;
 constexpr std::uint32_t character_room = 65536;
 
 // A usage's words, split at its blanks as the command port splits a line.
@@ -570,18 +570,30 @@ class CommandLine final : public VP::Operator {
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one
   // sent before, completes the word at the caret, or with control copies, pastes or
   // clears, sending clear from here, so what it answers comes back here, or takes the
-  // word before the caret with backspace; escape lets go of the selection, and with none
-  // of the focus.
+  // word before the caret with backspace, or after it with delete; escape lets go of the
+  // selection, and with none of the focus. In a window, control with a selects the whole
+  // line, which what is typed or pasted next replaces, backspace or delete takes, and
+  // control with c copies, any other key letting go of it.
   void edit(VP::Cook &frame, const VP::Event &event) {
     if (event.kind == VP::Event::Kind::text) {
+      take_all();
       type(event.name);
       return;
     }
     if (event.kind == VP::Event::Kind::key && event.name == "control")
       _control = event.down;
-    if (event.kind != VP::Event::Kind::key || !event.down)
+    if (event.kind != VP::Event::Kind::key || !event.down || modifier(event.name))
       return;
     const std::string_view key = event.name;
+    if (_all && all_taken(frame, key))
+      return;
+    _all = false;
+    if (_control && key == "a" && _window) {
+      _all = !_line.empty();
+      _anchor = _end; // a copy takes the line, not the rows above
+      _caret = _line.size();
+      return;
+    }
     if ((_finding || _finder) && finds(frame, key))
       return;
     if (_control && key == "f" && _window) {
@@ -610,7 +622,7 @@ class CommandLine final : public VP::Operator {
       _line.erase(from, std::exchange(_caret, from) - from);
     }
     else if (key == "delete" && _caret < _line.size())
-      _line.erase(_caret, 1);
+      _line.erase(_caret, _control ? word_after(_line, _caret) - _caret : 1);
     else if (key == "left" && _caret > 0)
       --_caret;
     else if (key == "right" && _caret < _line.size())
@@ -619,6 +631,40 @@ class CommandLine final : public VP::Operator {
       _caret = key == "home" ? 0 : _line.size();
     else if (key == "up" || key == "down")
       recall(key == "up");
+  }
+
+  // The keys the whole line selected takes: backspace and delete take it, control with c
+  // copies it and with v pastes in its place, and left and home go to its start, right
+  // and end to its end. Whether it took the key; any other lets go of it first.
+  bool all_taken(VP::Cook &frame, std::string_view key) {
+    if (_control && key == "c") {
+      frame.input().copy(_line);
+      return true;
+    }
+    if (key == "backspace" || key == "delete" || (_control && key == "v")) {
+      take_all();
+      if (key == "v")
+        paste(frame, frame.input().clipboard());
+      return true;
+    }
+    if (key != "left" && key != "right" && key != "home" && key != "end")
+      return false;
+    _all = false;
+    _caret = key == "left" || key == "home" ? 0 : _line.size();
+    return true;
+  }
+
+  // The whole line selected goes, for what takes its place.
+  void take_all() {
+    if (!std::exchange(_all, false))
+      return;
+    _line.clear();
+    _caret = 0;
+  }
+
+  // The keys held while another is pressed, which change none of the line.
+  static bool modifier(std::string_view key) {
+    return key == "control" || key == "shift" || key == "alt" || key == "super";
   }
 
   // The printable characters go in at the caret; the font draws no other.
@@ -817,6 +863,8 @@ class CommandLine final : public VP::Operator {
     }
     const VP_VIEW::Rect caret =
         lay_out_line(text, start, left, columns - prompt_columns, cell, line);
+    if (const auto all = all_selected(left, start, columns - prompt_columns, cell, line))
+      rects[count++] = *all;
     // The caret shows only in focus, so it marks where typing goes.
     const bool typed = !_typed->to(_name).empty();
     if (focused() && _blink.shows(frame.index(), caret.offset, typed))
@@ -848,6 +896,22 @@ class CommandLine final : public VP::Operator {
     return VP_VIEW::Rect{
         .offset = at + glm::ivec2(static_cast<std::int32_t>(first - left) * cell.x, 0),
         .extent = glm::uvec2(static_cast<std::uint32_t>(end - first) * cell.x, cell.y),
+        .role = VP_VIEW::role("border")};
+  }
+
+  // Behind the line typed, as much of it as shows, while it is selected whole.
+  std::optional<VP_VIEW::Rect> all_selected(std::int32_t left,
+                                            std::string_view start,
+                                            std::int32_t room,
+                                            glm::ivec2 cell,
+                                            std::int32_t line) const {
+    const std::size_t shown =
+        std::min(_line.size() - std::min(_first, _line.size()), static_cast<std::size_t>(room));
+    if (!_all || shown == 0)
+      return std::nullopt;
+    return VP_VIEW::Rect{
+        .offset = {left + static_cast<std::int32_t>(start.size()) * cell.x, line},
+        .extent = glm::uvec2(static_cast<std::uint32_t>(shown) * cell.x, cell.y),
         .role = VP_VIEW::role("border")};
   }
 
@@ -987,6 +1051,8 @@ class CommandLine final : public VP::Operator {
     const glm::ivec2 at = _area->offset + glm::ivec2(margin, margin);
     const VP_VIEW::Rect caret =
         lay_out_line(text, find_prompt, at.x, columns - start, cell, at.y);
+    if (const auto all = all_selected(at.x, find_prompt, columns - start, cell, at.y))
+      rects[count++] = *all;
     // Two blanks past the words, as much of its first line as the row holds.
     if (const auto past = start + static_cast<std::int32_t>(_line.size()) + 2;
         !_answer.empty() && past < columns)
@@ -1140,6 +1206,7 @@ class CommandLine final : public VP::Operator {
   bool _sideways = false;   // shift held, as the window says, so the wheel scrolls across
   std::string _line;
   std::size_t _caret = 0;
+  bool _all = false; // the whole line selected, as control with a selects it
   Caret _blink;           // the caret's mark, as it blinks
   std::size_t _first = 0; // the first character of the line shown
   std::vector<std::string> _history;

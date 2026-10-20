@@ -168,10 +168,12 @@ void split(Document &document) {
 }
 
 // A key that changes the text: a break, an indent, or the selection or a character gone;
-// with control, backspace takes the word before the caret, or at a row's start its break.
+// with control, backspace takes the word before the caret, or at a row's start its break,
+// and delete the word after it, or at a row's end its break.
 bool changed_by(Document &document, std::string_view key, bool control) {
   const auto [from, to] = selection(document);
   const Spot caret = document.caret;
+  const std::string &row = document.lines[caret.row];
   if (key == "enter")
     split(document);
   else if (key == "tab")
@@ -179,9 +181,9 @@ bool changed_by(Document &document, std::string_view key, bool control) {
   else if ((key == "backspace" || key == "delete") && from != to)
     erase(document, from, to);
   else if (key == "backspace" && control && caret.column > 0)
-    erase(document,
-          {caret.row, word_before(document.lines[caret.row], caret.column)},
-          caret);
+    erase(document, {caret.row, word_before(row, caret.column)}, caret);
+  else if (key == "delete" && control && caret.column < row.size())
+    erase(document, caret, {caret.row, word_after(row, caret.column)});
   else if (key == "backspace")
     erase(document, before(document, caret), caret);
   else if (key == "delete")
