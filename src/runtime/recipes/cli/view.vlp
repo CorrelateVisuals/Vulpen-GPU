@@ -17,9 +17,11 @@ recipe = library
 [node "cli.projects"]
 recipe = projects
 
-# open starts the person's editor, or, while the ide runs, gives a file to its editor and
-# a folder to its graph, through the relations part the graph shows a folder from.
+# open starts the person's editor, or, while the ide runs, gives a file to its editor, a
+# folder to its graph, through the relations part the graph shows a folder from, and an
+# image file to its Perform panel, as a preview.
 [node "cli.editor"]
 recipe = editor
 param  = window=ide:ide.editor.text
 param  = folders=ide:ide.graph.relations
+param  = images=ide:ide.preview-file

@@ -13,7 +13,8 @@
 #   Editor     panel + text-area + find-bar
 #   Terminal   panel + terminal
 #   Graph      panel + graph-editor
-#   Perform    panel + image          the window of the view presented
+#   Perform    panel + switch + switch-tabs + image ×2 + image-file
+#                                     the window of the view presented, or a preview
 #   Menubar    panel + join           a button a panel and the run's, along the top
 #   Menu       menu                   the menus of menu.ini, at a right press in the graph
 #   Tooltip    tooltip
@@ -94,10 +95,29 @@ param  = graph.shows=ide.editor-panel
 [node "ide.graph-panel"]
 recipe = panel
 
+# The Perform panel's room goes to the view presented, or while an image file is open,
+# to its preview, as a switch hands it one half, under one strip of the two's tabs.
+[node "ide.perform-switch"]
+recipe = switch
+
+[node "ide.perform-tabs"]
+recipe = switch-tabs
+
 # A drag moves the view presented and the wheel zooms it, as in the graph, and h, while
 # the panel has the focus, brings it home; the window that fills the whole window in
 # perform mode stays still.
 [node "ide.perform"]
+recipe = image
+param  = moves=yes
+
+# An image file open opens, as a preview: it shows in the Perform panel in place of the
+# view presented, never in perform mode, under a tab of its own, whose close mark closes
+# it, the view presented showing again.
+[node "ide.preview-file"]
+recipe = image-file
+param  = switch=ide.perform-switch
+
+[node "ide.preview"]
 recipe = image
 param  = moves=yes
 
@@ -232,10 +252,32 @@ to   = ide.perform-panel.bar.area
 
 [connection "perform-area"]
 from = ide.perform-panel.bar.rest
+to   = ide.perform-switch.area
+
+# The first half's room goes to the tabs too, by which they find the switch.
+[connection "perform-shown"]
+from = ide.perform-switch.first
 to   = ide.perform.area
+to   = ide.perform-tabs.first
+
+[connection "preview-shown"]
+from = ide.perform-switch.second
+to   = ide.preview.area
+
+[connection "preview"]
+from = ide.preview-file.picture
+to   = ide.preview.picture
 
 [connection "perform-tabs"]
 from = ide.modes.tabs
+to   = ide.perform-tabs.first-tabs
+
+[connection "preview-tabs"]
+from = ide.preview-file.tabs
+to   = ide.perform-tabs.second-tabs
+
+[connection "perform-panel-tabs"]
+from = ide.perform-tabs.tabs
 to   = ide.perform-panel.tabs.items
 to   = ide.perform-panel.hit.items
 
@@ -260,6 +302,7 @@ to   = ide.editor-find.command-line.typed
 to   = ide.terminal.command-line.typed
 to   = ide.graph.graph.typed
 to   = ide.perform.typed
+to   = ide.preview.typed
 to   = ide.modes.typed
 to   = ide.menu.menus.typed
 

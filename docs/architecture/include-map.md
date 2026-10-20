@@ -68,3 +68,4 @@ A file of the library (`src/runtime/recipes/library/`) or of a view, under a fol
 | `baseclasses/GpuLayout.glsl` | the GPU layout every shader declares (RV02) |
 | `<glm/*>` | GLSL's vectors and matrices in C++, name for name |
 | `<stb_truetype.h>` | the glyph atlas the `font` part bakes |
+| `<stb_image.h>` | the image files the `image-file` part decodes |

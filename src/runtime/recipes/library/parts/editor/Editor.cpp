@@ -2,6 +2,8 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <filesystem>
 #include <format>
 #include <optional>
@@ -12,6 +14,19 @@
 #include <vector>
 
 namespace {
+
+// The endings of the image files open hands to the node its images param names, as
+// stb_image reads them there, in lower case, as an ending of any case is.
+constexpr std::array<std::string_view, 6> image_endings{
+    ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif"};
+
+bool image(const std::filesystem::path &path) {
+  std::string ending = path.extension().string();
+  std::ranges::transform(ending, ending.begin(), [](unsigned char letter) {
+    return static_cast<char>(std::tolower(letter));
+  });
+  return std::ranges::find(image_endings, ending) != image_endings.end();
+}
 
 // Whether a file or a folder is there, as its folder lists it.
 bool named(VP::FilePort &files, std::filesystem::path path) {
@@ -73,8 +88,10 @@ std::string shown(const std::filesystem::path &path) {
 // names, or, while the view its window param names runs, a file to the editor there,
 // through that editor's file param, as a seam's drag sets a split's ratio, and while the
 // view its folders param names runs, a folder to the node there, through its folder
-// param, as the relations part the graph shows a folder from. So open is one command
-// with one owner, whichever takes the file or the folder (V06).
+// param, as the relations part the graph shows a folder from, and while the view its
+// images param names runs, an image file to the node there, through its file param, as
+// an image-file part previews one. So open is one command with one owner, whichever
+// takes the file or the folder (V06).
 class Editor final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _program = node.param<std::string>("program");
@@ -82,6 +99,7 @@ class Editor final : public VP::Operator {
     // to the program, and every folder.
     _window = node.sets("window") ? node.param<std::string>("window") : std::string();
     _folders = node.sets("folders") ? node.param<std::string>("folders") : std::string();
+    _images = node.sets("images") ? node.param<std::string>("images") : std::string();
     _name = node.name();
     _open = node.command("open [<path>]",
                          "opens a file in the editor in a window while one runs, and a "
@@ -96,10 +114,14 @@ class Editor final : public VP::Operator {
   void command(VP::Call &call) override {
     const std::string path = path_of(call);
     const auto folders = running(call, _folders);
+    const auto images = running(call, _images);
     const auto window = running(call, _window);
     if (folders && !path.empty() && folder(call.files(), path))
       call.commands().send(std::format(
           "{}: param set {} folder {}", folders->first, folders->second, path));
+    else if (images && !path.empty() && image(path))
+      call.commands().send(
+          std::format("{}: param set {} file {}", images->first, images->second, path));
     else if (window)
       in_window(call, window->first, window->second, path);
     else
@@ -175,6 +197,7 @@ class Editor final : public VP::Operator {
   std::string _program;
   std::string _window;
   std::string _folders;
+  std::string _images;
   std::string _name;
   VP::Command _open;
 };

@@ -28,6 +28,24 @@ GENERATED = ("DW.ref.", "__odr_asan")
 VISIBILITY = (".hidden ", ".protected ", ".internal ")
 ALLOWED = {
     "VmaBufferImageUsage::UNKNOWN",  # vk_mem_alloc.h, compiled into Resources.cpp
+    # stb_image.h, compiled into the image-file part's ImageFile.cpp: its settings, which
+    # the part never changes, its failure's reason, a thread's own, and its tables.
+    "stbi__g_failure_reason",
+    "stbi__vertically_flip_on_load_global",
+    "stbi__vertically_flip_on_load_local",
+    "stbi__vertically_flip_on_load_set",
+    "stbi__unpremultiply_on_load_global",
+    "stbi__unpremultiply_on_load_local",
+    "stbi__unpremultiply_on_load_set",
+    "stbi__de_iphone_flag_global",
+    "stbi__de_iphone_flag_local",
+    "stbi__de_iphone_flag_set",
+    "stbi__h2l_gamma_i",
+    "stbi__h2l_scale_i",
+    "first_row_filter",
+    "stbi__parse_png_file(stbi__png*, int, int)::invalid_chunk",
+    "stbi__shiftsigned(unsigned int, int, int)::mul_table",
+    "stbi__shiftsigned(unsigned int, int, int)::shift_table",
 }
 
 
