@@ -43,3 +43,4 @@ __pycache__/
 !/docs/logs/.gitkeep
 /docs/plans/
 /docs/reports/
+/docs/archive
