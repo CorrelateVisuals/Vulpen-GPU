@@ -277,6 +277,15 @@ void connect(Boxes &boxes, Building &building, const VP::View &flat) {
   }
 }
 
+// The folder holding a path, as the generic paths a relation names and the folders of the
+// nodes hold them, cut at its last /, the root's own; empty for a name with none. On the
+// text, as a reading's every relation asks for each folder holding what it names.
+std::string_view folder_holding(std::string_view path) {
+  const std::size_t slash = path.rfind('/');
+  return slash == std::string_view::npos ? std::string_view()
+                                         : path.substr(0, std::max<std::size_t>(slash, 1));
+}
+
 // The boxes showing a path: a file's box, or each box showing a node whose folder holds
 // it, the deepest such folder's, as two nodes using one recipe share its folder; of a
 // folder's, a folder named is its own, as a CMake word naming src/external-libraries
@@ -285,10 +294,10 @@ std::vector<std::size_t> boxes_showing(const Building &building, std::string_vie
   std::vector<std::size_t> showing;
   if (const auto file = building.file_boxes.find(path); file != building.file_boxes.end())
     return {file->second};
-  const std::filesystem::path named(path);
-  for (std::filesystem::path folder = building.folders ? named : named.parent_path();
-       showing.empty() && folder.has_relative_path(); folder = folder.parent_path()) {
-    const auto [first, last] = building.nodes_in.equal_range(folder.generic_string());
+  for (std::string_view folder = building.folders ? path : folder_holding(path);
+       showing.empty() && !folder.empty() && folder != "/";
+       folder = folder_holding(folder)) {
+    const auto [first, last] = building.nodes_in.equal_range(folder);
     for (auto node = first; node != last; ++node)
       if (const std::size_t box = holder_of(building, node->second);
           box != no_box && std::ranges::find(showing, box) == showing.end())

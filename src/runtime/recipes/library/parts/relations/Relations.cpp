@@ -34,6 +34,10 @@ constexpr std::size_t budget = 1 << 16;
 constexpr std::size_t small = 1 << 20;
 constexpr std::size_t reading_room = 1 << 26;
 constexpr std::size_t folder_room = 8192; // folders a reading walks, at most
+// Frames a folder shown anew waits for its relations, at most, so its boxes come with
+// their curves, laid out once, as a reading past a small one's first frame takes a few;
+// one that takes longer shows the folder then, and its curves as they come.
+constexpr std::uint64_t hold = 15;
 constexpr std::string_view blanks = " \t\r";
 
 // What a file's lines say links it to another, as its name or its extension tells.
@@ -569,11 +573,12 @@ void Relations::bind(VP::Bind &node) {
   _docs = std::move(docs);
 }
 
-// Read as the folder or the view shown changes, as an edit replaces the view: the folder
-// at once, so the graph shows its boxes, and the relations as much as a small reading
-// reads, so they come with the boxes, and the rest a little a frame; and again every so
-// often while the last reading was small, a little a frame, so a file changed on disk
-// shows. No frame waits on a large reading whole (VK02).
+// Read as the folder or the view shown changes, as an edit replaces the view: as much as
+// a small reading reads at once, so the relations come with the boxes, and the rest a
+// little a frame; a folder shows with its relations once they are read, for hold frames
+// at most, and then alone, as a view's boxes show at once and its curves as they come;
+// and again every so often while the last reading was small, a little a frame, so a file
+// changed on disk shows. No frame waits on a large reading whole (VK02).
 void Relations::cook(VP::Cook &frame) {
   const std::string shown(frame.commands().current());
   const VP::View *const view = _folder.empty() ? frame.unfolded(shown) : nullptr;
@@ -582,9 +587,10 @@ void Relations::cook(VP::Cook &frame) {
     _read_view = view;
     _shown = shown;
     start(frame.files(), view);
+    _holding = !_folder.empty();
     if (step(frame.files(), small))
       publish(frame);
-    else
+    else if (!_holding)
       publish_tree();
     return;
   }
@@ -595,6 +601,8 @@ void Relations::cook(VP::Cook &frame) {
   ++_frames;
   if (step(frame.files(), budget))
     publish(frame);
+  else if (_holding && _frames >= hold)
+    publish_tree();
 }
 
 // A reading begun: the folder's tree and the top going up stops at, the folder to walk
@@ -677,9 +685,10 @@ bool Relations::step(VP::FilePort &files, std::size_t bytes) {
   return _walked == _walk.size() && (_next == _sources.size() || _read >= reading_room);
 }
 
-// The folder shown, at once, while its relations are still read: no curve, rather than
-// those of what was shown before.
+// The folder shown, while its relations are still read past the frames it waits for
+// them: no curve, rather than those of what was shown before.
 void Relations::publish_tree() {
+  _holding = false;
   _relations->folder = _folder;
   _relations->top = _top;
   _relations->tree = _tree;
@@ -693,6 +702,7 @@ void Relations::publish_tree() {
 // sees what a folder costs (C03, C09).
 void Relations::publish(VP::Cook &frame) {
   _reading = false;
+  _holding = false;
   // A folder shows its repository, so what lies past its top, as the system's files a
   // build's CMake names, is no relation of it.
   if (!_top.empty())

@@ -100,6 +100,7 @@ private:
   // folders listed, the ids the documents define, the relations found so far, and what
   // was read, a folder listed counting as a page.
   bool _reading = false;
+  bool _holding = false; // a folder shown anew, which waits for its relations
   VP::View _tree;
   std::string _top;
   std::vector<std::filesystem::path> _walk;
