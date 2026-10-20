@@ -1,3 +1,5 @@
+#include "runtime/Schedule.h"
+
 #include "runtime/Bound.h"
 
 #include <algorithm>
@@ -149,7 +151,7 @@ void Schedule::pair_draws(Schedule *replaced) {
 
 // The fragment node a vertex node's varyings reach, which makes one draw with it, or
 // null, with why among the errors of either.
-Schedule::Bound *Schedule::fragment_of(Bound &vertex) {
+Bound *Schedule::fragment_of(Bound &vertex) {
   const std::vector<Varying> &outputs = vertex.stage(vertex_stage).outputs();
   std::vector<const Connection *> varyings;
   Bound *fragment = nullptr;

@@ -1,3 +1,5 @@
+#include "runtime/Schedule.h"
+
 #include "runtime/Bound.h"
 
 #include "baseclasses/Platform.h"
@@ -358,7 +360,7 @@ private:
   const glm::uvec2 _resolution;
 };
 
-Schedule::Bound Schedule::bind(const Node &node,
+Bound Schedule::bind(const Node &node,
                                const std::filesystem::path &folder,
                                Schedule *replaced) {
   Bound bound{.node = &node, .log = _wiring.log.level()};

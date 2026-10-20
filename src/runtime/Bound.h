@@ -2,7 +2,6 @@
 
 #include "baseclasses/Pipelines.h"
 #include "runtime/Operator.h"
-#include "runtime/Schedule.h"
 #include "runtime/View.h"
 
 #include <algorithm>
@@ -220,7 +219,7 @@ inline std::string joined(const std::vector<std::string> &names) {
   return text;
 }
 
-struct Schedule::Bound {
+struct Bound {
   const Node *node = nullptr;
   Level log = Level::warn;
   std::vector<std::string> shaders_named;   // the node's shader files
@@ -303,7 +302,7 @@ struct Schedule::Bound {
 
 // The object a connection between C++ nodes carries (native C++). Its writer's module
 // makes and destroys it, so it goes when a swap rewrites that module (rule 2).
-struct Schedule::Held {
+struct Held {
   std::string name;   // the connection's, or the writer's node.port while unconnected
   std::string module; // the writer's, as "view/folder"
   std::string type;   // as typeid names it
@@ -318,7 +317,7 @@ struct Schedule::Held {
 
 // An image a node's C++ filled, by the port that fills it, so a connection made or
 // removed keeps it, and so does a rebuild while the node keeps its name.
-struct Schedule::Picture {
+struct Picture {
   std::string name; // the writer's node.port
   Sampled sampled;
 };

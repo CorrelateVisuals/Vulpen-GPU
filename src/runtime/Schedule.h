@@ -29,6 +29,13 @@ struct Offscreen;
 struct Pass;
 struct PixelFormat;
 struct View;
+// What a schedule holds of each node, of each object a connection between C++ nodes
+// carries, and of each image a node's C++ filled, in runtime/Bound.h, which includes none
+// of this header, so the schedule's own header and the files holding its parts, which
+// include both, form no loop (A06), and this one includes none of what they hold (CPP13).
+struct Bound;
+struct Held;
+struct Picture;
 
 // What every schedule borrows from the modules that own it (A01). Runtime.cpp fills it
 // once, and whoever builds a schedule passes it on, so no builder includes those owners.
@@ -114,11 +121,8 @@ public:
   const Offscreen *window_of(std::string_view view) const;
 
 private:
-  // Bound, Held and Picture are in runtime/Bound.h, and Binder and Cooker in
-  // runtime/Binder.cpp, so this header includes none of what they hold (CPP13).
-  struct Bound;
-  struct Held;
-  struct Picture;
+  // Binder and Cooker are in runtime/Binder.cpp, so this header includes none of what
+  // they hold (CPP13).
   struct Rendered; // in runtime/Schedule.cpp, the one file that reaches its parts
   struct Stored;   // so is this
   class Binder;

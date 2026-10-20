@@ -31,9 +31,9 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/examples/triangle/Triangle.vert` | — |
 | `baseclasses/examples/triangle/main.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Passes.h` `baseclasses/Pipelines.h` `baseclasses/Platform.h` `baseclasses/Shader.h` `commit.h` |
 | `main.cpp` | `commit.h` `runtime/Runtime.h` |
-| `runtime/Binder.cpp` | `baseclasses/Platform.h` `runtime/Bound.h` `runtime/Commands.h` `runtime/Modules.h` `runtime/Ports.h` |
-| `runtime/Bound.h` | `baseclasses/Pipelines.h` `runtime/Operator.h` `runtime/Schedule.h` `runtime/View.h` |
-| `runtime/Checks.cpp` | `runtime/Bound.h` |
+| `runtime/Binder.cpp` | `baseclasses/Platform.h` `runtime/Bound.h` `runtime/Commands.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Schedule.h` |
+| `runtime/Bound.h` | `baseclasses/Pipelines.h` `runtime/Operator.h` `runtime/View.h` |
+| `runtime/Checks.cpp` | `runtime/Bound.h` `runtime/Schedule.h` |
 | `runtime/Commands.cpp` | `baseclasses/Platform.h` `runtime/Commands.h` |
 | `runtime/Commands.h` | `runtime/Operator.h` |
 | `runtime/Edits.cpp` | `runtime/Commands.h` `runtime/Edits.h` `runtime/View.h` |

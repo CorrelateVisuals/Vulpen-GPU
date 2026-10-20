@@ -758,12 +758,12 @@ void Schedule::log(Level level,
   _wiring.log.write(level, bound.log, tag, _name, bound.node->name, text);
 }
 
-const Schedule::Held *Schedule::held(std::string_view name) const {
+const Held *Schedule::held(std::string_view name) const {
   const auto found = std::ranges::find(_objects, name, &Held::name);
   return found == _objects.end() ? nullptr : &*found;
 }
 
-Schedule::Bound *Schedule::find(std::string_view node) {
+Bound *Schedule::find(std::string_view node) {
   const auto found = std::ranges::find_if(
       _bound, [&](const Bound &bound) { return bound.node->name == node; });
   return found == _bound.end() ? nullptr : &*found;
