@@ -75,7 +75,10 @@ std::string_view project_of(const Find &view_of,
 // tab of its own, named perform, which does nothing pressed. Perform
 // mode needs a view presented, so it refuses while none is, and gives way to edit mode
 // once none is; it hides the log, so it gives way too once the log shows an error, as a
-// line refused's, which the terminal then shows.
+// line refused's, which the terminal then shows. A project hosted since the frame before,
+// as view load hosts one, shows as it is presented: the panel its shows param names comes
+// back if it was hidden, and the switch its switch param names gives the view presented
+// its first half, in place of a preview.
 // It takes the keys no part in focus takes: escape leaves perform mode, and in edit mode
 // ends the run, once the part in focus let go of its selection and of the focus. It hands
 // on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
@@ -90,6 +93,8 @@ class Modes final : public VP::Operator {
     _perform = mode == "perform";
     _to = node.param<std::string>("to");
     std::ranges::replace(_to, ',', ' ');
+    _shows = node.sets("shows") ? node.param<std::string>("shows") : std::string();
+    _switch = node.sets("switch") ? node.param<std::string>("switch") : std::string();
     _name = node.name();
     _view = node.view_name();
     _area = &node.input<VP_VIEW::Rect>("area");
@@ -182,8 +187,16 @@ class Modes final : public VP::Operator {
                                                                      : presented;
     const bool presenting = !wanted.empty() && wanted != presented;
     name_tabs(hosted, presented);
+    const bool loaded = _started && std::ranges::find(_known, wanted) == _known.end();
     if (presenting)
       present(frame.commands(), *frame.view(_view), std::string(wanted));
+    if (presenting && loaded)
+      show_presented(frame.commands());
+    if (!std::ranges::equal(_known, hosted, {}, {}, &VP::Child::name)) {
+      _known.clear();
+      for (const VP::Child &child : hosted)
+        _known.push_back(child.name);
+    }
     _started = true;
     bool leave = false;
     for (const VP::Event &event : _typed->to(""))
@@ -200,6 +213,15 @@ class Modes final : public VP::Operator {
       frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;
     *_shown = _perform ? *_area : VP_VIEW::Rect{};
+  }
+
+  // The Perform panel back if it was hidden, and the view presented in it, not a preview,
+  // so a project loaded shows at once.
+  void show_presented(VP::CommandPort &commands) const {
+    if (!_shows.empty())
+      commands.send(std::format("{}: panel show {}", _view, _shows));
+    if (!_switch.empty())
+      commands.send(std::format("{}: param set {} shown first", _view, _switch));
   }
 
   // Only when the projects or the one presented changed, so a frame allocates nothing
@@ -225,6 +247,9 @@ class Modes final : public VP::Operator {
 
   bool _perform = false;
   std::string _to; // the ports present connects a view's window to, blank between
+  std::string _shows;  // the panel a project loaded shows in, as its shows param names it
+  std::string _switch; // and the switch giving the view presented its first half
+  std::vector<std::string> _known; // the projects hosted the frame before
   std::string _name;
   std::string _view; // the one it runs in, which its lines change
   std::string _returning; // in focus as perform mode began, and again in edit mode
