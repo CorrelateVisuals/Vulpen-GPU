@@ -5,6 +5,7 @@
 #include "shared/PanZoom.h"
 
 #include <format>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -18,7 +19,9 @@ constexpr std::string_view picture = "picture"; // the port its shaders sample
 // shaders letterbox it there: one instance of its draw, none while the area is empty, so
 // an image given no room costs no draw. With param moves = yes, a drag moves it and the
 // wheel zooms it about the pointer, as the graph moves, and its shaders cut it at the
-// area's edge, so it never draws over what is beside it; a press in its area gives it
+// area's edge, so it never draws over what is beside it, and a drag with the middle
+// button zooms it about where it was pressed, going right nearer and left farther, as in
+// the graph; a press in its area gives it
 // the focus, and while it has it, h brings it home, letterboxed again. What a connection
 // brings to its picture anew, as another view presented, shows at home too.
 class Image final : public VP::Operator {
@@ -85,11 +88,17 @@ class Image final : public VP::Operator {
       if (event.kind == VP::Event::Kind::pointer) {
         if (_dragging)
           _view.pan += event.at - _pointer;
+        else if (_zooming)
+          _view.wheel((event.at.x - _pointer.x) / PanZoom::drag_step,
+                      *_zooming - glm::vec2(_area->offset));
         _pointer = event.at;
       } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
         _dragging = event.down && inside;
         if (_dragging && _typed->focus != _name)
           frame.commands().send(std::format("focus {}", _name));
+      } else if (event.kind == VP::Event::Kind::button && event.name == "middle") {
+        _zooming =
+            event.down && inside && !_dragging ? std::optional(_pointer) : std::nullopt;
       } else if (event.kind == VP::Event::Kind::wheel && inside) {
         _view.wheel(event.turn.y, _pointer - glm::vec2(_area->offset));
       }
@@ -107,6 +116,9 @@ class Image final : public VP::Operator {
   glm::vec2 _pointer{};   // as the events so far left it
   bool _moves = false;    // whether a drag and the wheel move it
   bool _dragging = false; // from a press in its area until it is let go
+  // Where a middle press in its area was, which a drag sideways zooms about until it is
+  // let go.
+  std::optional<glm::vec2> _zooming;
 };
 
 } // namespace

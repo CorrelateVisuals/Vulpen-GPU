@@ -10,10 +10,13 @@ namespace {
 
 // How far what an area shows moved, and how near it is: the graph's, and the Perform
 // panel's image, so both move alike (RV09). A drag moves it as far as the pointer went,
-// the wheel zooms it about the pointer, which stays over the same place, and its home key
-// brings it home; the part hands it the drags, turns and keys it takes.
+// the wheel zooms it about the pointer, which stays over the same place, a drag with the
+// middle button about where it was pressed, a step of the wheel each drag_step pixels it
+// goes sideways, right nearer, and its home key brings it home; the part hands it the
+// drags, turns and keys it takes.
 struct PanZoom {
   static constexpr float step = 1.1f; // how much nearer a step of the wheel zooms
+  static constexpr float drag_step = 20.0f; // pixels sideways a step of the wheel
   static constexpr float least = 0.25f;
   static constexpr float most = 4.0f;
   static constexpr std::string_view home_key = "h";

@@ -118,18 +118,18 @@ void erase(Document &document, Spot from, Spot to) {
   document.changed = document.restyle = true;
 }
 
-// The rows an edit at the caret or of the selection may change, as they are before it: the
-// selection's and the caret's, and a row either side, for a break it takes out.
+// The rows an edit at the caret or of the selection may change, as they are before it:
+// the selection's and the caret's, and a row either side, for a break it takes out.
 Change before_edit(const Document &document) {
   const auto [from, to] = selection(document);
   const std::size_t low = std::min(from.row, document.caret.row);
   const std::size_t first = low == 0 ? 0 : low - 1;
   const std::size_t last =
       std::min(std::max(to.row, document.caret.row) + 1, document.lines.size() - 1);
-  const auto rows = document.lines.begin();
+  const auto row = document.lines.begin() + static_cast<std::ptrdiff_t>(first);
   return {.first = first,
-          .before = std::vector<std::string>(rows + static_cast<std::ptrdiff_t>(first),
-                                             rows + static_cast<std::ptrdiff_t>(last) + 1),
+          .before = std::vector<std::string>(
+              row, row + static_cast<std::ptrdiff_t>(last - first) + 1),
           .caret_before = document.caret,
           .anchor_before = document.anchor};
 }
@@ -141,7 +141,8 @@ Change before_edit(const Document &document) {
 void keep(Document &document, Change change, std::size_t rows, std::string_view typed) {
   const std::size_t count = change.before.size() + document.lines.size() - rows;
   const auto from = document.lines.begin() + static_cast<std::ptrdiff_t>(change.first);
-  if (count == change.before.size() && std::equal(change.before.begin(), change.before.end(), from))
+  if (count == change.before.size() &&
+      std::equal(change.before.begin(), change.before.end(), from))
     return;
   change.after.assign(from, from + static_cast<std::ptrdiff_t>(count));
   change.caret_after = document.caret;
@@ -181,8 +182,8 @@ void undo(Document &document, bool again) {
   const auto at = static_cast<std::ptrdiff_t>(change.first);
   const std::vector<std::string> &now = again ? change.before : change.after;
   const std::vector<std::string> &then = again ? change.after : change.before;
-  document.lines.erase(document.lines.begin() + at,
-                       document.lines.begin() + at + static_cast<std::ptrdiff_t>(now.size()));
+  const auto rows = document.lines.begin() + at;
+  document.lines.erase(rows, rows + static_cast<std::ptrdiff_t>(now.size()));
   document.lines.insert(document.lines.begin() + at, then.begin(), then.end());
   document.caret = again ? change.caret_after : change.caret_before;
   document.anchor = again ? change.anchor_after : change.anchor_before;

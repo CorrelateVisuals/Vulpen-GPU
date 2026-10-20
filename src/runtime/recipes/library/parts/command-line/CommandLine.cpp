@@ -577,11 +577,11 @@ class CommandLine final : public VP::Operator {
     _tabs->assign(1, {.label = label, .current = true});
   }
 
-  // Control with z takes the line's last edit back, and with shift too makes it again; any
-  // other event edits the line, and an edit that changed it is kept to take back, the
-  // characters typed joining those typed just before them while the caret stayed where
-  // those left it and no blank starts a word, so a word goes back at once. A line sent,
-  // or a search begun or ended, starts the edits anew.
+  // Control with z takes the line's last edit back, and with shift too makes it again;
+  // any other event edits the line, and an edit that changed it is kept to take back,
+  // the characters typed joining those typed just before them while the caret stayed
+  // where those left it and no blank starts a word, so a word goes back at once. A line
+  // sent, or a search begun or ended, starts the edits anew.
   void edit(VP::Cook &frame, const VP::Event &event) {
     if (event.kind == VP::Event::Kind::key && event.name == "shift")
       _shift = event.down;

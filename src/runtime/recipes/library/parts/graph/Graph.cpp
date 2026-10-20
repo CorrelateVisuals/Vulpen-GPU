@@ -52,10 +52,9 @@ constexpr std::array<std::uint32_t, VP_VIEW::layer_names.size()> layer_roles{
     VP_VIEW::role("string"),
     VP_VIEW::role("type")};
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
-// A line of the ground every so many pixels of the graph at zoom 1, which its shaders draw
-// as its C++ hands them this, and which a box moved and a corner pulled snap to.
+// A line of the ground every so many pixels of the graph at zoom 1, which its shaders
+// draw as its C++ hands them this, and which a box moved and a corner pulled snap to.
 constexpr std::int32_t line_spacing = 24;
-constexpr float zoom_drag = 20.0f; // pixels a middle drag goes sideways for a step of the wheel
 // A corner a drag pulls: how far in from it a press takes it, never past a quarter of the
 // box, so a small box still moves, and how far out, past the box's edges, so a press
 // near the corner needs no aim; and its mark's arms, in pixels.
@@ -337,7 +336,8 @@ void Graph::command(VP::Call &call) {
 // delete or backspace removes what is selected; an arrow moves it a line of the ground
 // that way; escape lets go of it, and with none of the focus, as the editor and the
 // terminal do; control with a selects every box; control with z takes the last change of
-// where the boxes are back, and with shift too does it again. The home key brings the graph home once the frame has laid the boxes out.
+// where the boxes are back, and with shift too does it again. The home key brings the
+// graph home once the frame has laid the boxes out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
   const VP::View *const view = frame.view(_shown);
@@ -556,7 +556,7 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
     if (_grab && room) {
       drag(event.at);
     } else if (_zooming && room) {
-      turn(frame, (event.at.x - _pointer.x) / zoom_drag, *_zooming);
+      turn(frame, (event.at.x - _pointer.x) / PanZoom::drag_step, *_zooming);
     } else if (_dragging) {
       _pan_zoom.pan += event.at - _pointer;
       _at_home = false;
@@ -874,11 +874,11 @@ std::size_t Graph::row_under(std::size_t at) const {
 }
 
 // The wheel zooms by steps, about the pointer, which stays over the same place of the
-// graph, and a middle drag about where it was pressed, a step each zoom_drag pixels it
-// goes sideways, right nearer and left farther; the wheel's turn sideways does nothing
-// yet. Zoomed in to three times as near as zoom 1, or as near as it goes, the graph shows
-// the inside of the box under that place; zoomed out to a quarter as near as home, as far
-// as it goes here, a level up.
+// graph, and a middle drag about where it was pressed, a step each PanZoom::drag_step
+// pixels it goes sideways, right nearer and left farther; the wheel's turn sideways does
+// nothing yet. Zoomed in to three times as near as zoom 1, or as near as it goes, the
+// graph shows the inside of the box under that place; zoomed out to a quarter as near as
+// home, as far as it goes here, a level up.
 void Graph::turn(VP::Cook &frame, float steps, glm::vec2 about) {
   const float farthest = _home_zoom * leave_share;
   _pan_zoom.wheel(steps, about - glm::vec2(_area->offset), farthest);
