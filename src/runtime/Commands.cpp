@@ -366,7 +366,7 @@ std::string Commands::run(std::string_view line) {
   const Restore changed(_changed, address);
   Run call(*this, _views, address, _files, _processes, spec->command, arguments);
   spec->handler->command(call);
-  if (primitive != Primitive::no)
+  if (primitive != Primitive::no && !_replaying)
     _session.keep(std::move(kept), std::move(files), _changed, primitive);
   return std::move(call).answer();
 }
@@ -500,6 +500,23 @@ void Commands::source(const std::filesystem::path &file) {
     }
   }
   _sourcing.pop_back();
+}
+
+std::vector<std::string> Commands::replay(std::string_view lines) {
+  const Restore replaying(_replaying, true);
+  std::vector<std::string> refused;
+  for (const auto piece : std::views::split(lines, '\n'))
+    if (const std::string_view line(piece.begin(), piece.end()); !line.empty())
+      try {
+        run(line);
+      } catch (const std::runtime_error &failure) {
+        refused.push_back(std::format("{}: {}", line, failure.what()));
+      }
+  return refused;
+}
+
+bool Commands::replaying() const {
+  return _replaying;
 }
 
 void Commands::look_in(ViewLookup &views) {

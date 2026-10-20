@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <utility>
 
 namespace VP {
 
@@ -57,7 +58,8 @@ struct Views::Hosted {
   std::unique_ptr<View> edited_flat;
   std::filesystem::file_time_type read; // the manifest's, when last read or saved
   // How many primitives the log kept when the manifest last held all of the view: as it
-  // was hosted, read again or saved. Its edits since then are what a restart replays.
+  // was hosted or saved. Its edits since then are what a restart replays, and a read
+  // again.
   std::size_t marked = 0;
   std::unique_ptr<Schedule> schedule; // null until the frame after it was hosted
   // Where its schedule's draws into its window go.
@@ -336,13 +338,8 @@ void Views::reload() {
 void Views::reload(Hosted &hosted) {
   if (const auto time = stamp(hosted.current().file); time != hosted.read) {
     try {
-      auto view = std::make_unique<View>(read(_wiring.log, hosted.current().file));
-      auto flat = flat_of(*view);
-      follow(hosted.name, *view);
-      hosted.edited_flat = std::move(flat);
-      hosted.edited = std::move(view);
+      reread(hosted);
       hosted.read = time;
-      hosted.marked = _port.session().size();
       return;
     } catch (const std::exception &failure) {
       _wiring.log.write(Level::error,
@@ -369,6 +366,34 @@ void Views::reload(Hosted &hosted) {
   }
 }
 
+// The manifest as it is now, and over it the edits since its file last held the view, as
+// a restart replays them (V08), so a view a command hosted, as the ide the arguments
+// name, runs on, and no edit is lost; their mark stays, as the file holds them no more
+// than before. Hosting follows once they all ran, so no view goes and comes back anew
+// between two of them. Throws, the view left as it runs, for a manifest that does not
+// load, or that names a view which cannot be hosted.
+void Views::reread(Hosted &hosted) {
+  const CommandLog::Mark mark{hosted.name, hosted.marked};
+  const std::string unsaved = _port.session().after(std::span(&mark, 1), {});
+  auto view = std::make_unique<View>(read(_wiring.log, hosted.current().file));
+  auto flat = flat_of(*view);
+  std::unique_ptr<View> was = std::exchange(hosted.edited, std::move(view));
+  std::unique_ptr<View> was_flat = std::exchange(hosted.edited_flat, std::move(flat));
+  try {
+    for (const std::string &refused : _port.replay(unsaved))
+      _wiring.log.write(Level::warn,
+                        Tag::mod,
+                        std::format("{} read again: {}, so it is not replayed",
+                                    hosted.current().file.string(),
+                                    refused));
+    follow(hosted.name, hosted.current());
+  } catch (...) {
+    hosted.edited = std::move(was);
+    hosted.edited_flat = std::move(was_flat);
+    throw;
+  }
+}
+
 const View *Views::find(std::string_view name) {
   const Hosted *const found = hosted(name);
   return found ? &found->current() : nullptr;
@@ -392,7 +417,8 @@ void Views::replace(std::string_view name, View view) {
     throw std::runtime_error(std::format("no view is named {}", name));
   const std::vector<std::string> notes = Manifest::refresh(view);
   auto flat = flat_of(view);
-  follow(found->name, view);
+  if (!_port.replaying())
+    follow(found->name, view);
   found->edited_flat = std::move(flat);
   found->edited = std::make_unique<View>(std::move(view));
   note(_wiring.log, *found->edited, Level::info, notes);

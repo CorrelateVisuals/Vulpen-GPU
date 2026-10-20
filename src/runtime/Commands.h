@@ -49,7 +49,7 @@ enum class Primitive : std::uint8_t { no, edit, save };
 class CommandLog {
 public:
   // Where a view's own file last held all of it: how many primitives the log kept then,
-  // as the view was hosted, read again or saved.
+  // as the view was hosted or saved.
   struct Mark {
     std::string_view view; // by the name a line addresses it with, empty for the first
     std::size_t kept = 0;
@@ -137,6 +137,12 @@ public:
   // Throws naming the file and line of the first that fails, and runs none after it, so
   // a script never goes on from a state it did not expect.
   void source(const std::filesystem::path &file);
+  // Lines the log kept already, run again, as the edits a manifest read again does not
+  // hold are replayed over it: the log keeps none of them twice, so a replay of the log
+  // runs each once (V08). A line that fails is passed over; returns each, with why.
+  std::vector<std::string> replay(std::string_view lines);
+  // Whether a replay runs, so the views host and let go of views once it ran.
+  bool replaying() const;
   // Where a command finds the view it addresses, once the views exist.
   void look_in(ViewLookup &views);
   // A hosted view by its name, as the changes so far left it, which a node reads while it
@@ -196,6 +202,7 @@ private:
   std::string _addressed;
   std::string _changed; // by the primitive running
   std::size_t _depth = 0; // the lines running, each sent by the one before it
+  bool _replaying = false; // what runs, the log kept already
   const Command _quit;
   const Command _quit_force;
   const Command _source;
