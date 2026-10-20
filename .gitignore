@@ -15,8 +15,7 @@ __pycache__/
 *.bak
 
 # Each person's projects, and a project that is a git repository of its own; .gitkeep
-# keeps the folder, and the example projects are everyone's, the triangle's variants with
-# them while they are judged.
+# keeps the folder, and the example projects are everyone's
 /projects/*
 !/projects/.gitkeep
 !/projects/triangle/
