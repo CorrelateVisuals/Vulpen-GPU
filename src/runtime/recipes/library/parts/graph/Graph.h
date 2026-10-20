@@ -82,8 +82,9 @@ struct Under {
 // pointer, two steps of the wheel short of going into it again. . goes into the box
 // selected, or the one under the pointer, and , up a level, as the wheel and a second
 // press do, , showing it from home. A drag on the ground moves the graph and the wheel
-// zooms it about the pointer, as the
-// Perform panel's image moves, and neither is kept. A
+// zooms it about the pointer, as the Perform panel's image moves, and a middle drag zooms
+// it about where it was pressed, nearer going right and farther going left, as the wheel
+// does, levels too; none of it is kept. A
 // press on a box selects it, shift adding it or taking it out, and a second press opens
 // the file of a row that names one in the editor; a drag on a box selected moves every
 // box selected,
@@ -136,7 +137,7 @@ private:
   void place_all();
   void release(VP::Cook &frame, bool room);
   bool open(VP::Cook &frame, std::size_t at);
-  void turn(VP::Cook &frame, glm::vec2 turn);
+  void turn(VP::Cook &frame, float steps, glm::vec2 about);
   bool enter(VP::Cook &frame, std::size_t at);
   void leave(VP::Cook &frame);
   bool selected(std::string_view node) const;
@@ -267,6 +268,8 @@ private:
   glm::vec2 _pointer{};   // as the events so far left it
   Under _hovered;         // what the pointer is over, once the frame laid the boxes out
   bool _dragging = false; // the ground, which the graph follows
+  // Where a middle press began, which a drag sideways zooms about until it is let go.
+  std::optional<glm::vec2> _zooming;
   bool _shift = false;    // held, so a press adds a box to the selection or takes it out
   bool _control = false;  // held, so a selects every box
 };
