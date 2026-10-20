@@ -21,8 +21,8 @@ which nothing may refuse; a third then presses escape three times, back to edit 
 of the terminal's focus and out of the run, which must end before its frames do; every
 other run must run all of them, so the end of standard input, which every run finds at
 once, ends none. The last two host a copy of the wave example, its boxes placed by the
-.ini put beside it, which home centers in the graph's area at zoom 1, the flow layer
-alone showing, so no relation reaching past the copy's folder widens them, with
+.ini put beside it, which home centers in the graph's area at zoom 1, what lies outside
+it placed among them, the flow layer alone showing its curves, with
 Wave.comp open in the editor: a press on a box's name selects it, a drag moves the box
 selected, a drag on the ground lets go of the selection and moves the graph, shift with a
 press selects the box again, the wheel zooms the graph, and shift with a drag on the
@@ -90,10 +90,14 @@ SIZE = re.compile(r"\{swp\} presents \d+ images of (\d+)x(\d+)")
 WAVE = RUNTIME.parents[1] / "projects" / "wave"
 # The wave box, probe's and the manifest's in a row, each larger than its rows need, so
 # where they reach is known, and home, which centers them in the graph's area, shows them
-# at zoom 1 in any window from 1280 by 720 pixels.
+# at zoom 1 in any window from 1280 by 720 pixels; and what lies outside, the docs the
+# copy's comments cite, below the manifest's, within that reach, so it widens nothing
+# home centers, though only the flow layer's curves show, as a layer hidden hides its
+# curves alone.
 ARRANGED = {"place wave": [0, 0], "size wave": [120, 90],
             "place probe": [200, 0], "size probe": [120, 90],
-            "place /view.vlp": [400, 0], "size /view.vlp": [120, 30]}
+            "place /view.vlp": [400, 0], "size /view.vlp": [120, 30],
+            "place outside left": [400, 40], "size outside left": [120, 50]}
 REACH = (520, 90)
 HOME_MARGIN = (16, 18)  # the least room home leaves round them: half a column's gap, a row
 MOVED = ("place wave",)
@@ -288,8 +292,8 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
     below = MENUBAR + round((row - 4) * 0.5) + 4
     perform = (width * 3 // 4, below + (top - below) * 2 // 3)
     return [
-        # The flow layer alone: the docs ids the copy cites reach past its folder, and
-        # the box outside, once read, would widen what home centers.
+        # The flow layer alone, so no curve of the docs ids the copy cites crosses the
+        # boxes; the box outside they reach is placed with the others.
         "ide: param set ide.graph.graph relations flow",
         f"view load {wave}",
         f"open {wave / 'wave' / 'Wave.comp'}",  # GLSL in the editor, in color
