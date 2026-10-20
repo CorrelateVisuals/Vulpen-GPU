@@ -33,7 +33,9 @@
 namespace {
 
 constexpr int rgba = 4; // channels a pixel takes, as the picture's format holds them
-constexpr std::string_view preview_label = "preview - {}";
+// At the label's end, so a tab cut short, which loses what its label starts with, still
+// says it is a preview.
+constexpr std::string_view preview_label = "{} (preview)";
 
 // The image file its file param names, decoded by stb_image into its picture, sRGB as a
 // file holds its colors, for the node a connection takes the picture to: read again once

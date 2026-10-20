@@ -1,7 +1,7 @@
 # The image-file part: one node whose operator is ImageFile; it fills its picture with the
 # image file its file param names, as stb_image reads a PNG, a JPEG, a BMP, a TGA or a GIF,
 # for a node a connection takes the picture to, as an image part shows it, again as the
-# file changes on disk, and hands on a tab naming it a preview, whose close mark unsets the
+# file changes on disk, and hands on a tab naming it, a preview, whose close mark unsets the
 # param. Its switch param names the switch whose second half shows the picture, which it
 # shows as a file opens and leaves as it closes.
 [manifest]

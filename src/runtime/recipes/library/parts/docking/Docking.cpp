@@ -367,8 +367,9 @@ class Docking final : public VP::Operator {
 
   // At the first frame, on a view as its manifest has it, the panels as the file keeps
   // them, through panel restore, so a line arranges them (V06); a view a replay of the log
-  // arranged already, as a restart's, is left as it is. With no file, nothing is saved
-  // until the panels change.
+  // arranged already, as a restart's, is left as it is, and so is one whose file was kept
+  // for the manifest before it changed, which the next save keeps anew. With no file,
+  // nothing is saved until the panels change.
   void start(VP::Cook &frame) {
     _started = true;
     VP::FilePort &files = frame.files();
@@ -380,8 +381,22 @@ class Docking final : public VP::Operator {
       return;
     }
     _saved = files.read(_kept);
-    if (read && as_written(frame.view(), _written))
+    if (!read || !as_written(frame.view(), _written))
+      return;
+    if (kept_for(_saved) == fingerprint_of(_written))
       frame.commands().send(std::format("{}: panel restore", _view));
+    else
+      frame.log(VP::Level::warn, stale());
+  }
+
+  // Why a file is not replayed: its lines name what the manifest's nodes and connections
+  // were, which have changed since, so they would join what the names now mean.
+  std::string stale() const {
+    return std::format("{} was kept for {} before its nodes or connections changed, so the "
+                       "panels show as the manifest has them, and the next change keeps "
+                       "them so",
+                       _kept,
+                       _manifest);
   }
 
   // The view as its manifest writes it, which the file keeps the panels against, read
@@ -422,7 +437,10 @@ class Docking final : public VP::Operator {
   // brought back that the docking part added goes, so a run starts with the manifest's
   // editors alone.
   void restore(VP::Call &call) {
-    const std::vector<std::string> lines = kept_lines(call.files().read(_kept));
+    const std::string text = call.files().read(_kept);
+    if (!_written_read || kept_for(text) != fingerprint_of(_written))
+      throw std::runtime_error(stale());
+    const std::vector<std::string> lines = kept_lines(text);
     std::optional<std::string> stopped;
     for (const std::string &line : lines) {
       try {

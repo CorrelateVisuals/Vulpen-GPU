@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <format>
 #include <span>
 #include <string>
@@ -29,6 +30,11 @@ constexpr std::string_view kept_head =
 constexpr std::array<std::string_view, 4> laid_recipes{"dock", "panel", "stack",
                                                        "text-area"};
 constexpr std::string_view strip_params = "bar."; // a panel's strip's, which no file keeps
+// The line naming what the manifest wrote as the file was kept, a comment to a replay.
+constexpr std::string_view written_line = "# written ";
+// FNV-1a, 64 bits: a fingerprint that reads the same on every machine and every build.
+constexpr std::uint64_t fnv_offset = 14695981039346656037ull;
+constexpr std::uint64_t fnv_prime = 1099511628211ull;
 
 bool laid(const VP::Node &node) {
   return std::ranges::find(laid_recipes, node.recipe) != laid_recipes.end();
@@ -87,6 +93,53 @@ void move_into_order(std::vector<std::string> &order,
   }
 }
 
+// Whether the unfolded manifest's node or connection of that name is one a recipe its
+// nodes use brings, inside a node that uses one, which the manifest itself does not write.
+bool brought(const VP::View &written, std::string_view name) {
+  return std::ranges::any_of(written.nodes, [&](const VP::Node &user) {
+    return user.uses() && name != user.name && within(name, user.name);
+  });
+}
+
+// What the manifest writes of its nodes and connections, each node's name, recipe and
+// params and each connection's name and ends, as one number, which the file names, so a
+// file kept for a manifest since changed is not replayed onto it, where its lines would
+// land on what its names mean now, as a node renamed or made another.
+std::string fingerprint_of(const VP::View &written) {
+  std::uint64_t hash = fnv_offset;
+  const auto add = [&](std::string_view text) {
+    for (const char byte : text)
+      hash = (hash ^ static_cast<unsigned char>(byte)) * fnv_prime;
+    hash = (hash ^ '\n') * fnv_prime; // where one word ends, so two words never read as one
+  };
+  for (const VP::Node &node : written.nodes)
+    if (!brought(written, node.name)) {
+      add(node.name);
+      add(node.recipe);
+      for (const VP::Param &param : node.params) {
+        add(param.key);
+        add(param.value);
+      }
+    }
+  for (const VP::Connection &connection : written.connections)
+    if (!brought(written, connection.name)) {
+      add(connection.name);
+      add(connection.from.text());
+      for (const VP::Endpoint &to : connection.to)
+        add(to.text());
+    }
+  return std::format("{:016x}", hash);
+}
+
+// The fingerprint a kept file names; empty for none, as a file kept before files named it.
+std::string_view kept_for(std::string_view text) {
+  const std::size_t at = text.find(written_line);
+  if (at == std::string_view::npos)
+    return {};
+  const std::string_view rest = text.substr(at + written_line.size());
+  return rest.substr(0, rest.find('\n'));
+}
+
 // The lines that make the manifest's panels the panels now, whatever edits made them so,
 // in an order a replay takes: the panels' nodes gone removed, the connections their nodes
 // are part of let go of or made otherwise, their nodes added, every node moved to the
@@ -97,11 +150,7 @@ void move_into_order(std::vector<std::string> &order,
 // recipe its nodes use brings, and a param it sets is read where it went, on the node
 // inside; the view now comes as edited.
 std::vector<std::string> edits_from(const VP::View &written, const VP::View &now) {
-  const auto brought = [&](std::string_view name) {
-    return std::ranges::any_of(written.nodes, [&](const VP::Node &user) {
-      return user.uses() && name != user.name && within(name, user.name);
-    });
-  };
+  const auto brought = [&](std::string_view name) { return ::brought(written, name); };
   std::vector<std::string_view> panels; // the panels' nodes, the manifest's or now's
   for (const VP::View *view : {&written, &now})
     for (const VP::Node &node : view->nodes)
@@ -188,9 +237,11 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
   return lines;
 }
 
-// The file's text: the edits that make the manifest's panels the panels now.
+// The file's text: what the manifest wrote, then the edits that make its panels the
+// panels now.
 std::string kept_text(const VP::View &written, const VP::View &now) {
   std::string text(kept_head);
+  text.append(written_line).append(fingerprint_of(written)).append(1, '\n');
   for (const std::string &line : edits_from(written, now))
     text.append(line).append(1, '\n');
   return text;
