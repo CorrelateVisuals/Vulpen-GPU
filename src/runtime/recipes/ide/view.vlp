@@ -44,7 +44,7 @@ recipe = viewport
 # draw nowhere and keep running.
 [node "ide.modes"]
 recipe = modes
-param  = to=ide.perform.picture,ide.screen.picture
+param  = to=ide.presented.picture,ide.screen.picture
 
 # The window's top: a button a panel, lit while it shows, whose press hides it or brings
 # it back, then the run's, edit, perform and gpu, as the POC's menubar cells, a panel's
@@ -97,7 +97,7 @@ recipe = panel
 
 # The Perform panel's room goes to the view presented, or while an image file is open,
 # to its preview, as a switch hands it one half, under one strip of the two's tabs.
-[node "ide.perform-switch"]
+[node "ide.perform"]
 recipe = switch
 
 [node "ide.perform-tabs"]
@@ -106,7 +106,7 @@ recipe = switch-tabs
 # A drag moves the view presented and the wheel zooms it, as in the graph, and h, while
 # the panel has the focus, brings it home; the window that fills the whole window in
 # perform mode stays still.
-[node "ide.perform"]
+[node "ide.presented"]
 recipe = image
 param  = moves=yes
 
@@ -115,7 +115,7 @@ param  = moves=yes
 # it, the view presented showing again.
 [node "ide.preview-file"]
 recipe = image-file
-param  = switch=ide.perform-switch
+param  = switch=ide.perform
 
 [node "ide.preview"]
 recipe = image
@@ -252,16 +252,16 @@ to   = ide.perform-panel.bar.area
 
 [connection "perform-area"]
 from = ide.perform-panel.bar.rest
-to   = ide.perform-switch.area
+to   = ide.perform.area
 
 # The first half's room goes to the tabs too, by which they find the switch.
 [connection "perform-shown"]
-from = ide.perform-switch.first
-to   = ide.perform.area
+from = ide.perform.first
+to   = ide.presented.area
 to   = ide.perform-tabs.first
 
 [connection "preview-shown"]
-from = ide.perform-switch.second
+from = ide.perform.second
 to   = ide.preview.area
 
 [connection "preview"]
@@ -301,7 +301,7 @@ to   = ide.editor.text.typed
 to   = ide.editor-find.command-line.typed
 to   = ide.terminal.command-line.typed
 to   = ide.graph.graph.typed
-to   = ide.perform.typed
+to   = ide.presented.typed
 to   = ide.preview.typed
 to   = ide.modes.typed
 to   = ide.menu.menus.typed
