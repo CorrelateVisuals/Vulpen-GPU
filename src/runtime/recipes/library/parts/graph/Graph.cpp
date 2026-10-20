@@ -149,6 +149,20 @@ std::int32_t line_near(float at) {
   return static_cast<std::int32_t>(std::lround(at / line_spacing)) * line_spacing;
 }
 
+// The line of the ground past a place of the graph along an axis, the way given.
+std::int32_t line_past(std::int32_t at, int way) {
+  const float lines = static_cast<float>(at) / static_cast<float>(line_spacing);
+  return static_cast<std::int32_t>(way > 0 ? std::floor(lines) + 1.0f
+                                           : std::ceil(lines) - 1.0f) *
+         line_spacing;
+}
+
+// The way an arrow key points along each axis; none for any other key.
+glm::ivec2 arrow_of(std::string_view key) {
+  return {key == "right" ? 1 : key == "left" ? -1 : 0,
+          key == "down" ? 1 : key == "up" ? -1 : 0};
+}
+
 // The Rect from one corner to the other, rounded to whole pixels.
 VP_VIEW::Rect between(glm::vec2 from, glm::vec2 to, std::uint32_t role) {
   const glm::ivec2 low(glm::round(from));
@@ -316,13 +330,16 @@ void Graph::command(VP::Call &call) {
   }
 }
 
-// delete or backspace removes what is selected; escape lets go of it, and with none of
-// the focus, as the editor and the terminal do; control with a selects every box. The home key brings the graph home once the frame has laid the boxes out.
+// delete or backspace removes what is selected; an arrow moves it a line of the ground
+// that way; escape lets go of it, and with none of the focus, as the editor and the
+// terminal do; control with a selects every box. The home key brings the graph home once the frame has laid the boxes out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
   const VP::View *const view = frame.view(_shown);
   if ((key == "delete" || key == "backspace") && chosen && view) {
     erase(frame, *view);
+  } else if (const glm::ivec2 way = arrow_of(key); way != glm::ivec2(0) && chosen) {
+    nudge(frame, way);
   } else if (key == "escape" && chosen) {
     frame.commands().send(std::format("{}: select", _shown));
   } else if (key == "escape") {
@@ -610,21 +627,26 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
   _dragging = true;
 }
 
-// A corner pressed selects its box as a press on it does, and grabs the corner.
+// A corner pressed selects its box as a press on it does, and grabs the corner of it and
+// of every other box selected, which a drag pulls alike.
 void Graph::grab_corner(VP::Cook &frame, const Under &under) {
   const Box &pressed = _boxes.boxes[under.box];
   if (!selected(pressed.name))
     select(frame.commands(), std::span(&pressed.name, 1));
-  const Placed &placed = _layout.placed()[under.box];
-  _grab = Grab{.box = under.box,
-               .from = _pointer,
-               .moving = {{under.box, placed.offset}},
-               .corner = under.corner,
-               .extent = glm::ivec2(placed.extent),
-               .offset = placed.offset,
-               .at = placed.at,
-               .least = glm::ivec2(placed.least),
-               .natural = glm::ivec2(placed.natural)};
+  _grab = Grab{.box = under.box, .from = _pointer, .corner = under.corner};
+  const std::span<const Placed> placed = _layout.placed();
+  const auto pull = [&](std::size_t at) {
+    _grab->pulled.push_back({.box = at,
+                             .offset = placed[at].offset,
+                             .at = placed[at].at,
+                             .extent = glm::ivec2(placed[at].extent),
+                             .least = glm::ivec2(placed[at].least),
+                             .natural = glm::ivec2(placed[at].natural)});
+  };
+  pull(under.box);
+  for (std::size_t at = 0; at < placed.size(); ++at)
+    if (at != under.box && selected(_boxes.boxes[at].name))
+      pull(at);
 }
 
 // Once the pointer moved a few pixels, so a press that wobbles is still a press. The
@@ -659,41 +681,84 @@ void Graph::drag(glm::vec2 to) {
 // The corner grabbed follows the pointer and the opposite one stays, its edges snapping
 // to the ground's lines, or to the size the box's rows need where that lies nearer, and
 // a line farther at a time while the box would be smaller than the least any box may
-// be; a size its rows need anyway leaves the .ini. A left or a top corner moves the box
-// too.
+// be; every other box selected changes as much, down to its own least. A size its rows
+// need anyway leaves the .ini. A left or a top corner moves the boxes too. The first
+// pull places every box where it shows, as a drag does, so a box made larger moves no
+// other.
 void Graph::pull(glm::vec2 to) {
   Grab &grab = *_grab;
-  const Box &pulled = _boxes.boxes[grab.box];
   const glm::bvec2 corner = *grab.corner;
-  if ((corner.x || corner.y) && !grab.moved)
+  if (!grab.moved)
     place_all();
   const glm::vec2 by = (to - grab.from) / _pan_zoom.zoom;
-  glm::ivec2 low = grab.at;
-  glm::ivec2 high = grab.at + grab.extent;
+  const Pulled &first = grab.pulled.front();
+  glm::ivec2 low = first.at;
+  glm::ivec2 high = first.at + first.extent;
   for (const int axis : {0, 1}) {
     std::int32_t &edge = corner[axis] ? low[axis] : high[axis];
     const std::int32_t natural =
-        corner[axis] ? high[axis] - grab.natural[axis] : low[axis] + grab.natural[axis];
+        corner[axis] ? high[axis] - first.natural[axis] : low[axis] + first.natural[axis];
     const float wanted = static_cast<float>(edge) + by[axis];
     const std::int32_t line = line_near(wanted);
     edge = std::abs(wanted - static_cast<float>(natural)) <
                    std::abs(wanted - static_cast<float>(line))
                ? natural
                : line;
-    if (const std::int32_t short_by = grab.least[axis] - (high[axis] - low[axis]);
+    if (const std::int32_t short_by = first.least[axis] - (high[axis] - low[axis]);
         short_by > 0)
       edge += (corner[axis] ? -1 : 1) * (short_by + line_spacing - 1) / line_spacing *
               line_spacing;
   }
-  const glm::ivec2 size = high - low;
-  if (size == grab.natural)
-    _arranged.sizes.erase(pulled.name);
-  else
-    _arranged.sizes.insert_or_assign(pulled.name, size);
-  if (corner.x || corner.y)
-    _arranged.places.insert_or_assign(pulled.name, grab.offset + (low - grab.at));
+  for (const Pulled &pulled : grab.pulled) {
+    glm::ivec2 from = pulled.at + (low - first.at);
+    glm::ivec2 end = pulled.at + pulled.extent + (high - first.at - first.extent);
+    for (const int axis : {0, 1})
+      if (corner[axis])
+        from[axis] = std::min(from[axis], end[axis] - pulled.least[axis]);
+      else
+        end[axis] = std::max(end[axis], from[axis] + pulled.least[axis]);
+    const std::string &name = _boxes.boxes[pulled.box].name;
+    if (end - from == pulled.natural)
+      _arranged.sizes.erase(name);
+    else
+      _arranged.sizes.insert_or_assign(name, end - from);
+    if (corner.x || corner.y)
+      _arranged.places.insert_or_assign(name, pulled.offset + (from - pulled.at));
+  }
   grab.moved = true;
   _laid = false;
+}
+
+// The boxes selected a line of the ground over, the one selected last onto the next line
+// that way and the others as far, as a drag takes them; saved at once. Where that box is
+// comes from its place, which the presses before it this frame moved, as the boxes are
+// laid out again only after the keys.
+void Graph::nudge(VP::Cook &frame, glm::ivec2 way) {
+  const std::span<const Placed> placed = _layout.placed();
+  const auto at_box = [&](std::string_view name) {
+    return static_cast<std::size_t>(std::ranges::find(_boxes.boxes, name, &Box::name) -
+                                    _boxes.boxes.begin());
+  };
+  const auto lead = std::ranges::find_if(
+      _selection.rbegin(), _selection.rend(), [&](const std::string &name) {
+        return at_box(name) < placed.size();
+      });
+  if (lead == _selection.rend())
+    return;
+  place_all();
+  const Placed &laid = placed[at_box(*lead)];
+  const glm::ivec2 at = laid.at - laid.offset + _arranged.places.at(*lead);
+  glm::ivec2 by{};
+  for (const int axis : {0, 1})
+    if (way[axis] != 0)
+      by[axis] = line_past(at[axis], way[axis]) - at[axis];
+  for (const Box &box : _boxes.boxes)
+    if (const auto place = _arranged.places.find(box.name);
+        place != _arranged.places.end() && selected(box.name))
+      place->second += by;
+  _laid = false;
+  _at_home = false;
+  save(frame);
 }
 
 // Every box where it shows now, unless it was placed already, so a box moved moves no
