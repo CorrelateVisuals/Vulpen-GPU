@@ -103,8 +103,8 @@ bool inside(const VP_VIEW::Rect &area, glm::vec2 point) {
 
 // Whether a line can name a box, as select takes its words: what lies outside, named with
 // a blank, it cannot, nor a file or a folder whose name holds one.
-bool selectable(const Box &box) {
-  return box.name.find_first_of(" \t\r") == std::string::npos;
+bool nameable(std::string_view name) {
+  return name.find_first_of(" \t\r") == std::string_view::npos;
 }
 
 // The view hosting the one named, found from the view vulpen started with down the views
@@ -291,7 +291,7 @@ void Graph::command(VP::Call &call) {
     return std::ranges::find(view.nodes, name, &VP::Node::name) != view.nodes.end() ||
            std::ranges::find(children, name, &VP::Child::name) != children.end() ||
            std::ranges::any_of(_boxes.boxes, [&](const Box &box) {
-             return box.name == name && selectable(box);
+             return box.name == name && nameable(box.name);
            });
   };
   if (call.is(_select)) {
@@ -317,8 +317,7 @@ void Graph::command(VP::Call &call) {
 }
 
 // delete or backspace removes what is selected; escape lets go of it, and with none of
-// the focus, as the editor and the terminal do; control with a selects every box a line
-// selects. The home key brings the graph home once the frame has laid the boxes out.
+// the focus, as the editor and the terminal do; control with a selects every box. The home key brings the graph home once the frame has laid the boxes out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
   const VP::View *const view = frame.view(_shown);
@@ -338,19 +337,19 @@ void Graph::key(VP::Cook &frame, std::string_view key) {
     go_in(frame);
   } else if (key == every_key && _control) {
     std::vector<std::string> every;
-    for (std::size_t at = 0; at < _boxes.boxes.size(); ++at)
-      if (selectable(_boxes.boxes[at]))
-        every.push_back(_boxes.boxes[at].name);
+    for (const Box &box : _boxes.boxes)
+      every.push_back(box.name);
     select(frame.commands(), every);
   }
 }
 
-// The box selected last that has an inside, or the one under the pointer.
+// The box selected last that has an inside, or the one under the pointer; what lies
+// outside, which has none, goes up a level only by , or the wheel.
 void Graph::go_in(VP::Cook &frame) {
   for (auto name = _selection.rbegin(); name != _selection.rend() && _selected_in == _shown;
        ++name)
     if (const auto found = std::ranges::find(_boxes.boxes, *name, &Box::name);
-        found != _boxes.boxes.end() &&
+        found != _boxes.boxes.end() && found->role &&
         enter(frame, static_cast<std::size_t>(found - _boxes.boxes.begin())))
       return;
   if (const std::size_t at = hit(_pointer); at != no_box && _boxes.boxes[at].role)
@@ -563,13 +562,12 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
 
 // It takes the focus. On a box, the box drawn last over the others: a second press opens
 // the file of the row pressed, or goes into the box's inside, or up a level from what lies
-// outside. A
-// box a line selects, a node's, a view's, a file's or a folder's: shift adds it to the
-// selection, or it is selected, unless it is already, and grabbed with every box
-// selected, so a drag moves them all; one selected already shift takes out as it is let
-// go where it was, so a drag with shift moves them too. What lies outside, which no line names:
-// the selection goes, and it is raised and grabbed alone. On the ground, with shift, a select box from there to the pointer until the button is let
-// go; without, the selection goes, and the graph follows the pointer until then.
+// outside. Any box, a node's, a view's, a file's, a folder's or what lies outside: shift
+// adds it to the selection, or it is selected, unless it is already, and grabbed with
+// every box selected, so a drag moves them all; one selected already shift takes out as
+// it is let go where it was, so a drag with shift moves them too. On the ground, with
+// shift, a select box from there to the pointer until the button is let go; without, the
+// selection goes, and the graph follows the pointer until then.
 void Graph::press(VP::Cook &frame, std::uint32_t presses) {
   if (_typed->focus != _name)
     frame.commands().send(std::format("focus {}", _name));
@@ -583,16 +581,6 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
     if (presses == 2 && (open(frame, at) || enter(frame, at)))
       return;
     const Box &pressed = _boxes.boxes[at];
-    if (!selectable(pressed)) {
-      if (_shift)
-        return;
-      if (chosen_here)
-        select(frame.commands(), {});
-      raise(pressed.name);
-      _grab = Grab{.box = at, .from = _pointer, .at = _layout.placed()[at].at};
-      _grab->moving.emplace_back(at, _layout.placed()[at].offset);
-      return;
-    }
     std::vector<std::string> chosen;
     if (_selected_in == _shown)
       chosen = _selection;
@@ -622,14 +610,11 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
   _dragging = true;
 }
 
-// A corner pressed selects its box as a press on it does, or raises one no line selects,
-// and grabs the corner.
+// A corner pressed selects its box as a press on it does, and grabs the corner.
 void Graph::grab_corner(VP::Cook &frame, const Under &under) {
   const Box &pressed = _boxes.boxes[under.box];
-  if (selectable(pressed) && !selected(pressed.name))
+  if (!selected(pressed.name))
     select(frame.commands(), std::span(&pressed.name, 1));
-  else if (!selectable(pressed))
-    raise(pressed.name);
   const Placed &placed = _layout.placed()[under.box];
   _grab = Grab{.box = under.box,
                .from = _pointer,
@@ -744,7 +729,7 @@ void Graph::release(VP::Cook &frame, bool room) {
     std::vector<std::string> chosen = _selection;
     std::erase(chosen, pressed.name);
     select(frame.commands(), chosen);
-  } else if (!grab.shifted && selectable(pressed) && _selection.size() > 1) {
+  } else if (!grab.shifted && _selection.size() > 1) {
     select(frame.commands(), std::span(&pressed.name, 1));
   }
 }
@@ -885,18 +870,26 @@ bool Graph::selected(std::string_view node) const {
          std::ranges::find(_selection, node) != _selection.end();
 }
 
-// As a line, so a press selects as a script or an agent does (V06).
-void Graph::select(VP::CommandPort &commands, std::span<const std::string> nodes) const {
+// As a line, so a press selects as a script or an agent does (V06); a box no line can
+// name, as what lies outside, joins the selection after it, raised as select raises the
+// others, for the eye alone, as no line reaches it.
+void Graph::select(VP::CommandPort &commands, std::span<const std::string> nodes) {
   std::string line = std::format("{}: select", _shown);
   for (const std::string &node : nodes)
-    line.append(" ").append(node);
+    if (nameable(node))
+      line.append(" ").append(node);
   commands.send(line);
+  for (const std::string &node : nodes)
+    if (!nameable(node) && _selected_in == _shown) {
+      raise(node);
+      _selection.push_back(node);
+    }
 }
 
-// Each box the select box touches joins the selection, as shift with a press adds one,
-// but what lies outside, which no line selects; the select box is cut at the area, as it
-// shows, so only what shows of a box is touched, and of a frame its rows.
-void Graph::select_touched(VP::CommandPort &commands, glm::vec2 from) const {
+// Each box the select box touches joins the selection, as shift with a press adds one;
+// the select box is cut at the area, as it shows, so only what shows of a box is
+// touched, and of a frame its rows.
+void Graph::select_touched(VP::CommandPort &commands, glm::vec2 from) {
   std::vector<std::string> chosen;
   if (_selected_in == _shown)
     chosen = _selection;
@@ -904,7 +897,7 @@ void Graph::select_touched(VP::CommandPort &commands, glm::vec2 from) const {
   const VP_VIEW::Rect swept = select_box(from);
   for (std::size_t at = 0; at < _layout.placed().size(); ++at)
     if (const Box &touched = _boxes.boxes[at];
-        selectable(touched) && touches(solid(at), swept) && !selected(touched.name))
+        touches(solid(at), swept) && !selected(touched.name))
       chosen.push_back(touched.name);
   if (chosen.size() != before)
     select(commands, chosen);

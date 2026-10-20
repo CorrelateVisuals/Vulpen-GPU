@@ -93,8 +93,7 @@ struct Under {
 // does, levels too; none of it is kept. A
 // press on a box selects it, shift adding it or taking it out, and a second press opens
 // the file of a row that names one in the editor; a drag on a box selected moves every
-// box selected, with shift held left and right or up and down alone,
-// and one on a box no line selects, as what lies outside, moves that box, its top left
+// box selected, with shift held left and right or up and down alone, its top left
 // snapping to the ground's lines. A drag on a corner of a box makes it larger, or
 // smaller down to the size its rows and the boxes inside it need, its edges snapping to
 // the lines, or to the size its rows need, and its corners show while the pointer is
@@ -109,8 +108,10 @@ struct Under {
 // a budget, and the pointer over it shows the times in the tip; two buttons after the
 // layers' turn it on and off.
 // It owns the selection, of nodes, of the views the view shown hosts and of the files and
-// folders it shows, which select and selected reach as lines do (V06), control with a
-// selects whole, and of which delete or backspace removes the nodes and the views, as
+// folders it shows, which select and selected reach as lines do (V06), and of what lies
+// outside and the boxes whose names hold a blank, which no line names, for the eye
+// alone; control with a selects them all, and of them delete or backspace removes the
+// nodes and the views, as
 // node remove and view close do, and takes keys from the keys part while it has the
 // focus, which a press in its area gives it. Its own shaders draw the ground, lines that
 // move and zoom with the graph over the whole area, as the POC's grid did; it writes
@@ -149,8 +150,8 @@ private:
   bool enter(VP::Cook &frame, std::size_t at);
   void leave(VP::Cook &frame);
   bool selected(std::string_view node) const;
-  void select(VP::CommandPort &commands, std::span<const std::string> nodes) const;
-  void select_touched(VP::CommandPort &commands, glm::vec2 from) const;
+  void select(VP::CommandPort &commands, std::span<const std::string> nodes);
+  void select_touched(VP::CommandPort &commands, glm::vec2 from);
   void erase(VP::Cook &frame, const VP::View &view);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);

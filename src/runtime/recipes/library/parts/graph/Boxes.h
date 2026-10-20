@@ -72,10 +72,6 @@ struct Box {
   // kind of file, as the theme names their roles; none for what lies outside.
   std::optional<std::uint32_t> role;
   bool view = false; // a view the view shown hosts
-  // A node of the view, or a view it hosts, which a press and select select; a node of a
-  // recipe a node uses is not, nor a folder or a file, nor what lies outside, as select
-  // names none of them.
-  bool own = false;
   bool holds = false;    // it holds nodes or files, whose boxes zooming into it or a
                          // second press on it shows
   std::size_t first = 0; // its rows, in Boxes::rows
@@ -600,8 +596,6 @@ Boxes boxes_of(const VP::View &edited,
          .role = !folders                          ? VP_VIEW::role("node")
                  : node.name.substr(past).starts_with('.') ? VP_VIEW::role("hidden")
                                                            : VP_VIEW::role("folder"),
-         .own = !folders && std::ranges::find(edited.nodes, node.name, &VP::Node::name) !=
-                                edited.nodes.end(),
          .holds = holds(flat, building.parents, at)});
   };
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
@@ -620,8 +614,7 @@ Boxes boxes_of(const VP::View &edited,
       boxes.boxes.push_back({.name = child.name,
                              .title = child.name,
                              .role = VP_VIEW::role("view"),
-                             .view = true,
-                             .own = true});
+                             .view = true});
   building.ports.resize(boxes.boxes.size());
   connect(boxes, building, flat);
   relate(boxes, building, relations, flat.connections.size());
