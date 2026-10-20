@@ -290,7 +290,9 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // into the editor in the target's middle. It keeps the panels as a person left them in
 // .vulpen/layout.log beside the view's manifest, saved as they change, and as the view
 // starts as its manifest has it, arranges them so again, by panel restore, so they
-// last between runs. At the end of each strip it draws a close
+// last between runs. A double click on a panel's strip, as on one of its tabs, gives it
+// the docks' whole room, the others none, by panel maximize, and another gives them their
+// room back. At the end of each strip it draws a close
 // mark, whose press hides the panel, as its button does. Where the bar its area is the
 // rest of parts its strip from it by a seam, as the menubar's, it draws that seam as a
 // divider: a drag on it up past the middle of the strip hides the bar, its size 0, and
@@ -321,6 +323,9 @@ class Docking final : public VP::Operator {
     _restore = node.command("panel restore",
                             "arranges the panels as a person left them, as .vulpen/"
                             "layout.log beside the view's manifest keeps them");
+    _maximize = node.command("panel maximize <node>",
+                             "gives a panel the docks' whole room, the others none, or, "
+                             "given it already, the others the room they had");
     _manifest = node.view().file.string();
     _kept = (node.view().file.parent_path() / kept_folder / kept_file).string();
     _buttons = &node.output<VP_VIEW::Items>("buttons");
@@ -610,6 +615,9 @@ class Docking final : public VP::Operator {
                        ? std::nullopt
                        : std::optional(std::size_t(pressed - _seated.begin()));
         _from = _pointer;
+        if (pressed != _seated.end() && event.presses == 2)
+          frame.commands().send(
+              std::format("{}: panel maximize {}", _view, pressed->panel));
       } else {
         if (const auto drop = dropped())
           frame.commands().send(std::format("{}: panel move {} {} {}",
@@ -667,6 +675,52 @@ class Docking final : public VP::Operator {
       show(call, std::string(call.arguments().front()));
     else if (call.is(_restore))
       restore(call);
+    else if (call.is(_maximize))
+      maximize(call, std::string(call.arguments().front()));
+  }
+
+  // Every dock above the panel gives its half all of its room, each ratio kept as hide
+  // keeps it, so panel show of another gives its room back; a panel given all of it
+  // already gets back the ratios its maximize changed, or after a restart, which forgets
+  // them, every dock above it its ratio from before it hid a half, or halved.
+  void maximize(VP::Call &call, const std::string &panel) {
+    const VP::View &view = *call.view(_view);
+    std::vector<Seating> way; // from the panel up, read before a line changes the view
+    for (std::optional<Seating> seating = seating_of(view, panel + std::string(bar_node));
+         seating;
+         seating = seating_of(view, seating->split))
+      way.push_back(*seating);
+    if (way.empty())
+      throw std::runtime_error(std::format("{} is no panel a dock seats", panel));
+    const auto all = [](const Seating &seating) {
+      return seating.gives_none(1 - seating.half);
+    };
+    if (std::ranges::all_of(way, all)) {
+      for (const Seating &seating : way) {
+        if (_maximized.panel == panel &&
+            std::ranges::find(_maximized.splits, seating.split) == _maximized.splits.end())
+          continue;
+        const auto kept = _ratios.find(seating.split);
+        send(call,
+             std::format("param set {} ratio {}",
+                         seating.split,
+                         kept != _ratios.end() && kept->second > 0.0f && kept->second < 1.0f
+                             ? kept->second
+                             : even));
+      }
+      _maximized = {};
+      return;
+    }
+    _maximized = {.panel = panel};
+    for (const Seating &seating : way) {
+      if (all(seating))
+        continue;
+      if (!seating.gives_none(seating.half))
+        _ratios[seating.split] = seating.ratio;
+      _maximized.splits.push_back(seating.split);
+      send(call,
+           std::format("param set {} ratio {}", seating.split, seating.half == 0 ? 1 : 0));
+    }
   }
 
   // The dock seating the panel gives its half no room, or, when its other half shows
@@ -1094,6 +1148,7 @@ class Docking final : public VP::Operator {
   VP::Command _hide;
   VP::Command _show;
   VP::Command _restore;
+  VP::Command _maximize;
   // Where the view's manifest is, and the file keeping the panels beside it; the edits
   // that moved them since the manifest, kept, and the file as saved last, and whether the
   // first frame read it.
@@ -1104,8 +1159,14 @@ class Docking final : public VP::Operator {
   bool _started = false;
   VP_VIEW::Items *_buttons = nullptr;
   const VP_VIEW::Editors *_editors = nullptr; // as its host connects them; none for none
-  // A dock's ratio before it hid a half, by its split, so showing it gives it back.
+  // A dock's ratio before it hid a half, by its split, so showing it gives it back; and the
+  // panel maximized last, with the splits its maximize gave the panel's half all of.
   std::map<std::string, float, std::less<>> _ratios;
+  struct Maximized {
+    std::string panel;
+    std::vector<std::string> splits;
+  };
+  Maximized _maximized;
   std::string _name;
   std::string _view; // the one it runs in, whose docks it edits
   const VP_VIEW::Rect *_area = nullptr;

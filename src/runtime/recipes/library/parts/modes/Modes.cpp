@@ -18,6 +18,9 @@ namespace {
 // The connection that presents a view, from the window of the view it shows.
 constexpr std::string_view presenting = "present";
 constexpr std::string_view escape = "escape";
+// The Perform panel's tab while no project is hosted, so its strip has a tab to take, as
+// an empty editor's has.
+constexpr std::string_view empty_tab = "perform";
 
 // The view presented, as the view's connections are; empty for none.
 std::string_view shown_by(const VP::View &view) {
@@ -68,7 +71,8 @@ std::string_view project_of(const Find &view_of,
 // it connects that view's window to the images its to param names, so the log keeps one
 // connection a switch (V08); a project not presented draws nowhere else, as the window
 // has one owner, and keeps running. Each project has a tab that makes it the current
-// view when pressed, and a close mark that closes it, as view close does. Perform
+// view when pressed, and a close mark that closes it, as view close does; with none, a
+// tab of its own, named perform, which does nothing pressed. Perform
 // mode needs a view presented, so it refuses while none is, and gives way to edit mode
 // once none is; it hides the log, so it gives way too once the log shows an error, as a
 // line refused's, which the terminal then shows.
@@ -205,9 +209,13 @@ class Modes final : public VP::Operator {
     const auto shows = [&](const VP_VIEW::Item &tab, const VP::Child &child) {
       return tab.label == child.name && tab.current == (child.name == presented);
     };
-    if (std::ranges::equal(*_tabs, hosted, shows))
+    const bool none = std::ranges::empty(hosted);
+    if (none ? _tabs->size() == 1 && _tabs->front().command.empty()
+             : std::ranges::equal(*_tabs, hosted, shows))
       return;
     _tabs->clear();
+    if (none)
+      _tabs->push_back({.label = std::string(empty_tab), .current = true});
     for (const VP::Child &child : hosted)
       _tabs->push_back({.label = child.name,
                         .command = std::format("view switch {}", child.name),
