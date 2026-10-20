@@ -21,7 +21,7 @@ constexpr int time_width = 19;
 constexpr std::string_view rule =
     "+---------------------------------------------------------+";
 constexpr std::string_view banner = "              . - < < { V U L P E N } > > - .";
-constexpr std::string_view credit = "           << Jakob Povel | Correlate Visuals >>";
+constexpr std::string_view credit = "           << Correlate Visuals >>";
 
 // ANSI colors. Red and yellow are kept for problems, so nothing else takes them.
 constexpr const char *red = "\033[1;31m";
