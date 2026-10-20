@@ -87,14 +87,16 @@ class Projects final : public VP::Operator {
       rename(call);
   }
 
-  // A <project> comes resolved when it is a path, and as typed when it names one.
+  // A <project> comes resolved when it is a path, and as typed when it names one; a path
+  // to a project's view.vlp names its folder, as ./run.sh takes either.
   std::filesystem::path folder_of(std::string_view word) const {
     const std::filesystem::path path(word);
     if (path.is_relative()) {
       check_name(word);
       return _folder / path;
     }
-    return path.filename().empty() ? path.parent_path() : path;
+    return path.filename().empty() || path.filename() == manifest ? path.parent_path()
+                                                                   : path;
   }
 
   static void host(VP::Call &call, const std::filesystem::path &folder, bool fresh) {
