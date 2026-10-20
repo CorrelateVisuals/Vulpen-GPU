@@ -7,9 +7,9 @@ layout(location = 1) flat in vec4 ink;
 layout(location = 2) flat in int filled;
 layout(location = 0) out vec4 color;
 
-// A line every spacing pixels of the graph, which the zoom scales, and every
-// major_every-th a stronger one; each a pixel wide at any zoom, in its share of the ink.
-const float spacing = 24.0;
+// A line every spacing pixels of the graph, as its C++ hands it, which the zoom scales,
+// and every major_every-th a stronger one; each a pixel wide at any zoom, in its share of
+// the ink.
 const float major_every = 10.0;
 const float minor_ink = 0.3;
 const float major_ink = 0.6;
@@ -36,7 +36,7 @@ void main() {
     return;
   }
   const vec2 at = gl_FragCoord.xy - 0.5 - origin;
-  const float apart = spacing * pass.zoom;
+  const float apart = pass.spacing * pass.zoom;
   const float fade = clamp((apart - fade_from) / (fade_to - fade_from), 0.0, 1.0);
   const float minor = covered(at, apart) * minor_ink * fade;
   const float major = covered(at, apart * major_every) * major_ink;

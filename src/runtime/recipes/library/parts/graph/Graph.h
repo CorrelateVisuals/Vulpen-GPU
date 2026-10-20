@@ -36,9 +36,10 @@ namespace {
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
 // where it was then, and whether it has been dragged, or is a press let go where it was;
 // whether shift was held then, and whether the box was selected already, which a press
-// let go where it was then takes out. Or a corner of a box pressed, which a drag pulls
+// let go where it was then takes out; and where the box was from the graph's top left,
+// which snaps to the ground's lines. Or a corner of a box pressed, which a drag pulls
 // while the opposite corner stays: whether it is a left one and whether a top one, and
-// the box's size, place and least size then.
+// the box's size, place, least size and the size its rows need then.
 struct Grab {
   std::size_t box = 0;
   glm::vec2 from{};
@@ -49,7 +50,9 @@ struct Grab {
   std::optional<glm::bvec2> corner;
   glm::ivec2 extent{};
   glm::ivec2 offset{};
+  glm::ivec2 at{};
   glm::ivec2 least{};
+  glm::ivec2 natural{};
 };
 
 // The box under a point, and the corner of it the point is on, if any.
@@ -91,9 +94,11 @@ struct Under {
 // press on a box selects it, shift adding it or taking it out, and a second press opens
 // the file of a row that names one in the editor; a drag on a box selected moves every
 // box selected, with shift held left and right or up and down alone,
-// and one on a box no line selects, as what lies outside, moves that box. A drag on a
-// corner of a box makes it larger, or smaller down to the size its rows and the boxes
-// inside it need, and its corners show while the pointer is over it. The box selected
+// and one on a box no line selects, as what lies outside, moves that box, its top left
+// snapping to the ground's lines. A drag on a corner of a box makes it larger, or
+// smaller down to the size its rows and the boxes inside it need, its edges snapping to
+// the lines, or to the size its rows need, and its corners show while the pointer is
+// over it. The box selected
 // or pressed last shows over the others, hiding the boxes and the rows behind it. With
 // shift, a drag on the ground draws a select box, and letting go adds every box it
 // touches to the selection. The curve under the pointer, where no box lies, shows over
@@ -204,6 +209,7 @@ private:
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;
+  VP::Value<float> _spacing; // the ground's lines', which the boxes snap to
   VP::Upload<VP_VIEW::Rect> _rects;
   VP::Upload<VP_VIEW::Label> _labels;
   VP::Upload<VP_VIEW::Character> _characters;

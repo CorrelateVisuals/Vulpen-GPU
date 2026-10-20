@@ -11,5 +11,6 @@ layout(set = 1, binding = 0) uniform Pass {
                    // cut at its first
   vec2 pan;        // from its C++: how far the graph moved, in pixels
   float zoom;      // and how near it is
+  float spacing;   // and a line every so many pixels of the graph, which boxes snap to
   Palette palette; // a connection: a color a role
 } pass;

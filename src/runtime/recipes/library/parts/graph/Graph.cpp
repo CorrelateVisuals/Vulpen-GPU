@@ -52,6 +52,9 @@ constexpr std::array<std::uint32_t, VP_VIEW::layer_names.size()> layer_roles{
     VP_VIEW::role("string"),
     VP_VIEW::role("type")};
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
+// A line of the ground every so many pixels of the graph at zoom 1, which its shaders draw
+// as its C++ hands them this, and which a box moved and a corner pulled snap to.
+constexpr std::int32_t line_spacing = 24;
 constexpr float zoom_drag = 20.0f; // pixels a middle drag goes sideways for a step of the wheel
 // A corner a drag pulls: how far in from it a press takes it, never past a quarter of the
 // box, so a small box still moves, and how far out, past the box's edges, so a press
@@ -141,6 +144,11 @@ std::optional<std::string> view_in(VP::Cook &frame, const std::filesystem::path 
   return std::nullopt;
 }
 
+// The line of the ground nearest a place of the graph, along an axis.
+std::int32_t line_near(float at) {
+  return static_cast<std::int32_t>(std::lround(at / line_spacing)) * line_spacing;
+}
+
 // The Rect from one corner to the other, rounded to whole pixels.
 VP_VIEW::Rect between(glm::vec2 from, glm::vec2 to, std::uint32_t role) {
   const glm::ivec2 low(glm::round(from));
@@ -184,6 +192,7 @@ void Graph::bind(VP::Bind &node) {
   _ground = node.upload<VP_VIEW::Rect>("ground", ground_room);
   _pan = node.value<glm::vec2>("pan");
   _zoom = node.value<float>("zoom");
+  _spacing = node.value<float>("spacing");
 }
 
 // The current view, where the terminals' lines go, the one vulpen started with too, or the
@@ -244,6 +253,7 @@ void Graph::cook(VP::Cook &frame) {
   lay_out(); // as a drag placed a box
   frame.set(_pan, _pan_zoom.pan);
   frame.set(_zoom, _pan_zoom.zoom);
+  frame.set(_spacing, static_cast<float>(line_spacing));
   if (room) {
     _hovered = under(_pointer);
     _hovered_more = more_under();
@@ -579,7 +589,7 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
       if (chosen_here)
         select(frame.commands(), {});
       raise(pressed.name);
-      _grab = Grab{.box = at, .from = _pointer};
+      _grab = Grab{.box = at, .from = _pointer, .at = _layout.placed()[at].at};
       _grab->moving.emplace_back(at, _layout.placed()[at].offset);
       return;
     }
@@ -593,7 +603,11 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
       chosen.push_back(pressed.name);
       select(frame.commands(), chosen);
     }
-    _grab = Grab{.box = at, .from = _pointer, .shifted = _shift, .takes_out = _shift && was};
+    _grab = Grab{.box = at,
+                 .from = _pointer,
+                 .shifted = _shift,
+                 .takes_out = _shift && was,
+                 .at = _layout.placed()[at].at};
     for (std::size_t box = 0; box < _boxes.boxes.size(); ++box)
       if (selected(_boxes.boxes[box].name))
         _grab->moving.emplace_back(box, _layout.placed()[box].offset);
@@ -623,7 +637,9 @@ void Graph::grab_corner(VP::Cook &frame, const Under &under) {
                .corner = under.corner,
                .extent = glm::ivec2(placed.extent),
                .offset = placed.offset,
-               .least = glm::ivec2(placed.least)};
+               .at = placed.at,
+               .least = glm::ivec2(placed.least),
+               .natural = glm::ivec2(placed.natural)};
 }
 
 // Once the pointer moved a few pixels, so a press that wobbles is still a press. The
@@ -643,38 +659,54 @@ void Graph::drag(glm::vec2 to) {
   if (!grab.moved)
     place_all();
   grab.moved = true;
-  glm::vec2 moved = (to - grab.from) / _pan_zoom.zoom;
-  // With shift, along the axis it went farther on, the other as it was.
+  const glm::vec2 moved = (to - grab.from) / _pan_zoom.zoom;
+  // The box grabbed snaps to the ground's lines, the others going as far; with shift,
+  // along the axis it went farther on alone, the other as it was.
+  glm::ivec2 by{line_near(static_cast<float>(grab.at.x) + moved.x) - grab.at.x,
+                line_near(static_cast<float>(grab.at.y) + moved.y) - grab.at.y};
   if (_shift)
-    (std::abs(moved.x) >= std::abs(moved.y) ? moved.y : moved.x) = 0.0f;
-  const glm::ivec2 by(glm::round(moved));
+    (std::abs(moved.x) >= std::abs(moved.y) ? by.y : by.x) = 0;
   for (const auto &[box, offset] : grab.moving)
     _arranged.places.insert_or_assign(_boxes.boxes[box].name, offset + by);
   _laid = false; // so this frame shows them there
 }
 
-// The corner grabbed follows the pointer and the opposite one stays, the box never
-// smaller than the least any box may be, and a size its rows need anyway leaves the
-// .ini. A left or a top corner moves the box too.
+// The corner grabbed follows the pointer and the opposite one stays, its edges snapping
+// to the ground's lines, or to the size the box's rows need where that lies nearer, and
+// a line farther at a time while the box would be smaller than the least any box may
+// be; a size its rows need anyway leaves the .ini. A left or a top corner moves the box
+// too.
 void Graph::pull(glm::vec2 to) {
   Grab &grab = *_grab;
   const Box &pulled = _boxes.boxes[grab.box];
   const glm::bvec2 corner = *grab.corner;
   if ((corner.x || corner.y) && !grab.moved)
     place_all();
-  const glm::ivec2 by(glm::round((to - grab.from) / _pan_zoom.zoom));
-  const glm::ivec2 size = glm::max(
-      grab.extent + glm::ivec2(corner.x ? -by.x : by.x, corner.y ? -by.y : by.y),
-      grab.least);
-  if (size == glm::ivec2(_layout.placed()[grab.box].natural))
+  const glm::vec2 by = (to - grab.from) / _pan_zoom.zoom;
+  glm::ivec2 low = grab.at;
+  glm::ivec2 high = grab.at + grab.extent;
+  for (const int axis : {0, 1}) {
+    std::int32_t &edge = corner[axis] ? low[axis] : high[axis];
+    const std::int32_t natural =
+        corner[axis] ? high[axis] - grab.natural[axis] : low[axis] + grab.natural[axis];
+    const float wanted = static_cast<float>(edge) + by[axis];
+    const std::int32_t line = line_near(wanted);
+    edge = std::abs(wanted - static_cast<float>(natural)) <
+                   std::abs(wanted - static_cast<float>(line))
+               ? natural
+               : line;
+    if (const std::int32_t short_by = grab.least[axis] - (high[axis] - low[axis]);
+        short_by > 0)
+      edge += (corner[axis] ? -1 : 1) * (short_by + line_spacing - 1) / line_spacing *
+              line_spacing;
+  }
+  const glm::ivec2 size = high - low;
+  if (size == grab.natural)
     _arranged.sizes.erase(pulled.name);
   else
     _arranged.sizes.insert_or_assign(pulled.name, size);
   if (corner.x || corner.y)
-    _arranged.places.insert_or_assign(
-        pulled.name,
-        grab.offset + glm::ivec2(corner.x ? grab.extent.x - size.x : 0,
-                                 corner.y ? grab.extent.y - size.y : 0));
+    _arranged.places.insert_or_assign(pulled.name, grab.offset + (low - grab.at));
   grab.moved = true;
   _laid = false;
 }
