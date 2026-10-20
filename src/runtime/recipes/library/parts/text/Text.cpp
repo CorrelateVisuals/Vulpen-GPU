@@ -20,6 +20,10 @@ constexpr std::uint32_t character_room = 131072; // the rows' characters togethe
 // The ground, a selection Rect a row shown, the caret and the scroll bars' thumbs.
 constexpr std::uint32_t rect_room = row_room + 4;
 constexpr std::size_t indent = 2; // Tab types spaces to a multiple of this column
+// The edits a file keeps to take back, the oldest going past them, so memory stays
+// bounded (A03); and the key that takes one back with control, with shift too again.
+constexpr std::size_t undo_room = 1000;
+constexpr std::string_view undo_key = "z";
 // The tab of an editor holding no file, so it still shows as open, empty, and a strip that
 // stacks it with other contents has a tab to show it again by.
 constexpr std::string_view empty_tab = "editor";
@@ -112,6 +116,80 @@ void erase(Document &document, Spot from, Spot to) {
   lines.erase(lines.begin() + static_cast<std::ptrdiff_t>(from.row) + 1,
               lines.begin() + static_cast<std::ptrdiff_t>(to.row) + 1);
   document.changed = document.restyle = true;
+}
+
+// The rows an edit at the caret or of the selection may change, as they are before it: the
+// selection's and the caret's, and a row either side, for a break it takes out.
+Change before_edit(const Document &document) {
+  const auto [from, to] = selection(document);
+  const std::size_t low = std::min(from.row, document.caret.row);
+  const std::size_t first = low == 0 ? 0 : low - 1;
+  const std::size_t last =
+      std::min(std::max(to.row, document.caret.row) + 1, document.lines.size() - 1);
+  const auto rows = document.lines.begin();
+  return {.first = first,
+          .before = std::vector<std::string>(rows + static_cast<std::ptrdiff_t>(first),
+                                             rows + static_cast<std::ptrdiff_t>(last) + 1),
+          .caret_before = document.caret,
+          .anchor_before = document.anchor};
+}
+
+// The edit since before_edit, kept to take back, unless it changed nothing, as a copy;
+// rows: as many as the file held before it. Characters typed join those typed just
+// before them while the caret stayed where those left it, and no blank starts a word,
+// so a word goes back at once; never past the text the file holds, so changed follows.
+void keep(Document &document, Change change, std::size_t rows, std::string_view typed) {
+  const std::size_t count = change.before.size() + document.lines.size() - rows;
+  const auto from = document.lines.begin() + static_cast<std::ptrdiff_t>(change.first);
+  if (count == change.before.size() && std::equal(change.before.begin(), change.before.end(), from))
+    return;
+  change.after.assign(from, from + static_cast<std::ptrdiff_t>(count));
+  change.caret_after = document.caret;
+  change.anchor_after = document.anchor;
+  change.typed = !typed.empty();
+  std::vector<Change> &undone = document.undone;
+  if (change.typed && !undone.empty() && undone.back().typed && typed.front() != ' ' &&
+      undone.back().caret_after == change.caret_before &&
+      undone.back().first == change.first &&
+      undone.back().after.size() == change.before.size() &&
+      document.saved != undone.size()) {
+    undone.back().after = std::move(change.after);
+    undone.back().caret_after = change.caret_after;
+    undone.back().anchor_after = change.anchor_after;
+    return;
+  }
+  if (document.saved && *document.saved > undone.size())
+    document.saved.reset();
+  undone.push_back(std::move(change));
+  document.redone.clear();
+  if (undone.size() > undo_room) {
+    undone.erase(undone.begin());
+    document.saved = document.saved && *document.saved > 0
+                         ? std::optional<std::size_t>(*document.saved - 1)
+                         : std::nullopt;
+  }
+}
+
+// The last edit taken back, or with again the last taken back made again, the caret and
+// the selection where they were then.
+void undo(Document &document, bool again) {
+  std::vector<Change> &from = again ? document.redone : document.undone;
+  std::vector<Change> &to = again ? document.undone : document.redone;
+  if (from.empty())
+    return;
+  Change &change = from.back();
+  const auto at = static_cast<std::ptrdiff_t>(change.first);
+  const std::vector<std::string> &now = again ? change.before : change.after;
+  const std::vector<std::string> &then = again ? change.after : change.before;
+  document.lines.erase(document.lines.begin() + at,
+                       document.lines.begin() + at + static_cast<std::ptrdiff_t>(now.size()));
+  document.lines.insert(document.lines.begin() + at, then.begin(), then.end());
+  document.caret = again ? change.caret_after : change.caret_before;
+  document.anchor = again ? change.anchor_after : change.anchor_before;
+  to.push_back(std::move(change));
+  from.pop_back();
+  document.changed = document.saved != document.undone.size();
+  document.restyle = true;
 }
 
 // The selection as text, a break between its rows, as a copy takes it.
@@ -423,8 +501,9 @@ bool Text::escape(VP::Cook &frame, const VP::Event &event, const Grid &grid) {
 }
 
 // Typed text goes in at the caret, and a key moves the caret, selecting while shift is
-// held, changes the text, or with control copies, cuts or pastes; any other does
-// nothing here. With no room it takes none.
+// held, changes the text, or with control copies, cuts or pastes, or takes the last edit
+// back, with shift too makes it again; any other does nothing here. With no room it
+// takes none.
 void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) {
   if (event.kind == VP::Event::Kind::key && event.name == "shift")
     _shift = event.down;
@@ -435,16 +514,24 @@ void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) 
     return;
   Document &document = _documents[_shown];
   const bool changed = document.changed;
+  const std::size_t rows = document.lines.size();
   if (event.kind == VP::Event::Kind::text) {
+    Change change = before_edit(document);
     for (const char typed : event.name)
       if (typed >= VP_VIEW::first_printable && typed <= VP_VIEW::last_printable)
         insert(document, std::string_view(&typed, 1));
+    keep(document, std::move(change), rows, event.name);
+  } else if (_control && event.name == undo_key) {
+    undo(document, _shift);
   } else if (const std::optional<Spot> to = moved(document, event.name, grid)) {
     document.caret = *to;
     if (!_shift)
       document.anchor = *to;
-  } else if (!(_control && clip(input, document, event.name)) &&
-             !changed_by(document, event.name, _control)) {
+  } else if (Change change = before_edit(document);
+             (_control && clip(input, document, event.name)) ||
+             changed_by(document, event.name, _control)) {
+    keep(document, std::move(change), rows, {});
+  } else {
     return;
   }
   _follow = true;
@@ -765,6 +852,7 @@ void Text::write(VP::Call &call) {
   Document &document = _documents[_shown];
   call.files().save(document.path, joined(document.lines));
   document.changed = false;
+  document.saved = document.undone.size();
   name_tabs();
   call.reply(std::format("wrote {}", document.path));
 }

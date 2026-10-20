@@ -34,8 +34,23 @@ struct Spot {
   auto operator<=>(const Spot &) const = default;
 };
 
+// An edit, as control with z takes it back and control with shift and z makes it again:
+// from the row first on, the rows it changed as they were and as it left them, and the
+// caret and the selection's start before it and after it; whether it is characters typed,
+// which the next typed at its end joins.
+struct Change {
+  std::size_t first = 0;
+  std::vector<std::string> before;
+  std::vector<std::string> after;
+  Spot caret_before;
+  Spot anchor_before;
+  Spot caret_after;
+  Spot anchor_after;
+  bool typed = false;
+};
+
 // A file open in the editor, as typed so far. It keeps its caret, the selection and the
-// part of it shown while another file shows.
+// part of it shown while another file shows, and its edits, to take back.
 struct Document {
   std::string path; // absolute, as open was given it
   std::vector<std::string> lines;
@@ -48,6 +63,11 @@ struct Document {
   Scroll scroll; // the rows shown
   Scroll columns{Scroll::Axis::across};
   bool changed = false; // since it was opened or last written
+  std::vector<Change> undone; // the edits so far, the newest last
+  std::vector<Change> redone; // those taken back since, the newest last
+  // How many edits undone held as the file was read or last written, so changed says
+  // whether the text differs from the file; none once that text can come back no more.
+  std::optional<std::size_t> saved = 0;
 };
 
 // Where the text goes in the area, in pixels, and how many rows and columns of it fit;

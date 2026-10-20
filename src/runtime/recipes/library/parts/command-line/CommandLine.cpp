@@ -48,6 +48,10 @@ constexpr std::string_view find_prompt = "find: "; // the line a search's words 
 // In a window: what it keeps, and how it lays out, in pixels.
 constexpr std::size_t scrollback_rows = 1000; // the oldest go first (A03)
 constexpr std::size_t history_lines = 100;
+// The edits of the line typed that control with z takes back, the oldest going past them
+// (A03); and that key, which with shift too makes one again.
+constexpr std::size_t undo_room = 100;
+constexpr std::string_view undo_key = "z";
 constexpr std::int32_t margin = 4; // around the text
 constexpr std::uint32_t rule_width = 1;
 constexpr std::uint32_t label_room = 256;
@@ -231,6 +235,12 @@ struct Grid {
 struct Shown {
   std::string text;
   std::uint32_t role = 0;
+};
+
+// A line typed, as an edit found it: its text and where its caret was.
+struct Line {
+  std::string text;
+  std::size_t caret = 0;
 };
 
 // A place in the scrollback: its row, counted from the first row it ever kept, so rows
@@ -567,6 +577,58 @@ class CommandLine final : public VP::Operator {
     _tabs->assign(1, {.label = label, .current = true});
   }
 
+  // Control with z takes the line's last edit back, and with shift too makes it again; any
+  // other event edits the line, and an edit that changed it is kept to take back, the
+  // characters typed joining those typed just before them while the caret stayed where
+  // those left it and no blank starts a word, so a word goes back at once. A line sent,
+  // or a search begun or ended, starts the edits anew.
+  void edit(VP::Cook &frame, const VP::Event &event) {
+    if (event.kind == VP::Event::Kind::key && event.name == "shift")
+      _shift = event.down;
+    if (event.kind == VP::Event::Kind::key && event.down && _control &&
+        event.name == undo_key) {
+      undo(_shift);
+      return;
+    }
+    Line before{_line, _caret};
+    const std::size_t sent = _sent;
+    const bool finding = _finding;
+    change(frame, event);
+    if (_sent != sent || _finding != finding) {
+      _undone.clear();
+      _redone.clear();
+      _typing = false;
+      return;
+    }
+    if (_line == before.text)
+      return;
+    const bool typed = event.kind == VP::Event::Kind::text;
+    const bool joins =
+        typed && _typing && before.caret == _typed_to && !event.name.starts_with(' ');
+    _typing = typed;
+    _typed_to = _caret;
+    if (joins)
+      return;
+    _undone.push_back(std::move(before));
+    if (_undone.size() > undo_room)
+      _undone.erase(_undone.begin());
+    _redone.clear();
+  }
+
+  // The line before its last edit, or with again before the last taken back, its caret
+  // where it was then.
+  void undo(bool again) {
+    std::vector<Line> &from = again ? _redone : _undone;
+    std::vector<Line> &to = again ? _undone : _redone;
+    if (from.empty())
+      return;
+    to.push_back({std::exchange(_line, std::move(from.back().text)), _caret});
+    _caret = from.back().caret;
+    from.pop_back();
+    _typing = false;
+    _all = false;
+  }
+
   // Typed text goes in at the caret, and a key edits the line, sends it, recalls one
   // sent before, completes the word at the caret, or with control copies, pastes or
   // clears, sending clear from here, so what it answers comes back here, or takes the
@@ -575,7 +637,7 @@ class CommandLine final : public VP::Operator {
   // selection, and with none of the focus. In a window, control with a selects the whole
   // line, which what is typed or pasted next replaces, backspace or delete takes, and
   // control with c copies, any other key letting go of it.
-  void edit(VP::Cook &frame, const VP::Event &event) {
+  void change(VP::Cook &frame, const VP::Event &event) {
     if (event.kind == VP::Event::Kind::text) {
       take_all();
       type(event.name);
@@ -692,6 +754,7 @@ class CommandLine final : public VP::Operator {
   // A blank line only shows the prompt again, as a shell's does. Either shows the newest
   // rows, so what the line answers shows.
   void submit(VP::Cook &frame) {
+    ++_sent;
     const std::string line = std::exchange(_line, {});
     _caret = 0;
     _scroll.move(static_cast<float>(_scrollback.size()));
@@ -1208,6 +1271,15 @@ class CommandLine final : public VP::Operator {
   std::string _line;
   std::size_t _caret = 0;
   bool _all = false; // the whole line selected, as control with a selects it
+  bool _shift = false; // held, so control with z makes an edit taken back again
+  // The line before each edit, and before each taken back, the newest last; whether the
+  // last edit typed, and where it left the caret, so the next typed there joins it; and
+  // how many lines were sent, as each starts the edits anew.
+  std::vector<Line> _undone;
+  std::vector<Line> _redone;
+  bool _typing = false;
+  std::size_t _typed_to = 0;
+  std::size_t _sent = 0;
   Caret _blink;           // the caret's mark, as it blinks
   std::size_t _first = 0; // the first character of the line shown
   std::vector<std::string> _history;
