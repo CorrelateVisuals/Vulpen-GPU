@@ -53,6 +53,10 @@ struct BoxRow {
   std::string written; // the port written
   std::uint32_t role = VP_VIEW::role("text");
   std::filesystem::path opens; // what a press on it opens; empty for none
+  // The layers of the curves that land on the port read and on the port written, a bit
+  // each, by VP_VIEW::Layer, so a port whose curves are all hidden shows no mark.
+  std::uint32_t read_layers = 0;
+  std::uint32_t written_layers = 0;
 };
 
 // A node, a view the view shown hosts, a folder or a file of the folder shown, or what
@@ -191,12 +195,7 @@ struct Building {
   std::array<std::size_t, 2> outside{no_box, no_box};
   std::vector<Ports> ports;
   std::filesystem::path base;
-  std::uint32_t layers = 0; // shown, a bit each, by VP_VIEW::Layer
 };
-
-bool shows(const Building &building, VP_VIEW::Layer layer) {
-  return (building.layers >> static_cast<std::size_t>(layer) & 1u) != 0;
-}
 
 // The box showing a node: its own, or that of the node holding it that a box shows; none
 // for a node outside the node whose inside shows.
@@ -256,9 +255,7 @@ std::pair<std::size_t, std::string> shown(const Boxes &boxes,
 // between two boxes, from where its writer shows to where the reader does. A connection
 // inside one box, or wholly outside, draws nothing at this level.
 void connect(Boxes &boxes, Building &building, const VP::View &flat) {
-  for (std::size_t wire = 0;
-       wire < flat.connections.size() && shows(building, VP_VIEW::Layer::flow);
-       ++wire) {
+  for (std::size_t wire = 0; wire < flat.connections.size(); ++wire) {
     const VP::Connection &connection = flat.connections[wire];
     const auto [writer, written] = shown(boxes, building, flat, connection.from);
     for (const VP::Endpoint &to : connection.to) {
@@ -323,8 +320,6 @@ void relate(Boxes &boxes,
   boxes.told.resize(boxes.ends.size());
   for (std::size_t told = 0; told < relations.size(); ++told) {
     const VP_VIEW::Relation &relation = relations[told];
-    if (!shows(building, relation.layer))
-      continue;
     // What the engine carries runs from the file the data leaves, as its relation says.
     const bool carried = relation.layer == VP_VIEW::Layer::engine;
     const std::string &used = carried ? relation.from : relation.to;
@@ -565,20 +560,19 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
 // of the nodes at the top, of the view's manifest, and of the views the view hosts, as the
 // view as edited names them, each as hosted lists its top nodes. A node of the view as
 // edited is its own; one a recipe brings is not, nor a folder or a file. The paths outside
-// are named from base, and only the layers shown draw.
+// are named from base. Every layer's curves are ends, so the boxes and where they show are
+// the same whichever layers show, as the graph draws only theirs.
 Boxes boxes_of(const VP::View &edited,
                const VP::View &flat,
                std::string_view scope,
                std::span<const VP_VIEW::Relation> relations,
                std::span<const VP::View *const> hosted,
                const std::filesystem::path &base,
-               bool folders,
-               std::uint32_t layers) {
+               bool folders) {
   Boxes boxes;
   Building building{.folders = folders,
                     .parents = parents_of(flat, folders ? '/' : '.'),
-                    .base = base,
-                    .layers = layers};
+                    .base = base};
   building.box_of_node.assign(flat.nodes.size(), no_box);
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     building.nodes_in.emplace(flat.nodes[at].folder.generic_string(), at);
@@ -633,6 +627,13 @@ Boxes boxes_of(const VP::View &edited,
               flat,
               view ? &edited.children[child] : nullptr,
               view && child < hosted.size() ? hosted[child] : nullptr);
+  }
+  for (const End &end : boxes.ends) {
+    const auto layer = std::uint32_t{1} << static_cast<std::size_t>(end.layer);
+    if (end.from_row < boxes.boxes[end.from].ports)
+      boxes.rows[boxes.boxes[end.from].first + end.from_row].written_layers |= layer;
+    if (end.to_row < boxes.boxes[end.to].ports)
+      boxes.rows[boxes.boxes[end.to].first + end.to_row].read_layers |= layer;
   }
   return boxes;
 }

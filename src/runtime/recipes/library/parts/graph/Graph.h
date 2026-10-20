@@ -166,6 +166,7 @@ private:
   // on.
   void curves_under(glm::vec2 point);
   bool hovered(std::size_t end) const;
+  bool layer_shown(std::size_t end) const;
   float corner(std::span<const Waypoint> way, std::size_t at) const;
   // Where a place of the graph shows this frame, in pixels from the window's top left.
   glm::vec2 on_screen(glm::vec2 at) const;
@@ -230,7 +231,6 @@ private:
   std::string _built_inside;
   std::string _built_folder;
   std::uint64_t _built_changes = 0;
-  Shown _built_layers = every_layer;
   Layout _layout;
   glm::uvec2 _laid_cell{};
   bool _laid = false;

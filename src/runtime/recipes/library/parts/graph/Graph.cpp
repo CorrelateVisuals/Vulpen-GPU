@@ -213,7 +213,7 @@ void Graph::cook(VP::Cook &frame) {
     _hosted.push_back(frame.view(edited->children[child].name));
   if (edited != _built_edited || flat != _built_flat || _inside != _built_inside ||
       _relations->folder != _built_folder || _relations->changes != _built_changes ||
-      _layers != _built_layers || _hosted != _built_hosted)
+      _hosted != _built_hosted)
     build(edited, flat);
   const glm::uvec2 cell = _font->cell;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
@@ -436,7 +436,6 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
   _built_inside = _inside;
   _built_folder = folder;
   _built_changes = _relations->changes;
-  _built_layers = _layers;
   _built_hosted = _hosted;
   _heating.stale();
   _boxes = {};
@@ -450,8 +449,7 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
                       _relations->relations,
                       _hosted,
                       _base,
-                      !folder.empty(),
-                      _layers);
+                      !folder.empty());
   }
   draw_order(_boxes, _raised, _order);
   name_tab();
@@ -974,7 +972,8 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
   const float half = mark_size * _pan_zoom.zoom / 2.0f;
   for (std::size_t row = 0; row < shown.ports; ++row)
     for (const bool right : {false, true})
-      if (!(right ? rows[row].written : rows[row].text).empty()) {
+      if (!(right ? rows[row].written : rows[row].text).empty() &&
+          ((right ? rows[row].written_layers : rows[row].read_layers) & _layers) != 0) {
         const glm::vec2 middle = port_of(at, row, right);
         add(between(middle - half, middle + half, VP_VIEW::role("accent")));
       }
@@ -1186,7 +1185,7 @@ void Graph::write_curves(VP::Cook &frame) {
   for (std::size_t drawn = 0; drawn < count; ++drawn) {
     const bool over = drawn >= routes.size();
     const std::size_t end = over ? _hovered_curves[count - 1 - drawn].second : drawn;
-    if (end >= routes.size() || (!over && hovered(end)))
+    if (end >= routes.size() || (!over && hovered(end)) || !layer_shown(end))
       continue;
     const Route &route = routes[end];
     role = over ? VP_VIEW::role("text")
@@ -1233,6 +1232,14 @@ void Graph::curves_under(glm::vec2 point) {
               glm::vec2(_area->offset),
               point,
               _hovered_curves);
+  std::erase_if(_hovered_curves,
+                [&](const auto &near) { return !layer_shown(near.second); });
+}
+
+// Whether a curve's layer shows, as the relations param names the layers: a layer hidden
+// hides its curves alone, so no box moves as a layer turns.
+bool Graph::layer_shown(std::size_t end) const {
+  return (_layers & bit_of(_boxes.ends[end].layer)) != 0;
 }
 
 bool Graph::hovered(std::size_t end) const {
