@@ -31,9 +31,12 @@ __pycache__/
 !/projects/triangle-twin/
 !/projects/wave/
 
-# What the ide's parts keep beside a view, as the graph its layout: a look at the view,
-# not the view, so the example projects and the library leave each person's look at them out.
-.vulpen/
+# What the ide's parts keep beside a view: a look at the view, not the view, so each
+# person's own stays out, as the panels' layout.log and the GPU a launch prefers; but where
+# the graph's boxes are, graph.ini, is kept, so the library, the apps and the examples show
+# as they were arranged.
+**/.vulpen/*
+!**/.vulpen/graph.ini
 
 # Each machine's own: docs/logs/ holds the session handoffs and the runs' logs, and its
 # .gitkeep keeps the folder; the plans and the reports are no part of how Vulpen works,

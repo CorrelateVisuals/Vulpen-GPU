@@ -75,6 +75,8 @@ constexpr int focus_steps = 2;
 constexpr std::string_view enter_key = "."; // into the box selected, or under the pointer
 constexpr std::string_view leave_key = ","; // up a level
 constexpr std::string_view every_key = "a"; // with control, every box selected
+constexpr std::string_view undo_key = "z";  // with control the last change of where the
+                                            // boxes are taken back, with shift too again
 constexpr std::string_view title = "graph";
 
 
@@ -230,6 +232,8 @@ void Graph::cook(VP::Cook &frame) {
   for (const VP::Event &event : _typed->to(_name))
     if (event.kind == VP::Event::Kind::key && event.name == "control")
       _control = event.down;
+    else if (event.kind == VP::Event::Kind::key && event.name == "shift")
+      _shift = event.down; // as the window says too, in this order for a key with it
     else if (event.kind == VP::Event::Kind::key && event.down)
       key(frame, event.name);
   const VP::View *const edited = folder ? &_relations->tree : frame.view(shown);
@@ -332,7 +336,8 @@ void Graph::command(VP::Call &call) {
 
 // delete or backspace removes what is selected; an arrow moves it a line of the ground
 // that way; escape lets go of it, and with none of the focus, as the editor and the
-// terminal do; control with a selects every box. The home key brings the graph home once the frame has laid the boxes out.
+// terminal do; control with a selects every box; control with z takes the last change of
+// where the boxes are back, and with shift too does it again. The home key brings the graph home once the frame has laid the boxes out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
   const VP::View *const view = frame.view(_shown);
@@ -340,6 +345,8 @@ void Graph::key(VP::Cook &frame, std::string_view key) {
     erase(frame, *view);
   } else if (const glm::ivec2 way = arrow_of(key); way != glm::ivec2(0) && chosen) {
     nudge(frame, way);
+  } else if (key == undo_key && _control) {
+    undo(frame, _shift);
   } else if (key == "escape" && chosen) {
     frame.commands().send(std::format("{}: select", _shown));
   } else if (key == "escape") {
@@ -663,8 +670,10 @@ void Graph::drag(glm::vec2 to) {
     pull(to);
     return;
   }
-  if (!grab.moved)
+  if (!grab.moved) {
+    remember();
     place_all();
+  }
   grab.moved = true;
   const glm::vec2 moved = (to - grab.from) / _pan_zoom.zoom;
   // The box grabbed snaps to the ground's lines, the others going as far; with shift,
@@ -688,8 +697,10 @@ void Graph::drag(glm::vec2 to) {
 void Graph::pull(glm::vec2 to) {
   Grab &grab = *_grab;
   const glm::bvec2 corner = *grab.corner;
-  if (!grab.moved)
+  if (!grab.moved) {
+    remember();
     place_all();
+  }
   const glm::vec2 by = (to - grab.from) / _pan_zoom.zoom;
   const Pulled &first = grab.pulled.front();
   glm::ivec2 low = first.at;
@@ -745,6 +756,7 @@ void Graph::nudge(VP::Cook &frame, glm::ivec2 way) {
       });
   if (lead == _selection.rend())
     return;
+  remember();
   place_all();
   const Placed &laid = placed[at_box(*lead)];
   const glm::ivec2 at = laid.at - laid.offset + _arranged.places.at(*lead);
@@ -756,6 +768,31 @@ void Graph::nudge(VP::Cook &frame, glm::ivec2 way) {
     if (const auto place = _arranged.places.find(box.name);
         place != _arranged.places.end() && selected(box.name))
       place->second += by;
+  _laid = false;
+  _at_home = false;
+  save(frame);
+}
+
+// Before a change of where the boxes are: the history of the .ini keeps what was
+// arranged, and what was taken back goes, as an editor's redo does.
+void Graph::remember() {
+  History &history = _histories[_ini];
+  history.undone.push_back(_arranged);
+  if (history.undone.size() > undo_room)
+    history.undone.erase(history.undone.begin());
+  history.redone.clear();
+}
+
+// What was arranged before the last change, or with again the change taken back last,
+// laid out and saved at once, as the change was.
+void Graph::undo(VP::Cook &frame, bool again) {
+  History &history = _histories[_ini];
+  std::vector<Arranged> &from = again ? history.redone : history.undone;
+  std::vector<Arranged> &to = again ? history.undone : history.redone;
+  if (from.empty() || _grab)
+    return;
+  to.push_back(std::exchange(_arranged, std::move(from.back())));
+  from.pop_back();
   _laid = false;
   _at_home = false;
   save(frame);

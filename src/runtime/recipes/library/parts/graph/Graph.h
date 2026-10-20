@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -154,6 +155,8 @@ private:
   void drag(glm::vec2 to);
   void pull(glm::vec2 to);
   void nudge(VP::Cook &frame, glm::ivec2 way);
+  void remember();
+  void undo(VP::Cook &frame, bool again);
   void place_all();
   void release(VP::Cook &frame, bool room);
   bool open(VP::Cook &frame, std::size_t at);
@@ -271,6 +274,7 @@ private:
                       // none
   std::string _more;  // and a box's row standing for the rest, as it counts them
   Arranged _arranged;
+  std::map<std::string, History, std::less<>> _histories; // by the .ini each changed
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over
   PanZoom _pan_zoom;

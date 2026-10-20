@@ -42,6 +42,17 @@ struct Arranged {
   std::map<std::string, glm::ivec2, std::less<>> sizes;
 };
 
+// The changes control with z takes back, a drag, a pull or an arrow's step each, as far
+// back as undo_room of them, so memory stays bounded (A03).
+constexpr std::size_t undo_room = 100;
+
+// What was arranged before each change, and after each change taken back, which control
+// with shift and z does again, the newest last; one an .ini.
+struct History {
+  std::vector<Arranged> undone;
+  std::vector<Arranged> redone;
+};
+
 // A line place <box> = x y or size <box> = width height, its box's name and its numbers;
 // none for a line that is neither, or a size that is not two numbers above zero.
 std::optional<std::pair<std::string, glm::ivec2>> numbered(std::string_view key,
