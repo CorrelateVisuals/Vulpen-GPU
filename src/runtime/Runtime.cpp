@@ -571,10 +571,12 @@ void Runtime::swap() {
 
 // The schedules the next frame runs. The window follows the views first (V07): it opens
 // before the rebuild that brings the first draw into it, so the draw has a window to
-// draw into, and closes once no node of any view draws into it.
+// draw into, and closes once no node of any view draws into it, which the log says at
+// the level a run prints by default, as a window gone with the run going on is never
+// silent.
 void Runtime::prepare() {
   if (_views->shows() != _window.has_value()) {
-    _log.write(Level::info,
+    _log.write(_window ? Level::warn : Level::info,
                Tag::run,
                _window ? "no node draws into the window, so it closes"
                        : "a node draws into the window, so it opens");
