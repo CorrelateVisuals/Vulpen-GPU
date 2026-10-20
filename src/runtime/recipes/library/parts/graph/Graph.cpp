@@ -52,10 +52,12 @@ constexpr std::array<std::uint32_t, VP_VIEW::layer_names.size()> layer_roles{
     VP_VIEW::role("string"),
     VP_VIEW::role("type")};
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
-// A corner a drag pulls: how far in from it a press takes it, and its mark's arms, in
-// pixels, never past a quarter of the box, so a small box still moves.
-constexpr float corner_reach = 8.0f;
-constexpr float corner_arm = 10.0f;
+// A corner a drag pulls: how far in from it a press takes it, never past a quarter of the
+// box, so a small box still moves, and how far out, past the box's edges, so a press
+// near the corner needs no aim; and its mark's arms, in pixels.
+constexpr float corner_reach = 12.0f;
+constexpr float corner_out = 6.0f;
+constexpr float corner_arm = 12.0f;
 constexpr float corner_width = 2.0f;
 // Zoomed in this near, the graph shows the inside of the box under the pointer, as the
 // POC did, however many boxes home made room for, so a box is gone into as close at
@@ -1332,7 +1334,7 @@ std::size_t Graph::hit(glm::vec2 at) const {
 }
 
 // A corner of a box, its own or one past a frame's rows, where the box drawn over the
-// others lies, or none.
+// others lies, or none: from a little outside the box's edges to a little in from them.
 Under Graph::under(glm::vec2 point) const {
   if (!inside(*_area, point))
     return {};
@@ -1347,8 +1349,9 @@ Under Graph::under(glm::vec2 point) const {
         corner_reach, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
     const bool left = point.x < low.x + reach;
     const bool top = point.y < low.y + reach;
-    if (VP_VIEW::contains(shown, point) &&
-        (left || point.x >= high.x - reach) && (top || point.y >= high.y - reach))
+    const bool near = point.x >= low.x - corner_out && point.x < high.x + corner_out &&
+                      point.y >= low.y - corner_out && point.y < high.y + corner_out;
+    if (near && (left || point.x >= high.x - reach) && (top || point.y >= high.y - reach))
       return {at, glm::bvec2(left, top)};
     if (VP_VIEW::contains(cut(solid(at), *_area), point))
       return {at, std::nullopt};
