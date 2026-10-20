@@ -41,6 +41,6 @@ __pycache__/
 # which docs/usage.md and docs/architecture/ say.
 /docs/logs/*
 !/docs/logs/.gitkeep
-/docs/plans/
+/docs/plans
 /docs/reports/
 /docs/archive
