@@ -14,47 +14,185 @@
 // Only Docking.cpp includes this header, so what it holds stays in the unnamed namespace
 // of the one file that builds the part, as the class does: what the docking part keeps
 // of the panels as a person left them, between runs, in a file beside the view's
-// manifest, as the graph keeps where its boxes are: the edits that moved the panels,
-// then the params of the nodes that seat them.
+// manifest, as the graph keeps where its boxes are: the edits that make the manifest's
+// panels the panels as they are, and the params of the nodes that seat them.
 namespace {
 
 constexpr std::string_view kept_folder = ".vulpen"; // which no build or scan reads
 constexpr std::string_view kept_file = "layout.log";
 constexpr std::string_view kept_head =
     "# The panels as a person left them, which panel restore replays as the view\n"
-    "# starts as its manifest has it: the edits that moved them, then their nodes'\n"
-    "# params. Deleting the file shows the manifest's own.\n";
-// The recipes of the nodes the panels are made of, whose params the file keeps: the
-// docks seating them, the panels, the stacks holding several contents, the editors.
+    "# starts as its manifest has it: the edits that make the manifest's panels these,\n"
+    "# and their nodes' params. Deleting the file shows the manifest's own.\n";
+// The recipes of the nodes the panels are made of, which the file keeps: the docks
+// seating them, the panels, the stacks holding several contents, the editors.
 constexpr std::array<std::string_view, 4> laid_recipes{"dock", "panel", "stack",
                                                        "text-area"};
 constexpr std::string_view strip_params = "bar."; // a panel's strip's, which no file keeps
 
-// Whether a line the docking part sends makes the panels other than by a param: a node
-// added, moved or removed, or a connection made or let go. The params the file keeps
-// whole, at its end, and closing a file edits no view.
-bool structural(std::string_view line) {
-  return line.starts_with("node ") || line.starts_with("connect ") ||
-         line.starts_with("disconnect ");
+bool laid(const VP::Node &node) {
+  return std::ranges::find(laid_recipes, node.recipe) != laid_recipes.end();
 }
 
-// The file's text: the edits, then the params of the panels' nodes as the view holds them
-// now, a line each, as param set sets them, as a dock's seam; but a panel's strip, which
-// shows at every start, so the menubar a person hid comes back as the panels do.
-std::string kept_text(std::span<const std::string> edits, const VP::View &view) {
-  std::string text(kept_head);
-  for (const std::string &edit : edits)
-    text.append(edit).append(1, '\n');
-  for (const VP::Node &node : view.nodes)
-    if (std::ranges::find(laid_recipes, node.recipe) != laid_recipes.end())
+// A param of a panel's node the file keeps, one of a node inside it, as split.ratio; but
+// its strip's, which shows at every start, so the menubar a person hid comes back.
+bool kept_param(const VP::Param &param) {
+  return param.key.find('.') != std::string::npos && !param.key.starts_with(strip_params);
+}
+
+// Whether a node is the one named or inside it, as node remove and node move take it.
+bool within(std::string_view node, std::string_view name) {
+  return node.starts_with(name) && (node.size() == name.size() || node[name.size()] == '.');
+}
+
+const VP::Node *node_in(const VP::View &view, std::string_view name) {
+  const auto found = std::ranges::find(view.nodes, name, &VP::Node::name);
+  return found == view.nodes.end() ? nullptr : &*found;
+}
+
+const VP::Connection *connection_in(std::span<const VP::Connection> connections,
+                                    std::string_view name) {
+  const auto found = std::ranges::find(connections, name, &VP::Connection::name);
+  return found == connections.end() ? nullptr : &*found;
+}
+
+bool same_ends(const VP::Connection &a, const VP::Connection &b) {
+  const auto same = [](const VP::Endpoint &x, const VP::Endpoint &y) {
+    return x.node == y.node && x.port == y.port;
+  };
+  return same(a.from, b.from) && std::ranges::equal(a.to, b.to, same);
+}
+
+// Each node to just before the node it shows before now, from the last, as node move puts
+// it, where it is not already, so the nodes go in the order they draw in now; a node
+// holding others stays, as the view's own group does.
+void move_into_order(std::vector<std::string> &order,
+                     const VP::View &now,
+                     std::vector<std::string> &lines) {
+  std::vector<std::string_view> wanted;
+  for (const VP::Node &node : now.nodes)
+    if (std::ranges::find(order, node.name) != order.end())
+      wanted.push_back(node.name);
+  for (std::size_t at = wanted.size(); at-- > 1;) {
+    const auto moving = std::ranges::find(order, wanted[at - 1]);
+    if ((moving + 1 != order.end() && *(moving + 1) == wanted[at]) ||
+        std::ranges::any_of(order, [&](const std::string &name) {
+          return name != *moving && within(name, *moving);
+        }))
+      continue;
+    lines.push_back(std::format("node move {} {}", wanted[at - 1], wanted[at]));
+    std::string moved = std::move(*moving);
+    order.erase(moving);
+    order.insert(std::ranges::find(order, wanted[at]), std::move(moved));
+  }
+}
+
+// The lines that make the manifest's panels the panels now, whatever edits made them so,
+// in an order a replay takes: the panels' nodes gone removed, the connections their nodes
+// are part of let go of or made otherwise, their nodes added, every node moved to the
+// order it draws in, those connections made, and the params of the manifest's own panels'
+// nodes changed. So a panel added and gone again leaves no line, and the file is as long
+// as the panels' changes, not as their history. The manifest's view comes unfolded, as
+// the file port reads it, so of it only what the manifest writes counts, not what a
+// recipe its nodes use brings, and a param it sets is read where it went, on the node
+// inside; the view now comes as edited.
+std::vector<std::string> edits_from(const VP::View &written, const VP::View &now) {
+  const auto brought = [&](std::string_view name) {
+    return std::ranges::any_of(written.nodes, [&](const VP::Node &user) {
+      return user.uses() && name != user.name && within(name, user.name);
+    });
+  };
+  std::vector<std::string_view> panels; // the panels' nodes, the manifest's or now's
+  for (const VP::View *view : {&written, &now})
+    for (const VP::Node &node : view->nodes)
+      if (laid(node))
+        panels.push_back(node.name);
+  const auto ours = [&](const VP::Connection *connection) {
+    const auto of = [&](const VP::Endpoint &end) {
+      return !end.view() && std::ranges::any_of(panels, [&](std::string_view panel) {
+        return within(end.node, panel);
+      });
+    };
+    return connection && (of(connection->from) || std::ranges::any_of(connection->to, of));
+  };
+  std::vector<std::string> lines;
+  std::vector<VP::Connection> left; // the manifest's own, as the removals leave them
+  for (const VP::Connection &connection : written.connections)
+    if (!brought(connection.name))
+      left.push_back(connection);
+  std::vector<std::string> order;
+  std::vector<std::string> removed;
+  for (const VP::Node &node : written.nodes) {
+    if (brought(node.name))
+      continue;
+    if (node_in(now, node.name) || !laid(node)) {
+      order.push_back(node.name);
+      continue;
+    }
+    if (std::ranges::any_of(removed, [&](const std::string &gone) {
+          return within(node.name, gone);
+        }))
+      continue;
+    removed.push_back(node.name);
+    lines.push_back(std::format("node remove {}", node.name));
+    const auto goes = [&](const VP::Endpoint &end) {
+      return !end.view() && within(end.node, node.name);
+    };
+    for (VP::Connection &connection : left)
+      std::erase_if(connection.to, goes);
+    std::erase_if(left, [&](const VP::Connection &connection) {
+      return goes(connection.from) || connection.to.empty();
+    });
+  }
+  for (const VP::Connection &connection : left)
+    if (const VP::Connection *const now_is = connection_in(now.connections, connection.name);
+        (ours(&connection) || ours(now_is)) && (!now_is || !same_ends(*now_is, connection)))
+      lines.push_back(std::format("disconnect {}", connection.name));
+  for (const VP::Node &node : now.nodes)
+    if (laid(node) && !node_in(written, node.name)) {
+      std::string line = std::format("node add {} recipe={}", node.name, node.recipe);
       for (const VP::Param &param : node.params)
-        if (const std::size_t dot = param.key.rfind('.');
-            dot != std::string::npos && !param.key.starts_with(strip_params))
-          text += std::format("param set {}.{} {} {}\n",
-                              node.name,
-                              std::string_view(param.key).substr(0, dot),
-                              std::string_view(param.key).substr(dot + 1),
-                              param.value);
+        if (kept_param(param))
+          line += std::format(" param={}={}", param.key, param.value);
+      lines.push_back(std::move(line));
+      order.push_back(node.name);
+    }
+  move_into_order(order, now, lines);
+  for (const VP::Connection &connection : now.connections)
+    if (const VP::Connection *const was = connection_in(left, connection.name);
+        (ours(&connection) || ours(connection_in(written.connections, connection.name))) &&
+        (!was || !same_ends(*was, connection))) {
+      std::string line = std::format("connect {} {}", connection.name, connection.from.text());
+      for (const VP::Endpoint &to : connection.to)
+        line += ' ' + to.text();
+      lines.push_back(std::move(line));
+    }
+  // A param of a panel's node, as split.ratio, the manifest set on the node inside it.
+  for (const VP::Node &node : now.nodes) {
+    if (!laid(node) || !node_in(written, node.name))
+      continue;
+    for (const VP::Param &param : node.params) {
+      if (!kept_param(param))
+        continue;
+      const std::size_t dot = param.key.rfind('.');
+      const std::string inside =
+          std::format("{}.{}", node.name, std::string_view(param.key).substr(0, dot));
+      const std::string_view key = std::string_view(param.key).substr(dot + 1);
+      const VP::Node *const holding = node_in(written, inside);
+      const auto was = holding ? std::ranges::find(holding->params, key, &VP::Param::key)
+                               : std::vector<VP::Param>::const_iterator();
+      if (!holding || was == holding->params.end() || was->value != param.value)
+        lines.push_back(std::format("param set {} {} {}", inside, key, param.value));
+    }
+  }
+  return lines;
+}
+
+// The file's text: the edits that make the manifest's panels the panels now.
+std::string kept_text(const VP::View &written, const VP::View &now) {
+  std::string text(kept_head);
+  for (const std::string &line : edits_from(written, now))
+    text.append(line).append(1, '\n');
   return text;
 }
 

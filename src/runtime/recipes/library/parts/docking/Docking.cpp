@@ -288,7 +288,8 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // panel dragged. Of an editor holding several files,
 // as the editors its host connects say, the file it shows moves: into a new editor, or
 // into the editor in the target's middle. It keeps the panels as a person left them in
-// .vulpen/layout.log beside the view's manifest, saved as they change, and as the view
+// .vulpen/layout.log beside the view's manifest, saved as they change, as the edits that
+// make the manifest's panels these, and as the view
 // starts as its manifest has it, arranges them so again, by panel restore, so they
 // last between runs. A double click on a panel's strip, as on one of its tabs, gives it
 // the docks' whole room, the others none, by panel maximize, and another gives them their
@@ -327,6 +328,7 @@ class Docking final : public VP::Operator {
                              "gives a panel the docks' whole room, the others none, or, "
                              "given it already, the others the room they had");
     _manifest = node.view().file.string();
+    _manifest_file = node.file(_manifest);
     _kept = (node.view().file.parent_path() / kept_folder / kept_file).string();
     _buttons = &node.output<VP_VIEW::Items>("buttons");
     _name = node.name();
@@ -363,38 +365,51 @@ class Docking final : public VP::Operator {
     write_marks(frame, cell);
   }
 
-  // At the first frame, what the file keeps: its edits, as the view holds them already
-  // once a replay of the log arranged it, as a restart's does; and on a view as its
-  // manifest has it, the panels as kept, through panel restore, so a line arranges them
-  // (V06). With no file, nothing is saved until the panels change.
+  // At the first frame, on a view as its manifest has it, the panels as the file keeps
+  // them, through panel restore, so a line arranges them (V06); a view a replay of the log
+  // arranged already, as a restart's, is left as it is. With no file, nothing is saved
+  // until the panels change.
   void start(VP::Cook &frame) {
     _started = true;
     VP::FilePort &files = frame.files();
+    const bool read = read_manifest(frame);
     const std::filesystem::path kept(_kept);
     const std::vector<std::string> names = files.list(kept.parent_path().string());
     if (std::ranges::find(names, kept.filename().string()) == names.end()) {
-      _saved = kept_text(_record, *frame.view(_view));
+      _saved = kept_text(_written, *frame.view(_view));
       return;
     }
     _saved = files.read(_kept);
-    _record.clear();
-    for (std::string &line : kept_lines(_saved))
-      if (structural(line))
-        _record.push_back(std::move(line));
-    bool written = false;
-    try {
-      written = as_written(frame.view(), files.manifest(_manifest));
-    } catch (const std::runtime_error &mistake) {
-      frame.log(VP::Level::warn, mistake.what());
-    }
-    if (written)
+    if (read && as_written(frame.view(), _written))
       frame.commands().send(std::format("{}: panel restore", _view));
   }
 
+  // The view as its manifest writes it, which the file keeps the panels against, read
+  // again once the manifest changed, as view save writes it. Whether it could be read; a
+  // manifest with a mistake is named, and the file kept as it is until it reads.
+  bool read_manifest(VP::Cook &frame) {
+    const std::string_view text = frame.files().text(_manifest_file);
+    if (_written_read && text == _written_text)
+      return true;
+    try {
+      _written = frame.files().manifest(_manifest);
+      _written_text = text;
+      _written_read = true;
+    } catch (const std::runtime_error &mistake) {
+      frame.log(VP::Level::warn, mistake.what());
+      _written_read = false;
+    }
+    return _written_read;
+  }
+
   // The panels as the view holds them now, saved once they changed: a panel moved, hidden
-  // or shown, a seam or the menubar's divider dragged, a stack's other half shown.
+  // or shown, a seam or the menubar's divider dragged, a stack's other half shown, written
+  // as the edits that make the manifest's panels these, so the file stays as short as
+  // the panels' changes, however many edits made them.
   void keep(VP::Cook &frame) {
-    std::string text = kept_text(_record, *frame.view(_view));
+    if (!read_manifest(frame))
+      return;
+    std::string text = kept_text(_written, *frame.view(_view));
     if (text == _saved)
       return;
     frame.files().save(_kept, text);
@@ -406,7 +421,6 @@ class Docking final : public VP::Operator {
   // it may hold one, and the next change saves them as they are.
   void restore(VP::Call &call) {
     const std::vector<std::string> lines = kept_lines(call.files().read(_kept));
-    _record.clear();
     for (const std::string &line : lines) {
       try {
         call.commands().send(std::format("{}: {}", _view, line));
@@ -417,8 +431,6 @@ class Docking final : public VP::Operator {
                         line,
                         refused.what()));
       }
-      if (structural(line))
-        _record.push_back(line);
     }
   }
 
@@ -1136,12 +1148,9 @@ class Docking final : public VP::Operator {
     send(call, line);
   }
 
-  // Each line on its own view; one that makes the panels other than by a param is kept,
-  // for the panels to be arranged so again at the next run.
+  // Each line on its own view, whichever view the line that ran the command addressed.
   void send(VP::Call &call, std::string_view line) {
     call.commands().send(std::format("{}: {}", _view, line));
-    if (structural(line))
-      _record.emplace_back(line);
   }
 
   VP::Command _move;
@@ -1149,12 +1158,15 @@ class Docking final : public VP::Operator {
   VP::Command _show;
   VP::Command _restore;
   VP::Command _maximize;
-  // Where the view's manifest is, and the file keeping the panels beside it; the edits
-  // that moved them since the manifest, kept, and the file as saved last, and whether the
-  // first frame read it.
+  // Where the view's manifest is, watched, and the view it writes, as read last, and
+  // whether it read; the file keeping the panels beside it, as saved last, and whether
+  // the first frame read it.
   std::string _manifest;
+  VP::File _manifest_file;
+  VP::View _written;
+  std::string _written_text;
+  bool _written_read = false;
   std::string _kept;
-  std::vector<std::string> _record;
   std::string _saved;
   bool _started = false;
   VP_VIEW::Items *_buttons = nullptr;
