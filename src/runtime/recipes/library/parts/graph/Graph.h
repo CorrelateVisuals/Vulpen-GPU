@@ -34,15 +34,18 @@
 namespace {
 
 // A box pressed: which, where the pointer was then, the boxes a drag moves, each with
-// where it was then, and whether it has been dragged, or is a press let go where it was.
-// Or a corner of a box pressed, which a drag pulls while the opposite corner stays:
-// whether it is a left one and whether a top one, and the box's size, place and least
-// size then.
+// where it was then, and whether it has been dragged, or is a press let go where it was;
+// whether shift was held then, and whether the box was selected already, which a press
+// let go where it was then takes out. Or a corner of a box pressed, which a drag pulls
+// while the opposite corner stays: whether it is a left one and whether a top one, and
+// the box's size, place and least size then.
 struct Grab {
   std::size_t box = 0;
   glm::vec2 from{};
   std::vector<std::pair<std::size_t, glm::ivec2>> moving;
   bool moved = false;
+  bool shifted = false;
+  bool takes_out = false;
   std::optional<glm::bvec2> corner;
   glm::ivec2 extent{};
   glm::ivec2 offset{};
@@ -87,7 +90,7 @@ struct Under {
 // does, levels too; none of it is kept. A
 // press on a box selects it, shift adding it or taking it out, and a second press opens
 // the file of a row that names one in the editor; a drag on a box selected moves every
-// box selected,
+// box selected, with shift held left and right or up and down alone,
 // and one on a box no line selects, as what lies outside, moves that box. A drag on a
 // corner of a box makes it larger, or smaller down to the size its rows and the boxes
 // inside it need, and its corners show while the pointer is over it. The box selected

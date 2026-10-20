@@ -543,6 +543,8 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
     turn(frame, event.turn.y, _pointer);
   } else if (event.kind == VP::Event::Kind::key && event.name == "shift") {
     _shift = event.down;
+    if (_grab && room)
+      drag(_pointer); // locked to an axis, or let go of it, where the pointer is
   } else if (event.kind == VP::Event::Kind::focus && !event.down) {
     // Let go while the window had no focus, which no event says.
     _shift = false;
@@ -553,8 +555,9 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
 // the file of the row pressed, or goes into the box's inside, or up a level from what lies
 // outside. A
 // box a line selects, a node's, a view's, a file's or a folder's: shift adds it to the
-// selection or takes it out, or it is selected, unless it is already, and grabbed with
-// every box selected, so a drag moves them all. What lies outside, which no line names:
+// selection, or it is selected, unless it is already, and grabbed with every box
+// selected, so a drag moves them all; one selected already shift takes out as it is let
+// go where it was, so a drag with shift moves them too. What lies outside, which no line names:
 // the selection goes, and it is raised and grabbed alone. On the ground, with shift, a select box from there to the pointer until the button is let
 // go; without, the selection goes, and the graph follows the pointer until then.
 void Graph::press(VP::Cook &frame, std::uint32_t presses) {
@@ -583,19 +586,14 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
     std::vector<std::string> chosen;
     if (_selected_in == _shown)
       chosen = _selection;
-    if (_shift || !selected(pressed.name)) {
+    const bool was = selected(pressed.name);
+    if (!was) {
       if (!_shift)
         chosen.clear();
-      if (const auto found = std::ranges::find(chosen, pressed.name);
-          found != chosen.end())
-        chosen.erase(found);
-      else
-        chosen.push_back(pressed.name);
+      chosen.push_back(pressed.name);
       select(frame.commands(), chosen);
     }
-    if (_shift)
-      return;
-    _grab = Grab{.box = at, .from = _pointer};
+    _grab = Grab{.box = at, .from = _pointer, .shifted = _shift, .takes_out = _shift && was};
     for (std::size_t box = 0; box < _boxes.boxes.size(); ++box)
       if (selected(_boxes.boxes[box].name))
         _grab->moving.emplace_back(box, _layout.placed()[box].offset);
@@ -630,7 +628,8 @@ void Graph::grab_corner(VP::Cook &frame, const Under &under) {
 
 // Once the pointer moved a few pixels, so a press that wobbles is still a press. The
 // first drag places every box of the view where it shows, so a box moved moves no other,
-// and a node added later takes its column's place.
+// and a node added later takes its column's place. While shift is held, the boxes move
+// left and right or up and down alone.
 void Graph::drag(glm::vec2 to) {
   Grab &grab = *_grab;
   const std::span<const Placed> placed = _layout.placed();
@@ -644,7 +643,11 @@ void Graph::drag(glm::vec2 to) {
   if (!grab.moved)
     place_all();
   grab.moved = true;
-  const glm::ivec2 by(glm::round((to - grab.from) / _pan_zoom.zoom));
+  glm::vec2 moved = (to - grab.from) / _pan_zoom.zoom;
+  // With shift, along the axis it went farther on, the other as it was.
+  if (_shift)
+    (std::abs(moved.x) >= std::abs(moved.y) ? moved.y : moved.x) = 0.0f;
+  const glm::ivec2 by(glm::round(moved));
   for (const auto &[box, offset] : grab.moving)
     _arranged.places.insert_or_assign(_boxes.boxes[box].name, offset + by);
   _laid = false; // so this frame shows them there
@@ -685,7 +688,8 @@ void Graph::place_all() {
 }
 
 // A box dragged is saved at once. A select box selects what it touches. A box pressed
-// and let go where it was stays the one selected.
+// and let go where it was stays the one selected, or with shift, one selected before the
+// press leaves the selection.
 void Graph::release(VP::Cook &frame, bool room) {
   _dragging = false;
   if (const std::optional<glm::vec2> from = std::exchange(_select_from, std::nullopt);
@@ -703,9 +707,14 @@ void Graph::release(VP::Cook &frame, bool room) {
     return;
   if (!room || grab.box >= _boxes.boxes.size())
     return;
-  if (const Box &pressed = _boxes.boxes[grab.box];
-      selectable(pressed) && _selection.size() > 1)
+  const Box &pressed = _boxes.boxes[grab.box];
+  if (grab.takes_out) {
+    std::vector<std::string> chosen = _selection;
+    std::erase(chosen, pressed.name);
+    select(frame.commands(), chosen);
+  } else if (!grab.shifted && selectable(pressed) && _selection.size() > 1) {
     select(frame.commands(), std::span(&pressed.name, 1));
+  }
 }
 
 // A second press on a row that names a file opens it, as a line typed would: a node's
