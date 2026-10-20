@@ -30,7 +30,8 @@ class Unread final : public VP::WindowInput {
 };
 
 void draw(const VP::Log &log) {
-  const VP::Window window("triangle - baseclasses", window_size);
+  const VP::Desktop desktop;
+  const VP::Window window(desktop, "triangle - baseclasses", window_size);
   VP::Engine engine(log, &window);
   // The build puts the shaders beside the binary, so they are found from it (RP02).
   const std::filesystem::path folder = VP::Files::executable().parent_path();

@@ -274,7 +274,8 @@ private:
   const std::filesystem::path _executable = Files::executable();
   const Log _log;
   std::filesystem::path _mirror; // the build tree's views, where the schedules look
-  std::optional<Window> _window; // outlives the engine, which draws into it
+  std::optional<Desktop> _desktop; // from the first window on, outliving each
+  std::optional<Window> _window;   // outlives the engine, which draws into it
   std::optional<Engine> _engine;
   Modules _modules; // outlives the schedules, whose operators run its code
   Ports _ports{_log};
@@ -416,7 +417,7 @@ bool Runtime::start() {
                          shows ? "a node draws into the window, so it opens one"
                                : "no node draws into the window, so it runs headless"));
   if (shows)
-    _window.emplace(title(view), window_size);
+    _window.emplace(_desktop.emplace(), title(view), window_size);
   _ports.attach(_window ? &*_window : nullptr);
   // The kind of GPU a person chose for the launches of this view.
   const std::filesystem::path choice = view.file.parent_path() / ".vulpen" / "gpu.ini";
@@ -467,6 +468,8 @@ void Runtime::loop() {
       if (_commands.quitting())
         break;
     }
+    if (!_window && _desktop)
+      _desktop->poll();
     _engine->wait();
     // While the schedules whose passes the frame before ran still run: a swap or a
     // rebuild below may replace them.
@@ -585,7 +588,9 @@ void Runtime::prepare() {
       _ports.attach(nullptr);
       _window.reset();
     } else {
-      _window.emplace(title(_views->view()), window_size);
+      if (!_desktop)
+        _desktop.emplace();
+      _window.emplace(*_desktop, title(_views->view()), window_size);
       _engine->open(*_window);
       _ports.attach(&*_window);
     }

@@ -114,12 +114,28 @@ protected:
 // prints none.
 bool key_named(std::string_view name);
 
+// The desktop GLFW reaches, which keeps process-wide state: set up once, as the first
+// window opens, and let go as the run ends, so a window closed and opened again finds it
+// as it left it. A second setup would make a new decorations context on Wayland, whose
+// GTK plugin cannot set GTK up twice and says so (gtk_disable_setlocale).
+class Desktop {
+public:
+  // Throws, naming why, when no display can hold a window.
+  Desktop();
+  ~Desktop();
+  Desktop(const Desktop &) = delete;
+  Desktop &operator=(const Desktop &) = delete;
+
+  // What the display sent, taken while no window is open, so it never piles up.
+  void poll() const;
+};
+
 // A desktop window through GLFW. Only a view that draws opens one (V07).
 class Window {
 public:
-  // Maximized, size what restoring it gives. Throws, naming why, when no display can
-  // hold a window.
-  Window(const std::string &title, VkExtent2D size);
+  // Maximized, size what restoring it gives, on a desktop that outlives it. Throws,
+  // naming why, when the desktop holds no window.
+  Window(const Desktop &desktop, const std::string &title, VkExtent2D size);
   ~Window();
   Window(const Window &) = delete;
   Window &operator=(const Window &) = delete;

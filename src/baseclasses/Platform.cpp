@@ -690,12 +690,22 @@ Library &Library::operator=(Library &&other) noexcept {
   return *this;
 }
 
-// GLFW keeps process-wide state, so the one Window owns its init and termination.
-Window::Window(const std::string &title, VkExtent2D size) {
+Desktop::Desktop() {
   // GLFW then finds Vulkan through the loader vulpen links, not a second one.
   glfwInitVulkanLoader(vkGetInstanceProcAddr);
   if (!glfwInit())
     glfw_failed("glfwInit");
+}
+
+Desktop::~Desktop() {
+  glfwTerminate();
+}
+
+void Desktop::poll() const {
+  glfwPollEvents();
+}
+
+Window::Window(const Desktop &, const std::string &title, VkExtent2D size) {
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   // It fills the screen as it opens, as an editor does; size is what it is restored to.
   glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
@@ -707,10 +717,8 @@ Window::Window(const std::string &title, VkExtent2D size) {
                              title.c_str(),
                              nullptr,
                              nullptr);
-  if (!_window) {
-    glfwTerminate();
+  if (!_window)
     glfw_failed("glfwCreateWindow");
-  }
   glfwSetKeyCallback(_window, on_key);
   glfwSetCharCallback(_window, on_text);
   glfwSetCursorPosCallback(_window, on_pointer);
@@ -721,7 +729,6 @@ Window::Window(const std::string &title, VkExtent2D size) {
 
 Window::~Window() {
   glfwDestroyWindow(_window);
-  glfwTerminate();
 }
 
 bool Window::poll(WindowInput &input) const {
