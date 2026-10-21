@@ -39,10 +39,17 @@ __pycache__/
 !**/.vulpen/graph.ini
 
 # Each machine's own: docs/logs/ holds the session handoffs and the runs' logs, and its
-# .gitkeep keeps the folder; the plans and the reports are no part of how Vulpen works,
-# which docs/usage.md and docs/architecture/ say.
+# .gitkeep keeps the folder; the plans, the reports, the todo list and the usage guide
+# stay local too, as do the architecture's strategy, migration plan, recipe map and Archi
+# model, so docs/architecture/ shares the principles, requirements and include map.
 /docs/logs/*
 !/docs/logs/.gitkeep
 /docs/plans
 /docs/reports
 /docs/archive
+/docs/todo.md
+/docs/usage.md
+/docs/architecture/archimate/
+/docs/architecture/migration-and-implementation.md
+/docs/architecture/recipe-map.md
+/docs/architecture/strategy.md
