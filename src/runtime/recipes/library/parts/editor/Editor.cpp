@@ -28,8 +28,10 @@ bool image(const std::filesystem::path &path) {
   return std::ranges::find(image_endings, ending) != image_endings.end();
 }
 
-// Whether a file or a folder is there, as its folder lists it.
+// Whether a file or a folder is there, as its folder lists it; normal first, so ./ names
+// the folder it stands in, which lists no . in it.
 bool named(VP::FilePort &files, std::filesystem::path path) {
+  path = path.lexically_normal();
   if (path.filename().empty())
     path = path.parent_path();
   const std::vector<std::string> names = files.list(path.parent_path().string());
@@ -40,6 +42,7 @@ bool named(VP::FilePort &files, std::filesystem::path path) {
 
 // Whether a path names a folder, as its folder lists it with a / after its name.
 bool folder(VP::FilePort &files, std::filesystem::path path) {
+  path = path.lexically_normal();
   if (path.filename().empty())
     path = path.parent_path();
   const std::vector<std::string> names = files.list(path.parent_path().string());

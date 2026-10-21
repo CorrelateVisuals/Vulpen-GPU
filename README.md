@@ -2,6 +2,12 @@
 
 ![The Vulpen ide: a node's C++ in the editor, the project's nodes and connections in the graph, the triangle they draw in the Perform panel, and the lines typed in the terminal](docs/images/ide.png)
 
+<div align="center">
+<img src="docs/images/logos/vulkan.svg" alt="Vulkan" width="200" align="middle" />&nbsp;&nbsp;&nbsp;
+<img src="docs/images/logos/cplusplus.svg" alt="C++" width="58" align="middle" />&nbsp;&nbsp;&nbsp;
+<img src="docs/images/logos/cmake.svg" alt="CMake" width="58" align="middle" />
+</div>
+
 Vulpen is a fractal basis for anything that benefits from high performance computing or real-time visuals. C++ and GLSL are written side by side, without worrying about moving data from one to the other, and Vulpen attaches easily to existing projects for visual generation and parallel computation.
 
 ## The language: nodes and connections
@@ -23,9 +29,39 @@ A project is a view: one manifest, `view.vlp`, and a folder for each node. A nod
 
 `./run.sh --ide` opens the ide: an editor, the graph, the Perform panel with the project running in it, and a terminal, each a panel a drag of its tab moves. A press on a box opens its code in the editor, to change while the project runs; `f1` gives the project the whole window.
 
+![The triangle-files example in perform mode, filling the window](docs/images/perform.png)
+*Perform mode: the project presented in the whole window, as it would run on its own.*
+
+## The graph
+
+The graph shows a view's nodes and connections, a level at a time, or any folder `open` names, with what links its files, a layer each: flow, a connection; structure, a recipe a node uses; code, an include; build, a CMake file naming a file; docs, a document linking a file or a file citing an id the principles or requirements define; engine, what the engine carries from a node's C++ to its shaders. Zooming into a box goes inside it, and zooming out goes up a level. Here is Vulpen in its own graph, part by part:
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/graph-repository.png" alt="The repository's top in the graph" /><br /><sub>The repository</sub></td>
+<td width="50%"><img src="docs/images/graph-src.png" alt="The src folder in the graph" /><br /><sub><code>src/</code>: the baseclasses and the runtime, the libraries they build on, the tools and <code>main.cpp</code></sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/graph-baseclasses.png" alt="The baseclasses in the graph" /><br /><sub><code>src/baseclasses/</code>: the GPU layer, a library of its own</sub></td>
+<td><img src="docs/images/graph-runtime.png" alt="The runtime in the graph" /><br /><sub><code>src/runtime/</code>: the manifest, the views, the commands, the ports and live code, and the recipes</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/graph-library.png" alt="The library in the graph" /><br /><sub>The library: contracts, parts and components</sub></td>
+<td><img src="docs/images/graph-parts.png" alt="The library's parts in the graph" /><br /><sub>The parts, each one job's code</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/graph-components.png" alt="The library's components in the graph" /><br /><sub>The components, parts used together</sub></td>
+<td><img src="docs/images/graph-tools.png" alt="The tools in the graph" /><br /><sub><code>src/tools/</code>: the gates, the statistics, these pictures and the tests</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/graph-projects.png" alt="The example projects in the graph" /><br /><sub>The example projects</sub></td>
+<td><img src="docs/images/graph-cli.png" alt="The cli's nodes in the graph" /><br /><sub>The cli's nodes, with the snapshot the picture script adds by a command</sub></td>
+</tr>
+</table>
+
 The ide is a view too, made of the library's recipes as any project is, panels, splits, a text area, the graph and a terminal, so it shows in its own graph, and Vulpen is edited with Vulpen.
 
-![The ide's own graph: its recipes and the wires between them](docs/images/graph.png)
+![The ide's own graph: its recipes and the wires between them](docs/images/graph-ide.png)
 *The ide inside its own graph: each box a recipe of the library, each wire a connection.*
 
 ## The cli
@@ -55,10 +91,4 @@ ctest --preset debug                 # after a build; also release, asan, tsan, 
 src/tools/tests/nightly.sh           # every preset, the soaks and the long fuzz
 ```
 
-<sub>Every build takes the pictures above anew: [`src/tools/update-readme-images.py`](src/tools/update-readme-images.py) replays the commands that make each, and the [`snapshot`](src/runtime/recipes/library/parts/snapshot) part saves the ide's window, with no window open.</sub>
-
-<div align="center">
-<img src="docs/images/logos/vulkan.svg" alt="Vulkan" width="200" align="middle" />&nbsp;&nbsp;&nbsp;
-<img src="docs/images/logos/cplusplus.svg" alt="C++" width="58" align="middle" />&nbsp;&nbsp;&nbsp;
-<img src="docs/images/logos/cmake.svg" alt="CMake" width="58" align="middle" />
-</div>
+<sub>Every release build takes the pictures above anew: [`src/tools/update-readme-images.py`](src/tools/update-readme-images.py) replays the commands that make each, and the [`snapshot`](src/runtime/recipes/library/parts/snapshot) part saves the ide's window, with no window open.</sub>
