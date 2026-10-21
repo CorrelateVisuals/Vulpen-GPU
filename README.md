@@ -1,6 +1,39 @@
 # Vulpen
 
+![The Vulpen ide: a node's C++ in the editor, the project's nodes and connections in the graph, the triangle they draw in the Perform panel, and the lines typed in the terminal](docs/images/ide.png)
+
 Vulpen is a fractal basis for anything that benefits from high performance computing or real-time visuals. C++ and GLSL are written side by side, without worrying about moving data from one to the other, and Vulpen attaches easily to existing projects for visual generation and parallel computation.
+
+## The language: nodes and connections
+
+A project is a view: one manifest, `view.vlp`, and a folder for each node. A node is a C++ class, shaders, or both, and a connection carries a GPU buffer, an image or a C++ object from one node's port to the others. The graph is the manifest as it runs.
+
+![The manifest of the triangle-files example beside the graph it makes](docs/images/manifest.png)
+*[`projects/triangle-files`](projects/triangle-files): every file a node. `clock` hands the turn to `corners` as a C++ object, `corners` writes the corners for the GPU, `face` places them and `blend` colors the pixels between them. What two nodes share is a contract in `contracts/`, a GLSL struct or a C++ header.*
+
+- **C++ and GLSL meet by name.** A node's C++ asks for its shaders' values, buffers and images by the names the shaders give them, and the loader checks each against SPIR-V reflection before the first frame, so a mismatch fails at load, naming its cause.
+- **Barriers come from the graph.** Each node declares what it reads and writes, and Vulpen places the Vulkan barriers between passes.
+- **Data stays on the GPU** from node to node, until C++ reads it back.
+- **A small manifest language.** A few words, each with a closed set of values; a bigger recipe of the library uses smaller ones and connects them, never copying their code.
+
+![Triangle.cpp and Triangle.vert of the triangle-twin example in two editors side by side](docs/images/languages.png)
+*[`projects/triangle-twin`](projects/triangle-twin): the operator in C++ and the vertex shader in GLSL both include `shared/Triangle.h`, which holds the triangle's corners, colors and turn once, in the words the two languages share.*
+
+## The ide
+
+`./run.sh --ide` opens the ide: an editor, the graph, the Perform panel with the project running in it, and a terminal, each a panel a drag of its tab moves. A press on a box opens its code in the editor, to change while the project runs; `f1` gives the project the whole window.
+
+The ide is a view too, made of the library's recipes as any project is, panels, splits, a text area, the graph and a terminal, so it shows in its own graph, and Vulpen is edited with Vulpen.
+
+![The ide's own graph: its recipes and the wires between them](docs/images/graph.png)
+*The ide inside its own graph: each box a recipe of the library, each wire a connection.*
+
+## The cli
+
+`./run.sh --cli` runs the same command line at a terminal, with no window. Every action is a command with a text form, the ide's presses and drags included, so anything it does can be typed, run from a file with `--source`, or saved with `log save` and replayed to rebuild the same graph. Everything runs headless: batch compute, tests, scripts and agents need no display.
+
+![The terminal: help, then ls and info on a project](docs/images/cli.png)
+*`help` lists every command and what it does; `ls` shows a view as folders, and `info` a node's files, params and connections.*
 
 ## Run
 
@@ -21,3 +54,11 @@ Configures, builds and runs the `debug` preset, or `release` with `--release`; t
 ctest --preset debug                 # after a build; also release, asan, tsan, gpu-validation
 src/tools/tests/nightly.sh           # every preset, the soaks and the long fuzz
 ```
+
+<sub>Every build takes the pictures above anew: [`src/tools/update-readme-images.py`](src/tools/update-readme-images.py) replays the commands that make each, and the [`snapshot`](src/runtime/recipes/library/parts/snapshot) part saves the ide's window, with no window open.</sub>
+
+<div align="center">
+<img src="docs/images/logos/vulkan.svg" alt="Vulkan" width="200" align="middle" />&nbsp;&nbsp;&nbsp;
+<img src="docs/images/logos/cplusplus.svg" alt="C++" width="58" align="middle" />&nbsp;&nbsp;&nbsp;
+<img src="docs/images/logos/cmake.svg" alt="CMake" width="58" align="middle" />
+</div>

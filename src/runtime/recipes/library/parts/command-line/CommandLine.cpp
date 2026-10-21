@@ -533,7 +533,8 @@ class CommandLine final : public VP::Operator {
   std::string run(VP::Cook &frame, std::string_view line) {
     std::string answer = frame.commands().send(address(line));
     follow(frame);
-    if (_window && answer == clear_screen) {
+    // As the port answers it, a line, with the line break a reply ends with.
+    if (_window && answer.starts_with(clear_screen)) {
       clear();
       return {};
     }

@@ -89,7 +89,9 @@ target_include_directories(vulpen PRIVATE ${generated})
 # Gates run before the compile, so a broken rule fails the build before any object is
 # built; mutable-globals reads the objects, so it runs after the link (C13). Statistics run
 # after the link at every build, so docs/statistics/ never goes stale; only a release
-# build is timed, since debug timings say nothing about what ships.
+# build is timed, since debug timings say nothing about what ships. So do the README's
+# pictures, which the vulpen just built takes of the ide headless; a sanitizer build checks
+# the code rather than showing it, and takes none.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(tools ${PROJECT_SOURCE_DIR}/src/tools)
 add_custom_target(gates COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py ${CMAKE_BINARY_DIR}
@@ -107,6 +109,13 @@ add_custom_target(statistics ALL
           "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
   COMMAND_EXPAND_LISTS VERBATIM)
 add_dependencies(statistics vulpen)
+if(NOT VULPEN_SANITIZERS)
+  add_custom_target(images ALL
+    COMMAND ${Python3_EXECUTABLE} ${tools}/update-readme-images.py
+            --binary $<TARGET_FILE:vulpen>
+    VERBATIM)
+  add_dependencies(images vulpen)
+endif()
 
 # GLSL to SPIR-V at <out>/<name>.spv, as Shader loads it; the arguments after out are the
 # compiler's include flags. A driver may take invalid SPIR-V without a word, or crash on

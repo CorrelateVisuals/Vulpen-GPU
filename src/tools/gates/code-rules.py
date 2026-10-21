@@ -4,9 +4,8 @@
 - RC03: ownership is std::unique_ptr or by value, so no std::shared_ptr, and no naked new
   or delete;
 - RA01: OS APIs and OS conditionals live only in the platform files, so no other file
-  includes a header beyond the standard library, Vulkan, glm, VMA, stb_truetype and
-  stb_image, or
-  tests for an OS;
+  includes a header beyond the standard library, Vulkan, glm, VMA, stb_truetype,
+  stb_image and stb_image_write, or tests for an OS;
 - RA04: only the platform files write or move a file, so every save goes through
   Files::save, which writes a temp file and renames it over the old one. A run killed
   mid-save then leaves the old file or the new one; a kill rarely lands inside a small
@@ -36,7 +35,8 @@ PROJECTS = ROOT / "projects"  # built into vulpen as src/ is, in a release build
 VENDORED = SOURCE / "external-libraries"  # not our code, so not our rules
 PLATFORM = {"baseclasses/Platform.h", "baseclasses/Platform.cpp"}
 # What any file may include; the include map says which files do.
-LIBRARIES = ("vulkan/", "glm/", "vk_mem_alloc.h", "stb_truetype.h", "stb_image.h")
+LIBRARIES = ("vulkan/", "glm/", "vk_mem_alloc.h", "stb_truetype.h", "stb_image.h",
+             "stb_image_write.h")
 
 # Raw strings first: their text may hold quotes.
 LITERALS = re.compile(r'R"([^(\s]*)\(.*?\)\1"|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\''

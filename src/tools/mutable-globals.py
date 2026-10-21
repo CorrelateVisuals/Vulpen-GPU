@@ -46,6 +46,19 @@ ALLOWED = {
     "stbi__parse_png_file(stbi__png*, int, int)::invalid_chunk",
     "stbi__shiftsigned(unsigned int, int, int)::mul_table",
     "stbi__shiftsigned(unsigned int, int, int)::shift_table",
+    # stb_image_write.h, compiled into the snapshot part's Snapshot.cpp: its settings,
+    # which the part never changes, and its tables, which it never writes.
+    "stbi_write_png_compression_level",
+    "stbi_write_tga_with_rle",
+    "stbi_write_force_png_filter",
+    "stbi__flip_vertically_on_write",
+    "stbi_zlib_compress(unsigned char*, int, int*, int)::lengthc",
+    "stbi_zlib_compress(unsigned char*, int, int*, int)::lengtheb",
+    "stbi_zlib_compress(unsigned char*, int, int*, int)::distc",
+    "stbi_zlib_compress(unsigned char*, int, int*, int)::disteb",
+    "stbiw__crc32(unsigned char*, int)::crc_table",
+    "stbiw__encode_png_line(unsigned char*, int, int, int, int, int, int, signed char*)::mapping",
+    "stbiw__encode_png_line(unsigned char*, int, int, int, int, int, int, signed char*)::firstmap",
 }
 
 

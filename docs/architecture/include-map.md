@@ -69,3 +69,4 @@ A file of the library (`src/runtime/recipes/library/`) or of a view, under a fol
 | `<glm/*>` | GLSL's vectors and matrices in C++, name for name |
 | `<stb_truetype.h>` | the glyph atlas the `font` part bakes |
 | `<stb_image.h>` | the image files the `image-file` part decodes |
+| `<stb_image_write.h>` | the PNG files the `snapshot` part saves |

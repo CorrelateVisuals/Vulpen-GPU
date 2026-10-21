@@ -1,0 +1,14 @@
+# The snapshot part: one node whose operator is Snapshot; it saves its picture as a PNG
+# file, wait frames after its file param names one, so what the lines before it changed
+# has drawn. Its host connects an image to its picture: the window of a view it hosts, as
+# from = ide:, or the image a draw renders into, both at the frame's size, up to 1920 by
+# 1080 pixels, one an invocation.
+[manifest]
+version = 1
+
+[node "snapshot"]
+operator    = Snapshot
+file        = Snapshot.comp
+file        = Snapshot.cpp
+invocations = 2073600
+param       = wait=30
