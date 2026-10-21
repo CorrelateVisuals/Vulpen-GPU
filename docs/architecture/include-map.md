@@ -64,7 +64,7 @@ A file of the library (`src/runtime/recipes/library/`) or of a view, under a fol
 | --- | --- |
 | `runtime/Operator.h` | a node's behaviour and the general ports |
 | `runtime/View.h` | the graph, for a part that reads it |
-| `baseclasses/*.h` `runtime/*.h` | the engine by hand, within the [runtime boundary](../usage.md#15-what-a-nodes-c-can-reach) |
+| `baseclasses/*.h` `runtime/*.h` | the engine by hand, within the runtime boundary |
 | `baseclasses/GpuLayout.glsl` | the GPU layout every shader declares (RV02) |
 | `<glm/*>` | GLSL's vectors and matrices in C++, name for name |
 | `<stb_truetype.h>` | the glyph atlas the `font` part bakes |

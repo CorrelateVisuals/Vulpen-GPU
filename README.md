@@ -9,15 +9,11 @@ Vulpen is a fractal basis for anything that benefits from high performance compu
 .\run.ps1 [--release] [--cli | --ide | --<project> | view.vlp] [arguments]    # Windows
 ```
 
-Configures, builds and runs the `debug` preset, or `release` with `--release`; the binary lands in `out/build/<preset>/`. `--cli` runs the cli alone, a prompt at the terminal; `--ide` runs the cli hosting the ide, a window; `--<project>` runs a project alone, of those the cli makes in `projects/`, as the example projects `wave` and `triangle` ([usage](docs/usage.md#12-the-cli)); and with no view named the scripts run the one their line `default=--ide` names.
+Configures, builds and runs the `debug` preset, or `release` with `--release`; the binary lands in `out/build/<preset>/`. `--cli` runs the cli alone, a prompt at the terminal; `--ide` runs the cli hosting the ide, a window; `--<project>` runs a project alone, of those the cli makes in `projects/`, as the example projects `wave` and `triangle`; and with no view named the scripts run the one their line `default=--ide` names.
 
 `--log error|warn|info|debug` sets how much the run says, the build included. The default, `warn`, prints only problems, and of a build that succeeds only its newest line, in place while it builds and gone once it is done; `debug` prints the build's output too. [`src/baseclasses/Log.h`](src/baseclasses/Log.h) lists what each level adds and what each `{tag}` marks, and a node's `log` word in the manifest sets the level of the lines about that node. Each run keeps what it printed in `docs/logs/`, which git ignores, the newest 20 runs, so a run on another machine leaves behind what went wrong, a failed build's output included.
 
-`./run.sh --wave --log info` runs the example project `wave` headless; `./run.sh --triangle` opens a window and draws the classic triangle, whose corners and colors come from C++, and `out/build/debug/baseclasses/examples/triangle/triangle` draws one with the baseclasses alone, without the runtime. In the `debug` preset, save any C++ or GLSL of a view while it runs and the running view swaps in the change; see [live code](docs/usage.md#6-live-code).
-
-## Use
-
-[docs/usage.md](docs/usage.md) shows how each part works today by example: running a view, the manifest, nodes and their folders, commands, recipes, the CLI, child views and the library.
+`./run.sh --wave --log info` runs the example project `wave` headless; `./run.sh --triangle` opens a window and draws the classic triangle, whose corners and colors come from C++, and `out/build/debug/baseclasses/examples/triangle/triangle` draws one with the baseclasses alone, without the runtime. In the `debug` preset, save any C++ or GLSL of a view while it runs and the running view swaps in the change.
 
 ## Test
 
@@ -25,5 +21,3 @@ Configures, builds and runs the `debug` preset, or `release` with `--release`; t
 ctest --preset debug                 # after a build; also release, asan, tsan, gpu-validation
 src/tools/tests/nightly.sh           # every preset, the soaks and the long fuzz
 ```
-
-[Tests](docs/usage.md#17-tests) says what each test proves and what each preset runs.

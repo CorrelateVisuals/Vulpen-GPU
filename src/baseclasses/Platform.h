@@ -58,8 +58,8 @@ public:
 
 private:
   void *_handle = nullptr;
-  // Windows locks a loaded DLL, and the build must replace the file (live code's rule 7
-  // in docs/usage.md), so there the OS maps this copy of it instead; else empty.
+  // Windows locks a loaded DLL, and the build must replace the file, so there the OS
+  // maps this copy of it instead; else empty.
   std::filesystem::path _copy;
 };
 

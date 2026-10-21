@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Every build preset and its tests, then the soaks and the long fuzz
-# (docs/usage.md, section 17). Runs everything, then exits 1 if anything failed.
+# Every build preset and its tests, then the soaks and the long fuzz. Runs everything,
+# then exits 1 if anything failed.
 set -uo pipefail
 
 cd "$(dirname "$0")/../../.."

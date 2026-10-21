@@ -26,11 +26,11 @@
 //
 // A node's C++ gets names in and handles out, never an object that owns the GPU, so a
 // swap never leaves it holding one that is gone. Between C++ nodes, objects pass by
-// reference (docs/usage.md, section 15).
+// reference.
 
 namespace VP {
 
-// The engine, which a node may include by hand (docs/usage.md, section 15); declared
+// The engine, which a node may include by hand; declared
 // here only, so a node that does not use it compiles as fast as one that never could.
 class Engine;
 
@@ -161,7 +161,7 @@ using Object = std::unique_ptr<void, void (*)(void *)>;
 
 // What a connection between C++ nodes carries: the type, which both ends must name
 // alike, and how to make one in the code of the module that asks, so the object's
-// destructor goes with that module (the runtime boundary's rule 2 in docs/usage.md).
+// destructor goes with that module.
 struct Kind {
   const char *type = nullptr; // as typeid names it
   std::size_t size = 0;
@@ -408,8 +408,7 @@ public:
   // own view, whichever view the line that ran its command addressed.
   virtual std::string view_name() const = 0;
   // The engine, for a node that includes its headers by hand: what the node makes with
-  // it, it destroys, and nothing it borrows outlives the next bind (the runtime
-  // boundary in docs/usage.md).
+  // it, it destroys, and nothing it borrows outlives the next bind.
   virtual const Engine &engine() const = 0;
 
 protected:
@@ -613,8 +612,7 @@ private:
 
 // The one exported symbol of a folder's C++, which builds as one module (RV08), so one
 // file of the folder registers its operators. The build names and exports it, so the
-// same source loads as a dev module or links into a release binary
-// (docs/usage.md, section 6).
+// same source loads as a dev module or links into a release binary.
 #define VP_OPERATORS(registry)                                                           \
   extern "C" VP_MODULE_EXPORT void VP_MODULE_ENTRY(VP::Registry &registry)
 

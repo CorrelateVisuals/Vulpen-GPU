@@ -1,4 +1,4 @@
-# The tests (docs/usage.md, section 17), all in this folder: the Python that runs vulpen and
+# The tests, all in this folder: the Python that runs vulpen and
 # judges it (harness.py and one script per test), the barrier test's C++, the golden, the
 # sanitizer suppressions and layer settings the presets name, the fixture view mistakes/,
 # and nightly.sh. Included by the top-level CMakeLists.txt once vulpen and every view are
