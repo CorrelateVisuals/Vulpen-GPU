@@ -11,7 +11,8 @@
   <a href="#the-language">The language</a> ·
   <a href="#the-ide">The ide</a> ·
   <a href="#the-cli">The cli</a> ·
-  <a href="#build-and-test">Build and test</a>
+  <a href="#build-and-test">Build and test</a> ·
+  <a href="#license">License</a>
 </p>
 
 ![The Vulpen ide: a node's C++ on the left, the project's graph and the triangle it draws on the right](docs/images/hero.png)
@@ -47,30 +48,40 @@
 
 ## Quick start
 
+On Linux:
+
 ```bash
 git clone https://github.com/CorrelateVisuals/Vulpen.git
 cd Vulpen
 ./run.sh                 # builds the debug preset and opens the ide
 ```
 
+On Windows, in PowerShell:
+
+```powershell
+git clone https://github.com/CorrelateVisuals/Vulpen.git
+cd Vulpen
+.\run.ps1                # builds the debug preset and opens the ide
+```
+
 In the ide's terminal, type `view load triangle-files`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window.
 
 > [!NOTE]
-> Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address. On Windows, run `.\run.ps1` from PowerShell.
+> Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address.
 
 <details>
 <summary><b>Prerequisites</b></summary>
 
-- CMake 3.24 or newer, a C++20 compiler (GCC or Clang; MSVC on Windows) and Python 3
-- The Vulkan headers and loader, `glslangValidator` and `spirv-val`: the [LunarG Vulkan SDK](https://vulkan.lunarg.com/), or your distribution's packages
-- On Linux, the X11 and Wayland headers that the bundled GLFW builds against
+On every system: CMake 3.24 or newer, Python 3, and the Vulkan headers and loader with `glslangValidator` and `spirv-val`, as the [LunarG Vulkan SDK](https://vulkan.lunarg.com/) installs them.
 
-On Debian and Ubuntu:
+**Linux:** GCC or Clang with C++20, and the X11 and Wayland headers the bundled GLFW builds against. On Debian and Ubuntu, the distribution's packages hold all of it:
 
 ```bash
 sudo apt install build-essential cmake python3 libvulkan-dev glslang-tools spirv-tools \
                  libwayland-dev libxkbcommon-dev xorg-dev
 ```
+
+**Windows:** Visual Studio 2022, or its Build Tools, with the C++ workload, and the LunarG Vulkan SDK; CMake and Python on the `PATH`. If PowerShell refuses to run `run.ps1`, allow local scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
 GLFW, GLM, stb, tinyobjloader and the Vulkan Memory Allocator come with the repository, pinned in [`src/external-libraries/`](src/external-libraries) ([licenses](docs/licenses/README.md)).
 
@@ -90,10 +101,11 @@ A project is a view: one manifest, `view.vlp`, and a folder for each node. A nod
 The graph opens any folder the same way. Here is Vulpen in its own graph, from the repository's top down to the part that draws the graph:
 
 ![A dive through Vulpen in its own graph: the repository, src, the runtime, the recipes, the library, its parts, the graph part, and the ide inside its own graph](docs/images/dive.png)
+*Animated, a level every two seconds: the repository, `src/`, the runtime, the recipes, the library, its parts and the part that draws the graph, then the ide inside its own graph.*
 
 ## The ide
 
-`./run.sh` opens the ide: an editor, the graph, the Perform panel with the project running in it, and a terminal. Each is a panel that a drag of its tab moves. Double-click a file in the graph to open it, and change it while the project runs.
+`./run.sh`, or `.\run.ps1` on Windows, opens the ide: an editor, the graph, the Perform panel with the project running in it, and a terminal. Each is a panel that a drag of its tab moves. Double-click a file in the graph to open it, and change it while the project runs.
 
 <details>
 <summary><b>Perform mode, the graph of a whole repository, and the ide inside its own graph</b></summary>
@@ -111,26 +123,30 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 
 ## The cli
 
-`./run.sh --cli` runs the same command line at a terminal, with no window. Batch compute, tests, scripts and agents need no display, and a session saved with `log save` replays to the same graph.
+`./run.sh --cli`, or `.\run.ps1 --cli`, runs the same command line at a terminal, with no window. Batch compute, tests, scripts and agents need no display, and a session saved with `log save` replays to the same graph.
 
 ![The terminal: help, then ls and info on a project](docs/images/cli.png)
 
 ## Build and test
 
-| Command | What it does |
-| --- | --- |
-| `./run.sh` | builds and runs the cli hosting the ide (`--ide`, the default) |
-| `./run.sh --cli` | the command line alone, at the terminal |
-| `./run.sh --triangle` | one project of [`projects/`](projects) alone, in its own window |
-| `./run.sh --wave --log info` | headless compute: `wave` fills a buffer and `probe` prints it |
-| `./run.sh --release …` | the `release` preset, in place of `debug` |
-| `ctest --preset debug` | the tests, after a build; also `release`, `asan`, `tsan`, `gpu-validation` |
-| `src/tools/tests/nightly.sh` | every preset, the soak runs and the long fuzz |
+| Linux | Windows | What it does |
+| --- | --- | --- |
+| `./run.sh` | `.\run.ps1` | builds and runs the cli hosting the ide (`--ide`, the default) |
+| `./run.sh --cli` | `.\run.ps1 --cli` | the command line alone, at the terminal |
+| `./run.sh --triangle` | `.\run.ps1 --triangle` | one project of [`projects/`](projects) alone, in its own window |
+| `./run.sh --wave --log info` | `.\run.ps1 --wave --log info` | headless compute: `wave` fills a buffer and `probe` prints it |
+| `./run.sh --release …` | `.\run.ps1 --release …` | the `release` preset, in place of `debug` |
+| `ctest --preset debug` | `ctest --preset debug` | the tests, after a build; also `release` and `gpu-validation`, and on Linux `asan` and `tsan` |
+| `src/tools/tests/nightly.sh` | | every preset, the soak runs and the long fuzz |
 
 `--log error|warn|info|debug` sets how much a run says; each run keeps its log in `docs/logs/`, the newest 20.
 
 ## Documentation
 
 [Principles](docs/architecture/principles.md) and [requirements](docs/architecture/requirements.md) decide every design; the [include map](docs/architecture/include-map.md) is the engine on one page. [Statistics](docs/statistics) keep the line counts, start-up times and soak results.
+
+## License
+
+Vulpen is licensed under the [Mozilla Public License 2.0](LICENSE): use it in any project, open or closed source, and when you distribute changes to Vulpen's own files, share those files under the same license. The libraries in [`src/external-libraries/`](src/external-libraries) keep their own licenses, listed in [`docs/licenses/`](docs/licenses/README.md), and the logos above belong to their owners.
 
 <sub>Every release build takes these pictures anew: [`src/tools/update-readme-images.py`](src/tools/update-readme-images.py) replays the commands that make each, and the [`snapshot`](src/runtime/recipes/library/parts/snapshot) part saves the ide's window, with no window open.</sub>
