@@ -1,19 +1,17 @@
 # Vulpen
-
-![The Vulpen ide: a node's C++ in the editor, the project's nodes and connections in the graph, the triangle they draw in the Perform panel, and the lines typed in the terminal](docs/images/ide.png)
-
-
-
-Vulpen is a fractal basis for anything that benefits from high performance computing or real-time visuals. C++ and GLSL are written side by side, without worrying about moving data from one to the other, and Vulpen attaches easily to existing projects for visual generation and parallel computation.
 <div align="center">
 <img src="docs/images/logos/vulkan.svg" alt="Vulkan" width="140" align="middle" />
 &nbsp;&nbsp;&nbsp;&nbsp;
-<img src="docs/images/logos/cplusplus.svg" alt="C++" width="46" align="middle" />
-&nbsp;&nbsp;&nbsp;&nbsp;
 <img src="docs/images/logos/cmake.svg" alt="CMake" width="46"  align="middle" />
 &nbsp;&nbsp;&nbsp;&nbsp;
-<img src="docs/images/logos/GLSL_Logo_(Unofficial).svg" alt="GLSL" width="80" align="middle" />
+<img src="docs/images/logos/cplusplus.svg" alt="C++" width="46" align="middle" />
+&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="docs/images/logos/GLSL_Logo_(Unofficial).svg" alt="GLSL" width="70" align="middle" />
 </div>
+
+![The Vulpen ide: a node's C++ in the editor, the project's nodes and connections in the graph, the triangle they draw in the Perform panel, and the lines typed in the terminal](docs/images/ide.png)
+
+Vulpen is a fractal basis for anything that benefits from high performance computing or real-time visuals. C++ and GLSL are written side by side, without worrying about moving data from one to the other, and Vulpen attaches easily to existing projects for visual generation and parallel computation.
 
 ## The language: nodes and connections
 
