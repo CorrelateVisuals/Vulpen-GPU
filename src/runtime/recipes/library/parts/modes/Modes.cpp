@@ -83,8 +83,7 @@ std::string_view project_of(const Find &view_of,
 // ends the run, once the part in focus let go of its selection and of the focus. It hands
 // on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
 // Perform panel's own button, a switch of two whose mode in force is on, and past a
-// divider gpu, which makes the next launch prefer the other kind of GPU (gpu toggle), as
-// the POC's menubar cells did.
+// divider gpu, which makes the next launch prefer the other kind of GPU (gpu toggle).
 class Modes final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string mode = node.param<std::string>("mode");

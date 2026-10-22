@@ -50,9 +50,9 @@ param  = shows=ide.perform-panel
 param  = switch=ide.perform
 
 # The window's top: a button a panel, lit while it shows, whose press hides it or brings
-# it back, then the run's, edit, perform and gpu, as the POC's menubar cells, a panel's
-# tabs; it hands the rest to the dock, past a seam, the divider the docking part draws,
-# which a drag hides the menubar by and shows it again.
+# it back, then the run's, edit, perform and gpu, as a panel's tabs; it hands the rest to
+# the dock, past a seam, the divider the docking part draws, which a drag hides the
+# menubar by and shows it again.
 [node "ide.menubar"]
 recipe = panel
 param  = bar.seam=yes

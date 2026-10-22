@@ -18,7 +18,7 @@ recipe = menus
 recipe = list
 param  = drop=below
 
-# The pointer on a name opens its menu, as the POC's popup followed it.
+# The pointer on a name opens its menu, so the open menu follows it along the names.
 [node "menu.names-hit"]
 recipe = hit
 param  = hover=yes

@@ -62,8 +62,8 @@ constexpr float corner_reach = 12.0f;
 constexpr float corner_out = 6.0f;
 constexpr float corner_arm = 12.0f;
 constexpr float corner_width = 2.0f;
-// Zoomed in this near, the graph shows the inside of the box under the pointer, as the
-// POC did, however many boxes home made room for, so a box is gone into as close at
+// Zoomed in this near, the graph shows the inside of the box under the pointer, however
+// many boxes home made room for, so a box is gone into as close at
 // every level; zoomed out to this share of as near as home is, as far as the wheel goes
 // here, a level up.
 constexpr float enter_zoom = 3.0f;

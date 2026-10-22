@@ -520,8 +520,8 @@ std::uint32_t file_role(std::string_view name) {
   return found == file_roles.end() ? VP_VIEW::role("file") : found->second;
 }
 
-// The files of the node or the folder whose inside shows, a box each, as the POC showed
-// them, so a relation between two shows as a curve, a press on the name opening it; but a
+// The files of the node or the folder whose inside shows, a box each, so a relation
+// between two shows as a curve, a press on the name opening it; but a
 // header and its sources, which include one another, one box named by their stem, a row
 // a file, the header first. A box's name is its node's and its file's joined by /, the
 // header's for its sources too, which no node's name holds.

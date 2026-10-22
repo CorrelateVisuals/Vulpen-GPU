@@ -200,8 +200,7 @@ disagreements(const Field &cpp, const Field &glsl, std::string_view verb) {
 }
 
 // How far a smoothed time moves toward each frame's, so it follows over about 0.9 s at 60
-// frames a second, as the POC's did: slow enough to read, quick enough to show a change
-// while one looks.
+// frames a second: slow enough to read, quick enough to show a change while one looks.
 inline constexpr float smoothing = 1.0f / 54.0f;
 
 // A frame's time, the last, and the smoothed one moved toward it, or set to it, the

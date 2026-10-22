@@ -73,7 +73,7 @@ struct Under {
 
 // The graph of the current view, as the terminals' lines go to it, which view switch
 // moves and a second press on a view's box moves into it, as the view runs, each recipe a
-// node uses unfolded, a level at a time, as the POC showed it: the nodes at the top and
+// node uses unfolded, a level at a time: the nodes at the top and
 // the views the view hosts, or the inside of the node its inside param names, the boxes of
 // the nodes inside it, as at the top, the tab naming the node, and what lies outside at
 // either side, where connections reach in and out, the node's own ports among them. A box a node, with its name, its ports, those
@@ -125,7 +125,7 @@ struct Under {
 // nodes and the views, as
 // node remove and view close do, and takes keys from the keys part while it has the
 // focus, which a press in its area gives it. Its own shaders draw the ground, lines that
-// move and zoom with the graph over the whole area, as the POC's grid did; it writes
+// move and zoom with the graph over the whole area; it writes
 // Rects, Labels and Curves for the parts
 // that draw over them, and only what lies in its area: a box cut at its edge, and a row
 // of text with the area as its room, which glyphs cuts at the edge; a curve goes whole,

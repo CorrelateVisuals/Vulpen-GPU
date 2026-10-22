@@ -84,7 +84,7 @@ std::string joined(const std::vector<std::string> &names) {
 }
 
 // The window hands its input to the port as the input command does (V07); neither goes
-// through the log, as the lead chose on 2026-10-06.
+// through the log, as a replay rebuilds the graph, not the input that drove it.
 class Feed final : public WindowInput {
 public:
   explicit Feed(Ports &ports) : _ports(ports) {}
@@ -140,8 +140,7 @@ private:
 // The kind of GPU the launches of a view take first, as a person chooses for the
 // machine, kept in .vulpen/gpu.ini beside the manifest vulpen starts with and read before
 // the engine picks its device. Vulkan cannot move a running device, so gpu toggle records
-// the choice for the next launch and says so, as the POC's GPU cell did, rather than seem
-// to switch.
+// the choice for the next launch and says so, rather than seem to switch.
 class Preference final : public CommandHandler {
 public:
   Preference(Commands &commands,

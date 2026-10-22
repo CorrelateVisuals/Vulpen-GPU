@@ -43,8 +43,8 @@ public:
   // An event for the next frame, from the window or the input command; the pointer's
   // moves in a row keep only the last.
   void add(Event event);
-  // Registers the input command, whose events the log never keeps, as the lead chose on
-  // 2026-10-06: a replay rebuilds the graph, not the input that drove it.
+  // Registers the input command, whose events the log never keeps: a replay rebuilds the
+  // graph, not the input that drove it.
   void listen(Commands &commands);
   // The window whose clipboard copy and paste use while it is open; null once it closes.
   void attach(const Window *window);

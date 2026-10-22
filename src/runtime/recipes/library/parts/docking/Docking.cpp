@@ -281,7 +281,7 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // onto another panel sends it, the side the edge of that panel the pointer is nearest,
 // or the middle well inside it. It hides a panel and shows it again, as its dock's ratio
 // gives its half no room and back, and hands on a button a panel, lit while it shows,
-// whose press hides or shows it, as the POC's menubar cells did. It finds where each
+// whose press hides or shows it. It finds where each
 // panel and its strip show as the splits and the bars lay them out, from the Rect its
 // area gives, which its host also hands the outermost dock, a seam being dragged too, as
 // its split follows it, and while a drag goes on it frames where a drop would put the
