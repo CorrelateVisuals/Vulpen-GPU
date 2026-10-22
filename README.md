@@ -1,97 +1,136 @@
-# Vulpen
-<div align="center">
-<img src="docs/images/logos/vulkan.svg" alt="Vulkan" width="140" align="middle" />
-&nbsp;&nbsp;&nbsp;&nbsp;
-<img src="docs/images/logos/cmake.svg" alt="CMake" width="46"  align="middle" />
-&nbsp;&nbsp;&nbsp;&nbsp;
-<img src="docs/images/logos/cplusplus.svg" alt="C++" width="46" align="middle" />
-&nbsp;&nbsp;&nbsp;&nbsp;
-<img src="docs/images/logos/GLSL_Logo_(Unofficial).svg" alt="GLSL" width="70" align="middle" />
-</div>
+<h1 align="center">Vulpen</h1>
 
-![The Vulpen ide: a node's C++ in the editor, the project's nodes and connections in the graph, the triangle they draw in the Perform panel, and the lines typed in the terminal](docs/images/ide.png)
+<p align="center">
+  <b>Write C++ and GLSL side by side. Wire them as a graph. Change them while they run.</b><br />
+  A Vulkan engine for real-time visuals and GPU compute, whose programs are nodes and connections.
+</p>
 
-Vulpen is a fractal basis for anything that benefits from high performance computing or real-time visuals. C++ and GLSL are written side by side, without worrying about moving data from one to the other, and Vulpen attaches easily to existing projects for visual generation and parallel computation.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#what-you-get">What you get</a> ·
+  <a href="#the-language">The language</a> ·
+  <a href="#the-ide">The ide</a> ·
+  <a href="#the-cli">The cli</a> ·
+  <a href="#build-and-test">Build and test</a>
+</p>
 
-## The language: nodes and connections
+![The Vulpen ide: a node's C++ on the left, the project's graph and the triangle it draws on the right](docs/images/hero.png)
 
-A project is a view: one manifest, `view.vlp`, and a folder for each node. A node is a C++ class, shaders, or both, and a connection carries a GPU buffer, an image or a C++ object from one node's port to the others. The graph is the manifest as it runs.
+<p align="center">
+  <img src="docs/images/logos/vulkan.svg" alt="Vulkan" height="34" align="middle" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/logos/cplusplus.svg" alt="C++" height="34" align="middle" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/logos/GLSL_Logo_(Unofficial).svg" alt="GLSL" height="34" align="middle" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/logos/cmake.svg" alt="CMake" height="34" align="middle" />
+</p>
 
-![The manifest of the triangle-files example beside the graph it makes](docs/images/manifest.png)
-*[`projects/triangle-files`](projects/triangle-files): every file a node. `clock` hands the turn to `corners` as a C++ object, `corners` writes the corners for the GPU, `face` places them and `blend` colors the pixels between them. What two nodes share is a contract in `contracts/`, a GLSL struct or a C++ header.*
-
-- **C++ and GLSL meet by name.** A node's C++ asks for its shaders' values, buffers and images by the names the shaders give them, and the loader checks each against SPIR-V reflection before the first frame, so a mismatch fails at load, naming its cause.
-- **Barriers come from the graph.** Each node declares what it reads and writes, and Vulpen places the Vulkan barriers between passes.
-- **Data stays on the GPU** from node to node, until C++ reads it back.
-- **A small manifest language.** A few words, each with a closed set of values; a bigger recipe of the library uses smaller ones and connects them, never copying their code.
-
-![Triangle.cpp and Triangle.vert of the triangle-twin example in two editors side by side](docs/images/languages.png)
-*[`projects/triangle-twin`](projects/triangle-twin): the operator in C++ and the vertex shader in GLSL both include `shared/Triangle.h`, which holds the triangle's corners, colors and turn once, in the words the two languages share.*
-
-## The ide
-
-`./run.sh --ide` opens the ide: an editor, the graph, the Perform panel with the project running in it, and a terminal, each a panel a drag of its tab moves. A press on a box opens its code in the editor, to change while the project runs; `f1` gives the project the whole window.
-
-![The triangle-files example in perform mode, filling the window](docs/images/perform.png)
-*Perform mode: the project presented in the whole window, as it would run on its own.*
-
-## The graph
-
-The graph shows a view's nodes and connections, a level at a time, or any folder `open` names, with what links its files, a layer each: flow, a connection; structure, a recipe a node uses; code, an include; build, a CMake file naming a file; docs, a document linking a file or a file citing an id the principles or requirements define; engine, what the engine carries from a node's C++ to its shaders. Zooming into a box goes inside it, and zooming out goes up a level. Here is Vulpen in its own graph, part by part:
+## What you get
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/graph-repository.png" alt="The repository's top in the graph" /><br /><sub>The repository</sub></td>
-<td width="50%"><img src="docs/images/graph-src.png" alt="The src folder in the graph" /><br /><sub><code>src/</code>: the baseclasses and the runtime, the libraries they build on, the tools and <code>main.cpp</code></sub></td>
-</tr>
-<tr>
-<td><img src="docs/images/graph-baseclasses.png" alt="The baseclasses in the graph" /><br /><sub><code>src/baseclasses/</code>: the GPU layer, a library of its own</sub></td>
-<td><img src="docs/images/graph-runtime.png" alt="The runtime in the graph" /><br /><sub><code>src/runtime/</code>: the manifest, the views, the commands, the ports and live code, and the recipes</sub></td>
-</tr>
-<tr>
-<td><img src="docs/images/graph-library.png" alt="The library in the graph" /><br /><sub>The library: contracts, parts and components</sub></td>
-<td><img src="docs/images/graph-parts.png" alt="The library's parts in the graph" /><br /><sub>The parts, each one job's code</sub></td>
-</tr>
-<tr>
-<td><img src="docs/images/graph-components.png" alt="The library's components in the graph" /><br /><sub>The components, parts used together</sub></td>
-<td><img src="docs/images/graph-tools.png" alt="The tools in the graph" /><br /><sub><code>src/tools/</code>: the gates, the statistics, these pictures and the tests</sub></td>
-</tr>
-<tr>
-<td><img src="docs/images/graph-projects.png" alt="The example projects in the graph" /><br /><sub>The example projects</sub></td>
-<td><img src="docs/images/graph-cli.png" alt="The cli's nodes in the graph" /><br /><sub>The cli's nodes, with the snapshot the picture script adds by a command</sub></td>
+<td width="33%" valign="top">
+<img src="docs/images/tile-graph.png" alt="The graph of the triangle-files example: clock, corners, face and blend" /><br />
+<b>Programs are graphs.</b> A small manifest names the nodes and the connections between them. The graph is that manifest as it runs, and Vulpen places every Vulkan barrier from it.
+</td>
+<td width="33%" valign="top">
+<img src="docs/images/tile-code.png" alt="Face.vert, a vertex shader of the triangle-files example" /><br />
+<b>C++ and GLSL meet by name.</b> A node's C++ asks for its shaders' values, buffers and images by the names the shaders give them, checked against SPIR-V reflection before the first frame.
+</td>
+<td width="33%" valign="top">
+<img src="docs/images/tile-terminal.png" alt="The terminal: ls and info face on the triangle-files example" /><br />
+<b>Every action is a command.</b> The ide's presses and drags included: anything it does can be typed, scripted with <code>--source</code>, or replayed from a log, with no window at all.
+</td>
 </tr>
 </table>
 
-The ide is a view too, made of the library's recipes as any project is, panels, splits, a text area, the graph and a terminal, so it shows in its own graph, and Vulpen is edited with Vulpen.
+## Quick start
+
+```bash
+git clone https://github.com/CorrelateVisuals/Vulpen.git
+cd Vulpen
+./run.sh                 # builds the debug preset and opens the ide
+```
+
+In the ide's terminal, type `view load triangle-files`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window.
+
+> [!NOTE]
+> Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address. On Windows, run `.\run.ps1` from PowerShell.
+
+<details>
+<summary><b>Prerequisites</b></summary>
+
+- CMake 3.24 or newer, a C++20 compiler (GCC or Clang; MSVC on Windows) and Python 3
+- The Vulkan headers and loader, `glslangValidator` and `spirv-val`: the [LunarG Vulkan SDK](https://vulkan.lunarg.com/), or your distribution's packages
+- On Linux, the X11 and Wayland headers that the bundled GLFW builds against
+
+On Debian and Ubuntu:
+
+```bash
+sudo apt install build-essential cmake python3 libvulkan-dev glslang-tools spirv-tools \
+                 libwayland-dev libxkbcommon-dev xorg-dev
+```
+
+GLFW, GLM, stb, tinyobjloader and the Vulkan Memory Allocator come with the repository, pinned in [`src/external-libraries/`](src/external-libraries) ([licenses](docs/licenses/README.md)).
+
+</details>
+
+## The language
+
+A project is a view: one manifest, `view.vlp`, and a folder for each node. A node is a C++ class, shaders, or both, and a connection carries a GPU buffer, an image or a C++ object from one node's port to the others.
+
+![The manifest of the triangle-files example beside the graph it makes](docs/images/manifest.png)
+
+- **Barriers come from the graph.** Each node declares what it reads and writes, and Vulpen places the Vulkan barriers between passes.
+- **Data stays on the GPU** from node to node, until C++ reads it back.
+- **Contracts, not copies.** What two nodes share is a contract in `contracts/`: a GLSL struct, or a C++ header both languages read.
+- **A small, closed manifest language.** A few words, each with a closed set of values; a bigger recipe of the library uses smaller ones and connects them, never copying their code.
+
+The graph opens any folder the same way. Here is Vulpen in its own graph, from the repository's top down to the part that draws the graph:
+
+![A dive through Vulpen in its own graph: the repository, src, the runtime, the recipes, the library, its parts, the graph part, and the ide inside its own graph](docs/images/dive.png)
+
+## The ide
+
+`./run.sh` opens the ide: an editor, the graph, the Perform panel with the project running in it, and a terminal. Each is a panel that a drag of its tab moves. Double-click a file in the graph to open it, and change it while the project runs.
+
+<details>
+<summary><b>Perform mode, the graph of a whole repository, and the ide inside its own graph</b></summary>
+
+![The triangle-files example in perform mode, filling the window](docs/images/perform.png)
+*Perform mode, <kbd>F1</kbd>: the project in the whole window, as it would run on its own.*
+
+![The repository's top in the graph, its folders and the relations between them](docs/images/graph-repository.png)
+*`open ./` shows any folder in the graph, with what links its files, a layer each: flow, structure, code, build, docs and engine.*
 
 ![The ide's own graph: its recipes and the wires between them](docs/images/graph-ide.png)
-*The ide inside its own graph: each box a recipe of the library, each wire a connection.*
+*The ide is a view too, made of the library's recipes, so Vulpen is edited with Vulpen.*
+
+</details>
 
 ## The cli
 
-`./run.sh --cli` runs the same command line at a terminal, with no window. Every action is a command with a text form, the ide's presses and drags included, so anything it does can be typed, run from a file with `--source`, or saved with `log save` and replayed to rebuild the same graph. Everything runs headless: batch compute, tests, scripts and agents need no display.
+`./run.sh --cli` runs the same command line at a terminal, with no window. Batch compute, tests, scripts and agents need no display, and a session saved with `log save` replays to the same graph.
 
 ![The terminal: help, then ls and info on a project](docs/images/cli.png)
-*`help` lists every command and what it does; `ls` shows a view as folders, and `info` a node's files, params and connections.*
 
-## Run
+## Build and test
 
-```bash
-./run.sh [--release] [--cli | --ide | --<project> | view.vlp] [arguments]     # Linux
-.\run.ps1 [--release] [--cli | --ide | --<project> | view.vlp] [arguments]    # Windows
-```
+| Command | What it does |
+| --- | --- |
+| `./run.sh` | builds and runs the cli hosting the ide (`--ide`, the default) |
+| `./run.sh --cli` | the command line alone, at the terminal |
+| `./run.sh --triangle` | one project of [`projects/`](projects) alone, in its own window |
+| `./run.sh --wave --log info` | headless compute: `wave` fills a buffer and `probe` prints it |
+| `./run.sh --release …` | the `release` preset, in place of `debug` |
+| `ctest --preset debug` | the tests, after a build; also `release`, `asan`, `tsan`, `gpu-validation` |
+| `src/tools/tests/nightly.sh` | every preset, the soak runs and the long fuzz |
 
-Configures, builds and runs the `debug` preset, or `release` with `--release`; the binary lands in `out/build/<preset>/`. `--cli` runs the cli alone, a prompt at the terminal; `--ide` runs the cli hosting the ide, a window; `--<project>` runs a project alone, of those the cli makes in `projects/`, as the example projects `wave` and `triangle`; and with no view named the scripts run the one their line `default=--ide` names.
+`--log error|warn|info|debug` sets how much a run says; each run keeps its log in `docs/logs/`, the newest 20.
 
-`--log error|warn|info|debug` sets how much the run says, the build included. The default, `warn`, prints only problems, and of a build that succeeds only its newest line, in place while it builds and gone once it is done; `debug` prints the build's output too. [`src/baseclasses/Log.h`](src/baseclasses/Log.h) lists what each level adds and what each `{tag}` marks, and a node's `log` word in the manifest sets the level of the lines about that node. Each run keeps what it printed in `docs/logs/`, which git ignores, the newest 20 runs, so a run on another machine leaves behind what went wrong, a failed build's output included.
+## Documentation
 
-`./run.sh --wave --log info` runs the example project `wave` headless; `./run.sh --triangle` opens a window and draws the classic triangle, whose corners and colors come from C++, and `out/build/debug/baseclasses/examples/triangle/triangle` draws one with the baseclasses alone, without the runtime. In the `debug` preset, save any C++ or GLSL of a view while it runs and the running view swaps in the change.
+[Principles](docs/architecture/principles.md) and [requirements](docs/architecture/requirements.md) decide every design; the [include map](docs/architecture/include-map.md) is the engine on one page. [Statistics](docs/statistics) keep the line counts, start-up times and soak results.
 
-## Test
-
-```bash
-ctest --preset debug                 # after a build; also release, asan, tsan, gpu-validation
-src/tools/tests/nightly.sh           # every preset, the soaks and the long fuzz
-```
-
-<sub>Every release build takes the pictures above anew: [`src/tools/update-readme-images.py`](src/tools/update-readme-images.py) replays the commands that make each, and the [`snapshot`](src/runtime/recipes/library/parts/snapshot) part saves the ide's window, with no window open.</sub>
+<sub>Every release build takes these pictures anew: [`src/tools/update-readme-images.py`](src/tools/update-readme-images.py) replays the commands that make each, and the [`snapshot`](src/runtime/recipes/library/parts/snapshot) part saves the ide's window, with no window open.</sub>

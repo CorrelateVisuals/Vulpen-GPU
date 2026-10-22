@@ -59,7 +59,8 @@ class Run:
 
 @dataclass(frozen=True)
 class Animation:
-    """Pictures one run took, joined into an animated PNG that loops, each shown delay_ms."""
+    """Pictures one run took, joined into an animated PNG that loops, each shown delay_ms;
+    they show there alone, as no file of their own."""
     frames: tuple[str, ...]
     delay_ms: int
 
@@ -83,51 +84,87 @@ def graph(folder: str) -> list[str]:
     return [f"open {folder}", "ide: focus"]
 
 
+def zoom(steps: int) -> list[str]:
+    """The text a step larger each, 1.1 times, as control and = draw it."""
+    return ["ide: zoom in"] * steps
+
+
+def ratio(split: str, value: float) -> list[str]:
+    """The share of a dock its first half takes: ide.dock's the panels over the terminal,
+    ide.top's the editor beside the rest, ide.side's the graph over the Perform panel."""
+    return [f"ide: param set ide.{split}.split ratio {value}"]
+
+
+def panels(verb: str, *names: str) -> list[str]:
+    """panel hide, show or maximize, which a second maximize gives back, of each panel."""
+    return [f"ide: panel {verb} ide.{name}-panel" for name in names]
+
+
+def park(width: int) -> list[str]:
+    """The pointer at the menubar's empty end, so no tooltip shows for what it was over."""
+    return [f"input pointer {width - 4} 2"]
+
+
+def scroll(x: int, y: int, rows: int, width: int) -> list[str]:
+    """The wheel turned over a point of a window width pixels wide: a text scrolls down
+    by rows below 0."""
+    return [f"input pointer {x} {y}", f"input wheel 0 {rows}", *park(width)]
+
+
 CLEAR = ["input key down control", "input key down l", "input key up l",
          "input key up control"]
+INSIDE_IDE = ["ide: param unset ide.graph.relations folder", "view switch ide",
+              "ide: param set ide.graph.graph inside ide", "ide: focus"]
 # Each picture, by its file's name, and the lines that make it, from where the scene
 # before left the ide. Whatever turns is held still, and each ends with no focus, so no
 # caret blinks: the picture is the same at whatever frame it is taken. No line shows an
-# absolute path, which names the copy, a new folder each run.
-SCENES = {
-    # The whole ide: a node's C++, the project's graph, what it draws, the lines typed.
-    "ide": [*CLEAR, *typed("view load triangle-files"),
-            *typed("param set clock frames_per_turn 0"), *typed("open Corners.cpp"),
-            *typed("info corners"), "ide: zoom in", "ide: zoom in", "ide: focus"],
-    # The project presented, in the whole window.
-    "perform": ["ide: mode perform"],
-    # The manifest beside the graph it makes.
-    "manifest": ["ide: mode edit", "ide: open projects/triangle-files/view.vlp",
-                 "ide: panel hide ide.perform-panel", "ide: panel hide ide.terminal-panel",
-                 "ide: focus"],
-    # One view's C++ and GLSL, in two editors side by side.
-    "languages": ["ide: close all projects/triangle-files/view.vlp",
-                  "view load triangle-twin", "param set triangle frames_per_turn 0",
-                  "open Triangle.cpp", "open Triangle.vert",
-                  "ide: panel move ide.editor-panel ide.graph-panel left",
-                  "ide: panel hide ide.graph-panel", "ide: panel hide ide.perform-panel",
-                  "ide: focus"],
-    # The command line, as the cli runs it in a terminal.
-    "cli": ["ide: panel maximize ide.terminal-panel", "ide: focus ide.terminal.command-line",
-            *CLEAR, *typed("help"), *typed("ls"), *typed("info triangle"), "ide: focus"],
-    # The graph of each part of the repository, given the window, which a second
-    # maximize would give back.
-    "graph-repository": ["ide: panel maximize ide.graph-panel", *graph("./")],
-    "graph-src": graph("src/"),
-    "graph-baseclasses": graph("src/baseclasses/"),
-    "graph-runtime": graph("src/runtime/"),
-    "graph-library": graph("src/runtime/recipes/library/"),
-    "graph-parts": graph("src/runtime/recipes/library/parts/"),
-    "graph-components": graph("src/runtime/recipes/library/components/"),
-    "graph-tools": graph("src/tools/"),
-    "graph-projects": graph("projects/"),
-    # The apps are views too: the cli's nodes, and the ide's inside its own graph.
-    "graph-cli": ["ide: param unset ide.graph.relations folder", "view switch",
-                  "ide: param set ide.graph.graph inside cli", "ide: focus"],
-    "graph-ide": ["view switch ide", "ide: param set ide.graph.graph inside ide",
-                  "input pointer 800 520", *["input wheel 0 1"] * 6, "ide: focus"],
+# absolute path, which names the copy, a new folder each run. The sizes and the text's
+# zoom are for the README's column, about 880 pixels wide, so the text reads there.
+# The cover: a node's C++ beside the project's graph and what it draws, wide.
+HERO = {
+    "hero": [*CLEAR, *typed("view load triangle-files"),
+             *typed("param set clock frames_per_turn 0"), *typed("open Corners.cpp"),
+             *typed("info corners"), *zoom(7), *panels("hide", "terminal"),
+             *ratio("top", 0.5), *ratio("side", 0.46), *scroll(500, 400, -6, 2400),
+             "ide: focus"],
 }
-README = Pictures(IMAGES, (Run(SCENES),))
+# Three squares side by side: the graph, a shader and the terminal, each given the window.
+TILES = {
+    "tile-graph": [*CLEAR, "view load triangle-files", "param set clock frames_per_turn 0",
+                   *zoom(9), *panels("maximize", "graph"), "ide: focus"],
+    "tile-code": [*panels("maximize", "graph"), "open Face.vert",
+                  *panels("maximize", "editor"), "ide: focus"],
+    "tile-terminal": [*panels("maximize", "editor"), *panels("maximize", "terminal"),
+                      "ide: focus ide.terminal.command-line", *typed("ls"),
+                      *typed("info face"), "ide: focus"],
+}
+# The sections' pictures: the manifest beside its graph, the project in the whole window,
+# the command line, the repository's top in the graph, and the ide inside its own graph.
+DETAILS = {
+    "manifest": [*CLEAR, "view load triangle-files", "param set clock frames_per_turn 0",
+                 *zoom(5), "open", *panels("hide", "perform", "terminal"), "ide: focus"],
+    "perform": ["ide: mode perform"],
+    "cli": ["ide: mode edit", *panels("maximize", "terminal"),
+            "ide: focus ide.terminal.command-line", *CLEAR, *typed("help"), *typed("ls"),
+            *typed("info corners"), "ide: focus"],
+    "graph-repository": [*panels("maximize", "terminal", "graph"), *graph("./")],
+    "graph-ide": INSIDE_IDE,
+}
+# A dive through the repository in the graph, a level a frame, down to the part that draws
+# the graph, and the ide inside its own graph.
+DIVE = {
+    "level-0": [*zoom(4), *panels("maximize", "graph"), *graph("./")],
+    "level-1": graph("src/"),
+    "level-2": graph("src/runtime/"),
+    "level-3": graph("src/runtime/recipes/"),
+    "level-4": graph("src/runtime/recipes/library/"),
+    "level-5": graph("src/runtime/recipes/library/parts/"),
+    "level-6": graph("src/runtime/recipes/library/parts/graph/"),
+    "level-7": INSIDE_IDE,
+}
+README = Pictures(IMAGES, (Run(HERO, size="2400x860"), Run(TILES, size="1200x1200"),
+                           Run(DETAILS), Run(DIVE, size="2400x860")),
+                  {"dive": Animation(tuple(DIVE), 2200)})
 
 
 def copy_tree(into: Path) -> None:
@@ -247,8 +284,11 @@ def write(binary: Path, pictures: Pictures) -> None:
     for name, animation in pictures.animations.items():
         taken[name] = animated([taken[frame] for frame in animation.frames],
                                animation.delay_ms)
+    frames = {frame for animation in pictures.animations.values() for frame in animation.frames}
     pictures.folder.mkdir(parents=True, exist_ok=True)
     for name, data in taken.items():
+        if name in frames:
+            continue  # it shows in its animation alone
         image = pictures.folder / f"{name}.png"
         if image.exists() and image.read_bytes() == data:
             continue
