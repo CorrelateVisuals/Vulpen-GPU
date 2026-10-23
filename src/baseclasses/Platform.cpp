@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -209,6 +210,26 @@ std::filesystem::path loaded_copy(const std::filesystem::path &file) {
                      file.extension().string());
 }
 
+// A scanner, as Defender, opens a file just written, and a reader may hold the file it
+// replaces; either keeps it from being renamed over the other for a moment, so a save
+// tries again a while before it fails.
+constexpr DWORD rename_retry = 10; // milliseconds between tries
+constexpr int rename_tries = 50;   // half a second in all
+
+void rename_over(const std::filesystem::path &from,
+                 const std::filesystem::path &to,
+                 std::error_code &failed) {
+  for (int tried = 1;; ++tried) {
+    std::filesystem::rename(from, to, failed);
+    const bool held = failed.category() == std::system_category() &&
+                      (failed.value() == ERROR_SHARING_VIOLATION ||
+                       failed.value() == ERROR_ACCESS_DENIED);
+    if (!held || tried == rename_tries)
+      return;
+    Sleep(rename_retry);
+  }
+}
+
 } // namespace
 
 std::filesystem::path Files::executable() {
@@ -226,9 +247,28 @@ std::tm local_time(std::time_t time) {
   return local;
 }
 
-// MSVC's typeid already spells a type as code does.
+// MSVC's typeid names a class with its key, as struct Count, the unnamed namespace as
+// `anonymous namespace', and packs a template's arguments; spelt as GCC and Clang spell
+// them, a type reads alike on every system, and as code writes it.
 std::string type_name(const char *name) {
-  return name;
+  std::string text = name;
+  for (const std::string_view key : {"struct ", "class ", "union ", "enum "})
+    for (std::size_t at = text.find(key); at != std::string::npos;
+         at = text.find(key, at))
+      if (at > 0 && (std::isalnum(static_cast<unsigned char>(text[at - 1])) != 0 ||
+                     text[at - 1] == '_'))
+        at += key.size();
+      else
+        text.erase(at, key.size());
+  constexpr std::string_view unnamed = "`anonymous namespace'";
+  for (std::size_t at = text.find(unnamed); at != std::string::npos;
+       at = text.find(unnamed, at))
+    text.replace(at, unnamed.size(), "(anonymous namespace)");
+  for (std::size_t at = text.find(','); at != std::string::npos;
+       at = text.find(',', at + 1))
+    if (text[at + 1] != ' ')
+      text.insert(at + 1, " ");
+  return text;
 }
 
 // A pipe, or a file, which never makes a read wait. A console types nothing yet: reading
@@ -439,6 +479,13 @@ namespace {
 // A lock file's: read and write for its owner, read for everyone else.
 constexpr mode_t lock_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
+// Whoever holds either file, Linux renames one over the other.
+void rename_over(const std::filesystem::path &from,
+                 const std::filesystem::path &to,
+                 std::error_code &failed) {
+  std::filesystem::rename(from, to, failed);
+}
+
 // Whether standard input is a terminal another job holds, as a run started in the
 // background finds it: a read would stop the run (SIGTTIN), and what is typed there is
 // that job's.
@@ -623,7 +670,7 @@ void Files::save(const std::filesystem::path &file, std::string_view text) {
   out.write(text.data(), static_cast<std::streamsize>(text.size()));
   out.close();
   if (out && !failed)
-    std::filesystem::rename(temp, file, failed);
+    rename_over(temp, file, failed);
   if (!out || failed) {
     std::error_code gone; // the temp file may never have been made
     std::filesystem::remove(temp, gone);
@@ -662,7 +709,7 @@ void Files::copy(const std::filesystem::path &from, const std::filesystem::path 
   if (!failed)
     std::filesystem::copy(from, temp, std::filesystem::copy_options::recursive, failed);
   if (!failed)
-    std::filesystem::rename(temp, to, failed);
+    rename_over(temp, to, failed);
   if (failed) {
     std::error_code gone; // the temp may never have been made
     std::filesystem::remove_all(temp, gone);
