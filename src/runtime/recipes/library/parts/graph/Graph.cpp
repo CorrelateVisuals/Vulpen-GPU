@@ -908,13 +908,15 @@ std::size_t Graph::row_under(std::size_t at) const {
 // pixels it goes sideways, right nearer and left farther; the wheel's turn sideways does
 // nothing yet. Zoomed in to three times as near as zoom 1, or as near as it goes, the
 // graph shows the inside of the box under that place; zoomed out to a quarter as near as
-// home, as far as it goes here, a level up.
+// home, as far as it goes here, a level up, once the level it left last shows: a turn
+// goes on while the level up is read, which would take it up a level each step.
 void Graph::turn(VP::Cook &frame, float steps, glm::vec2 about) {
   const float farthest = _home_zoom * leave_share;
   _pan_zoom.wheel(steps, about - glm::vec2(_area->offset), farthest);
   _at_home = false;
   if (steps < 0.0f && _pan_zoom.zoom <= farthest) {
-    leave(frame);
+    if (_left.empty())
+      leave(frame);
     return;
   }
   if (steps <= 0.0f || _pan_zoom.zoom < std::min(enter_zoom, PanZoom::most))
