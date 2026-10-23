@@ -437,7 +437,8 @@ class Docking final : public VP::Operator {
   // stops it, the lines before staying, as a file kept before the manifest changed past
   // it may hold one, and the next change saves them as they are. Then every editor it
   // brought back that the docking part added goes, so a run starts with the manifest's
-  // editors alone.
+  // editors alone, and the docks go in the order they nest, as a file kept before moves
+  // ordered them may list them otherwise.
   void restore(VP::Call &call) {
     const std::string text = call.files().read(_kept);
     if (!_written_read || kept_for(text) != fingerprint_of(_written))
@@ -463,6 +464,7 @@ class Docking final : public VP::Operator {
       for (const std::string &text : added)
         remove_editor(call, text);
     }
+    order_docks(call);
     if (stopped)
       throw std::runtime_error(*stopped);
   }
@@ -883,6 +885,55 @@ class Docking final : public VP::Operator {
       join(call, going, target);
     } else {
       move_beside(call, panel, target, side);
+    }
+    order_docks(call);
+  }
+
+  // Every dock listed before the panels, each after the dock seating it, from the
+  // outermost down: a dock draws the ground over its whole area, which covers the seam of
+  // a dock inside it drawn before it, as one a move put inside a dock listed after it.
+  // As node moves, which the kept file names, so a restart lists them so too.
+  void order_docks(VP::Call &call) {
+    const VP::View &view = *call.view(_view);
+    std::vector<std::string> docks;
+    std::size_t first_panel = view.nodes.size();
+    if (const VP::Connection *const root = feeding(view, _name))
+      for (const VP::Endpoint &to : root->to)
+        if (to.node != _name)
+          nest(view, to, docks, first_panel);
+    const auto listed = [&](std::string_view node) {
+      return std::ranges::find(view.nodes, node, &VP::Node::name) - view.nodes.begin();
+    };
+    if (first_panel == view.nodes.size() || docks.empty() ||
+        (std::ranges::is_sorted(docks, {}, listed) &&
+         static_cast<std::size_t>(listed(docks.back())) < first_panel))
+      return;
+    const std::string before = view.nodes[first_panel].name; // each edit replaces the view
+    for (const std::string &dock : docks)
+      send(call, std::format("node move {} {}", dock, before));
+  }
+
+  // The docks a Rect reaches, a dock before those its halves seat, the first half's
+  // before the second's, and where the view lists the first panel they seat.
+  void nest(const VP::View &view,
+            const VP::Endpoint &end,
+            std::vector<std::string> &docks,
+            std::size_t &first_panel) const {
+    if (end.port != area_port)
+      return;
+    if (end.node.ends_with(split_node)) {
+      docks.push_back(end.node.substr(0, end.node.size() - split_node.size()));
+      for (const std::string_view half : half_ports)
+        if (const VP::Connection *const seated = from(view, end.node, half))
+          for (const VP::Endpoint &to : seated->to)
+            nest(view, to, docks, first_panel);
+    } else if (end.node.ends_with(bar_node)) {
+      const std::string_view panel =
+          std::string_view(end.node).substr(0, end.node.size() - bar_node.size());
+      first_panel = std::min(
+          first_panel,
+          static_cast<std::size_t>(std::ranges::find(view.nodes, panel, &VP::Node::name) -
+                                   view.nodes.begin()));
     }
   }
 
