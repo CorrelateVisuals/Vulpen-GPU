@@ -271,15 +271,50 @@ std::string type_name(const char *name) {
   return text;
 }
 
-// A pipe, or a file, which never makes a read wait. A console types nothing yet: reading
-// one without waiting takes its input events, which no Windows user has needed so far.
+namespace {
+
+constexpr DWORD console_records = 64; // input events a read takes at most
+
+// The characters typed at a console so far, as UTF-8, without waiting: a key pressed, as
+// often as it repeats, among them the escape sequence a key past text sends in VT input
+// mode, as a Unix terminal does; nothing for a key let go, the mouse or the window.
+std::string console_input(HANDLE in) {
+  std::wstring typed;
+  std::array<INPUT_RECORD, console_records> records{};
+  DWORD waiting = 0;
+  while (typed.size() < input_per_call && GetNumberOfConsoleInputEvents(in, &waiting) &&
+         waiting > 0) {
+    DWORD got = 0;
+    if (!ReadConsoleInputW(in, records.data(), std::min(waiting, console_records), &got))
+      break;
+    for (DWORD at = 0; at < got; ++at) {
+      if (records[at].EventType != KEY_EVENT)
+        continue;
+      const KEY_EVENT_RECORD &key = records[at].Event.KeyEvent;
+      if (key.bKeyDown && key.uChar.UnicodeChar != 0)
+        typed.append(key.wRepeatCount, key.uChar.UnicodeChar);
+    }
+  }
+  if (typed.empty())
+    return {};
+  const auto units = static_cast<int>(typed.size());
+  const int size =
+      WideCharToMultiByte(CP_UTF8, 0, typed.data(), units, nullptr, 0, nullptr, nullptr);
+  std::string text(static_cast<std::size_t>(size), '\0');
+  WideCharToMultiByte(
+      CP_UTF8, 0, typed.data(), units, text.data(), size, nullptr, nullptr);
+  return text;
+}
+
+} // namespace
+
+// A console's keys as they come, or a pipe or a file, which never makes a read wait.
 std::optional<std::string> Terminal::input() {
   const HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
-  const DWORD type = GetFileType(in);
-  if (type == FILE_TYPE_CHAR)
-    return std::string();
+  if (typed())
+    return console_input(in);
   DWORD available = static_cast<DWORD>(input_chunk);
-  if (type == FILE_TYPE_PIPE &&
+  if (GetFileType(in) == FILE_TYPE_PIPE &&
       !PeekNamedPipe(in, nullptr, 0, nullptr, &available, nullptr))
     return std::nullopt; // the writer closed it
   available = std::min(available, static_cast<DWORD>(input_per_call));
@@ -292,8 +327,10 @@ std::optional<std::string> Terminal::input() {
   return text;
 }
 
+// A console, as no pipe or file has a console mode, nor NUL, which reads as ended.
 bool Terminal::typed() {
-  return GetFileType(GetStdHandle(STD_INPUT_HANDLE)) == FILE_TYPE_CHAR;
+  DWORD mode = 0;
+  return GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &mode) != 0;
 }
 
 std::size_t Terminal::columns() {
@@ -303,12 +340,33 @@ std::size_t Terminal::columns() {
              : common_columns;
 }
 
-// A console types nothing yet (input), so it stays as it is.
-struct RawTerminal::Saved {};
+struct RawTerminal::Saved {
+  DWORD input = 0;
+  DWORD output = 0;
+  bool shown = false; // standard output is a console, whose mode changed too
+};
 
-RawTerminal::RawTerminal() = default;
+// Without line input, echo and processed input, which makes control with c a signal; with
+// VT input, so a key past text sends the escape sequence a Unix terminal does. A console
+// that shows the line typed takes the sequences that draw it, with colors or without.
+RawTerminal::RawTerminal() : _saved(std::make_unique<Saved>()) {
+  const HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
+  const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+  constexpr DWORD cooked = ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT;
+  if (!GetConsoleMode(in, &_saved->input))
+    throw last_error("GetConsoleMode");
+  if (!SetConsoleMode(in, (_saved->input & ~cooked) | ENABLE_VIRTUAL_TERMINAL_INPUT))
+    throw last_error("SetConsoleMode");
+  _saved->shown =
+      GetConsoleMode(out, &_saved->output) &&
+      SetConsoleMode(out, _saved->output | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
 
-RawTerminal::~RawTerminal() = default;
+RawTerminal::~RawTerminal() {
+  SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), _saved->input);
+  if (_saved->shown)
+    SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), _saved->output);
+}
 
 // A console shows ANSI colors once asked to; a pipe or a file has no console mode.
 bool Terminal::colors() {
