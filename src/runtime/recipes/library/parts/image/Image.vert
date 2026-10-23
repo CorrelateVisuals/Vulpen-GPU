@@ -3,6 +3,7 @@
 #include "Image.glsl"
 
 layout(location = 0) out vec2 uv;
+layout(location = 1) flat out float texel; // screen pixels a pixel of the image covers
 
 // Letterboxed: as large as fits in the Rect at the image's own aspect, and centered, so
 // what is behind the Rect shows beside it; then moved and zoomed about the Rect's top
@@ -14,6 +15,7 @@ void main() {
   const Rect rect = pass.place.at[gl_InstanceIndex];
   gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
   uv = vec2(0.0);
+  texel = 0.0;
   if (pass.picture.index == 0u || rect.extent.x == 0u || rect.extent.y == 0u ||
       pass.zoom <= 0.0)
     return;
@@ -25,5 +27,6 @@ void main() {
   const vec2 to = from + shown * pass.zoom;
   const vec2 kept = clamp(mix(from, to, quad_corner(gl_VertexIndex)), vec2(0.0), room);
   uv = (kept - from) / (to - from);
+  texel = shown.x * pass.zoom / size.x;
   gl_Position = pixel_clip(vec2(rect.offset) + kept);
 }

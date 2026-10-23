@@ -30,9 +30,10 @@ struct PanZoom {
   }
 
   // Up, a positive turn, zooms in, about a point in pixels from the area's top left, as
-  // far out as farthest, which the graph sets past least to go up a level there.
-  void wheel(float turn, glm::vec2 about, float farthest = least) {
-    const float to = std::clamp(zoom * std::pow(step, turn), farthest, most);
+  // far out as farthest, which the graph sets past least to go up a level there, and as
+  // near as nearest, which an image sets past most to show its pixels.
+  void wheel(float turn, glm::vec2 about, float farthest = least, float nearest = most) {
+    const float to = std::clamp(zoom * std::pow(step, turn), farthest, nearest);
     pan = about - (about - pan) / zoom * to;
     zoom = to;
   }

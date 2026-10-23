@@ -14,6 +14,9 @@
 namespace {
 
 constexpr std::string_view picture = "picture"; // the port its shaders sample
+// As near as the wheel zooms it: ten times the graph's, so a view's pixels show whole
+// at a time; the graph keeps its own, as its boxes' text has nothing more to show.
+constexpr float nearest = 10.0f * PanZoom::most;
 
 // Seats the image in the Rect its area gives, as a panel seats any content, and its
 // shaders letterbox it there: one instance of its draw, none while the area is empty, so
@@ -90,7 +93,9 @@ class Image final : public VP::Operator {
           _view.pan += event.at - _pointer;
         else if (_zooming)
           _view.wheel((event.at.x - _pointer.x) / PanZoom::drag_step,
-                      *_zooming - glm::vec2(_area->offset));
+                      *_zooming - glm::vec2(_area->offset),
+                      PanZoom::least,
+                      nearest);
         _pointer = event.at;
       } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
         _dragging = event.down && inside;
@@ -100,7 +105,8 @@ class Image final : public VP::Operator {
         _zooming =
             event.down && inside && !_dragging ? std::optional(_pointer) : std::nullopt;
       } else if (event.kind == VP::Event::Kind::wheel && inside) {
-        _view.wheel(event.turn.y, _pointer - glm::vec2(_area->offset));
+        _view.wheel(
+            event.turn.y, _pointer - glm::vec2(_area->offset), PanZoom::least, nearest);
       }
     }
   }
