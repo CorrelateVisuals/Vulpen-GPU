@@ -74,12 +74,14 @@ In the ide's terminal, type `view load triangle-files`, then double-click a file
 
 On every system: CMake 3.24 or newer, Python 3, and the Vulkan headers and loader with `glslangValidator` and `spirv-val`, as the [LunarG Vulkan SDK](https://vulkan.lunarg.com/) installs them.
 
-**Linux:** GCC or Clang with C++20, and the X11 and Wayland headers the bundled GLFW builds against. On Debian and Ubuntu, the distribution's packages hold all of it:
+**Linux:** GCC 13 or newer, or Clang with a standard library that has `std::format`, and the X11 and Wayland headers the bundled GLFW builds against. On Ubuntu 24.04 and Debian 13 or newer, the distribution's packages hold all of it:
 
 ```bash
 sudo apt install build-essential cmake python3 libvulkan-dev glslang-tools spirv-tools \
                  libwayland-dev libxkbcommon-dev xorg-dev
 ```
+
+Older releases, such as Ubuntu 22.04 and Debian 12, need a newer GCC beside their own (Ubuntu 22.04 a newer CMake too), named when a build folder is first configured: `CC=gcc-14 CXX=g++-14 ./run.sh`.
 
 **Windows:** Visual Studio 2022, or its Build Tools, with the C++ workload, and the LunarG Vulkan SDK; CMake and Python on the `PATH`. If PowerShell refuses to run `run.ps1`, allow local scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 

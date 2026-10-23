@@ -4,6 +4,21 @@ project(vulpen LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+# The engine writes its text with std::format, which GCC's library has from GCC 13, so an
+# older compiler is named here, before the build, rather than failing in every file that
+# includes <format>. A build folder keeps the compiler it was first configured with, so a
+# newer one takes the folder started over.
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles([[
+#include <format>
+int main() { return std::format("{}", 0).empty(); }]] VULPEN_HAS_FORMAT)
+if(NOT VULPEN_HAS_FORMAT)
+  message(FATAL_ERROR
+    "${CMAKE_CXX_COMPILER} (${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}) has no "
+    "std::format, which Vulpen needs: GCC 13 or newer, or a Clang whose standard library "
+    "has it. Name one and start the build folder over, as in\n"
+    "  CC=gcc-14 CXX=g++-14 cmake --preset debug --fresh")
+endif()
 
 find_package(Vulkan REQUIRED)
 # CPP11 fills Vulkan structs with designated initializers and leaves the zero fields out,
