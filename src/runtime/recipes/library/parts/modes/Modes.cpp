@@ -1,4 +1,6 @@
+#include "baseclasses/Engine.h"
 #include "contracts/Item.h"
+#include "contracts/Palette.h"
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
@@ -6,6 +8,7 @@
 
 #include <algorithm>
 #include <format>
+#include <optional>
 #include <ranges>
 #include <stdexcept>
 #include <string>
@@ -21,6 +24,10 @@ constexpr std::string_view escape = "escape";
 // The Perform panel's tab while no project is hosted, so its strip has a tab to take, as
 // an empty editor's has.
 constexpr std::string_view empty_tab = "perform";
+// The kind of GPU the gpu button lights in the build curves' orange, as the engine names
+// it, and what gpu answers before the kind the next launch prefers.
+constexpr std::string_view discrete = "discrete";
+constexpr std::string_view prefers = "prefers the ";
 
 // The view presented, as the view's connections are; empty for none.
 std::string_view shown_by(const VP::View &view) {
@@ -83,7 +90,9 @@ std::string_view project_of(const Find &view_of,
 // ends the run, once the part in focus let go of its selection and of the focus. It hands
 // on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
 // Perform panel's own button, a switch of two whose mode in force is on, and past a
-// divider gpu, which makes the next launch prefer the other kind of GPU (gpu toggle).
+// divider gpu, which makes the next launch prefer the other kind of GPU (gpu toggle), lit
+// as the kind it takes: discrete in the build curves' orange, integrated in the accent,
+// as edit and run are.
 class Modes final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string mode = node.param<std::string>("mode");
@@ -101,12 +110,10 @@ class Modes final : public VP::Operator {
     _edit = &node.output<VP_VIEW::Rect>("edit");
     _shown = &node.output<VP_VIEW::Rect>("perform");
     _tabs = &node.output<VP_VIEW::Items>("tabs");
+    _running = node.engine().kind();
     // The mode is a param, so a change rebinds the node: the buttons are written here.
-    node.output<VP_VIEW::Items>("buttons") = {
-        {.label = "edit", .command = "mode edit", .current = !_perform, .toggles = true},
-        {.label = "run", .command = "mode perform", .current = _perform, .toggles = true},
-        {}, // a divider
-        {.label = "gpu", .command = "gpu toggle"}};
+    _buttons = &node.output<VP_VIEW::Items>("buttons");
+    write_buttons();
     _edit_mode = node.command("mode edit",
                               "gives the window to the dock, which shows what is "
                               "presented in its panel");
@@ -172,6 +179,7 @@ class Modes final : public VP::Operator {
   // error since the frame before, which perform mode would hide.
   // The projects are read before a line goes, as one may replace the view they are in.
   void cook(VP::Cook &frame) override {
+    read_gpu(frame);
     const std::string_view presented = shown_by(frame.view());
     auto hosted = projects(*frame.view(""), _view);
     const std::string_view project = project_of(
@@ -212,6 +220,35 @@ class Modes final : public VP::Operator {
       frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;
     *_shown = _perform ? *_area : VP_VIEW::Rect{};
+  }
+
+  void write_buttons() {
+    *_buttons = {
+        {.label = "edit", .command = "mode edit", .current = !_perform, .toggles = true},
+        {.label = "run", .command = "mode perform", .current = _perform, .toggles = true},
+        {}, // a divider
+        {.label = "gpu",
+         .command = "gpu toggle",
+         .current = true,
+         .toggles = true,
+         .role = _discrete ? std::optional(VP_VIEW::role("number")) : std::nullopt}};
+  }
+
+  // The kind of GPU the next launch takes, as gpu toggle flips it: the one gpu says it
+  // prefers, or with none the one this run took. Asked at the first frame and after a
+  // warning, as gpu toggle writes one, so a frame asks nothing otherwise.
+  void read_gpu(VP::Cook &frame) {
+    const auto warned = [](const VP::Logged &line) { return line.level == VP::Level::warn; };
+    if (_gpu_read && std::ranges::none_of(frame.commands().log(), warned))
+      return;
+    _gpu_read = true;
+    const std::string said = frame.commands().send("gpu");
+    const std::size_t named = said.find(prefers);
+    const bool now = named == std::string::npos
+                         ? _running == discrete
+                         : std::string_view(said).substr(named + prefers.size()).starts_with(discrete);
+    if (now != std::exchange(_discrete, now))
+      write_buttons();
   }
 
   // The Perform panel back if it was hidden, and the view presented in it, not a preview,
@@ -258,6 +295,10 @@ class Modes final : public VP::Operator {
   VP_VIEW::Rect *_edit = nullptr;
   VP_VIEW::Rect *_shown = nullptr;
   VP_VIEW::Items *_tabs = nullptr;
+  VP_VIEW::Items *_buttons = nullptr;
+  std::string _running;   // the kind of GPU this run took, as the engine names it
+  bool _discrete = false; // the kind the next launch takes, which the gpu button shows
+  bool _gpu_read = false; // since the node bound
   VP::Command _edit_mode;
   VP::Command _perform_mode;
   VP::Command _toggle_mode;
