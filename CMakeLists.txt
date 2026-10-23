@@ -13,11 +13,13 @@ check_cxx_source_compiles([[
 #include <format>
 int main() { return std::format("{}", 0).empty(); }]] VULPEN_HAS_FORMAT)
 if(NOT VULPEN_HAS_FORMAT)
+  # Each preset builds in out/build/<its name>, so the folder names the preset.
+  cmake_path(GET CMAKE_BINARY_DIR FILENAME preset)
   message(FATAL_ERROR
     "${CMAKE_CXX_COMPILER} (${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}) has no "
     "std::format, which Vulpen needs: GCC 13 or newer, or a Clang whose standard library "
     "has it. Name one and start the build folder over, as in\n"
-    "  CC=gcc-14 CXX=g++-14 cmake --preset debug --fresh")
+    "  CC=gcc-14 CXX=g++-14 cmake --preset ${preset} --fresh")
 endif()
 
 find_package(Vulkan REQUIRED)

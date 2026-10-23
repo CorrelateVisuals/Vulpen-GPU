@@ -15,7 +15,17 @@
 #define STBI_NO_HDR
 #define STBI_NO_STDIO
 #define STB_IMAGE_IMPLEMENTATION
+// A release build inlines stb_image into upload(), past the system header that keeps its
+// warnings out (RA02), and GCC then cannot see that bytes in memory never take the
+// branch that reads from a callback, whose fields they leave unset.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 #include <stb_image.h>
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 #include <cstddef>
 #include <cstdint>
