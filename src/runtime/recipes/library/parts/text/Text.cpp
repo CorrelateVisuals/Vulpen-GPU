@@ -49,23 +49,26 @@ bool continues(char byte) {
   return (static_cast<unsigned char>(byte) & continuation_mask) == continuation;
 }
 
-// Each line without its break, so joined with breaks they give back the text, a last
-// break included: a file changes only where it was edited.
+// Each line without its break, \n or Windows' \r\n, so joined with the file's breaks they
+// give back the text, a last break included: a file changes only where it was edited.
 std::vector<std::string> lines_of(std::string_view text) {
   std::vector<std::string> lines;
   for (std::size_t at = 0;;) {
     const std::size_t end = std::min(text.find('\n', at), text.size());
-    lines.emplace_back(text.substr(at, end - at));
+    std::string_view line = text.substr(at, end - at);
+    if (end < text.size() && line.ends_with('\r'))
+      line.remove_suffix(1);
+    lines.emplace_back(line);
     if (end == text.size())
       return lines;
     at = end + 1;
   }
 }
 
-std::string joined(const std::vector<std::string> &lines) {
+std::string joined(const std::vector<std::string> &lines, bool crlf) {
   std::string text = lines.front();
   for (const std::string &line : std::span(lines).subspan(1))
-    text.append(1, '\n').append(line);
+    text.append(crlf ? "\r\n" : "\n").append(line);
   return text;
 }
 
@@ -1027,10 +1030,13 @@ void Text::route(VP::FilePort &files) {
 void Text::open(VP::FilePort &files, std::string_view path) {
   const auto found = std::ranges::find(_documents, path, &Document::path);
   const auto shown = static_cast<std::size_t>(found - _documents.begin());
-  if (found == _documents.end())
+  if (found == _documents.end()) {
+    const std::string text = files.read(path);
     _documents.push_back({.path = std::string(path),
-                          .lines = lines_of(files.read(path)),
+                          .lines = lines_of(text),
+                          .crlf = text.find("\r\n") != std::string::npos,
                           .syntax = syntax_of(path)});
+  }
   _shown = shown;
   _dragging = false;
   _follow = true;
@@ -1041,7 +1047,7 @@ void Text::write(VP::Call &call) {
   if (_documents.empty())
     throw std::runtime_error("no file is open");
   Document &document = _documents[_shown];
-  call.files().save(document.path, joined(document.lines));
+  call.files().save(document.path, joined(document.lines, document.crlf));
   document.changed = false;
   document.saved = document.undone.size();
   name_tabs();

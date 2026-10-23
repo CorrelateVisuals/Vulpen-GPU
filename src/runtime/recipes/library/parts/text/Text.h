@@ -57,6 +57,7 @@ struct Change {
 struct Document {
   std::string path; // absolute, as open was given it
   std::vector<std::string> lines;
+  bool crlf = false; // its lines end in \r\n, as Windows writes them, which write keeps
   Syntax syntax = Syntax::plain;
   std::vector<Open> inside; // what each row starts in: a block comment, or a string
   std::size_t widest = 0;   // the widest row's bytes
