@@ -2,7 +2,9 @@
 
 #include "contracts/Palette.h"
 #include "runtime/View.h"
+#include "shared/Paths.h"
 #include "shared/Words.h"
+#include "Sources.h"
 
 #include <glm/common.hpp>
 
@@ -11,6 +13,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <map>
 #include <stdexcept>
 
 namespace {
@@ -33,6 +36,11 @@ constexpr std::string_view empty_tab = "editor";
 // hands on, itself last.
 constexpr std::string_view before_port = "before";
 constexpr std::string_view editors_port = "editors";
+// How deep source follows the headers a file includes, how many files it reads at most,
+// and how large one, so a key press reads a bounded share of the tree.
+constexpr std::size_t include_depth = 3;
+constexpr std::size_t source_room = 128;
+constexpr std::size_t source_largest = 1 << 19;
 // UTF-8 (RFC 3629): a byte that only continues a character starts with the bits 10.
 constexpr unsigned char continuation_mask = 0xC0;
 constexpr unsigned char continuation = 0x80;
@@ -300,6 +308,7 @@ void Text::bind(VP::Bind &node) {
     _opening = !file.empty();
   _name = node.name();
   _view = node.view_name();
+  _library = node.folder();
   // The editors before it come through a connection to its before, when one brings them,
   // and it hands them on with itself; the last of the chain, whose editors no text node's
   // before takes, answers the editor's commands for them all.
@@ -343,6 +352,11 @@ void Text::bind(VP::Bind &node) {
     _move = node.command("tab move <file> <file>",
                          "puts the first file's tab where the second's is, in the editor "
                          "holding both, as a drag of one onto the other does");
+    _jump = node.command(
+        "jump [<value>]",
+        "shows where the name at the caret of the editor in focus comes from, or the "
+        "name given: the file a path there names, else the next place the file, those it "
+        "includes or those beside it declare or define the name, as F12 does");
   }
   _area = &node.input<VP_VIEW::Rect>("area");
   _font = &node.input<VP_VIEW::Font>("font");
@@ -765,6 +779,8 @@ void Text::command(VP::Call &call) {
     }
   } else if (call.is(_find)) {
     target().find(call);
+  } else if (call.is(_jump)) {
+    jump(call);
   } else if (call.is(_move)) {
     const std::span<const std::string_view> files = call.arguments();
     VP_VIEW::Editor *const editor = holder(files[0]);
@@ -820,6 +836,157 @@ bool Text::changed() const {
 
 void Text::show(VP::FilePort &files, std::string_view path) {
   open(files, path);
+}
+
+std::span<const std::string> Text::rows() const {
+  return _documents.empty() ? std::span<const std::string>() : _documents[_shown].lines;
+}
+
+std::pair<std::size_t, std::size_t> Text::caret() const {
+  if (_documents.empty())
+    return {};
+  return {_documents[_shown].caret.row, _documents[_shown].caret.column};
+}
+
+void Text::reveal(VP::FilePort &files,
+                  std::string_view path,
+                  std::size_t row,
+                  std::size_t column,
+                  std::size_t length) {
+  open(files, path);
+  Document &document = _documents[_shown];
+  document.anchor = at(document, row, column);
+  document.caret = at(document, row, column + length);
+}
+
+// What a word given, or the caret of the editor in focus, or in focus last, stands in: a
+// path, as an include's or a link's, the file it names, from the file's folder or one
+// holding it, as an include reaches, else from this part's folder or one holding it, as
+// the engine's headers are reached from a project, or a folder, which the graph shows; a
+// manifest's
+// recipe, its manifest; else the name's next source: the places a file declares or
+// defines it, the file shown first, as typed so far, then those it includes, theirs in
+// turn, include_depth deep, then those beside it, each once. The one after the source the
+// caret stands at shows, round to the first, in the editor holding its file, or in that
+// one, which takes the focus; while the caret stands at one the jump before found, it
+// goes on among those, so jump again steps through the sources found from where it began.
+void Text::jump(VP::Call &call) {
+  VP_VIEW::Editor &editor = target();
+  const std::string file(editor.shown());
+  if (file.empty())
+    throw std::runtime_error("no file is open");
+  const std::span<const std::string> rows = editor.rows();
+  const auto [row, column] = editor.caret();
+  const std::string_view line = rows[row];
+  const std::filesystem::path folder = std::filesystem::path(file).parent_path();
+  const Syntax syntax = syntax_of(file);
+  std::map<std::string, std::vector<std::string>> names;
+  Listed listed(call.files(), names);
+  std::string name;
+  if (!call.arguments().empty()) {
+    name = call.arguments().front();
+  } else if (std::string path = named_path(listed, folder, line, column, syntax);
+             !path.empty() ||
+             !(path = named_path(listed, _library, line, column, syntax)).empty()) {
+    const std::filesystem::path named(path);
+    const std::vector<std::string> &beside = listed.names(named.parent_path().string());
+    if (std::ranges::find(beside, named.filename().string() + '/') != beside.end())
+      call.commands().send(std::format("open {}/", path));
+    else
+      show_source(call, editor, {.file = std::move(path)});
+    return;
+  } else if (const auto found = name_at(line, column)) {
+    name = syntax == Syntax::keyed && !path_at(line, column).empty()
+               ? std::string(path_at(line, column))
+               : std::string(line.substr(found->first, found->second - found->first));
+  } else {
+    throw std::runtime_error("the caret stands in no name and no path");
+  }
+  const auto at = [&](const Source &source) {
+    return source.file == file && source.row == row && source.column <= column &&
+           column <= source.column + source.length;
+  };
+  if (name != _jumped || std::ranges::none_of(_found_last, at)) {
+    _found_last = sources(call.files(), listed, file, rows, name);
+    _jumped = name;
+  }
+  const std::vector<Source> &found = _found_last;
+  if (found.empty())
+    throw std::runtime_error(std::format(
+        "no place the file, those it includes or those beside it declare {}", name));
+  const auto here = std::ranges::find_if(found, at);
+  if (here != found.end() && found.size() == 1)
+    throw std::runtime_error(std::format("{} is declared here alone", name));
+  const bool round = here == found.end() || here + 1 == found.end();
+  show_source(call, editor, round ? found.front() : *(here + 1));
+}
+
+// The places the files declare or define the name, in the order jump looks in them.
+std::vector<Source> Text::sources(VP::FilePort &files,
+                                  Listed &listed,
+                                  const std::string &file,
+                                  std::span<const std::string> rows,
+                                  std::string_view name) const {
+  std::vector<std::string> looked{file};
+  std::vector<std::vector<std::string>> read{
+      std::vector<std::string>(rows.begin(), rows.end())};
+  const auto add = [&](const std::string &path) {
+    if (path.empty() || looked.size() >= source_room ||
+        std::ranges::find(looked, path) != looked.end())
+      return;
+    std::string text;
+    try {
+      text = files.read(path);
+    } catch (const std::runtime_error &) {
+      return; // a folder, or gone
+    }
+    if (text.size() > source_largest)
+      return;
+    looked.push_back(path);
+    read.push_back(lines_of(text));
+  };
+  for (std::size_t from = 0, depth = 0; depth < include_depth; ++depth) {
+    const std::size_t to = looked.size();
+    for (std::size_t at = from; at < to; ++at)
+      for (const std::string &line : read[at])
+        if (const std::string_view header = included(line); !header.empty()) {
+          const std::string beside = resolved(
+              listed, std::filesystem::path(looked[at]).parent_path(), header, true);
+          add(beside.empty() ? resolved(listed, _library, header, true) : beside);
+        }
+    from = to;
+  }
+  const std::filesystem::path folder = std::filesystem::path(file).parent_path();
+  for (const std::string &beside : listed.names(folder.string()))
+    if (!beside.ends_with('/') && syntax_of(beside) == syntax_of(file))
+      add((folder / beside).generic_string());
+  std::vector<Source> found;
+  for (std::size_t at = 0; at < looked.size(); ++at)
+    for (std::size_t line = 0; line < read[at].size(); ++line)
+      if (const auto declared = declares(read[at][line], name, syntax_of(looked[at])))
+        found.push_back({.file = looked[at],
+                         .row = line,
+                         .column = declared->first,
+                         .length = declared->second});
+  return found;
+}
+
+// In the editor holding its file, or in the one jump acted on, which takes the focus.
+void Text::show_source(VP::Call &call, VP_VIEW::Editor &editor, const Source &source) {
+  VP_VIEW::Editor *const holding = holder(source.file);
+  VP_VIEW::Editor &showing = holding ? *holding : editor;
+  showing.reveal(call.files(), source.file, source.row, source.column, source.length);
+  // The file param names it, as open does, so the log keeps what shows, and open names
+  // the file it named before as a change.
+  call.commands().send(
+      std::format("{}: param set {} file {}", _view, _name, source.file));
+  if (showing.name() != _typed->focus)
+    call.commands().send(std::format("{}: focus {}", _view, showing.name()));
+  call.reply(std::format("{}:{}",
+                         std::filesystem::path(source.file)
+                             .lexically_proximate(std::filesystem::current_path())
+                             .generic_string(),
+                         source.row + 1));
 }
 
 // The editor in focus, or the one in focus last, or with neither this one.

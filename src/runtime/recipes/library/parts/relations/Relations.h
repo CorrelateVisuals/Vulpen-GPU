@@ -3,6 +3,7 @@
 #include "contracts/Relation.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Paths.h"
 
 #include <chrono>
 #include <cstddef>
@@ -56,9 +57,6 @@ struct Varying {
   std::uint32_t line = 0;
   bool out = false;
 };
-
-// The names each folder looked in during a reading holds, which Relations.cpp defines.
-class Listed;
 
 // What the files of a folder bind, declare in their pass blocks and pass from stage to
 // stage, as only the files of one folder relate through them, a node's folder holding

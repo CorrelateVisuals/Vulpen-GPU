@@ -9,10 +9,13 @@
 #include "runtime/Operator.h"
 #include "shared/Caret.h"
 #include "shared/Labels.h"
+#include "shared/Paths.h"
 #include "shared/Scroll.h"
+#include "Sources.h"
 #include "Syntax.h"
 
 #include <compare>
+#include <filesystem>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -84,18 +87,19 @@ struct Grid {
 // parts and a fix to text reaches them all. Find is one of its commands, so a find bar
 // is only a front end on it.
 //
-// It holds the files open, shows one, and hands a panel a tab for each, whose press
-// shows it again; while one has changes, quit refuses, naming it. Several text nodes are
+// It holds the files open, shows one, and hands a panel a tab for each, whose press shows
+// it again; while one has changes, quit refuses, naming it. Several text nodes are
 // several editors: each hands on, as editors, those a connection to its before brings and
 // itself, and the one whose editors reach no text node's before registers write, close
 // and find, acting on the editor in focus, or the one in focus last, and takes open's
-// file param for them all, showing a file in the editor holding it, else in that one. The wheel scrolls it,
-// as does a drag on the bar at its right edge, and across, turned sideways or with
-// shift, as does a drag on the bar at its bottom edge; a double click selects a word,
-// and one more press the row. It takes keys from the keys part while it has the focus,
-// which a press in its area gives it, and none while it has no room. The font draws
-// ASCII, so a character past it shows as a blank cell a byte, but the caret steps over
-// it whole and no edit ever splits it.
+// file param for them all, showing a file in the editor holding it, else in that one, and
+// jump, which F12 sends, showing where the name at the caret comes from. The wheel
+// scrolls it, as does a drag on the bar at its right edge, and across, turned sideways or
+// with shift, as does a drag on the bar at its bottom edge; a double click selects a
+// word, and one more press the row. It takes keys from the keys part while it has the
+// focus, which a press in its area gives it, and none while it has no room. The font
+// draws ASCII, so a character past it shows as a blank cell a byte, but the caret steps
+// over it whole and no edit ever splits it.
 class Text final : public VP::Operator, public VP_VIEW::Editor {
   void bind(VP::Bind &node) override;
   void cook(VP::Cook &frame) override;
@@ -112,6 +116,20 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   void close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside beside) override;
   void find(VP::Call &call) override;
   void move(std::string_view path, std::string_view to) override;
+  std::span<const std::string> rows() const override;
+  std::pair<std::size_t, std::size_t> caret() const override;
+  void reveal(VP::FilePort &files,
+              std::string_view path,
+              std::size_t row,
+              std::size_t column,
+              std::size_t length) override;
+  void jump(VP::Call &call);
+  std::vector<Source> sources(VP::FilePort &files,
+                              Listed &listed,
+                              const std::string &file,
+                              std::span<const std::string> rows,
+                              std::string_view name) const;
+  void show_source(VP::Call &call, VP_VIEW::Editor &editor, const Source &source);
 
   VP_VIEW::Editor &target();
   VP_VIEW::Editor *holder(std::string_view path) const;
@@ -152,8 +170,12 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   VP::Command _close_all;
   VP::Command _find;
   VP::Command _move;
+  VP::Command _jump;
   std::string _name; // as the focus names it
   std::string _view; // the one it runs in, where its file param is unset
+  // Its own folder, in the library, from which jump reaches the engine's headers, as a
+  // node's include path does, where a project's file includes one.
+  std::filesystem::path _library;
   const VP_VIEW::Editors *_before = nullptr; // a connection's; none for none
   VP_VIEW::Editors *_editors = nullptr;      // those, then itself
   bool _head = false;                        // it answers the commands for all of them
@@ -180,6 +202,10 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   bool _control = false;  // held, so c, x and v copy, cut and paste
   bool _follow = false;   // the caret moved, so the next layout scrolls it into view
   Caret _blink;           // the caret's mark, as it blinks
+  // The name jump looked for last, and where it found it, which a jump from one of those
+  // goes on among.
+  std::string _jumped;
+  std::vector<Source> _found_last;
 };
 
 } // namespace

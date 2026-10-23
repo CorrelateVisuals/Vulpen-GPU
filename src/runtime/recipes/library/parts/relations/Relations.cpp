@@ -77,56 +77,6 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
-// The names in each folder looked in during a reading, each folder listed once, kept in
-// the part between the frames a reading takes.
-class Listed {
-public:
-  Listed(VP::FilePort &files, std::map<std::string, std::vector<std::string>> &names)
-      : _files(files), _names(names) {}
-
-  // What a folder holds, as the file port lists it.
-  const std::vector<std::string> &names(const std::string &folder) {
-    auto found = _names.find(folder);
-    if (found == _names.end())
-      found = _names.emplace(folder, _files.list(folder)).first;
-    return found->second;
-  }
-
-  // Whether a file or a folder is there.
-  bool there(const std::filesystem::path &path) {
-    const std::vector<std::string> &held = names(path.parent_path().string());
-    const std::string name = path.filename().string();
-    return std::ranges::find(held, name) != held.end() ||
-           std::ranges::find(held, name + '/') != held.end();
-  }
-
-private:
-  VP::FilePort &_files;
-  std::map<std::string, std::vector<std::string>> &_names;
-};
-
-// Where a name a file says leads: from the file's folder, or, where it climbs, from a
-// folder holding it, as a compiler's include path and CMake's source folder reach; empty
-// for nowhere.
-std::string resolved(Listed &listed,
-                     const std::filesystem::path &folder,
-                     std::string_view name,
-                     bool climbs) {
-  while (name.ends_with('/'))
-    name.remove_suffix(1);
-  if (name.empty())
-    return {};
-  for (std::filesystem::path from = folder;; from = from.parent_path()) {
-    std::filesystem::path path = (from / std::string(name)).lexically_normal();
-    if (!path.has_filename()) // a/b/.. is a/, the folder a
-      path = path.parent_path();
-    if (listed.there(path))
-      return path.generic_string();
-    if (!climbs || from == from.parent_path())
-      return {};
-  }
-}
-
 // An id as a document defines it and a file cites it: capitals, then two digits or
 // three, as RV00 or CPP12.
 std::size_t id_length(std::string_view text, std::size_t at) {
@@ -227,19 +177,6 @@ std::string module(Listed &listed, const std::filesystem::path &folder, std::str
   std::ranges::replace(path, '.', '/');
   const std::string file = resolved(listed, from, path + ".py", dots == 0);
   return file.empty() ? resolved(listed, from, path, dots == 0) : file;
-}
-
-// A recipe a manifest's node uses, by its name, in the library's parts or components,
-// from a folder holding the manifest; a drop's copy, named with an @, is the view's own.
-std::string recipe(Listed &listed, const std::filesystem::path &folder, std::string_view name) {
-  if (name.find('@') != std::string_view::npos)
-    return {};
-  for (const std::string_view kind : {"parts/", "components/", "library/parts/",
-                                      "library/components/"})
-    if (std::string found = resolved(listed, folder, std::string(kind) + std::string(name), true);
-        !found.empty())
-      return found;
-  return {};
 }
 
 // The words of a CMake file's line that name a file or a folder, past the variables

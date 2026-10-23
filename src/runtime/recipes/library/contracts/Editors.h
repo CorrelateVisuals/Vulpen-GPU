@@ -4,8 +4,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace VP_VIEW {
@@ -40,6 +42,18 @@ public:
   // Puts the first file it holds where the second is, those between moving over a place,
   // as a tab dragged onto another moves among its strip's.
   virtual void move(std::string_view path, std::string_view to) = 0;
+  // The rows of the file it shows, as typed so far, and the caret's row and the byte of
+  // it where it stands, as jump reads the name there; none, and the first, while it
+  // shows no file.
+  virtual std::span<const std::string> rows() const = 0;
+  virtual std::pair<std::size_t, std::size_t> caret() const = 0;
+  // Shows the file, opening it first when it holds it not, a run of a row selected and
+  // scrolled into view, as jump shows where a name comes from.
+  virtual void reveal(VP::FilePort &files,
+                      std::string_view path,
+                      std::size_t row,
+                      std::size_t column,
+                      std::size_t length) = 0;
 
 protected:
   ~Editor() = default;

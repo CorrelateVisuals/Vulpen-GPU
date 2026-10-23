@@ -2,12 +2,13 @@
 # Rect to its area, a font's metrics to its font and the keys part's typed to its typed;
 # its rects, labels and characters go to drawing parts, and its tabs to a panel. Its file
 # param, which the editor part's open sets, names the file it shows; unset, it shows none
-# until one is named.
+# until one is named. jump, as F12 sends it, shows where the name at the caret comes from.
 [manifest]
 version = 1
 
 [node "text"]
 operator = Text
+file     = Sources.h
 file     = Syntax.h
 file     = Text.cpp
 file     = Text.h
