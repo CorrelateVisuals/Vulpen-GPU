@@ -978,20 +978,26 @@ void Graph::select(VP::CommandPort &commands, std::span<const std::string> nodes
     }
 }
 
-// Each box the select box touches joins the selection, as shift with a press adds one;
-// the select box is cut at the area, as it shows, so only what shows of a box is
-// touched, and of a frame its rows.
+// Each box the select box touches joins the selection, and each selected already leaves
+// it, as shift with a press adds one or takes it out; the select box is cut at the area,
+// as it shows, so only what shows of a box is touched, and of a frame its rows.
 void Graph::select_touched(VP::CommandPort &commands, glm::vec2 from) {
   std::vector<std::string> chosen;
   if (_selected_in == _shown)
     chosen = _selection;
-  const std::size_t before = chosen.size();
   const VP_VIEW::Rect swept = select_box(from);
-  for (std::size_t at = 0; at < _layout.placed().size(); ++at)
-    if (const Box &touched = _boxes.boxes[at];
-        touches(solid(at), swept) && !selected(touched.name))
+  bool touched_any = false;
+  for (std::size_t at = 0; at < _layout.placed().size(); ++at) {
+    const Box &touched = _boxes.boxes[at];
+    if (!touches(solid(at), swept))
+      continue;
+    touched_any = true;
+    if (selected(touched.name))
+      std::erase(chosen, touched.name);
+    else
       chosen.push_back(touched.name);
-  if (chosen.size() != before)
+  }
+  if (touched_any)
     select(commands, chosen);
 }
 

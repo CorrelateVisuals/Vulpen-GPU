@@ -111,7 +111,8 @@ struct Under {
 // pointer is over it. The box selected
 // or pressed last shows over the others, hiding the boxes and the rows behind it. With
 // shift, a drag on the ground draws a select box, and letting go adds every box it
-// touches to the selection. The curve under the pointer, where no box lies, shows over
+// touches to the selection, and takes out those it touches that were in it. The curve
+// under the pointer, where no box lies, shows over
 // the others, brighter, and its details, a connection's ends or the lines that say the
 // relations it stands for, go as rows to a tooltip beside the pointer. With its heat param
 // on, each box is filled by what its node and those inside it cost a frame, on the GPU or
