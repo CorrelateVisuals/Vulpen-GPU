@@ -405,7 +405,7 @@ private:
             ? glm::ivec2(0)
             : glm::ivec2(room.x + 2 * line_spacing, placed.inside + room.y + apart);
     const std::int32_t text =
-        static_cast<std::int32_t>(widest) * static_cast<std::int32_t>(cell.x) + 2 * margin;
+        static_cast<std::int32_t>(widest * cell.x) + 2 * margin;
     placed.natural = glm::uvec2(on_lines(std::max(text, holds.x)),
                                 on_lines(std::max(placed.inside, holds.y)));
     placed.least = glm::uvec2(glm::max(least_of(cell), holds));
@@ -580,8 +580,8 @@ private:
     std::int32_t tallest = 0;
     for (const std::size_t box : inner) {
       const Placed &placed = _placed[box];
-      room += (static_cast<float>(placed.extent.x) + across) *
-              static_cast<float>(static_cast<std::int32_t>(placed.extent.y) + line_spacing);
+      const auto tall = static_cast<std::int32_t>(placed.extent.y) + line_spacing;
+      room += (static_cast<float>(placed.extent.x) + across) * static_cast<float>(tall);
       tallest = std::max(tallest, static_cast<std::int32_t>(placed.extent.y));
     }
     const std::int32_t reach =
@@ -837,9 +837,9 @@ private:
   }
 
   // Each gap as wide as a column's gap and its lanes, or before the first column and
-  // after the last, its lanes with a lane either side; each column's left, on the ground's
-  // next line; and each lane in the middle of its gap, a lane apart, in the order its
-  // turns came.
+  // after the last, its lanes with a lane either side; each column's left, on the
+  // ground's next line; and each lane in the middle of its gap, a lane apart, in the
+  // order its turns came.
   void widen(std::size_t level, std::size_t count, glm::uvec2 cell, glm::ivec2 start) {
     const auto lane = static_cast<std::int32_t>(cell.x);
     const auto base = [&](std::size_t gap, bool laned) {
@@ -866,9 +866,9 @@ private:
         const std::int32_t left = gap == 0 ? start.x : _lefts[gap - 1] + _widths[gap - 1];
         // What the column after it moved right to start on a line widens the gap.
         const std::int32_t wider = gap < count ? _lefts[gap] - left - _gaps[gap] : 0;
-        placed.at =
-            static_cast<float>(left + (base(gap, true) + wider) / 2 + lane * _ins[gap]++) +
-            static_cast<float>(lane) / 2.0f;
+        const std::int32_t middle = left + (base(gap, true) + wider) / 2;
+        placed.at = static_cast<float>(middle + lane * _ins[gap]++) +
+                    static_cast<float>(lane) / 2.0f;
       }
   }
 

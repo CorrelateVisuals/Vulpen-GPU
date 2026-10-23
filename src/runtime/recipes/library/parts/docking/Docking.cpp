@@ -677,8 +677,8 @@ class Docking final : public VP::Operator {
     }
   }
 
-  // The panel a drag would drop the one taken on, by the edge the pointer is nearest; onto
-  // itself only a panel holding several, at an edge, which the one it shows leaves.
+  // The panel a drag would drop the one taken on, by the edge the pointer is nearest;
+  // onto itself only a panel holding several, at an edge, which the one it shows leaves.
   std::optional<std::pair<std::size_t, std::string_view>> dropped() const {
     if (!_dragging || !_grabbed)
       return std::nullopt;

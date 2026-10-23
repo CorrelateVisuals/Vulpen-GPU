@@ -809,7 +809,8 @@ void Relations::relate_stages() {
     const std::filesystem::path *writer = nullptr;
     const std::vector<Varying> *written = nullptr;
     for (const auto &[file, outs] : _in_folder.at(reader.parent_path()).varyings)
-      if (*draw_stage(*file) < stage && (!writer || *draw_stage(*file) > *draw_stage(*writer))) {
+      if (*draw_stage(*file) < stage &&
+          (!writer || *draw_stage(*file) > *draw_stage(*writer))) {
         writer = file;
         written = outs;
       }

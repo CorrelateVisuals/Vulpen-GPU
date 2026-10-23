@@ -238,15 +238,18 @@ class Modes final : public VP::Operator {
   // prefers, or with none the one this run took. Asked at the first frame and after a
   // warning, as gpu toggle writes one, so a frame asks nothing otherwise.
   void read_gpu(VP::Cook &frame) {
-    const auto warned = [](const VP::Logged &line) { return line.level == VP::Level::warn; };
+    const auto warned = [](const VP::Logged &line) {
+      return line.level == VP::Level::warn;
+    };
     if (_gpu_read && std::ranges::none_of(frame.commands().log(), warned))
       return;
     _gpu_read = true;
     const std::string said = frame.commands().send("gpu");
     const std::size_t named = said.find(prefers);
-    const bool now = named == std::string::npos
-                         ? _running == discrete
-                         : std::string_view(said).substr(named + prefers.size()).starts_with(discrete);
+    const std::string_view kind =
+        named == std::string::npos ? std::string_view(_running)
+                                   : std::string_view(said).substr(named + prefers.size());
+    const bool now = kind.starts_with(discrete);
     if (now != std::exchange(_discrete, now))
       write_buttons();
   }

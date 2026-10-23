@@ -74,21 +74,21 @@ struct Under {
 
 // The graph of the current view, as the terminals' lines go to it, which view switch
 // moves and a second press on a view's box moves into it, as the view runs, each recipe a
-// node uses unfolded, a level at a time: the nodes at the top and
-// the views the view hosts, or the inside of the node its inside param names, the boxes of
-// the nodes inside it, as at the top, the tab naming the node, and what lies outside at
-// either side, where connections reach in and out, the node's own ports among them. A box a node, with its name, its ports, those
-// its insides read and write across its edge too, the recipe it uses, the nodes inside it
-// and its files; a box each view it hosts, with its name, its window and the file it is
-// hosted from; and a curve a reader of a connection, from the writer's port on its box's
-// right side to the reader's on its left, a view's from its window where its host takes
-// it, at right angles in the lanes between the boxes, so it runs over none and no other's
-// lane. A second press on a box holding nodes, or zooming in on it, shows its inside, and
-// one on what lies outside, or zooming out, the level above, through the inside param, which a
-// line sets as a press does (V06). The manifest holds no places (V04), so the graph alone
-// lays it out: the boxes of the level, a column past every box
-// beside them they read from, down each column in the manifest's order. A box dragged
-// stays where it is put, what lies outside too, and the first drag places
+// node uses unfolded, a level at a time: the nodes at the top and the views the view
+// hosts, or the inside of the node its inside param names, the boxes of the nodes inside
+// it, as at the top, the tab naming the node, and what lies outside at either side, where
+// connections reach in and out, the node's own ports among them. A box a node, with its
+// name, its ports, those its insides read and write across its edge too, the recipe it
+// uses, the nodes inside it and its files; a box each view it hosts, with its name, its
+// window and the file it is hosted from; and a curve a reader of a connection, from the
+// writer's port on its box's right side to the reader's on its left, a view's from its
+// window where its host takes it, at right angles in the lanes between the boxes, so it
+// runs over none and no other's lane. A second press on a box holding nodes, or zooming
+// in on it, shows its inside, and one on what lies outside, or zooming out, the level
+// above, through the inside param, which a line sets as a press does (V06). The manifest
+// holds no places (V04), so the graph alone lays it out: the boxes of the level, a column
+// past every box beside them they read from, down each column in the manifest's order. A
+// box dragged stays where it is put, what lies outside too, and the first drag places
 // every box where it shows, so a change to the graph moves none; the boxes placed are a
 // look at the graph, not its plumbing, so they go in .vulpen/graph.ini beside the view's
 // manifest, and a restart shows them as they were left; so do the colors a person gives
@@ -101,41 +101,38 @@ struct Under {
 // press do, , showing it from home. A drag on the ground moves the graph and the wheel
 // zooms it about the pointer, as the Perform panel's image moves, and a middle drag zooms
 // it about where it was pressed, nearer going right and farther going left, as the wheel
-// does, levels too; none of it is kept. A
-// press on a box selects it, shift adding it or taking it out, and a second press opens
-// the file of a row that names one in the editor; a drag on a box selected moves every
-// box selected, with shift held left and right or up and down alone, its top left
-// snapping to the ground's lines, and an arrow key moves the boxes selected a line that
-// way. A drag on a corner of a box makes it larger, or smaller down to the size its
-// rows and the boxes inside it need, and every other box selected as much, its edges
-// snapping to the lines, or to the size its rows need, and its corners show while the
-// pointer is over it. The box selected
-// or pressed last shows over the others, hiding the boxes and the rows behind it. With
-// shift, a drag on the ground draws a select box, and letting go adds every box it
-// touches to the selection, and takes out those it touches that were in it. The curve
-// under the pointer, where no box lies, shows over
-// the others, brighter, and its details, a connection's ends or the lines that say the
-// relations it stands for, go as rows to a tooltip beside the pointer. With its heat param
-// on, each box is filled by what its node and those inside it cost a frame, on the GPU or
-// the CPU, on the theme's ramp from cold to hot, against the costliest box beside it or
-// a budget, and the pointer over it shows the times in the tip; two buttons after the
-// layers' turn it on and off. arrange, as the button after manhattan sends, lays the boxes
-// shown out anew, as the graph alone does, the places and sizes given them gone; select
-// find selects the next box whose name or a row holds the words a find bar sends it; cd
-// goes where a press, the wheel or , go, by a line, and with none says where it is, the
-// folder of what it shows, which it hands a terminal's prompt as its place.
-// It owns the selection, of nodes, of the views the view shown hosts and of the files and
+// does, levels too; none of it is kept. A press on a box selects it, shift adding it or
+// taking it out, and a second press opens the file of a row that names one in the editor;
+// a drag on a box selected moves every box selected, with shift held left and right or up
+// and down alone, its top left snapping to the ground's lines, and an arrow key moves the
+// boxes selected a line that way. A drag on a corner of a box makes it larger, or smaller
+// down to the size its rows and the boxes inside it need, and every other box selected as
+// much, its edges snapping to the lines, or to the size its rows need, and its corners
+// show while the pointer is over it. The box selected or pressed last shows over the
+// others, hiding the boxes and the rows behind it. With shift, a drag on the ground draws
+// a select box, and letting go adds every box it touches to the selection, and takes out
+// those it touches that were in it. The curve under the pointer, where no box lies, shows
+// over the others, brighter, and its details, a connection's ends or the lines that say
+// the relations it stands for, go as rows to a tooltip beside the pointer. With its heat
+// param on, each box is filled by what its node and those inside it cost a frame, on the
+// GPU or the CPU, on the theme's ramp from cold to hot, against the costliest box beside
+// it or a budget, and the pointer over it shows the times in the tip; two buttons after
+// the layers' turn it on and off. arrange, as the button after manhattan sends, lays the
+// boxes shown out anew, as the graph alone does, the places and sizes given them gone;
+// select find selects the next box whose name or a row holds the words a find bar sends
+// it; cd goes where a press, the wheel or , go, by a line, and with none says where it
+// is, the folder of what it shows, which it hands a terminal's prompt as its place. It
+// owns the selection, of nodes, of the views the view shown hosts and of the files and
 // folders it shows, which select and selected reach as lines do (V06), and of what lies
-// outside and the boxes whose names hold a blank, which no line names, for the eye
-// alone; control with a selects them all, and of them delete or backspace removes the
-// nodes and the views, as
-// node remove and view close do, and takes keys from the keys part while it has the
-// focus, which a press in its area gives it. Its own shaders draw the ground, lines that
-// move and zoom with the graph over the whole area; it writes
-// Rects, Labels and Curves for the parts
-// that draw over them, and only what lies in its area: a box cut at its edge, and a row
-// of text with the area as its room, which glyphs cuts at the edge; a curve goes whole,
-// and the curves part cuts it at the edge of the ground the graph hands it.
+// outside and the boxes whose names hold a blank, which no line names, for the eye alone;
+// control with a selects them all, and of them delete or backspace removes the nodes and
+// the views, as node remove and view close do, and takes keys from the keys part while it
+// has the focus, which a press in its area gives it. Its own shaders draw the ground,
+// lines that move and zoom with the graph over the whole area; it writes Rects, Labels
+// and Curves for the parts that draw over them, and only what lies in its area: a box cut
+// at its edge, and a row of text with the area as its room, which glyphs cuts at the
+// edge; a curve goes whole, and the curves part cuts it at the edge of the ground the
+// graph hands it.
 class Graph final : public VP::Operator {
 public:
   void bind(VP::Bind &node) override;
@@ -149,7 +146,8 @@ private:
   void build(const VP::View *edited, const VP::View *flat);
   void name_tab();
   void show_view(VP::CommandPort &commands) const;
-  void show_folder(VP::CommandPort &commands, const std::filesystem::path &folder) const;
+  void show_folder(VP::CommandPort &commands,
+                   const std::filesystem::path &folder) const;
   void home();
   void follow(VP::Cook &frame, bool room, const VP::Event &event);
   void press(VP::Cook &frame, std::uint32_t presses);

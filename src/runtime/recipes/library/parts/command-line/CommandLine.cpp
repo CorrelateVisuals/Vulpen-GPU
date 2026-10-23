@@ -260,33 +260,31 @@ struct Mark {
 // One line of input with history and completion, sent to the command port. The CLI, the
 // terminal and the find bar are this part, so each reaches Vulpen only through the
 // command port; its param on says where it is. On the terminal it is the CLI: each line
-// typed or piped in runs, what it answers is printed, and the run ends with the input.
-// In a window it takes keys from the keys part while it has the focus, which a press in
-// its area gives it, and shows what lines answer and the log above the line typed, in
-// the Rect its area gives, with a tab for the panel it sits in, named by its title param;
-// a drag selects in what it shows, as a double click does a word and one more press its
+// typed or piped in runs, what it answers is printed, and the run ends with the input. In
+// a window it takes keys from the keys part while it has the focus, which a press in its
+// area gives it, and shows what lines answer and the log above the line typed, in the
+// Rect its area gives, with a tab for the panel it sits in, named by its title param; a
+// drag selects in what it shows, as a double click does a word and one more press its
 // row, which control with c copies, and the wheel or a drag on the bar at its right edge
 // scrolls it; turned sideways or with shift, or a drag on the bar above the rule, scrolls
-// its rows across, while the line typed keeps its caret in view. A press on the line typed
-// puts the caret there, and a drag over it, shift with a key that moves the caret, or
-// control with a, selects in it, which control with c copies, with x cuts, and what is
-// typed or pasted replaces. Only the one on the
-// terminal registers help, complete and clear, as a command has one owner, and a
-// terminal in a window sends them as it sends any line, taking what clear answers as a
-// terminal takes it; on the terminal, the end of the input ends the run while no window
-// is open, as one a launcher gives no input still shows its window. In a window,
-// control+f makes its line a search, the line typed set aside: the words, which enter
-// and control+f find again in the rows above, older first, selecting the match and
-// scrolling to it, until escape gives the line back. As a find bar, on=find, it is a
-// search alone, over a host whose control+f opens it: a row at the top of its area,
-// whose words enter and control+f send to the command its finds param names, its words
-// joined by commas, as the graph's select,find, or to find, which the editors' owner
-// answers, and
-// which escape closes, the focus back to the host, and a press on which takes the focus
-// back from the host; the rest of its area goes to the host.
-// A line that names no view goes to the current view, which view switch moves, so it
-// needs no name and every log line still has one. The prompt shows that view's folder, as
-// a shell shows the one it is in, and the log keeps to that view.
+// its rows across, while the line typed keeps its caret in view. A press on the line
+// typed puts the caret there, and a drag over it, shift with a key that moves the caret,
+// or control with a, selects in it, which control with c copies, with x cuts, and what is
+// typed or pasted replaces. Only the one on the terminal registers help, complete and
+// clear, as a command has one owner, and a terminal in a window sends them as it sends
+// any line, taking what clear answers as a terminal takes it; on the terminal, the end of
+// the input ends the run while no window is open, as one a launcher gives no input still
+// shows its window. In a window, control+f makes its line a search, the line typed set
+// aside: the words, which enter and control+f find again in the rows above, older first,
+// selecting the match and scrolling to it, until escape gives the line back. As a find
+// bar, on=find, it is a search alone, over a host whose control+f opens it: a row at the
+// top of its area, whose words enter and control+f send to the command its finds param
+// names, its words joined by commas, as the graph's select,find, or to find, which the
+// editors' owner answers, and which escape closes, the focus back to the host, and a
+// press on which takes the focus back from the host; the rest of its area goes to the
+// host. A line that names no view goes to the current view, which view switch moves, so
+// it needs no name and every log line still has one. The prompt shows that view's folder,
+// as a shell shows the one it is in, and the log keeps to that view.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string on = node.param<std::string>("on");
@@ -510,8 +508,8 @@ class CommandLine final : public VP::Operator {
     if (!grid.room || shown == 0)
       return;
     const glm::vec2 cell(_font->cell);
-    const glm::vec2 from(static_cast<float>(grid.left),
-                         static_cast<float>(grid.bottom) - static_cast<float>(shown) * cell.y);
+    const auto top = static_cast<float>(grid.bottom) - static_cast<float>(shown) * cell.y;
+    const glm::vec2 from(static_cast<float>(grid.left), top);
     const glm::vec2 room(static_cast<float>(grid.columns), static_cast<float>(shown));
     const glm::vec2 cells = (_pointer - from) / cell;
     const glm::vec2 past = glm::min(cells, 0.0f) + glm::max(cells - room, 0.0f);
@@ -798,7 +796,8 @@ class CommandLine final : public VP::Operator {
     const auto [from, to] = std::minmax(*_from, _caret);
     if (_control && (key == "c" || key == "x"))
       frame.input().copy(std::string_view(_line).substr(from, to - from));
-    if (key == "backspace" || key == "delete" || (_control && (key == "x" || key == "v"))) {
+    const bool cuts = _control && (key == "x" || key == "v");
+    if (key == "backspace" || key == "delete" || cuts) {
       take_selected();
       if (key == "v")
         paste(frame, frame.input().clipboard());
@@ -813,7 +812,10 @@ class CommandLine final : public VP::Operator {
     if (key != "left" && key != "right" && key != "home" && key != "end")
       return false;
     _from.reset();
-    _caret = key == "left" ? from : key == "right" ? to : key == "home" ? 0 : _line.size();
+    _caret = key == "left"    ? from
+             : key == "right" ? to
+             : key == "home"  ? 0
+                              : _line.size();
     return true;
   }
 
@@ -1093,7 +1095,8 @@ class CommandLine final : public VP::Operator {
       return _caret;
     const float cells = std::round((x - static_cast<float>(_line_left)) /
                                    static_cast<float>(_font->cell.x));
-    return std::min(_first + static_cast<std::size_t>(std::max(cells, 0.0f)), _line.size());
+    const auto past = static_cast<std::size_t>(std::max(cells, 0.0f));
+    return std::min(_first + past, _line.size());
   }
 
   // A press on the line typed puts the caret where it was, and a drag from there selects
@@ -1153,7 +1156,8 @@ class CommandLine final : public VP::Operator {
       if (_line.find_first_not_of(' ') == std::string::npos)
         return true;
       if (_finder)
-        _answer = frame.commands().send(std::format("{}: {} {}", _own_view, _finds, _line));
+        _answer =
+            frame.commands().send(std::format("{}: {} {}", _own_view, _finds, _line));
       else
         find_above();
     } else if (key == "escape") {

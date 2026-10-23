@@ -102,7 +102,8 @@ param_there(VP::Call &call, std::string_view target, std::string_view key) {
     holder = &*node;
   for (std::size_t dot = name.find('.'); !holder && dot != std::string_view::npos;
        dot = name.find('.', dot + 1))
-    if (const auto user = std::ranges::find(view->nodes, name.substr(0, dot), &VP::Node::name);
+    if (const auto user =
+            std::ranges::find(view->nodes, name.substr(0, dot), &VP::Node::name);
         user != view->nodes.end() && user->uses()) {
       holder = &*user;
       wanted = std::format("{}.{}", name.substr(dot + 1), key);
@@ -181,10 +182,10 @@ class Inspect final : public VP::Operator {
       throw std::runtime_error("no node is selected; info <node> shows one");
   }
 
-  // Where the graph is: the folder it shows, its names one a row, a folder's with a / after
-  // it; the inside of the node it shows, its files and the nodes inside it as ls lists
-  // them, each recipe unfolded, as the graph shows it, or as the view holds them while
-  // its manifest cannot be read; or the view whole.
+  // Where the graph is: the folder it shows, its names one a row, a folder's with a /
+  // after it; the inside of the node it shows, its files and the nodes inside it as ls
+  // lists them, each recipe unfolded, as the graph shows it, or as the view holds them
+  // while its manifest cannot be read; or the view whole.
   void here(VP::Call &call) const {
     if (const std::optional<std::string> folder = param_there(call, _folders, "folder")) {
       for (const std::string &name : call.files().list(*folder))
@@ -392,8 +393,10 @@ class Inspect final : public VP::Operator {
       cost_rows(costs, tree, inner, tree.inside[at], depth + 1, rows);
   }
 
-  std::string _graph;   // <view>:<node> of a graph in a window, whose inside param it reads
-  std::string _folders; // and of the node it shows a folder from, whose folder param
+  // <view>:<node> of a graph in a window, whose inside param it reads, and of the node it
+  // shows a folder from, whose folder param.
+  std::string _graph;
+  std::string _folders;
   VP::Command _ls;
   VP::Command _info;
   VP::Command _stats;

@@ -204,15 +204,15 @@ void Graph::bind(VP::Bind &node) {
                        "blanks, whatever their case, as its find bar finds them; the "
                        "graph stays where it is");
   _cd = node.command("cd [<path>]",
-                     "goes into a box the graph shows, a node's, a view's or a folder's, "
-                     "as a second press on it does, or into a folder by its path; .. goes "
-                     "up a level, as , does, and / to the top; with none, says where the "
-                     "graph is, as the terminal's prompt shows it");
+                     "goes into a box the graph shows, a node's, a view's or a "
+                     "folder's, as a second press on it does, or into a folder by its "
+                     "path; .. goes up a level, as , does, and / to the top; with none, "
+                     "says where the graph is, as the terminal's prompt shows it");
   _place = &node.output<VP_VIEW::Place>("place");
   _arrange = node.command("arrange",
-                          "lays out the boxes the graph shows as it does alone, letting go "
-                          "of where they were put and the sizes they were given there; "
-                          "control with z in the graph takes it back");
+                          "lays out the boxes the graph shows as it does alone, letting "
+                          "go of where they were put and the sizes they were given "
+                          "there; control with z in the graph takes it back");
   _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
   _labels = node.upload<VP_VIEW::Label>("labels", label_room);
   _characters = node.upload<VP_VIEW::Character>("characters", character_room);
@@ -528,7 +528,8 @@ void Graph::show_view(VP::CommandPort &commands) const {
 }
 
 // A folder's inside, which the relations part reads, in place of what shows.
-void Graph::show_folder(VP::CommandPort &commands, const std::filesystem::path &folder) const {
+void Graph::show_folder(VP::CommandPort &commands,
+                        const std::filesystem::path &folder) const {
   commands.send(std::format("{}: param set {} folder {}",
                                     _relations->view,
                                     _relations->node,
@@ -1074,8 +1075,8 @@ void Graph::find(VP::Call &call) {
 // With none, where the graph is, from where vulpen started, as a prompt shows it; .. up a
 // level, as , goes, from home; / the top of the view shown, or of the repository a folder
 // shown is in; a word, a box of the level shown by its name, or in a folder shown a
-// folder in it; a path, from where it was typed, a folder, or the view whose folder it is,
-// as a second press on its box goes there. Any other place is refused, naming why.
+// folder in it; a path, from where it was typed, a folder, or the view whose folder it
+// is, as a second press on its box goes there. Any other place is refused, naming why.
 void Graph::cd(VP::Call &call) {
   if (call.arguments().empty()) {
     call.reply(std::filesystem::path(_place->folder)
@@ -1126,8 +1127,8 @@ void Graph::place(const VP::View *edited, const VP::View *flat) {
   std::filesystem::path folder(_relations->folder);
   if (folder.empty() && edited && flat) {
     const auto scope = std::ranges::find(flat->nodes, _boxes.scope, &VP::Node::name);
-    folder = _boxes.scope.empty() || scope == flat->nodes.end() ? edited->file.parent_path()
-                                                                : scope->folder;
+    const bool top = _boxes.scope.empty() || scope == flat->nodes.end();
+    folder = top ? edited->file.parent_path() : scope->folder;
   }
   if (_place->folder != folder.string())
     _place->folder = folder.string();
