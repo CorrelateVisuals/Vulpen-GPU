@@ -13,8 +13,9 @@
 #   Editor     panel + text-area + find-bar
 #   Terminal   panel + terminal
 #   Graph      panel + find-bar + graph-editor
-#   Perform    panel + switch + switch-tabs + image ×2 + image-file
-#                                     the window of the view presented, or a preview
+#   Perform    panel + switch + switch-tabs + image ×2 + image-file + still
+#                                     the window of the view presented, a frame of it
+#                                     held still, or a preview
 #   Menubar    panel + join           a button a panel and the run's, along the top
 #   Menu       menu                   the menus of menu.ini, at a right press in the graph
 #   Tooltip    tooltip
@@ -45,7 +46,7 @@ recipe = viewport
 # and the others draw nowhere and keep running.
 [node "ide.modes"]
 recipe = modes
-param  = to=ide.presented.picture,ide.screen.picture
+param  = to=ide.presented.picture,ide.screen.picture,ide.still.picture
 param  = shows=ide.perform-panel
 param  = switch=ide.perform
 
@@ -113,6 +114,13 @@ recipe = switch
 [node "ide.perform-tabs"]
 recipe = switch-tabs
 
+# Space while the view presented has the focus, or a double click on it, holds the frame
+# it shows, to look at while the view goes on, and again lets it go: a look in the panel,
+# never in perform mode, whose window shows the view itself.
+[node "ide.still"]
+recipe = still
+param  = host=ide.presented
+
 # A drag moves the view presented and the wheel zooms it, as in the graph, and h, while
 # the panel has the focus, brings it home; the window that fills the whole window in
 # perform mode stays still.
@@ -148,18 +156,21 @@ recipe = panel
 [node "ide.docking"]
 recipe = docking
 
-# The menus of menu.ini, which a right press in the graph opens there; listed after the
-# panels, so they drop over them. An item types its line into the terminal's.
-[node "ide.menu"]
-recipe = menu
-param  = menus.line=ide.terminal.command-line
-
+# The frame round the panel holding the node in focus, and where a drop of a panel
+# dragged would put it.
 [node "ide.docking-rects"]
 recipe = rects
 
 # A close mark at the end of each panel's strip, which hides the panel.
 [node "ide.docking-glyphs"]
 recipe = glyphs
+
+# The menus of menu.ini, which a right press in the graph opens there; listed after the
+# panels and what the docking part draws over them, so they drop over all of it. An item
+# types its line into the terminal's.
+[node "ide.menu"]
+recipe = menu
+param  = menus.line=ide.terminal.command-line
 
 # What is presented, over the whole window in perform mode; in edit mode it has no room.
 [node "ide.screen"]
@@ -269,11 +280,23 @@ to   = ide.perform-panel.bar.area
 from = ide.perform-panel.bar.rest
 to   = ide.perform.area
 
-# The first half's room goes to the tabs too, by which they find the switch.
+# The first half's room goes to the tabs too, by which they find the switch, and to the
+# still, where a double click holds the frame shown.
 [connection "perform-shown"]
 from = ide.perform.first
 to   = ide.presented.area
 to   = ide.perform-tabs.first
+to   = ide.still.area
+
+# The frame the still holds, and whether it holds one, which the view presented shows in
+# place of its window while it does.
+[connection "held"]
+from = ide.still.held
+to   = ide.presented.held
+
+[connection "still"]
+from = ide.still.still
+to   = ide.presented.still
 
 [connection "preview-shown"]
 from = ide.perform.second
@@ -316,6 +339,8 @@ to   = ide.terminal-panel.tabs.items
 to   = ide.terminal-panel.hit.items
 
 # The keys no chord takes, for the part in focus; those no part in focus takes go to modes.
+# The still reads the view presented's, and the docking part only which node has them, as
+# it frames the panel holding it.
 [connection "typed"]
 from = ide.keys.typed
 to   = ide.editor.text.typed
@@ -327,6 +352,8 @@ to   = ide.presented.typed
 to   = ide.preview.typed
 to   = ide.modes.typed
 to   = ide.menu.menus.typed
+to   = ide.still.typed
+to   = ide.docking.typed
 
 [connection "palette"]
 from = ide.palette.palette

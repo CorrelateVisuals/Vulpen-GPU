@@ -1,9 +1,12 @@
 #include "contracts/Rect.h"
+#include "contracts/Still.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/PanZoom.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <format>
 #include <optional>
 #include <span>
@@ -14,6 +17,7 @@
 namespace {
 
 constexpr std::string_view picture = "picture"; // the port its shaders sample
+constexpr std::string_view still = "still"; // where a still says whether it holds a frame
 // As near as the wheel zooms it: ten times the graph's, so a view's pixels show whole
 // at a time; the graph keeps its own, as its boxes' text has nothing more to show.
 constexpr float nearest = 10.0f * PanZoom::most;
@@ -26,7 +30,9 @@ constexpr float nearest = 10.0f * PanZoom::most;
 // button zooms it about where it was pressed, going right nearer and left farther, as in
 // the graph; a press in its area gives it
 // the focus, and while it has it, h brings it home, letterboxed again. What a connection
-// brings to its picture anew, as another view presented, shows at home too.
+// brings to its picture anew, as another view presented, shows at home too. While a still
+// connected to it holds a frame, it shows that frame, held, in place of the picture,
+// moved and zoomed as the picture was, so it is looked at where it was.
 class Image final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _area = &node.input<VP_VIEW::Rect>("area");
@@ -42,6 +48,17 @@ class Image final : public VP::Operator {
     if (_moves)
       _typed = &node.input<VP_VIEW::Typed>("typed");
     _name = node.name();
+    // Only an image a still hands frames to reads whether one is held, so any other
+    // needs no connection for it.
+    _holds = node.value<std::uint32_t>("holds");
+    const auto reaches = [&](const VP::Connection &connection) {
+      return std::ranges::any_of(connection.to, [&](const VP::Endpoint &to) {
+        return to.node == _name && to.port == still;
+      });
+    };
+    _still = std::ranges::any_of(node.view().connections, reaches)
+                 ? &node.input<VP_VIEW::Still>(still)
+                 : nullptr;
   }
 
   void cook(VP::Cook &frame) override {
@@ -56,6 +73,7 @@ class Image final : public VP::Operator {
     }
     frame.set(_pan, _view.pan);
     frame.set(_zoom, _view.zoom);
+    frame.set(_holds, static_cast<std::uint32_t>(_still && _still->holds));
   }
 
   // The writer of the connection that reaches its picture, none while none does; copied
@@ -113,10 +131,12 @@ class Image final : public VP::Operator {
 
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Typed *_typed = nullptr; // with moves = yes
+  const VP_VIEW::Still *_still = nullptr; // while a still is connected to it
   std::string _name;                      // as the focus names it
   VP::Upload<VP_VIEW::Rect> _place;
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;
+  VP::Value<std::uint32_t> _holds;
   PanZoom _view;
   VP::Endpoint _from;     // what reaches its picture, as the frame before saw it
   glm::vec2 _pointer{};   // as the events so far left it

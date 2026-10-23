@@ -31,9 +31,13 @@ struct Item {
   bool toggles = false;
   // The role of the theme it is lit in: one that toggles is filled in it while on, as the
   // gpu button in the build curves' orange; any other shows its label in it while current
-  // and muted while not, on a button's plain fill, as a layer's button in its curves'
+  // and muted while not, on the fill any button has, as a layer's button in its curves'
   // color. None for the accent's of one that toggles, or the content's of a tab.
   std::optional<std::uint32_t> role;
+  // One with nothing to switch to, as gpu on a machine with one kind of GPU, or run with
+  // nothing presented: a press still sends its command, which says why it does nothing,
+  // and a strip flashes it in the error's color, so it reads as pressed in vain.
+  bool stuck = false;
 
   bool operator==(const Item &) const = default;
 };

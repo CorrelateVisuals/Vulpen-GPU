@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace VP {
 
@@ -31,6 +32,9 @@ public:
   // virtual, cpu or other.
   std::string describe() const;
   std::string_view kind() const;
+  // The kind a launch that prefers this one takes, of the GPUs that met the floor as
+  // this one chose: that kind where one did, else the fastest.
+  std::string_view takes(std::string_view prefer) const;
   VkInstance instance() const;
   VkPhysicalDevice physical_device() const;
   VkDevice device() const;
@@ -53,10 +57,12 @@ public:
               VkSemaphore rendered = VK_NULL_HANDLE) const;
 
 private:
-  // The GPU, and the family of the one queue that runs everything.
+  // The GPU, the family of the one queue that runs everything, and every GPU that met
+  // the floor, which a later launch chooses among.
   struct Choice {
     VkPhysicalDevice device = VK_NULL_HANDLE;
     std::uint32_t family = 0;
+    std::vector<VkPhysicalDevice> fit;
   };
 
   static Choice choose(VkInstance instance,

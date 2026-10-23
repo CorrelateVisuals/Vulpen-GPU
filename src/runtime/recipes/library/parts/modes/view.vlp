@@ -3,7 +3,7 @@
 # window of a view its view hosts to the images its to param names, ports joined by
 # commas, which its host sets; a project loaded shows the panel its shows param names
 # again, and the first half of the switch its switch param names, which its host may
-# set. Its buttons are edit, run and gpu, for a bar.
+# set. Its buttons are edit, run and gpu, and beside them the frames a second, for a bar.
 [manifest]
 version = 1
 

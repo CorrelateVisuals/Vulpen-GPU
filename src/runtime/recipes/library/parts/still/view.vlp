@@ -1,0 +1,15 @@
+# The still part: one node whose operator is Still; it holds a frame of its picture
+# still, for a person to look at while what draws it goes on: space, while the node its
+# host param names has the focus, or a double click in its area, copies the picture into
+# held, and still tells the image held reaches to show it in place of the picture, until
+# either comes again. Its host connects the image an image part shows to its picture, the
+# Rect that image shows in to its area and the keys part's typed to its typed, names that
+# image part in its host param, which has no default, and connects held and still to it.
+[manifest]
+version = 1
+
+[node "still"]
+operator    = Still
+file        = Still.comp
+file        = Still.cpp
+invocations = 4096

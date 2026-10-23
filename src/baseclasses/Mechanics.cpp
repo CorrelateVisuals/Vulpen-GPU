@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace VP {
@@ -178,10 +179,9 @@ std::size_t rank(VkPhysicalDevice device, std::string_view prefer) {
                  preference.begin());
 }
 
-VkPhysicalDevice pick_device(VkInstance instance,
-                             VkSurfaceKHR surface,
-                             const Log &log,
-                             std::string_view prefer) {
+// The GPUs that meet the floor, and present to the window where there is one.
+std::vector<VkPhysicalDevice>
+fit_devices(VkInstance instance, VkSurfaceKHR surface, const Log &log) {
   std::uint32_t count = 0;
   vkEnumeratePhysicalDevices(instance, &count, nullptr);
   std::vector<VkPhysicalDevice> devices(count);
@@ -199,10 +199,13 @@ VkPhysicalDevice pick_device(VkInstance instance,
         std::format("no GPU meets the Vulkan floor: 1.2 with buffer device address and "
                     "descriptor indexing (RV01){}; --log debug says why for each GPU",
                     surface ? ", and presents to the window" : ""));
-  const VkPhysicalDevice best = *std::ranges::min_element(
+  return devices;
+}
+
+VkPhysicalDevice best_of(std::span<const VkPhysicalDevice> devices,
+                         std::string_view prefer) {
+  return *std::ranges::min_element(
       devices, {}, [&](VkPhysicalDevice device) { return rank(device, prefer); });
-  log.write(Level::info, Tag::gpu, "runs on " + describe(best));
-  return best;
 }
 
 VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
@@ -320,8 +323,11 @@ Mechanics::Choice Mechanics::choose(VkInstance instance,
                                     const Log &log,
                                     std::string_view prefer) {
   const VkSurfaceKHR surface = window ? window->surface(instance) : VK_NULL_HANDLE;
-  const VkPhysicalDevice device = pick_device(instance, surface, log, prefer);
-  const Choice choice{.device = device, .family = *queue_family(device, surface)};
+  std::vector<VkPhysicalDevice> fit = fit_devices(instance, surface, log);
+  const VkPhysicalDevice device = best_of(fit, prefer);
+  log.write(Level::info, Tag::gpu, "runs on " + VP::describe(device));
+  Choice choice{
+      .device = device, .family = *queue_family(device, surface), .fit = std::move(fit)};
   if (surface)
     vkDestroySurfaceKHR(instance, surface, nullptr);
   return choice;
@@ -333,6 +339,10 @@ std::string Mechanics::describe() const {
 
 std::string_view Mechanics::kind() const {
   return kind_of(_choice.device);
+}
+
+std::string_view Mechanics::takes(std::string_view prefer) const {
+  return kind_of(best_of(_choice.fit, prefer));
 }
 
 void Mechanics::wait() const {

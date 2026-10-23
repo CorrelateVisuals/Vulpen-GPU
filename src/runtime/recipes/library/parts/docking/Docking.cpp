@@ -8,6 +8,7 @@
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
+#include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Halves.h"
@@ -68,11 +69,19 @@ constexpr std::string_view dock_recipe = "dock";
 constexpr std::string_view editor_recipe = "text-area";
 constexpr std::string_view before_port = "before";
 constexpr std::string_view editors_port = "editors";
+// The keys part's, whose focus names the node the panel framed holds.
+constexpr std::string_view typed_port = "typed";
 constexpr float even = 0.5f;      // a moved dock's ratio: half its place for each panel
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 constexpr std::int32_t ring = 2;  // how wide the frame where a drop puts a panel is
 constexpr std::uint32_t frame_rects = 4;
-constexpr std::uint32_t rect_room = 1 + frame_rects; // a divider, then a drop's frame
+// The frame round the panel holding the node in focus: a pixel wide, inside the panel,
+// so it never covers the seams between panels, in the accent faded halfway toward the
+// ground, so it marks the panel without drawing the eye from what the panel shows.
+constexpr std::int32_t focus_ring = 1;
+constexpr float focus_fade = 0.5f;
+// A divider, then the focus's frame, then a drop's.
+constexpr std::uint32_t rect_room = 1 + 2 * frame_rects;
 // A panel's close mark, in the cells at the end of its tab strip that its tabs leave
 // free, as the panel component's list param end does, which a press hides the panel by.
 constexpr std::uint32_t close_cells = 2;
@@ -301,17 +310,18 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // down past it shows it again, at the size it had, the strip's size never changing.
 class Docking final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    const std::vector<VP::Connection> &connections = node.view().connections;
-    _editors = std::ranges::any_of(connections,
-                                   [&](const VP::Connection &connection) {
-                                     return std::ranges::any_of(
-                                         connection.to, [&](const VP::Endpoint &to) {
-                                           return to.node == node.name() &&
-                                                  to.port == editors_port;
-                                         });
-                                   })
-                   ? &node.input<VP_VIEW::Editors>(editors_port)
-                   : nullptr;
+    const std::string name = node.name();
+    const auto connected = [&](std::string_view port) {
+      return std::ranges::any_of(
+          node.view().connections, [&](const VP::Connection &connection) {
+            return std::ranges::any_of(connection.to, [&](const VP::Endpoint &to) {
+              return to.node == name && to.port == port;
+            });
+          });
+    };
+    _editors =
+        connected(editors_port) ? &node.input<VP_VIEW::Editors>(editors_port) : nullptr;
+    _typed = connected(typed_port) ? &node.input<VP_VIEW::Typed>(typed_port) : nullptr;
     _move = node.command("panel move <node> <node> <value>",
                          "moves a panel beside another, at its left, right, top or "
                          "bottom, or into it, middle, which then holds both; of a panel "
@@ -342,6 +352,7 @@ class Docking final : public VP::Operator {
     _characters = node.upload<VP_VIEW::Character>("characters", close_room);
     _laid_out.reset(); // a rebuild may have moved every panel
     _slid.reset();     // its ratio set, as the drag let go of it sent it
+    _framed_for.reset();
   }
 
   void cook(VP::Cook &frame) override {
@@ -360,9 +371,18 @@ class Docking final : public VP::Operator {
     std::uint32_t written = 0;
     if (_divider && _divider->seam.extent.x != 0)
       rects[written++] = divider_at(cell);
+    if (const std::optional<std::size_t> framed = focused(frame.view()))
+      written += ring_round(rects.subspan(written),
+                            _seated[*framed].area,
+                            focus_ring,
+                            {.role = VP_VIEW::role("accent"),
+                             .blend_role = VP_VIEW::role("background"),
+                             .blend = focus_fade});
     if (const auto drop = dropped())
       written += ring_round(rects.subspan(written),
-                            half_at(_seated[drop->first].area, drop->second));
+                            half_at(_seated[drop->first].area, drop->second),
+                            ring,
+                            {.role = VP_VIEW::role("accent")});
     frame.write(_rects, written);
     write_marks(frame, cell);
   }
@@ -561,6 +581,7 @@ class Docking final : public VP::Operator {
   void seat_all(const VP::View &view, glm::uvec2 cell) {
     _seated.clear();
     _seams.clear();
+    _framed_for.reset();
     if (const VP::Connection *const root = feeding(view, _name))
       for (const VP::Endpoint &to : root->to)
         if (to.node != _name)
@@ -711,22 +732,61 @@ class Docking final : public VP::Operator {
     return !stack_of(view, *held).empty();
   }
 
-  // A frame round a Rect, ring pixels wide, inside it. Returns how many Rects it took.
+  // A frame round a Rect, width pixels wide, inside it, in the colors given. Returns how
+  // many Rects it took.
   static std::uint32_t ring_round(std::span<VP_VIEW::Rect> rects,
-                                  const VP_VIEW::Rect &at) {
+                                  const VP_VIEW::Rect &at,
+                                  std::int32_t width,
+                                  const VP_VIEW::Rect &colors) {
     const glm::ivec2 low = at.offset;
     const glm::uvec2 size = at.extent;
-    const auto wide = static_cast<std::uint32_t>(ring);
-    const std::uint32_t role = VP_VIEW::role("accent");
-    rects[0] = {.offset = low, .extent = {size.x, wide}, .role = role};
-    rects[1] = {.offset = low + glm::ivec2(0, static_cast<std::int32_t>(size.y) - ring),
-                .extent = {size.x, wide},
-                .role = role};
-    rects[2] = {.offset = low, .extent = {wide, size.y}, .role = role};
-    rects[3] = {.offset = low + glm::ivec2(static_cast<std::int32_t>(size.x) - ring, 0),
-                .extent = {wide, size.y},
-                .role = role};
+    const auto wide = static_cast<std::uint32_t>(width);
+    rects[0] = {.offset = low, .extent = {size.x, wide}};
+    rects[1] = {.offset = low + glm::ivec2(0, static_cast<std::int32_t>(size.y) - width),
+                .extent = {size.x, wide}};
+    rects[2] = {.offset = low, .extent = {wide, size.y}};
+    rects[3] = {.offset = low + glm::ivec2(static_cast<std::int32_t>(size.x) - width, 0),
+                .extent = {wide, size.y}};
+    for (VP_VIEW::Rect &edge : rects.first(frame_rects)) {
+      edge.role = colors.role;
+      edge.blend_role = colors.blend_role;
+      edge.blend = colors.blend;
+    }
     return frame_rects;
+  }
+
+  // The panel shown whose content holds the node in focus, found again only as the focus
+  // moves or the panels are seated anew, so a frame allocates nothing for it; none while
+  // no node has the focus, or none of its host's typed reaches it.
+  std::optional<std::size_t> focused(const VP::View &view) {
+    if (!_typed || (_framed_for && *_framed_for == _typed->focus))
+      return _framed;
+    _framed_for = _typed->focus;
+    _framed.reset();
+    for (std::size_t at = 0; at < _seated.size() && !_typed->focus.empty(); ++at)
+      if (_seated[at].area.extent.x != 0 && _seated[at].area.extent.y != 0 &&
+          holds(view, _seated[at].panel, _typed->focus))
+        _framed = at;
+    return _framed;
+  }
+
+  // Whether a panel's content holds the node, as the Rect its bar leaves reaches it: from
+  // the bar, along each connection into a node's area, as a find bar hands its text the
+  // rest of its own and a switch hands one half the room.
+  static bool holds(const VP::View &view, std::string_view panel, std::string_view node) {
+    std::vector<std::string> reached{std::string(panel) + std::string(bar_node)};
+    for (std::size_t at = 0; at < reached.size(); ++at)
+      for (const VP::Connection &connection : view.connections)
+        if (connection.from.node == reached[at])
+          for (const VP::Endpoint &to : connection.to) {
+            if (to.port != area_port ||
+                std::ranges::find(reached, to.node) != reached.end())
+              continue;
+            if (to.node == node)
+              return true;
+            reached.push_back(to.node);
+          }
+    return false;
   }
 
   void command(VP::Call &call) override {
@@ -1320,6 +1380,11 @@ class Docking final : public VP::Operator {
   bool _started = false;
   VP_VIEW::Items *_buttons = nullptr;
   const VP_VIEW::Editors *_editors = nullptr; // as its host connects them; none for none
+  const VP_VIEW::Typed *_typed = nullptr;     // so too
+  // The panel framed, as the focus it was found for and the panels as seated then; none
+  // found for yet after a rebuild, or since the panels were seated anew.
+  std::optional<std::string> _framed_for;
+  std::optional<std::size_t> _framed;
   // A dock's ratio before it hid a half, by its split, so showing it gives it back; and the
   // panel maximized last, with the splits its maximize gave the panel's half all of.
   std::map<std::string, float, std::less<>> _ratios;

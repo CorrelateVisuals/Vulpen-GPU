@@ -174,6 +174,10 @@ std::string_view Engine::kind() const {
   return _gpu->mechanics.kind();
 }
 
+std::string_view Engine::takes(std::string_view prefer) const {
+  return _gpu->mechanics.takes(prefer);
+}
+
 Engine::~Engine() {
   _gpu->mechanics.wait_idle();
 }

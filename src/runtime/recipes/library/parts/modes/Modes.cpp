@@ -7,6 +7,9 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
 #include <format>
 #include <optional>
 #include <ranges>
@@ -24,10 +27,14 @@ constexpr std::string_view escape = "escape";
 // The Perform panel's tab while no project is hosted, so its strip has a tab to take, as
 // an empty editor's has.
 constexpr std::string_view empty_tab = "perform";
-// The kind of GPU the gpu button lights in the build curves' orange, as the engine names
-// it, and what gpu answers before the kind the next launch prefers.
+// The kind of GPU the gpu button lights in the build curves' orange, and the other one
+// gpu toggle takes, as the engine names them, and what gpu answers before the kind the
+// next launch takes.
 constexpr std::string_view discrete = "discrete";
-constexpr std::string_view prefers = "prefers the ";
+constexpr std::string_view integrated = "integrated";
+constexpr std::string_view takes = "takes the ";
+// How long the frames a second are counted over, so the count shown changes once in it.
+constexpr auto rate_every = std::chrono::seconds(1);
 
 // The view presented, as the view's connections are; empty for none.
 std::string_view shown_by(const VP::View &view) {
@@ -92,7 +99,10 @@ std::string_view project_of(const Find &view_of,
 // Perform panel's own button, a switch of two whose mode in force is on, and past a
 // divider gpu, which makes the next launch prefer the other kind of GPU (gpu toggle), lit
 // as the kind it takes: discrete in the build curves' orange, integrated in the accent,
-// as edit and run are.
+// as edit and run are; and beside it, muted, the frames a second the run shows in its
+// window, a person's reading, never what a node computes from (C01). Run with nothing to
+// present, and gpu on a machine without both kinds, are stuck: a press flashes them, and
+// mode perform then warns, rather than refuse, as gpu toggle does.
 class Modes final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string mode = node.param<std::string>("mode");
@@ -110,7 +120,9 @@ class Modes final : public VP::Operator {
     _edit = &node.output<VP_VIEW::Rect>("edit");
     _shown = &node.output<VP_VIEW::Rect>("perform");
     _tabs = &node.output<VP_VIEW::Items>("tabs");
-    _running = node.engine().kind();
+    const VP::Engine &engine = node.engine();
+    _gpu_stuck =
+        engine.takes(integrated) != integrated || engine.takes(discrete) != discrete;
     // The mode is a param, so a change rebinds the node: the buttons are written here.
     _buttons = &node.output<VP_VIEW::Items>("buttons");
     write_buttons();
@@ -148,9 +160,10 @@ class Modes final : public VP::Operator {
   }
 
   // Perform mode leaves the panels no room, so the part in focus lets it go, and takes
-  // it back in edit mode. With nothing presented it refuses, rather than give the window
-  // to nothing; the current view's project it presents first, as the frame would, so a
-  // mode line just after a view load finds the view.
+  // it back in edit mode. With nothing presented it stays in edit mode, rather than give
+  // the window to nothing, and the next frame says so, as a warning, since a command
+  // writes no log line; the current view's project it presents first, as the frame
+  // would, so a mode line just after a view load finds the view.
   void switch_mode(VP::Call &call, bool perform) {
     const VP::View &own = *call.view(_view);
     if (perform && shown_by(own).empty()) {
@@ -158,9 +171,10 @@ class Modes final : public VP::Operator {
           [&](std::string_view name) { return call.view(name); },
           projects(*call.view(""), _view),
           call.commands().current()));
-      if (project.empty())
-        throw std::runtime_error("nothing is presented to perform; view switch <name> "
-                                 "makes a project the current view, which this presents");
+      if (project.empty()) {
+        _unperformed = true;
+        return;
+      }
       present(call.commands(), own, project);
     }
     VP::CommandPort &commands = call.commands();
@@ -194,6 +208,7 @@ class Modes final : public VP::Operator {
                                                                      : presented;
     const bool presents = !wanted.empty() && wanted != presented;
     name_tabs(hosted, presented);
+    watch_buttons(frame, presented.empty() && !presents);
     const bool loaded = _started && std::ranges::find(_known, wanted) == _known.end();
     if (presents)
       present(frame.commands(), *frame.view(_view), std::string(wanted));
@@ -225,18 +240,53 @@ class Modes final : public VP::Operator {
   void write_buttons() {
     *_buttons = {
         {.label = "edit", .command = "mode edit", .current = !_perform, .toggles = true},
-        {.label = "run", .command = "mode perform", .current = _perform, .toggles = true},
+        {.label = "run",
+         .command = "mode perform",
+         .current = _perform,
+         .toggles = true,
+         .stuck = _run_stuck},
         {}, // a divider
         {.label = "gpu",
          .command = "gpu toggle",
          .current = true,
          .toggles = true,
-         .role = _discrete ? std::optional(VP_VIEW::role("number")) : std::nullopt}};
+         .role = _discrete ? std::optional(VP_VIEW::role("number")) : std::nullopt,
+         .stuck = _gpu_stuck}};
+    if (_windowed)
+      _buttons->push_back({.label = _rate, .role = VP_VIEW::role("muted")});
   }
 
-  // The kind of GPU the next launch takes, as gpu toggle flips it: the one gpu says it
-  // prefers, or with none the one this run took. Asked at the first frame and after a
-  // warning, as gpu toggle writes one, so a frame asks nothing otherwise.
+  // The buttons anew only as what they show changes, so a frame allocates nothing for
+  // them: run stuck or not, and the frames a second, counted over each second from the
+  // first frame, shown only while a window is open, where a person reads them, so a run
+  // with none, as one that takes the README's pictures, draws the same bytes every time
+  // (C01). A mode line that found nothing to present says so here.
+  void watch_buttons(VP::Cook &frame, bool nothing) {
+    if (std::exchange(_unperformed, false))
+      frame.log(VP::Level::warn,
+                "nothing is presented to perform, so the run stays in edit mode; view "
+                "load <project> or view switch <name> presents one");
+    const auto now = std::chrono::steady_clock::now();
+    if (_frames++ == 0)
+      _since = now;
+    const std::chrono::duration<double> spent = now - _since;
+    const bool counted = spent >= rate_every;
+    if (counted) {
+      _rate = std::format("{} fps",
+                          std::lround(static_cast<double>(_frames - 1) / spent.count()));
+      _since = now;
+      _frames = 1;
+    }
+    const bool windowed = frame.input().windowed();
+    const bool stuck_changed = nothing != std::exchange(_run_stuck, nothing);
+    const bool window_changed = windowed != std::exchange(_windowed, windowed);
+    if (stuck_changed || window_changed || (counted && windowed))
+      write_buttons();
+  }
+
+  // The kind of GPU the next launch takes, as gpu toggle flips it, which gpu names. Asked
+  // at the first frame and after a warning, as gpu toggle writes one, so a frame asks
+  // nothing otherwise.
   void read_gpu(VP::Cook &frame) {
     const auto warned = [](const VP::Logged &line) {
       return line.level == VP::Level::warn;
@@ -245,11 +295,10 @@ class Modes final : public VP::Operator {
       return;
     _gpu_read = true;
     const std::string said = frame.commands().send("gpu");
-    const std::size_t named = said.find(prefers);
-    const std::string_view kind =
-        named == std::string::npos ? std::string_view(_running)
-                                   : std::string_view(said).substr(named + prefers.size());
-    const bool now = kind.starts_with(discrete);
+    const std::size_t named = said.find(takes);
+    const bool now =
+        named != std::string::npos &&
+        std::string_view(said).substr(named + takes.size()).starts_with(discrete);
     if (now != std::exchange(_discrete, now))
       write_buttons();
   }
@@ -299,9 +348,20 @@ class Modes final : public VP::Operator {
   VP_VIEW::Rect *_shown = nullptr;
   VP_VIEW::Items *_tabs = nullptr;
   VP_VIEW::Items *_buttons = nullptr;
-  std::string _running;   // the kind of GPU this run took, as the engine names it
   bool _discrete = false; // the kind the next launch takes, which the gpu button shows
   bool _gpu_read = false; // since the node bound
+  // Stuck: gpu where the machine has not both kinds, and run while nothing is presented,
+  // nor about to be; and whether a mode line found nothing to present since the last
+  // frame.
+  bool _gpu_stuck = false;
+  bool _run_stuck = false;
+  bool _unperformed = false;
+  // The frames a second, as the button beside gpu shows them while a window is open; the
+  // frames cooked since the count began, that one included, and when it began.
+  bool _windowed = false;
+  std::string _rate = "fps";
+  std::uint64_t _frames = 0;
+  std::chrono::steady_clock::time_point _since;
   VP::Command _edit_mode;
   VP::Command _perform_mode;
   VP::Command _toggle_mode;

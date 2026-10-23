@@ -4,7 +4,8 @@
 # into, the window of a view the host hosts, or one a node's C++ fills. With param
 # moves = yes, a drag moves the image and the wheel zooms it, cut at the area's edge, and
 # a press in its area gives it the focus, so the host also connects the keys part's typed
-# to its typed: h then brings it home, letterboxed again.
+# to its typed: h then brings it home, letterboxed again. A still part connected to its
+# held and still holds the frame it shows, which shows in place of the picture while held.
 [manifest]
 version = 1
 

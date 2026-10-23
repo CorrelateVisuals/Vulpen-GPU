@@ -27,7 +27,8 @@ Wave.comp open in the editor: a press on a box's name selects it, a drag moves t
 selected, a drag on the ground lets go of the selection and moves the graph, shift with a
 press selects the box again, the wheel zooms the graph, and shift with a drag on the
 ground draws a select box over the box; the wheel then zooms the Perform panel's view,
-which a drag moves, and h, with the focus the press gave the panel, brings home. The .ini
+which a drag moves, and h, with the focus the press gave the panel, brings home; a double
+click on it holds the frame it shows, and space lets it go and holds it again. The .ini
 must then hold the box moved. The last run hosts the
 triangle after the copy, which it keeps presented, and the copy hosts a view of its own,
 inner; it must read the .ini back without a word, select probe and inner as a script does,
@@ -39,6 +40,8 @@ with exit 0 and print no validation message or sanitizer report (RVK00, A03), so
 asan preset it checks the memory of the keys part, the terminal, the editor, modes, the
 graph, their panels, the dock, the images a hosted view's window renders into, the atlas
 made anew at another size, and the rebuild.
+The terminal run, with nothing presented, first sends mode perform, which must warn and
+leave it in edit mode, as the run button pressed then flashes rather than switch.
 The terminal run also scrolls the rows of the app's start with the wheel, a fifth of a
 step too, and drags their scroll bar to the oldest, before help, sent, shows the newest
 again, and scrolls them across with shift and the wheel and back with the wheel turned
@@ -136,6 +139,7 @@ EDITED = "first line!\nScond \n  x line\nthird\n"
 # What quit answers while the editor holds the note, named by its folder and name.
 REFUSED = "quit would lose what nodes hold"
 HELD = re.compile(r"ide\.editor\.text: \S+/note\.txt\* has changes")
+UNPERFORMED = "nothing is presented to perform"  # what modes warns, staying in edit mode
 
 
 def clicks(x: int, y: int) -> list[str]:
@@ -150,6 +154,7 @@ def typed(width: int, height: int) -> list[str]:
     seam = MENUBAR + round((height - MENUBAR - 4) * 0.65) + 2
     return [
         "focus ide.terminal.command-line",  # first, so the keys part's param gives none
+        "mode perform",  # with nothing presented: a warning, in edit mode still
         "input key down tab",  # a word not begun: every command's first word
         "input text no",
         "input key down tab",  # one candidate: node, finished
@@ -326,6 +331,14 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
         f"input pointer {perform[0] + 60} {perform[1] + 40}",
         "input button up left",  # and moved
         "input key down h",  # home again, as the press gave the panel the focus
+        f"input pointer {perform[0]} {perform[1]}",
+        "input button down left",
+        "input button up left",
+        "input button down left 2",  # a double click: the frame it shows held
+        "input button up left",
+        "input key down space",  # let go
+        "input key up space",
+        "input key down space",  # and held again
         f"input pointer {MARK[0]} {MARK[1]}",
         "input button down left",  # on Wave.comp's close mark, which closes it, unchanged
         "input button up left",
@@ -397,7 +410,9 @@ def test() -> None:
             sys.exit(f"ide: expected the log to name the window's size, and ls typed on "
                      f"standard input to print {LISTED.pattern}, got:\n{presented}")
         width, height = int(size.group(1)), int(size.group(2))
-        drive(folder, "terminal", typed(width, height))
+        if UNPERFORMED not in (said := drive(folder, "terminal", typed(width, height))):
+            sys.exit(f"ide: expected mode perform with nothing presented to warn "
+                     f"{UNPERFORMED!r}, got:\n{said}")
         note = folder / "note.txt"
         # Its breaks as NOTE gives them, so the bytes the editor writes are alike everywhere.
         note.write_text(NOTE, encoding="utf-8", newline="\n")

@@ -1,0 +1,27 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Still.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(set = 1, binding = 0) uniform Pass {
+  Texture picture; // a connection: what it holds a frame of, as a hosted view's window
+  uint shoot;      // from its C++: 1 the frame a hold begins, so the others store nothing
+  Image held;      // what it stores the frame into, at the frame's size, as the picture
+} pass;
+
+// Each invocation every pixel a whole number of invocations from its own, so a window
+// of any size is copied whole, a pixel to a pixel.
+void main() {
+  if (pass.shoot == 0u)
+    return;
+  const ivec2 size = image_size(pass.held);
+  const uint pixels = uint(size.x * size.y);
+  const uint threads = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  for (uint i = gl_GlobalInvocationID.x; i < pixels; i += threads) {
+    const ivec2 pixel = ivec2(i % uint(size.x), i / uint(size.x));
+    const vec4 color = sample_nearest(pass.picture, (vec2(pixel) + 0.5) / vec2(size));
+    store(pass.held, pixel, vec4(encoded(color.rgb), color.a));
+  }
+}

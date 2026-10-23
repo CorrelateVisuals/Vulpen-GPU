@@ -33,6 +33,9 @@ public:
   // The GPU it runs on, as the log names it, and its kind, as discrete or integrated.
   std::string device() const;
   std::string_view kind() const;
+  // The kind a launch that prefers this one takes, of the GPUs that met the floor as
+  // this one chose its own: that kind where one did, else the fastest.
+  std::string_view takes(std::string_view prefer) const;
   const Resources &resources() const;
   const Pipelines &pipelines() const;
   // The window output, open while a node draws: the window must outlive it. Between

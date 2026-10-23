@@ -140,7 +140,8 @@ private:
 // The kind of GPU the launches of a view take first, as a person chooses for the
 // machine, kept in .vulpen/gpu.ini beside the manifest vulpen starts with and read before
 // the engine picks its device. Vulkan cannot move a running device, so gpu toggle records
-// the choice for the next launch and says so, rather than seem to switch.
+// the choice for the next launch and says so, rather than seem to switch; on a machine
+// with no GPU of the other kind it leaves the choice as it was, and says that.
 class Preference final : public CommandHandler {
 public:
   Preference(Commands &commands,
@@ -150,11 +151,11 @@ public:
              std::string prefer)
       : _log(log), _engine(engine), _file(std::move(file)), _prefer(std::move(prefer)),
         _show(commands.add(
-            "gpu", "says which GPU runs, and which kind the next launch prefers", *this)),
+            "gpu", "says which GPU runs, and which kind the next launch takes", *this)),
         _toggle(commands.add("gpu toggle",
                              "makes the next launch prefer the other kind of GPU, "
-                             "integrated or discrete, than it would take now; this run "
-                             "stays on its own",
+                             "integrated or discrete, than it would take now, where one "
+                             "is; this run stays on its own",
                              *this)) {}
 
   // The kind a file's prefer line names, empty for none; a kind no GPU is stops the run,
@@ -189,24 +190,43 @@ private:
   static constexpr std::string_view integrated = "integrated";
   static constexpr std::string_view discrete = "discrete";
 
+  // The kind the next launch takes, as the engine would choose it among the GPUs it
+  // found, so a choice no GPU here meets says what is taken in its place.
   void command(Call &call) override {
-    if (call.is(_toggle)) {
-      const std::string_view now = _prefer.empty() ? _engine.kind() : _prefer;
-      _prefer = now == discrete ? integrated : discrete;
-      Files::save(_file,
-                  std::format("# The kind of GPU vulpen takes first here; gpu toggle "
-                              "writes it.\n{} = {}\n",
-                              key,
-                              _prefer));
+    if (call.is(_toggle))
+      toggle();
+    const std::string_view next = _engine.takes(_prefer);
+    const std::string why =
+        _prefer.empty()   ? std::string(", the fastest")
+        : _prefer == next ? std::string()
+                          : std::format(", as no {} one meets the floor here", _prefer);
+    call.reply(std::format(
+        "runs on {}; the next launch takes the {} GPU{}", _engine.device(), next, why));
+  }
+
+  void toggle() {
+    const std::string_view now = _engine.takes(_prefer);
+    const std::string_view other = now == discrete ? integrated : discrete;
+    if (_engine.takes(other) != other) {
       _log.write(Level::warn,
                  Tag::gpu,
-                 std::format("the next launch prefers the {} GPU; this run stays on {}",
-                             _prefer,
-                             _engine.device()));
+                 std::format("gpu toggle: no {} GPU here meets the Vulkan floor, so the "
+                             "next launch takes the {} GPU still",
+                             other,
+                             now));
+      return;
     }
-    const std::string next =
-        _prefer.empty() ? "takes the fastest" : "prefers the " + _prefer;
-    call.reply(std::format("runs on {}; the next launch {} GPU", _engine.device(), next));
+    _prefer = other;
+    Files::save(_file,
+                std::format("# The kind of GPU vulpen takes first here; gpu toggle "
+                            "writes it.\n{} = {}\n",
+                            key,
+                            _prefer));
+    _log.write(Level::warn,
+               Tag::gpu,
+               std::format("the next launch prefers the {} GPU; this run stays on {}",
+                           _prefer,
+                           _engine.device()));
   }
 
   const Log &_log;

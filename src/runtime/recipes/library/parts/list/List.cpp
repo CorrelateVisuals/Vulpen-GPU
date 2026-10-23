@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -34,6 +35,10 @@ constexpr std::string_view mark_text = "x"; // which the font draws, as ASCII
 constexpr std::size_t tab_cells = 24;
 constexpr std::int32_t padding_cells = 2; // a tab's, a cell either side of its label
 constexpr float wheel_cells = 4.0f;       // a strip scrolls across a step of the wheel
+// A press on a stuck tab flashes it in the error's color, fading back to its own over
+// half a second at the run's default 60 a second: frames, as the caret counts its blink,
+// so a replay draws it alike (C01).
+constexpr std::uint64_t flash_frames = 30;
 // Behind a column, a frame and the fill inside it, so it reads as raised over what it
 // covers, and the current Item's row, so the menu open reads apart. Behind a row, its
 // ground, then a Rect an Item, so each reads as a tab on a bar, and a tab's whole label
@@ -70,16 +75,16 @@ VP_VIEW::Rect within(VP_VIEW::Rect rect, const VP_VIEW::Rect &strip) {
 // color, so it joins the content it names, the strip scrolling across as the wheel turns
 // over it, with no bar, and to show the current one as it changes, its end cells left
 // free for a mark its host draws there, and the pointer over a label cut showing it whole
-// below its tab; an Item with a close command shows a close mark at its end; a column
-// marks its current Item's row. With drop = below the column drops below its place
-// instead, as wide as its widest label and as tall as its Items, inside the window, as a
-// menu drops below where it was opened; with drop = right it opens beside its place, its
-// first row level with it, as a menu's items open beside its name: right of it, or left
-// where the window has no room, its frame on the column's own and its fill over their
-// shared border, so the two read as one. It hands on where each Item shows, and where its
-// mark does, so hit finds the one pressed, and where the current one does, so what it
-// opens shows below it. Tab strips, menus and tips are this part, so none of them places
-// its entries itself.
+// below its tab; an Item with a close command shows a close mark at its end, and a stuck
+// one pressed flashes; a column marks its current Item's row. With drop = below the
+// column drops below its place instead, as wide as its widest label and as tall as its
+// Items, inside the window, as a menu drops below where it was opened; with drop = right
+// it opens beside its place, its first row level with it, as a menu's items open beside
+// its name: right of it, or left where the window has no room, its frame on the column's
+// own and its fill over their shared border, so the two read as one. It hands on where
+// each Item shows, and where its mark does, so hit finds the one pressed, and where the
+// current one does, so what it opens shows below it. Tab strips, menus and tips are this
+// part, so none of them places its entries itself.
 class List final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string axis = node.param<std::string>("axis");
@@ -233,21 +238,20 @@ class List final : public VP::Operator {
         _tip_row = tip_row(tab, item.label.size(), cell, place, frame.resolution());
       }
     }
+    if (const std::optional<glm::vec2> pressed = std::exchange(_pressed, std::nullopt))
+      for (std::size_t at = 0; at < _shown->size(); ++at)
+        if ((*_items)[at].stuck && VP_VIEW::contains((*_shown)[at], *pressed))
+          _flash = Flash{.tab = at, .from = frame.index()};
   }
 
-  // A tab's fill: the content's color for the current one, so it joins the content it
-  // names, and for one that toggles, the accent's while it is on, so the one on of the
-  // two reads apart, or the role it names; a button whose label carries a role, the
-  // panel's, as any button off.
+  // A tab's fill: for one that toggles, the accent's while it is on, or the role it
+  // names, so the one on of the two reads apart; for any other current one the content's
+  // color, so it joins the content it names, as a button lit does, whose label may carry
+  // a role too; the panel's for any off.
   static std::uint32_t fill_of(const VP_VIEW::Item &item) {
-    if (item.role && !item.toggles)
-      return VP_VIEW::role("panel");
-    if (item.role && item.current)
-      return *item.role;
     if (item.toggles && item.current)
-      return VP_VIEW::role("accent");
-    return item.current && !item.toggles ? VP_VIEW::role("background")
-                                         : VP_VIEW::role("panel");
+      return item.role.value_or(VP_VIEW::role("accent"));
+    return item.current ? VP_VIEW::role("background") : VP_VIEW::role("panel");
   }
 
   // A tab's label: in the background's color over the accent or the role of one on,
@@ -282,7 +286,9 @@ class List final : public VP::Operator {
   }
 
   // As the wheel turns over the strip, either way, and as the current tab changes, or how
-  // many there are, so it shows whole; never past the first tab or the last.
+  // many there are, so it shows whole; never past the first tab or the last. Where the
+  // pointer was at a press is kept, for the tabs laid out after to find the one pressed,
+  // as hit finds it.
   void scroll(VP::Cook &frame,
               const VP_VIEW::Rect &strip,
               std::int32_t reach,
@@ -294,6 +300,9 @@ class List final : public VP::Operator {
       else if (event.kind == VP::Event::Kind::wheel && VP_VIEW::contains(strip, _pointer))
         _pan -= (event.turn.x != 0.0f ? event.turn.x : event.turn.y) * wheel_cells *
                 static_cast<float>(across);
+      else if (event.kind == VP::Event::Kind::button && event.name == "left" &&
+               event.down)
+        _pressed = _pointer;
     const auto room = static_cast<float>(strip.extent.x);
     if (current != _followed || _laid.size() != _followed_count) {
       _followed = current;
@@ -310,6 +319,8 @@ class List final : public VP::Operator {
   // Nothing shown draws nothing, not even its ground, so a list with no room or no Items
   // costs no draw.
   void back(VP::Cook &frame, const VP_VIEW::Rect &place) {
+    if (_flash && frame.index() - _flash->from >= flash_frames)
+      _flash.reset();
     if (_shown->empty()) {
       frame.write(_rects, 0);
     } else if (_side_by_side) {
@@ -318,6 +329,12 @@ class List final : public VP::Operator {
           frame.write(_rects, 1 + tabs + (_tip ? frame_and_fill : 0));
       rects[0] = grown(place, 0, VP_VIEW::role("panel"));
       std::ranges::copy(*_shown, rects.begin() + 1);
+      if (_flash && _flash->tab < tabs) {
+        VP_VIEW::Rect &flashed = rects[1 + _flash->tab];
+        flashed.blend_role = VP_VIEW::role("error");
+        flashed.blend = 1.0f - static_cast<float>(frame.index() - _flash->from) /
+                                   static_cast<float>(flash_frames);
+      }
       if (_tip) {
         rects[1 + tabs] = grown(_tip_row, margin + frame_width, VP_VIEW::role("border"));
         rects[2 + tabs] = grown(_tip_row, margin, VP_VIEW::role("panel"));
@@ -397,6 +414,11 @@ class List final : public VP::Operator {
   // Where a column goes: in its place, or dropped below or right of it, as wide as its
   // labels.
   enum class Drop : std::uint8_t { no, below, right };
+  // A stuck tab pressed, by its place among the Items, and the frame it was pressed in.
+  struct Flash {
+    std::size_t tab = 0;
+    std::uint64_t from = 0;
+  };
   bool _side_by_side = false;
   Drop _drop = Drop::no;
   // The side a column dropped beside its place opened at, its fill joining there: 1
@@ -424,6 +446,10 @@ class List final : public VP::Operator {
   std::optional<std::size_t> _tip;
   VP_VIEW::Rect _tip_row{};
   std::string _fitted; // a tab's label as it shows, kept so a frame allocates none
+  // Where the pointer was at the frame's last press, until the tabs are laid out, and the
+  // stuck tab pressed last, while it flashes.
+  std::optional<glm::vec2> _pressed;
+  std::optional<Flash> _flash;
 };
 
 } // namespace

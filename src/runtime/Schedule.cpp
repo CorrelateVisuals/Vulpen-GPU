@@ -77,7 +77,8 @@ struct Schedule::Rendered {
 
 // An image a dispatch stores into, by its writer's node.port, as its readers' connection
 // names it: made at the frame's size, zeroed, and made again whenever the size changes;
-// none while there is no size.
+// none while there is no size. A rebuild keeps it, contents included, as it keeps a
+// buffer, so what a dispatch stored once, as a frame a still holds, outlives the edit.
 struct Schedule::Stored {
   std::string name;
   const Bound *writer = nullptr;
@@ -162,6 +163,8 @@ Schedule::Schedule(const Wiring &wiring,
     keep_images(*replaced);
   make_blocks();
   make_targets();
+  if (replaced)
+    keep_stored(*replaced);
   make_passes();
   cost_from(replaced);
   // Each error names the line that last added or changed the node, if a file holds it,
@@ -448,6 +451,19 @@ void Schedule::keep_images(Schedule &replaced) {
       _images.push_back(std::move(*kept));
       replaced._images.erase(kept);
     }
+}
+
+// The images of the schedule replaced that its dispatches stored into, by name, as the
+// dispatches that stay store into them still.
+void Schedule::keep_stored(Schedule &replaced) {
+  for (Stored &stored : _stored) {
+    const auto kept = std::ranges::find(replaced._stored, stored.name, &Stored::name);
+    if (kept == replaced._stored.end() || !kept->image)
+      continue;
+    stored.image = std::move(kept->image);
+    kept->image.reset();
+    point_readers(stored.name, stored.image->slot());
+  }
 }
 
 // Each block whose Texture samples the image holds its slot, and so does the Image of
