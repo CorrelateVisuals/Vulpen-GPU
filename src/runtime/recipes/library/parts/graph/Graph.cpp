@@ -42,9 +42,6 @@ constexpr float mark_size = 6.0f;               // a port's mark, in pixels at z
 // A cubic's handles, of its radius, that keep it on a quarter circle.
 constexpr float quarter = 0.5523f;
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
-// A line of the ground every so many pixels of the graph at zoom 1, which its shaders
-// draw as its C++ hands them this, and which a box moved and a corner pulled snap to.
-constexpr std::int32_t line_spacing = 24;
 // A corner a drag pulls: how far in from it a press takes it, never past a quarter of the
 // box, so a small box still moves, and how far out, past the box's edges, so a press
 // near the corner needs no aim; and its mark's arms, in pixels.
@@ -251,7 +248,7 @@ void Graph::cook(VP::Cook &frame) {
   lay_out();
   // Home again as the area changes size while at home, as the window is maximized.
   if (room && (std::exchange(_homing, false) || (_at_home && _area->extent != _homed))) {
-    home(cell);
+    home();
     _home_zoom = _pan_zoom.zoom;
     _at_home = _left.empty();
     if (!_left.empty())
@@ -527,7 +524,7 @@ void Graph::name_tab() {
 // them, never nearer than zoom 1, so text keeps its size where it can; where even the
 // least zoom cannot hold them, from their left or their top, at the least. Whole pixels
 // from the area's top left, so text stays as sharp as the font drew it.
-void Graph::home(glm::uvec2 cell) {
+void Graph::home() {
   _pan_zoom.home();
   _homed = _area->extent;
   const std::span<const Placed> placed = _layout.placed();
@@ -540,7 +537,7 @@ void Graph::home(glm::uvec2 cell) {
     high = glm::max(high, box.at + glm::ivec2(box.extent));
   }
   const glm::vec2 room(_area->extent);
-  const glm::vec2 margin(margin_of(cell));
+  const glm::vec2 margin(margin_of());
   const glm::vec2 size(high - low);
   const glm::vec2 fits = (room - 2.0f * margin) / size;
   _pan_zoom.zoom = std::clamp(std::min(fits.x, fits.y), PanZoom::least, 1.0f);

@@ -36,12 +36,21 @@ constexpr std::string_view more_text = "... {} more";
 constexpr std::size_t no_gap = static_cast<std::size_t>(-1); // a track's, in a channel
 // How much wider than tall a level whose columns wrap aims to be, as a window is.
 constexpr float wrap_aspect = 1.6f;
+// A line of the ground every so many pixels of the graph at zoom 1, which its shaders
+// draw as its C++ hands them this, which the graph lays its boxes out on, and which a box
+// moved and a corner pulled snap to.
+constexpr std::int32_t line_spacing = 24;
 
-// Where the graph alone puts its first box: half a column's gap in from the left and a
-// row down, so a home that fits shows the boxes as far in.
-glm::ivec2 margin_of(glm::uvec2 cell) {
-  return {static_cast<std::int32_t>(column_gap * cell.x) / 2,
-          static_cast<std::int32_t>(cell.y)};
+// A length from a line to the line at its end or past it, so what the graph alone lays
+// out starts and ends on the ground's lines, holding what it must.
+constexpr std::int32_t on_lines(std::int32_t length) {
+  return (length + line_spacing - 1) / line_spacing * line_spacing;
+}
+
+// Where the graph alone puts its first box: a line in from the left and a line down, so
+// a home that fits shows the boxes as far in.
+glm::ivec2 margin_of() {
+  return glm::ivec2(line_spacing);
 }
 
 // The least any box may be, at zoom 1: least_cells of its rows, a cell either side and a
@@ -204,9 +213,10 @@ public:
   std::span<const Waypoint> waypoints() const {
     return _waypoints;
   }
-  // Where the boxes inside a box start, from its top left.
-  glm::ivec2 content_of(std::size_t box, glm::uvec2 cell) const {
-    return {name_margin * static_cast<std::int32_t>(cell.x), _placed[box].inside};
+  // Where the boxes inside a box start, from its top left: a line in, below its rows, so
+  // they keep to the ground's lines too.
+  glm::ivec2 content_of(std::size_t box, glm::uvec2) const {
+    return {line_spacing, _placed[box].inside};
   }
 
   // The middle of a box's row from its top, the row standing for the rest for one it
@@ -346,9 +356,10 @@ private:
 
   // The boxes inside one, in columns or where a person put them, and its own size: as
   // wide as its widest row with a cell either side, and as tall as its rows with pad
-  // above and below them, then the boxes inside it, with half a row around them; or as
-  // a person made it, larger or smaller, down to least_cells, or the boxes inside it,
-  // what its rows lack cut where it ends.
+  // above and below them, then the boxes inside it, a line in from its sides and half a
+  // row below its rows and below them, each to the ground's next line, so the box fits
+  // its content and the lines; or as a person made it, larger or smaller, down to
+  // least_cells, or the boxes inside it, what its rows lack cut where it ends.
   void arrange(const Boxes &boxes,
                std::size_t box,
                const Arranged &arranged,
@@ -383,20 +394,21 @@ private:
     const std::int32_t apart = inner.empty() ? 0 : static_cast<std::int32_t>(cell.y) / 2;
     // Known before the boxes inside it are placed, as where a curve crosses its edge is
     // from its top.
-    _placed[box].inside = rows_end(box, cell) + apart;
+    _placed[box].inside = inner.empty() ? rows_end(box, cell)
+                                        : on_lines(rows_end(box, cell) + apart);
     const glm::ivec2 room =
         inner.empty() ? glm::ivec2(0) : columns(boxes, box, inner, arranged, cell);
     Placed &placed = _placed[box];
     placed.frames = !inner.empty();
-    placed.natural = glm::uvec2(
-        std::max(static_cast<std::int32_t>(widest) * static_cast<std::int32_t>(cell.x),
-                 room.x) +
-            2 * margin,
-        placed.inside + (inner.empty() ? 0 : room.y + apart));
-    placed.least = glm::uvec2(glm::max(
-        least_of(cell),
-        inner.empty() ? glm::ivec2(0)
-                      : glm::ivec2(room.x + 2 * margin, placed.inside + room.y + apart)));
+    const glm::ivec2 holds =
+        inner.empty()
+            ? glm::ivec2(0)
+            : glm::ivec2(room.x + 2 * line_spacing, placed.inside + room.y + apart);
+    const std::int32_t text =
+        static_cast<std::int32_t>(widest) * static_cast<std::int32_t>(cell.x) + 2 * margin;
+    placed.natural = glm::uvec2(on_lines(std::max(text, holds.x)),
+                                on_lines(std::max(placed.inside, holds.y)));
+    placed.least = glm::uvec2(glm::max(least_of(cell), holds));
     placed.extent = placed.natural;
     if (const auto sized = arranged.sizes.find(boxes.boxes[box].name);
         sized != arranged.sizes.end()) {
@@ -429,8 +441,8 @@ private:
                      const Arranged &arranged,
                      glm::uvec2 cell) {
     std::size_t count = wrap(inner, order(level, inner), cell);
-    const glm::ivec2 start = level == no_box ? margin_of(cell) : glm::ivec2(0);
-    stack(inner, count, cell, start);
+    const glm::ivec2 start = level == no_box ? margin_of() : glm::ivec2(0);
+    stack(inner, count, start);
     const bool moved = std::ranges::any_of(inner, [&](std::size_t box) {
       return arranged.places.contains(boxes.boxes[box].name);
     });
@@ -465,12 +477,9 @@ private:
     }
   }
 
-  // Each column as wide as its widest box, and its boxes one under the other, a row of
-  // text apart.
-  void stack(const std::vector<std::size_t> &inner,
-             std::size_t count,
-             glm::uvec2 cell,
-             glm::ivec2 start) {
+  // Each column as wide as its widest box, and its boxes one under the other, a line of
+  // the ground apart, so each starts on one.
+  void stack(const std::vector<std::size_t> &inner, std::size_t count, glm::ivec2 start) {
     _widths.assign(count, 0);
     _downs.assign(count, start.y);
     for (const std::size_t box : inner) {
@@ -478,7 +487,7 @@ private:
       _widths[placed.column] =
           std::max(_widths[placed.column], static_cast<std::int32_t>(placed.extent.x));
       placed.offset.y = _downs[placed.column];
-      _downs[placed.column] += static_cast<std::int32_t>(placed.extent.y + cell.y);
+      _downs[placed.column] += static_cast<std::int32_t>(placed.extent.y) + line_spacing;
     }
   }
 
@@ -572,7 +581,7 @@ private:
     for (const std::size_t box : inner) {
       const Placed &placed = _placed[box];
       room += (static_cast<float>(placed.extent.x) + across) *
-              static_cast<float>(placed.extent.y + cell.y);
+              static_cast<float>(static_cast<std::int32_t>(placed.extent.y) + line_spacing);
       tallest = std::max(tallest, static_cast<std::int32_t>(placed.extent.y));
     }
     const std::int32_t reach =
@@ -585,7 +594,7 @@ private:
       for (const std::size_t box : inner) {
         if (_placed[box].column != column)
           continue;
-        const auto tall = static_cast<std::int32_t>(_placed[box].extent.y + cell.y);
+        const auto tall = static_cast<std::int32_t>(_placed[box].extent.y) + line_spacing;
         if (down > 0 && down + tall > reach) {
           ++beside;
           down = 0;
@@ -624,7 +633,7 @@ private:
         assign(static_cast<float>(top + bottom) / 2.0f);
     const auto lane = static_cast<std::int32_t>(cell.x);
     const auto above = static_cast<std::int32_t>(tracks[1]);
-    const std::int32_t over = placed || above == 0 ? 0 : (above + 1) * lane;
+    const std::int32_t over = placed || above == 0 ? 0 : on_lines((above + 1) * lane);
     for (const std::size_t box : children(level))
       _placed[box].offset.y += over;
     const float room = placed && level == no_box
@@ -828,8 +837,9 @@ private:
   }
 
   // Each gap as wide as a column's gap and its lanes, or before the first column and
-  // after the last, its lanes with a lane either side; each column's left; and each lane
-  // in its gap, a lane apart, in the order its turns came.
+  // after the last, its lanes with a lane either side; each column's left, on the ground's
+  // next line; and each lane in the middle of its gap, a lane apart, in the order its
+  // turns came.
   void widen(std::size_t level, std::size_t count, glm::uvec2 cell, glm::ivec2 start) {
     const auto lane = static_cast<std::int32_t>(cell.x);
     const auto base = [&](std::size_t gap, bool laned) {
@@ -847,15 +857,18 @@ private:
     for (std::size_t column = 0; column < count; ++column) {
       const std::int32_t left =
           column == 0 ? start.x : _lefts[column - 1] + _widths[column - 1];
-      _lefts[column] = left + _gaps[column];
+      _lefts[column] = on_lines(left + _gaps[column]);
     }
     _ins.assign(count + 1, 0);
     for (Lane &placed : _lanes)
       if (placed.level == level && placed.gap != no_gap) {
         const std::size_t gap = placed.gap;
         const std::int32_t left = gap == 0 ? start.x : _lefts[gap - 1] + _widths[gap - 1];
-        placed.at = static_cast<float>(left + base(gap, true) / 2 + lane * _ins[gap]++) +
-                    static_cast<float>(lane) / 2.0f;
+        // What the column after it moved right to start on a line widens the gap.
+        const std::int32_t wider = gap < count ? _lefts[gap] - left - _gaps[gap] : 0;
+        placed.at =
+            static_cast<float>(left + (base(gap, true) + wider) / 2 + lane * _ins[gap]++) +
+            static_cast<float>(lane) / 2.0f;
       }
   }
 
