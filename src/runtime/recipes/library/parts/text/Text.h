@@ -123,6 +123,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   void point(VP::Cook &frame, const Grid &grid);
   void press(VP::Cook &frame, const Grid &grid, std::uint32_t presses);
   Spot spot_at(const Document &document, const Grid &grid, bool character = false) const;
+  void drift(Document &document, const Grid &grid);
   bool escape(VP::Cook &frame, const VP::Event &event, const Grid &grid);
   void edit(VP::InputPort &input, const VP::Event &event, const Grid &grid);
   bool clip(VP::InputPort &input, Document &document, std::string_view key) const;

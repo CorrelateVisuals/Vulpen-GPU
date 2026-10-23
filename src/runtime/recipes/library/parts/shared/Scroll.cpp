@@ -9,6 +9,9 @@
 namespace {
 
 constexpr float wheel_rows = 3.0f;   // rows, or columns, a step of the wheel scrolls
+// Rows a frame a drag past the rows shown scrolls, for each row past them and one more,
+// so it scrolls just past the edge too: 15 rows a second there at 60 frames.
+constexpr float drift_rows = 0.25f;
 constexpr float thumb_least = 16.0f; // pixels, so the thumb of many rows can be held
 
 inline void Scroll::fit(std::size_t rows, std::size_t shown, std::size_t last) {
@@ -40,6 +43,11 @@ inline void Scroll::show(std::size_t row) {
   else if (_shown > 0 && row >= first() + _shown)
     _first = static_cast<float>(row + 1 - _shown);
   move(0.0f);
+}
+
+inline void Scroll::drift(float past) {
+  if (past != 0.0f)
+    move((past + std::copysign(1.0f, past)) * drift_rows);
 }
 
 inline bool Scroll::press(glm::vec2 at, const VP_VIEW::Rect &track) {

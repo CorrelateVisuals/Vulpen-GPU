@@ -37,6 +37,10 @@ public:
   void move(float rows);
   // As far as it must, so the row shows.
   void show(std::size_t row);
+  // A frame's scroll while a drag selects past the rows shown, by how many rows past them
+  // the pointer is, below 0 before them: on a little, the farther past the faster, so a
+  // selection reaches the rows that do not show.
+  void drift(float past);
   // A press on the bar, down the track: it holds the thumb, once the thumb's middle came
   // to the press when the press missed it. Whether it took the press, which the part
   // then takes no further.

@@ -4,6 +4,8 @@
 #include "runtime/View.h"
 #include "shared/Words.h"
 
+#include <glm/common.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -382,6 +384,8 @@ void Text::cook(VP::Cook &frame) {
         columns, grid.columns, columns - std::min(columns, grid.columns));
   }
   point(frame, grid);
+  if (_dragging && !_documents.empty() && grid.rows > 0)
+    drift(_documents[_shown], grid);
   lay_out(frame, grid);
   if (!_unsaved.empty())
     frame.hold(_unsaved);
@@ -476,15 +480,34 @@ void Text::press(VP::Cook &frame, const Grid &grid, std::uint32_t presses) {
   }
 }
 
-// The spot nearest the pointer: the row it is on, and the boundary between characters
-// closest to it, so a press between two puts the caret between them; or with character,
-// the start of the character it is on, as a double click's word is found from.
+// The spot nearest the pointer among the rows and columns shown: the row it is on, and
+// the boundary between characters closest to it, so a press between two puts the caret
+// between them; or with character, the start of the character it is on, as a double
+// click's word is found from. A pointer past them is at their edge, where a drag's
+// selection waits for them to scroll on.
 Spot Text::spot_at(const Document &document, const Grid &grid, bool character) const {
   const glm::vec2 cells = (_pointer - glm::vec2(grid.origin)) / glm::vec2(grid.cell);
-  const auto row = static_cast<std::size_t>(std::max(0.0f, std::floor(cells.y)));
+  const auto row = static_cast<std::size_t>(
+      std::clamp(std::floor(cells.y), 0.0f, static_cast<float>(grid.rows - 1)));
   const auto column = static_cast<std::size_t>(
-      std::max(0.0f, character ? std::floor(cells.x) : std::round(cells.x)));
+      std::clamp(character ? std::floor(cells.x) : std::round(cells.x),
+                 0.0f,
+                 static_cast<float>(grid.columns)));
   return at(document, document.scroll.first() + row, document.columns.first() + column);
+}
+
+// Each frame a drag selects with the pointer past the rows or the columns shown, they
+// scroll on, and the caret with them, so a selection reaches what does not show.
+void Text::drift(Document &document, const Grid &grid) {
+  const glm::vec2 cells = (_pointer - glm::vec2(grid.origin)) / glm::vec2(grid.cell);
+  const glm::vec2 shown(static_cast<float>(grid.columns), static_cast<float>(grid.rows));
+  const glm::vec2 past = glm::min(cells, 0.0f) + glm::max(cells - shown, 0.0f);
+  if (past == glm::vec2(0.0f))
+    return;
+  document.scroll.drift(past.y);
+  document.columns.drift(past.x);
+  document.caret = spot_at(document, grid);
+  _follow = true;
 }
 
 // Escape lets go of the selection, and with none of the focus, so the next escape reaches

@@ -14,6 +14,8 @@
 #include "shared/Scroll.h"
 #include "shared/Words.h"
 
+#include <glm/common.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -416,6 +418,8 @@ class CommandLine final : public VP::Operator {
     for (const VP::Logged &line : frame.commands().log())
       show(line.text, role_of(line));
     point(frame);
+    if (_selecting)
+      drift();
     if (!focused())
       _control = false;
     if (grid().room)
@@ -472,6 +476,26 @@ class CommandLine final : public VP::Operator {
           frame.commands().send(std::format("focus {}", _name));
       }
     }
+  }
+
+  // Each frame a drag selects with the pointer past the rows or the columns shown, they
+  // scroll on, as the editor's do, and the selection with them.
+  void drift() {
+    const Grid grid = this->grid();
+    const std::size_t shown = rows_shown(grid);
+    if (!grid.room || shown == 0)
+      return;
+    const glm::vec2 cell(_font->cell);
+    const glm::vec2 from(static_cast<float>(grid.left),
+                         static_cast<float>(grid.bottom) - static_cast<float>(shown) * cell.y);
+    const glm::vec2 room(static_cast<float>(grid.columns), static_cast<float>(shown));
+    const glm::vec2 cells = (_pointer - from) / cell;
+    const glm::vec2 past = glm::min(cells, 0.0f) + glm::max(cells - room, 0.0f);
+    if (past == glm::vec2(0.0f))
+      return;
+    _scroll.drift(past.y);
+    _columns.drift(past.x);
+    _end = mark_at(grid);
   }
 
   // The second press in a row selects the word pressed, and any more the row; a drag
