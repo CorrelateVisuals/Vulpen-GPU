@@ -5,6 +5,7 @@
 #include "contracts/Item.h"
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
+#include "contracts/Place.h"
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
@@ -322,6 +323,15 @@ class CommandLine final : public VP::Operator {
     }
     _title = node.param<std::string>("title");
     _tabs = &node.output<VP_VIEW::Items>("tabs");
+    // A graph's place, when a connection brings one, which the prompt shows.
+    const bool placed = std::ranges::any_of(
+        node.view().connections, [&](const VP::Connection &connection) {
+          return std::ranges::any_of(connection.to, [&](const VP::Endpoint &to) {
+            return to.node == _name && to.port == "place";
+          });
+        });
+    _place = placed ? &node.input<VP_VIEW::Place>("place") : nullptr;
+    _followed = false;
     name_tab();
   }
 
@@ -361,19 +371,26 @@ class CommandLine final : public VP::Operator {
   // Lines go to the command port's current view, which view switch moves, so both
   // terminals, the graph and the Perform panel follow one; found again once it changed,
   // as a line typed may change it. The prompt names its folder from where vulpen
-  // started, as a shell names one; the view vulpen started with has none to show.
+  // started, as a shell names one, or where a graph is, as a connection to its place
+  // brings it, the folder shown or a node's whose inside shows; the view vulpen started
+  // with has none to show.
   void follow(VP::Cook &frame) {
     const std::string_view now = frame.commands().current();
-    if (_followed && now == _view)
+    const bool moved = _place && _place->folder != _placed;
+    if (_followed && now == _view && !moved)
       return;
     _followed = true;
     _view = now;
+    if (_place)
+      _placed = _place->folder;
     const VP::View *const view = frame.view(_view);
-    _folder = _view.empty() || !view
-                  ? std::string()
-                  : view->file.parent_path()
-                        .lexically_proximate(std::filesystem::current_path())
-                        .generic_string();
+    const std::filesystem::path folder =
+        !_placed.empty()           ? std::filesystem::path(_placed)
+        : _view.empty() || !view ? std::filesystem::path()
+                                 : view->file.parent_path();
+    _folder = folder.empty() ? std::string()
+                             : folder.lexically_proximate(std::filesystem::current_path())
+                                   .generic_string();
     name_tab();
   }
 
@@ -1388,7 +1405,9 @@ class CommandLine final : public VP::Operator {
   VP::Command _complete;
   VP::Command _clear;
   std::string _view;   // the current view, as last found; empty for the host
-  std::string _folder; // that view's, as the prompt shows it
+  std::string _folder; // that view's, or the graph's place, as the prompt shows it
+  const VP_VIEW::Place *_place = nullptr; // a connection's; none for none
+  std::string _placed;                    // its folder, as the prompt last showed it
   bool _followed = false; // until the first frame finds the current view
   std::vector<std::string> _kept; // the views the log keeps to, as it was told
   bool _prompted = false;

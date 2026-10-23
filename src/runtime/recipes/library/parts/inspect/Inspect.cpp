@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -83,15 +84,54 @@ std::string column(float milliseconds, float most, bool has, bool untimed) {
   return std::format("{:7.3f} {:<{}}", milliseconds, std::string(bars, '#'), bar_room);
 }
 
+// A param of a node of another view, as <view>:<node> names the node, while that view
+// runs and the node sets it: its own, or for a node inside a recipe a node uses, the one
+// the view keeps for it with the user, as param set keeps it (V11); none else.
+std::optional<std::string>
+param_there(VP::Call &call, std::string_view target, std::string_view key) {
+  const std::size_t colon = target.find(':');
+  const VP::View *const view =
+      colon == std::string_view::npos ? nullptr : call.view(target.substr(0, colon));
+  if (!view)
+    return std::nullopt;
+  const std::string_view name = target.substr(colon + 1);
+  const VP::Node *holder = nullptr;
+  std::string wanted(key);
+  if (const auto node = std::ranges::find(view->nodes, name, &VP::Node::name);
+      node != view->nodes.end())
+    holder = &*node;
+  for (std::size_t dot = name.find('.'); !holder && dot != std::string_view::npos;
+       dot = name.find('.', dot + 1))
+    if (const auto user = std::ranges::find(view->nodes, name.substr(0, dot), &VP::Node::name);
+        user != view->nodes.end() && user->uses()) {
+      holder = &*user;
+      wanted = std::format("{}.{}", name.substr(dot + 1), key);
+    }
+  if (!holder)
+    return std::nullopt;
+  const auto param = std::ranges::find(holder->params, wanted, &VP::Param::key);
+  if (param == holder->params.end() || param->value.empty())
+    return std::nullopt;
+  return param->value;
+}
+
 // Reads the graph and answers ls and info, so a view can be read without a window and a
 // front end needs no mirror of the graph of its own. info with no node asks for the nodes
 // selected through selected, the command a part that selects registers, as the graph
 // does, so it reads a selection without a connection, which the CLI could not give it.
+// ls lists where a graph in a window is, as the terminal there shows it: while the view
+// its folders param names runs, the folder its node there shows in place of the view, and
+// while the view its graph param names runs, the inside of the node the graph there
+// shows, as each node's param says; else the view whole. So ls follows cd, as a shell's
+// does, as open finds the graph by a param too.
 class Inspect final : public VP::Operator {
   void bind(VP::Bind &node) override {
+    _graph = node.sets("graph") ? node.param<std::string>("graph") : std::string();
+    _folders = node.sets("folders") ? node.param<std::string>("folders") : std::string();
     _ls = node.command("ls",
                        "lists the view as folders: each node with its files, and each "
-                       "view it hosts");
+                       "view it hosts; or where the graph in a window is, the folder it "
+                       "shows or the inside of the node it shows");
     _info = node.command("info [<node>]",
                          "shows a node's words, or a hosted view's, and the connections "
                          "it writes and reads; with none, each selected one's under its "
@@ -108,7 +148,7 @@ class Inspect final : public VP::Operator {
       stats(call,
             call.arguments().empty() ? std::string_view() : call.arguments().front());
     else if (call.is(_ls))
-      ls(call, call.view());
+      here(call);
     else if (call.is(_info) && !call.arguments().empty())
       info(call, call.view(), call.arguments().front());
     else if (call.is(_info))
@@ -141,6 +181,39 @@ class Inspect final : public VP::Operator {
       throw std::runtime_error("no node is selected; info <node> shows one");
   }
 
+  // Where the graph is: the folder it shows, its names one a row, a folder's with a / after
+  // it; the inside of the node it shows, its files and the nodes inside it as ls lists
+  // them, each recipe unfolded, as the graph shows it, or as the view holds them while
+  // its manifest cannot be read; or the view whole.
+  void here(VP::Call &call) const {
+    if (const std::optional<std::string> folder = param_there(call, _folders, "folder")) {
+      for (const std::string &name : call.files().list(*folder))
+        call.reply(name);
+      return;
+    }
+    const std::optional<std::string> inside = param_there(call, _graph, "inside");
+    if (!inside)
+      return ls(call, call.view());
+    VP::View view = call.view();
+    try {
+      view = call.files().manifest(view.file.string());
+    } catch (const std::runtime_error &) {
+      // A manifest not saved yet, or one with a mistake: the view as it holds them.
+    }
+    const auto node = std::ranges::find(view.nodes, *inside, &VP::Node::name);
+    if (node == view.nodes.end())
+      return ls(call, call.view());
+    Rows rows;
+    for (const std::string &file : node->files)
+      rows.emplace_back(file, "");
+    const std::string prefix = node->name + '.';
+    for (const VP::Node &inner : view.nodes)
+      if (inner.name.starts_with(prefix) &&
+          inner.name.find('.', prefix.size()) == std::string::npos)
+        list(view, inner, 0, rows);
+    reply_rows(call, rows);
+  }
+
   // The view as the folders its nodes are (RV08): each node a folder under the node it is
   // inside, its files under it and beside it the recipe it uses or was dropped from, and
   // each view it hosts a folder, beside it the file it is hosted from. Connections are
@@ -153,6 +226,11 @@ class Inspect final : public VP::Operator {
     for (const VP::Node &node : view.nodes)
       if (node.name.find('.') == std::string::npos)
         list(view, node, 0, rows);
+    reply_rows(call, rows);
+  }
+
+  // What each folder is reads down one column.
+  static void reply_rows(VP::Call &call, std::span<const Rows::value_type> rows) {
     std::size_t width = 0;
     for (const auto &[folder, note] : rows)
       if (!note.empty())
@@ -314,6 +392,8 @@ class Inspect final : public VP::Operator {
       cost_rows(costs, tree, inner, tree.inside[at], depth + 1, rows);
   }
 
+  std::string _graph;   // <view>:<node> of a graph in a window, whose inside param it reads
+  std::string _folders; // and of the node it shows a folder from, whose folder param
   VP::Command _ls;
   VP::Command _info;
   VP::Command _stats;

@@ -1,4 +1,6 @@
 # The inspect part: one node whose operator is Inspect; it reads the graph and draws nothing.
+# Its graph and folders params, which it may go without, name a graph in a window and the
+# node it shows a folder from, as <view>:<node>, whose place ls then lists.
 [manifest]
 version = 1
 

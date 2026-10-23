@@ -8,8 +8,12 @@ version = 1
 [node "cli.command-line"]
 recipe = command-line
 
+# ls lists where the ide's graph is, while the ide runs: the folder it shows, or the
+# inside of the node it shows.
 [node "cli.inspect"]
 recipe = inspect
+param  = graph=ide:ide.graph.graph
+param  = folders=ide:ide.graph.relations
 
 [node "cli.library"]
 recipe = library

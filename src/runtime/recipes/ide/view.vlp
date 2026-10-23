@@ -304,6 +304,12 @@ to   = ide.terminal-panel.bar.area
 from = ide.terminal-panel.bar.rest
 to   = ide.terminal.command-line.area
 
+# Where the graph is, the folder it shows or a node's whose inside shows, which the
+# terminal's prompt shows, as cd moves it.
+[connection "place"]
+from = ide.graph.graph.place
+to   = ide.terminal.command-line.place
+
 [connection "terminal-tabs"]
 from = ide.terminal.command-line.tabs
 to   = ide.terminal-panel.tabs.items

@@ -5,6 +5,7 @@
 #include "contracts/Item.h"
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
+#include "contracts/Place.h"
 #include "contracts/Rect.h"
 #include "contracts/Relation.h"
 #include "contracts/Typed.h"
@@ -120,7 +121,9 @@ struct Under {
 // a budget, and the pointer over it shows the times in the tip; two buttons after the
 // layers' turn it on and off. arrange, as the button after manhattan sends, lays the boxes
 // shown out anew, as the graph alone does, the places and sizes given them gone; select
-// find selects the next box whose name or a row holds the words a find bar sends it.
+// find selects the next box whose name or a row holds the words a find bar sends it; cd
+// goes where a press, the wheel or , go, by a line, and with none says where it is, the
+// folder of what it shows, which it hands a terminal's prompt as its place.
 // It owns the selection, of nodes, of the views the view shown hosts and of the files and
 // folders it shows, which select and selected reach as lines do (V06), and of what lies
 // outside and the boxes whose names hold a blank, which no line names, for the eye
@@ -145,8 +148,8 @@ private:
   void arrange(VP::Cook &frame, const std::filesystem::path &beside);
   void build(const VP::View *edited, const VP::View *flat);
   void name_tab();
-  void show_view(VP::Cook &frame) const;
-  void show_folder(VP::Cook &frame, const std::filesystem::path &folder) const;
+  void show_view(VP::CommandPort &commands) const;
+  void show_folder(VP::CommandPort &commands, const std::filesystem::path &folder) const;
   void home();
   void follow(VP::Cook &frame, bool room, const VP::Event &event);
   void press(VP::Cook &frame, std::uint32_t presses);
@@ -164,13 +167,18 @@ private:
   void release(VP::Cook &frame, bool room);
   bool open(VP::Cook &frame, std::size_t at);
   void turn(VP::Cook &frame, float steps, glm::vec2 about);
-  bool enter(VP::Cook &frame, std::size_t at);
-  void leave(VP::Cook &frame);
+  // A frame and a command both go into a box or up a level, as a press and cd do: each
+  // the port it sends lines to and reads views from.
+  template <class Port> bool enter(Port &port, std::size_t at);
+  template <class Port> void into_folder(Port &port, const std::filesystem::path &folder);
+  template <class Port> void leave(Port &port);
   bool selected(std::string_view node) const;
   void select(VP::CommandPort &commands, std::span<const std::string> nodes);
   void select_touched(VP::CommandPort &commands, glm::vec2 from);
   void arrange_anew(VP::FilePort &files);
   void find(VP::Call &call);
+  void cd(VP::Call &call);
+  void place(const VP::View *edited, const VP::View *flat);
   void erase(VP::Cook &frame, const VP::View &view);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
@@ -228,6 +236,8 @@ private:
   VP::Command _selected;
   VP::Command _arrange;
   VP::Command _find;
+  VP::Command _cd;
+  VP_VIEW::Place *_place = nullptr; // where it is, for a terminal's prompt
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;

@@ -2,7 +2,8 @@
 # the CLI is the command port on stdout. Its host connects the Rect it fills to its
 # command-line's area, a palette to its rects and glyphs, and a font to its glyphs and its
 # command-line, so one theme and one atlas serve every panel, and the keys part's typed to
-# its command-line's, which takes them while it has the focus. Tab prints what may come
+# its command-line's, which takes them while it has the focus, and may connect a graph's
+# place to its command-line's place, which its prompt then shows. Tab prints what may come
 # among the rows it shows, as a shell does. Its command-line's tabs name it, and the view
 # its lines go to, for a panel's tab strip.
 [manifest]

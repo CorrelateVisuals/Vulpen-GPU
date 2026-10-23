@@ -49,6 +49,10 @@ struct Relations {
   std::string node;
   std::string view;
   std::string folder; // absolute; empty for the view
+  // The folder its folder param names, absolute, as soon as a line sets it, which shows
+  // once it is read; empty for the view. A level up goes up from it, so two in a row go
+  // two levels up.
+  std::string asked;
   std::string top;    // absolute; empty for the view
   VP::View tree;      // the folder's
   std::vector<Relation> relations;

@@ -602,6 +602,7 @@ void Relations::bind(VP::Bind &node) {
                          .string();
   if (folder != _folder || docs != _docs)
     _stale = true;
+  _relations->asked = folder;
   _folder = std::move(folder);
   _docs = std::move(docs);
 }

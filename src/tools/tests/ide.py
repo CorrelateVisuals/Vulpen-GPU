@@ -99,7 +99,7 @@ ARRANGED = {"place wave": [0, 0], "size wave": [120, 90],
             "place /view.vlp": [400, 0], "size /view.vlp": [120, 30],
             "place outside left": [400, 40], "size outside left": [120, 50]}
 REACH = (520, 90)
-HOME_MARGIN = (16, 18)  # the least room home leaves round them: half a column's gap, a row
+HOME_MARGIN = (24, 24)  # the least room home leaves round them: a line of the ground
 MOVED = ("place wave",)
 # The graph's area starts below its panel's tab strip, a text row and 4 pixels either
 # side, at the font's height; a box's name is a row a pad below its top.
