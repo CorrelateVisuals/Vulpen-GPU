@@ -118,7 +118,8 @@ struct Under {
 // on, each box is filled by what its node and those inside it cost a frame, on the GPU or
 // the CPU, on the theme's ramp from cold to hot, against the costliest box beside it or
 // a budget, and the pointer over it shows the times in the tip; two buttons after the
-// layers' turn it on and off.
+// layers' turn it on and off. arrange, as the button after manhattan sends, lays the boxes
+// shown out anew, as the graph alone does, the places and sizes given them gone.
 // It owns the selection, of nodes, of the views the view shown hosts and of the files and
 // folders it shows, which select and selected reach as lines do (V06), and of what lies
 // outside and the boxes whose names hold a blank, which no line names, for the eye
@@ -167,6 +168,7 @@ private:
   bool selected(std::string_view node) const;
   void select(VP::CommandPort &commands, std::span<const std::string> nodes);
   void select_touched(VP::CommandPort &commands, glm::vec2 from);
+  void arrange_anew(VP::FilePort &files);
   void erase(VP::Cook &frame, const VP::View &view);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
@@ -222,6 +224,7 @@ private:
   std::string _shows; // the panel a file a press opens shows in, as its shows param names it
   VP::Command _select;
   VP::Command _selected;
+  VP::Command _arrange;
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;

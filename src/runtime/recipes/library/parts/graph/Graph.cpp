@@ -189,6 +189,10 @@ void Graph::bind(VP::Bind &node) {
                          "none, none");
   _selected = node.command(
       "selected", "lists the nodes, views, files and folders the graph has selected");
+  _arrange = node.command("arrange",
+                          "lays out the boxes the graph shows as it does alone, letting go "
+                          "of where they were put and the sizes they were given there; "
+                          "control with z in the graph takes it back");
   _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
   _labels = node.upload<VP_VIEW::Label>("labels", label_room);
   _characters = node.upload<VP_VIEW::Character>("characters", character_room);
@@ -280,8 +284,13 @@ void Graph::cook(VP::Cook &frame) {
 }
 
 // On the view the graph shows, the current one, as the terminals' lines go to it, so a
-// line to any other is refused rather than acting where nobody looks.
+// line to any other is refused rather than acting where nobody looks; arrange acts on
+// what the graph shows, whichever view its line addressed, as its button sends it.
 void Graph::command(VP::Call &call) {
+  if (call.is(_arrange)) {
+    arrange_anew(call.files());
+    return;
+  }
   const std::string shown(call.commands().current());
   if (call.view(shown) != &call.view())
     throw std::runtime_error(std::format(
@@ -999,6 +1008,20 @@ void Graph::select_touched(VP::CommandPort &commands, glm::vec2 from) {
   }
   if (touched_any)
     select(commands, chosen);
+}
+
+// The boxes shown leave the .ini, where they were put and the sizes they were given, so
+// the graph lays them out alone again and shows them from home; the boxes of the other
+// levels the .ini keeps stay. Saved at once, and taken back by control with z, as a drag.
+void Graph::arrange_anew(VP::FilePort &files) {
+  remember();
+  for (const Box &box : _boxes.boxes) {
+    _arranged.places.erase(box.name);
+    _arranged.sizes.erase(box.name);
+  }
+  _laid = false;
+  _homing = true;
+  keep(files);
 }
 
 // The nodes and the views selected go, a line each, as node remove takes a node with the

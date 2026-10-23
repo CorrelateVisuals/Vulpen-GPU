@@ -100,7 +100,8 @@ bool manhattan_of(std::string_view text) {
 }
 
 // After a divider, the button lit while the curves turn in their lanes, whose press draws
-// them straight, or, while they are, in their lanes again, as the param a save keeps.
+// them straight, or, while they are, in their lanes again, as the param a save keeps; and
+// beside it the one whose press lays the boxes shown out anew, as the graph alone would.
 void manhattan_button(VP_VIEW::Items &items,
                       bool manhattan,
                       std::string_view view,
@@ -111,6 +112,7 @@ void manhattan_button(VP_VIEW::Items &items,
                                   ? std::format("{}: param set {} manhattan no", view, node)
                                   : std::format("{}: param unset {} manhattan", view, node),
                    .current = manhattan});
+  items.push_back({.label = "arrange", .command = std::format("{}: arrange", view)});
 }
 
 } // namespace
