@@ -114,10 +114,14 @@ struct Under {
 // those it touches that were in it. The curve under the pointer, where no box lies, shows
 // over the others, brighter, and its details, a connection's ends or the lines that say
 // the relations it stands for, go as rows to a tooltip beside the pointer. With its heat
-// param on, each box is filled by what its node and those inside it cost a frame, on the
-// GPU or the CPU, on the theme's ramp from cold to hot, against the costliest box beside
-// it or a budget, and the pointer over it shows the times in the tip; two buttons after
-// the layers' turn it on and off. arrange, as the button after manhattan sends, lays the
+// param on, each box is filled by what it holds costs a frame, on the GPU or the CPU: a
+// node's box its node and those inside it, a view's every node of the view and of the
+// views it hosts, a folder's every node of every view whose files it holds, and a file's
+// what its code runs of its node, the CPU's for C++ and the GPU's for a shader, so the
+// boxes filled lead, a level at a time, from the repository's top down to the code that
+// costs; on the theme's ramp from cold to hot, against the costliest box beside it or a
+// budget, and the pointer over it shows the times in the tip; two buttons after the
+// layers' turn it on and off. arrange, as the button after manhattan sends, lays the
 // boxes shown out anew, as the graph alone does, the places and sizes given them gone;
 // select find selects the next box whose name or a row holds the words a find bar sends
 // it; cd goes where a press, the wheel or , go, by a line, and with none says where it

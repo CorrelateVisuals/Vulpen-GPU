@@ -289,7 +289,10 @@ void Graph::cook(VP::Cook &frame) {
     _hovered = under(_pointer);
     _hovered_more = more_under();
     curves_under(_pointer);
-    _heating.weigh(frame, _boxes, _shown, !_relations->folder.empty());
+    _heating.weigh(frame,
+                   _boxes,
+                   _shown,
+                   folder ? std::string_view(_relations->top) : std::string_view());
     write(frame, cell);
     write_tip();
     return;
@@ -431,10 +434,8 @@ void Graph::focus(std::string_view left) {
   }
 }
 
-// Its name is its path from the folder holding the repository's top.
 std::filesystem::path Graph::folder_of(std::size_t box) const {
-  return (std::filesystem::path(_relations->top).parent_path() / _boxes.boxes[box].name)
-      .lexically_normal();
+  return folder_path(_relations->top, _boxes.boxes[box].name);
 }
 
 // The tab names the view, which shows from home. A selection in another view goes, and

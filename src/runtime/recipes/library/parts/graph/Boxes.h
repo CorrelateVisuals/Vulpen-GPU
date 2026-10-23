@@ -282,6 +282,12 @@ std::string_view folder_holding(std::string_view path) {
                                          : path.substr(0, std::max<std::size_t>(slash, 1));
 }
 
+// A folder box's folder, as an absolute path: its name is its path from the folder
+// holding top, the repository's.
+std::filesystem::path folder_path(std::string_view top, std::string_view name) {
+  return (std::filesystem::path(top).parent_path() / name).lexically_normal();
+}
+
 // The boxes showing a path: a file's box, or each box showing a node whose folder holds
 // it, the deepest such folder's, as two nodes using one recipe share its folder; of a
 // folder's, a folder named is its own, as a CMake word naming src/external-libraries
