@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <format>
@@ -87,6 +88,15 @@ bool touches(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
 
 bool inside(const VP_VIEW::Rect &area, glm::vec2 point) {
   return VP_VIEW::contains(area, point);
+}
+
+// Whether a text holds the words, whatever their case, as the graph's find takes them.
+bool mentions(std::string_view text, std::string_view words) {
+  const auto same = [](char a, char b) {
+    return std::tolower(static_cast<unsigned char>(a)) ==
+           std::tolower(static_cast<unsigned char>(b));
+  };
+  return !std::ranges::search(text, words, same).empty();
 }
 
 // Whether a line can name a box, as select takes its words: what lies outside, named with
@@ -186,6 +196,11 @@ void Graph::bind(VP::Bind &node) {
                          "none, none");
   _selected = node.command(
       "selected", "lists the nodes, views, files and folders the graph has selected");
+  _find = node.command("select find <value>...",
+                       "selects the next box the graph shows, after the one selected "
+                       "last, whose name or a row holds the words, joined by single "
+                       "blanks, whatever their case, as its find bar finds them; the "
+                       "graph stays where it is");
   _arrange = node.command("arrange",
                           "lays out the boxes the graph shows as it does alone, letting go "
                           "of where they were put and the sizes they were given there; "
@@ -286,6 +301,10 @@ void Graph::cook(VP::Cook &frame) {
 void Graph::command(VP::Call &call) {
   if (call.is(_arrange)) {
     arrange_anew(call.files());
+    return;
+  }
+  if (call.is(_find)) {
+    find(call);
     return;
   }
   const std::string shown(call.commands().current());
@@ -1005,6 +1024,33 @@ void Graph::select_touched(VP::CommandPort &commands, glm::vec2 from) {
   }
   if (touched_any)
     select(commands, chosen);
+}
+
+// From the box after the one selected last, or the first, round to that one: the first
+// whose name or a row holds the words is selected, as select does, so the next find goes
+// on past it; the graph stays where it is, as the find bar's search only marks a box.
+void Graph::find(VP::Call &call) {
+  std::string wanted;
+  for (const std::string_view word : call.arguments())
+    wanted.append(wanted.empty() ? "" : " ").append(word);
+  const std::vector<Box> &boxes = _boxes.boxes;
+  std::size_t start = 0;
+  if (_selected_in == _shown)
+    for (const std::string &name : _selection)
+      if (const auto at = std::ranges::find(boxes, name, &Box::name); at != boxes.end())
+        start = static_cast<std::size_t>(at - boxes.begin()) + 1;
+  for (std::size_t step = 0; step < boxes.size(); ++step) {
+    const std::size_t at = (start + step) % boxes.size();
+    const std::span<const BoxRow> rows = rows_in(_boxes, at);
+    if (mentions(boxes[at].title, wanted) ||
+        std::ranges::any_of(rows, [&](const BoxRow &row) {
+          return mentions(row.text, wanted) || mentions(row.written, wanted);
+        })) {
+      select(call.commands(), std::span(&boxes[at].name, 1));
+      return;
+    }
+  }
+  call.reply(std::format("no box the graph shows holds {}", wanted));
 }
 
 // The boxes shown leave the .ini, where they were put and the sizes they were given, so

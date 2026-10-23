@@ -12,7 +12,7 @@
 #   Dock       viewport + dock        seats the menubar and the panels in the window
 #   Editor     panel + text-area + find-bar
 #   Terminal   panel + terminal
-#   Graph      panel + graph-editor
+#   Graph      panel + find-bar + graph-editor
 #   Perform    panel + switch + switch-tabs + image ×2 + image-file
 #                                     the window of the view presented, or a preview
 #   Menubar    panel + join           a button a panel and the run's, along the top
@@ -89,6 +89,13 @@ recipe = text-area
 
 [node "ide.editor-panel"]
 recipe = panel
+
+# Over the graph, a row to find a box in it, which control+f in the graph opens: enter
+# selects the next box whose name or a row holds the words, as select find does.
+[node "ide.graph-find"]
+recipe = find-bar
+param  = command-line.host=ide.graph.graph
+param  = command-line.finds=select,find
 
 # The graph of the view the terminal's lines go to, under a tab naming it.
 [node "ide.graph"]
@@ -238,9 +245,14 @@ to   = ide.side.split.area
 from = ide.side.split.first
 to   = ide.graph-panel.bar.area
 
-# The graph's room, where a right press opens the menus too.
 [connection "graph-area"]
 from = ide.graph-panel.bar.rest
+to   = ide.graph-find.command-line.area
+
+# What the find bar leaves the graph, all of it while it is closed, where a right press
+# opens the menus too.
+[connection "graph-rest"]
+from = ide.graph-find.command-line.rest
 to   = ide.graph.bar.area
 to   = ide.menu.menus.area
 
@@ -302,6 +314,7 @@ to   = ide.terminal-panel.hit.items
 from = ide.keys.typed
 to   = ide.editor.text.typed
 to   = ide.editor-find.command-line.typed
+to   = ide.graph-find.command-line.typed
 to   = ide.terminal.command-line.typed
 to   = ide.graph.graph.typed
 to   = ide.presented.typed
@@ -322,6 +335,8 @@ to   = ide.editor-find.rects.palette
 to   = ide.editor-find.glyphs.palette
 to   = ide.graph-panel.rects.palette
 to   = ide.graph-panel.glyphs.palette
+to   = ide.graph-find.rects.palette
+to   = ide.graph-find.glyphs.palette
 to   = ide.graph.graph.palette
 to   = ide.graph.curves.palette
 to   = ide.graph.rects.palette
@@ -351,6 +366,7 @@ to   = ide.editor-panel.glyphs.font
 to   = ide.editor.glyphs.font
 to   = ide.editor-find.glyphs.font
 to   = ide.graph-panel.glyphs.font
+to   = ide.graph-find.glyphs.font
 to   = ide.graph.glyphs.font
 to   = ide.graph.button-glyphs.font
 to   = ide.graph.tip.glyphs.font
@@ -368,6 +384,7 @@ to   = ide.editor-panel.glyphs.atlas
 to   = ide.editor.glyphs.atlas
 to   = ide.editor-find.glyphs.atlas
 to   = ide.graph-panel.glyphs.atlas
+to   = ide.graph-find.glyphs.atlas
 to   = ide.graph.glyphs.atlas
 to   = ide.graph.button-glyphs.atlas
 to   = ide.graph.tip.glyphs.atlas
@@ -387,6 +404,7 @@ to   = ide.editor.text.font
 to   = ide.editor-find.command-line.font
 to   = ide.graph-panel.bar.font
 to   = ide.graph-panel.tabs.font
+to   = ide.graph-find.command-line.font
 to   = ide.graph.bar.font
 to   = ide.graph.graph.font
 to   = ide.graph.buttons.font

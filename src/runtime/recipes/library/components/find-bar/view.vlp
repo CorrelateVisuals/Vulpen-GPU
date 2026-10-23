@@ -3,7 +3,8 @@
 # Control+f in the text its command-line's host param names opens it, a row at the top of
 # the Rect its host connects to its command-line's area, and its command-line hands the
 # text the rest; enter and control+f send find with the words typed, as the editors'
-# owner answers it, and escape closes it, handing the focus back. Its host connects a
+# owner answers it, or the command its command-line's finds param names, its words joined
+# by commas, and escape closes it, handing the focus back. Its host connects a
 # palette to its rects and glyphs, a font to its glyphs and its command-line, and the keys
 # part's typed to its command-line.
 [manifest]

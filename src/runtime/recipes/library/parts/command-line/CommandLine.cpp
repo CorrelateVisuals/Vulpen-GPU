@@ -46,6 +46,8 @@ constexpr std::string_view no_word = "\"\"";
 constexpr std::string_view one_or_more = "...";
 constexpr std::string_view output_mark = "{out}"; // a node's lines, as the log marks them
 constexpr std::string_view find_prompt = "find: "; // the line a search's words are typed on
+// The command a find bar sends its words to, unless its finds param names another.
+constexpr std::string_view find_command = "find";
 
 // In a window: what it keeps, and how it lays out, in pixels.
 constexpr std::size_t scrollback_rows = 1000; // the oldest go first (A03)
@@ -276,7 +278,9 @@ struct Mark {
 // and control+f find again in the rows above, older first, selecting the match and
 // scrolling to it, until escape gives the line back. As a find bar, on=find, it is a
 // search alone, over a host whose control+f opens it: a row at the top of its area,
-// whose words enter and control+f send as find, which the editors' owner answers, and
+// whose words enter and control+f send to the command its finds param names, its words
+// joined by commas, as the graph's select,find, or to find, which the editors' owner
+// answers, and
 // which escape closes, the focus back to the host, and a press on which takes the focus
 // back from the host; the rest of its area goes to the host.
 // A line that names no view goes to the current view, which view switch moves, so it
@@ -309,6 +313,9 @@ class CommandLine final : public VP::Operator {
     _characters = node.upload<VP_VIEW::Character>("characters", character_room);
     if (_finder) {
       _host = node.param<std::string>("host");
+      _finds = node.sets("finds") ? node.param<std::string>("finds")
+                                  : std::string(find_command);
+      std::ranges::replace(_finds, ',', ' ');
       _own_view = node.view_name();
       _rest = &node.output<VP_VIEW::Rect>("rest");
       return;
@@ -1129,7 +1136,7 @@ class CommandLine final : public VP::Operator {
       if (_line.find_first_not_of(' ') == std::string::npos)
         return true;
       if (_finder)
-        _answer = frame.commands().send(std::format("{}: find {}", _own_view, _line));
+        _answer = frame.commands().send(std::format("{}: {} {}", _own_view, _finds, _line));
       else
         find_above();
     } else if (key == "escape") {
@@ -1441,6 +1448,7 @@ class CommandLine final : public VP::Operator {
   // the host.
   bool _finder = false;
   std::string _host;
+  std::string _finds; // the command its words go to, its words joined by blanks
   bool _host_control = false;
   std::string _own_view;
   bool _open = false;
