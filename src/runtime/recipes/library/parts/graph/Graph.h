@@ -116,9 +116,8 @@ struct Under {
 // the relations it stands for, go as rows to a tooltip beside the pointer. With its heat
 // param on, each box is filled by what it holds costs a frame, on the GPU or the CPU: a
 // node's box its node and those inside it, a view's every node of the view and of the
-// views it hosts, a folder's every node of every view whose files it holds, and a file's
-// what its code runs of its node, the CPU's for C++ and the GPU's for a shader, so the
-// boxes filled lead, a level at a time, from the repository's top down to the code that
+// views it hosts, and a folder's every node of every view whose files it holds, so the
+// boxes filled lead, a level at a time, from the repository's top down to the node that
 // costs; on the theme's ramp from cold to hot, against the costliest box beside it or a
 // budget, and the pointer over it shows the times in the tip; two buttons after the
 // layers' turn it on and off. arrange, as the button after manhattan sends, lays the

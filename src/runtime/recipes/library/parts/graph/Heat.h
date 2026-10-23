@@ -69,10 +69,10 @@ Heat heat_of(std::string_view text) {
 }
 
 // What a box costs, in milliseconds a frame, smoothed and as the last frame took it: the
-// nodes it holds, of a view's box every node of the view and of the views it hosts, of a
-// folder's every node whose files it holds, and of a file's what its code runs of its
-// node; whether any of them cooks or has a pass, and whether a pass of theirs went
-// untimed.
+// nodes it holds, of a view's box every node of the view and of the views it hosts, and
+// of a folder's every node whose files it holds; whether any of them cooks or has a pass,
+// and whether a pass of theirs went untimed. Nothing times a file on its own, so a file's
+// box costs nothing: the heat ends at a node, as the costs are measured.
 struct Weight {
   float cpu = 0.0f;
   float cpu_last = 0.0f;
@@ -83,43 +83,18 @@ struct Weight {
   bool untimed = false;
 };
 
-// Of what a node costs, what a box counts: all of it, as a box holding the node; or, as a
-// file's, what its code runs, the CPU's for C++, which the operator's cook runs, and the
-// GPU's for a shader, which the node's pass runs, so the boxes lead down to the code
-// whichever cost shows; none for any other file, as a manifest.
-enum class Part : std::uint8_t { none, all, cpu, gpu };
-
-Part part_of(const Box &file) {
-  static constexpr auto cpu =
-      std::to_array({VP_VIEW::role("cpp"), VP_VIEW::role("header")});
-  static constexpr auto gpu = std::to_array({VP_VIEW::role("glsl"),
-                                             VP_VIEW::role("vert"),
-                                             VP_VIEW::role("frag"),
-                                             VP_VIEW::role("comp"),
-                                             VP_VIEW::role("tesc"),
-                                             VP_VIEW::role("tese"),
-                                             VP_VIEW::role("geom")});
-  if (!file.role)
-    return Part::none;
-  if (std::ranges::find(cpu, *file.role) != cpu.end())
-    return Part::cpu;
-  return std::ranges::find(gpu, *file.role) != gpu.end() ? Part::gpu : Part::none;
-}
-
-void add(Weight &weight, const VP::Cost &cost, Part part) {
-  const bool cooks = cost.cooks && part != Part::gpu;
-  const bool runs = cost.runs && part != Part::cpu;
-  if (cooks) {
+void add(Weight &weight, const VP::Cost &cost) {
+  if (cost.cooks) {
     weight.cpu += cost.cpu;
     weight.cpu_last += cost.cpu_last;
   }
-  if (runs && cost.timed) {
+  if (cost.timed) {
     weight.gpu += cost.gpu;
     weight.gpu_last += cost.gpu_last;
   }
-  weight.cooks = weight.cooks || cooks;
-  weight.runs = weight.runs || runs;
-  weight.untimed = weight.untimed || (runs && !cost.timed);
+  weight.cooks = weight.cooks || cost.cooks;
+  weight.runs = weight.runs || cost.runs;
+  weight.untimed = weight.untimed || (cost.runs && !cost.timed);
 }
 
 float shown(const Weight &weight, Heat heat) {
@@ -171,7 +146,7 @@ public:
       _stale = false;
     }
     for (const Counted &counted : _counted)
-      add(weights[counted.box], _walked[counted.view].costs[counted.cost], counted.part);
+      add(weights[counted.box], _walked[counted.view].costs[counted.cost]);
     for (const Weight &weight : weights)
       most = std::max(most, shown(weight, heat));
   }
@@ -189,12 +164,11 @@ private:
     std::span<const VP::Cost> costs;
   };
   // A cost, by its view among those walked and its place among the view's costs, and the
-  // box it counts in, and what of it.
+  // box it counts in.
   struct Counted {
     std::size_t view = 0;
     std::size_t cost = 0;
     std::size_t box = 0;
-    Part part = Part::all;
   };
 
   // The one vulpen started with first, every other after the view hosting it.
@@ -209,50 +183,38 @@ private:
     }
   }
 
-  void counts(std::size_t view, std::size_t cost, std::size_t box, Part part) {
-    if (part != Part::none)
-      _counted.push_back({.view = view, .cost = cost, .box = box, .part = part});
-  }
-
-  // Of the view shown, a cost counts in the box of its node, or of the node holding it,
-  // and, as the node whose inside shows, in the boxes of its files; of a view it hosts,
-  // or one hosted by way of those, in that view's box, so a view's box holds all it runs.
+  // Of the view shown, a cost counts in the box of its node, or of the node holding it;
+  // of a view it hosts, or one hosted by way of those, in that view's box, so a view's
+  // box holds all it runs.
   void count_view(const Boxes &boxes, std::string_view view) {
     for (std::size_t walked = 0; walked < _walked.size(); ++walked) {
       const std::span<const VP::Cost> costs = _walked[walked].costs;
       std::size_t hosted = walked;
       while (_walked[hosted].host != no_box && _walked[_walked[hosted].host].name != view)
         hosted = _walked[hosted].host;
-      const std::size_t box = _walked[hosted].host == no_box
-                                  ? no_box
-                                  : view_box(boxes, _walked[hosted].name);
+      const std::size_t hosted_box = _walked[hosted].host == no_box
+                                         ? no_box
+                                         : view_box(boxes, _walked[hosted].name);
       for (std::size_t cost = 0; cost < costs.size(); ++cost)
-        if (_walked[walked].name != view)
-          counts(walked, cost, box, box < boxes.boxes.size() ? Part::all : Part::none);
-        else
-          for (std::size_t at = 0; at < boxes.boxes.size(); ++at) {
-            const Box &holder = boxes.boxes[at];
-            const std::string_view node = costs[cost].node;
-            counts(walked,
-                   cost,
-                   at,
-                   !holder.view && holds(holder.name, node)        ? Part::all
-                   : node == boxes.scope && !holder.opens.empty() ? part_of(holder)
-                                                                  : Part::none);
-          }
+        for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
+          const Box &holder = boxes.boxes[box];
+          const bool holding = _walked[walked].name == view
+                                   ? !holder.view && holds(holder.name, costs[cost].node)
+                                   : box == hosted_box;
+          if (holding)
+            _counted.push_back({.view = walked, .cost = cost, .box = box});
+        }
     }
   }
 
   // Of a folder's boxes, every view's costs, so a folder holds what all the code in it
-  // costs: a node's counts in the box of the folder holding its folder, as a node's
-  // folder holds its files, and in the boxes of those files.
+  // costs: a node's counts in the box of the folder holding its folder.
   void count_folders(VP::Cook &frame, const Boxes &boxes, std::string_view top) {
-    std::vector<std::string> places; // by box, a folder's or the one holding a file
-    for (const Box &box : boxes.boxes) {
-      const std::filesystem::path folder =
-          box.opens.empty() ? folder_path(top, box.name) : box.opens.parent_path();
-      places.push_back(box.role ? folder.lexically_normal().generic_string() : "");
-    }
+    std::vector<std::string> folders; // by box; none for a file's, or what lies outside
+    for (const Box &box : boxes.boxes)
+      folders.push_back(box.role && box.opens.empty()
+                            ? folder_path(top, box.name).generic_string()
+                            : std::string());
     for (std::size_t walked = 0; walked < _walked.size(); ++walked) {
       const std::span<const VP::Cost> costs = _walked[walked].costs;
       const VP::View *const flat = frame.unfolded(_walked[walked].name);
@@ -263,13 +225,8 @@ private:
           continue;
         const std::string code = node->folder.lexically_normal().generic_string();
         for (std::size_t box = 0; box < boxes.boxes.size(); ++box)
-          if (const std::string &place = places[box]; !place.empty())
-            counts(walked,
-                   cost,
-                   box,
-                   !boxes.boxes[box].opens.empty()
-                       ? (code == place ? part_of(boxes.boxes[box]) : Part::none)
-                       : (holds(place, code, '/') ? Part::all : Part::none));
+          if (!folders[box].empty() && holds(folders[box], code, '/'))
+            _counted.push_back({.view = walked, .cost = cost, .box = box});
       }
     }
   }
