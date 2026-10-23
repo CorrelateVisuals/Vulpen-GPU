@@ -279,9 +279,10 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // shows leaves, into a panel of its own when dropped beside one, which it adds before
 // itself, as it lists before what draws over the panels. A drag of a panel's tab strip
 // onto another panel sends it, the side the edge of that panel the pointer is nearest,
-// or the middle well inside it. It hides a panel and shows it again, as its dock's ratio
-// gives its half no room and back, and hands on a button a panel, lit while it shows,
-// whose press hides or shows it. It finds where each
+// or the middle well inside it; one holding several, dropped on its own edge, splits, the
+// one it shows going into a panel of its own there. It hides a panel and shows it again,
+// as its dock's ratio gives its half no room and back, and hands on a button a panel,
+// lit while it shows, whose press hides or shows it. It finds where each
 // panel and its strip show as the splits and the bars lay them out, from the Rect its
 // area gives, which its host also hands the outermost dock, a seam being dragged too, as
 // its split follows it, and while a drag goes on it frames where a drop would put the
@@ -314,7 +315,8 @@ class Docking final : public VP::Operator {
     _move = node.command("panel move <node> <node> <value>",
                          "moves a panel beside another, at its left, right, top or "
                          "bottom, or into it, middle, which then holds both; of a panel "
-                         "holding several, the one it shows");
+                         "holding several, the one it shows, beside itself too, which "
+                         "splits it in two");
     _hide = node.command("panel hide <node>",
                          "gives a panel no room, its dock's ratio leaving its half none, "
                          "or the dock's own when nothing beside it shows");
@@ -657,6 +659,7 @@ class Docking final : public VP::Operator {
         _grabbed = pressed == _seated.end()
                        ? std::nullopt
                        : std::optional(std::size_t(pressed - _seated.begin()));
+        _splits = _grabbed && several(frame.view(), pressed->panel);
         _from = _pointer;
         if (pressed != _seated.end() && event.presses == 2)
           frame.commands().send(
@@ -674,21 +677,36 @@ class Docking final : public VP::Operator {
     }
   }
 
-  // The panel a drag would drop the one taken on, by the edge the pointer is nearest.
+  // The panel a drag would drop the one taken on, by the edge the pointer is nearest; onto
+  // itself only a panel holding several, at an edge, which the one it shows leaves.
   std::optional<std::pair<std::size_t, std::string_view>> dropped() const {
     if (!_dragging || !_grabbed)
       return std::nullopt;
     for (std::size_t at = 0; at < _seated.size(); ++at) {
       const VP_VIEW::Rect &area = _seated[at].area;
-      if (at == *_grabbed || !VP_VIEW::contains(area, _pointer))
+      if (!VP_VIEW::contains(area, _pointer))
         continue;
       const glm::vec2 in = (_pointer - glm::vec2(area.offset)) / glm::vec2(area.extent);
       const std::array<float, 4> near{in.x, 1.0f - in.x, in.y, 1.0f - in.y};
       const auto nearest = std::ranges::min_element(near);
-      return std::pair(at,
-                       *nearest > middle_from ? middle : sides[nearest - near.begin()]);
+      const std::string_view side =
+          *nearest > middle_from ? middle : sides[nearest - near.begin()];
+      if (at == *_grabbed && (!_splits || side == middle))
+        return std::nullopt;
+      return std::pair(at, side);
     }
     return std::nullopt;
+  }
+
+  // Whether a panel holds several contents, as a stack, or an editor holding several
+  // files, so the one it shows may leave it for a panel beside it.
+  bool several(const VP::View &view, const std::string &panel) const {
+    const std::optional<Content> held = content_of(view, panel);
+    if (!held)
+      return false;
+    if (const VP_VIEW::Editor *const editor = editor_of(*held))
+      return editor->count() > 1;
+    return !stack_of(view, *held).empty();
   }
 
   // A frame round a Rect, ring pixels wide, inside it. Returns how many Rects it took.
@@ -838,7 +856,12 @@ class Docking final : public VP::Operator {
     const VP::View &view = *call.view(_view);
     const VP::Connection *const into = feeding(view, panel + std::string(bar_node));
     const std::optional<Content> held = content_of(view, panel);
-    if (panel == target || !into || !into->from.node.ends_with(split_node) || !held ||
+    if (panel == target && (side == middle || !several(view, panel)))
+      throw std::runtime_error(std::format(
+          "{} splits beside itself only holding several, at an edge, the one it shows "
+          "leaving it",
+          panel));
+    if (!into || !into->from.node.ends_with(split_node) || !held ||
         !feeding(view, target + std::string(bar_node)) || !content_of(view, target))
       throw std::runtime_error(std::format(
           "{} moves beside or into another panel a dock seats, not {}; ls lists the "
@@ -1284,6 +1307,7 @@ class Docking final : public VP::Operator {
   glm::vec2 _pointer{};
   glm::vec2 _from{};                   // where the press that grabbed a panel was
   std::optional<std::size_t> _grabbed; // the panel whose strip was pressed
+  bool _splits = false;                // it holds several, so a drop on itself splits it
   bool _dragging = false;              // it went far enough from the press to drag
 };
 
