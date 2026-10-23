@@ -1,3 +1,7 @@
+// The relations part's operator. It runs past 800 lines (CPP12): the readers of each
+// language's lines and of the seams between files sit beside the reading that calls them,
+// in one file's unnamed namespace, so two copies of the part never clash; those needing
+// none of its state could move to a header beside it, as the graph part's do.
 #include "Relations.h"
 
 #include "runtime/View.h"
@@ -6,6 +10,7 @@
 #include <array>
 #include <cctype>
 #include <charconv>
+#include <chrono>
 #include <filesystem>
 #include <format>
 #include <functional>
@@ -24,16 +29,21 @@ namespace {
 
 constexpr std::uint64_t every = 120;     // frames between readings of what is small
 constexpr std::size_t largest = 1 << 19; // bytes of a file read for its lines, at most
+// What a frame spends on a reading, at most, past its first, so no frame waits on a
+// reading whole (VK02), however fast the build reads, and the first, so a small reading's
+// curves come with the boxes; between them a file's lines are read so many bytes at a
+// time, so a large file spreads over frames too.
+constexpr std::chrono::microseconds frame_time{4000};
+constexpr std::chrono::microseconds first_time{8000};
+constexpr std::size_t slice = 1 << 16;
 // What a reading costs, in bytes of files read, a folder listed counting as a page's:
-// what a frame reads, at most, past a reading's first, so no frame waits on a reading
-// whole (VK02), about a millisecond's; what the first reads, at most, so a small
-// reading's curves come with the boxes, and one that small is read again every two
-// seconds; and what one reads at all, so its memory stays bounded (A03).
+// what one reads to be small, read again every two seconds, and what one reads at all,
+// so its memory stays bounded (A03).
 constexpr std::size_t listing = 1 << 12;
-constexpr std::size_t budget = 1 << 16;
 constexpr std::size_t small = 1 << 20;
 constexpr std::size_t reading_room = 1 << 26;
 constexpr std::size_t folder_room = 8192; // folders a reading walks, at most
+constexpr std::size_t known_room = 8;     // folders whose relations it keeps, at most
 // Frames a folder shown anew waits for its relations, at most, so its boxes come with
 // their curves, laid out once, as a reading past a small one's first frame takes a few;
 // one that takes longer shows the folder then, and its curves as they come.
@@ -157,28 +167,37 @@ void line_relations(Listed &listed,
                     std::string_view line,
                     const Add &add);
 
-// The documents defining the ids a line cites.
+// The documents defining the ids a line cites, each from a capital that starts a word,
+// as only one may start an id.
 void cite(std::string_view line,
           const std::map<std::string, std::string, std::less<>> &ids,
           const Add &add) {
-  for (std::size_t at = 0; at < line.size(); ++at)
-    if (const std::size_t length = id_length(line, at);
-        length > 0 && (at == 0 || !std::isalnum(static_cast<unsigned char>(line[at - 1])))) {
+  constexpr std::string_view capitals = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  if (ids.empty())
+    return;
+  for (std::size_t at = line.find_first_of(capitals); at != std::string_view::npos;
+       at = line.find_first_of(capitals, at + 1)) {
+    if (at > 0 && std::isalnum(static_cast<unsigned char>(line[at - 1])))
+      continue;
+    if (const std::size_t length = id_length(line, at); length > 0) {
       if (const auto found = ids.find(line.substr(at, length)); found != ids.end())
         add(found->second, VP_VIEW::Layer::docs, line.substr(at, length));
-      at += length;
+      at += length - 1;
     }
+  }
 }
 
 // What a file links to, line by line: the files and folders its lines name, by its
-// language, and the documents defining the ids it cites. Itself it never links to.
+// language, and the documents defining the ids it cites; of a slice of it, its lines
+// numbered past the lines before it. Itself it never links to.
 void find(Listed &listed,
           const std::filesystem::path &file,
           std::string_view text,
+          std::uint32_t before,
           const std::map<std::string, std::string, std::less<>> &ids,
           std::vector<VP_VIEW::Relation> &relations) {
   const std::string from = file.generic_string();
-  std::uint32_t line = 0;
+  std::uint32_t line = before;
   const Add add = [&](std::string to, VP_VIEW::Layer layer, std::string_view said) {
     if (!to.empty() && to != from)
       relations.push_back({.from = from,
@@ -320,9 +339,11 @@ void line_relations(Listed &listed,
   }
 }
 
-// A file's lines, each with its number, counted from 1.
-template <class Line> void each_line(std::string_view text, const Line &line) {
-  std::uint32_t number = 0;
+// A file's lines, each with its number, counted from 1, or of a slice of it, past the
+// lines before it.
+template <class Line>
+void each_line(std::string_view text, const Line &line, std::uint32_t before = 0) {
+  std::uint32_t number = before;
   for (std::size_t at = 0; at < text.size();) {
     const std::size_t end = std::min(text.find('\n', at), text.size());
     line(text.substr(at, end - at), ++number);
@@ -416,6 +437,7 @@ struct Binding {
 // connections, output and input.
 void bind_names(std::string_view text,
                 const std::filesystem::path &file,
+                std::uint32_t before,
                 std::vector<Bound> &bound) {
   static constexpr auto calls =
       std::to_array<Binding>({{.call = ".value<", .sends = true, .pass = true},
@@ -438,7 +460,7 @@ void bind_names(std::string_view text,
                            .sends = binding.sends,
                            .pass = binding.pass});
       }
-  });
+  }, before);
 }
 
 // The names a shader's pass block declares, the last word of each member, past its
@@ -541,6 +563,17 @@ std::string top_of(VP::FilePort &files, const std::filesystem::path &shown) {
   }
 }
 
+// A folder a tool keeps its state in, as a build tree, which CMake marks with its cache,
+// or a Python environment, which its config marks: as a hidden folder, it holds none of
+// the relations of the files a person writes, but many files of its own.
+bool tool_state(const std::vector<std::string> &names) {
+  static constexpr auto marks =
+      std::to_array<std::string_view>({"CMakeCache.txt", "pyvenv.cfg"});
+  return std::ranges::any_of(names, [](const std::string &name) {
+    return std::ranges::find(marks, name) != marks.end();
+  });
+}
+
 bool same(const VP::View &a, const VP::View &b) {
   return std::ranges::equal(a.nodes, b.nodes, [](const VP::Node &one, const VP::Node &two) {
     return one.name == two.name && one.files == two.files;
@@ -574,12 +607,15 @@ void Relations::bind(VP::Bind &node) {
 }
 
 // Read as the folder or the view shown changes, as an edit replaces the view: as much as
-// a small reading reads at once, so the relations come with the boxes, and the rest a
-// little a frame; a folder shows with its relations once they are read, for hold frames
-// at most, and then alone, as a view's boxes show at once and its curves as they come;
-// and again every so often while the last reading was small, a little a frame, so a file
-// changed on disk shows. No frame waits on a large reading whole (VK02).
+// first_time reads at once, so a small reading's relations come with the boxes, and the
+// rest frame_time a frame; a folder shows with its relations once they are read, for
+// hold frames at most, and then alone, as a view's boxes show at once and its curves as
+// they come; and again every so often while the last reading was small, a little a
+// frame, so a file changed on disk shows. No frame waits on a large reading whole
+// (VK02). Only how many frames a reading takes depends on the time; what it finds does
+// not (C01).
 void Relations::cook(VP::Cook &frame) {
+  const auto now = std::chrono::steady_clock::now();
   const std::string shown(frame.commands().current());
   const VP::View *const view = _folder.empty() ? frame.unfolded(shown) : nullptr;
   if (_stale || view != _read_view || shown != _shown) {
@@ -588,9 +624,9 @@ void Relations::cook(VP::Cook &frame) {
     _shown = shown;
     start(frame.files(), view);
     _holding = !_folder.empty();
-    if (step(frame.files(), small))
+    if (step(frame.files(), now + first_time))
       publish(frame);
-    else if (!_holding)
+    else if (!recall() && !_holding)
       publish_tree();
     return;
   }
@@ -599,7 +635,7 @@ void Relations::cook(VP::Cook &frame) {
   if (!_reading)
     start(frame.files(), view);
   ++_frames;
-  if (step(frame.files(), budget))
+  if (step(frame.files(), now + frame_time))
     publish(frame);
   else if (_holding && _frames >= hold)
     publish_tree();
@@ -628,6 +664,9 @@ void Relations::start(VP::FilePort &files, const VP::View *view) {
   std::ranges::sort(_sources);
   _sources.erase(std::ranges::unique(_sources).begin(), _sources.end());
   _next = 0;
+  _text.clear();
+  _sliced = 0;
+  _lines = 0;
   _read = 0;
   _found.clear();
   _ids.clear();
@@ -642,17 +681,21 @@ void Relations::start(VP::FilePort &files, const VP::View *view) {
              _ids);
 }
 
-// The reading, from where it got, until it has cost a budget: first the folders below
-// the folder shown, each listed once, for the files to read, past the hidden ones, which
-// hold the state of tools, as .git, and no line read here; then the files. Returns
-// whether the reading is done, as it is once it read reading_room bytes.
-bool Relations::step(VP::FilePort &files, std::size_t bytes) {
+// The reading, from where it got, until the time given: first the folders below the
+// folder shown, each listed once, for the files to read, past the hidden ones and those a
+// tool keeps its state in, which hold the state of tools, as .git and a build tree, and
+// no line read here; then the files, slice lines at a time. Returns whether the reading
+// is done, as it is once it read reading_room bytes.
+bool Relations::step(VP::FilePort &files, std::chrono::steady_clock::time_point until) {
   Listed listed(files, _listed);
-  std::size_t taken = 0;
-  for (; _walked < _walk.size() && taken < bytes; ++_walked, taken += listing) {
+  const auto spent = [&] { return std::chrono::steady_clock::now() >= until; };
+  for (; _walked < _walk.size() && !spent(); ++_walked) {
     const std::filesystem::path folder = _walk[_walked];
     _read += listing;
-    for (const std::string &name : listed.names(folder.string()))
+    const std::vector<std::string> &names = listed.names(folder.string());
+    if (_walked > 0 && tool_state(names))
+      continue;
+    for (const std::string &name : names)
       if (name.starts_with('.'))
         continue;
       else if (name.ends_with('/') && _walk.size() < folder_room)
@@ -660,29 +703,64 @@ bool Relations::step(VP::FilePort &files, std::size_t bytes) {
       else if (!name.ends_with('/') && language_of(name) != Language::none)
         _sources.push_back(folder / name);
   }
-  for (; _next < _sources.size() && taken < bytes && _read < reading_room; ++_next) {
-    std::string text;
-    try {
-      text = files.read(_sources[_next].string());
-    } catch (const std::runtime_error &) {
-      continue; // gone since it was listed
-    }
-    taken += text.size();
-    _read += text.size();
-    if (text.size() > largest)
-      continue;
-    find(listed, _sources[_next], text, _ids, _found);
-    if (cpp(_sources[_next]))
-      bind_names(text, _sources[_next], _bound);
-    else if (shader(_sources[_next])) {
-      _declared.emplace(_sources[_next], declared_names(text));
-      if (draw_stage(_sources[_next]))
-        _varyings.emplace(_sources[_next], varyings_of(text));
-    } else if (!_folder.empty() && language_of(_sources[_next]) == Language::manifest) {
-      std::ranges::move(wired_of(text, _sources[_next]), std::back_inserter(_wired));
-    }
-  }
+  while (_next < _sources.size() && _read < reading_room && !spent())
+    if (read_slice(files, listed))
+      ++_next;
   return _walked == _walk.size() && (_next == _sources.size() || _read >= reading_room);
+}
+
+// The next lines of the file the reading is at, a slice of them ending at a line's end,
+// read whole once its first slice comes; whether the file is done, as one gone since it
+// was listed is, and one larger than largest, whose lines are not read. Once its last
+// slice is read, what only the whole file says: a shader's pass block and what its stage
+// passes on, and the connections of a manifest.
+bool Relations::read_slice(VP::FilePort &files, Listed &listed) {
+  const std::filesystem::path &file = _sources[_next];
+  if (_sliced == 0) {
+    try {
+      _text = files.read(file.string());
+    } catch (const std::runtime_error &) {
+      return true;
+    }
+    _read += _text.size();
+    if (_text.size() > largest)
+      return true;
+  }
+  const std::size_t end =
+      std::min(_text.find('\n', std::min(_sliced + slice, _text.size())), _text.size());
+  const std::string_view lines = std::string_view(_text).substr(_sliced, end - _sliced);
+  find(listed, file, lines, _lines, _ids, _found);
+  if (cpp(file))
+    bind_names(lines, file, _lines, _bound);
+  _lines += static_cast<std::uint32_t>(std::ranges::count(lines, '\n')) + 1;
+  _sliced = end + 1;
+  if (_sliced < _text.size())
+    return false;
+  if (shader(file)) {
+    _declared.emplace(file, declared_names(_text));
+    if (draw_stage(file))
+      _varyings.emplace(file, varyings_of(_text));
+  } else if (!_folder.empty() && language_of(file) == Language::manifest) {
+    std::ranges::move(wired_of(_text, file), std::back_inserter(_wired));
+  }
+  _sliced = 0;
+  _lines = 0;
+  return true;
+}
+
+// A folder read lately, shown with what was found then, while it is read again, which
+// hands them on again only if they changed; whether it was.
+bool Relations::recall() {
+  const auto known = std::ranges::find(_known, _folder, &Known::folder);
+  if (_folder.empty() || known == _known.end())
+    return false;
+  _holding = false;
+  _relations->folder = _folder;
+  _relations->top = _top;
+  _relations->tree = _tree;
+  _relations->relations = known->relations;
+  ++_relations->changes;
+  return true;
 }
 
 // The folder shown, while its relations are still read past the frames it waits for
@@ -711,9 +789,11 @@ void Relations::publish(VP::Cook &frame) {
           std::filesystem::path(relation.to).lexically_relative(_top);
       return within.empty() || *within.begin() == "..";
     });
+  index_folders();
   relate_seams();
   relate_stages();
   relate_wires();
+  _in_folder.clear();
   const auto said = [](const VP_VIEW::Relation &relation) {
     return std::tie(relation.from, relation.to, relation.layer, relation.said);
   };
@@ -733,6 +813,12 @@ void Relations::publish(VP::Cook &frame) {
                         _found.size()));
   _frames = 0;
   _bytes = _read;
+  if (!_folder.empty()) {
+    std::erase_if(_known, [&](const Known &known) { return known.folder == _folder; });
+    _known.push_back({.folder = _folder, .relations = _found});
+    if (_known.size() > known_room)
+      _known.erase(_known.begin());
+  }
   if (_found == _relations->relations && _folder == _relations->folder &&
       _top == _relations->top && same(_tree, _relations->tree))
     return;
@@ -743,24 +829,36 @@ void Relations::publish(VP::Cook &frame) {
   ++_relations->changes;
 }
 
+// What the files read bind, declare and pass on, by their folders, in the order they
+// were read, so each relation below looks in one folder rather than every file read.
+void Relations::index_folders() {
+  _in_folder.clear();
+  for (const Bound &bind : _bound)
+    _in_folder[bind.file.parent_path()].bound.push_back(&bind);
+  for (const auto &[file, names] : _declared)
+    _in_folder[file.parent_path()].declared.emplace_back(&file, &names);
+  for (const auto &[file, varyings] : _varyings)
+    _in_folder[file.parent_path()].varyings.emplace_back(&file, &varyings);
+}
+
 // What C++ binds in its node's shaders' pass block, the engine carries between it and
 // the shader of its folder declaring it: from the C++, at its line, to the shader, or for
 // a readback from the shader, at the member's line, to the C++.
 void Relations::relate_seams() {
-  for (const Bound &bind : _bound)
-    for (const auto &[file, names] : _declared) {
-      const auto declared = std::ranges::find(names, bind.name, &Declared::name);
-      if (!bind.pass || file.parent_path() != bind.file.parent_path() ||
-          declared == names.end())
-        continue;
-      const std::string cpp = bind.file.generic_string();
-      const std::string glsl = file.generic_string();
-      _found.push_back({.from = bind.sends ? cpp : glsl,
-                        .to = bind.sends ? glsl : cpp,
-                        .layer = VP_VIEW::Layer::engine,
-                        .line = bind.sends ? bind.line : declared->line,
-                        .said = bind.name});
-    }
+  for (const auto &[folder, in] : _in_folder)
+    for (const Bound *bind : in.bound)
+      for (const auto &[file, names] : in.declared) {
+        const auto declared = std::ranges::find(*names, bind->name, &Declared::name);
+        if (!bind->pass || declared == names->end())
+          continue;
+        const std::string cpp = bind->file.generic_string();
+        const std::string glsl = file->generic_string();
+        _found.push_back({.from = bind->sends ? cpp : glsl,
+                          .to = bind->sends ? glsl : cpp,
+                          .layer = VP_VIEW::Layer::engine,
+                          .line = bind->sends ? bind->line : declared->line,
+                          .said = bind->name});
+      }
 }
 
 // A stage reads in what the nearest stage before it in its folder writes out, as its
@@ -771,16 +869,18 @@ void Relations::relate_stages() {
   for (const auto &[reader, ins] : _varyings) {
     const std::size_t stage = *draw_stage(reader);
     const std::filesystem::path *writer = nullptr;
-    for (const auto &[file, outs] : _varyings)
-      if (file.parent_path() == reader.parent_path() && *draw_stage(file) < stage &&
-          (!writer || *draw_stage(file) > *draw_stage(*writer)))
-        writer = &file;
+    const std::vector<Varying> *written = nullptr;
+    for (const auto &[file, outs] : _in_folder.at(reader.parent_path()).varyings)
+      if (*draw_stage(*file) < stage && (!writer || *draw_stage(*file) > *draw_stage(*writer))) {
+        writer = file;
+        written = outs;
+      }
     if (!writer)
       continue;
     for (const Varying &in : ins) {
       if (in.out)
         continue;
-      const std::vector<Varying> &outs = _varyings.at(*writer);
+      const std::vector<Varying> &outs = *written;
       const auto out = std::ranges::find_if(outs, [&](const Varying &out) {
         return out.out && (in.location && out.location ? *in.location == *out.location
                                                        : in.name == out.name);
@@ -834,21 +934,24 @@ std::optional<std::pair<std::filesystem::path, std::uint32_t>>
 Relations::port_file(const std::filesystem::path &folder,
                      std::string_view port,
                      bool writes) const {
-  for (const Bound &bind : _bound)
-    if (bind.file.parent_path() == folder && bind.name == port && bind.sends == writes)
-      return std::pair(bind.file, bind.line);
-  for (const auto &[file, names] : _declared)
-    if (const auto declared = std::ranges::find(names, port, &Declared::name);
-        file.parent_path() == folder && declared != names.end())
-      return std::pair(file, declared->line);
-  for (const auto &[file, varyings] : _varyings)
-    if (const auto varying = std::ranges::find_if(varyings,
+  const auto in = _in_folder.find(folder);
+  if (in == _in_folder.end())
+    return std::nullopt;
+  for (const Bound *bind : in->second.bound)
+    if (bind->name == port && bind->sends == writes)
+      return std::pair(bind->file, bind->line);
+  for (const auto &[file, names] : in->second.declared)
+    if (const auto declared = std::ranges::find(*names, port, &Declared::name);
+        declared != names->end())
+      return std::pair(*file, declared->line);
+  for (const auto &[file, varyings] : in->second.varyings)
+    if (const auto varying = std::ranges::find_if(*varyings,
                                                   [&](const Varying &varying) {
                                                     return varying.name == port &&
                                                            varying.out == writes;
                                                   });
-        file.parent_path() == folder && varying != varyings.end())
-      return std::pair(file, varying->line);
+        varying != varyings->end())
+      return std::pair(*file, varying->line);
   return std::nullopt;
 }
 

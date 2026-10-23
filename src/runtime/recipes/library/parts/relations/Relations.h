@@ -4,6 +4,7 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -56,6 +57,26 @@ struct Varying {
   bool out = false;
 };
 
+// The names each folder looked in during a reading holds, which Relations.cpp defines.
+class Listed;
+
+// What the files of a folder bind, declare in their pass blocks and pass from stage to
+// stage, as only the files of one folder relate through them, a node's folder holding
+// its C++ and its shaders (RV08).
+struct InFolder {
+  std::vector<const Bound *> bound;
+  std::vector<std::pair<const std::filesystem::path *, const std::vector<Declared> *>>
+      declared;
+  std::vector<std::pair<const std::filesystem::path *, const std::vector<Varying> *>>
+      varyings;
+};
+
+// The relations a reading of a folder found, kept to show at once when it shows again.
+struct Known {
+  std::string folder;
+  std::vector<VP_VIEW::Relation> relations;
+};
+
 // Finds what links the files of the view the graph shows, the current one, or of the
 // folder its folder param names, whose inside the graph shows, which open and the graph
 // set while the ide runs: a file including or importing another, a CMake file naming
@@ -68,7 +89,8 @@ struct Varying {
 // with the folder a level deep as a view's nodes, hidden ones too, and the top of its
 // repository. No compiler is asked: it reads the lines that say so, as they are on disk,
 // through the file port, again as what is shown changes, and every two seconds while
-// what it reads is small, a little a frame.
+// what it reads is small, a little a frame; a folder read lately shows what was found
+// then at once, while it is read again.
 class Relations final : public VP::Operator {
 public:
   void bind(VP::Bind &node) override;
@@ -76,7 +98,10 @@ public:
 
 private:
   void start(VP::FilePort &files, const VP::View *view);
-  bool step(VP::FilePort &files, std::size_t bytes);
+  bool step(VP::FilePort &files, std::chrono::steady_clock::time_point until);
+  bool read_slice(VP::FilePort &files, Listed &listed);
+  bool recall();
+  void index_folders();
   void publish_tree();
   void publish(VP::Cook &frame);
   void relate_seams();
@@ -107,6 +132,10 @@ private:
   std::size_t _walked = 0;
   std::vector<std::filesystem::path> _sources;
   std::size_t _next = 0;
+  // The file being read, how much of it is, and how many of its lines.
+  std::string _text;
+  std::size_t _sliced = 0;
+  std::uint32_t _lines = 0;
   std::map<std::string, std::vector<std::string>> _listed;
   std::map<std::string, std::string, std::less<>> _ids;
   std::vector<VP_VIEW::Relation> _found;
@@ -120,6 +149,10 @@ private:
   std::map<std::filesystem::path, std::vector<Varying>> _varyings;
   // And between the nodes of a folder shown, which its manifests join.
   std::vector<Wired> _wired;
+  // Those of each folder, while a reading is handed on.
+  std::map<std::filesystem::path, InFolder> _in_folder;
+  // The folders read last, the newest last.
+  std::vector<Known> _known;
 };
 
 } // namespace
