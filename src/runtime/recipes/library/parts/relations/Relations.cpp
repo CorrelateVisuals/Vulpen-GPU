@@ -474,8 +474,8 @@ VP::View tree_of(VP::FilePort &files,
     for (const std::filesystem::path &folder : level) {
       VP::Node node{.name = folder.lexically_relative(base).generic_string(),
                     .folder = folder};
-      for (const std::string &name : listed ? files.list(folder.string())
-                                            : std::vector<std::string>{})
+      for (const std::string &name :
+           listed ? names_in(files, folder.string()) : std::vector<std::string>{})
         if (name.ends_with('/'))
           inner.push_back(folder / name.substr(0, name.size() - 1));
         else
@@ -491,7 +491,7 @@ VP::View tree_of(VP::FilePort &files,
 // its repository; outside one, the one shown.
 std::string top_of(VP::FilePort &files, const std::filesystem::path &shown) {
   for (std::filesystem::path folder = shown;; folder = folder.parent_path()) {
-    const std::vector<std::string> names = files.list(folder.string());
+    const std::vector<std::string> names = names_in(files, folder.string());
     if (std::ranges::find(names, ".git/") != names.end() ||
         std::ranges::find(names, ".git") != names.end())
       return folder.string();

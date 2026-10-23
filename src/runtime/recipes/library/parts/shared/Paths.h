@@ -5,11 +5,23 @@
 #include <algorithm>
 #include <filesystem>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace {
+
+// What a folder holds, as the file port lists it; nothing for one it cannot list, as a
+// folder its owner keeps closed to others, which a part looking through folders passes
+// as it passes a file it cannot read.
+inline std::vector<std::string> names_in(VP::FilePort &files, const std::string &folder) {
+  try {
+    return files.list(folder);
+  } catch (const std::runtime_error &) {
+    return {};
+  }
+}
 
 // The names in each folder looked in, each folder listed once, kept by the part that
 // looks, as the relations part keeps them between the frames a reading takes, so where a
@@ -19,11 +31,11 @@ public:
   Listed(VP::FilePort &files, std::map<std::string, std::vector<std::string>> &names)
       : _files(files), _names(names) {}
 
-  // What a folder holds, as the file port lists it.
+  // What a folder holds, as names_in gives it.
   const std::vector<std::string> &names(const std::string &folder) {
     auto found = _names.find(folder);
     if (found == _names.end())
-      found = _names.emplace(folder, _files.list(folder)).first;
+      found = _names.emplace(folder, names_in(_files, folder)).first;
     return found->second;
   }
 
