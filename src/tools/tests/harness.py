@@ -46,4 +46,18 @@ def matches(pattern: re.Pattern, output: str) -> list[str]:
 
 
 def display() -> bool:
-    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    """Whether a window can open: Windows names no display, as its desktop always has
+    one; elsewhere X or Wayland names it."""
+    return os.name == "nt" or bool(os.environ.get("DISPLAY")
+                                   or os.environ.get("WAYLAND_DISPLAY"))
+
+
+def link_folder(link: Path, folder: Path) -> None:
+    """Makes link a link to folder. Windows makes a symbolic link only for an
+    administrator or in Developer Mode, but a junction, which leads to a folder alike,
+    for anyone."""
+    if os.name == "nt":
+        import _winapi  # CPython's own way to a junction, as os makes none
+        _winapi.CreateJunction(str(folder), str(link))
+    else:
+        link.symlink_to(folder, target_is_directory=True)

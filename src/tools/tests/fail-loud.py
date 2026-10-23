@@ -53,13 +53,14 @@ which get these things wrong on purpose. The recipe cases write a library of the
 
 Usage: python3 src/tools/tests/fail-loud.py VULPEN
 """
+import os
 import re
 import shutil
 import sys
 import tempfile
 from pathlib import Path
 
-from harness import display, problems, run
+from harness import display, link_folder, problems, run
 
 HEAD = "[manifest]\nversion = 1\n"
 FILL = '[node "fill"]\ninvocations = 64\nparam = amount=1\n'
@@ -262,9 +263,9 @@ def view_in(folder: Path, name: str, text: str) -> Path:
             (home / node).mkdir()
             (home / node / f"{node.capitalize()}.comp").write_text("", encoding="utf-8")
         elif (FIXTURE / node).is_dir():
-            (home / node).symlink_to(FIXTURE / node, target_is_directory=True)
+            link_folder(home / node, FIXTURE / node)
         elif node.startswith("fill"):
-            (home / node).symlink_to(FIXTURE / "fill", target_is_directory=True)
+            link_folder(home / node, FIXTURE / "fill")
     view = home / f"{name}.vlp"
     view.write_text(text, encoding="utf-8")
     return view
@@ -284,7 +285,8 @@ def check(vulpen: str, folder: Path, name: str, text: str, cause: str | tuple[st
 
 
 def judge(name: str, code: int, output: str, cause: str | tuple[str, ...]) -> str | None:
-    if code != 1 or any(part not in output for part in
+    said = output.replace(os.sep, "/")  # a cause names a path by /, as Windows does by \
+    if code != 1 or any(part not in said for part in
                         ((cause,) if isinstance(cause, str) else cause)) or problems(output):
         return f"{name}: expected exit 1 and '{cause}', got exit {code}:\n{output}"
     return None
@@ -312,7 +314,7 @@ def no_limit(vulpen: str, folder: Path) -> str | None:
     built = [mirror(vulpen) / f"fill{index}" for index in range(PASSES)]
     try:
         for link in built:
-            link.symlink_to(mirror(vulpen) / "fill", target_is_directory=True)
+            link_folder(link, mirror(vulpen) / "fill")
         edit = view.parent / "edit.txt"
         edit.write_text("param set fill0 amount 2\n", encoding="utf-8")
         code, output = run(vulpen, [view, "--frames", 1, "--fps", 0, "--source", edit])
@@ -402,8 +404,8 @@ def windowed(vulpen: str, folder: Path, name: str, parts: tuple[str, ...], nodes
     links = [mirror(vulpen) / part for part in parts]
     try:
         for part, link in zip(parts, links):
-            (view.parent / part).symlink_to(PARTS / part, target_is_directory=True)
-            link.symlink_to(built / part, target_is_directory=True)
+            link_folder(view.parent / part, PARTS / part)
+            link_folder(link, built / part)
         return run(vulpen, [view, "--frames", 60, "--fps", 0], headless=False)
     finally:
         for link in links:
@@ -475,12 +477,12 @@ def presented(vulpen: str, folder: Path) -> str | None:
     view = view_in(folder, "presented", HEAD + f'[view "{stage}"]\n'
                    + LOOK.replace("Look", "Watch") + connection("stage", f"{stage}:", "look.painted"))
     (view.parent / stage).mkdir()
-    (view.parent / stage / "scene").symlink_to(FIXTURE / "scene", target_is_directory=True)
+    link_folder(view.parent / stage / "scene", FIXTURE / "scene")
     (view.parent / stage / "view.vlp").write_text(
         HEAD + '[node "scene"]\nvertex_count = 6\n', encoding="utf-8")
     built = mirror(vulpen).parent / stage
     try:
-        built.symlink_to(mirror(vulpen), target_is_directory=True)
+        link_folder(built, mirror(vulpen))
         code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
     finally:
         built.unlink(missing_ok=True)
@@ -499,7 +501,7 @@ def beside(vulpen: str, folder: Path) -> str | None:
     for name, node, text in ((stage, "scene", '[node "scene"]\nvertex_count = 6\n'),
                              (watch, "look", LOOK.replace("Look", "Watch"))):
         (host.parent / name).mkdir()
-        (host.parent / name / node).symlink_to(FIXTURE / node, target_is_directory=True)
+        link_folder(host.parent / name / node, FIXTURE / node)
         (host.parent / name / "view.vlp").write_text(HEAD + text, encoding="utf-8")
     script = host.parent / "lines.txt"
     script.write_text(f"{watch}: connect stage {stage}: look.painted\n{watch}: view save\n",
@@ -507,7 +509,7 @@ def beside(vulpen: str, folder: Path) -> str | None:
     built = [mirror(vulpen).parent / name for name in (stage, watch)]
     try:
         for link in built:
-            link.symlink_to(mirror(vulpen), target_is_directory=True)
+            link_folder(link, mirror(vulpen))
         code, output = run(vulpen, [host, "--frames", 4, "--fps", 0, "--size", "64x48",
                                     "--source", script])
     finally:

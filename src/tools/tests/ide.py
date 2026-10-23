@@ -82,9 +82,10 @@ PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode 
 ESCAPE = [*PERFORM, *["input key down escape"] * 3]
 RAN = re.compile(r"\{run\} ran (\d+) frames")
 LISTED = re.compile(r"^  Triangle\.vert$", re.M)  # a row ls answers for the triangle
-# The folder a path begun completes to, which complete answers alone on its line.
+# The folder a path begun completes to, which complete answers alone on its line, the
+# folders as they were typed.
 COMPLETE = f"complete view load {TRIANGLE.parent}/tri"
-COMPLETED = f"{TRIANGLE}/"
+COMPLETED = f"{TRIANGLE.parent}/{TRIANGLE.name}/"
 # Every scripted event reaches the first frame, so the presses are placed for its size.
 SIZE = re.compile(r"\{swp\} presents \d+ images of (\d+)x(\d+)")
 WAVE = RUNTIME.parents[1] / "projects" / "wave"
@@ -398,7 +399,8 @@ def test() -> None:
         width, height = int(size.group(1)), int(size.group(2))
         drive(folder, "terminal", typed(width, height))
         note = folder / "note.txt"
-        note.write_text(NOTE, encoding="utf-8")
+        # Its breaks as NOTE gives them, so the bytes the editor writes are alike everywhere.
+        note.write_text(NOTE, encoding="utf-8", newline="\n")
         # open names the note in the editor's file param, which opens it in the first
         # frame, so the edits come in a script that standard input sources then.
         later = folder / "edits.txt"
