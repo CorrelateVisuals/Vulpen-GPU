@@ -237,8 +237,10 @@ class List final : public VP::Operator {
 
   // A tab's fill: the content's color for the current one, so it joins the content it
   // names, and for one that toggles, the accent's while it is on, so the one on of the
-  // two reads apart.
+  // two reads apart; or the role an Item names, while it is current.
   static std::uint32_t fill_of(const VP_VIEW::Item &item) {
+    if (item.role && item.current)
+      return *item.role;
     if (item.toggles && item.current)
       return VP_VIEW::role("accent");
     return item.current && !item.toggles ? VP_VIEW::role("background")
@@ -246,8 +248,11 @@ class List final : public VP::Operator {
   }
 
   // A tab's label: in the background's color over the accent of one on, muted on one off
-  // of those that toggle, else as text.
+  // of those that toggle, else as text; in the background's color over the role an Item
+  // names while it is current, and in that role while not, so it reads as what it lights.
   static std::uint32_t text_of(const VP_VIEW::Item &item) {
+    if (item.role)
+      return item.current ? VP_VIEW::role("background") : *item.role;
     if (!item.toggles)
       return VP_VIEW::role("text");
     return item.current ? VP_VIEW::role("background") : VP_VIEW::role("muted");

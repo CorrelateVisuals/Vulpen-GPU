@@ -41,16 +41,6 @@ constexpr std::int32_t selected_width = 2;      // a selected box's border, in p
 constexpr float mark_size = 6.0f;               // a port's mark, in pixels at zoom 1
 // A cubic's handles, of its radius, that keep it on a quarter circle.
 constexpr float quarter = 0.5523f;
-// The role each layer's curves are drawn in, by VP_VIEW::Layer: a connection in the
-// accent color, and each kind of relation in a hue the editor shows code in, so the
-// theme keeps every color; what the engine carries in the types' teal, the shaders'.
-constexpr std::array<std::uint32_t, VP_VIEW::layer_names.size()> layer_roles{
-    VP_VIEW::role("accent"),
-    VP_VIEW::role("directive"),
-    VP_VIEW::role("keyword"),
-    VP_VIEW::role("number"),
-    VP_VIEW::role("string"),
-    VP_VIEW::role("type")};
 constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
 // A line of the ground every so many pixels of the graph at zoom 1, which its shaders
 // draw as its C++ hands them this, and which a box moved and a corner pulled snap to.
