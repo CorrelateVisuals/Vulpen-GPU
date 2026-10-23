@@ -29,9 +29,10 @@ struct Item {
   // One of the Items beside it of which one is on, as edit and run: a strip joins them,
   // the one on filled in the accent's color.
   bool toggles = false;
-  // The role of the theme it is lit in, as a layer's button in its curves' color: filled
-  // in it while current, its label in it while not; none for the accent's of one that
-  // toggles, or the content's of a tab.
+  // The role of the theme it is lit in: one that toggles is filled in it while on, as the
+  // gpu button in the build curves' orange; any other shows its label in it while current
+  // and muted while not, on a button's plain fill, as a layer's button in its curves'
+  // color. None for the accent's of one that toggles, or the content's of a tab.
   std::optional<std::uint32_t> role;
 
   bool operator==(const Item &) const = default;

@@ -237,8 +237,11 @@ class List final : public VP::Operator {
 
   // A tab's fill: the content's color for the current one, so it joins the content it
   // names, and for one that toggles, the accent's while it is on, so the one on of the
-  // two reads apart; or the role an Item names, while it is current.
+  // two reads apart, or the role it names; a button whose label carries a role, the
+  // panel's, as any button off.
   static std::uint32_t fill_of(const VP_VIEW::Item &item) {
+    if (item.role && !item.toggles)
+      return VP_VIEW::role("panel");
     if (item.role && item.current)
       return *item.role;
     if (item.toggles && item.current)
@@ -247,10 +250,12 @@ class List final : public VP::Operator {
                                          : VP_VIEW::role("panel");
   }
 
-  // A tab's label: in the background's color over the accent of one on, muted on one off
-  // of those that toggle, else as text; in the background's color over the role an Item
-  // names while it is current, and in that role while not, so it reads as what it lights.
+  // A tab's label: in the background's color over the accent or the role of one on,
+  // muted on one off of those that toggle, else as text; of a button whose label carries
+  // a role, in it while current, so it reads as what it lights, and muted while not.
   static std::uint32_t text_of(const VP_VIEW::Item &item) {
+    if (item.role && !item.toggles)
+      return item.current ? *item.role : VP_VIEW::role("muted");
     if (item.role)
       return item.current ? VP_VIEW::role("background") : *item.role;
     if (!item.toggles)
