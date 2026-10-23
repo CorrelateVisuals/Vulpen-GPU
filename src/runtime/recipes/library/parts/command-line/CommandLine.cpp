@@ -49,6 +49,9 @@ constexpr std::string_view output_mark = "{out}"; // a node's lines, as the log 
 constexpr std::string_view find_prompt = "find: "; // the line a search's words are typed on
 // The command a find bar sends its words to, unless its finds param names another.
 constexpr std::string_view find_command = "find";
+// What parts a typed path into folders: Windows takes \ beside /.
+constexpr std::string_view separators =
+    std::filesystem::path::preferred_separator == '/' ? "/" : "/\\";
 
 // In a window: what it keeps, and how it lays out, in pixels.
 constexpr std::size_t scrollback_rows = 1000; // the oldest go first (A03)
@@ -122,7 +125,7 @@ std::vector<std::string_view> lines_of(std::string_view text) {
 // dot, as in a shell. A folder that cannot be listed, as a file followed by /, is refused
 // by the file port, naming why.
 std::vector<std::string> paths(VP::FilePort &files, std::string_view begun) {
-  const std::string_view folder = begun.substr(0, begun.rfind('/') + 1);
+  const std::string_view folder = begun.substr(0, begun.find_last_of(separators) + 1);
   const bool hidden = begun.substr(folder.size()).starts_with('.');
   std::vector<std::string> paths;
   for (const std::string &name :
@@ -132,9 +135,9 @@ std::vector<std::string> paths(VP::FilePort &files, std::string_view begun) {
   return paths;
 }
 
-// The names of the files the view holds, as a word without a / names one: its nodes',
-// as it runs, each recipe unfolded, or as the view holds them while its manifest cannot
-// be read. A name with a blank is left out, as a path's is.
+// The names of the files the view holds, as a word naming no folder names one: its
+// nodes', as it runs, each recipe unfolded, or as the view holds them while its manifest
+// cannot be read. A name with a blank is left out, as a path's is.
 std::vector<std::string> held(VP::Call &call) {
   const VP::View *view = &call.view();
   VP::View unfolded;
@@ -168,7 +171,7 @@ void hosted(VP::Call &call, std::string_view host, std::vector<std::string> &nam
 
 // What a placeholder stands for: the view's nodes or connections, the views hosted, the
 // params of the node named just before a key, the paths a word begun may become, or, for
-// a word without a /, the files the view holds. Any other answers as itself.
+// a word naming no folder, the files the view holds. Any other answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -190,7 +193,7 @@ std::vector<std::string> names(std::string_view word,
   } else if (kind == "<view>") {
     hosted(call, {}, names);
   } else if (kind == "<file>" || kind == "<project>" ||
-             (kind == "<path>" && begun.find('/') != std::string_view::npos)) {
+             (kind == "<path>" && std::filesystem::path(begun).has_parent_path())) {
     names = paths(call.files(), begun);
   } else if (kind == "<path>") {
     names = held(call);
@@ -900,7 +903,7 @@ class CommandLine final : public VP::Operator {
     // Read before the line changes, since a word not completed points into it.
     const std::string_view shared = typeable.empty() ? word : shared_start(typeable);
     const std::size_t typed = shared.size(); // the word at the caret, as completed
-    const std::size_t name = shared.rfind('/') + 1; // 0 when it names no folder
+    const std::size_t name = shared.find_last_of(separators) + 1; // 0 for no folder
     const bool folder = shared.ends_with('/');
     _line.insert(_caret, shared.substr(word.size()));
     _caret += typed - word.size();

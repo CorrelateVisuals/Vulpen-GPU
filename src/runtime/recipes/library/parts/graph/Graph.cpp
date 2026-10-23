@@ -1076,8 +1076,9 @@ void Graph::find(VP::Call &call) {
 // With none, where the graph is, from where vulpen started, as a prompt shows it; .. up a
 // level, as , goes, from home; / the top of the view shown, or of the repository a folder
 // shown is in; a word, a box of the level shown by its name, or in a folder shown a
-// folder in it; a path, from where it was typed, a folder, or the view whose folder it
-// is, as a second press on its box goes there. Any other place is refused, naming why.
+// folder in it; a path, by either separator the system knows, from where it was typed, a
+// folder, or the view whose folder it is, as a second press on its box goes there. Any
+// other place is refused, naming why.
 void Graph::cd(VP::Call &call) {
   if (call.arguments().empty()) {
     call.reply(std::filesystem::path(_place->folder)
@@ -1095,15 +1096,18 @@ void Graph::cd(VP::Call &call) {
   } else if (to == "/") {
     if (!_inside.empty())
       call.commands().send(std::format("{}: param unset {} inside", _view, _name));
-  } else if (to.find('/') != std::string_view::npos || !folder.empty()) {
+  } else if (const bool typed = std::filesystem::path(to).has_parent_path();
+             typed || !folder.empty()) {
     std::filesystem::path path =
-        (to.find('/') == std::string_view::npos ? std::filesystem::path(folder) / to
-                                                : std::filesystem::path(to))
+        (typed ? std::filesystem::path(to) : std::filesystem::path(folder) / to)
             .lexically_normal();
     if (path.filename().empty())
       path = path.parent_path();
+    // A root, as / or C:\, which no folder lists, is one while it lists anything.
+    const bool root = path == path.parent_path();
     const std::vector<std::string> names = call.files().list(path.parent_path().string());
-    if (std::ranges::find(names, path.filename().string() + '/') == names.end())
+    if (root ? names.empty()
+             : std::ranges::find(names, path.filename().string() + '/') == names.end())
       throw std::runtime_error(
           std::format("{} is no folder",
                       path.lexically_proximate(std::filesystem::current_path())

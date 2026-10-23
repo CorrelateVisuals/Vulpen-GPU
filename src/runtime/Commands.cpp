@@ -243,14 +243,14 @@ struct Commands::Spec {
   CommandHandler *handler = nullptr;
   Primitive primitive = Primitive::no;
 
-  // A <project> without a / names a project, which its command finds, so only a path
-  // resolves, and the log names it from its own folder.
+  // A <project> that names no folder names a project, which its command finds, so only a
+  // path resolves, and the log names it from its own folder. A folder is named by either
+  // separator the system knows, as Windows takes \ beside /.
   bool names_file(std::size_t argument, std::string_view word) const {
     const std::string_view kind =
         placeholders[std::min(argument, placeholders.size() - 1)];
-    return kind == "file" ||
-           ((kind == "project" || kind == "path") &&
-            word.find('/') != std::string_view::npos);
+    return kind == "file" || ((kind == "project" || kind == "path") &&
+                              std::filesystem::path(word).has_parent_path());
   }
 };
 

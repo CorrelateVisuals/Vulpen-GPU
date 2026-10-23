@@ -29,23 +29,29 @@ bool image(const std::filesystem::path &path) {
 }
 
 // Whether a file or a folder is there, as its folder lists it; normal first, so ./ names
-// the folder it stands in, which lists no . in it.
+// the folder it stands in, which lists no . in it. A root, as / or C:\, which no folder
+// lists, is there while it lists anything.
 bool named(VP::FilePort &files, std::filesystem::path path) {
   path = path.lexically_normal();
   if (path.filename().empty())
     path = path.parent_path();
   const std::vector<std::string> names = files.list(path.parent_path().string());
+  if (path == path.parent_path())
+    return !names.empty();
   const std::string name = path.filename().string();
   return std::ranges::find(names, name) != names.end() ||
          std::ranges::find(names, name + '/') != names.end();
 }
 
-// Whether a path names a folder, as its folder lists it with a / after its name.
+// Whether a path names a folder, as its folder lists it with a / after its name, or a
+// root, as named finds one.
 bool folder(VP::FilePort &files, std::filesystem::path path) {
   path = path.lexically_normal();
   if (path.filename().empty())
     path = path.parent_path();
   const std::vector<std::string> names = files.list(path.parent_path().string());
+  if (path == path.parent_path())
+    return !names.empty();
   return std::ranges::find(names, path.filename().string() + '/') != names.end();
 }
 
@@ -110,10 +116,11 @@ class Editor final : public VP::Operator {
                          "with none, the view's manifest there, or its folder here");
   }
 
-  // A word without a / names a file the view holds, as a project's name does for view
-  // load, which two of that name make a mistake; a path names any. A path that names
-  // nothing is refused, whichever editor takes it, so a misspelt one fails loud rather
-  // than opening as a new, empty file (A02).
+  // A word that names no folder names a file the view holds, as a project's name does
+  // for view load, which two of that name make a mistake; a path names any, by either
+  // separator the system knows. A path that names nothing is refused, whichever editor
+  // takes it, so a misspelt one fails loud rather than opening as a new, empty file
+  // (A02).
   void command(VP::Call &call) override {
     const std::string path = path_of(call);
     const auto folders = running(call, _folders);
@@ -136,7 +143,7 @@ class Editor final : public VP::Operator {
     if (call.arguments().empty())
       return {};
     const std::string word(call.arguments()[0]);
-    if (word.find('/') == std::string::npos) {
+    if (!std::filesystem::path(word).has_parent_path()) {
       const std::vector<std::filesystem::path> found = held(call, word);
       if (found.size() == 1)
         return found.front().string();
