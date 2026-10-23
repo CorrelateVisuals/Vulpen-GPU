@@ -192,12 +192,12 @@ class Modes final : public VP::Operator {
     const std::string_view wanted = !project.empty()                    ? project
                                     : !_started && presented.empty() ? newest
                                                                      : presented;
-    const bool presenting = !wanted.empty() && wanted != presented;
+    const bool presents = !wanted.empty() && wanted != presented;
     name_tabs(hosted, presented);
     const bool loaded = _started && std::ranges::find(_known, wanted) == _known.end();
-    if (presenting)
+    if (presents)
       present(frame.commands(), *frame.view(_view), std::string(wanted));
-    if (presenting && loaded)
+    if (presents && loaded)
       show_presented(frame.commands());
     if (!std::ranges::equal(_known, hosted, {}, {}, &VP::Child::name)) {
       _known.clear();
@@ -215,7 +215,7 @@ class Modes final : public VP::Operator {
     const auto erred = [](const VP::Logged &line) {
       return line.level == VP::Level::error;
     };
-    if (_perform && (leave || (presented.empty() && !presenting) ||
+    if (_perform && (leave || (presented.empty() && !presents) ||
                      std::ranges::any_of(frame.commands().log(), erred)))
       frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;

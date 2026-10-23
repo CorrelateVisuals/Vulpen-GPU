@@ -74,14 +74,14 @@ constexpr std::array<std::string_view, 2> lines{
 constexpr glm::ivec2 first_line{40, 40};
 constexpr std::int32_t line_height = 24;
 constexpr glm::uvec2 room{560, 18};
-constexpr std::uint32_t characters = lines[0].size() + lines[1].size();
+constexpr auto characters = static_cast<std::uint32_t>(lines[0].size() + lines[1].size());
 
 // Writes the Rects and Labels of a sign, which the library's rects and glyphs draw in
 // the palette's colors and the font, as a part that shows text would.
 class Sign final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _rects = node.upload<Rect>("rects", rects.size());
-    _labels = node.upload<Label>("labels", lines.size());
+    _rects = node.upload<Rect>("rects", static_cast<std::uint32_t>(rects.size()));
+    _labels = node.upload<Label>("labels", static_cast<std::uint32_t>(lines.size()));
     _characters = node.upload<Character>("characters", characters);
   }
   void cook(VP::Cook &frame) override {

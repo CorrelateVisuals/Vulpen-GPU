@@ -619,7 +619,7 @@ private:
                         std::size_t count,
                         glm::uvec2 cell,
                         glm::ivec2 start,
-                        bool placed) {
+                        bool moved) {
     gather(boxes, level, count, cell);
     std::int32_t top = std::numeric_limits<std::int32_t>::max();
     std::int32_t bottom = std::numeric_limits<std::int32_t>::lowest();
@@ -633,10 +633,10 @@ private:
         assign(static_cast<float>(top + bottom) / 2.0f);
     const auto lane = static_cast<std::int32_t>(cell.x);
     const auto above = static_cast<std::int32_t>(tracks[1]);
-    const std::int32_t over = placed || above == 0 ? 0 : on_lines((above + 1) * lane);
+    const std::int32_t over = moved || above == 0 ? 0 : on_lines((above + 1) * lane);
     for (const std::size_t box : children(level))
       _placed[box].offset.y += over;
-    const float room = placed && level == no_box
+    const float room = moved && level == no_box
                            ? static_cast<float>((above + 1) * lane)
                            : static_cast<float>(top + over - start.y);
     lay_tracks(level, top + over, bottom + over, cell, room);

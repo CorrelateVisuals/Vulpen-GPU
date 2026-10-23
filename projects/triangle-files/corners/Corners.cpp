@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <span>
 
 namespace {
@@ -23,7 +24,8 @@ constexpr glm::vec2 center = (corners[0] + corners[1] + corners[2]) / 3.0f;
 class Corners final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _spin = &node.input<VP_VIEW::Spin>("spin");
-    _corners = node.upload<VP_VIEW::Corner>("corners", corners.size());
+    _corners = node.upload<VP_VIEW::Corner>("corners",
+                                            static_cast<std::uint32_t>(corners.size()));
   }
   void cook(VP::Cook &frame) override {
     const float angle = _spin->angle;

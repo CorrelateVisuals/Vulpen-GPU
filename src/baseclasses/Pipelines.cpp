@@ -75,7 +75,8 @@ VkSampler make_sampler(VkDevice device, VkFilter filter, VkSamplerAddressMode ad
 // into, written as images come and go, and the static samplers, which never change.
 // Update after bind raises the device's limits on sampled and storage images to what
 // descriptor indexing guarantees (RV01).
-VkDescriptorSetLayout image_layout(VkDevice device, std::span<const VkSampler> samplers) {
+VkDescriptorSetLayout image_layout(VkDevice device,
+                                   std::span<const VkSampler> immutable) {
   constexpr VkDescriptorBindingFlags slots = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
                                              VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
   const std::array<VkDescriptorBindingFlags, 3> flags{slots, 0, slots};
@@ -91,9 +92,9 @@ VkDescriptorSetLayout image_layout(VkDevice device, std::span<const VkSampler> s
       VkDescriptorSetLayoutBinding{.binding = samplers_binding,
                                    .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
                                    .descriptorCount =
-                                       static_cast<std::uint32_t>(samplers.size()),
+                                       static_cast<std::uint32_t>(immutable.size()),
                                    .stageFlags = VK_SHADER_STAGE_ALL,
-                                   .pImmutableSamplers = samplers.data()},
+                                   .pImmutableSamplers = immutable.data()},
       VkDescriptorSetLayoutBinding{.binding = images_binding,
                                    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
                                    .descriptorCount = image_slots,

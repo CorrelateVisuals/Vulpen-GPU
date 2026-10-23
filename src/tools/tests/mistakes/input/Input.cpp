@@ -1,5 +1,6 @@
 #include "runtime/Operator.h"
 
+#include <algorithm>
 #include <array>
 #include <format>
 #include <span>

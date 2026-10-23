@@ -461,8 +461,8 @@ class Docking final : public VP::Operator {
       for (const VP::Node &node : call.view(_view)->nodes)
         if (node.recipe == editor_recipe && node.name != own)
           added.push_back(node.name + head.substr(own.size()));
-      for (const std::string &text : added)
-        remove_editor(call, text);
+      for (const std::string &name : added)
+        remove_editor(call, name);
     }
     order_docks(call);
     if (stopped)

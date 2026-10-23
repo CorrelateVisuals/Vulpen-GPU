@@ -7,9 +7,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Vulkan REQUIRED)
 # CPP11 fills Vulkan structs with designated initializers and leaves the zero fields out,
-# which GCC's -Wextra would flag in every one of them.
+# which GCC's -Wextra would flag in every one of them. A contract's alignas pads it to the
+# stride std430 gives it, which MSVC's C4324 would flag in every contract.
 set(warnings
-    "$<IF:$<BOOL:${MSVC}>,/W4,-Wall;-Wextra;-Wpedantic;-Wno-missing-field-initializers>")
+    "$<IF:$<BOOL:${MSVC}>,/W4;/wd4324,-Wall;-Wextra;-Wpedantic;-Wno-missing-field-initializers>")
 # The same input gives the same bits on every machine (C01, C10). GCC fuses a*b+c into
 # one rounding wherever the CPU has FMA, as ARM64 always does, so release would differ
 # from debug and from x86; MSVC does not fuse by default.
@@ -47,8 +48,9 @@ target_include_directories(baseclasses SYSTEM PRIVATE src/external-libraries)
 target_link_libraries(baseclasses PUBLIC Vulkan::Vulkan PRIVATE glfw ${CMAKE_DL_LIBS})
 set_target_properties(baseclasses PROPERTIES COMPILE_WARNING_AS_ERROR ON)
 
-add_executable(vulpen
-  src/main.cpp
+# The runtime, the rest of the engine, is a library of objects too, for the same reason;
+# vulpen's main() only runs it (A04).
+add_library(runtime OBJECT
   src/runtime/Binder.cpp
   src/runtime/Checks.cpp
   src/runtime/Commands.cpp
@@ -60,8 +62,13 @@ add_executable(vulpen
   src/runtime/Runtime.cpp
   src/runtime/Schedule.cpp
   src/runtime/Views.cpp)
+target_compile_options(runtime PRIVATE "${warnings}")
+target_include_directories(runtime SYSTEM PRIVATE src/external-libraries)
+target_link_libraries(runtime PUBLIC baseclasses)
+set_target_properties(runtime PROPERTIES COMPILE_WARNING_AS_ERROR ON)
+
+add_executable(vulpen src/main.cpp)
 target_compile_options(vulpen PRIVATE "${warnings}")
-target_include_directories(vulpen SYSTEM PRIVATE src/external-libraries)
 # GLFW builds from its pinned source; the vendored copy leaves out its docs, tests and
 # examples, so they must stay off.
 set(GLFW_BUILD_DOCS OFF)
@@ -69,7 +76,25 @@ set(GLFW_BUILD_TESTS OFF)
 set(GLFW_BUILD_EXAMPLES OFF)
 set(GLFW_INSTALL OFF)
 add_subdirectory(src/external-libraries/glfw EXCLUDE_FROM_ALL)
-target_link_libraries(vulpen PRIVATE baseclasses)
+# A node's module may call the engine by hand (native C++), so a live build's vulpen
+# exports the engine to the modules it loads (src/runtime/cmake/nodes.cmake); a release
+# build links the nodes in. A DLL, though, resolves every symbol at its link, and Windows
+# locks a running vulpen.exe, which a live build would relink once the commit's stamp
+# turned dirty, were the modules linked against it; so there a live build's engine is a
+# DLL of its own, which vulpen and every module link, and which only an engine change
+# relinks.
+string(COMPARE EQUAL "${CMAKE_BUILD_TYPE}" Debug live_default)
+option(VULPEN_LIVE "Swap the nodes' C++ and GLSL while vulpen runs" ${live_default})
+if(VULPEN_LIVE AND WIN32)
+  add_library(engine SHARED)
+  target_link_libraries(engine PUBLIC runtime baseclasses)
+  set_target_properties(engine PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON
+                                          RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<0:>)
+  target_link_libraries(vulpen PRIVATE engine)
+else()
+  target_link_libraries(vulpen PRIVATE runtime baseclasses)
+  set_target_properties(vulpen PROPERTIES ENABLE_EXPORTS ${VULPEN_LIVE})
+endif()
 # The $<0:> stops multi-config generators (Visual Studio) from adding a Debug/ or
 # Release/ folder, so the run scripts find the binary at out/build/<preset>/.
 set_target_properties(vulpen PROPERTIES COMPILE_WARNING_AS_ERROR ON
@@ -85,6 +110,7 @@ add_custom_target(commit
   VERBATIM)
 add_dependencies(vulpen commit)
 target_include_directories(vulpen PRIVATE ${generated})
+target_include_directories(runtime PRIVATE ${generated})
 
 # Gates run before the compile, so a broken rule fails the build before any object is
 # built; mutable-globals reads the objects, so it runs after the link (C13). Statistics run
@@ -97,6 +123,7 @@ set(tools ${PROJECT_SOURCE_DIR}/src/tools)
 add_custom_target(gates COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py ${CMAKE_BINARY_DIR}
                   VERBATIM)
 add_dependencies(baseclasses gates)
+add_dependencies(runtime gates)
 add_dependencies(vulpen gates)
 if(NOT MSVC) # it reads the objects with objdump
   add_custom_target(globals ALL

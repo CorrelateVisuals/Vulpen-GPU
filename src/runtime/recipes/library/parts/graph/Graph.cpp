@@ -1500,12 +1500,12 @@ void Graph::write_curves(VP::Cook &frame) {
       const glm::vec2 along = glm::normalize(to - from);
       const glm::vec2 start = from + along * corner(way, at);
       const float round = corner(way, at + 1);
-      const glm::vec2 end = to - along * round;
-      if (end != start)
-        add(start, end, (end - start) / 3.0f, (end - start) / 3.0f);
+      const glm::vec2 stop = to - along * round;
+      if (stop != start)
+        add(start, stop, (stop - start) / 3.0f, (stop - start) / 3.0f);
       if (round > 0.0f) {
         const glm::vec2 next = glm::normalize(on_screen(way[at + 2].at) - to);
-        add(end, to + next * round, along * round * quarter, next * round * quarter);
+        add(stop, to + next * round, along * round * quarter, next * round * quarter);
       }
     }
   }

@@ -17,7 +17,7 @@ constexpr std::uint32_t height = 2;
 constexpr std::size_t count = std::size_t{width} * height;
 // Row by row, each pixel apart from the others, so one the shader finds elsewhere than
 // C++ put it reads as another.
-constexpr std::array<std::uint8_t, count> bytes{0, 30, 60, 90, 120, 150, 180, 210};
+constexpr std::array<std::uint8_t, count> levels{0, 30, 60, 90, 120, 150, 180, 210};
 constexpr float unorm = 255.0f; // the byte that reads as 1
 // Values no byte holds, each a 16-bit float exactly.
 constexpr std::array<float, count> deep{
@@ -29,10 +29,10 @@ struct Bytes {
   static constexpr std::string_view port = "picture";
   static constexpr float tolerance = 0.5f / unorm;
   static std::array<Pixel, count> pixels() {
-    return bytes;
+    return levels;
   }
   static float expected(std::size_t i) {
-    return static_cast<float>(bytes[i]) / unorm;
+    return static_cast<float>(levels[i]) / unorm;
   }
 };
 
@@ -103,7 +103,7 @@ class Cleared final : public VP::Operator {
   }
   void cook(VP::Cook &frame) override {
     if (frame.empty(_image)) {
-      frame.upload(_image, bytes, {width, height});
+      frame.upload(_image, levels, {width, height});
       ++_fills;
     }
     if (frame.index() == cleared)
@@ -135,7 +135,7 @@ class Misfilled final : public VP::Operator {
     _image = node.texture<std::uint8_t>("picture");
   }
   void cook(VP::Cook &frame) override {
-    frame.upload(_image, std::span(bytes).first(count - 1), {width, height});
+    frame.upload(_image, std::span(levels).first(count - 1), {width, height});
   }
 
   VP::Texture<std::uint8_t> _image;

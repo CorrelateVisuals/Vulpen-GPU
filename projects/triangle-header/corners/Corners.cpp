@@ -31,7 +31,8 @@ float angle_at(std::uint64_t frame, std::uint32_t frames_per_turn) {
 // No shader of this node holds corners, so the node asks for room for each corner, and
 // the connection takes them to the face's.
 void Corners::bind(VP::Bind &node) {
-  _corners = node.upload<VP_VIEW::Corner>("corners", corners.size());
+  _corners =
+      node.upload<VP_VIEW::Corner>("corners", static_cast<std::uint32_t>(corners.size()));
   _frames_per_turn = node.param<std::uint32_t>("frames_per_turn");
 }
 

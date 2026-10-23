@@ -1,10 +1,8 @@
 # The build side of live code. Each node is a folder (RV08),
 # which compiles its shaders to SPIR-V and its C++ to one module (live) or into vulpen
 # (release), at paths that mirror the view under <build>/views/, so the runtime finds them
-# by path alone. Included by the top-level CMakeLists.txt after the vulpen and gates
-# targets, and vulpen_spirv, which compiles a shader.
-string(COMPARE EQUAL "${CMAKE_BUILD_TYPE}" Debug live_default)
-option(VULPEN_LIVE "Swap the nodes' C++ and GLSL while vulpen runs" ${live_default})
+# by path alone. Included by the top-level CMakeLists.txt after the runtime, vulpen and
+# gates targets, VULPEN_LIVE, and vulpen_spirv, which compiles a shader.
 
 # Every engine header, hashed into a module's entry name: a module built against other
 # headers than the running vulpen then fails to load, naming why, instead of crashing it.
@@ -26,8 +24,9 @@ file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${module_stamp_file} CONTENT "${module
 # running vulpen, so its runtime says, once one changes, that a restart runs it.
 set(engine_sources_file engine-sources)
 get_target_property(engine_sources vulpen SOURCES)
+get_target_property(runtime_sources runtime SOURCES)
 get_target_property(layer_sources baseclasses SOURCES)
-list(APPEND engine_sources ${layer_sources})
+list(APPEND engine_sources ${runtime_sources} ${layer_sources})
 list(TRANSFORM engine_sources PREPEND ${PROJECT_SOURCE_DIR}/)
 list(APPEND engine_sources ${engine_headers})
 list(JOIN engine_sources "\n" engine_list)
@@ -41,17 +40,11 @@ else()
   set(module_export "[[gnu::visibility(\"default\")]]")
 endif()
 
-# A node's module may call the engine by hand (native C++), so a live build's vulpen
-# exports its symbols to the modules it loads; a release build links the nodes in.
-if(VULPEN_LIVE)
-  set_target_properties(vulpen PROPERTIES ENABLE_EXPORTS ON)
-endif()
-
 # What a live build rebuilds; the include map guards it like every build (A00).
 add_custom_target(vulpen_modules)
 add_dependencies(vulpen_modules gates)
 add_dependencies(vulpen vulpen_modules)
-target_compile_definitions(vulpen PRIVATE
+target_compile_definitions(runtime PRIVATE
   VP_LIVE=$<BOOL:${VULPEN_LIVE}>
   VP_CMAKE_COMMAND="${CMAKE_COMMAND}"
   VP_MODULE_SUFFIX="${CMAKE_SHARED_MODULE_SUFFIX}"
@@ -157,6 +150,10 @@ function(vulpen_node view folder root)
     target_compile_options(${target} PRIVATE $<$<CXX_COMPILER_ID:GNU>:-fno-gnu-unique>)
     target_compile_definitions(${target} PRIVATE
       VP_MODULE_ENTRY=vp_module_${module_stamp} "VP_MODULE_EXPORT=${module_export}")
+    # A DLL resolves its calls into the engine at its link, from the engine's DLL.
+    if(WIN32)
+      target_link_libraries(${target} PRIVATE engine)
+    endif()
   else()
     add_library(${target} OBJECT ${sources})
     target_link_libraries(vulpen PRIVATE ${target})
@@ -169,9 +166,11 @@ function(vulpen_node view folder root)
   target_include_directories(${target} PRIVATE ${includes})
   string(MAKE_C_IDENTIFIER "vp_${view}" view_namespace)
   target_compile_definitions(${target} PRIVATE VP_VIEW=${view_namespace})
-  # runtime/Operator.h takes GLSL's vectors from glm.
+  # runtime/Operator.h takes GLSL's vectors from glm, and an engine header a node includes
+  # by hand Vulkan's types, which only Linux keeps where every compiler looks.
   target_include_directories(${target} SYSTEM PRIVATE
                              ${PROJECT_SOURCE_DIR}/src/external-libraries)
+  target_link_libraries(${target} PRIVATE Vulkan::Headers)
   target_compile_options(${target} PRIVATE "${warnings}")
   set_target_properties(${target} PROPERTIES COMPILE_WARNING_AS_ERROR ON)
   add_dependencies(vulpen_modules ${target})

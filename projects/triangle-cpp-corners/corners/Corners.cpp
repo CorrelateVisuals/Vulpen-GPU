@@ -35,7 +35,8 @@ float angle_at(std::uint64_t frame, std::uint32_t frames_per_turn) {
 // of this node holds them, so it asks for room for each.
 class Corners final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _corners = node.upload<VP_VIEW::Corner>("corners", corners.size());
+    _corners = node.upload<VP_VIEW::Corner>("corners",
+                                            static_cast<std::uint32_t>(corners.size()));
     _frames_per_turn = node.param<std::uint32_t>("frames_per_turn");
   }
   void cook(VP::Cook &frame) override {

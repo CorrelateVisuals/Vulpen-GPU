@@ -16,7 +16,7 @@
 namespace {
 
 constexpr std::string_view theme_file = "theme.ini";
-constexpr std::uint32_t roles = VP_VIEW::role_names.size();
+constexpr auto roles = static_cast<std::uint32_t>(VP_VIEW::role_names.size());
 constexpr std::size_t channels = 4; // red, green, blue and alpha
 constexpr std::size_t opaque = 3;   // the channels a color gives when its alpha is 1
 
