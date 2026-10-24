@@ -56,7 +56,8 @@ std::unique_ptr<Operator> Modules::make(const std::string &module,
                   registered.empty() ? " nothing" : names(registered)));
 }
 
-std::string Modules::sole(const std::string &module, const std::filesystem::path &folder) {
+std::string Modules::sole(const std::string &module,
+                          const std::filesystem::path &folder) {
   const auto &registered = entered(module, folder);
   if (registered.size() == 1)
     return registered.begin()->first;
@@ -68,7 +69,7 @@ std::string Modules::sole(const std::string &module, const std::filesystem::path
 }
 
 const Modules::Registered &Modules::entered(const std::string &module,
-                                           const std::filesystem::path &folder) {
+                                            const std::filesystem::path &folder) {
   if (!_operators.contains(module))
     enter(module, folder);
   return _operators.at(module);

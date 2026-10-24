@@ -54,7 +54,8 @@ private:
 
   void add(std::string_view name, Make make) override;
   // What the module registers, entering it first.
-  const Registered &entered(const std::string &module, const std::filesystem::path &folder);
+  const Registered &entered(const std::string &module,
+                            const std::filesystem::path &folder);
   void enter(const std::string &module, const std::filesystem::path &folder);
   void load(Loaded &loaded);
   void run(const std::string &module, void (*entry)(Registry &));

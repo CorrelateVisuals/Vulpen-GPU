@@ -87,8 +87,8 @@ inline bool holds_stage(const Node &node, std::string_view stage) {
 // registers, which Modules::sole finds.
 inline bool runs_operator(const Node &node) {
   return !node.operator_name.empty() ||
-         std::ranges::any_of(node.files,
-                             [](const std::string &file) { return file.ends_with(".cpp"); });
+         std::ranges::any_of(
+             node.files, [](const std::string &file) { return file.ends_with(".cpp"); });
 }
 
 // A node whose folder holds a .vert draws, with its own .frag, or as a vertex node, with
