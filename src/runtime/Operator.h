@@ -616,6 +616,14 @@ private:
 #define VP_OPERATORS(registry)                                                           \
   extern "C" VP_MODULE_EXPORT void VP_MODULE_ENTRY(VP::Registry &registry)
 
+// A folder whose C++ registers one operator, under its class's own name. The
+// static_assert takes the ; written after it.
+#define VP_OPERATOR(Class)                                                               \
+  VP_OPERATORS(registry) {                                                               \
+    registry.add<Class>(#Class);                                                         \
+  }                                                                                      \
+  static_assert(true)
+
 // A member of the struct S, for the list its members() returns: its name, written once,
 // its GLSL type and its offset.
 #define VP_MEMBER(S, name) ::VP::member<decltype(S::name)>(#name, offsetof(S, name))

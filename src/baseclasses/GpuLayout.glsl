@@ -8,17 +8,26 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
 
-// Buffers are device addresses (RV02). The qualifier is the node's declaration of what
-// it reads and writes; the engine places the barriers from it (V10).
-layout(buffer_reference, std430) readonly buffer FloatsIn {
-  float at[];
-};
-layout(buffer_reference, std430) writeonly buffer FloatsOut {
-  float at[];
-};
-layout(buffer_reference, std430) buffer Floats {
-  float at[];
-};
+// Buffers are device addresses (RV02), each declared in one line by its name and what
+// an element is, as VP_READS(Corners, Corner); a shader reaches its elements as at[].
+// The qualifier in the macro's name is the node's declaration of what it reads and
+// writes; the engine places the barriers from it (V10).
+#define VP_READS(Name, Element)                                                          \
+  layout(buffer_reference, std430) readonly buffer Name {                                \
+    Element at[];                                                                        \
+  }
+#define VP_WRITES(Name, Element)                                                         \
+  layout(buffer_reference, std430) writeonly buffer Name {                               \
+    Element at[];                                                                        \
+  }
+#define VP_BUFFER(Name, Element)                                                         \
+  layout(buffer_reference, std430) buffer Name {                                         \
+    Element at[];                                                                        \
+  }
+
+VP_READS(FloatsIn, float);
+VP_WRITES(FloatsOut, float);
+VP_BUFFER(Floats, float);
 
 // What every pass may read about the frame; the push constant holds its address (RV02).
 // The engine writes each member by its name, at the offset reflection gives it (RA03).
