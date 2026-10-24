@@ -1,5 +1,3 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
 
 layout(set = 1, binding = 0) uniform Pass {

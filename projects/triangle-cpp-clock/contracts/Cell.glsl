@@ -7,9 +7,5 @@ struct Cell {
   float size;
 };
 
-layout(buffer_reference, std430) readonly buffer Cells {
-  Cell at[];
-};
-layout(buffer_reference, std430) writeonly buffer CellsOut {
-  Cell at[];
-};
+VP_READS(Cells, Cell);
+VP_WRITES(CellsOut, Cell);

@@ -1,5 +1,3 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
 
 // A corner as the Triangle operator writes it, member for member.
@@ -8,9 +6,7 @@ struct Corner {
   vec4 color;
 };
 
-layout(buffer_reference, std430) readonly buffer Corners {
-  Corner at[];
-};
+VP_READS(Corners, Corner);
 
 layout(set = 1, binding = 0) uniform Pass {
   Corners corners; // written by the Triangle operator every frame, one a vertex

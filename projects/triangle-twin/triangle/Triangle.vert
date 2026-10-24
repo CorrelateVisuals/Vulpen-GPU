@@ -1,11 +1,7 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
 #include "shared/Triangle.h"
 
-layout(buffer_reference, std430) readonly buffer Points {
-  vec2 at[];
-};
+VP_READS(Points, vec2);
 
 layout(set = 1, binding = 0) uniform Pass {
   Points points; // corner_at's, from the Triangle operator every frame, one a vertex

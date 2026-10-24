@@ -11,11 +11,9 @@ version = 1
 
 # A whole turn every 600 frames, and 0 holds the triangle still.
 [node "clock"]
-operator = Clock
-param    = frames_per_turn=600
+param = frames_per_turn=600
 
 [node "corners"]
-operator = Corners
 
 [node "face"]
 vertex_count = 3

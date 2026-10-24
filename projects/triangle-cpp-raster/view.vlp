@@ -12,7 +12,6 @@ version = 1
 # frames_per_turn and side, and the shader side too: a whole turn every 600 frames, and
 # 0 holds the triangle still.
 [node "raster"]
-operator    = Raster
 invocations = 65536
 param       = frames_per_turn=600
 param       = side=256

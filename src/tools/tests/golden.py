@@ -38,7 +38,7 @@ NUMBER = re.compile(r"[-+]?\d[\d.e+-]*")
 EDITS = """\
 disconnect values
 node remove probe
-node add probe operator=Probe invocations=8 param=step=128 param=every=60 log=info
+node add probe invocations=8 param=step=128 param=every=60 log=info
 connect values wave.values probe.values
 param set wave amplitude 1.0
 """

@@ -10,8 +10,7 @@ version = 1
 # Writes the three corners every frame: a whole turn every 600 frames, and 0 holds the
 # triangle still.
 [node "corners"]
-operator = Corners
-param    = frames_per_turn=600
+param = frames_per_turn=600
 
 [node "face"]
 vertex_count = 3

@@ -1,13 +1,9 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
 #include "contracts/Cell.glsl"
 
 layout(local_size_x = 64) in;
 
-layout(buffer_reference, std430) readonly buffer Packed {
-  uint at[];
-};
+VP_READS(Packed, uint);
 
 layout(set = 1, binding = 0) uniform Pass {
   uint side;      // a param: cells a row and a column, side * side invocations

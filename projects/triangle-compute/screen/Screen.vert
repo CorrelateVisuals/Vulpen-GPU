@@ -1,5 +1,3 @@
-#version 460
-
 layout(location = 0) out vec2 uv; // 0 to 1 across the window, from its top left
 
 // One triangle over the whole window: its corners at (-1, -1), (3, -1) and (-1, 3).

@@ -6,9 +6,5 @@ struct Corner {
   vec4 color;
 };
 
-layout(buffer_reference, std430) readonly buffer Corners {
-  Corner at[];
-};
-layout(buffer_reference, std430) writeonly buffer CornersOut {
-  Corner at[];
-};
+VP_READS(Corners, Corner);
+VP_WRITES(CornersOut, Corner);

@@ -33,6 +33,4 @@ class Probe final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Probe>("Probe");
-}
+VP_OPERATOR(Probe);

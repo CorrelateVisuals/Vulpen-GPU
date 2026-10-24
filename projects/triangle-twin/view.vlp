@@ -8,6 +8,5 @@
 version = 1
 
 [node "triangle"]
-operator     = Triangle
 vertex_count = 3
 param        = frames_per_turn=600

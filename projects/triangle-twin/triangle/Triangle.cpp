@@ -29,6 +29,4 @@ class Triangle final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Triangle>("Triangle");
-}
+VP_OPERATOR(Triangle);

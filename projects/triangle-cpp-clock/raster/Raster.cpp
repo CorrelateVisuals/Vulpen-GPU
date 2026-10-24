@@ -33,6 +33,4 @@ class Raster final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Raster>("Raster");
-}
+VP_OPERATOR(Raster);

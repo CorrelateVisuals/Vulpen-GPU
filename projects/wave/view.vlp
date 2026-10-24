@@ -5,13 +5,11 @@
 version = 1
 
 [node "wave"]
-operator    = Wave
 invocations = 1024
 param       = amplitude=1.0
 param       = speed=0.02
 
 [node "probe"]
-operator    = Probe
 invocations = 8
 param       = step=128
 param       = every=60

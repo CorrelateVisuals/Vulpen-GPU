@@ -49,6 +49,4 @@ void Corners::cook(VP::Cook &frame) {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Corners>("Corners");
-}
+VP_OPERATOR(Corners);
