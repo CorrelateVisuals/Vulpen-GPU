@@ -23,9 +23,6 @@
 namespace {
 
 constexpr std::string_view escape = "escape";
-// The Perform panel's tab while no project is hosted, so its strip has a tab to take, as
-// an empty editor's has.
-constexpr std::string_view empty_tab = "perform";
 // The kind of GPU the gpu button lights in the build curves' orange, and the other one
 // gpu toggle takes, as the engine names them, and what gpu answers before the kind the
 // next launch takes.
@@ -39,15 +36,13 @@ constexpr auto rate_every = std::chrono::seconds(1);
 // in perform mode the view presented gets all of it and the dock none, so the dock draws
 // and takes nothing (no room, no work). The mode is its param, so a save keeps it and a
 // replay restores it. The view presented is the one shared/Presented.h names, which the
-// tiles part connects. Each project has a tab that makes it the current view when
-// pressed, and a close mark that closes it, as view close does; with none, a tab of its
-// own, named perform, which does nothing pressed. Perform mode needs a view presented,
-// so it refuses while none is nor about to be, and gives way to edit mode once none is;
-// it hides the log, so it gives way too once the log shows an error, as a line refused's,
-// which the terminal then shows. A project hosted since the frame before, as view load
-// hosts one, shows as it is presented: the panel its shows param names comes back if it
-// was hidden, and the switch its switch param names gives the view presented its first
-// half, in place of a preview.
+// panes part connects. Perform mode needs a view presented, so it refuses while none is
+// nor about to be, and gives way to edit mode once none is; it hides the log, so it gives
+// way too once the log shows an error, as a line refused's, which the terminal then
+// shows. A project presented anew, as a press on its tab presents it, shows: the switch
+// its switch param names gives the view presented its first half, in place of a preview,
+// and for one hosted since the frame before, as view load hosts one, the panel its shows
+// param names comes back if it was hidden.
 // It takes the keys no part in focus takes: escape leaves perform mode, and in edit mode
 // ends the run, once the part in focus let go of its selection and of the focus. It hands
 // on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
@@ -72,7 +67,6 @@ class Modes final : public VP::Operator {
     _typed = &node.input<VP_VIEW::Typed>("typed");
     _edit = &node.output<VP_VIEW::Rect>("edit");
     _shown = &node.output<VP_VIEW::Rect>("perform");
-    _tabs = &node.output<VP_VIEW::Items>("tabs");
     const VP::Engine &engine = node.engine();
     _gpu_stuck =
         engine.takes(integrated) != integrated || engine.takes(discrete) != discrete;
@@ -100,7 +94,7 @@ class Modes final : public VP::Operator {
   // it back in edit mode. With nothing presented nor about to be it stays in edit mode,
   // rather than give the window to nothing, and the next frame says so, as a warning,
   // since a command writes no log line; with the current view's project about to be, as
-  // just after a view load, it goes on, as the tiles part presents that project in the
+  // just after a view load, it goes on, as the panes part presents that project in the
   // frame.
   void switch_mode(VP::Call &call, bool perform) {
     const std::string_view presented = shown_by(*call.view(_view));
@@ -141,14 +135,16 @@ class Modes final : public VP::Operator {
                              presented,
                              _started)
                           .empty();
-    name_tabs(hosted, presented);
     watch_buttons(frame, presented.empty() && none);
     const bool loaded =
         _started && std::ranges::any_of(hosted, [&](const VP::Child &child) {
           return std::ranges::find(_known, child.name) == _known.end();
         });
-    if (loaded)
-      show_presented(frame.commands());
+    const bool anew = presented != _presented && !presented.empty();
+    if (anew)
+      _presented = presented;
+    if (_started && (loaded || anew))
+      show_presented(frame.commands(), frame.view(), loaded);
     if (!std::ranges::equal(_known, hosted, {}, {}, &VP::Child::name)) {
       _known.clear();
       for (const VP::Child &child : hosted)
@@ -238,39 +234,24 @@ class Modes final : public VP::Operator {
       write_buttons();
   }
 
-  // The Perform panel back if it was hidden, and the view presented in it, not a preview,
-  // so a project loaded shows at once.
-  void show_presented(VP::CommandPort &commands) const {
-    if (!_shows.empty())
+  // The view presented in its panel, not a preview, so a project presented shows at once,
+  // and for one loaded the Perform panel back if it was hidden. The switch's param set
+  // only while it shows the preview, so a switch between projects edits nothing more.
+  void show_presented(VP::CommandPort &commands, const VP::View &own, bool loaded) const {
+    if (loaded && !_shows.empty())
       commands.send(std::format("{}: panel show {}", _view, _shows));
-    if (!_switch.empty())
-      commands.send(std::format("{}: param set {} shown first", _view, _switch));
-  }
-
-  // Only when the projects or the one presented changed, so a frame allocates nothing
-  // for them.
-  template <class Projects>
-  void name_tabs(Projects &&hosted, std::string_view presented) {
-    const auto shows = [&](const VP_VIEW::Item &tab, const VP::Child &child) {
-      return tab.label == child.name && tab.current == (child.name == presented);
-    };
-    const bool none = std::ranges::empty(hosted);
-    if (none ? _tabs->size() == 1 && _tabs->front().command.empty()
-             : std::ranges::equal(*_tabs, hosted, shows))
+    const auto node = std::ranges::find(own.nodes, _switch, &VP::Node::name);
+    if (node == own.nodes.end())
       return;
-    _tabs->clear();
-    if (none)
-      _tabs->push_back({.label = std::string(empty_tab), .current = true});
-    for (const VP::Child &child : hosted)
-      _tabs->push_back({.label = child.name,
-                        .command = std::format("view switch {}", child.name),
-                        .current = child.name == presented,
-                        .close = std::format("view close {}", child.name)});
+    const auto shown = std::ranges::find(node->params, "shown", &VP::Param::key);
+    if (shown != node->params.end() && shown->value != "first")
+      commands.send(std::format("{}: param set {} shown first", _view, _switch));
   }
 
   bool _perform = false;
   std::string _shows;  // the panel a project loaded shows in, as its shows param names it
   std::string _switch; // and the switch giving the view presented its first half
+  std::string _presented; // the view presented, as the frame before found it
   std::vector<std::string> _known; // the projects hosted the frame before
   std::string _name;
   std::string _view; // the one it runs in, which its lines change
@@ -280,7 +261,6 @@ class Modes final : public VP::Operator {
   const VP_VIEW::Typed *_typed = nullptr;
   VP_VIEW::Rect *_edit = nullptr;
   VP_VIEW::Rect *_shown = nullptr;
-  VP_VIEW::Items *_tabs = nullptr;
   VP_VIEW::Items *_buttons = nullptr;
   bool _discrete = false; // the kind the next launch takes, which the gpu button shows
   bool _gpu_read = false; // since the node bound

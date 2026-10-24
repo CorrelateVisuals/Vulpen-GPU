@@ -8,12 +8,12 @@
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
-#include "contracts/Tiling.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Halves.h"
 #include "shared/Labels.h"
+#include "shared/Presented.h"
 #include "Kept.h"
 
 #include <glm/geometric.hpp>
@@ -70,10 +70,11 @@ constexpr std::string_view dock_recipe = "dock";
 constexpr std::string_view editor_recipe = "text-area";
 constexpr std::string_view before_port = "before";
 constexpr std::string_view editors_port = "editors";
-// The keys part's, whose focus names the node the panel framed holds, and the tiles
-// part's, which divides the room of the panel holding it.
+// The keys part's, whose focus names the node the panel framed holds.
 constexpr std::string_view typed_port = "typed";
-constexpr std::string_view tiling_port = "tiling";
+// A deck a view goes into, as one of a panel holding several leaves for a panel of its
+// own, named so its panel's button reads as the Perform panel's do.
+constexpr std::string_view deck_name = "perform";
 constexpr float even = 0.5f;      // a moved dock's ratio: half its place for each panel
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 constexpr std::int32_t ring = 2;  // how wide the frame where a drop puts a panel is
@@ -293,11 +294,11 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // itself, as it lists before what draws over the panels. A drag of a panel's tab strip
 // onto another panel sends it, the side the edge of that panel the pointer is nearest,
 // or the middle well inside it; one holding several, dropped on its own edge, splits, the
-// one it shows going into a panel of its own there, but where its content divides its
-// own room, as the tiles part its host connects to its tiling does, the content puts the
-// one it shows beside the others there, or in the middle shows one again, so the panel
-// stays one; let go on its own strip, a panel does nothing, as a tab let go on another
-// moves among them there. It hides a panel and shows it again,
+// one it shows going into a panel of its own there; of a deck, the view it shows goes
+// into a deck of its own, or into the deck in the target's middle, so a pane and what it
+// holds stay; let go on its own strip, a panel does nothing, as a tab let go on another
+// moves among them there. An editor or a deck it added goes with its panel once it holds
+// nothing, as its last tab closes or leaves. It hides a panel and shows it again,
 // as its dock's ratio gives its half no room and back, and hands on a button a panel,
 // lit while it shows, whose press hides or shows it. It finds where each
 // panel and its strip show as the splits and the bars lay them out, from the Rect its
@@ -330,13 +331,12 @@ class Docking final : public VP::Operator {
     _editors =
         connected(editors_port) ? &node.input<VP_VIEW::Editors>(editors_port) : nullptr;
     _typed = connected(typed_port) ? &node.input<VP_VIEW::Typed>(typed_port) : nullptr;
-    _tiled = connected(tiling_port) ? &node.input<VP_VIEW::Tiled>(tiling_port) : nullptr;
     _move = node.command("panel move <node> <node> <value>",
                          "moves a panel beside another, at its left, right, top or "
                          "bottom, or into it, middle, which then holds both; of a panel "
                          "holding several, the one it shows, beside itself too, which "
-                         "splits it in two, or where its content divides its own room, "
-                         "beside the others in it, or in its middle alone again");
+                         "splits it in two; of a deck, the view it shows, which keeps "
+                         "its pane");
     _hide = node.command("panel hide <node>",
                          "gives a panel no room, its dock's ratio leaving its half none, "
                          "or the dock's own when nothing beside it shows");
@@ -361,6 +361,7 @@ class Docking final : public VP::Operator {
     _labels = node.upload<VP_VIEW::Label>("labels", close_room);
     _characters = node.upload<VP_VIEW::Character>("characters", close_room);
     _laid_out.reset(); // a rebuild may have moved every panel
+    _swept = false;    // and changed what a deck holds
     _slid.reset();     // its ratio set, as the drag let go of it sent it
     _framed_for.reset();
   }
@@ -377,6 +378,7 @@ class Docking final : public VP::Operator {
     }
     for (const VP::Event &event : frame.input().events())
       follow(frame, event, cell);
+    sweep(frame);
     const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
     std::uint32_t written = 0;
     if (_divider && _divider->seam.extent.x != 0)
@@ -395,6 +397,49 @@ class Docking final : public VP::Operator {
                             {.role = VP_VIEW::role("accent")});
     frame.write(_rects, written);
     write_marks(frame, cell);
+  }
+
+  // A panel whose content the docking part added, an editor or a deck, goes once that
+  // content held a tab and holds none, as its last file closed or its last view closed or
+  // left, by panel hide, which takes it: the last tab closed closes the panel. An
+  // editor's files are read each frame, without allocating; a deck's views change only
+  // with an edit, so they are read after a rebuild.
+  void sweep(VP::Cook &frame) {
+    if (!_written_read)
+      return;
+    if (_editors)
+      for (const VP_VIEW::Editor *editor : *_editors) {
+        const std::size_t count = editor->count();
+        const auto had = _counts.find(editor->name());
+        const bool emptied = editor != _editors->back() && count == 0 &&
+                             had != _counts.end() && had->second > 0;
+        if (had == _counts.end() || had->second != count)
+          _counts[editor->name()] = count;
+        if (emptied)
+          hide_holding(frame, editor->name());
+      }
+    if (!std::exchange(_swept, true)) {
+      std::vector<std::string> emptied;
+      for (const VP::Node &node : frame.view().nodes) {
+        if (node.recipe != deck_recipe || node_in(_written, node.name))
+          continue;
+        const bool holding = !held(frame.view(), *frame.view(""), node.name).empty();
+        if (!holding && _decks_held[node.name])
+          emptied.push_back(node.name);
+        _decks_held[node.name] = holding;
+      }
+      for (const std::string &deck : emptied)
+        hide_holding(frame, deck);
+    }
+  }
+
+  // panel hide of the panel whose content holds the node.
+  void hide_holding(VP::Cook &frame, std::string_view node) {
+    const auto holding = std::ranges::find_if(_seated, [&](const Seated &seated) {
+      return holds(frame.view(), seated.panel, node);
+    });
+    if (holding != _seated.end())
+      frame.commands().send(std::format("{}: panel hide {}", _view, holding->panel));
   }
 
   // At the first frame, on a view as its manifest has it, the panels as the file keeps
@@ -494,6 +539,12 @@ class Docking final : public VP::Operator {
       for (const std::string &name : added)
         remove_editor(call, name);
     }
+    std::vector<std::string> decks;
+    for (const VP::Node &node : call.view(_view)->nodes)
+      if (node.recipe == deck_recipe && !node_in(_written, node.name))
+        decks.push_back(node.name);
+    for (const std::string &deck : decks)
+      remove_deck(call, deck);
     order_docks(call);
     if (stopped)
       throw std::runtime_error(*stopped);
@@ -692,10 +743,7 @@ class Docking final : public VP::Operator {
         _grabbed = pressed == _seated.end()
                        ? std::nullopt
                        : std::optional(std::size_t(pressed - _seated.begin()));
-        _splits = _grabbed && several(frame.view(), pressed->panel);
-        const VP_VIEW::Tiling *const tiling =
-            _grabbed ? tiling_in(frame.view(), pressed->panel) : nullptr;
-        _joins = tiling && tiling->several();
+        _splits = _grabbed && several(frame.view(), *frame.view(""), pressed->panel);
         _from = _pointer;
         if (pressed != _seated.end() && event.presses == 2)
           frame.commands().send(
@@ -715,8 +763,7 @@ class Docking final : public VP::Operator {
 
   // The panel a drag would drop the one taken on, by the edge the pointer is nearest;
   // onto itself only a panel holding several, at an edge, which the one it shows leaves,
-  // or in the middle one whose content shows several, which then shows one, but never on
-  // its own strip, where a tab let go on another moves among them.
+  // but never on its own strip, where a tab let go on another moves among them.
   std::optional<std::pair<std::size_t, std::string_view>> dropped() const {
     if (!_dragging || !_grabbed)
       return std::nullopt;
@@ -729,9 +776,8 @@ class Docking final : public VP::Operator {
       const auto nearest = std::ranges::min_element(near);
       const std::string_view side =
           *nearest > middle_from ? middle : sides[nearest - near.begin()];
-      if (at == *_grabbed &&
-          (side == middle ? !_joins
-                          : !_splits || VP_VIEW::contains(_seated[at].strip, _pointer)))
+      if (at == *_grabbed && (!_splits || side == middle ||
+                              VP_VIEW::contains(_seated[at].strip, _pointer)))
         return std::nullopt;
       return std::pair(at, side);
     }
@@ -739,11 +785,13 @@ class Docking final : public VP::Operator {
   }
 
   // Whether a panel holds several contents, as a stack, or an editor holding several
-  // files, so the one it shows may leave it for a panel beside it, or a content dividing
-  // its own room holds another to show beside the one it shows.
-  bool several(const VP::View &view, const std::string &panel) const {
-    if (const VP_VIEW::Tiling *const tiling = tiling_in(view, panel))
-      return tiling->more();
+  // files, or a deck holding several views hosted, so the one it shows may leave it for a
+  // panel beside it.
+  bool several(const VP::View &view,
+               const VP::View &top,
+               const std::string &panel) const {
+    if (const std::string deck = deck_in(view, panel); !deck.empty())
+      return held(view, top, deck).size() >= 2;
     const std::optional<Content> held = content_of(view, panel);
     if (!held)
       return false;
@@ -752,11 +800,29 @@ class Docking final : public VP::Operator {
     return !stack_of(view, *held).empty();
   }
 
-  // The content dividing its own room that the panel holds, as the Rect its bar leaves
-  // reaches it; none for none.
-  VP_VIEW::Tiling *tiling_in(const VP::View &view, std::string_view panel) const {
-    VP_VIEW::Tiling *const tiling = _tiled ? _tiled->tiling : nullptr;
-    return tiling && holds(view, panel, tiling->name()) ? tiling : nullptr;
+  // The deck a panel's content reaches, as the Rect its bar leaves reaches it, as the
+  // Perform panel's, behind its switch, or one alone in a panel; empty for none.
+  static std::string deck_in(const VP::View &view, std::string_view panel) {
+    for (const VP::Node &node : view.nodes)
+      if (node.recipe == deck_recipe && holds(view, panel, node.name))
+        return node.name;
+    return {};
+  }
+
+  // The views a deck holds that are hosted beside the view it runs in, in its order.
+  std::vector<std::string> held(const VP::View &view,
+                                const VP::View &top,
+                                std::string_view deck) const {
+    const auto node = std::ranges::find(view.nodes, deck, &VP::Node::name);
+    std::vector<std::string> views =
+        node == view.nodes.end() ? std::vector<std::string>()
+                                 : split_names(param_value(*node, holds_param));
+    auto hosted = projects(top, _view);
+    std::erase_if(views, [&](const std::string &name) {
+      return std::ranges::none_of(
+          hosted, [&](const VP::Child &child) { return child.name == name; });
+    });
+    return views;
   }
 
   // A frame round a Rect, width pixels wide, inside it, in the colors given. Returns how
@@ -879,6 +945,12 @@ class Docking final : public VP::Operator {
   // no file, goes with it instead, and so does its button.
   void hide(VP::Call &call, const std::string &panel) {
     const VP::View &view = *call.view(_view);
+    if (const std::string deck = deck_in(view, panel);
+        !deck.empty() && _written_read && !node_in(_written, deck) &&
+        held(view, *call.view(""), deck).empty()) {
+      remove_deck(call, deck);
+      return;
+    }
     if (const std::optional<Content> held = content_of(view, panel)) {
       VP_VIEW::Editor *const editor = editor_of(*held);
       if (editor && editor != _editors->back() && editor->count() == 0) {
@@ -943,14 +1015,19 @@ class Docking final : public VP::Operator {
       throw std::runtime_error(std::format(
           "side {}: left, right, top, bottom or middle of {}", side, target));
     const VP::View &view = *call.view(_view);
-    VP_VIEW::Tiling *const tiling = panel == target ? tiling_in(view, panel) : nullptr;
-    if (tiling && (side == middle ? tiling->several() : tiling->more())) {
-      tiling->divide(call, side);
-      return;
+    const VP::View &top = *call.view("");
+    if (const std::string deck = deck_in(view, panel); !deck.empty()) {
+      const bool into_deck =
+          panel != target && side == middle && !deck_in(view, target).empty();
+      if (into_deck || (side != middle && several(view, top, panel))) {
+        move_view(call, deck, panel, target, side);
+        order_docks(call);
+        return;
+      }
     }
     const VP::Connection *const into = feeding(view, panel + std::string(bar_node));
     const std::optional<Content> held = content_of(view, panel);
-    if (panel == target && (side == middle || !several(view, panel)))
+    if (panel == target && (side == middle || !several(view, top, panel)))
       throw std::runtime_error(std::format(
           "{} splits beside itself only holding several, at an edge, the one it shows "
           "leaving it",
@@ -1236,6 +1313,85 @@ class Docking final : public VP::Operator {
                     {panel + std::string(hit_node), std::string(items_port)}}});
   }
 
+  // The view a deck shows goes into the deck in the target's middle, or into a deck of
+  // its own, in a new panel beside the target, as a file an editor shows goes into
+  // another editor: the decks' holds and shown params follow, and the connection bringing
+  // the view's pane its room then comes from the deck holding it, so the pane, and what
+  // it holds, as a frame held still, stay. A new deck takes what the deck the view left
+  // takes, but its room, as the keys part's typed.
+  void move_view(VP::Call &call,
+                 const std::string &deck,
+                 const std::string &panel,
+                 const std::string &target,
+                 std::string_view side) {
+    const VP::View &view = *call.view(_view);
+    const VP::View &top = *call.view("");
+    const auto hosts = [&](std::string_view name) {
+      return std::ranges::any_of(projects(top, _view), [&](const VP::Child &child) {
+        return child.name == name;
+      });
+    };
+    const auto node_of = [&](std::string_view name) {
+      return std::ranges::find(view.nodes, name, &VP::Node::name);
+    };
+    // Copied first: each edit replaces the view these point into.
+    const std::string moved = deck_shows(*node_of(deck), shown_by(view), hosts);
+    if (moved.empty())
+      throw std::runtime_error(std::format("{} shows no view to move", deck));
+    std::vector<std::string> left = split_names(param_value(*node_of(deck), holds_param));
+    std::erase(left, moved);
+    std::string into = side == middle ? deck_in(view, target) : std::string();
+    std::vector<std::string> taking =
+        into.empty() ? std::vector<std::string>()
+                     : split_names(param_value(*node_of(into), holds_param));
+    const VP::Connection *const room = from(view, deck, moved);
+    const std::optional<VP::Connection> pane = room ? std::optional(*room) : std::nullopt;
+    if (into.empty()) {
+      into = free_node(view, std::format("{}.{}", parent_of(target), deck_name));
+      std::vector<VP::Connection> grown;
+      for (const VP::Connection &connection : view.connections) {
+        VP::Connection more = connection;
+        for (const VP::Endpoint &to : connection.to)
+          if (to.node == deck && to.port != area_port)
+            more.to.push_back({into, to.port});
+        if (more.to.size() != connection.to.size())
+          grown.push_back(std::move(more));
+      }
+      send(call,
+           std::format("node add {} recipe={} param={}={} param={}={}",
+                       into,
+                       deck_recipe,
+                       holds_param,
+                       moved,
+                       shown_param,
+                       moved));
+      send(call, std::format("node move {} {}", into, _name));
+      for (const VP::Connection &connection : grown) {
+        send(call, std::format("disconnect {}", connection.name));
+        connect(call, connection);
+      }
+      seat_new(call,
+               {.area = {{into, std::string(area_port)}},
+                .tabs = {into, std::string(tabs_port)}},
+               panel,
+               target,
+               side);
+    } else {
+      taking.push_back(moved);
+      send(call,
+           std::format("param set {} {} {}", into, holds_param, joined_names(taking)));
+      send(call, std::format("param set {} {} {}", into, shown_param, moved));
+    }
+    send(call,
+         left.empty()
+             ? std::format("param unset {} {}", deck, holds_param)
+             : std::format("param set {} {} {}", deck, holds_param, joined_names(left)));
+    if (pane) {
+      send(call, std::format("disconnect {}", pane->name));
+      connect(call, {.name = pane->name, .from = {into, moved}, .to = pane->to});
+    }
+  }
+
   // The editor whose tabs a panel's content hands on; none for none.
   VP_VIEW::Editor *editor_of(const Content &content) const {
     if (!_editors)
@@ -1330,13 +1486,31 @@ class Docking final : public VP::Operator {
     const VP::View &view = *call.view(_view);
     const std::string editor(parent_of(text));
     // Copied first: each edit replaces the view these point into.
-    const VP::Connection *const area = feeding(view, text);
     const VP::Connection *const before = into(view, text, before_port);
     const VP::Connection *const after = from(view, text, editors_port);
     const std::optional<VP::Connection> chained =
         before && after ? std::optional(VP::Connection{
                               .name = before->name, .from = before->from, .to = after->to})
                         : std::nullopt;
+    remove_seated(call, text);
+    send(call, std::format("node remove {}", editor));
+    if (chained)
+      connect(call, *chained);
+  }
+
+  // A deck the docking part added goes, with the panel holding it, as an editor it added
+  // does.
+  void remove_deck(VP::Call &call, const std::string &deck) {
+    remove_seated(call, deck);
+    send(call, std::format("node remove {}", deck));
+  }
+
+  // The panel holding alone the content whose room the node takes goes, the dock seating
+  // it giving its other half its place, or from a stack the stack goes, leaving its panel
+  // the content beside it.
+  void remove_seated(VP::Call &call, std::string_view node) {
+    const VP::View &view = *call.view(_view);
+    const VP::Connection *const area = feeding(view, node);
     const std::string room = area ? area->from.node : std::string();
     const std::string port = area ? area->from.port : std::string();
     if (room.ends_with(bar_node) && port == rest_port) {
@@ -1353,9 +1527,6 @@ class Docking final : public VP::Operator {
            std::format("param set {} shown {}", room, port == half_ports[1] ? half_ports[1] : half_ports[0]));
       unstack(call, panel);
     }
-    send(call, std::format("node remove {}", editor));
-    if (chained)
-      connect(call, *chained);
   }
 
   // What a connection fed, at the node given, it now feeds at the endpoint given, named
@@ -1413,11 +1584,15 @@ class Docking final : public VP::Operator {
   VP_VIEW::Items *_buttons = nullptr;
   const VP_VIEW::Editors *_editors = nullptr; // as its host connects them; none for none
   const VP_VIEW::Typed *_typed = nullptr;     // so too
-  const VP_VIEW::Tiled *_tiled = nullptr;     // and so too
   // The panel framed, as the focus it was found for and the panels as seated then; none
   // found for yet after a rebuild, or since the panels were seated anew.
   std::optional<std::string> _framed_for;
   std::optional<std::size_t> _framed;
+  // How many files each editor held, by its text node, and whether each deck the docking
+  // part added held a view, as last seen, so one that held some and holds none goes.
+  std::map<std::string, std::size_t, std::less<>> _counts;
+  std::map<std::string, bool, std::less<>> _decks_held;
+  bool _swept = false; // the decks, since the last rebuild
   // A dock's ratio before it hid a half, by its split, so showing it gives it back; and the
   // panel maximized last, with the splits its maximize gave the panel's half all of.
   std::map<std::string, float, std::less<>> _ratios;
@@ -1458,8 +1633,6 @@ class Docking final : public VP::Operator {
   std::optional<std::size_t> _grabbed; // the panel whose strip was pressed
   bool _splits = false;                // it holds several, so a drop on itself splits it
   bool _dragging = false;              // it went far enough from the press to drag
-  // Its content shows several side by side, so a drop in its own middle shows one again.
-  bool _joins = false;
 };
 
 } // namespace

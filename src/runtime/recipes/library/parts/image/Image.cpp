@@ -78,7 +78,7 @@ class Image final : public VP::Operator {
 
   // The writer of the connection that reaches its picture, as it was last, copied only
   // when another comes, so a frame allocates nothing for it; a picture that goes and
-  // comes back from the same writer, as a tile's project shown again, stays where it was
+  // comes back from the same writer, as a pane's view shown again, stays where it was
   // moved and zoomed.
   void follow(const VP::View &view) {
     const VP::Endpoint *from = nullptr;

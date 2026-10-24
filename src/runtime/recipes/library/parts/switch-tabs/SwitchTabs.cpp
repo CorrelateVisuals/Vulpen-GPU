@@ -17,10 +17,12 @@ namespace {
 constexpr std::array<std::string_view, 2> halves{"first", "second"};
 
 // The tabs of two contents a switch holds, as one row: the shown one's as they are, the
-// other's each showing its content as a press, a param set of the switch, which it finds
-// as the node that hands it its first; written anew only as they change, so a frame
-// allocates nothing for them (CPP10). A separate node from the switch, as the contents
-// read their room from it and hand their tabs here: one node for both would close a loop.
+// other's unlit, and a press on the one current in it, or on one with no command of its
+// own, shows its content, a param set of the switch, which it finds as the node that
+// hands it its first; the others keep their own, as a project's tab presents it, which
+// then shows itself. Written anew only as they change, so a frame allocates nothing for
+// them (CPP10). A separate node from the switch, as the contents read their room from it
+// and hand their tabs here: one node for both would close a loop.
 class SwitchTabs final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _tabs_of = {&node.input<VP_VIEW::Items>("first-tabs"),
@@ -41,11 +43,13 @@ class SwitchTabs final : public VP::Operator {
     _tabs->clear();
     for (std::size_t half = 0; half < halves.size(); ++half)
       for (VP_VIEW::Item tab : *_tabs_of[half]) {
-        if (half != shown)
-          tab = {.label = std::move(tab.label),
-                 .command = std::format(
-                     "{}: param set {} shown {}", _view, _switch, halves[half]),
-                 .close = std::move(tab.close)};
+        if (half != shown && (tab.current || tab.command.empty()))
+          tab.command =
+              std::format("{}: param set {} shown {}", _view, _switch, halves[half]);
+        if (half != shown) {
+          tab.current = false;
+          tab.role.reset();
+        }
         _tabs->push_back(std::move(tab));
       }
   }

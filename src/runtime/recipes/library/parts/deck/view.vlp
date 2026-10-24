@@ -1,0 +1,12 @@
+# The deck part: one node whose operator is Deck. It holds views by name, its holds param
+# joining them by commas, and shows one in the Rect its area gives: the view presented
+# while it holds that one, else the one its shown param names, else the first. The panes
+# part connects a port of it named for each view it holds to the pane showing that view;
+# its host connects its tabs to a panel's strip, one a view, the one presented labeled
+# green, and the keys part's typed to its typed, so the focus goes with the pane it shows.
+[manifest]
+version = 1
+
+[node "deck"]
+operator = Deck
+file     = Deck.cpp

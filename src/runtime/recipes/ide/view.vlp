@@ -13,9 +13,9 @@
 #   Editor     panel + text-area + find-bar
 #   Terminal   panel + terminal
 #   Graph      panel + find-bar + graph-editor
-#   Perform    panel + switch + switch-tabs + tiles + still-image ×4 + rects + image
-#              + image-file           the projects' windows side by side, a frame of each
-#                                     held still, or a preview
+#   Perform    panel + switch + switch-tabs + deck + panes + image + image-file
+#                                     a project's window by its tab, a frame of each held
+#                                     still, or a preview; a panel more for each split
 #   Menubar    panel + join           a button a panel and the run's, along the top
 #   Menu       menu                   the menus of menu.ini, at a right press in the graph
 #   Tooltip    tooltip
@@ -40,7 +40,7 @@ param  = focus=ide.terminal.command-line
 recipe = viewport
 
 # Edit mode gives the dock the window, and perform mode the view presented, which the
-# tiles part connects; each project loaded is presented as it comes, the Perform panel
+# panes part connects; each project loaded is presented as it comes, the Perform panel
 # showing again if it was hidden, with the view presented in place of a preview.
 [node "ide.modes"]
 recipe = modes
@@ -111,38 +111,27 @@ recipe = switch
 [node "ide.perform-tabs"]
 recipe = switch-tabs
 
-# The projects shown side by side in the Perform panel: the one presented alone, or
-# those a tab dragged onto the panel's own edge put beside it, there, each in a tile it
-# keeps while hosted; a tab dragged into the panel's middle shows one again. A press on
-# a tab, or in a tile, presents its project, which the graph and the terminal follow, and
-# whose window also fills the whole window in perform mode, never held there.
-[node "ide.tiles"]
-recipe = tiles
+# The projects, a tab each, the one presented labeled green, as perform mode shows it: a
+# press on one presents it, which the graph and the terminal follow, and it shows here. A
+# tab dragged onto the panel's own edge, or beside another panel, goes into a Perform
+# panel of its own there, a divider between, and into another Perform panel's middle
+# joins its tabs; a Perform panel added goes once its last tab closes or leaves.
+[node "ide.projects"]
+recipe = deck
+
+# A pane each project, an image and a still of its own, added as the project comes and
+# gone as it goes: a drag moves the project's window and the wheel zooms it, as in the
+# graph, and while the pane has the focus, h brings it home and space, as a double click
+# on it, holds the frame it shows, to look at while the project goes on, and again lets
+# it go; each pane keeps its own, through a switch to another tab and back, a move of its
+# panel, and perform mode, which shows the project itself.
+[node "ide.panes"]
+recipe = panes
 param  = to=ide.screen.picture
-
-# A drag moves a tile's project and the wheel zooms it, as in the graph, and while the
-# tile has the focus, h brings it home and space, as a double click on it, holds the frame
-# it shows, to look at while the project goes on, and again lets it go; each tile holds
-# its own, through a switch to another tab and back, a move of the panel and perform mode.
-[node "ide.tile1"]
-recipe = still-image
-param  = still.host=ide.tile1.image
-
-[node "ide.tile2"]
-recipe = still-image
-param  = still.host=ide.tile2.image
-
-[node "ide.tile3"]
-recipe = still-image
-param  = still.host=ide.tile3.image
-
-[node "ide.tile4"]
-recipe = still-image
-param  = still.host=ide.tile4.image
-
-# The seams between the tiles, and the frame round the one presented, while several show.
-[node "ide.tiles-rects"]
-recipe = rects
+param  = pane=still-image
+param  = rooms=image.area,still.area
+param  = keys=image.typed,still.typed
+param  = pictures=image.picture,still.picture
 
 # An image file open opens, as a preview: it shows in the Perform panel in place of the
 # view presented, never in perform mode, under a tab of its own, whose close mark closes
@@ -155,8 +144,7 @@ param  = switch=ide.perform
 recipe = image
 param  = moves=yes
 
-# A tab a project, whose press presents it; a drag of one onto the panel's own edge shows
-# it beside the others, and into its middle alone again.
+# A tab a project, whose press presents it.
 [node "ide.perform-panel"]
 recipe = panel
 
@@ -299,40 +287,8 @@ to   = ide.perform.area
 # The first half's room goes to the tabs too, by which they find the switch.
 [connection "perform-shown"]
 from = ide.perform.first
-to   = ide.tiles.area
+to   = ide.projects.area
 to   = ide.perform-tabs.first
-
-# Each tile's room, as the tiles part lays the projects shown out; their windows the
-# tiles part connects.
-[connection "tile1"]
-from = ide.tiles.tile1
-to   = ide.tile1.image.area
-to   = ide.tile1.still.area
-
-[connection "tile2"]
-from = ide.tiles.tile2
-to   = ide.tile2.image.area
-to   = ide.tile2.still.area
-
-[connection "tile3"]
-from = ide.tiles.tile3
-to   = ide.tile3.image.area
-to   = ide.tile3.still.area
-
-[connection "tile4"]
-from = ide.tiles.tile4
-to   = ide.tile4.image.area
-to   = ide.tile4.still.area
-
-[connection "tiles-rects"]
-from = ide.tiles.rects
-to   = ide.tiles-rects.rects
-
-# By which the docking part asks the tiles part to put a project beside the others, as a
-# tab is let go on the Perform panel's own edge.
-[connection "tiling"]
-from = ide.tiles.tiling
-to   = ide.docking.tiling
 
 [connection "preview-shown"]
 from = ide.perform.second
@@ -343,7 +299,7 @@ from = ide.preview-file.picture
 to   = ide.preview.picture
 
 [connection "perform-tabs"]
-from = ide.modes.tabs
+from = ide.projects.tabs
 to   = ide.perform-tabs.first-tabs
 
 [connection "preview-tabs"]
@@ -375,9 +331,9 @@ to   = ide.terminal-panel.tabs.items
 to   = ide.terminal-panel.hit.items
 
 # The keys no chord takes, for the part in focus; those no part in focus takes go to modes.
-# A tile's still reads its image's, and the tiles part and the docking part only which
-# node has them, as the one moves the focus with a project's tile and the other frames
-# the panel holding it.
+# Each project's pane, as the panes part adds it, takes them too; the deck only which node
+# has them, as the focus goes with the pane it shows, and the docking part too, as it
+# frames the panel holding that node.
 [connection "typed"]
 from = ide.keys.typed
 to   = ide.editor.text.typed
@@ -385,15 +341,8 @@ to   = ide.editor-find.command-line.typed
 to   = ide.graph-find.command-line.typed
 to   = ide.terminal.command-line.typed
 to   = ide.graph.graph.typed
-to   = ide.tiles.typed
-to   = ide.tile1.image.typed
-to   = ide.tile1.still.typed
-to   = ide.tile2.image.typed
-to   = ide.tile2.still.typed
-to   = ide.tile3.image.typed
-to   = ide.tile3.still.typed
-to   = ide.tile4.image.typed
-to   = ide.tile4.still.typed
+to   = ide.projects.typed
+to   = ide.panes.typed
 to   = ide.preview.typed
 to   = ide.modes.typed
 to   = ide.menu.menus.typed
@@ -424,7 +373,6 @@ to   = ide.graph.tip.rects.palette
 to   = ide.graph.tip.glyphs.palette
 to   = ide.perform-panel.rects.palette
 to   = ide.perform-panel.glyphs.palette
-to   = ide.tiles-rects.palette
 to   = ide.terminal-panel.rects.palette
 to   = ide.terminal-panel.glyphs.palette
 to   = ide.terminal.rects.palette

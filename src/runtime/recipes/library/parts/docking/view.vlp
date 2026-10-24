@@ -5,9 +5,9 @@
 # draws its rects over the panels: a frame round where a drop would put the panel dragged,
 # and, while it connects the keys part's typed to its typed, a fainter one a pixel inside
 # the panel that holds the node in focus; and its labels and characters, an x at the end
-# of each panel's tab strip, whose press hides the panel. A tiles part its host connects
-# to its tiling divides the room of the panel holding it, where a drop on that panel's own
-# edge would split it.
+# of each panel's tab strip, whose press hides the panel. A panel whose content holds a
+# deck splits as one holding several, the view the deck shows going into a deck and a
+# panel of its own, and goes once a deck it added holds nothing.
 [manifest]
 version = 1
 

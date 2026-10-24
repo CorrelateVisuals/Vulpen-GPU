@@ -1,9 +1,9 @@
 # The still-image component: image and still, a picture a person moves and zooms, and of
 # which they hold a frame still, to look at while what draws it goes on. Its host connects
 # one Rect to image.area and still.area, the picture to image.picture and still.picture,
-# the keys part's typed to image.typed and still.typed, and names the image in
-# still.host, which has no default; the frame the still holds shows in the image's place
-# of the picture while held.
+# and the keys part's typed to image.typed and still.typed; the frame the still holds
+# shows in the image's place of the picture while held, and the still reads the keys
+# while the image has the focus.
 [manifest]
 version = 1
 

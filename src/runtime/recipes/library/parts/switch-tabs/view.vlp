@@ -1,6 +1,7 @@
 # The switch-tabs part: one node whose operator is SwitchTabs; it hands on as tabs the
-# Items its first-tabs and its second-tabs give, the tabs of the half the switch that
-# hands it its first does not show each a press that shows it.
+# Items its first-tabs and its second-tabs give; of the half the switch that hands it its
+# first does not show, the tab current there, and any with no command, a press that shows
+# it.
 [manifest]
 version = 1
 

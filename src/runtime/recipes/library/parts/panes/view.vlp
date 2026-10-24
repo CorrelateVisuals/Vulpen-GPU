@@ -1,0 +1,13 @@
+# The panes part: one node whose operator is Panes. It keeps a pane, a node of the recipe
+# its pane param names, for each view hosted beside its GUI while that view is hosted:
+# its rooms param names the ports inside a pane the room of the deck holding the view
+# reaches, its keys param those the keys part's typed reaches, which its host connects to
+# its typed, and its pictures param those the view's window reaches, each a node inside
+# the pane and a port, joined by commas. The window of the view presented reaches the
+# ports its to param names too, as the image filling the window in perform mode.
+[manifest]
+version = 1
+
+[node "panes"]
+operator = Panes
+file     = Panes.cpp

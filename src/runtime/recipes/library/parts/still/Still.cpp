@@ -5,38 +5,41 @@
 #include "runtime/View.h"
 
 #include <cstdint>
+#include <format>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
 namespace {
 
 constexpr std::string_view picture = "picture"; // the port its shader copies from
+constexpr std::string_view held_port = "held";   // and stores the frame into
 constexpr std::string_view hold_key = "space";
 
 // Holds a frame of its picture still, for a person to look at while what draws it goes
-// on: space, while the node its host param names has the focus, or a double click in its
-// area, copies the picture into held at once, its shader storing it the frame it was
-// asked, and still tells the image held reaches to show it in place of the picture;
-// either again lets it go. The frame is of what wrote the picture then, as a project's
-// window, and it holds while that writes it: through the picture's connection going and
-// coming back, as a tile's project shown again, and while its area has no room, as in
-// perform mode or under a preview; a picture another writes shows as it is, and holding
-// it lets go of the first, as does a change of the window's size, which makes held anew,
-// empty. A key held down holds once, however often it repeats. It changes nothing a view
-// holds, so it sends no line: a frame held is a look at the view, as a pan of the image
-// is.
+// on: space, while the node its host param names has the focus, or else the node its held
+// reaches, as the image showing the frame, or a double click in its area, copies the
+// picture into held at once, its shader storing it the frame it was asked, and still
+// tells the image held reaches to show it in place of the picture; either again lets it
+// go. The frame is of what wrote the picture then, as a project's window, and it holds
+// while that writes it: through the picture's connection going and coming back, as a
+// pane's view shown again, and while its area has no room, as in perform mode or under a
+// preview; a picture another writes shows as it is, and holding it lets go of the first,
+// as does a change of the window's size, which makes held anew, empty. A key held down
+// holds once, however often it repeats. It changes nothing a view holds, so it sends no
+// line: a frame held is a look at the view, as a pan of the image is.
 class Still final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _host = node.param<std::string>("host");
     _name = node.name();
+    _host = host_of(node);
     _area = &node.input<VP_VIEW::Rect>("area");
     _typed = &node.input<VP_VIEW::Typed>("typed");
     _still = &node.output<VP_VIEW::Still>("still");
     _shoot = node.value<std::uint32_t>("shoot");
   }
 
-  // With no writer reaching its picture, as a tile no project shows, keys and presses ask
+  // With no writer reaching its picture, as a pane no deck shows, keys and presses ask
   // nothing, so they never let go of a frame held before.
   void cook(VP::Cook &frame) override {
     follow(frame.view());
@@ -49,6 +52,17 @@ class Still final : public VP::Operator {
       _held_of = holds ? std::nullopt : std::optional(_from);
     _still->holds = _held_of && same(*_held_of, _from);
     frame.set(_shoot, static_cast<std::uint32_t>(asked && !holds));
+  }
+
+  std::string host_of(VP::Bind &node) const {
+    if (node.sets("host"))
+      return node.param<std::string>("host");
+    for (const VP::Connection &connection : node.view().connections)
+      if (connection.from.node == _name && connection.from.port == held_port &&
+          !connection.to.empty())
+        return connection.to.front().node;
+    throw std::runtime_error(
+        std::format("{} names no host param, nor does its held reach a node", _name));
   }
 
   static bool same(const VP::Endpoint &one, const VP::Endpoint &other) {
