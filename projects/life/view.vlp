@@ -1,0 +1,36 @@
+# Conway's Game of Life, as Generations runs its cells without their goods, terrain and
+# time: alive or dead only. seed-cells sows the cells, the engine steps them a generation
+# every few frames, keeping them in two buffers it takes turns writing, as Generations
+# swaps its two, and cells draws the ones alive. Run ./run.sh --life; engine seed starts
+# them again, from what seed-cells sows now.
+
+[manifest]
+version = 1
+
+# A cell an invocation: of each hundred, about alive_percent start alive; another seed
+# sows other cells.
+[node "seed-cells"]
+invocations = 65536
+param       = alive_percent=30
+param       = seed=1
+
+# grid_xy, the cells of a row and the rows, holds the invocations, 256 * 256 = 65536. The
+# operator steps the cells a generation every frames_per_generation frames, and 0 holds
+# them still.
+[node "engine"]
+invocations = 65536
+param       = grid_xy=256,256
+param       = frames_per_generation=3
+
+# A square a cell alive, six vertices each, as many instances as the engine writes cells.
+[node "cells"]
+vertex_count   = 6
+instance_count = cells
+
+[connection "seeded"]
+from = seed-cells.seeded
+to   = engine.seeded
+
+[connection "cells"]
+from = engine.cells
+to   = cells.cells

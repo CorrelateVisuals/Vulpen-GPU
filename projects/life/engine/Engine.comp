@@ -1,0 +1,140 @@
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cell.glsl"
+
+layout(local_size_x = 64) in;
+
+// The engine's own two buffers of cells, kept from frame to frame: one holds the
+// generation the cells are at, and the next goes into the other, as Generations swaps its
+// two.
+VP_BUFFER(CellsKept, Cell);
+
+layout(set = 1, binding = 0) uniform Pass {
+  ivec2 grid_xy;    // a param: the cells of a row, and the rows
+  uint generation;  // set by Engine.cpp: the generations written so far, the seed's too
+  uint stepping;    // set by Engine.cpp: 1 on a frame that steps the cells a generation
+  uint seeding;     // set by Engine.cpp: 1 on a frame that starts them from the seed
+  Cells seeded;     // a connection: seed-cells' cells
+  CellsKept cell_a; // the engine's own two
+  CellsKept cell_b;
+  CellsOut cells;   // a connection: the cells as cells draws them
+} pass;
+
+Cell cell;
+
+CellsKept cell_in = pass.generation % 2u == 0u ? pass.cell_a : pass.cell_b;
+CellsKept cell_out = pass.generation % 2u == 0u ? pass.cell_b : pass.cell_a;
+
+uint global_id_x = gl_GlobalInvocationID.x;
+uint grid_width = uint(max(pass.grid_xy.x, 1));
+uint grid_height = uint(max(pass.grid_xy.y, 1));
+uint total_cells = grid_width * grid_height;
+bool invocation_in_bounds = global_id_x < total_cells;
+uint index = invocation_in_bounds ? global_id_x : 0u;
+
+const vec4 white = vec4(1.0, 1.0, 1.0, 1.0);
+const vec4 grey = vec4(0.5, 0.5, 0.5, 1.0);
+
+// A cell's side in clip space, so the grid's longer side spans -1 to 1.
+float size_alive = 2.0 / float(max(grid_width, grid_height));
+const float size_dead = 0.0;
+
+// Where a cell's square is, from its index: its top left, the grid's middle in the middle
+// of clip space.
+vec2 grid_base_position(uint cell_index) {
+  vec2 cell_xy = vec2(cell_index % grid_width, cell_index / grid_width);
+  return (cell_xy - 0.5 * vec2(grid_width, grid_height)) * size_alive;
+}
+
+vec4 in_pos = vec4(grid_base_position(index), 0.0, 0.0);
+vec4 in_pos_on = vec4(in_pos.xyz, size_alive);
+vec4 in_pos_off = vec4(in_pos.xyz, size_dead);
+vec4 in_color = cell_in.at[index].color;
+ivec4 in_states = cell_in.at[index].states;
+
+ivec4 set_state(int _alive) {
+  return ivec4(_alive, 0, 0, 0);
+}
+
+int get_neighbour_index(ivec2 offset) {
+  ivec2 index_pos = ivec2(index % grid_width, index / grid_width);
+  ivec2 neighbour_pos = index_pos + offset;
+  if (neighbour_pos.x < 0 || neighbour_pos.y < 0 || neighbour_pos.x >= int(grid_width) ||
+      neighbour_pos.y >= int(grid_height)) {
+    return -1;
+  }
+  int neighbour_index = neighbour_pos.y * int(grid_width) + neighbour_pos.x;
+  return neighbour_index;
+}
+
+bool neighbour_alive(int index) {
+  if (index < 0 || uint(index) >= total_cells) {
+    return false;
+  }
+  int current_life = cell_in.at[index].states.x;
+  bool alive_state = current_life == alive;
+  return alive_state;
+}
+
+int cycle_neighbours() {
+  int neighbours_alive = 0;
+  const int num_offsets = 8;
+  const ivec2 direct_neighbour_offsets[num_offsets] = ivec2[](ivec2(-1, -1),
+                                                              ivec2(-1, 0),
+                                                              ivec2(-1, 1),
+                                                              ivec2(0, -1),
+                                                              ivec2(0, 1),
+                                                              ivec2(1, -1),
+                                                              ivec2(1, 0),
+                                                              ivec2(1, 1));
+  for (int i = 0; i < num_offsets; i++) {
+    ivec2 coord_offset = direct_neighbour_offsets[i];
+    int neighbour_index = get_neighbour_index(coord_offset);
+    if (neighbour_index < 0) {
+      continue;
+    }
+    neighbours_alive += int(neighbour_alive(neighbour_index));
+  }
+  return neighbours_alive;
+}
+
+bool alive_cell = in_states.x == alive;
+bool dead_cell = in_states.x == dead;
+
+bool live(int neighbours) {
+  return (alive_cell && (neighbours == 3 || neighbours == 2)) ||
+         (dead_cell && neighbours == 3);
+}
+bool die(int neighbours) {
+  return (alive_cell && (neighbours < 2 || neighbours > 3));
+}
+
+// Conway's rules: a cell alive with two or three alive neighbours lives on, a dead one
+// with three comes alive, an alive one with fewer or more dies, and the rest stay dead.
+void simulate(out Cell cell) {
+  int neighbours = cycle_neighbours();
+  cell = live(neighbours) ? Cell(in_pos_on, white, set_state(alive))
+       : die(neighbours)  ? Cell(in_pos_off, grey, set_state(dead))
+                          : Cell(in_pos_off, in_color, set_state(dead));
+}
+
+// The cells start from seed-cells' cells, each at its place on the grid.
+void sow(out Cell cell) {
+  Cell seeded = pass.seeded.at[index];
+  bool seeded_alive = seeded.states.x == alive;
+  cell = Cell(seeded_alive ? in_pos_on : in_pos_off, seeded.color, seeded.states);
+}
+
+// Only a frame that steps the cells, or starts them again, writes them; the others leave
+// both buffers as they are, and cells draws what the engine wrote last.
+void main() {
+  if (!invocation_in_bounds || (pass.stepping == 0u && pass.seeding == 0u)) {
+    return;
+  }
+  if (pass.seeding != 0u) {
+    sow(cell);
+  } else {
+    simulate(cell);
+  }
+  cell_out.at[index] = cell;
+  pass.cells.at[index] = cell;
+}

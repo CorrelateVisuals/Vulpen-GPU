@@ -18,6 +18,7 @@ __pycache__/
 # keeps the folder, and the example projects are everyone's
 /projects/*
 !/projects/.gitkeep
+!/projects/life/
 !/projects/triangle/
 !/projects/triangle-compute/
 !/projects/triangle-cpp-clock/

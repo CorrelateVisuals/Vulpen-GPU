@@ -1,0 +1,36 @@
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cell.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(set = 1, binding = 0) uniform Pass {
+  uint alive_percent; // a param: of a hundred cells, about how many start alive
+  uint seed;          // a param: another seed sows other cells
+  CellsOut seeded;    // a connection: the cells the engine starts from, a cell an invocation
+} pass;
+
+const vec4 white = vec4(1.0, 1.0, 1.0, 1.0);
+const vec4 grey = vec4(0.5, 0.5, 0.5, 1.0);
+
+uint hash_u32(uint x) {
+  x ^= x >> 16;
+  x *= 0x7feb352du;
+  x ^= x >> 15;
+  x *= 0x846ca68bu;
+  x ^= x >> 16;
+  return x;
+}
+
+// Each cell alive or dead by a hash of its index and the seed, so a seed sows the same
+// cells on every run (C01). The engine places each cell on its grid.
+void main() {
+  uint index = gl_GlobalInvocationID.x;
+  bool is_alive = hash_u32(index ^ hash_u32(pass.seed)) % 100u < pass.alive_percent;
+
+  Cell seeded;
+  seeded.position = vec4(0.0);
+  seeded.color = is_alive ? white : grey;
+  seeded.states = ivec4(is_alive ? alive : dead, 0, 0, 0);
+
+  pass.seeded.at[index] = seeded;
+}
