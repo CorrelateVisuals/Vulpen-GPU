@@ -10,9 +10,9 @@
   &nbsp;&nbsp;&nbsp;
   <img src="docs/images/logos/cplusplus.svg" alt="C++" height="34" align="middle" />
   &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/logos/cmake.svg" alt="CMake" height="34" align="middle" />
   <img src="docs/images/logos/GLSL_Logo_(Unofficial).svg" alt="GLSL" height="34" align="middle" />
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logos/cmake.svg" alt="CMake" height="34" align="middle" />
 </p>
 
 <p align="center">
