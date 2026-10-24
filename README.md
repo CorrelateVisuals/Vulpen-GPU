@@ -6,6 +6,16 @@
 </p>
 
 <p align="center">
+  <img src="docs/images/logos/vulkan.svg" alt="Vulkan" height="34" align="middle" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/logos/cplusplus.svg" alt="C++" height="34" align="middle" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/logos/GLSL_Logo_(Unofficial).svg" alt="GLSL" height="34" align="middle" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/logos/cmake.svg" alt="CMake" height="34" align="middle" />
+</p>
+
+<p align="center">
   <a href="#quick-start">Quick start</a> ·
   <a href="#what-you-get">What you get</a> ·
   <a href="#the-language">The language</a> ·
@@ -16,16 +26,6 @@
 </p>
 
 ![The Vulpen ide: a node's C++ on the left, the project's graph and the triangle it draws on the right](docs/images/hero.png)
-
-<p align="center">
-  <img src="docs/images/logos/vulkan.svg" alt="Vulkan" height="34" align="middle" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logos/cplusplus.svg" alt="C++" height="34" align="middle" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logos/GLSL_Logo_(Unofficial).svg" alt="GLSL" height="34" align="middle" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logos/cmake.svg" alt="CMake" height="34" align="middle" />
-</p>
 
 ## What you get
 
