@@ -734,9 +734,10 @@ void Schedule::work(std::vector<Pass> &passes) {
     }
 }
 
-void Schedule::draws(std::vector<Pass> &passes, const Offscreen *into) {
+bool Schedule::draws(std::vector<Pass> &passes, const Offscreen *into) {
   if (_landed.size() != _passes.size())
     _landed.assign(_passes.size(), no_pass);
+  const std::size_t before = passes.size();
   for (std::size_t at = 0; at < _passes.size(); ++at)
     if (_passes[at].bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS &&
         !_passes[at].offscreen) {
@@ -744,6 +745,13 @@ void Schedule::draws(std::vector<Pass> &passes, const Offscreen *into) {
       passes.push_back(_passes[at]);
       passes.back().offscreen = into;
     }
+  return passes.size() != before;
+}
+
+void Schedule::clears(std::vector<Pass> &passes, const Offscreen *into) {
+  passes.push_back({.bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    .instance_count = 0,
+                    .offscreen = into});
 }
 
 std::span<const Cost> Schedule::costs() const {

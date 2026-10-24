@@ -107,8 +107,11 @@ public:
   // view's work before its draws, so the work starts that anew.
   void work(std::vector<Pass> &passes);
   // The draws into its window, in graph order, each recording into the image given, or
-  // into the window when none is.
-  void draws(std::vector<Pass> &passes, const Offscreen *into);
+  // into the window when none is; whether it has any.
+  bool draws(std::vector<Pass> &passes, const Offscreen *into);
+  // A draw of nothing into the image, whose render pass clears it, for a window no
+  // view's draw renders into.
+  static void clears(std::vector<Pass> &passes, const Offscreen *into);
   // What each node costs, in graph order: its cook, as cook times it, and its pass, as
   // time hands it on.
   std::span<const Cost> costs() const;

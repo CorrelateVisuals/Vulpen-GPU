@@ -255,8 +255,9 @@ void Engine::run(std::span<const VkBuffer> clears,
 
 // In order, so each pass runs after those that write what it reads. The draws that
 // follow one another into the same image record in one render pass, even with no
-// instances, so the image is cleared and ready to sample; draws into the window wait for
-// the window's. Draws into an image with no size yet record nothing, which takes no time.
+// instances, so the image is cleared and ready to sample, and a draw with no pipeline
+// only clears it; draws into the window wait for the window's. Draws into an image with
+// no size yet record nothing, which takes no time.
 void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes) {
   hazards.clear();
   for (std::size_t first = 0; first < passes.size();) {
@@ -282,7 +283,7 @@ void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes)
       begin(commands, *pass.offscreen);
     for (std::size_t each = 0; each < run.size(); ++each) {
       stamp(commands, at + each, false);
-      if (records)
+      if (records && run[each].pipeline)
         bind(commands, pipelines, run[each]);
       if (records && !draw)
         vkCmdDispatch(commands, run[each].groups, 1, 1);

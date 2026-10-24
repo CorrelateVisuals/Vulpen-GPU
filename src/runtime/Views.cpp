@@ -227,9 +227,15 @@ void Views::gather(const Hosted &hosted,
 void Views::draw_into(const Hosted *into,
                       const Offscreen *image,
                       std::vector<Pass> &passes) const {
+  bool drawn = false;
   for (const std::unique_ptr<Hosted> &at : _hosted)
     if (!at->removed && at->schedule && target(*at, _owner) == into)
-      at->schedule->draws(passes, image);
+      drawn |= at->schedule->draws(passes, image);
+  // A window no draw renders into, as a view's whose draws are all refused, still takes
+  // its render pass, which clears it, so what samples it shows nothing rather than what
+  // its memory held before, as another view's frame.
+  if (image && !drawn)
+    Schedule::clears(passes, image);
 }
 
 // The host first, so a view its host and one beside it both take goes to its host.
