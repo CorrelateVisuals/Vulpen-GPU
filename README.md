@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/logos/vulkan.svg" alt="Vulkan" height="34" align="middle" />
+  <img src="docs/images/logos/vulkan.svg" alt="Vulkan" height="80" align="middle" />
   &nbsp;&nbsp;&nbsp;
   <img src="docs/images/logos/cplusplus.svg" alt="C++" height="34" align="middle" />
   &nbsp;&nbsp;&nbsp;
