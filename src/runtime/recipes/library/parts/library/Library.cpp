@@ -46,8 +46,9 @@ constexpr Kind draw_kind{"draw",
                          draw_files,
                          "vertex_count=6 instance_count=points param=tint=1,1,1 "
                          "param=count=12 param=frames_per_turn=600"};
-constexpr Kind dispatch_kind{
-    "dispatch", dispatch_files, "invocations=64 param=glide=0.1 param=frames_per_turn=600"};
+constexpr Kind dispatch_kind{"dispatch",
+                             dispatch_files,
+                             "invocations=64 param=glide=0.1 param=frames_per_turn=600"};
 // Between a drop's recipe and the fingerprint of what it copied: probe@3f2a9c1e.
 constexpr char fingerprint_mark = '@';
 // FNV-1a over 64 bits: the same fingerprint on every machine and compiler (C01).
@@ -452,17 +453,16 @@ class Library final : public VP::Operator {
   static std::vector<VP::File> templates(VP::Bind &node, const Kind &kind) {
     std::vector<VP::File> files;
     for (const std::string_view file : kind.files)
-      files.push_back(node.file(
-          std::format("template/{}/{}{}", kind.folder, file, template_suffix)));
+      files.push_back(
+          node.file(std::format("template/{}/{}{}", kind.folder, file, template_suffix)));
     return files;
   }
 
   // A node's first files from the template, in the folder its name names, and the node.
   // They build and run at once, passing data between C++ and the shaders every way they
   // can, so a person keeps what the node uses.
-  void start(VP::Call &call,
-             const Kind &kind,
-             const std::vector<VP::File> &templates) const {
+  void
+  start(VP::Call &call, const Kind &kind, const std::vector<VP::File> &templates) const {
     const std::string_view name = call.arguments().front();
     const std::string_view own = name.substr(name.rfind('.') + 1);
     if (!node_name(own))
@@ -477,9 +477,10 @@ class Library final : public VP::Operator {
     for (std::size_t file = 0; file < kind.files.size(); ++file) {
       const std::string named =
           type + std::string(kind.files[file].substr(template_class.size()));
-      call.files().save(
-          (folder / named).string(),
-          replaced(std::string(call.files().text(templates[file])), template_class, type));
+      call.files().save((folder / named).string(),
+                        replaced(std::string(call.files().text(templates[file])),
+                                 template_class,
+                                 type));
       wrote.append(wrote.empty() ? "" : ", ").append(named);
     }
     call.commands().send(std::format("node add {} {}", name, kind.words));
