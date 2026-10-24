@@ -592,7 +592,7 @@ public:
 };
 
 // Where a folder's C++ registers its operators, by the names a manifest's operator word
-// uses.
+// uses; a node whose folder registers one runs it without the word.
 class Registry {
 public:
   template <class T> void add(std::string_view name) {
@@ -616,8 +616,8 @@ private:
 #define VP_OPERATORS(registry)                                                           \
   extern "C" VP_MODULE_EXPORT void VP_MODULE_ENTRY(VP::Registry &registry)
 
-// A folder whose C++ registers one operator, under its class's own name. The
-// static_assert takes the ; written after it.
+// A folder whose C++ registers one operator, under its class's own name, which its node
+// runs without an operator word. The static_assert takes the ; written after it.
 #define VP_OPERATOR(Class)                                                               \
   VP_OPERATORS(registry) {                                                               \
     registry.add<Class>(#Class);                                                         \

@@ -6,7 +6,7 @@
 
 namespace {
 
-// Each sets a value Fill.comp does not declare so: the loader must refuse the node.
+// Each sets a value Wrong.comp does not declare so: the loader must refuse the node.
 class WrongName final : public VP::Operator {
   void bind(VP::Bind &node) override {
     node.value<float>("level");
@@ -22,14 +22,14 @@ class WrongType final : public VP::Operator {
 // A command without its help: the port must refuse it (RV04).
 class NoHelp final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    node.command("fill help", "");
+    node.command("wrong help", "");
   }
 };
 
 // Every node it runs in registers the same command, so a second node must be refused.
 class Twin final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    node.command("fill twin", "registers in every node that runs it");
+    node.command("wrong twin", "registers in every node that runs it");
   }
 };
 

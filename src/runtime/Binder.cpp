@@ -379,11 +379,15 @@ Bound Schedule::bind(const Node &node,
   if (old && old->op && old->node->module == node.module &&
       old->node->operator_name == node.operator_name) {
     bound.op = std::move(old->op);
-    log(Level::debug, Tag::nod, bound, "keeps its operator " + node.operator_name);
-  } else if (!node.operator_name.empty()) {
+    log(Level::debug, Tag::nod, bound, "keeps its operator");
+  } else if (runs_operator(node)) {
     try {
-      bound.op = _wiring.modules.make(module_of(_view, node), folder, node.operator_name);
-      log(Level::info, Tag::nod, bound, "new operator " + node.operator_name);
+      const std::string module = module_of(_view, node);
+      const std::string name = node.operator_name.empty()
+                                   ? _wiring.modules.sole(module, folder)
+                                   : node.operator_name;
+      bound.op = _wiring.modules.make(module, folder, name);
+      log(Level::info, Tag::nod, bound, "new operator " + name);
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
     }

@@ -241,7 +241,7 @@ void Schedule::check_varyings(const Bound &vertex,
 // Every param is read by someone, and every value in the pass block is set by someone.
 // Without its operator, a node cannot say what the operator would have read or set.
 void Schedule::check_fields(Bound &bound) const {
-  if (!bound.node->operator_name.empty() && !bound.op)
+  if (runs_operator(*bound.node) && !bound.op)
     return;
   for (const Param &param : bound.node->params) {
     const Field *const field = bound.field(param.key);
@@ -448,7 +448,7 @@ void Schedule::check_images() {
 void Schedule::check_inputs(const Connection &connection) {
   for (const Endpoint &to : connection.to) {
     Bound &reader = *find(to.node);
-    const bool unbound = !reader.op && !reader.node->operator_name.empty();
+    const bool unbound = !reader.op && runs_operator(*reader.node);
     if (!unbound && std::ranges::find(reader.inputs, to.port) == reader.inputs.end())
       reader.errors.push_back(
           std::format("connection {}: {} writes a C++ object, which {} does not read as "

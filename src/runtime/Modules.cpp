@@ -21,6 +21,14 @@ static_assert(sizeof(Entry) == sizeof(void *));
 constexpr const char *module_entry = "vp_module_" VP_MODULE_STAMP;
 constexpr const char *module_file = "module" VP_MODULE_SUFFIX;
 
+// What a module registers, each name after a blank.
+template <class Registered> std::string names(const Registered &registered) {
+  std::string text;
+  for (const auto &entry : registered)
+    text += " " + entry.first;
+  return text;
+}
+
 } // namespace
 
 struct Modules::Loaded {
@@ -37,20 +45,33 @@ Modules::~Modules() = default;
 std::unique_ptr<Operator> Modules::make(const std::string &module,
                                         const std::filesystem::path &folder,
                                         std::string_view name) {
-  if (!_operators.contains(module))
-    enter(module, folder);
-  const auto &registered = _operators.at(module);
+  const auto &registered = entered(module, folder);
   const auto found = registered.find(name);
   if (found != registered.end())
     return found->second();
-  std::string names;
-  for (const auto &entry : registered)
-    names += " " + entry.first;
   throw std::runtime_error(
       std::format("the C++ of {} registers no operator {}; it registers:{}",
                   module,
                   name,
-                  names.empty() ? " nothing" : names));
+                  registered.empty() ? " nothing" : names(registered)));
+}
+
+std::string Modules::sole(const std::string &module, const std::filesystem::path &folder) {
+  const auto &registered = entered(module, folder);
+  if (registered.size() == 1)
+    return registered.begin()->first;
+  throw std::runtime_error(
+      std::format("the C++ of {} registers{}, so its node names the one it runs, as "
+                  "operator = <name>; VP_OPERATOR(<class>) registers one",
+                  module,
+                  registered.empty() ? " no operator" : names(registered)));
+}
+
+const Modules::Registered &Modules::entered(const std::string &module,
+                                           const std::filesystem::path &folder) {
+  if (!_operators.contains(module))
+    enter(module, folder);
+  return _operators.at(module);
 }
 
 std::vector<std::string> Modules::rewritten() const {

@@ -5,11 +5,17 @@
 [manifest]
 version = 1
 
-# Fills values with its amount. Its C++ registers the operators the cases name, each
-# wrong in its own way.
+# Fills values with its amount.
 [node "fill"]
 file        = Fill.comp
-file        = Fill.cpp
+invocations = 64
+param       = amount=1
+
+# Fills values as fill does. Its C++ registers the operators the cases name, each wrong
+# in its own way, so a case names the one it runs.
+[node "wrong"]
+file        = Wrong.comp
+file        = Wrong.cpp
 invocations = 64
 param       = amount=1
 
@@ -28,7 +34,7 @@ file         = Draw.glsl
 file         = Draw.vert
 vertex_count = 3
 
-# Registers the command fill's Twin registers.
+# Registers the command wrong's Twin registers.
 [node "twin"]
 operator = Twin
 file     = Twin.cpp

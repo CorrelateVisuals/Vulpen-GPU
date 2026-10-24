@@ -1,0 +1,14 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(set = 1, binding = 0) uniform Pass {
+  float amount;
+  FloatsOut values;
+} pass;
+
+void main() {
+  pass.values.at[gl_GlobalInvocationID.x] = pass.amount;
+}

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Every broken view ends the run with exit 1 and an error that names its cause (A02,
 RV03), before anything wrong reaches the GPU: a manifest that says a thing twice, SPIR-V
-cut short, C++ and a shader that disagree on a name or a type, a connection whose ends
-disagree, a dispatch that leaves a workgroup part full or counts no invocations, a draw
-that writes, a node inside no node, a file named by a command, a node's command without
-its help, registered twice or failing when it runs, a view that uses a library recipe
+cut short, C++ and a shader that disagree on a name or a type, a node whose C++
+registers several operators and which names none, a connection whose ends disagree, a
+dispatch that leaves a workgroup part full or counts no invocations, a draw that writes,
+a node inside no node, a file named by a command, a node's command without its help,
+registered twice or failing when it runs, a view that uses a library recipe
 as it is, a library recipe that uses one the library lacks, uses itself, or names a
 node the one it uses lacks, a C++ output of a type no other node can name, a C++ input
 of another type than its writer's, a C++ struct whose members sit elsewhere than the
@@ -64,6 +65,7 @@ from harness import display, link_folder, problems, run
 
 HEAD = "[manifest]\nversion = 1\n"
 FILL = '[node "fill"]\ninvocations = 64\nparam = amount=1\n'
+WRONG = FILL.replace('"fill"', '"wrong"')
 PAIRS = '[node "pairs"]\ninvocations = 64\n'
 SUM = '[node "sum"]\ninvocations = 64\n'
 DRAW = '[node "draw"]\nvertex_count = 3\n'
@@ -104,7 +106,9 @@ def connection(name: str, source: str, *targets: str) -> str:
 
 
 def operator(name: str) -> str:
-    return FILL.replace("invocations", f"operator = {name}\ninvocations")
+    """The node wrong, running the operator of that name, one of those its C++
+    registers."""
+    return WRONG.replace("invocations", f"operator = {name}\ninvocations")
 
 
 # A shape whose shapes maker's C++ fills, through a connection.
@@ -145,9 +149,11 @@ CASES = {
     "inside-nothing": (HEAD + FILL + '[node "fill.inner.deeper"]\n',
                        "node fill.inner.deeper is inside fill.inner, which is no node"),
     "file-word": (HEAD + FILL, "a node's files are what its folder holds", "node set fill file=x\n"),
-    "command-help": (HEAD + operator("NoHelp"), "command `fill help` needs a usage and a help"),
+    "operator-unnamed": (HEAD + WRONG, "registers Echo NoHelp Refuse Twin WrongName WrongType, "
+                         "so its node names the one it runs"),
+    "command-help": (HEAD + operator("NoHelp"), "command `wrong help` needs a usage and a help"),
     "command-twice": (HEAD + operator("Twin") + '[node "twin"]\noperator = Twin\n',
-                      "node twin: command `fill twin` registers twice"),
+                      "node twin: command `wrong twin` registers twice"),
     "command-fails": (HEAD + operator("Refuse"), "command-fails.txt:1: refused, as the fixture",
                       "refuse\n"),
     "uses-in-view": (HEAD + '[node "x"]\nrecipe = fill\n',

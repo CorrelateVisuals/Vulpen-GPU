@@ -36,6 +36,9 @@ public:
   std::unique_ptr<Operator> make(const std::string &module,
                                  const std::filesystem::path &folder,
                                  std::string_view name);
+  // The name of the one operator the module registers, which a node naming none runs.
+  // Throws naming what it registers when that is none or several (A02).
+  std::string sole(const std::string &module, const std::filesystem::path &folder);
   // Modules, as "view/folder", that the build rewrote since they loaded.
   std::vector<std::string> rewritten() const;
   // The next make() loads the rebuilt module. The caller has destroyed the module's
@@ -46,14 +49,18 @@ private:
   // A module of a dev build. It holds the platform's Library, so Modules.cpp defines it
   // and this header includes no platform code.
   struct Loaded;
+  // A module's operators, by the names it registers them under.
+  using Registered = std::map<std::string, Make, std::less<>>;
 
   void add(std::string_view name, Make make) override;
+  // What the module registers, entering it first.
+  const Registered &entered(const std::string &module, const std::filesystem::path &folder);
   void enter(const std::string &module, const std::filesystem::path &folder);
   void load(Loaded &loaded);
   void run(const std::string &module, void (*entry)(Registry &));
 
   std::vector<Loaded> _loaded;
-  std::map<std::string, std::map<std::string, Make, std::less<>>, std::less<>> _operators;
+  std::map<std::string, Registered, std::less<>> _operators;
   std::string _entering;
 };
 
