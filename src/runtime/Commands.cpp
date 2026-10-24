@@ -60,10 +60,14 @@ std::string joined(const Names &names, std::string_view between = ", ") {
   return text;
 }
 
-bool lowercase(std::string_view word) {
-  return !word.empty() && std::ranges::all_of(word, [](char letter) {
-    return letter >= 'a' && letter <= 'z';
-  });
+// A lowercase letter, then lowercase letters, digits and -, as a new node's name is, so a
+// command a node registers can start with its name.
+bool command_word(std::string_view word) {
+  const auto lower = [](char letter) { return letter >= 'a' && letter <= 'z'; };
+  return !word.empty() && lower(word.front()) &&
+         std::ranges::all_of(word, [&](char letter) {
+           return lower(letter) || (letter >= '0' && letter <= '9') || letter == '-';
+         });
 }
 
 // Whether the word is `<kind>` of a known kind.
@@ -292,11 +296,12 @@ Command Commands::add(std::string_view usage,
   const bool more = words.back().ends_with(one_or_more);
   if (more)
     words.back().remove_suffix(one_or_more.size());
-  const auto arguments = std::ranges::find_if_not(words, lowercase);
+  const auto arguments = std::ranges::find_if_not(words, command_word);
   if (arguments == words.begin() || ((more || optional) && arguments == words.end()) ||
       !std::all_of(arguments, words.end(), placeholder))
     throw std::runtime_error(std::format(
-        "command `{}`: a usage is lowercase words, then placeholders of the kinds {}",
+        "command `{}`: a usage is words of a lowercase letter, then lowercase "
+        "letters, digits and -, then placeholders of the kinds {}",
         usage,
         joined(kinds)));
   const std::span<const std::string_view> name(words.begin(), arguments);
