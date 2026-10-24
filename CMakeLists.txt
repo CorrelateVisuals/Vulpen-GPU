@@ -160,16 +160,21 @@ add_custom_target(images ALL
 add_dependencies(images statistics)
 
 # GLSL to SPIR-V at <out>/<name>.spv, as Shader loads it; the arguments after out are the
-# compiler's include flags. A driver may take invalid SPIR-V without a word, or crash on
-# it, so <name>.spv.valid, which a target depends on, exists only once spirv-val passed,
-# and the build fails while any shader does not (RV02).
+# compiler's include flags. Every shader is GLSL 4.60 that may #include, so the build gives
+# each its version and the include extension, and a shader starts with what it does; a
+# line of an error still counts from the shader's first. A driver may take invalid SPIR-V
+# without a word, or crash on it, so <name>.spv.valid, which a target depends on, exists
+# only once spirv-val passed, and the build fails while any shader does not (RV02).
 find_program(GLSLANG glslangValidator REQUIRED)
 find_program(SPIRV_VAL spirv-val REQUIRED)
+set(glsl_version 460)
+set(glsl_preamble "#extension GL_GOOGLE_include_directive : require")
 function(vulpen_spirv shader out)
   get_filename_component(name ${shader} NAME)
   add_custom_command(OUTPUT ${out}/${name}.spv
     COMMAND ${CMAKE_COMMAND} -E make_directory ${out}
-    COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet ${ARGN}
+    COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet --glsl-version ${glsl_version}
+            --preamble-text ${glsl_preamble} ${ARGN}
             --depfile ${out}/${name}.d -o ${out}/${name}.spv ${shader}
     DEPENDS ${shader} DEPFILE ${out}/${name}.d VERBATIM)
   add_custom_command(OUTPUT ${out}/${name}.spv.valid
