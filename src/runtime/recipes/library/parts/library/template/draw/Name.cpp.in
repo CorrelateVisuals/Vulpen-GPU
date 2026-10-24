@@ -1,0 +1,115 @@
+#include "runtime/Operator.h"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <format>
+#include <numbers>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+
+namespace {
+
+// Name.glsl's Point, member for member: the loader holds it to the shader's by name, type
+// and offset (RA03). Two vec4s, so std430 and C++ lay it out alike.
+struct Point {
+  glm::vec4 position{};
+  glm::vec4 color{};
+
+  static constexpr auto members() {
+    return std::array{VP_MEMBER(Point, position), VP_MEMBER(Point, color)};
+  }
+};
+
+constexpr float turn = 2.0f * std::numbers::pi_v<float>; // radians in a whole turn
+constexpr std::uint32_t most_points = 64; // room the points buffer has, whatever count asks
+constexpr float ring = 0.5f;              // the squares' circle, in clip space
+constexpr float side = 0.15f;             // a square's side, in clip space
+constexpr std::uint32_t pattern_side = 8; // the pattern's pixels a side
+constexpr glm::u8vec4 light{255, 255, 255, 255};
+constexpr glm::u8vec4 dark{64, 64, 64, 255};
+
+// How far a whole turn every frames_per_turn frames has come at a frame, counted from the
+// frame index, so it never drifts; none while frames_per_turn is 0.
+float angle_at(std::uint64_t frame, std::uint32_t frames_per_turn) {
+  if (frames_per_turn == 0)
+    return 0.0f;
+  return turn * static_cast<float>(frame % frames_per_turn) /
+         static_cast<float>(frames_per_turn);
+}
+
+// A color of the hue circle at an angle, so each square shows its own.
+glm::vec4 hue(float at) {
+  return {0.5f + 0.5f * std::cos(at),
+          0.5f + 0.5f * std::cos(at - turn / 3.0f),
+          0.5f + 0.5f * std::cos(at + turn / 3.0f),
+          1.0f};
+}
+
+// The draw's data from C++, each by the name of a field of its pass block: C++ sets a
+// value, writes a point an instance, as many as it draws, and fills a pattern once, and
+// the manifest's params reach the shaders and C++ alike.
+class Name final : public VP::Operator {
+  // At load, and again after every swap of this folder's C++: names in, handles out, each
+  // checked against the shaders and the manifest before a frame runs (A02).
+  void bind(VP::Bind &node) override {
+    _angle = node.value<float>("angle");
+    _points = node.upload<Point>("points", most_points);
+    _pattern = node.texture<glm::u8vec4>("pattern");
+    _frames_per_turn = node.param<std::uint32_t>("frames_per_turn");
+    _count = std::min(node.param<std::uint32_t>("count"), most_points);
+    _name = node.name();
+    // Every view's commands share one port, so the command carries the node's own name.
+    _set_count = node.command(
+        std::format("{} count <value>", _name.substr(_name.rfind('.') + 1)),
+        "sets how many squares the node draws, as param set sets its count");
+  }
+
+  // Every frame, before the draw runs.
+  void cook(VP::Cook &frame) override {
+    frame.set(_angle, angle_at(frame.index(), _frames_per_turn));
+    // The first count points, so the draw, whose instance_count is points, draws count.
+    const std::span<Point> points = frame.write(_points, _count);
+    for (std::size_t i = 0; i < points.size(); ++i) {
+      const float at = turn * static_cast<float>(i) / static_cast<float>(points.size());
+      points[i] = {.position = glm::vec4(ring * std::cos(at), ring * std::sin(at), side, 0.0f),
+                   .color = hue(at)};
+    }
+    // An image keeps its pixels through rebuilds, so C++ fills it again only once emptied.
+    if (frame.empty(_pattern)) {
+      std::array<glm::u8vec4, pattern_side * pattern_side> pixels{};
+      for (std::uint32_t pixel = 0; pixel < pixels.size(); ++pixel)
+        pixels[pixel] = (pixel % pattern_side + pixel / pattern_side) % 2 == 0 ? light : dark;
+      frame.upload(_pattern, pixels, {pattern_side, pattern_side});
+    }
+  }
+
+  // When a command the node registered runs: typed, from a script, or sent by a node.
+  void command(VP::Call &call) override {
+    if (!call.is(_set_count))
+      return;
+    const std::string_view value = call.arguments().front();
+    std::uint32_t count = 0;
+    if (!VP::parse_param(value, count))
+      throw std::runtime_error(std::format("{} is not a count of squares", value));
+    // Through param set, so the log keeps the change and a replay repeats it (V08).
+    call.commands().send(std::format("param set {} count {}", _name, count));
+    call.reply(std::format("{} draws {} squares", _name, std::min(count, most_points)));
+  }
+
+  VP::Value<float> _angle;
+  VP::Upload<Point> _points;
+  VP::Texture<glm::u8vec4> _pattern;
+  std::uint32_t _frames_per_turn = 0;
+  std::uint32_t _count = 0;
+  std::string _name;
+  VP::Command _set_count;
+};
+
+} // namespace
+
+VP_OPERATOR(Name);

@@ -1,0 +1,36 @@
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 64) in; // the node's invocations, 64 to a workgroup
+
+// A point as Name.cpp writes it, member for member, which the loader holds to its own.
+struct Point {
+  vec4 position; // in clip space, y pointing down
+  vec4 color;
+};
+
+VP_READS(Points, Point);
+VP_BUFFER(Values, float);
+VP_WRITES(Samples, float);
+
+// Each field is filled before the dispatch runs, by its name: by a param, by Name.cpp,
+// or through a connection; the loader refuses one that nothing fills (A02).
+layout(set = 1, binding = 0) uniform Pass {
+  float glide;     // a param: how far each value moves toward its target a frame
+  float angle;     // set by Name.cpp every frame
+  Points points;   // written by Name.cpp every frame, a point an invocation
+  Values values;   // the GPU's own, kept from frame to frame
+  Samples samples; // read back by Name.cpp a frame later
+  Texture pattern; // filled by Name.cpp once
+  Image canvas;    // stored into, at the frame's size, for a connection to a Texture
+} pass;
+
+// frame is the frame block every shader reads: its time, index, resolution and cursor.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const Point point = pass.points.at[i];
+  const vec2 uv = point.position.xy * 0.5 + 0.5; // 0 to 1 across the frame
+  const float target = sample_nearest(pass.pattern, uv).r * sin(frame.time + pass.angle);
+  pass.values.at[i] = mix(pass.values.at[i], target, pass.glide);
+  pass.samples.at[i] = pass.values.at[i];
+  store(pass.canvas, ivec2(uv * vec2(frame.resolution)), point.color);
+}

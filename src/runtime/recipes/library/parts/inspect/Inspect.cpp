@@ -134,9 +134,9 @@ class Inspect final : public VP::Operator {
                        "view it hosts; or where the graph in a window is, the folder it "
                        "shows or the inside of the node it shows");
     _info = node.command("info [<node>]",
-                         "shows a node's words, or a hosted view's, and the connections "
-                         "it writes and reads; with none, each selected one's under its "
-                         "header");
+                         "shows a node's words and the files it holds, or a hosted view's "
+                         "words, and the connections it writes and reads; with none, each "
+                         "selected one's under its header");
     _stats = node.command("probe stats [<node>]",
                           "prints what each node costs a frame on the CPU and the GPU, "
                           "in milliseconds smoothed over about a second, as a tree, a "
@@ -262,7 +262,8 @@ class Inspect final : public VP::Operator {
         list(view, inner, depth + 1, rows);
   }
 
-  // In the manifest's words, so what info shows is what a node section would hold, or a
+  // In the manifest's words, so what info shows is what a node section would hold, then
+  // the files its folder holds, which no word lists (RV08), and its connections; or a
   // view section, its file whole, with the connections that take its window.
   static void info(VP::Call &call, const VP::View &view, std::string_view name) {
     if (const auto child = std::ranges::find(view.children, name, &VP::Child::name);
@@ -280,8 +281,6 @@ class Inspect final : public VP::Operator {
       call.reply(std::format("recipe = {}", node->recipe));
     if (!node->operator_name.empty())
       call.reply(std::format("operator = {}", node->operator_name));
-    for (const std::string &file : node->files)
-      call.reply(std::format("file = {}", file));
     if (node->invocations != 0)
       call.reply(std::format("invocations = {}", node->invocations));
     if (node->vertex_count != 0)
@@ -294,6 +293,8 @@ class Inspect final : public VP::Operator {
       call.reply(std::format("image = {}={}", image.port, image.format));
     if (!node->log.empty())
       call.reply(std::format("log = {}", node->log));
+    for (const std::string &file : node->files)
+      call.reply(std::format("holds {}", file));
     for (const VP::Connection &connection : view.connections) {
       if (connection.from.node == name)
         call.reply(std::format("writes {} as {}", connection.from.port, connection.name));

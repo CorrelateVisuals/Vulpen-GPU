@@ -1,0 +1,9 @@
+#include "Name.glsl"
+
+layout(location = 0) in vec2 uv;
+layout(location = 1) in vec4 color;
+layout(location = 0) out vec4 pixel; // the window's, or an image's a connection takes
+
+void main() {
+  pixel = vec4(pass.tint, 1.0) * color * sample_nearest(pass.pattern, uv);
+}

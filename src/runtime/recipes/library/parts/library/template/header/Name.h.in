@@ -6,35 +6,16 @@
 // two copies of the node in one binary never clash.
 namespace {
 
-// A struct a buffer holds names its members once, for the loader to check against the
-// shader's struct:
-// struct Point {
-//   glm::vec2 at;
-//   static constexpr auto members() { return std::array{VP_MEMBER(Point, at)}; }
-// };
-
-// Why the Name operator exists, in a line or two.
+// What the Name operator is for, in a line or two.
 class Name final : public VP::Operator {
-  // VP::Value<float> _scale;       // a value in the pass block
-  // VP::Upload<glm::vec2> _points; // a buffer C++ writes and the shader reads
-  // VP::Readback<float> _samples;  // a buffer the shader writes, read a frame later
-  // float _speed = 0;              // a param
-  // VP_VIEW::Rects *_rects{};      // an object it hands C++ nodes
-  // const VP_VIEW::Rects *_hit{};  // an object a C++ node hands it
-  // VP::Texture<std::uint8_t> _atlas; // an image C++ fills once, a byte a pixel
-  // VP::Command _reset;            // a command the node answers
-  // VP::File _settings;            // a file the node reads, watches and saves
-  // std::string _folder;           // where the node's own files are
-  // std::string _name;             // its own, as a line names it
-
-  // At load, and again after every swap: names in, handles out.
-  // void bind(VP::Bind &node) override;
-
-  // Every frame, before the node's pass runs.
-  // void cook(VP::Cook &frame) override;
-
+  // At load, and again after every swap of this folder's C++.
+  void bind(VP::Bind &node) override;
+  // Every frame, before the node's shaders run.
+  void cook(VP::Cook &frame) override;
   // When a command the node registered runs.
-  // void command(VP::Call &call) override;
+  void command(VP::Call &call) override;
+
+  VP::Value<float> _angle;
 };
 
 } // namespace

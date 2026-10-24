@@ -26,20 +26,28 @@ constexpr std::string_view contracts = "contracts";
 constexpr std::string_view shared = "shared";
 constexpr std::string_view parts = "parts";
 constexpr std::string_view include_start = "#include \"";
-// The template's files, in the library part's template node, and the words in them that
-// name the node: its C++ class, and its name. Each ends in .in, so it builds only once
-// node new writes it.
-constexpr std::array<std::string_view, 5> template_files{
-    "Name.cpp", "Name.glsl", "Name.vert", "Name.frag", "Name.comp"};
+// The template's files, a folder of the library part's template node for each kind of
+// node, and the word in them that names the node's C++ class. Each ends in .in, so it
+// builds only once node new writes it.
 constexpr std::string_view template_suffix = ".in";
 constexpr std::string_view template_class = "Name";
-constexpr std::string_view template_node = "name";
-// What each kind of node starts with, by the template's files, and what it counts: one
-// triangle, or one workgroup of the template's compute shader.
-constexpr std::array<std::size_t, 4> draw_files{0, 1, 2, 3};
-constexpr std::array<std::size_t, 2> dispatch_files{0, 4};
-constexpr std::string_view draw_count = "vertex_count=3";
-constexpr std::string_view dispatch_count = "invocations=64";
+constexpr std::array<std::string_view, 4> draw_files{
+    "Name.cpp", "Name.glsl", "Name.vert", "Name.frag"};
+constexpr std::array<std::string_view, 2> dispatch_files{"Name.cpp", "Name.comp"};
+// A kind of node node new starts: its template's folder and files, and the node's words,
+// each read by its template's C++ or shaders. A draw counts six vertices a square and an
+// instance a point its C++ writes; a dispatch one workgroup of its compute shader.
+struct Kind {
+  std::string_view folder;
+  std::span<const std::string_view> files;
+  std::string_view words;
+};
+constexpr Kind draw_kind{"draw",
+                         draw_files,
+                         "vertex_count=6 instance_count=points param=tint=1,1,1 "
+                         "param=count=12 param=frames_per_turn=600"};
+constexpr Kind dispatch_kind{
+    "dispatch", dispatch_files, "invocations=64 param=glide=0.1 param=frames_per_turn=600"};
 // Between a drop's recipe and the fingerprint of what it copied: probe@3f2a9c1e.
 constexpr char fingerprint_mark = '@';
 // FNV-1a over 64 bits: the same fingerprint on every machine and compiler (C01).
@@ -348,16 +356,17 @@ class Library final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // A part's folder is <recipes>/library/<kind>/<name>.
     _library = std::filesystem::path(node.folder()).parent_path().parent_path();
-    for (std::size_t index = 0; index < template_files.size(); ++index)
-      _templates[index] =
-          node.file(std::format("template/{}{}", template_files[index], template_suffix));
+    _draw_templates = templates(node, draw_kind);
+    _dispatch_templates = templates(node, dispatch_kind);
     _list = node.command("recipe list", "lists the library's recipes, by kind");
     _draw = node.command("node new draw <name>",
                          "adds a draw node, and writes its first files from the template "
-                         "into its folder: its C++, its pass block and its two shaders");
+                         "into its folder: its C++, its pass block and its two shaders, "
+                         "passing data every way they can");
     _dispatch = node.command("node new dispatch <name>",
                              "adds a dispatch node, and writes its first files from the "
-                             "template into its folder: its C++ and its compute shader");
+                             "template into its folder: its C++ and its compute shader, "
+                             "passing data every way they can");
     _drop = node.command("recipe drop <recipe> <name>",
                          "copies a library recipe into the view as a node of that name, "
                          "with the nodes inside it and the contracts and shared code "
@@ -372,9 +381,9 @@ class Library final : public VP::Operator {
     if (call.is(_list))
       list(call);
     else if (call.is(_draw))
-      start(call, draw_files, draw_count);
+      start(call, draw_kind, _draw_templates);
     else if (call.is(_dispatch))
-      start(call, dispatch_files, dispatch_count);
+      start(call, dispatch_kind, _dispatch_templates);
     else if (call.is(_drop))
       drop(call);
     else if (call.is(_sync))
@@ -438,11 +447,22 @@ class Library final : public VP::Operator {
           "{} is a folder already, and a new node's folder is its own", folder.string()));
   }
 
+  // A kind's template files, which the file port watches, so node new writes them as
+  // they are now.
+  static std::vector<VP::File> templates(VP::Bind &node, const Kind &kind) {
+    std::vector<VP::File> files;
+    for (const std::string_view file : kind.files)
+      files.push_back(node.file(
+          std::format("template/{}/{}{}", kind.folder, file, template_suffix)));
+    return files;
+  }
+
   // A node's first files from the template, in the folder its name names, and the node.
-  // They build at once and do nothing yet; the lines of the menu wait, commented.
+  // They build and run at once, passing data between C++ and the shaders every way they
+  // can, so a person keeps what the node uses.
   void start(VP::Call &call,
-             std::span<const std::size_t> files,
-             std::string_view count) const {
+             const Kind &kind,
+             const std::vector<VP::File> &templates) const {
     const std::string_view name = call.arguments().front();
     const std::string_view own = name.substr(name.rfind('.') + 1);
     if (!node_name(own))
@@ -454,19 +474,15 @@ class Library final : public VP::Operator {
     const std::filesystem::path folder = view / path_of(name);
     const std::string type = class_of(own);
     std::string wrote;
-    for (const std::size_t file : files) {
+    for (std::size_t file = 0; file < kind.files.size(); ++file) {
       const std::string named =
-          type + std::string(template_files[file].substr(template_class.size()));
+          type + std::string(kind.files[file].substr(template_class.size()));
       call.files().save(
           (folder / named).string(),
-          replaced(replaced(std::string(call.files().text(_templates[file])),
-                            template_class,
-                            type),
-                   template_node,
-                   name));
+          replaced(std::string(call.files().text(templates[file])), template_class, type));
       wrote.append(wrote.empty() ? "" : ", ").append(named);
     }
-    call.commands().send(std::format("node add {} operator={} {}", name, type, count));
+    call.commands().send(std::format("node add {} {}", name, kind.words));
     call.reply(
         std::format("wrote {} in {}, and added node {}", wrote, folder.string(), name));
   }
@@ -721,7 +737,8 @@ class Library final : public VP::Operator {
   }
 
   std::filesystem::path _library;
-  std::array<VP::File, template_files.size()> _templates;
+  std::vector<VP::File> _draw_templates;
+  std::vector<VP::File> _dispatch_templates;
   VP::Command _list;
   VP::Command _draw;
   VP::Command _dispatch;

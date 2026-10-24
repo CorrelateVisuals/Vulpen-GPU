@@ -1,0 +1,23 @@
+#include "Name.glsl"
+
+layout(location = 0) out vec2 uv;    // to Name.frag: 0 to 1 across the square
+layout(location = 1) out vec4 color; // to Name.frag
+
+// Square in the middle of any window: its shorter side spans -1 to 1. frame is the frame
+// block every shader reads: its time, index, resolution and cursor.
+vec2 square(vec2 at) {
+  const vec2 size = vec2(frame.resolution);
+  return at * min(size.yx / size, vec2(1.0));
+}
+
+// A square an instance, of the six vertices vertex_count gives it, turned about its
+// middle.
+void main() {
+  const Point point = pass.points.at[gl_InstanceIndex];
+  uv = quad_corner(gl_VertexIndex);
+  const mat2 turned =
+      mat2(cos(pass.angle), sin(pass.angle), -sin(pass.angle), cos(pass.angle));
+  const vec2 at = point.position.xy + turned * (uv - 0.5) * point.position.z;
+  gl_Position = vec4(square(at), 0.0, 1.0);
+  color = point.color;
+}

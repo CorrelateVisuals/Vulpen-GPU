@@ -1,0 +1,19 @@
+// The pass block Name.vert and Name.frag share, which the loader finds the same in each.
+#include "baseclasses/GpuLayout.glsl"
+
+// A point as Name.cpp writes it, member for member, which the loader holds to its own.
+struct Point {
+  vec4 position; // xy: its square's middle, in clip space, y pointing down; z: its side
+  vec4 color;
+};
+
+VP_READS(Points, Point);
+
+// Each field is filled before the draw runs, by its name: by a param, by Name.cpp, or
+// through a connection; the loader refuses one that nothing fills (A02).
+layout(set = 1, binding = 0) uniform Pass {
+  vec3 tint;       // a param: red, green and blue
+  float angle;     // set by Name.cpp every frame
+  Points points;   // written by Name.cpp every frame, an instance a point
+  Texture pattern; // filled by Name.cpp once
+} pass;
