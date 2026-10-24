@@ -1,0 +1,15 @@
+# The tiles part: one node whose operator is Tiles. It shows the projects a GUI hosts
+# side by side in the Rect its area gives: the one presented alone, or those its shown
+# param names, projects joined by commas, along its axis, x or y. Its host connects each
+# of its ports but rects and tiling to the images of a tile, which take the window of the
+# project the tile shows at their picture, and the window of the one presented reaches
+# the ports its to param names too, joined by commas; its rects, the seams between tiles
+# and the frame round the one presented, to a rects part drawn over the tiles; and its
+# tiling to the docking part, which asks it to put a project beside the others.
+[manifest]
+version = 1
+
+[node "tiles"]
+operator = Tiles
+file     = Tiles.cpp
+param    = axis=x

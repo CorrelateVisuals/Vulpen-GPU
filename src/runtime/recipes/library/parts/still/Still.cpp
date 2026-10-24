@@ -5,6 +5,7 @@
 #include "runtime/View.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -17,11 +18,14 @@ constexpr std::string_view hold_key = "space";
 // on: space, while the node its host param names has the focus, or a double click in its
 // area, copies the picture into held at once, its shader storing it the frame it was
 // asked, and still tells the image held reaches to show it in place of the picture;
-// either again lets it go. It lets go too once it shows nowhere, as its area has no room
-// in perform mode, once a connection brings its picture anew, as another view presented,
-// and once the window's size changes, which makes held anew, empty. A key held down holds
-// once, however often it repeats. It changes nothing a view holds, so it sends no line:
-// a frame held is a look at the view, as a pan of the image is.
+// either again lets it go. The frame is of what wrote the picture then, as a project's
+// window, and it holds while that writes it: through the picture's connection going and
+// coming back, as a tile's project shown again, and while its area has no room, as in
+// perform mode or under a preview; a picture another writes shows as it is, and holding
+// it lets go of the first, as does a change of the window's size, which makes held anew,
+// empty. A key held down holds once, however often it repeats. It changes nothing a view
+// holds, so it sends no line: a frame held is a look at the view, as a pan of the image
+// is.
 class Still final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _host = node.param<std::string>("host");
@@ -32,15 +36,23 @@ class Still final : public VP::Operator {
     _shoot = node.value<std::uint32_t>("shoot");
   }
 
+  // With no writer reaching its picture, as a tile no project shows, keys and presses ask
+  // nothing, so they never let go of a frame held before.
   void cook(VP::Cook &frame) override {
-    const bool asked = keys() != presses(frame);
-    if (follow(frame.view()) || frame.resolution() != _size ||
-        _area->extent.x == 0 || _area->extent.y == 0)
-      _still->holds = false;
+    follow(frame.view());
+    const bool asked = keys() != presses(frame) && !_from.node.empty();
+    if (frame.resolution() != _size)
+      _held_of.reset();
     _size = frame.resolution();
-    const bool shoots = asked && !_still->holds;
-    _still->holds = _still->holds != asked;
-    frame.set(_shoot, static_cast<std::uint32_t>(shoots));
+    const bool holds = _held_of && same(*_held_of, _from);
+    if (asked)
+      _held_of = holds ? std::nullopt : std::optional(_from);
+    _still->holds = _held_of && same(*_held_of, _from);
+    frame.set(_shoot, static_cast<std::uint32_t>(asked && !holds));
+  }
+
+  static bool same(const VP::Endpoint &one, const VP::Endpoint &other) {
+    return one.node == other.node && one.port == other.port;
   }
 
   // Whether the host's keys ask an odd number of times: space pressed, not repeated.
@@ -69,18 +81,16 @@ class Still final : public VP::Operator {
     return asked;
   }
 
-  // Whether the writer of the connection that reaches its picture changed since the frame
-  // before; copied only then, so a frame allocates nothing for it.
-  bool follow(const VP::View &view) {
+  // The writer of the connection that reaches its picture; copied only as it changes, so
+  // a frame allocates nothing for it.
+  void follow(const VP::View &view) {
     const VP::Endpoint *from = nullptr;
     for (const VP::Connection &connection : view.connections)
       for (const VP::Endpoint &to : connection.to)
         if (to.node == _name && to.port == picture)
           from = &connection.from;
-    if (from ? from->node == _from.node && from->port == _from.port : _from.node.empty())
-      return false;
-    _from = from ? *from : VP::Endpoint{};
-    return true;
+    if (from ? !same(*from, _from) : !_from.node.empty())
+      _from = from ? *from : VP::Endpoint{};
   }
 
   std::string _host; // the node whose keys it reads, as the focus names it
@@ -93,6 +103,8 @@ class Still final : public VP::Operator {
   glm::uvec2 _size{};   // the window's, as the frame before had it
   glm::vec2 _pointer{}; // as the events so far left it
   bool _held = false;   // space down, as the host's keys left it
+  // What wrote the frame held; none while none is.
+  std::optional<VP::Endpoint> _held_of;
 };
 
 } // namespace

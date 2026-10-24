@@ -8,6 +8,7 @@
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
 #include "contracts/Rect.h"
+#include "contracts/Tiling.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
@@ -69,16 +70,19 @@ constexpr std::string_view dock_recipe = "dock";
 constexpr std::string_view editor_recipe = "text-area";
 constexpr std::string_view before_port = "before";
 constexpr std::string_view editors_port = "editors";
-// The keys part's, whose focus names the node the panel framed holds.
+// The keys part's, whose focus names the node the panel framed holds, and the tiles
+// part's, which divides the room of the panel holding it.
 constexpr std::string_view typed_port = "typed";
+constexpr std::string_view tiling_port = "tiling";
 constexpr float even = 0.5f;      // a moved dock's ratio: half its place for each panel
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 constexpr std::int32_t ring = 2;  // how wide the frame where a drop puts a panel is
 constexpr std::uint32_t frame_rects = 4;
-// The frame round the panel holding the node in focus: a pixel wide, inside the panel,
-// so it never covers the seams between panels, in the accent faded halfway toward the
-// ground, so it marks the panel without drawing the eye from what the panel shows.
-constexpr std::int32_t focus_ring = 1;
+// The frame round the panel holding the node in focus: two pixels wide, inside the panel,
+// so it never covers the seams between panels, in the text's color faded halfway toward
+// the ground, a light grey, so it marks the panel without drawing the eye from what the
+// panel shows, nor reading as a thing selected, which the accent marks.
+constexpr std::int32_t focus_ring = 2;
 constexpr float focus_fade = 0.5f;
 // A divider, then the focus's frame, then a drop's.
 constexpr std::uint32_t rect_room = 1 + 2 * frame_rects;
@@ -289,7 +293,11 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // itself, as it lists before what draws over the panels. A drag of a panel's tab strip
 // onto another panel sends it, the side the edge of that panel the pointer is nearest,
 // or the middle well inside it; one holding several, dropped on its own edge, splits, the
-// one it shows going into a panel of its own there. It hides a panel and shows it again,
+// one it shows going into a panel of its own there, but where its content divides its
+// own room, as the tiles part its host connects to its tiling does, the content puts the
+// one it shows beside the others there, or in the middle shows one again, so the panel
+// stays one; let go on its own strip, a panel does nothing, as a tab let go on another
+// moves among them there. It hides a panel and shows it again,
 // as its dock's ratio gives its half no room and back, and hands on a button a panel,
 // lit while it shows, whose press hides or shows it. It finds where each
 // panel and its strip show as the splits and the bars lay them out, from the Rect its
@@ -322,11 +330,13 @@ class Docking final : public VP::Operator {
     _editors =
         connected(editors_port) ? &node.input<VP_VIEW::Editors>(editors_port) : nullptr;
     _typed = connected(typed_port) ? &node.input<VP_VIEW::Typed>(typed_port) : nullptr;
+    _tiled = connected(tiling_port) ? &node.input<VP_VIEW::Tiled>(tiling_port) : nullptr;
     _move = node.command("panel move <node> <node> <value>",
                          "moves a panel beside another, at its left, right, top or "
                          "bottom, or into it, middle, which then holds both; of a panel "
                          "holding several, the one it shows, beside itself too, which "
-                         "splits it in two");
+                         "splits it in two, or where its content divides its own room, "
+                         "beside the others in it, or in its middle alone again");
     _hide = node.command("panel hide <node>",
                          "gives a panel no room, its dock's ratio leaving its half none, "
                          "or the dock's own when nothing beside it shows");
@@ -375,7 +385,7 @@ class Docking final : public VP::Operator {
       written += ring_round(rects.subspan(written),
                             _seated[*framed].area,
                             focus_ring,
-                            {.role = VP_VIEW::role("accent"),
+                            {.role = VP_VIEW::role("text"),
                              .blend_role = VP_VIEW::role("background"),
                              .blend = focus_fade});
     if (const auto drop = dropped())
@@ -683,6 +693,9 @@ class Docking final : public VP::Operator {
                        ? std::nullopt
                        : std::optional(std::size_t(pressed - _seated.begin()));
         _splits = _grabbed && several(frame.view(), pressed->panel);
+        const VP_VIEW::Tiling *const tiling =
+            _grabbed ? tiling_in(frame.view(), pressed->panel) : nullptr;
+        _joins = tiling && tiling->several();
         _from = _pointer;
         if (pressed != _seated.end() && event.presses == 2)
           frame.commands().send(
@@ -701,7 +714,9 @@ class Docking final : public VP::Operator {
   }
 
   // The panel a drag would drop the one taken on, by the edge the pointer is nearest;
-  // onto itself only a panel holding several, at an edge, which the one it shows leaves.
+  // onto itself only a panel holding several, at an edge, which the one it shows leaves,
+  // or in the middle one whose content shows several, which then shows one, but never on
+  // its own strip, where a tab let go on another moves among them.
   std::optional<std::pair<std::size_t, std::string_view>> dropped() const {
     if (!_dragging || !_grabbed)
       return std::nullopt;
@@ -714,7 +729,9 @@ class Docking final : public VP::Operator {
       const auto nearest = std::ranges::min_element(near);
       const std::string_view side =
           *nearest > middle_from ? middle : sides[nearest - near.begin()];
-      if (at == *_grabbed && (!_splits || side == middle))
+      if (at == *_grabbed &&
+          (side == middle ? !_joins
+                          : !_splits || VP_VIEW::contains(_seated[at].strip, _pointer)))
         return std::nullopt;
       return std::pair(at, side);
     }
@@ -722,14 +739,24 @@ class Docking final : public VP::Operator {
   }
 
   // Whether a panel holds several contents, as a stack, or an editor holding several
-  // files, so the one it shows may leave it for a panel beside it.
+  // files, so the one it shows may leave it for a panel beside it, or a content dividing
+  // its own room holds another to show beside the one it shows.
   bool several(const VP::View &view, const std::string &panel) const {
+    if (const VP_VIEW::Tiling *const tiling = tiling_in(view, panel))
+      return tiling->more();
     const std::optional<Content> held = content_of(view, panel);
     if (!held)
       return false;
     if (const VP_VIEW::Editor *const editor = editor_of(*held))
       return editor->count() > 1;
     return !stack_of(view, *held).empty();
+  }
+
+  // The content dividing its own room that the panel holds, as the Rect its bar leaves
+  // reaches it; none for none.
+  VP_VIEW::Tiling *tiling_in(const VP::View &view, std::string_view panel) const {
+    VP_VIEW::Tiling *const tiling = _tiled ? _tiled->tiling : nullptr;
+    return tiling && holds(view, panel, tiling->name()) ? tiling : nullptr;
   }
 
   // A frame round a Rect, width pixels wide, inside it, in the colors given. Returns how
@@ -916,6 +943,11 @@ class Docking final : public VP::Operator {
       throw std::runtime_error(std::format(
           "side {}: left, right, top, bottom or middle of {}", side, target));
     const VP::View &view = *call.view(_view);
+    VP_VIEW::Tiling *const tiling = panel == target ? tiling_in(view, panel) : nullptr;
+    if (tiling && (side == middle ? tiling->several() : tiling->more())) {
+      tiling->divide(call, side);
+      return;
+    }
     const VP::Connection *const into = feeding(view, panel + std::string(bar_node));
     const std::optional<Content> held = content_of(view, panel);
     if (panel == target && (side == middle || !several(view, panel)))
@@ -1381,6 +1413,7 @@ class Docking final : public VP::Operator {
   VP_VIEW::Items *_buttons = nullptr;
   const VP_VIEW::Editors *_editors = nullptr; // as its host connects them; none for none
   const VP_VIEW::Typed *_typed = nullptr;     // so too
+  const VP_VIEW::Tiled *_tiled = nullptr;     // and so too
   // The panel framed, as the focus it was found for and the panels as seated then; none
   // found for yet after a rebuild, or since the panels were seated anew.
   std::optional<std::string> _framed_for;
@@ -1425,6 +1458,8 @@ class Docking final : public VP::Operator {
   std::optional<std::size_t> _grabbed; // the panel whose strip was pressed
   bool _splits = false;                // it holds several, so a drop on itself splits it
   bool _dragging = false;              // it went far enough from the press to drag
+  // Its content shows several side by side, so a drop in its own middle shows one again.
+  bool _joins = false;
 };
 
 } // namespace

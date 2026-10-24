@@ -5,6 +5,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Presented.h"
 
 #include <algorithm>
 #include <chrono>
@@ -21,8 +22,6 @@
 
 namespace {
 
-// The connection that presents a view, from the window of the view it shows.
-constexpr std::string_view presenting = "present";
 constexpr std::string_view escape = "escape";
 // The Perform panel's tab while no project is hosted, so its strip has a tab to take, as
 // an empty editor's has.
@@ -36,63 +35,19 @@ constexpr std::string_view takes = "takes the ";
 // How long the frames a second are counted over, so the count shown changes once in it.
 constexpr auto rate_every = std::chrono::seconds(1);
 
-// The view presented, as the view's connections are; empty for none.
-std::string_view shown_by(const VP::View &view) {
-  const auto made =
-      std::ranges::find(view.connections, presenting, &VP::Connection::name);
-  return made != view.connections.end() && made->from.view()
-             ? std::string_view(made->from.node)
-             : std::string_view();
-}
-
-// Whether the view named is the current one or holds it, as far down as views host
-// views; view_of finds a view by its name.
-template <class Find>
-bool holds(const Find &view_of, std::string_view name, std::string_view current) {
-  if (name == current)
-    return true;
-  const VP::View *const view = view_of(name);
-  return view && std::ranges::any_of(view->children, [&](const VP::Child &child) {
-           return holds(view_of, child.name, current);
-         });
-}
-
-// The projects a GUI presents: the views the view vulpen started with hosts, but the
-// GUI's own, so those beside it, or, run as that view, those it hosts.
-auto projects(const VP::View &top, std::string_view own) {
-  return top.children |
-         std::views::filter([own](const VP::Child &child) { return child.name != own; });
-}
-
-// The project that is the current view or holds it, so a nested view shows through its
-// project; empty while the current view is none of them.
-template <class Find, class Projects>
-std::string_view project_of(const Find &view_of,
-                            Projects &&projects,
-                            std::string_view current) {
-  for (const VP::Child &child : projects)
-    if (!current.empty() && holds(view_of, child.name, current))
-      return child.name;
-  return {};
-}
-
 // Chooses what reaches the window. In edit mode the dock gets the Rect its area gives;
 // in perform mode the view presented gets all of it and the dock none, so the dock draws
 // and takes nothing (no room, no work). The mode is its param, so a save keeps it and a
-// replay restores it. It presents the current view while that is a project, or the one
-// holding it, and keeps the one presented while the current view is none, as its own or
-// the cli; at the first frame, with none presented, the one hosted last. To present one,
-// it connects that view's window to the images its to param names, so the log keeps one
-// connection a switch (V08); a project not presented draws nowhere else, as the window
-// has one owner, and keeps running. Each project has a tab that makes it the current
-// view when pressed, and a close mark that closes it, as view close does; with none, a
-// tab of its own, named perform, which does nothing pressed. Perform
-// mode needs a view presented, so it refuses while none is, and gives way to edit mode
-// once none is; it hides the log, so it gives way too once the log shows an error, as a
-// line refused's, which the terminal then shows. A project hosted since the frame before,
-// as view load hosts one, shows as it is presented: the panel its shows param names comes
-// back if it was hidden, and the switch its switch param names gives the view presented
-// its first half, in place of a preview.
+// replay restores it. The view presented is the one shared/Presented.h names, which the
+// tiles part connects. Each project has a tab that makes it the current view when
+// pressed, and a close mark that closes it, as view close does; with none, a tab of its
+// own, named perform, which does nothing pressed. Perform mode needs a view presented,
+// so it refuses while none is nor about to be, and gives way to edit mode once none is;
+// it hides the log, so it gives way too once the log shows an error, as a line refused's,
+// which the terminal then shows. A project hosted since the frame before, as view load
+// hosts one, shows as it is presented: the panel its shows param names comes back if it
+// was hidden, and the switch its switch param names gives the view presented its first
+// half, in place of a preview.
 // It takes the keys no part in focus takes: escape leaves perform mode, and in edit mode
 // ends the run, once the part in focus let go of its selection and of the focus. It hands
 // on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
@@ -109,8 +64,6 @@ class Modes final : public VP::Operator {
     if (!mode.empty() && mode != "edit" && mode != "perform") // the loader names it unset
       throw std::runtime_error(std::format("param mode = {}: edit or perform", mode));
     _perform = mode == "perform";
-    _to = node.param<std::string>("to");
-    std::ranges::replace(_to, ',', ' ');
     _shows = node.sets("shows") ? node.param<std::string>("shows") : std::string();
     _switch = node.sets("switch") ? node.param<std::string>("switch") : std::string();
     _name = node.name();
@@ -143,39 +96,24 @@ class Modes final : public VP::Operator {
       switch_mode(call, !_perform);
   }
 
-  // At once, from the connections as own holds them, the view as the lines so far left
-  // it, so the connection lands before the next frame, a mode line in the same frame
-  // finds it made, and the view never shows anywhere but in the images. Only a project
-  // itself: a view it hosts shows through it, as it composes its window (V03). A line it
-  // sends replaces own, so name must not point into it.
-  void present(VP::CommandPort &commands, const VP::View &own, std::string_view name) {
-    const auto made =
-        std::ranges::find(own.connections, presenting, &VP::Connection::name);
-    if (made != own.connections.end()) {
-      if (made->from.view() && made->from.node == name)
-        return;
-      commands.send(std::format("{}: disconnect {}", _view, presenting));
-    }
-    commands.send(std::format("{}: connect {} {}: {}", _view, presenting, name, _to));
-  }
-
   // Perform mode leaves the panels no room, so the part in focus lets it go, and takes
-  // it back in edit mode. With nothing presented it stays in edit mode, rather than give
-  // the window to nothing, and the next frame says so, as a warning, since a command
-  // writes no log line; the current view's project it presents first, as the frame
-  // would, so a mode line just after a view load finds the view.
+  // it back in edit mode. With nothing presented nor about to be it stays in edit mode,
+  // rather than give the window to nothing, and the next frame says so, as a warning,
+  // since a command writes no log line; with the current view's project about to be, as
+  // just after a view load, it goes on, as the tiles part presents that project in the
+  // frame.
   void switch_mode(VP::Call &call, bool perform) {
-    const VP::View &own = *call.view(_view);
-    if (perform && shown_by(own).empty()) {
-      const std::string project(project_of(
-          [&](std::string_view name) { return call.view(name); },
-          projects(*call.view(""), _view),
-          call.commands().current()));
-      if (project.empty()) {
-        _unperformed = true;
-        return;
-      }
-      present(call.commands(), own, project);
+    const std::string_view presented = shown_by(*call.view(_view));
+    if (perform && presented.empty() &&
+        wanted([&](std::string_view name) { return call.view(name); },
+               *call.view(""),
+               _view,
+               call.commands().current(),
+               presented,
+               _started)
+            .empty()) {
+      _unperformed = true;
+      return;
     }
     VP::CommandPort &commands = call.commands();
     if (perform && !_perform) {
@@ -196,23 +134,20 @@ class Modes final : public VP::Operator {
     read_gpu(frame);
     const std::string_view presented = shown_by(frame.view());
     auto hosted = projects(*frame.view(""), _view);
-    const std::string_view project = project_of(
-        [&](std::string_view name) { return frame.view(name); },
-        hosted,
-        frame.commands().current());
-    std::string_view newest;
-    for (const VP::Child &child : hosted)
-      newest = child.name;
-    const std::string_view wanted = !project.empty()                    ? project
-                                    : !_started && presented.empty() ? newest
-                                                                     : presented;
-    const bool presents = !wanted.empty() && wanted != presented;
+    const bool none = wanted([&](std::string_view name) { return frame.view(name); },
+                             *frame.view(""),
+                             _view,
+                             frame.commands().current(),
+                             presented,
+                             _started)
+                          .empty();
     name_tabs(hosted, presented);
-    watch_buttons(frame, presented.empty() && !presents);
-    const bool loaded = _started && std::ranges::find(_known, wanted) == _known.end();
-    if (presents)
-      present(frame.commands(), *frame.view(_view), std::string(wanted));
-    if (presents && loaded)
+    watch_buttons(frame, presented.empty() && none);
+    const bool loaded =
+        _started && std::ranges::any_of(hosted, [&](const VP::Child &child) {
+          return std::ranges::find(_known, child.name) == _known.end();
+        });
+    if (loaded)
       show_presented(frame.commands());
     if (!std::ranges::equal(_known, hosted, {}, {}, &VP::Child::name)) {
       _known.clear();
@@ -230,7 +165,7 @@ class Modes final : public VP::Operator {
     const auto erred = [](const VP::Logged &line) {
       return line.level == VP::Level::error;
     };
-    if (_perform && (leave || (presented.empty() && !presents) ||
+    if (_perform && (leave || (presented.empty() && none) ||
                      std::ranges::any_of(frame.commands().log(), erred)))
       frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;
@@ -334,7 +269,6 @@ class Modes final : public VP::Operator {
   }
 
   bool _perform = false;
-  std::string _to; // the ports present connects a view's window to, blank between
   std::string _shows;  // the panel a project loaded shows in, as its shows param names it
   std::string _switch; // and the switch giving the view presented its first half
   std::vector<std::string> _known; // the projects hosted the frame before

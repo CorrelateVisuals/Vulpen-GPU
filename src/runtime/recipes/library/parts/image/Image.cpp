@@ -29,10 +29,10 @@ constexpr float nearest = 10.0f * PanZoom::most;
 // area's edge, so it never draws over what is beside it, and a drag with the middle
 // button zooms it about where it was pressed, going right nearer and left farther, as in
 // the graph; a press in its area gives it
-// the focus, and while it has it, h brings it home, letterboxed again. What a connection
-// brings to its picture anew, as another view presented, shows at home too. While a still
-// connected to it holds a frame, it shows that frame, held, in place of the picture,
-// moved and zoomed as the picture was, so it is looked at where it was.
+// the focus, and while it has it, h brings it home, letterboxed again. What another
+// writer brings to its picture, as another view presented, shows at home too. While a
+// still connected to it holds a frame, it shows that frame, held, in place of the
+// picture, moved and zoomed as the picture was, so it is looked at where it was.
 class Image final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _area = &node.input<VP_VIEW::Rect>("area");
@@ -76,17 +76,19 @@ class Image final : public VP::Operator {
     frame.set(_holds, static_cast<std::uint32_t>(_still && _still->holds));
   }
 
-  // The writer of the connection that reaches its picture, none while none does; copied
-  // only when it changes, so a frame allocates nothing for it.
+  // The writer of the connection that reaches its picture, as it was last, copied only
+  // when another comes, so a frame allocates nothing for it; a picture that goes and
+  // comes back from the same writer, as a tile's project shown again, stays where it was
+  // moved and zoomed.
   void follow(const VP::View &view) {
     const VP::Endpoint *from = nullptr;
     for (const VP::Connection &connection : view.connections)
       for (const VP::Endpoint &to : connection.to)
         if (to.node == _name && to.port == picture)
           from = &connection.from;
-    if (from ? from->node == _from.node && from->port == _from.port : _from.node.empty())
+    if (!from || (from->node == _from.node && from->port == _from.port))
       return;
-    _from = from ? *from : VP::Endpoint{};
+    _from = *from;
     _view.home();
   }
 
@@ -138,7 +140,7 @@ class Image final : public VP::Operator {
   VP::Value<float> _zoom;
   VP::Value<std::uint32_t> _holds;
   PanZoom _view;
-  VP::Endpoint _from;     // what reaches its picture, as the frame before saw it
+  VP::Endpoint _from;     // what reached its picture last
   glm::vec2 _pointer{};   // as the events so far left it
   bool _moves = false;    // whether a drag and the wheel move it
   bool _dragging = false; // from a press in its area until it is let go
