@@ -11,6 +11,4 @@ version = 1
 
 [node "still"]
 operator    = Still
-file        = Still.comp
-file        = Still.cpp
 invocations = 4096

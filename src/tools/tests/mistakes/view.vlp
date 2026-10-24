@@ -7,44 +7,33 @@ version = 1
 
 # Fills values with its amount.
 [node "fill"]
-file        = Fill.comp
 invocations = 64
 param       = amount=1
 
 # Fills values as fill does. Its C++ registers the operators the cases name, each wrong
 # in its own way, so a case names the one it runs.
 [node "wrong"]
-file        = Wrong.comp
-file        = Wrong.cpp
 invocations = 64
 param       = amount=1
 
 # Writes vec2 pairs, which a reader of floats must refuse.
 [node "pairs"]
-file        = Pairs.comp
 invocations = 64
 
 [node "sum"]
-file        = Sum.comp
 invocations = 64
 
 [node "draw"]
-file         = Draw.frag
-file         = Draw.glsl
-file         = Draw.vert
 vertex_count = 3
 
 # Registers the command wrong's Twin registers.
 [node "twin"]
 operator = Twin
-file     = Twin.cpp
 
 # Reads back the frame block and its params, and stops when they differ from what the
 # engine wrote.
 [node "frame"]
 operator    = Frame
-file        = Frame.comp
-file        = Frame.cpp
 invocations = 12
 param       = tint=0.25,0.5,0.75
 param       = after=1.5
@@ -53,26 +42,21 @@ param       = at=-2,4
 # Stops unless the input command's events reach it in the frame after they were made.
 [node "input"]
 operator = Input
-file     = Input.cpp
 
 # Hands take the frame it cooks in, through a connection between C++ nodes; its C++
 # also registers an operator whose output no other node can name.
 [node "give"]
 operator = Give
-file     = Give.cpp
 
 # Stops unless what give handed it was written that frame; its C++ also registers an
 # operator that reads it as another type.
 [node "take"]
 operator = Take
-file     = Take.cpp
 
 # Writes structs its shader sums, and stops when the sums differ from what their
 # members make; its C++ also registers one whose struct puts two members elsewhere.
 [node "shape"]
 operator    = Shapes
-file        = Shape.comp
-file        = Shape.cpp
 invocations = 4
 
 # Fills the shapes shape's shader sums, through a connection, with no shader of its own;
@@ -80,12 +64,10 @@ invocations = 4
 # no room.
 [node "maker"]
 operator = Maker
-file     = Maker.cpp
 
 # Makes a buffer through the engine by hand.
 [node "scratch"]
 operator = Scratch
-file     = Scratch.cpp
 
 # Fills an image once, and stops when its shader samples other pixels than it filled;
 # its C++ also registers operators that fill one through a connection, fill one of
@@ -93,47 +75,35 @@ file     = Scratch.cpp
 # the wrong count of pixels.
 [node "picture"]
 operator    = Picture
-file        = Picture.comp
-file        = Picture.cpp
 invocations = 8
 image       = picture=R8_UNORM
 
 # Writes the Rects and Labels of a sign, which the library's rects and glyphs draw.
 [node "sign"]
 operator = Sign
-file     = Sign.cpp
 
 # Draws each pixel's place into an image, which look samples in the same frame.
 [node "paint"]
-file         = Paint.frag
-file         = Paint.vert
 vertex_count = 3
 
 # Stores each pixel's place into an image, which look samples in the same frame.
 [node "stamp"]
-file        = Stamp.comp
 invocations = 64
 
 # A vertex node, which hands each pixel's place to ink, its fragment node, as varyings.
 [node "brush"]
-file         = Brush.vert
 vertex_count = 3
 
 [node "ink"]
-file = Ink.frag
 
 # Fragment nodes that take brush's varyings at other types and locations, or declare a
 # pass block, which a fragment node may not.
 [node "smudge"]
-file = Smudge.frag
 
 [node "blot"]
-file = Blot.frag
 
 # Stores into an image from a draw, which only a dispatch may.
 [node "smear"]
-file         = Smear.frag
-file         = Smear.vert
 vertex_count = 3
 
 # Stops when a pixel of paint's image reads back as another; its C++ also registers
@@ -141,15 +111,11 @@ vertex_count = 3
 # pixels stamp stores.
 [node "look"]
 operator    = Look
-file        = Look.comp
-file        = Look.cpp
 invocations = 64
 
 # Draws blocks into its view's window, red flipping every frame, which the view hosting it
 # takes, for look to sample.
 [node "scene"]
-file         = Scene.frag
-file         = Scene.vert
 vertex_count = 6
 
 [connection "values"]

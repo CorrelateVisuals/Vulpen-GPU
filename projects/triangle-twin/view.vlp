@@ -9,8 +9,5 @@ version = 1
 
 [node "triangle"]
 operator     = Triangle
-file         = Triangle.cpp
-file         = Triangle.frag
-file         = Triangle.vert
 vertex_count = 3
 param        = frames_per_turn=600

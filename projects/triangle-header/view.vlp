@@ -11,13 +11,9 @@ version = 1
 # triangle still.
 [node "corners"]
 operator = Corners
-file     = Corners.cpp
-file     = Corners.h
 param    = frames_per_turn=600
 
 [node "face"]
-file         = Face.frag
-file         = Face.vert
 vertex_count = 3
 
 [connection "corners"]

@@ -11,10 +11,6 @@ version = 1
 
 [node "image"]
 operator       = Image
-file           = Image.cpp
-file           = Image.frag
-file           = Image.glsl
-file           = Image.vert
 vertex_count   = 6
 instance_count = place
 param          = moves=no

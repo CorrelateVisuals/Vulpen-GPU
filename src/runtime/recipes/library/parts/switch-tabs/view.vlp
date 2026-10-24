@@ -7,4 +7,3 @@ version = 1
 
 [node "switch-tabs"]
 operator = SwitchTabs
-file     = SwitchTabs.cpp

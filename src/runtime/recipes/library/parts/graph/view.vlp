@@ -17,17 +17,5 @@ version = 1
 
 [node "graph"]
 operator       = Graph
-file           = Arranged.h
-file           = Boxes.h
-file           = Covered.h
-file           = Graph.cpp
-file           = Graph.frag
-file           = Graph.glsl
-file           = Graph.h
-file           = Graph.vert
-file           = Heat.h
-file           = Hover.h
-file           = Layers.h
-file           = Layout.h
 vertex_count   = 6
 instance_count = ground

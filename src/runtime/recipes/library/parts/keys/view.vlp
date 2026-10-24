@@ -7,5 +7,3 @@ version = 1
 
 [node "keys"]
 operator = Keys
-file     = Keys.cpp
-file     = keymap.ini

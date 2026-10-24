@@ -10,5 +10,3 @@ version = 1
 
 [node "menus"]
 operator = Menus
-file     = Menus.cpp
-file     = menu.ini

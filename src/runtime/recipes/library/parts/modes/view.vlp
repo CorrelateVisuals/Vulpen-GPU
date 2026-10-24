@@ -8,5 +8,4 @@ version = 1
 
 [node "modes"]
 operator = Modes
-file     = Modes.cpp
 param    = mode=edit

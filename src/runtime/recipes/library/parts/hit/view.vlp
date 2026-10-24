@@ -7,5 +7,4 @@ version = 1
 
 [node "hit"]
 operator = Hit
-file     = Hit.cpp
 param    = hover=no

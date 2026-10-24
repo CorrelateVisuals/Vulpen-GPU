@@ -4,8 +4,8 @@ RV03), before anything wrong reaches the GPU: a manifest that says a thing twice
 cut short, C++ and a shader that disagree on a name or a type, a node whose C++
 registers several operators and which names none, a connection whose ends disagree, a
 dispatch that leaves a workgroup part full or counts no invocations, a draw that writes,
-a node inside no node, a file named by a command, a node's command without its help,
-registered twice or failing when it runs, a view that uses a library recipe
+a node inside no node, a file named by a command or a manifest, a node's command without
+its help, registered twice or failing when it runs, a view that uses a library recipe
 as it is, a library recipe that uses one the library lacks, uses itself, or names a
 node the one it uses lacks, a C++ output of a type no other node can name, a C++ input
 of another type than its writer's, a C++ struct whose members sit elsewhere than the
@@ -149,6 +149,7 @@ CASES = {
     "inside-nothing": (HEAD + FILL + '[node "fill.inner.deeper"]\n',
                        "node fill.inner.deeper is inside fill.inner, which is no node"),
     "file-word": (HEAD + FILL, "a node's files are what its folder holds", "node set fill file=x\n"),
+    "file-listed": (HEAD + FILL + "file = Fill.comp\n", "a node's files are what its folder holds"),
     "operator-unnamed": (HEAD + WRONG, "registers Echo NoHelp Refuse Twin WrongName WrongType, "
                          "so its node names the one it runs"),
     "command-help": (HEAD + operator("NoHelp"), "command `wrong help` needs a usage and a help"),
@@ -584,7 +585,7 @@ def drops(vulpen: str, folder: Path) -> str | None:
     notes = library / "parts" / "notes"
     notes.mkdir()
     (notes / "view.vlp").write_text(
-        HEAD + '\n[node "notes"]\nfile  = notes.ini\nparam = level=1\n', encoding="utf-8")
+        HEAD + '\n[node "notes"]\nparam = level=1\n', encoding="utf-8")
     project = folder / "drops" / "project"
     project.mkdir()
     (project / "view.vlp").write_text(HEAD, encoding="utf-8")

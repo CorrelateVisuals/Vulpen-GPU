@@ -10,4 +10,3 @@ version = 1
 
 [node "panes"]
 operator = Panes
-file     = Panes.cpp

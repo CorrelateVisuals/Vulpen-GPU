@@ -7,9 +7,6 @@ version = 1
 
 [node "font"]
 operator = Font
-file     = Font.cpp
-file     = OFL.txt
-file     = RobotoMono-Regular.ttf
 param    = face=RobotoMono-Regular.ttf
 param    = height=18
 image    = atlas=R8_UNORM

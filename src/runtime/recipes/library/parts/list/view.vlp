@@ -11,7 +11,6 @@ version = 1
 
 [node "list"]
 operator = List
-file     = List.cpp
 param    = axis=y
 param    = drop=no
 param    = end=0

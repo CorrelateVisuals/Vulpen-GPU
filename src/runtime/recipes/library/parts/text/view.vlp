@@ -8,7 +8,3 @@ version = 1
 
 [node "text"]
 operator = Text
-file     = Sources.h
-file     = Syntax.h
-file     = Text.cpp
-file     = Text.h

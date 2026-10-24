@@ -13,4 +13,3 @@ version = 1
 
 [node "docking"]
 operator = Docking
-file     = Docking.cpp

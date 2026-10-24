@@ -10,16 +10,12 @@ version = 1
 # frames_per_turn: a whole turn every 600 frames, and 0 holds the triangle still.
 [node "raster"]
 operator    = Raster
-file        = Raster.comp
-file        = Raster.cpp
 invocations = 65536
 param       = frames_per_turn=600
 param       = side=256
 
 # As many squares as the raster writes cells, six vertices each.
 [node "screen"]
-file           = Screen.frag
-file           = Screen.vert
 vertex_count   = 6
 instance_count = cells
 

@@ -9,4 +9,3 @@ version = 1
 
 [node "deck"]
 operator = Deck
-file     = Deck.cpp

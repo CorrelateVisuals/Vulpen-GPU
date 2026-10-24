@@ -9,5 +9,4 @@ version = 1
 
 [node "image-file"]
 operator = ImageFile
-file     = ImageFile.cpp
 image    = picture=R8G8B8A8_SRGB

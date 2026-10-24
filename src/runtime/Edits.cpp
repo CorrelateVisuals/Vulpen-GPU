@@ -93,12 +93,12 @@ void check_value(std::string_view key, std::string_view value) {
 
 [[noreturn]] void unknown_word(std::string_view key) {
   throw std::runtime_error(
-      std::format("unknown word {} in a node; its words are recipe, operator, file, "
+      std::format("unknown word {} in a node; its words are recipe, operator, "
                   "invocations, vertex_count, instance_count, param, image and log",
                   key));
 }
 
-// A node's files are what its folder holds (RV08), so no command names one.
+// A node's files are what its folder holds (RV08), so no command or manifest names one.
 [[noreturn]] void no_file(std::string_view node) {
   throw std::runtime_error(std::format("a node's files are what its folder holds: put a "
                                        "file in the folder of node {} to add it",
@@ -158,22 +158,6 @@ bool is_recipe(std::string_view text) {
   });
 }
 
-// A file of the node's own folder, so its name holds no folder.
-bool is_file(std::string_view text) {
-  return text != "." && text != ".." &&
-         text.find_first_of("/\\") == std::string_view::npos;
-}
-
-// A file of the node's folder, which a manifest lists once.
-void add_file(Node &node, std::string_view value) {
-  if (!is_file(value))
-    throw std::runtime_error(std::format(
-        "file {}: a file of the node's folder, named without a folder", value));
-  if (std::ranges::find(node.files, value) != node.files.end())
-    throw std::runtime_error(std::format("file {} is listed twice", value));
-  node.files.emplace_back(value);
-}
-
 // `name=value`, whose name is a path when it sets a node inside a recipe the node uses.
 void add_param(Node &node, std::string_view value) {
   const std::size_t equals = value.find('=');
@@ -208,8 +192,8 @@ void add_image(Node &node, std::string_view value) {
 // What no single word can show.
 void check_whole(const Node &node) {
   if (node.uses()) {
-    if (!node.operator_name.empty() || !node.files.empty() || node.invocations != 0 ||
-        node.vertex_count != 0 || !node.instance_count.empty() || !node.images.empty())
+    if (!node.operator_name.empty() || node.invocations != 0 || node.vertex_count != 0 ||
+        !node.instance_count.empty() || !node.images.empty())
       throw std::runtime_error(
           std::format("node {} uses recipe {} as it is, whose node gives it those words: "
                       "only param and log go with it",
@@ -375,8 +359,6 @@ void node_add(View &view, Arguments arguments, const Around &around) {
   Node node{.name = std::string(arguments.front()), .where = std::string(around.where)};
   for (const std::string_view word : arguments.subspan(1)) {
     const auto [key, value] = key_and_value(word);
-    if (key == "file")
-      no_file(node.name);
     Edits::word(node, key, value);
   }
   Edits::add(view, std::move(node));
@@ -561,6 +543,8 @@ Edits::Edits(Commands &commands, ViewLookup &views) : _port(commands), _views(vi
 }
 
 void Edits::word(Node &node, std::string_view key, std::string_view value) {
+  if (key == "file")
+    no_file(node.name);
   if (value.empty())
     throw std::runtime_error(std::format("{} has no value", key));
   check_value(key, value);
@@ -573,8 +557,6 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
     set_once(node.recipe, key, value);
   } else if (key == "operator") {
     set_once(node.operator_name, key, value);
-  } else if (key == "file") {
-    add_file(node, value);
   } else if (key == "log") {
     set_once(node.log, key, value);
   } else if (key == "invocations") {

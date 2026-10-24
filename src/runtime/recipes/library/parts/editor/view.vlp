@@ -9,5 +9,4 @@ version = 1
 
 [node "editor"]
 operator = Editor
-file     = Editor.cpp
 param    = program=code

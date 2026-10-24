@@ -5,8 +5,5 @@
 version = 1
 
 [node "curves"]
-file           = Curves.frag
-file           = Curves.glsl
-file           = Curves.vert
 vertex_count   = 96         # 16 segments of 6 vertices, as Curves.glsl counts them
 instance_count = curves

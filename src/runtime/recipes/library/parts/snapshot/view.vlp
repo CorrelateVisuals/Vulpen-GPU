@@ -8,7 +8,5 @@ version = 1
 
 [node "snapshot"]
 operator    = Snapshot
-file        = Snapshot.comp
-file        = Snapshot.cpp
 invocations = 2073600
 param       = wait=30

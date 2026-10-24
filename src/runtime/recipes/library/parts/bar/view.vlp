@@ -7,7 +7,6 @@ version = 1
 
 [node "bar"]
 operator = Bar
-file     = Bar.cpp
 param    = edge=top
 param    = size=1
 param    = seam=no

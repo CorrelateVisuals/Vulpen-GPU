@@ -5,5 +5,4 @@ version = 1
 
 [node "projects"]
 operator = Projects
-file     = Projects.cpp
 param    = folder=../../../../../../projects

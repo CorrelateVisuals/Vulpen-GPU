@@ -125,12 +125,12 @@ struct Note {
 using Notes = std::map<std::string, Note, std::less<>>;
 
 // A line's place: a section's header, or one word of it. A word that may repeat is told
-// apart by what it names: a file by its name, a param by its key, a to by its port.
+// apart by what it names: a param by its key, a to by its port.
 std::string
 place(std::string_view section, std::string_view key = {}, std::string_view value = {}) {
   if (key == "param")
     value = trim(value.substr(0, value.find('=')));
-  else if (key != "file" && key != "to")
+  else if (key != "to")
     value = {};
   return std::format("{}\n{}\n{}", section, key, value);
 }
@@ -364,16 +364,14 @@ struct Word {
   std::string value;
 };
 
-// In the order a person reads a node: where it came from, what it runs and its files,
-// then its settings.
+// In the order a person reads a node: where it came from and what it runs, then its
+// settings. Its files are what its folder holds (RV08), so no word lists them.
 std::vector<Word> words(const Node &node) {
   std::vector<Word> words;
   if (!node.recipe.empty())
     words.push_back({"recipe", node.recipe});
   if (!node.operator_name.empty())
     words.push_back({"operator", node.operator_name});
-  for (const std::string &file : node.files)
-    words.push_back({"file", file});
   if (node.invocations != 0)
     words.push_back({"invocations", std::to_string(node.invocations)});
   if (node.vertex_count != 0)

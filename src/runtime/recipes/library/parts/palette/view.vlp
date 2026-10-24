@@ -5,5 +5,3 @@ version = 1
 
 [node "palette"]
 operator = Palette
-file     = Palette.cpp
-file     = theme.ini

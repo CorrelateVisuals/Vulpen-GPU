@@ -4,8 +4,5 @@
 version = 1
 
 [node "rects"]
-file           = Rects.frag
-file           = Rects.glsl
-file           = Rects.vert
 vertex_count   = 6
 instance_count = rects

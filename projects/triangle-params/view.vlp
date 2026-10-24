@@ -10,8 +10,6 @@ version = 1
 # The params come a corner at a time, top, right, left, each its place in clip space, y
 # pointing down, then its color, red, green and blue, as the pass block declares them.
 [node "triangle"]
-file         = Triangle.frag
-file         = Triangle.vert
 vertex_count = 3
 param        = frames_per_turn=600
 param        = top=0,-0.5

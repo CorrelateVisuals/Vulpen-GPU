@@ -9,5 +9,4 @@ version = 1
 
 [node "command-line"]
 operator = CommandLine
-file     = CommandLine.cpp
 param    = on=terminal
