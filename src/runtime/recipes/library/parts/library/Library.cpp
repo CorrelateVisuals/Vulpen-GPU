@@ -363,19 +363,19 @@ class Library final : public VP::Operator {
     _draw = node.command("node new draw <name>",
                          "adds a draw node, and writes its first files from the template "
                          "into its folder: its C++, its pass block and its two shaders, "
-                         "passing data every way they can");
+                         "passing data every way they can; then saves the view");
     _dispatch = node.command("node new dispatch <name>",
                              "adds a dispatch node, and writes its first files from the "
                              "template into its folder: its C++ and its compute shader, "
-                             "passing data every way they can");
+                             "passing data every way they can; then saves the view");
     _drop = node.command("recipe drop <recipe> <name>",
                          "copies a library recipe into the view as a node of that name, "
                          "with the nodes inside it and the contracts and shared code "
-                         "they include");
-    _sync =
-        node.command("recipe sync <node>",
-                     "brings a dropped recipe up to the library's, while what it copied "
-                     "is unchanged; its params and connections stay");
+                         "they include; then saves the view");
+    _sync = node.command("recipe sync <node>",
+                         "brings a dropped recipe up to the library's, while what it "
+                         "copied is unchanged; its params and connections stay; then "
+                         "saves the view");
   }
 
   void command(VP::Call &call) override {
@@ -458,6 +458,12 @@ class Library final : public VP::Operator {
     return files;
   }
 
+  // A command that writes a node's files saves the view too, so its manifest holds every
+  // node whose folder is there: a view closed and loaded again finds them all (RV08).
+  static void save_view(VP::Call &call) {
+    call.commands().send("view save");
+  }
+
   // A node's first files from the template, in the folder its name names, and the node.
   // They build and run at once, passing data between C++ and the shaders every way they
   // can, so a person keeps what the node uses.
@@ -484,8 +490,11 @@ class Library final : public VP::Operator {
       wrote.append(wrote.empty() ? "" : ", ").append(named);
     }
     call.commands().send(std::format("node add {} {}", name, kind.words));
-    call.reply(
-        std::format("wrote {} in {}, and added node {}", wrote, folder.string(), name));
+    save_view(call);
+    call.reply(std::format("wrote {} in {}, added node {} and saved the view",
+                           wrote,
+                           folder.string(),
+                           name));
   }
 
   // A recipe as a drop copies it: its own node, named like its folder, and the nodes
@@ -577,13 +586,15 @@ class Library final : public VP::Operator {
     write(files, copy, view, name);
     for (const std::string &line : lines)
       call.commands().send(line);
-    call.reply(std::format("copied {} into {}, as node {} of recipe {}{}{}",
-                           from,
-                           (view / path_of(name)).string(),
-                           name,
-                           from,
-                           fingerprint_mark,
-                           print));
+    save_view(call);
+    call.reply(
+        std::format("copied {} into {}, as node {} of recipe {}{}{}, and saved the view",
+                    from,
+                    (view / path_of(name)).string(),
+                    name,
+                    from,
+                    fingerprint_mark,
+                    print));
   }
 
   // A connection from the rest of the view is the view's own, which a sync keeps, so
@@ -695,7 +706,9 @@ class Library final : public VP::Operator {
     rewrite(files, mine, fresh, folder, root);
     for (const std::string &line : lines)
       call.commands().send(line);
-    call.reply(std::format("synced node {} with the library's {}: {} is now {}{}{}",
+    save_view(call);
+    call.reply(std::format("synced node {} with the library's {}: {} is now {}{}{}, and "
+                           "saved the view",
                            root,
                            from,
                            print,
