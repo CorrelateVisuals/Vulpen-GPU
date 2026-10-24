@@ -454,6 +454,4 @@ class List final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<List>("List");
-}
+VP_OPERATOR(List);

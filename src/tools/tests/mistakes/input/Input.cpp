@@ -39,6 +39,4 @@ class Input final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Input>("Input");
-}
+VP_OPERATOR(Input);

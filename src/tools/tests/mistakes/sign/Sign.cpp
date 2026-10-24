@@ -107,6 +107,4 @@ class Sign final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Sign>("Sign");
-}
+VP_OPERATOR(Sign);

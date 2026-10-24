@@ -12,6 +12,4 @@ class Twin final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Twin>("Twin");
-}
+VP_OPERATOR(Twin);

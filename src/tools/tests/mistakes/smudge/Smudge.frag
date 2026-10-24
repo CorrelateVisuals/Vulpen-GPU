@@ -1,5 +1,3 @@
-#version 460
-
 layout(location = 0) in vec3 uv;    // brush writes a vec2 there
 layout(location = 2) in float shade; // brush writes it at location 1
 

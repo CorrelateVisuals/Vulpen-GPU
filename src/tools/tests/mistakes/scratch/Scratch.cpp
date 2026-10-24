@@ -24,6 +24,4 @@ class Scratch final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Scratch>("Scratch");
-}
+VP_OPERATOR(Scratch);

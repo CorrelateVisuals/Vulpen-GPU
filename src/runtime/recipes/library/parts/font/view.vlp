@@ -6,7 +6,6 @@
 version = 1
 
 [node "font"]
-operator = Font
-param    = face=RobotoMono-Regular.ttf
-param    = height=18
-image    = atlas=R8_UNORM
+param = face=RobotoMono-Regular.ttf
+param = height=18
+image = atlas=R8_UNORM

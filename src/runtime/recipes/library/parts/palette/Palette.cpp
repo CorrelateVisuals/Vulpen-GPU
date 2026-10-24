@@ -100,6 +100,4 @@ class Palette final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Palette>("Palette");
-}
+VP_OPERATOR(Palette);

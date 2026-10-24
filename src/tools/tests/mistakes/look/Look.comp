@@ -1,12 +1,8 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
 
 layout(local_size_x = 64) in;
 
-layout(buffer_reference, std430) writeonly buffer Texels {
-  vec2 at[];
-};
+VP_WRITES(Texels, vec2);
 
 layout(set = 1, binding = 0) uniform Pass {
   Texture painted; // a connection: the image paint draws, this frame

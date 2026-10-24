@@ -1,5 +1,3 @@
-#version 460
-
 layout(location = 0) out vec2 uv;    // 0 to 1 across the image, from its top left
 layout(location = 1) out float shade; // 1, so ink's color is each pixel's place exactly
 

@@ -1,5 +1,3 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "Rects.glsl"
 
 layout(location = 0) flat in vec4 fill;

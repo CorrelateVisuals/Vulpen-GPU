@@ -19,10 +19,6 @@ struct Character {
   uint label; // its label in the list of labels
 };
 
-layout(buffer_reference, std430) readonly buffer Labels {
-  Label at[];
-};
+VP_READS(Labels, Label);
 
-layout(buffer_reference, std430) readonly buffer Characters {
-  Character at[];
-};
+VP_READS(Characters, Character);

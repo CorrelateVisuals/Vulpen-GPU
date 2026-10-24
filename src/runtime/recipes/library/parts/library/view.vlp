@@ -3,7 +3,6 @@
 version = 1
 
 [node "library"]
-operator = Library
 
 # The template's files end in .in, so they build only once node new writes them.
 [node "library.template"]

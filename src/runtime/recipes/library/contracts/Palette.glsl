@@ -1,9 +1,7 @@
 // The colors of one theme, one for each role a part draws in, in the order
 // contracts/Palette.h names the roles, so a part asks for a role and a theme edit
 // reaches every panel.
-layout(buffer_reference, std430) readonly buffer Palette {
-  vec4 at[];
-};
+VP_READS(Palette, vec4);
 
 // As many roles as contracts/Palette.h names. A role past them draws in the last, so no
 // read leaves the buffer (GLSL02).

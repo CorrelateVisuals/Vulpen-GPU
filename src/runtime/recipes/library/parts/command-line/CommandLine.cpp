@@ -1484,6 +1484,4 @@ class CommandLine final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<CommandLine>("CommandLine");
-}
+VP_OPERATOR(CommandLine);

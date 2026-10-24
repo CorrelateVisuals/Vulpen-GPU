@@ -8,5 +8,4 @@
 version = 1
 
 [node "command-line"]
-operator = CommandLine
-param    = on=terminal
+param = on=terminal

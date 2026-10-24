@@ -108,6 +108,4 @@ class Snapshot final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Snapshot>("Snapshot");
-}
+VP_OPERATOR(Snapshot);

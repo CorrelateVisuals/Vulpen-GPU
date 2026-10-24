@@ -16,6 +16,5 @@
 version = 1
 
 [node "graph"]
-operator       = Graph
 vertex_count   = 6
 instance_count = ground

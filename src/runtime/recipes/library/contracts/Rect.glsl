@@ -9,6 +9,4 @@ struct Rect {
   float blend;     // how far: none at 0, all of it at 1
 };
 
-layout(buffer_reference, std430) readonly buffer Rects {
-  Rect at[];
-};
+VP_READS(Rects, Rect);

@@ -84,6 +84,4 @@ class Split final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Split>("Split");
-}
+VP_OPERATOR(Split);

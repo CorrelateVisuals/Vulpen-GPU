@@ -8,5 +8,4 @@
 version = 1
 
 [node "image-file"]
-operator = ImageFile
-image    = picture=R8G8B8A8_SRGB
+image = picture=R8G8B8A8_SRGB

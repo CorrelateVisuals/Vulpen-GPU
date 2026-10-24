@@ -38,6 +38,4 @@ class Switch final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Switch>("Switch");
-}
+VP_OPERATOR(Switch);

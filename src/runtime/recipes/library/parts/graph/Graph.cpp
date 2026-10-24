@@ -1694,6 +1694,4 @@ VP_VIEW::Rect Graph::solid(std::size_t at) const {
                  0);
 }
 
-VP_OPERATORS(registry) {
-  registry.add<Graph>("Graph");
-}
+VP_OPERATOR(Graph);

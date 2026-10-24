@@ -894,6 +894,4 @@ Relations::port_file(const std::filesystem::path &folder,
   return std::nullopt;
 }
 
-VP_OPERATORS(registry) {
-  registry.add<Relations>("Relations");
-}
+VP_OPERATOR(Relations);

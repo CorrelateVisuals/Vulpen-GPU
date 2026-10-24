@@ -67,6 +67,4 @@ class Frame final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Frame>("Frame");
-}
+VP_OPERATOR(Frame);

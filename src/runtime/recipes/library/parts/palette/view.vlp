@@ -4,4 +4,3 @@
 version = 1
 
 [node "palette"]
-operator = Palette

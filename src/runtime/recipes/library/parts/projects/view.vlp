@@ -4,5 +4,4 @@
 version = 1
 
 [node "projects"]
-operator = Projects
-param    = folder=../../../../../../projects
+param = folder=../../../../../../projects

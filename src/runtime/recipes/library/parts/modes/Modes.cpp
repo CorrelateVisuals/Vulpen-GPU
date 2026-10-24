@@ -283,6 +283,4 @@ class Modes final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Modes>("Modes");
-}
+VP_OPERATOR(Modes);

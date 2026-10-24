@@ -1181,6 +1181,4 @@ void Text::name_tabs() {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Text>("Text");
-}
+VP_OPERATOR(Text);

@@ -37,6 +37,4 @@ class Join final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Join>("Join");
-}
+VP_OPERATOR(Join);

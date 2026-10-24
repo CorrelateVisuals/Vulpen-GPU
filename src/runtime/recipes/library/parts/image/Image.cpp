@@ -151,6 +151,4 @@ class Image final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Image>("Image");
-}
+VP_OPERATOR(Image);

@@ -6,5 +6,4 @@
 version = 1
 
 [node "hit"]
-operator = Hit
-param    = hover=no
+param = hover=no

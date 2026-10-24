@@ -64,6 +64,4 @@ class Bar final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Bar>("Bar");
-}
+VP_OPERATOR(Bar);

@@ -1,5 +1,3 @@
-#version 460
-
 layout(set = 1, binding = 0) uniform Pass {
   float amount; // which a fragment node may not declare
 } pass;

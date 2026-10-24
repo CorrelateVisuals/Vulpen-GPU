@@ -385,6 +385,4 @@ class Panes final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Panes>("Panes");
-}
+VP_OPERATOR(Panes);

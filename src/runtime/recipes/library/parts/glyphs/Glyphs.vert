@@ -1,5 +1,3 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "Glyphs.glsl"
 
 layout(location = 0) out vec2 uv;

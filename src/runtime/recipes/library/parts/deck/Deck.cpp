@@ -154,6 +154,4 @@ class Deck final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Deck>("Deck");
-}
+VP_OPERATOR(Deck);

@@ -10,7 +10,6 @@
 version = 1
 
 [node "list"]
-operator = List
-param    = axis=y
-param    = drop=no
-param    = end=0
+param = axis=y
+param = drop=no
+param = end=0

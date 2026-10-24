@@ -1,5 +1,3 @@
-#version 460
-
 // The classic triangle in clip space, y pointing down, and a color a corner, picked by
 // the vertex's index, so no buffer holds them.
 const vec2 corners[] = vec2[](vec2(0.0, -0.5), vec2(0.5, 0.5), vec2(-0.5, 0.5));

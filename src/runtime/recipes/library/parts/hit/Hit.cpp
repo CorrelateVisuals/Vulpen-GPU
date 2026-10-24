@@ -123,6 +123,4 @@ class Hit final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Hit>("Hit");
-}
+VP_OPERATOR(Hit);

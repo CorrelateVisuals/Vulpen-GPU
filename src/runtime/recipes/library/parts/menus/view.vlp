@@ -9,4 +9,3 @@
 version = 1
 
 [node "menus"]
-operator = Menus

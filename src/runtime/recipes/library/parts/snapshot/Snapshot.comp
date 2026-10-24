@@ -1,12 +1,8 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
 
 layout(local_size_x = 64) in;
 
-layout(buffer_reference, std430) writeonly buffer UintsOut {
-  uint at[];
-};
+VP_WRITES(UintsOut, uint);
 
 layout(set = 1, binding = 0) uniform Pass {
   Texture picture; // a connection: a hosted view's window, or an image a draw renders

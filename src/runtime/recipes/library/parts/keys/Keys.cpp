@@ -247,6 +247,4 @@ class Keys final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Keys>("Keys");
-}
+VP_OPERATOR(Keys);

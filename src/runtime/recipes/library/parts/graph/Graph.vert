@@ -1,5 +1,3 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "Graph.glsl"
 
 layout(location = 0) flat out vec2 origin;

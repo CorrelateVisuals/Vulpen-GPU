@@ -214,6 +214,4 @@ class Editor final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Editor>("Editor");
-}
+VP_OPERATOR(Editor);

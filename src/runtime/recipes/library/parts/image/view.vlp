@@ -10,7 +10,6 @@
 version = 1
 
 [node "image"]
-operator       = Image
 vertex_count   = 6
 instance_count = place
 param          = moves=no

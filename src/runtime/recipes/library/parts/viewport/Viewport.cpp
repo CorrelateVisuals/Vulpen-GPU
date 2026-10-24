@@ -19,6 +19,4 @@ class Viewport final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Viewport>("Viewport");
-}
+VP_OPERATOR(Viewport);

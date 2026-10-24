@@ -7,6 +7,5 @@
 version = 1
 
 [node "snapshot"]
-operator    = Snapshot
 invocations = 2073600
 param       = wait=30

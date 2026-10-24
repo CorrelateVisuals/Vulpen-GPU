@@ -201,6 +201,4 @@ VP_VIEW::Font Font::bake(VP::Cook &frame) const {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Font>("Font");
-}
+VP_OPERATOR(Font);

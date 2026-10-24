@@ -1,12 +1,8 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
 
 layout(local_size_x = 6) in;
 
-layout(buffer_reference, std430) writeonly buffer Seen {
-  float at[];
-};
+VP_WRITES(Seen, float);
 
 // The params after the buffer, a vec3 where std140 aligns it to 16 bytes and a float in
 // the vec3's fourth place, so a vector written anywhere but where reflection says shows.

@@ -7,5 +7,4 @@
 version = 1
 
 [node "relations"]
-operator = Relations
-param    = docs=../../../../../../docs/architecture
+param = docs=../../../../../../docs/architecture

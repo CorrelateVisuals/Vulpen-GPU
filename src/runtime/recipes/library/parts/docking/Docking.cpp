@@ -1637,6 +1637,4 @@ class Docking final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Docking>("Docking");
-}
+VP_OPERATOR(Docking);

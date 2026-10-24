@@ -172,6 +172,4 @@ class Projects final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Projects>("Projects");
-}
+VP_OPERATOR(Projects);

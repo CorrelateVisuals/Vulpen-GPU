@@ -87,6 +87,4 @@ class SwitchTabs final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<SwitchTabs>("SwitchTabs");
-}
+VP_OPERATOR(SwitchTabs);

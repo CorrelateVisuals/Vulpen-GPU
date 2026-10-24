@@ -129,6 +129,4 @@ class ImageFile final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<ImageFile>("ImageFile");
-}
+VP_OPERATOR(ImageFile);

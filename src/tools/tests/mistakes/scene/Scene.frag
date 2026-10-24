@@ -1,5 +1,3 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "baseclasses/GpuLayout.glsl"
 
 layout(location = 0) out vec4 color;

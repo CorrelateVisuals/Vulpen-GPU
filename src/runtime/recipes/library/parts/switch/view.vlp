@@ -4,5 +4,4 @@
 version = 1
 
 [node "switch"]
-operator = Switch
-param    = shown=first
+param = shown=first

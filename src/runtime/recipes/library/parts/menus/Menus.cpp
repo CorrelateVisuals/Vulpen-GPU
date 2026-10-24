@@ -306,6 +306,4 @@ class Menus final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Menus>("Menus");
-}
+VP_OPERATOR(Menus);

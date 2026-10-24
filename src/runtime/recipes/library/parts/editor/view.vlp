@@ -8,5 +8,4 @@
 version = 1
 
 [node "editor"]
-operator = Editor
-param    = program=code
+param = program=code

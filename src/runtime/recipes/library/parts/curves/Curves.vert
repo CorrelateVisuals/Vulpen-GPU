@@ -1,5 +1,3 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
 #include "Curves.glsl"
 
 layout(location = 0) flat out vec4 fill;

@@ -12,6 +12,4 @@ struct Curve {
   uint role;   // as contracts/Palette.h names the roles
 };
 
-layout(buffer_reference, std430) readonly buffer Curves {
-  Curve at[];
-};
+VP_READS(Curves, Curve);

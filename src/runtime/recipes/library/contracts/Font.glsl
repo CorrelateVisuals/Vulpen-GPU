@@ -9,6 +9,4 @@ struct Font {
   uint count;   // how many glyphs follow from it, row by row
 };
 
-layout(buffer_reference, std430) readonly buffer Fonts {
-  Font at[];
-};
+VP_READS(Fonts, Font);

@@ -10,5 +10,4 @@
 version = 1
 
 [node "still"]
-operator    = Still
 invocations = 4096

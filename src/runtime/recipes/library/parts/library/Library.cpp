@@ -731,6 +731,4 @@ class Library final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATORS(registry) {
-  registry.add<Library>("Library");
-}
+VP_OPERATOR(Library);
