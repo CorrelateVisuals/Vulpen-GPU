@@ -274,7 +274,8 @@ public:
   // A file, or a folder with all it holds, at a path where nothing is yet; whole or not
   // at all.
   virtual void copy(std::string_view from, std::string_view to) = 0;
-  // A file or a folder moved to a path where nothing is yet.
+  // A file or a folder moved to a path where nothing is yet, into a folder made for it
+  // when there is none.
   virtual void rename(std::string_view from, std::string_view to) = 0;
   // A view's manifest at another file, as view save writes it, keeping the comments the
   // file there holds, as a copy of the view's folder brings them.
@@ -283,6 +284,10 @@ public:
   // the library each recipe a node uses unfolded into it (V11). Throws naming the
   // manifest's first mistake.
   virtual View manifest(std::string_view file) = 0;
+  // A folder, with the folders it is in, where nothing is yet, as a file save makes a
+  // file's. Last, so a module built before it reaches the others where it found them, as
+  // a dev build swaps modules into a run.
+  virtual void make(std::string_view folder) = 0;
 
 protected:
   ~FilePort() = default;

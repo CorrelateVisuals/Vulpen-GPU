@@ -84,6 +84,7 @@ private:
   std::vector<std::string> list(std::string_view folder) override;
   void copy(std::string_view from, std::string_view to) override;
   void rename(std::string_view from, std::string_view to) override;
+  void make(std::string_view folder) override;
   void save(const View &view, std::string_view file) override;
   void start(std::string_view program, std::span<const std::string> arguments) override;
   View manifest(std::string_view file) override;

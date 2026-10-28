@@ -32,8 +32,11 @@ public:
   // temp beside it first, then renamed there, as save does, so a killed run leaves the
   // whole copy or none of it (RA04). Throws naming the path.
   static void copy(const std::filesystem::path &from, const std::filesystem::path &to);
-  // Moves a file or a folder to a path where nothing is yet. Throws naming the path.
+  // Moves a file or a folder to a path where nothing is yet, making the folder it goes
+  // into first, as copy does. Throws naming the path.
   static void rename(const std::filesystem::path &from, const std::filesystem::path &to);
+  // Makes a folder, and the folders it is in, where nothing is yet. Throws naming it.
+  static void make(const std::filesystem::path &folder);
 };
 
 // The wall clock in the machine's time zone, for the people who read the log.

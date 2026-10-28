@@ -780,10 +780,25 @@ void Files::rename(const std::filesystem::path &from, const std::filesystem::pat
   std::error_code failed;
   if (std::filesystem::exists(to, failed))
     throw std::runtime_error(std::format("{} exists already", to.string()));
-  std::filesystem::rename(from, to, failed);
+  if (to.has_parent_path())
+    std::filesystem::create_directories(to.parent_path(), failed);
+  if (!failed)
+    std::filesystem::rename(from, to, failed);
   if (failed)
     throw std::runtime_error(std::format(
         "{}: cannot be renamed to {}: {}", from.string(), to.string(), failed.message()));
+}
+
+// A folder there already is refused as a file there is, so a folder made is always a new
+// one, as a file save makes is a new version.
+void Files::make(const std::filesystem::path &folder) {
+  std::error_code failed;
+  if (std::filesystem::exists(folder, failed))
+    throw std::runtime_error(std::format("{} exists already", folder.string()));
+  std::filesystem::create_directories(folder, failed);
+  if (failed)
+    throw std::runtime_error(
+        std::format("{}: cannot be made: {}", folder.string(), failed.message()));
 }
 
 Library::Library(Library &&other) noexcept
