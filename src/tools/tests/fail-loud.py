@@ -47,8 +47,8 @@ copy; a sync of a copy of recipes that use others takes out the nodes, files and
 the library let go, and names the params that went with them. A copy a view saves as a
 new project takes the view's edits, and leaves the view's own files as last saved, and a
 rename saves the view and moves its folder whole. A file line deletes a folder holding
-files only with force, and in a view moves or deletes no node's folder, and makes no
-folder no node names.
+files only with force, and in a view moves or deletes no node's folder, and adds a node
+for a folder it makes there, but makes no folder in an app.
 
 Each view is written into a folder named mistakes, beside a link to each node's folder
 it names, so it finds the nodes the build compiles from mistakes/ beside this script,
@@ -656,7 +656,8 @@ def projects(vulpen: str, folder: Path) -> str | None:
 def files(vulpen: str, folder: Path) -> str | None:
     """Why a file line deleted, moved or made what it must not, or None: a delete cannot be
     undone, so a folder holding files goes only with force, and in a view a node's folder
-    moves and goes only with the node, and no folder is made there that no node names."""
+    moves and goes only with the node, a folder made there is a node, which the line adds
+    and saves, and an app makes no folder of its own."""
     recipes = cli_copy(folder / "files")
     project = folder / "files" / "project"
     (project / "keep").mkdir(parents=True)
@@ -667,15 +668,18 @@ def files(vulpen: str, folder: Path) -> str | None:
     (loose / "inner" / "a.txt").write_text("a", encoding="utf-8")
     refused = [f"file remove {loose}", f"file remove {project / 'keep'}",
                f"file rename {project / 'keep'} {project / 'moved'}",
-               f"file new {project / 'stray' / 'b.txt'}"]
+               f"file new {recipes / 'cli' / 'own'}/"]
     typed = "\n".join([f"view load {project}", *refused,
                        f"file new {project / 'keep' / 'c.txt'}",
+                       f"file new {project / 'made' / 'b.txt'}",
                        f"file rename {loose / 'inner' / 'a.txt'} {loose / 'new' / 'a.txt'}"])
     _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed + "\n")
     if (problems(output) or output.count("{!!!}") != len(refused)
             or not (project / "keep" / "kept.txt").is_file()
             or not (project / "keep" / "c.txt").is_file() or (project / "moved").exists()
-            or (project / "stray").exists() or not (loose / "new" / "a.txt").is_file()):
+            or (recipes / "cli" / "own").exists() or not (project / "made" / "b.txt").is_file()
+            or '[node "made"]' not in (project / "view.vlp").read_text(encoding="utf-8")
+            or not (loose / "new" / "a.txt").is_file()):
         return f"files: a file line went past what keeps files and nodes whole:\n{output}"
     return None
 
