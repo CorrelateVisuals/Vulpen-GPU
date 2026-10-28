@@ -951,16 +951,20 @@ template <class Port> bool Graph::enter(Port &port, std::size_t at) {
 }
 
 // A folder shown, or, for a folder a view vulpen hosts is, that view; the frame and a
-// command both get here, as a press and cd do.
+// command both get here, as a press and cd do. The view shown is there already unless a
+// folder shows in its place, or a node's inside, whose params are unset only while set,
+// as the engine refuses to unset one that is not.
 template <class Port>
 void Graph::into_folder(Port &port, const std::filesystem::path &folder) {
   if (const std::optional<std::string> view = view_in(port, folder); !view)
     show_folder(port.commands(), folder);
-  else if (*view == _shown)
-    show_view(port.commands());
-  else
+  else if (*view != _shown)
     port.commands().send(view->empty() ? std::string("view switch")
                                        : std::format("view switch {}", *view));
+  else if (!_relations->asked.empty())
+    show_view(port.commands());
+  else if (!_inside.empty())
+    port.commands().send(std::format("{}: param unset {} inside", _view, _name));
 }
 
 // Out of the node whose inside shows, to the inside of the node holding it, or the top;
