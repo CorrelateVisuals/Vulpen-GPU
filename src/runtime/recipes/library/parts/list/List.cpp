@@ -362,9 +362,10 @@ class List final : public VP::Operator {
     for (std::uint32_t at = 0; at < _shown->size(); ++at) {
       if (!_side_by_side) {
         const VP_VIEW::Rect &row = (*_shown)[at];
-        written.add(
-            {.offset = row.offset, .extent = row.extent, .role = VP_VIEW::role("text")},
-            std::string_view((*_items)[at].label).substr(0, row.extent.x / cell.x));
+        written.add({.offset = row.offset,
+                     .extent = row.extent,
+                     .role = (*_items)[at].role.value_or(VP_VIEW::role("text"))},
+                    std::string_view((*_items)[at].label).substr(0, row.extent.x / cell.x));
         continue;
       }
       const std::int32_t middle =

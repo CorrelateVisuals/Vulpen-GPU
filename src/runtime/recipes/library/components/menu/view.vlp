@@ -1,11 +1,14 @@
-# The menu component: menus, list, hit, rects and glyphs. A right press in the Rect its
-# host connects to menus.area drops a column of names there, a menu each, as menu.ini
-# gives them, over what lies there, which takes no press while it shows; the pointer on
-# a name opens that menu's items beside it, and a press on an item sends its line, typed
-# into the node the menus' line param names, until a press anywhere or escape shuts it.
-# Its host connects the keys part's typed to menus.typed, the font's metrics to
-# names.font and items.font, the theme to the rects and the glyphs, and the font and its
-# atlas to the glyphs, and lists it after what it drops over, so it draws over it.
+# The menu component: menus, and three columns of list, hit, rects and glyphs. A line, as
+# a right press in the graph sends it, opens the words of menu.ini's lines for the kind
+# of thing pressed at the pointer, or, typed, at the top left of the Rect its host
+# connects to menus.area, over what lies there, which takes no press while it shows: the
+# first column drops below where it opened, and the pointer on a word opens the words
+# after it in the next column, beside it; a press on the word that ends a line hands the
+# line to the terminal through menus.handed, until a press anywhere or escape shuts it.
+# Its host connects menus.handed to the terminal's command line, the keys part's typed to
+# menus.typed, the font's metrics to each column's list, the theme to the rects and the
+# glyphs, and the font and its atlas to the glyphs, and lists it after what it drops
+# over, so it draws over it.
 [manifest]
 version = 1
 
@@ -14,90 +17,130 @@ version = 1
 [node "menu.menus"]
 recipe = menus
 
-[node "menu.names"]
+[node "menu.first"]
 recipe = list
 param  = drop=below
 
-# The pointer on a name opens its menu, so the open menu follows it along the names.
-[node "menu.names-hit"]
+[node "menu.first-hit"]
 recipe = hit
-param  = hover=yes
 
-[node "menu.names-rects"]
+[node "menu.first-rects"]
 recipe = rects
 
-[node "menu.names-glyphs"]
+[node "menu.first-glyphs"]
 recipe = glyphs
 
-[node "menu.items"]
+[node "menu.second"]
 recipe = list
 param  = drop=right
 
-[node "menu.items-hit"]
+[node "menu.second-hit"]
 recipe = hit
 
-[node "menu.items-rects"]
+[node "menu.second-rects"]
 recipe = rects
 
-[node "menu.items-glyphs"]
+[node "menu.second-glyphs"]
 recipe = glyphs
 
-# Where the menus were opened, which the names drop below.
+[node "menu.third"]
+recipe = list
+param  = drop=right
+
+[node "menu.third-hit"]
+recipe = hit
+
+[node "menu.third-rects"]
+recipe = rects
+
+[node "menu.third-glyphs"]
+recipe = glyphs
+
+# Where the menus were opened, which the first column drops below.
 [connection "at"]
 from = menu.menus.at
-to   = menu.names.place
+to   = menu.first.place
 
-[connection "names"]
-from = menu.menus.names
-to   = menu.names.items
-to   = menu.names-hit.items
+[connection "first"]
+from = menu.menus.first
+to   = menu.first.items
+to   = menu.first-hit.items
 
-[connection "names-shown"]
-from = menu.names.shown
-to   = menu.names-hit.rects
+[connection "first-shown"]
+from = menu.first.shown
+to   = menu.first-hit.rects
 
-[connection "names-marks"]
-from = menu.names.marks
-to   = menu.names-hit.marks
+[connection "first-marks"]
+from = menu.first.marks
+to   = menu.first-hit.marks
 
-[connection "names-rects"]
-from = menu.names.rects
-to   = menu.names-rects.rects
+[connection "first-rects"]
+from = menu.first.rects
+to   = menu.first-rects.rects
 
-[connection "names-labels"]
-from = menu.names.labels
-to   = menu.names-glyphs.labels
+[connection "first-labels"]
+from = menu.first.labels
+to   = menu.first-glyphs.labels
 
-[connection "names-characters"]
-from = menu.names.characters
-to   = menu.names-glyphs.characters
+[connection "first-characters"]
+from = menu.first.characters
+to   = menu.first-glyphs.characters
 
-# The open menu's name, which its items drop below.
-[connection "open"]
-from = menu.names.current
-to   = menu.items.place
+# The word open in each column, which the next column opens beside.
+[connection "first-open"]
+from = menu.first.current
+to   = menu.second.place
 
-[connection "items"]
-from = menu.menus.items
-to   = menu.items.items
-to   = menu.items-hit.items
+[connection "second"]
+from = menu.menus.second
+to   = menu.second.items
+to   = menu.second-hit.items
 
-[connection "items-shown"]
-from = menu.items.shown
-to   = menu.items-hit.rects
+[connection "second-shown"]
+from = menu.second.shown
+to   = menu.second-hit.rects
 
-[connection "items-marks"]
-from = menu.items.marks
-to   = menu.items-hit.marks
+[connection "second-marks"]
+from = menu.second.marks
+to   = menu.second-hit.marks
 
-[connection "items-rects"]
-from = menu.items.rects
-to   = menu.items-rects.rects
+[connection "second-rects"]
+from = menu.second.rects
+to   = menu.second-rects.rects
 
-[connection "items-labels"]
-from = menu.items.labels
-to   = menu.items-glyphs.labels
+[connection "second-labels"]
+from = menu.second.labels
+to   = menu.second-glyphs.labels
 
-[connection "items-characters"]
-from = menu.items.characters
-to   = menu.items-glyphs.characters
+[connection "second-characters"]
+from = menu.second.characters
+to   = menu.second-glyphs.characters
+
+[connection "second-open"]
+from = menu.second.current
+to   = menu.third.place
+
+[connection "third"]
+from = menu.menus.third
+to   = menu.third.items
+to   = menu.third-hit.items
+
+[connection "third-shown"]
+from = menu.third.shown
+to   = menu.third-hit.rects
+
+[connection "third-marks"]
+from = menu.third.marks
+to   = menu.third-hit.marks
+
+[connection "third-rects"]
+from = menu.third.rects
+to   = menu.third-rects.rects
+
+[connection "third-labels"]
+from = menu.third.labels
+to   = menu.third-glyphs.labels
+
+[connection "third-characters"]
+from = menu.third.characters
+to   = menu.third-glyphs.characters

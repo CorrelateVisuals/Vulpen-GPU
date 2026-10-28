@@ -18,6 +18,7 @@
 #include <span>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
 #include <utility>
 
 namespace {
@@ -119,6 +120,11 @@ std::optional<std::string> host_of(Port &port, std::string_view name) {
         hosts.push_back(child.name);
       }
   return std::nullopt;
+}
+
+// A path as a line takes it, from where vulpen started, as the prompt shows a folder.
+std::string typed_path(const std::filesystem::path &path) {
+  return path.lexically_proximate(std::filesystem::current_path()).generic_string();
 }
 
 // Whether a path names a folder, as its folder lists it with a / after its name, as the
@@ -597,6 +603,9 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
       release(frame, room);
     else if (room && inside(*_area, _pointer))
       press(frame, event.presses);
+  } else if (event.kind == VP::Event::Kind::button && event.name == "right") {
+    if (event.down && room && inside(*_area, _pointer) && !_grab && !_dragging)
+      context(frame);
   } else if (event.kind == VP::Event::Kind::button && event.name == "middle") {
     if (!event.down)
       _zooming.reset();
@@ -662,6 +671,97 @@ void Graph::press(VP::Cook &frame, std::uint32_t presses) {
   if (chosen_here)
     select(frame.commands(), {});
   _dragging = true;
+}
+
+// Of what the pointer is on: a box, or a row of it naming a file or a folder; a curve, a
+// connection's or a relation's, which names the files at its ends; or the ground. A box
+// selected among others names every box selected of its kind, whose lines run once for
+// each. A name a line cannot carry, as one holding a blank, opens the ground's instead.
+void Graph::context(VP::Cook &frame) {
+  std::string kind;
+  std::vector<std::string> names;
+  if (const std::size_t at = under(_pointer).box; at != no_box) {
+    std::string name;
+    std::tie(kind, name) = menu_of(frame, at, true);
+    names.push_back(std::move(name));
+    if (_selected_in == _shown && _selection.size() > 1 && selected(_boxes.boxes[at].name))
+      for (const std::string &chosen : _selection)
+        if (const auto box = std::ranges::find(_boxes.boxes, chosen, &Box::name);
+            box != _boxes.boxes.end())
+          if (auto [other, named] = menu_of(
+                  frame, static_cast<std::size_t>(box - _boxes.boxes.begin()), false);
+              other == kind && std::ranges::find(names, named) == names.end())
+            names.push_back(std::move(named));
+  } else if (!_hovered_curves.empty() && _built_flat) {
+    const End &end = _boxes.ends[_hovered_curves.front().second];
+    if (end.layer == VP_VIEW::Layer::flow && end.wire < _built_flat->connections.size()) {
+      kind = "connection";
+      names.push_back(_built_flat->connections[end.wire].name);
+    } else if (end.layer != VP_VIEW::Layer::flow) {
+      kind = "relation";
+      for (const auto &[box, row] : {std::pair(end.from, end.from_row),
+                                    std::pair(end.to, end.to_row)})
+        if (const std::filesystem::path &opens =
+                row < _boxes.boxes[box].rows ? rows_in(_boxes, box)[row].opens
+                                             : _boxes.boxes[box].opens;
+            !opens.empty())
+          names.push_back(typed_path(opens));
+    }
+  }
+  std::erase_if(names, [](const std::string &name) { return !nameable(name); });
+  if (names.empty()) {
+    std::string name;
+    std::tie(kind, name) = ground(frame);
+    if (name.empty() || !nameable(name))
+      return;
+    names.push_back(std::move(name));
+  }
+  std::string line = std::format("menu {} for", kind);
+  for (const std::string &name : names)
+    line.append(" ").append(name);
+  frame.commands().send(line);
+}
+
+// What kind of thing a box is, as menu.ini names it, and its name as a line takes it; with
+// by_row, the row under the pointer, when it names a file or a folder.
+std::pair<std::string, std::string>
+Graph::menu_of(VP::Cook &frame, std::size_t at, bool by_row) const {
+  const Box &box = _boxes.boxes[at];
+  const std::size_t row = by_row ? row_under(at) : title_row;
+  if (row != title_row && row < box.rows && !rows_in(_boxes, at)[row].opens.empty()) {
+    const std::filesystem::path &opens = rows_in(_boxes, at)[row].opens;
+    return {folder_named(frame.files(), opens) ? "folder" : "file", typed_path(opens)};
+  }
+  if (box.view)
+    return {"view", box.name};
+  if (box.role == VP_VIEW::role("node")) {
+    const VP::View *const view = frame.view(_shown);
+    const auto node = view ? std::ranges::find(view->nodes, box.name, &VP::Node::name)
+                           : std::vector<VP::Node>::const_iterator();
+    const bool dropped = view && node != view->nodes.end() &&
+                         node->recipe.find('@') != std::string::npos;
+    return {dropped ? "dropped" : "node", box.name};
+  }
+  if (!box.opens.empty())
+    return {folder_named(frame.files(), box.opens) ? "folder" : "file",
+            typed_path(box.opens)};
+  if (box.role == VP_VIEW::role("folder") || box.role == VP_VIEW::role("hidden"))
+    return {"folder", typed_path(folder_of(at))};
+  return ground(frame);
+}
+
+// The level shown: a view's top, its folder, or a folder's, or a node's inside, its folder
+// the node's name as a path (RV08); none for a view with no folder.
+std::pair<std::string, std::string> Graph::ground(VP::Cook &frame) const {
+  if (!_relations->folder.empty())
+    return {"level", typed_path(_relations->folder)};
+  const VP::View *const view = frame.view(_shown);
+  if (!view || view->file.empty())
+    return {};
+  std::string inside = _inside;
+  std::ranges::replace(inside, '.', '/');
+  return {_inside.empty() ? "ground" : "level",
+          typed_path(view->file.parent_path() / inside)};
 }
 
 // A corner pressed selects its box as a press on it does, and grabs the corner of it and

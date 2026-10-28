@@ -169,12 +169,14 @@ recipe = rects
 [node "ide.docking-glyphs"]
 recipe = glyphs
 
-# The menus of menu.ini, which a right press in the graph opens there; listed after the
-# panels and what the docking part draws over them, so they drop over all of it. An item
-# types its line into the terminal's.
+# The menus of menu.ini, which a right press in the graph opens there, for what it is on;
+# listed after the panels and what the docking part draws over them, so they drop over
+# all of it. A line a press ends goes to the terminal, which runs it or, for a word the
+# person adds, begins it, its panel shown.
 [node "ide.menu"]
 recipe = menu
 param  = menus.line=ide.terminal.command-line
+param  = menus.shows=ide.terminal-panel
 
 # What is presented, over the whole window in perform mode; in edit mode it has no room.
 [node "ide.screen"]
@@ -325,6 +327,11 @@ to   = ide.terminal.command-line.area
 from = ide.graph.graph.place
 to   = ide.terminal.command-line.place
 
+# The lines a menu's press ends, which the terminal runs as typed, or begins.
+[connection "handed"]
+from = ide.menu.menus.handed
+to   = ide.terminal.command-line.handed
+
 [connection "terminal-tabs"]
 from = ide.terminal.command-line.tabs
 to   = ide.terminal-panel.tabs.items
@@ -379,10 +386,12 @@ to   = ide.terminal.rects.palette
 to   = ide.terminal.glyphs.palette
 to   = ide.menubar.rects.palette
 to   = ide.menubar.glyphs.palette
-to   = ide.menu.names-rects.palette
-to   = ide.menu.names-glyphs.palette
-to   = ide.menu.items-rects.palette
-to   = ide.menu.items-glyphs.palette
+to   = ide.menu.first-rects.palette
+to   = ide.menu.first-glyphs.palette
+to   = ide.menu.second-rects.palette
+to   = ide.menu.second-glyphs.palette
+to   = ide.menu.third-rects.palette
+to   = ide.menu.third-glyphs.palette
 to   = ide.docking-rects.palette
 to   = ide.docking-glyphs.palette
 
@@ -400,8 +409,9 @@ to   = ide.perform-panel.glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
 to   = ide.menubar.glyphs.font
-to   = ide.menu.names-glyphs.font
-to   = ide.menu.items-glyphs.font
+to   = ide.menu.first-glyphs.font
+to   = ide.menu.second-glyphs.font
+to   = ide.menu.third-glyphs.font
 to   = ide.docking-glyphs.font
 
 [connection "atlas"]
@@ -418,8 +428,9 @@ to   = ide.perform-panel.glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
 to   = ide.menubar.glyphs.atlas
-to   = ide.menu.names-glyphs.atlas
-to   = ide.menu.items-glyphs.atlas
+to   = ide.menu.first-glyphs.atlas
+to   = ide.menu.second-glyphs.atlas
+to   = ide.menu.third-glyphs.atlas
 to   = ide.docking-glyphs.atlas
 
 [connection "metrics"]
@@ -442,6 +453,7 @@ to   = ide.terminal-panel.tabs.font
 to   = ide.terminal.command-line.font
 to   = ide.menubar.bar.font
 to   = ide.menubar.tabs.font
-to   = ide.menu.names.font
-to   = ide.menu.items.font
+to   = ide.menu.first.font
+to   = ide.menu.second.font
+to   = ide.menu.third.font
 to   = ide.docking.font

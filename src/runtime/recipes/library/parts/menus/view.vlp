@@ -1,9 +1,10 @@
-# The menus part: one node whose operator is Menus; it reads menu.ini, a menu's item a
-# line. A right press in the Rect its area gives opens the menus there: it hands on a name
-# a menu as names, for a list that drops below where at says, and the items of the one
-# open as items, for a list that opens beside its name; a press on a name opens its menu
-# with the menu command, and a press on an item sends its line. Its host names the node an
-# item types its line into with the line param, which has no default, and connects the
+# The menus part: one node whose operator is Menus; it reads menu.ini, a section a kind of
+# thing pressed and a line each of what the terminal does with it. menu <kind> for
+# <name>... opens them: it hands on each column's words as first, second and third, for
+# lists that drop below where at says, and beside the word open before them, and a line a
+# press ends as handed, for the terminal to run, or to begin, for the person to finish.
+# Its host names the node a begun line is typed into with the line param, which has no
+# default, and the panel holding it with shows, which it shows for one, and connects the
 # keys part's typed to its typed, so escape shuts the menus.
 [manifest]
 version = 1

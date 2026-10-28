@@ -8,7 +8,6 @@
 #include <cstddef>
 #include <format>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -19,19 +18,15 @@ constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before
 
 // Finds the Rect under the pointer, and a press there sends the command of the Item
 // shown in it: rects[i] is where items[i] shows, as a list hands them on; a press on its
-// close mark, where marks[i] is, sends its close command instead. With hover=yes the
-// pointer coming onto an Item that is not current sends its command too, as a menu's name
-// opens its items. An Item dragged onto another, both with a move, sends its move with the
+// close mark, where marks[i] is, sends its close command instead. The pointer coming onto
+// an Item that is not current sends its hover, as a menu's word opens the words after
+// it. An Item dragged onto another, both with a move, sends its move with the
 // other's last word after it, as a tab moves among its strip's; a right press on one
 // sends its menu, as a tab's opens what to do with it. Connecting it makes
 // anything laid out as Rects pressable, so no drawing part reads the pointer, and what is
 // drawn is what is pressed.
 class Hit final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    const std::string hover = node.param<std::string>("hover");
-    if (hover != "yes" && hover != "no")
-      throw std::runtime_error(std::format("param hover = {}: yes or no", hover));
-    _hover = hover == "yes";
     _items = &node.input<VP_VIEW::Items>("items");
     _rects = &node.input<VP_VIEW::Rects>("rects");
     _marks = &node.input<VP_VIEW::Rects>("marks");
@@ -42,8 +37,7 @@ class Hit final : public VP::Operator {
     for (const VP::Event &event : frame.input().events()) {
       if (event.kind == VP::Event::Kind::pointer) {
         _pointer = event.at;
-        if (_hover)
-          hover(frame);
+        hover(frame);
       } else if (event.kind == VP::Event::Kind::button && event.name == "left") {
         if (event.down)
           press(frame);
@@ -107,11 +101,10 @@ class Hit final : public VP::Operator {
     if (at == _hovered)
       return;
     _hovered = at;
-    if (at && !(*_items)[*at].current && !(*_items)[*at].command.empty())
-      frame.commands().send(std::string((*_items)[*at].command));
+    if (at && !(*_items)[*at].current && !(*_items)[*at].hover.empty())
+      frame.commands().send(std::string((*_items)[*at].hover));
   }
 
-  bool _hover = false;
   const VP_VIEW::Items *_items = nullptr;
   const VP_VIEW::Rects *_rects = nullptr;
   const VP_VIEW::Rects *_marks = nullptr;

@@ -154,6 +154,11 @@ private:
   void home();
   void follow(VP::Cook &frame, bool room, const VP::Event &event);
   void press(VP::Cook &frame, std::uint32_t presses);
+  // A right press opens the menu of what lies under the pointer, as menu.ini names a kind
+  // of thing, with the names its lines take; the ground's, its level's, for none.
+  void context(VP::Cook &frame);
+  std::pair<std::string, std::string> menu_of(VP::Cook &frame, std::size_t at, bool by_row) const;
+  std::pair<std::string, std::string> ground(VP::Cook &frame) const;
   void go_in(VP::Cook &frame);
   void focus(std::string_view left);
   // A folder box's folder, as an absolute path.

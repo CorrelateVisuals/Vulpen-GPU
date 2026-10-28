@@ -1,10 +1,13 @@
+#include "contracts/Handed.h"
 #include "contracts/Item.h"
+#include "contracts/Palette.h"
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "shared/Ini.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <format>
 #include <optional>
@@ -18,112 +21,187 @@
 namespace {
 
 constexpr std::string_view menu_file = "menu.ini";
-constexpr char between = '/'; // a menu's name, then its item's
-// After the label of an item whose line wants a word, as a menu marks one that asks for
-// more.
-constexpr std::string_view wants_more = "...";
-// The word before what a menu opened for fills its items' lines with, as a tab's.
+// The section whose lines end every menu, muted, as what the terminal does anywhere.
+constexpr std::string_view everywhere = "all";
+// Where the name of what a menu opened for goes in a line; first, with a colon, it names
+// the view the line addresses, as a typed line does.
+constexpr std::string_view subject = "{}";
+constexpr std::string_view address_mark = "{}:";
+// The words before what a menu opens for, and before the words the pointer came onto or
+// pressed, as the hit part sends them.
 constexpr std::string_view for_word = "for";
+constexpr std::string_view point_word = "point";
+constexpr std::string_view press_word = "press";
+// The columns the menu component lays out, a word each.
+constexpr std::size_t column_count = 3;
+// Placeholders that stand for a few known words, which a column lists as the terminal's
+// complete answers them; the person types any other, as a new name.
+constexpr std::array<std::string_view, 4> listed{"<recipe>", "<node>", "<view>",
+                                                 "<connection>"};
+// Between words, and between the lines an answer holds, a word each.
+constexpr std::string_view blanks = " \t\r\n";
+// What complete takes for a word not begun yet.
+constexpr std::string_view no_word = "\"\"";
 
-// A menu.ini row: the menu, its item and the line the item types, up to its first
-// placeholder when it has one, which the person then types.
-struct Entry {
-  std::string menu;
-  std::string item;
-  std::string line;
-  bool wants = false;
-};
-
-Entry entry_of(std::string_view text, std::span<const VP::Usage> usages) {
-  const auto pair = key_value(text);
-  const std::size_t slash = pair ? pair->first.find(between) : std::string_view::npos;
-  if (slash == std::string_view::npos || trim(pair->first.substr(0, slash)).empty() ||
-      trim(pair->first.substr(slash + 1)).empty())
-    throw std::runtime_error(
-        "a line is a menu, /, an item, = and the line it sends, as file/write = write");
-  const std::string_view line = pair->second;
-  const std::size_t placeholder = line.find_first_of("<[");
-  Entry entry{.menu = std::string(trim(pair->first.substr(0, slash))),
-              .item = std::string(trim(pair->first.substr(slash + 1))),
-              .line = std::string(trim(line.substr(0, placeholder))),
-              .wants = placeholder != std::string_view::npos};
-  if (!registered(entry.line, usages))
-    throw std::runtime_error(std::format("no command takes {}", line));
-  return entry;
+std::vector<std::string> words_of(std::string_view text) {
+  std::vector<std::string> words;
+  for (std::size_t at = text.find_first_not_of(blanks); at != std::string_view::npos;) {
+    const std::size_t end = std::min(text.find_first_of(blanks, at), text.size());
+    words.emplace_back(text.substr(at, end - at));
+    at = text.find_first_not_of(blanks, end);
+  }
+  return words;
 }
 
-// What a press or a line opens: the menu whose items show, none for the names alone, at
-// a corner; with none, where they show, or the area's top left as the frame lays it out;
-// and what it opens for, as a tab's file, which fills the word its items' lines want, at
-// the pointer.
-struct Opening {
-  std::string menu;
-  std::optional<glm::ivec2> corner;
-  std::string subject;
+std::string joined(std::span<const std::string> words) {
+  std::string text;
+  for (const std::string &word : words)
+    text.append(text.empty() ? "" : " ").append(word);
+  return text;
+}
+
+// A menu.ini line: the section it is under, a kind of thing pressed, its words as typed,
+// and how many of them are a column each, those past {}: before the first that holds {}
+// or a placeholder.
+struct Line {
+  std::string section;
+  std::vector<std::string> words;
+  std::size_t first = 0; // 1 past {}:
+  std::size_t path = 0;
+
+  std::span<const std::string> columns() const {
+    return std::span(words).subspan(first, path);
+  }
+  // The word after the columns, as <recipe>; empty for none.
+  std::string_view next() const {
+    return first + path < words.size() ? std::string_view(words[first + path])
+                                       : std::string_view();
+  }
+  bool lists() const {
+    return std::ranges::find(listed, next()) != listed.end();
+  }
+  bool names_subject() const {
+    return std::ranges::any_of(words, [](const std::string &word) {
+      return word.find(subject) != std::string::npos;
+    });
+  }
 };
 
-// Each row an item of a menu, in the order they come.
-std::vector<Entry> entries_of(std::string_view text, std::span<const VP::Usage> usages) {
-  std::vector<Entry> entries;
+// A line a command registered now takes, past its {}:, and no more words a column than
+// the menu shows, counting the one a placeholder it lists takes (A02).
+Line line_of(std::string_view text, std::string section, std::span<const VP::Usage> usages) {
+  Line line{.section = std::move(section), .words = words_of(text)};
+  line.first = line.words.front() == address_mark ? 1 : 0;
+  const std::span<const std::string> sent = std::span(line.words).subspan(line.first);
+  if (sent.empty() || !registered(joined(sent), usages))
+    throw std::runtime_error(std::format("no command takes {}", text));
+  while (line.first + line.path < line.words.size() &&
+         line.words[line.first + line.path].find_first_of("{<") == std::string::npos)
+    ++line.path;
+  if (line.path + (line.lists() ? 1 : 0) > column_count)
+    throw std::runtime_error(
+        std::format("{} takes more columns than the menu's {}", text, column_count));
+  return line;
+}
+
+// Each line under its section, in the order they come, so a menu shows them so.
+std::vector<Line> lines_of(std::string_view text, std::span<const VP::Usage> usages) {
+  std::vector<Line> lines;
+  std::string section;
   for (const Row &row : rows_of(text)) {
     try {
-      Entry entry = entry_of(row.text, usages);
-      if (std::ranges::any_of(entries, [&](const Entry &given) {
-            return given.menu == entry.menu && given.item == entry.item;
+      if (row.text.starts_with('[')) {
+        section = row.text.ends_with(']')
+                      ? std::string(trim(row.text.substr(1, row.text.size() - 2)))
+                      : std::string();
+        if (section.empty())
+          throw std::runtime_error("a section is a kind of thing pressed in brackets, as "
+                                   "[node]");
+        if (section == point_word || section == press_word || section == for_word)
+          throw std::runtime_error(
+              std::format("[{}] is a word the menu command takes itself", section));
+        continue;
+      }
+      if (section.empty())
+        throw std::runtime_error("a line comes under a section, as [node]");
+      Line line = line_of(row.text, section, usages);
+      if (std::ranges::any_of(lines, [&](const Line &given) {
+            return given.section == line.section && given.words == line.words;
           }))
-        throw std::runtime_error(
-            std::format("{}/{} is given twice", entry.menu, entry.item));
-      entries.push_back(std::move(entry));
+        throw std::runtime_error(std::format("[{}] gives {} twice", section, row.text));
+      lines.push_back(std::move(line));
     } catch (const std::runtime_error &mistake) {
       throw std::runtime_error(
           std::format("{}:{}: {}", menu_file, row.line, mistake.what()));
     }
   }
-  return entries;
+  return lines;
 }
 
-// The menus menu.ini gives, a line an item, so a menu does nothing a typed line cannot
-// (V06) and a person changes it in a file. A right press in its area opens them there, as
-// a column of names, which it hands on as names, and the place they drop below as at; a
-// press on a name opens that menu's items beside it, which it hands on as items, and a
-// press on an item types the item's line into the node its line param names, as the
-// terminal, and sends it there, so the line goes where a typed one goes and what it
-// answers shows there; one whose line wants a word, marked ..., is begun there instead,
-// completed up to the word, which the person types, and keeps the focus. While it shows
-// it holds the pointer, so nothing under it takes a press, and the focus, so escape shuts
-// it; a press anywhere but on a name or an item shuts it too, giving the focus back, and
-// a right press in its area opens it there anew. A change takes effect the next frame, as
-// the focus does, so a press on an item reaches its hit before the items go. The file is
-// read again once it changes; a mistake in it stops the node, naming the line (A02).
+// What a press or a line opens: the section of the kind of thing pressed, where its first
+// column shows, or the area's top left as the frame lays it out, and what it opens for, a
+// name each, which {} names in its lines.
+struct Opening {
+  std::string section;
+  std::optional<glm::ivec2> corner;
+  std::vector<std::string> subjects;
+};
+
+// A word a column shows: a word of the lines, or one of the few a placeholder stands for,
+// as a recipe's name.
+struct Entry {
+  std::string word;
+  bool value = false;
+};
+
+// The menus menu.ini gives, by the kind of thing a right press is on, each a line as the
+// terminal takes it (V06), so a menu teaches the line it sends: its words a column each,
+// the first column holding the first words, and the pointer on a word opening beside it
+// the words that may follow it, as Tab lists them, and in place of a placeholder that
+// stands for a few known words, as <recipe>, what the terminal's complete answers. The
+// lines of all end every menu, muted. A press on the word that ends a line hands the line
+// to the terminal through handed: run there, as if typed, so the terminal shows it and
+// its answer, or, when it wants a word, as <name>, begun up to it, the terminal's panel
+// shown and the focus on it, for the person to finish; with several things pressed, a
+// line runs once for each. A part that knows what was pressed opens the menu for it with
+// menu <kind> for <name>..., as the graph and a tab do; while it shows it holds the
+// pointer, so nothing under it takes a press, and the focus, so escape shuts it; a press
+// anywhere but on a word shuts it too, giving the focus back. A change takes effect the
+// next frame, as the focus does, so a press on a word reaches its hit before the words
+// go. The file is read again once it changes; a mistake in it stops the node, naming the
+// line (A02).
 class Menus final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _menu = node.command("menu [<value>...]",
-                         "opens a menu of menu.ini, its items beside its name; with an "
-                         "item after it, types the item's line into the terminal and "
-                         "sends it, or begins it there when it wants a word; with for "
-                         "and a word, opens it alone at the pointer, the word ending the "
-                         "lines of its items that want one; with none, shuts the menus");
+    _menu = node.command(
+        "menu [<value>...]",
+        "opens the lines menu.ini gives a kind of thing, a word a column, and all's after "
+        "them, muted; with for and names, {} names each; point and a section's words "
+        "open the words after them, and press hands the line they end to the terminal, "
+        "run, or begun up to the word it wants; with none, shuts the menus");
     _name = node.name();
+    _view = node.view_name();
     _line = node.param<std::string>("line");
+    _shows = node.sets("shows") ? node.param<std::string>("shows") : std::string();
     _file = node.file(menu_file);
     _typed = &node.input<VP_VIEW::Typed>("typed");
     _area = &node.input<VP_VIEW::Rect>("area");
-    _names = &node.output<VP_VIEW::Items>("names");
-    _items = &node.output<VP_VIEW::Items>("items");
+    _columns = {&node.output<VP_VIEW::Items>("first"),
+                &node.output<VP_VIEW::Items>("second"),
+                &node.output<VP_VIEW::Items>("third")};
     _at = &node.output<VP_VIEW::Rect>("at");
+    _handed = &node.output<VP_VIEW::Handed>("handed");
     _written = false;
   }
 
   void cook(VP::Cook &frame) override {
     read(frame.files(), frame.commands());
-    // A line opening it for a subject came in before this frame's pointer reached this
-    // node, as a tab's right press sends it, so it opens where the frame left the
+    // A line opening it for something came in before this frame's pointer reached this
+    // node, as the graph's right press sends it, so it opens where the frame left the
     // pointer.
-    if (_next && !_next->subject.empty())
+    if (_next && !_next->subjects.empty())
       for (const VP::Event &event : frame.input().events())
         if (event.kind == VP::Event::Kind::pointer)
           _next->corner = glm::ivec2(event.at);
-    // A press on a name both shuts the menus and opens that one: the name wins.
     const bool opening = _next.has_value();
     if (_next)
       open(frame, *std::exchange(_next, std::nullopt));
@@ -132,8 +210,12 @@ class Menus final : public VP::Operator {
     _shutting = false;
     follow(frame, opening);
     *_at = _shown ? VP_VIEW::Rect{.offset = _corner, .extent = {1, 0}} : VP_VIEW::Rect{};
+    if (!_pending.empty()) {
+      _handed->lines = std::exchange(_pending, {});
+      ++_handed->count;
+    }
     if (!_written)
-      write();
+      write(frame.commands());
   }
 
   // As it changed, or for a line before the first frame, as a script's, once every
@@ -142,12 +224,12 @@ class Menus final : public VP::Operator {
     const std::string_view text = files.text(_file);
     if (_read && text == *_read)
       return;
-    _entries = entries_of(text, commands.usages());
+    _lines = lines_of(text, commands.usages());
     _read.emplace(text);
     _written = false;
   }
 
-  // Shown at the corner given, with the menu named open, or none.
+  // Shown at the corner given, its first column only, or none.
   void open(VP::Cook &frame, Opening opening) {
     if (!_shown) {
       _returning = _typed->focus;
@@ -156,39 +238,34 @@ class Menus final : public VP::Operator {
     }
     _corner = opening.corner.value_or(_shown ? _corner : _area->offset);
     _shown = true;
-    _open = std::move(opening.menu);
-    _subject = std::move(opening.subject);
+    _section = std::move(opening.section);
+    _subjects = std::move(opening.subjects);
+    _group.clear();
+    _path.clear();
     _written = false;
   }
 
-  // Gives the focus back unless an item began a line.
+  // Gives the focus back unless a line was begun, which keeps it on the terminal.
   void shut(VP::Cook &frame) {
     if (!_shown)
       return;
     if (!std::exchange(_begun, false))
       frame.commands().send(std::format("focus {}", _returning));
     _shown = false;
-    _open.clear();
-    _subject.clear();
     _written = false;
   }
 
-  // While shut, a right press in the area opens it there. While it shows it holds the
-  // pointer, so every press reaches it, and its own hits too: a press shuts it, as its
-  // hits send what a name or an item does, which wins; a right press in the area opens it
-  // anew there, and escape shuts it. A press in the frame it opens in shuts nothing, as
-  // it is the press another node opened it for, as a tab's right press.
+  // While it shows it holds the pointer, so every press reaches it, and its own hits too:
+  // a press shuts it, as its hits send what a word does, which wins; escape shuts it. A
+  // press in the frame it opens in shuts nothing, as it is the press another node opened
+  // it for, as the graph's right press.
   void follow(VP::Cook &frame, bool opening) {
     if (_shown)
       frame.hold_pointer();
     for (const VP::Event &event : frame.input().events()) {
       if (event.kind == VP::Event::Kind::pointer)
         _pointer = event.at;
-      if (event.kind != VP::Event::Kind::button || !event.down)
-        continue;
-      if (event.name == "right" && VP_VIEW::contains(*_area, _pointer))
-        _next.emplace(Opening{.corner = glm::ivec2(_pointer)});
-      else if (_shown && !opening)
+      else if (event.kind == VP::Event::Kind::button && event.down && _shown && !opening)
         _shutting = true;
     }
     for (const VP::Event &event : _typed->to(_name))
@@ -196,36 +273,171 @@ class Menus final : public VP::Operator {
                                 event.name == "escape");
   }
 
-  // Only as they change, so a frame allocates nothing for them (CPP10). Opened for a
-  // subject, the names hold its menu alone, and no item wants more.
-  void write() {
+  // The kind's lines, then all's, which end every menu; with several things pressed,
+  // of the kind's only those that name what was pressed and want no word more, as they
+  // run once for each. Opened for nothing, a line that addresses what was pressed has
+  // nothing to address.
+  bool offered(const Line &line, std::string_view group) const {
+    if (line.section != group)
+      return false;
+    if (_subjects.empty())
+      return line.first == 0;
+    if (group != _section || _subjects.size() < 2)
+      return true;
+    return line.names_subject() &&
+           std::ranges::none_of(line.words, [](const std::string &word) {
+             return word.find('<') != std::string::npos;
+           });
+  }
+
+  std::vector<std::string> groups() const {
+    std::vector<std::string> groups{_section};
+    if (_section != everywhere)
+      groups.emplace_back(everywhere);
+    return groups;
+  }
+
+  // The words a column shows in a group after the words before it: the next words of the
+  // lines whose columns start with them, each once, and where such a line's columns end
+  // at a placeholder a column lists, what complete answers.
+  std::vector<Entry> entries(VP::CommandPort &commands,
+                             std::string_view group,
+                             std::span<const std::string> before) const {
+    std::vector<Entry> found;
+    const auto add = [&](std::string word, bool value) {
+      if (std::ranges::find(found, word, &Entry::word) == found.end())
+        found.push_back({std::move(word), value});
+    };
+    for (const Line &line : _lines) {
+      const std::span<const std::string> columns = line.columns();
+      if (!offered(line, group) || columns.size() < before.size() ||
+          !std::ranges::equal(columns.first(before.size()), before))
+        continue;
+      if (columns.size() > before.size())
+        add(columns[before.size()], false);
+      else if (line.lists())
+        for (std::string &value : completed(commands, line))
+          add(std::move(value), true);
+    }
+    return found;
+  }
+
+  // What the terminal's complete answers for the word after a line's columns, as Tab
+  // lists it, for the view lines go to; none where no terminal completes, as headless.
+  static std::vector<std::string> completed(VP::CommandPort &commands, const Line &line) {
+    const std::vector<VP::Usage> usages = commands.usages();
+    if (!registered("complete", usages))
+      return {};
+    const std::string_view current = commands.current();
+    const std::string answer = commands.send(std::format(
+        "{}complete {} {}",
+        current.empty() ? std::string() : std::string(current) + ": ",
+        joined(line.columns()),
+        no_word));
+    std::vector<std::string> values;
+    for (std::string &word : words_of(answer))
+      if (!word.starts_with('<'))
+        values.push_back(std::move(word));
+    return values;
+  }
+
+  // Only as they change, so a frame allocates nothing for them (CPP10): the first column
+  // each group's first words, the muted ones last, and each column after it the words
+  // after the path's.
+  void write(VP::CommandPort &commands) {
     _written = true;
-    _names->clear();
-    _items->clear();
+    for (VP_VIEW::Items *const column : _columns)
+      column->clear();
     if (!_shown)
       return;
-    for (const Entry &entry : _entries) {
-      if ((_subject.empty() || entry.menu == _open) &&
-          std::ranges::none_of(*_names, [&](const VP_VIEW::Item &named) {
-            return named.label == entry.menu;
-          }))
-        _names->push_back({.label = entry.menu,
-                           .command = "menu " + entry.menu,
-                           .current = entry.menu == _open});
-      if (entry.menu == _open)
-        _items->push_back({.label = entry.wants && _subject.empty()
-                                        ? entry.item + std::string(wants_more)
-                                        : entry.item,
-                           .command = std::format("menu {} {}", entry.menu, entry.item)});
+    for (const std::string &group : groups())
+      for (const Entry &entry : entries(commands, group, {}))
+        _columns[0]->push_back(item(group, {}, entry));
+    for (std::size_t depth = 1; depth <= _path.size() && depth < column_count; ++depth) {
+      const std::span<const std::string> before = std::span(_path).first(depth);
+      for (const Entry &entry : entries(commands, _group, before))
+        _columns[depth]->push_back(item(_group, before, entry));
     }
   }
 
-  // An item types its line as a person would, in the terminal, so the line shows there,
-  // its history keeps it and its view is the current one: enter sends it, and Tab
-  // finishes the words a line that wants one has, a blank after them. A menu opened for a
-  // subject, as a tab's, sends its item's line itself, whole, as the tab's own close mark
-  // sends close, so it acts while the terminal is hidden too, which takes no keys then.
-  // A line opening a menu while the menus are shut shows them at the area's top left.
+  // A word's commands name its group and the words up to it, so a press reaches the line
+  // it ends whatever the columns show by then.
+  VP_VIEW::Item
+  item(std::string_view group, std::span<const std::string> before, const Entry &entry) const {
+    std::string words = std::format("{} {}", group, joined(before));
+    words.append(before.empty() ? "" : " ").append(entry.word);
+    const bool on_path = _group == group && before.size() < _path.size() &&
+                         std::ranges::equal(before, std::span(_path).first(before.size())) &&
+                         _path[before.size()] == entry.word;
+    const bool muted = group == everywhere && _section != everywhere;
+    return {.label = entry.word,
+            .command = std::format("menu {} {}", press_word, words),
+            .current = on_path,
+            .role = muted ? std::optional(VP_VIEW::role("muted")) : std::nullopt,
+            .hover = entry.value ? std::string()
+                                 : std::format("menu {} {}", point_word, words)};
+  }
+
+  // A line made from menu.ini's: a value chosen in place of the placeholder that lists it,
+  // and {} naming what was pressed. Whole, it is run; else it is begun up to the first word
+  // it still wants, as <name>, or {} for nothing pressed, past the part of that word before
+  // it, as docs/ before <name>.
+  static VP_VIEW::Handed::Line handed(const Line &line,
+                                      const std::optional<std::string> &value,
+                                      std::string_view named) {
+    std::vector<std::string> words = line.words;
+    if (value)
+      words[line.first + line.path] = *value;
+    std::string text;
+    for (std::string word : words) {
+      for (std::size_t at = word.find(subject); !named.empty() && at != std::string::npos;
+           at = word.find(subject, at + named.size()))
+        word.replace(at, subject.size(), named);
+      const std::size_t wanted = std::min(word.find('<'), word.find(subject));
+      text.append(text.empty() ? "" : " ").append(word.substr(0, wanted));
+      if (wanted != std::string::npos)
+        return {.text = text, .run = false};
+    }
+    return {.text = text, .run = true};
+  }
+
+  // The words pressed end a line, or a value a column lists ends it; any other press opens
+  // the words after them, as the pointer coming onto them does, and keeps the menus shown,
+  // though the press reached them as any press does, which shuts them.
+  void press(VP::Call &call, std::string group, std::vector<std::string> words) {
+    for (const Line &line : _lines) {
+      const std::span<const std::string> columns = line.columns();
+      if (!offered(line, group) || columns.size() > words.size() ||
+          !std::ranges::equal(columns, std::span(words).first(columns.size())))
+        continue;
+      const bool ends = columns.size() == words.size() && !line.lists();
+      const bool valued = line.lists() && words.size() == columns.size() + 1;
+      if (ends || valued)
+        return hand(call, line, valued ? std::optional(words.back()) : std::nullopt);
+    }
+    _group = std::move(group);
+    _path = std::move(words);
+    _shutting = false;
+    _written = false;
+  }
+
+  // Run once for each thing pressed, or begun, the terminal's panel shown and the focus
+  // given to it, which the menus then keep there.
+  void hand(VP::Call &call, const Line &line, const std::optional<std::string> &value) {
+    _shutting = true;
+    if (_subjects.empty() || !line.names_subject())
+      _pending.push_back(handed(line, value, {}));
+    else
+      for (const std::string &named : _subjects)
+        _pending.push_back(handed(line, value, named));
+    if (_pending.back().run)
+      return;
+    if (!_shows.empty())
+      call.commands().send(std::format("{}: panel show {}", _view, _shows));
+    call.commands().send(std::format("focus {}", _line));
+    _begun = true;
+  }
+
   void command(VP::Call &call) override {
     if (!call.is(_menu))
       return;
@@ -235,73 +447,70 @@ class Menus final : public VP::Operator {
       _shutting = true;
       return;
     }
-    const auto named = [&](const Entry &entry) { return entry.menu == words.front(); };
-    if (std::ranges::none_of(_entries, named))
+    if (words.front() == point_word || words.front() == press_word) {
+      if (words.size() < 3 || !_shown)
+        throw std::runtime_error(std::format(
+            "menu {} takes a section and its words, while a menu shows", words.front()));
+      std::vector<std::string> path(words.begin() + 2, words.end());
+      if (words.front() == press_word)
+        return press(call, std::string(words[1]), std::move(path));
+      _group = words[1];
+      _path = std::move(path);
+      _written = false;
+      return;
+    }
+    if (std::ranges::none_of(_lines, [&](const Line &line) {
+          return line.section == words.front();
+        }))
       throw std::runtime_error(std::format(
-          "no menu is named {}; {} gives {}", words.front(), menu_file, menus()));
+          "no section of {} is named {}; it gives {}", menu_file, words.front(), sections()));
     if (words.size() == 1) {
-      _next.emplace(Opening{.menu = std::string(words.front())});
+      _next.emplace(Opening{.section = std::string(words.front())});
       return;
     }
-    if (words.size() == 3 && words[1] == for_word) {
-      _next.emplace(Opening{.menu = std::string(words.front()),
-                            .corner = glm::ivec2(_pointer),
-                            .subject = std::string(words[2])});
-      return;
-    }
-    std::string item(words[1]);
-    for (const std::string_view word : words.subspan(2))
-      item.append(1, ' ').append(word);
-    const auto entry = std::ranges::find_if(_entries, [&](const Entry &entry) {
-      return named(entry) && entry.item == item;
-    });
-    if (entry == _entries.end())
+    if (words[1] != for_word || words.size() < 3)
       throw std::runtime_error(
-          std::format("menu {} has no item {}", words.front(), item));
-    _shutting = true;
-    // A subject is the word the line wants, so it runs whole.
-    if (!_subject.empty()) {
-      call.reply(call.commands().send(
-          entry->wants ? std::format("{} {}", entry->line, _subject) : entry->line));
-      return;
-    }
-    const std::string_view key = entry->wants ? "tab" : "enter";
-    call.commands().send(std::format("focus {}", _line));
-    call.commands().send(std::format("input text {}", entry->line));
-    call.commands().send(std::format("input key down {}", key));
-    call.commands().send(std::format("input key up {}", key));
-    _begun = entry->wants;
+          std::format("menu {} takes for and the names of what it opens for, or nothing",
+                      words.front()));
+    _next.emplace(Opening{.section = std::string(words.front()),
+                          .corner = glm::ivec2(_pointer),
+                          .subjects = {words.begin() + 2, words.end()}});
   }
 
-  std::string menus() const {
-    std::string menus;
-    for (const Entry &entry : _entries)
-      if (menus.find(entry.menu) == std::string::npos)
-        menus += std::format("{}{}", menus.empty() ? "" : ", ", entry.menu);
-    return menus;
+  std::string sections() const {
+    std::string sections;
+    for (const Line &line : _lines)
+      if (sections.find(std::format("[{}]", line.section)) == std::string::npos)
+        sections += std::format("{}[{}]", sections.empty() ? "" : ", ", line.section);
+    return sections;
   }
 
   VP::Command _menu;
   std::string _name;
-  std::string _line; // the node whose line an item types into
+  std::string _view; // the view it runs in, where the panel it shows is
+  std::string _line; // the node whose line a begun one is typed into, as the terminal
+  std::string _shows; // the panel holding it, shown for a begun line; none for none
   VP::File _file;
-  std::optional<std::string> _read; // the file the entries are from
-  std::vector<Entry> _entries;
+  std::optional<std::string> _read; // the file the lines are from
+  std::vector<Line> _lines;
   const VP_VIEW::Typed *_typed = nullptr;
-  const VP_VIEW::Rect *_area = nullptr; // where a right press opens the menus
-  VP_VIEW::Items *_names = nullptr;
-  VP_VIEW::Items *_items = nullptr;
+  const VP_VIEW::Rect *_area = nullptr; // where a line opening it shows it, at its top left
+  std::array<VP_VIEW::Items *, column_count> _columns{};
   VP_VIEW::Rect *_at = nullptr;
-  bool _shown = false;               // the names show, below the corner
-  glm::ivec2 _corner{};              // where they were opened
-  std::string _open;                 // the menu whose items show; empty for none
-  std::string _subject;              // what it opened for, as a tab's file, or none
-  std::optional<Opening> _next;      // what a press or a line opened, for the next frame
+  VP_VIEW::Handed *_handed = nullptr;
+  bool _shown = false;
+  glm::ivec2 _corner{};              // where it was opened
+  std::string _section;              // the kind it opened for
+  std::vector<std::string> _subjects; // the names {} stands for
+  std::string _group;                // the section the words chosen are of
+  std::vector<std::string> _path;    // the words chosen, a column each
+  std::optional<Opening> _next;      // what a line opened, for the next frame
   bool _shutting = false;            // a press or escape, which shuts it the next frame
-  bool _begun = false;               // an item began a line, which keeps the focus
+  bool _begun = false;               // a line was begun, which keeps the focus there
   std::string _returning;            // the node in focus as the menus opened
   glm::vec2 _pointer{};              // as the events so far left it
-  bool _written = false;             // the names and items are as the above say
+  std::vector<VP_VIEW::Handed::Line> _pending; // handed at the next cook
+  bool _written = false;             // the columns are as the above say
 };
 
 } // namespace

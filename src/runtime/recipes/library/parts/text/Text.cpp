@@ -1167,7 +1167,13 @@ void Text::name_tabs() {
                       .current = at == _shown,
                       .close = std::format("close {}", _documents[at].path),
                       .move = std::format("tab move {}", _documents[at].path),
-                      .menu = std::format("menu tab for {}", _documents[at].path)});
+                      // As a line takes it, from where vulpen started, so the
+                      // terminal shows the lines its menu runs as a person types them.
+                      .menu = std::format(
+                          "menu tab for {}",
+                          std::filesystem::path(_documents[at].path)
+                              .lexically_proximate(std::filesystem::current_path())
+                              .generic_string())});
     if (!_documents[at].changed)
       continue;
     changed.append(count++ == 0 ? "" : ", ").append(_tabs->back().label);

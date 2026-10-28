@@ -2,6 +2,7 @@
 // the rows above it are one part's job, and a part's class stays in one file's unnamed
 // namespace, so two copies of the part in one binary never clash.
 #include "contracts/Font.h"
+#include "contracts/Handed.h"
 #include "contracts/Item.h"
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
@@ -169,9 +170,24 @@ void hosted(VP::Call &call, std::string_view host, std::vector<std::string> &nam
       }
 }
 
+// The library's recipes, as recipe drop names them, past the kind recipe list lists each
+// under; none where no part lists them.
+std::vector<std::string> recipes(VP::Call &call) {
+  std::vector<std::string> names;
+  try {
+    const std::string listed = call.commands().send("recipe list");
+    for (const std::string_view line : lines_of(listed))
+      if (!line.empty())
+        names.emplace_back(line.substr(line.rfind('/') + 1));
+  } catch (const std::runtime_error &) {
+  }
+  return names;
+}
+
 // What a placeholder stands for: the view's nodes or connections, the views hosted, the
-// params of the node named just before a key, the paths a word begun may become, or, for
-// a word naming no folder, the files the view holds. Any other answers as itself.
+// params of the node named just before a key, the recipes of the library, the paths a word
+// begun may become, or, for a word naming no folder, the files the view holds. Any other
+// answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -192,6 +208,8 @@ std::vector<std::string> names(std::string_view word,
         names.push_back(param.key);
   } else if (kind == "<view>") {
     hosted(call, {}, names);
+  } else if (kind == "<recipe>") {
+    names = recipes(call);
   } else if (kind == "<file>" || kind == "<project>" ||
              (kind == "<path>" && std::filesystem::path(begun).has_parent_path())) {
     names = paths(call.files(), begun);
@@ -324,16 +342,23 @@ class CommandLine final : public VP::Operator {
     }
     _title = node.param<std::string>("title");
     _tabs = &node.output<VP_VIEW::Items>("tabs");
-    // A graph's place, when a connection brings one, which the prompt shows.
-    const bool placed = std::ranges::any_of(
-        node.view().connections, [&](const VP::Connection &connection) {
-          return std::ranges::any_of(connection.to, [&](const VP::Endpoint &to) {
-            return to.node == _name && to.port == "place";
-          });
-        });
-    _place = placed ? &node.input<VP_VIEW::Place>("place") : nullptr;
+    // A graph's place, which the prompt shows, and the lines a menu hands it, when a
+    // connection brings them; the lines handed before it bound are not taken again.
+    _place = reached(node, "place") ? &node.input<VP_VIEW::Place>("place") : nullptr;
+    _handed = reached(node, "handed") ? &node.input<VP_VIEW::Handed>("handed") : nullptr;
+    _taken = _handed ? _handed->count : 0;
     _followed = false;
     name_tab();
+  }
+
+  // Whether a connection reaches a port of its, as one it may go without.
+  bool reached(VP::Bind &node, std::string_view port) const {
+    return std::ranges::any_of(
+        node.view().connections, [&](const VP::Connection &connection) {
+          return std::ranges::any_of(connection.to, [&](const VP::Endpoint &to) {
+            return to.node == _name && to.port == port;
+          });
+        });
   }
 
   void cook(VP::Cook &frame) override {
@@ -442,6 +467,7 @@ class CommandLine final : public VP::Operator {
     fit(0);
     for (const VP::Logged &line : frame.commands().log())
       show(line.text, role_of(line));
+    take(frame);
     point(frame);
     if (_selecting)
       drift();
@@ -873,6 +899,29 @@ class CommandLine final : public VP::Operator {
       _history.erase(_history.begin());
     _recalled = _history.size();
     show(run(frame, line), VP_VIEW::role("text"));
+  }
+
+  // The lines a menu handed since it last looked, with room or not, as no key is pressed:
+  // each run as if typed and sent, so the rows and the history show it as a person's, the
+  // line being typed kept as it was; or begun in place of it, the caret at its end, for
+  // the person to finish.
+  void take(VP::Cook &frame) {
+    if (!_handed || _handed->count == _taken)
+      return;
+    _taken = _handed->count;
+    for (const VP_VIEW::Handed::Line &handed : _handed->lines) {
+      if (!handed.run) {
+        _line = handed.text;
+        _caret = _line.size();
+        _from.reset();
+        continue;
+      }
+      const std::string typed = std::exchange(_line, handed.text);
+      const std::size_t caret = _caret;
+      submit(frame);
+      _line = typed;
+      _caret = caret;
+    }
   }
 
   // Up steps back through the lines sent, down forward, past the newest to a new line.
@@ -1414,6 +1463,8 @@ class CommandLine final : public VP::Operator {
   std::string _view;   // the current view, as last found; empty for the host
   std::string _folder; // that view's, or the graph's place, as the prompt shows it
   const VP_VIEW::Place *_place = nullptr; // a connection's; none for none
+  const VP_VIEW::Handed *_handed = nullptr; // a connection's; none for none
+  std::uint64_t _taken = 0;                 // the handed batches it took
   std::string _placed;                    // its folder, as the prompt last showed it
   bool _followed = false; // until the first frame finds the current view
   std::vector<std::string> _kept; // the views the log keeps to, as it was told
