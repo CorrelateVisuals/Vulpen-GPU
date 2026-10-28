@@ -6,6 +6,7 @@ layout(local_size_x = 64) in;
 layout(set = 1, binding = 0) uniform Pass {
   uint alive_percent; // a param: of a hundred cells, about how many start alive
   uint seed;          // a param: another seed sows other cells
+  uint sowing;        // set by SeedCells.cpp: 1 on the frame it sows, once it binds
   CellsOut seeded;    // a connection: the cells the engine starts from, a cell an invocation
 } pass;
 
@@ -22,8 +23,11 @@ uint hash_u32(uint x) {
 }
 
 // Each cell alive or dead by a hash of its index and the seed, so a seed sows the same
-// cells on every run (C01). The engine places each cell on its grid.
+// cells on every run (C01), once; the buffer keeps them for the engine's next seed. The
+// engine places each cell on its grid.
 void main() {
+  if (pass.sowing == 0u)
+    return;
   uint index = gl_GlobalInvocationID.x;
   bool is_alive = hash_u32(index ^ hash_u32(pass.seed)) % 100u < pass.alive_percent;
 

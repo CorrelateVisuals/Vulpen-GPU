@@ -8,7 +8,7 @@
 version = 1
 
 # A cell an invocation: of each hundred, about alive_percent start alive; another seed
-# sows other cells.
+# sows other cells. Its operator sows them once, as it binds, not every frame.
 [node "seed-cells"]
 invocations = 65536
 param       = alive_percent=30
