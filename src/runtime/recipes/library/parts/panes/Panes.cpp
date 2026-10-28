@@ -238,6 +238,15 @@ class Panes final : public VP::Operator {
           free_name(own, std::format("{}.{}{}", _parent, view, pane_suffix), taken));
     const VP::Connection *const keys = keys_of(own);
     std::optional<VP::Connection> grown = keys ? std::optional(*keys) : std::nullopt;
+    // The view as the frame began still has the panes going, whose ends their removal
+    // takes off the keys' connection, so a pane added in the same frame, as view save as
+    // closes one project and hosts its copy, connects it again without them.
+    if (grown)
+      std::erase_if(grown->to, [&](const VP::Endpoint &end) {
+        return std::ranges::any_of(going, [&](const std::string &node) {
+          return end.node == node || end.node.starts_with(node + '.');
+        });
+      });
     for (const std::string &node : going)
       commands.send(std::format("{}: node remove {}", _view, node));
     for (const auto &[pane, deck] : moving) {
