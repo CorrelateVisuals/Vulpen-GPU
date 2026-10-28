@@ -16,7 +16,7 @@ param       = seed=1
 
 # grid_xy, the cells of a row and the rows, holds the invocations, 256 * 256 = 65536. The
 # operator steps the cells a generation every frames_per_generation frames, and 0 holds
-# them still.
+# them still; generations, when set, holds them after so many.
 [node "engine"]
 invocations = 65536
 param       = grid_xy=256,256

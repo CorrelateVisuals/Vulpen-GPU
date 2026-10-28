@@ -25,22 +25,22 @@
   <a href="#license">License</a>
 </p>
 
-![The Vulpen ide: a node's C++ on the left, the project's graph and the triangle it draws on the right](docs/images/hero.png)
+![The Vulpen ide: a node's C++ on the left, the project's graph and the cells of Conway's Game of Life it steps on the right](docs/images/hero.png)
 
 ## What you get
 
 <table>
 <tr>
 <td width="33%" valign="top">
-<img src="docs/images/tile-graph.png" alt="The graph of the triangle-files example: clock, corners, face and blend" /><br />
+<img src="docs/images/tile-graph.png" alt="The graph of the life example: seed-cells, engine and cells" /><br />
 <b>Programs are graphs.</b> A small manifest names the nodes and the connections between them. The graph is that manifest as it runs, and Vulpen places every Vulkan barrier from it.
 </td>
 <td width="33%" valign="top">
-<img src="docs/images/tile-code.png" alt="Face.vert, a vertex shader of the triangle-files example" /><br />
+<img src="docs/images/tile-code.png" alt="Engine.comp, the compute shader that steps the life example's cells, its pass block set by Engine.cpp" /><br />
 <b>C++ and GLSL meet by name.</b> A node's C++ asks for its shaders' values, buffers and images by the names the shaders give them, checked against SPIR-V reflection before the first frame.
 </td>
 <td width="33%" valign="top">
-<img src="docs/images/tile-terminal.png" alt="The terminal: ls and info face on the triangle-files example" /><br />
+<img src="docs/images/tile-terminal.png" alt="The terminal: ls and info engine on the life example" /><br />
 <b>Every action is a command.</b> The ide's presses and drags included: anything it does can be typed, scripted with <code>--source</code>, or replayed from a log, with no window at all.
 </td>
 </tr>
@@ -64,7 +64,7 @@ cd Vulpen
 .\run.ps1                # builds the debug preset and opens the ide
 ```
 
-In the ide's terminal, type `view load triangle-files`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window.
+In the ide's terminal, type `view load life`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window.
 
 > [!NOTE]
 > Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address.
@@ -93,7 +93,7 @@ GLFW, GLM, stb, tinyobjloader and the Vulkan Memory Allocator come with the repo
 
 A project is a view: one manifest, `view.vlp`, and a folder for each node. A node is a C++ class, shaders, or both, and a connection carries a GPU buffer, an image or a C++ object from one node's port to the others.
 
-![The manifest of the triangle-files example beside the graph it makes](docs/images/manifest.png)
+![The manifest of the life example beside the graph it makes](docs/images/manifest.png)
 
 - **Barriers come from the graph.** Each node declares what it reads and writes, and Vulpen places the Vulkan barriers between passes.
 - **Data stays on the GPU** from node to node, until C++ reads it back.
@@ -112,7 +112,7 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 <details>
 <summary><b>Perform mode, the graph of a whole repository, and the ide inside its own graph</b></summary>
 
-![The triangle-files example in perform mode, filling the window](docs/images/perform.png)
+![The life example in perform mode, filling the window](docs/images/perform.png)
 *Perform mode, <kbd>F1</kbd>: the project in the whole window, as it would run on its own.*
 
 ![The repository's top in the graph, its folders and the relations between them](docs/images/graph-repository.png)
@@ -136,6 +136,7 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 | `./run.sh` | `.\run.ps1` | builds and runs the cli hosting the ide (`--ide`, the default) |
 | `./run.sh --cli` | `.\run.ps1 --cli` | the command line alone, at the terminal |
 | `./run.sh --triangle` | `.\run.ps1 --triangle` | one project of [`projects/`](projects) alone, in its own window |
+| `./run.sh --life` | `.\run.ps1 --life` | Conway's Game of Life, its cells stepped on the GPU; `engine seed` sows them anew |
 | `./run.sh --wave --log info` | `.\run.ps1 --wave --log info` | headless compute: `wave` fills a buffer and `probe` prints it |
 | `./run.sh --release …` | `.\run.ps1 --release …` | the `release` preset, in place of `debug` |
 | `ctest --preset debug` | `ctest --preset debug` | the tests, after a build; also `release` and `gpu-validation`, and on Linux `asan` and `tsan` |
