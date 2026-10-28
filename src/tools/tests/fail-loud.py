@@ -46,7 +46,9 @@ is unchanged, keeping the params the view set, and refuses once the view changed
 copy; a sync of a copy of recipes that use others takes out the nodes, files and folders
 the library let go, and names the params that went with them. A copy a view saves as a
 new project takes the view's edits, and leaves the view's own files as last saved, and a
-rename saves the view and moves its folder whole.
+rename saves the view and moves its folder whole. A file line deletes a folder holding
+files only with force, and in a view moves or deletes no node's folder, and makes no
+folder no node names.
 
 Each view is written into a folder named mistakes, beside a link to each node's folder
 it names, so it finds the nodes the build compiles from mistakes/ beside this script,
@@ -568,7 +570,7 @@ def cli_copy(folder: Path) -> Path:
     folder."""
     root = Path(__file__).resolve().parents[2] / "runtime" / "recipes"
     recipes = folder / "recipes"
-    for part in ("command-line", "inspect", "library", "projects", "editor"):
+    for part in ("command-line", "inspect", "library", "projects", "files", "editor"):
         shutil.copytree(root / "library" / "parts" / part,
                         recipes / "library" / "parts" / part)
     shutil.copytree(root / "cli", recipes / "cli")
@@ -651,6 +653,33 @@ def projects(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def files(vulpen: str, folder: Path) -> str | None:
+    """Why a file line deleted, moved or made what it must not, or None: a delete cannot be
+    undone, so a folder holding files goes only with force, and in a view a node's folder
+    moves and goes only with the node, and no folder is made there that no node names."""
+    recipes = cli_copy(folder / "files")
+    project = folder / "files" / "project"
+    (project / "keep").mkdir(parents=True)
+    (project / "keep" / "kept.txt").write_text("kept", encoding="utf-8")
+    (project / "view.vlp").write_text(HEAD + '\n[node "keep"]\n', encoding="utf-8")
+    loose = folder / "files" / "loose"
+    (loose / "inner").mkdir(parents=True)
+    (loose / "inner" / "a.txt").write_text("a", encoding="utf-8")
+    refused = [f"file remove {loose}", f"file remove {project / 'keep'}",
+               f"file rename {project / 'keep'} {project / 'moved'}",
+               f"file new {project / 'stray' / 'b.txt'}"]
+    typed = "\n".join([f"view load {project}", *refused,
+                       f"file new {project / 'keep' / 'c.txt'}",
+                       f"file rename {loose / 'inner' / 'a.txt'} {loose / 'new' / 'a.txt'}"])
+    _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed + "\n")
+    if (problems(output) or output.count("{!!!}") != len(refused)
+            or not (project / "keep" / "kept.txt").is_file()
+            or not (project / "keep" / "c.txt").is_file() or (project / "moved").exists()
+            or (project / "stray").exists() or not (loose / "new" / "a.txt").is_file()):
+        return f"files: a file line went past what keeps files and nodes whole:\n{output}"
+    return None
+
+
 def main() -> None:
     vulpen = sys.argv[1]
     cut = cut_spirv(vulpen)
@@ -672,7 +701,8 @@ def main() -> None:
                             input_lines(vulpen, folder),
                             children(vulpen, folder),
                             drops(vulpen, folder),
-                            projects(vulpen, folder)):
+                            projects(vulpen, folder),
+                            files(vulpen, folder)):
                 if problem:
                     failed.append(problem)
     finally:

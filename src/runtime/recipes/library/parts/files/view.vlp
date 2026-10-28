@@ -1,0 +1,6 @@
+# The files part: one node whose operator is Files, which owns file new, rename, copy and
+# remove, so a person makes, moves and deletes files and folders from inside vulpen.
+[manifest]
+version = 1
+
+[node "files"]

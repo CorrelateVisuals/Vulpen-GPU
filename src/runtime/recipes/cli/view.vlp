@@ -21,6 +21,11 @@ recipe = library
 [node "cli.projects"]
 recipe = projects
 
+# file new, rename, copy and remove, on files and folders anywhere, and in a view on what
+# keeps its folders and nodes together.
+[node "cli.files"]
+recipe = files
+
 # open starts the person's editor, or, while the ide runs, gives a file to its editor, a
 # folder to its graph, through the relations part the graph shows a folder from, and an
 # image file to its Perform panel, as a preview.
