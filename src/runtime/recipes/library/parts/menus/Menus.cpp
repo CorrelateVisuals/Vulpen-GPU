@@ -421,7 +421,7 @@ class Menus final : public VP::Operator {
   // The folder of what was pressed, as a line takes it: a path, which holds a /, as the
   // graph names one, ./ at the top, is a folder's own or names the folder holding it; a
   // name is a node's of the view lines go to, its name's path in the view's folder (RV08),
-  // or a hosted view's. None for none of them.
+  // a hosted view's, or a folder there no node names yet. None for none of them.
   static std::string folder_of(VP::Call &call, std::string_view named) {
     const auto typed = [](const std::filesystem::path &path) {
       const std::filesystem::path shown =
@@ -437,14 +437,21 @@ class Menus final : public VP::Operator {
           std::ranges::find(names, bare.filename().string() + '/') != names.end();
       return typed(folder ? bare : bare.parent_path());
     }
-    if (const VP::View *const view = call.view(call.commands().current());
-        view && std::ranges::find(view->nodes, named, &VP::Node::name) != view->nodes.end()) {
-      std::string inside(named);
-      std::ranges::replace(inside, '.', '/');
-      return typed(std::filesystem::absolute(view->file.parent_path() / inside));
-    }
+    const VP::View *const view = call.view(call.commands().current());
+    std::string inside(named);
+    std::ranges::replace(inside, '.', '/');
+    const std::filesystem::path own =
+        view ? std::filesystem::absolute(view->file.parent_path() / inside).lexically_normal()
+             : std::filesystem::path();
+    if (view && std::ranges::find(view->nodes, named, &VP::Node::name) != view->nodes.end())
+      return typed(own);
     if (const VP::View *const hosted = call.view(named))
       return typed(std::filesystem::absolute(hosted->file.parent_path()));
+    if (view) {
+      const std::vector<std::string> names = call.files().list(own.parent_path().string());
+      if (std::ranges::find(names, own.filename().string() + '/') != names.end())
+        return typed(own);
+    }
     return {};
   }
 

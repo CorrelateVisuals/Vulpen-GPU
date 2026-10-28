@@ -34,6 +34,8 @@ constexpr std::size_t listed_room = 10;
 constexpr std::size_t no_box = static_cast<std::size_t>(-1);
 // An end on a box's name, as a relation's, rather than on a row.
 constexpr std::size_t title_row = no_box;
+// What the one row of a folder no node names says.
+constexpr std::string_view stray_row = "no node yet";
 // The row standing for those a box lists that it has no room to show.
 constexpr std::size_t more_row = no_box - 2;
 // What a view's box calls what it draws into its window, which a connection may take.
@@ -82,6 +84,9 @@ struct Box {
   std::size_t list_from = 0;
   std::size_t listed = 0;
   std::filesystem::path opens; // a file's, which a press on its name opens
+  // A folder of the level no node names, as one a node remove left, which every load
+  // warns of (RV08); its name the node's it would be, which a right press makes it.
+  bool stray = false;
 };
 
 // A curve: from the row of a writer's port to the row of a reader's, a reader each, or a
@@ -438,6 +443,8 @@ void list_rows(Boxes &boxes,
         name.find('.') == std::string::npos)
       boxes.rows.push_back(
           {.text = std::format("node {}", name), .role = VP_VIEW::role("muted")});
+  if (listed.stray)
+    boxes.rows.push_back({.text = std::string(stray_row), .role = VP_VIEW::role("muted")});
   listed.list_from = listed.role ? contents - listed.first : 0;
   listed.listed = listed.role ? boxes.rows.size() - contents : listed.ports;
   if (child)
@@ -579,7 +586,8 @@ Boxes boxes_of(const VP::View &edited,
                std::span<const VP_VIEW::Relation> relations,
                std::span<const VP::View *const> hosted,
                const std::filesystem::path &base,
-               bool folders) {
+               bool folders,
+               std::span<const std::string> strays) {
   Boxes boxes;
   Building building{.folders = folders,
                     .parents = parents_of(flat, folders ? '/' : '.'),
@@ -621,6 +629,13 @@ Boxes boxes_of(const VP::View &edited,
                              .title = child.name,
                              .role = VP_VIEW::role("view"),
                              .view = true});
+  for (const std::string &stray : strays)
+    if (boxes.boxes.size() < node_room)
+      boxes.boxes.push_back(
+          {.name = boxes.scope.empty() ? stray : std::format("{}.{}", boxes.scope, stray),
+           .title = stray + '/',
+           .role = VP_VIEW::role("hidden"),
+           .stray = true});
   building.ports.resize(boxes.boxes.size());
   connect(boxes, building, flat);
   relate(boxes, building, relations, flat.connections.size());

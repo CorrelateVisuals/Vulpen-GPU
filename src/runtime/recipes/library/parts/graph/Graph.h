@@ -146,7 +146,7 @@ private:
   void key(VP::Cook &frame, std::string_view key);
   void show(std::string_view name);
   void arrange(VP::Cook &frame, const std::filesystem::path &beside);
-  void build(const VP::View *edited, const VP::View *flat);
+  void build(VP::FilePort &files, const VP::View *edited, const VP::View *flat);
   void name_tab();
   void show_view(VP::CommandPort &commands) const;
   void show_folder(VP::CommandPort &commands,

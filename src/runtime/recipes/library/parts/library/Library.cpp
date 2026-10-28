@@ -363,11 +363,13 @@ class Library final : public VP::Operator {
     _draw = node.command("node new draw <name>",
                          "adds a draw node, and writes its first files from the template "
                          "into its folder: its C++, its pass block and its two shaders, "
-                         "passing data every way they can; then saves the view");
+                         "passing data every way they can, or takes a folder there no "
+                         "node names as it is; then saves the view");
     _dispatch = node.command("node new dispatch <name>",
                              "adds a dispatch node, and writes its first files from the "
                              "template into its folder: its C++ and its compute shader, "
-                             "passing data every way they can; then saves the view");
+                             "passing data every way they can, or takes a folder there "
+                             "no node names as it is; then saves the view");
     _drop = node.command("recipe drop <recipe> <name>",
                          "copies a library recipe into the view as a node of that name, "
                          "with the nodes inside it and the contracts and shared code "
@@ -432,9 +434,12 @@ class Library final : public VP::Operator {
   }
 
   // A new node's name: free in the view, inside a node the view has when it holds a dot,
-  // and naming a folder that is not there yet, since the node's folder is its own.
-  static void
-  check_new(VP::Call &call, const std::filesystem::path &view, std::string_view name) {
+  // and naming a folder that is not there yet, since the node's folder is its own, unless
+  // a folder there may be one no node names, which the node then takes.
+  static void check_new(VP::Call &call,
+                        const std::filesystem::path &view,
+                        std::string_view name,
+                        bool folder_there = false) {
     if (!is_path(name))
       throw std::runtime_error(std::format("{} is no node's name: names of letters, "
                                            "digits, _ and -, joined by dots",
@@ -449,7 +454,8 @@ class Library final : public VP::Operator {
       throw std::runtime_error(
           std::format("{} is inside {}, which is no node", name, name.substr(0, dot)));
     const std::filesystem::path folder = view / path_of(name);
-    if (holds(call.files(), folder.parent_path(), folder.filename().string() + '/'))
+    if (!folder_there &&
+        holds(call.files(), folder.parent_path(), folder.filename().string() + '/'))
       throw std::runtime_error(std::format(
           "{} is a folder already, and a new node's folder is its own", folder.string()));
   }
@@ -472,7 +478,9 @@ class Library final : public VP::Operator {
 
   // A node's first files from the template, in the folder its name names, and the node.
   // They build and run at once, passing data between C++ and the shaders every way they
-  // can, so a person keeps what the node uses.
+  // can, so a person keeps what the node uses. A folder there no node names becomes the
+  // node, with the kind's words and the files it holds, none written over them, as every
+  // folder in a view is a node's (RV08).
   void
   start(VP::Call &call, const Kind &kind, const std::vector<VP::File> &templates) const {
     const std::string_view name = call.arguments().front();
@@ -482,8 +490,19 @@ class Library final : public VP::Operator {
                                            "letter, then lowercase letters, digits and -",
                                            own));
     const std::filesystem::path view = view_folder(call);
-    check_new(call, view, name);
     const std::filesystem::path folder = view / path_of(name);
+    const bool there =
+        holds(call.files(), folder.parent_path(), folder.filename().string() + '/');
+    check_new(call, view, name, there);
+    if (there) {
+      call.commands().send(std::format("node add {} {}", name, kind.words));
+      save_view(call);
+      return call.reply(std::format("added node {} with a {}'s words, its files those {} "
+                                    "holds, and saved the view",
+                                    name,
+                                    kind.folder,
+                                    folder.string()));
+    }
     const std::string type = class_of(own);
     std::string wrote;
     for (std::size_t file = 0; file < kind.files.size(); ++file) {

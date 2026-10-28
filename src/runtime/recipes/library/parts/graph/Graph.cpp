@@ -129,6 +129,36 @@ std::string typed_path(const std::filesystem::path &path) {
   return (typed.has_parent_path() ? typed : "." / typed).generic_string();
 }
 
+// The folders of a view's level no node names: at its top, but the folders of what its
+// nodes share, the hidden ones and its hosted views', or in a node's inside; each shows as
+// a box, which a right press makes a node, as every folder in a view is a node's (RV08).
+// Read as the level is built, as a node remove, which leaves the folder, builds it anew.
+std::vector<std::string>
+strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) {
+  std::string path(inside);
+  std::ranges::replace(path, '.', '/');
+  const std::filesystem::path folder = edited.file.parent_path() / path;
+  std::vector<std::string> strays;
+  std::vector<std::string> names;
+  try {
+    names = files.list(folder.lexically_normal().string());
+  } catch (const std::runtime_error &) {
+    return strays; // a folder it cannot list holds none it shows
+  }
+  for (const std::string &name : names) {
+    const std::string bare = name.substr(0, name.size() - 1);
+    const std::string node = inside.empty() ? bare : std::format("{}.{}", inside, bare);
+    if (!name.ends_with('/') || bare.starts_with('.') ||
+        (inside.empty() && (bare == "contracts" || bare == "shared" ||
+                            std::ranges::find(edited.children, bare, &VP::Child::name) !=
+                                edited.children.end())) ||
+        std::ranges::find(edited.nodes, node, &VP::Node::name) != edited.nodes.end())
+      continue;
+    strays.push_back(bare);
+  }
+  return strays;
+}
+
 // Whether a path names a folder, as its folder lists it with a / after its name, as the
 // editor part tells one, which open hands the graph rather than the editor.
 bool folder_named(VP::FilePort &files, const std::filesystem::path &path) {
@@ -265,7 +295,7 @@ void Graph::cook(VP::Cook &frame) {
   if (edited != _built_edited || flat != _built_flat || _inside != _built_inside ||
       _relations->folder != _built_folder || _relations->changes != _built_changes ||
       _hosted != _built_hosted)
-    build(edited, flat);
+    build(frame.files(), edited, flat);
   const glm::uvec2 cell = _font->cell;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
                     cell.x != 0 && cell.y != 0;
@@ -499,7 +529,7 @@ void Graph::arrange(VP::Cook &frame, const std::filesystem::path &beside) {
 // widen it or order its columns anew. A folder always shows its own inside, as the
 // relations part reads a folder a level at a time; the paths past it are named from the
 // folder holding it, and a view's from its folder.
-void Graph::build(const VP::View *edited, const VP::View *flat) {
+void Graph::build(VP::FilePort &files, const VP::View *edited, const VP::View *flat) {
   const std::string &folder = _relations->folder;
   if (_inside != _built_inside || folder != _built_folder || _at_home)
     _homing = true;
@@ -521,7 +551,9 @@ void Graph::build(const VP::View *edited, const VP::View *flat) {
                       _relations->relations,
                       _hosted,
                       _base,
-                      !folder.empty());
+                      !folder.empty(),
+                      folder.empty() ? strays_of(files, *edited, _inside)
+                                     : std::vector<std::string>());
   }
   draw_order(_boxes, _raised, _order);
   name_tab();
@@ -738,6 +770,8 @@ Graph::menu_of(VP::Cook &frame, std::size_t at, bool by_row) const {
   }
   if (box.view)
     return {"view", box.name};
+  if (box.stray)
+    return {"stray", box.name};
   if (box.role == VP_VIEW::role("node")) {
     const VP::View *const view = frame.view(_shown);
     const auto node = view ? std::ranges::find(view->nodes, box.name, &VP::Node::name)
