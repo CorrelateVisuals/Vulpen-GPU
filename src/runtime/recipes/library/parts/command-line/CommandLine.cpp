@@ -904,16 +904,18 @@ class CommandLine final : public VP::Operator {
   // The lines a menu handed since it last looked, with room or not, as no key is pressed:
   // each run as if typed and sent, so the rows and the history show it as a person's, the
   // line being typed kept as it was; or begun in place of it, the caret at its end, for
-  // the person to finish.
+  // the person to finish, and for a list, what may come there listed, as Tab lists it.
   void take(VP::Cook &frame) {
     if (!_handed || _handed->count == _taken)
       return;
     _taken = _handed->count;
     for (const VP_VIEW::Handed::Line &handed : _handed->lines) {
-      if (!handed.run) {
+      if (handed.way != VP_VIEW::Handed::Way::run) {
         _line = handed.text;
         _caret = _line.size();
         _from.reset();
+        if (handed.way == VP_VIEW::Handed::Way::list)
+          complete_word(frame);
         continue;
       }
       const std::string typed = std::exchange(_line, handed.text);

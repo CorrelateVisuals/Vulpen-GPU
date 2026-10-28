@@ -47,9 +47,9 @@ step too, and drags their scroll bar to the oldest, before help, sent, shows the
 again, and scrolls them across with shift and the wheel and back with the wheel turned
 sideways; the editor run scrolls the note past its end with the wheel, and back with a
 drag on its scroll bar. In both, three presses in a row select a word, then its row.
-A run types into a note in the editor, opens the menu of what the terminal does
-anywhere, the lines a right press in the graph ends with, by its line, and presses its
-write, which the terminal runs as typed, so the note must hold what was typed. Another moves the graph's panel below the Perform panel by panel
+A run opens the menu a right press on a file opens, for a file, by its line, at the
+pointer, moves onto its file, which opens the words after it, and presses remove, which
+the terminal runs as typed, so the file must be gone. Another moves the graph's panel below the Perform panel by panel
 move, hides both, so their dock hides too, shows the graph's again, which the Perform
 panel must not follow, moves the Perform panel into the graph's, which then holds both,
 and out again, the one it shows, into a panel of its own right of the terminal, and drags
@@ -118,10 +118,11 @@ MENUBAR = STRIP + 4
 # blank, then the mark, a cell wide, as wave/Wave.comp's.
 MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2,
         MENUBAR + STRIP // 2)
-# A line opens the menu at the graph's top left, its first column past a frame of 4
-# pixels: the first words of menu.ini's [all], of which write is the second.
-WRITE_ITEM = (4 + CELL_WIDE * 2, 4 + CELL + CELL // 2)
-TYPED = "typed"  # input text drops a blank at its end
+# A line opens a file's menu at the pointer, its first column past a frame of 4 pixels,
+# open then file, 4 cells wide; file's words open beside it, level with it, past a frame
+# more, 7 pixels in all: new, rename, copy and remove.
+FILE_ITEM = (4 + CELL_WIDE * 2, 4 + CELL + CELL // 2)
+REMOVE_ITEM = (4 + CELL_WIDE * 4 + 7 + CELL_WIDE * 2, 4 + CELL * 4 + CELL // 2)
 # A node left out as its view loads, or whose operator stops, names itself in the log.
 STOPPED = re.compile(r"\{!!!\} (?:\S+ )?node [\w.-]+: ")
 INFO = ['[node "probe"]', '[view "inner"]']  # info's headers for the boxes selected
@@ -247,14 +248,14 @@ def edits(width: int) -> list[str]:
     ]
 
 
-def menu(note: Path, width: int) -> list[str]:
+def menu(gone: Path, width: int) -> list[str]:
     graph = (round((width - 4) * 0.5) + 4, MENUBAR + STRIP)  # the graph's area's corner
+    at = (graph[0] + 40, graph[1] + 40)  # where the menu opens, the pointer there
     return [
-        f"open {note}",
-        "focus ide.editor.text",
-        f"input text {TYPED}",  # where the caret starts, as the note opens
-        "menu all",  # shown with the first frame, before the press
-        f"input pointer {graph[0] + WRITE_ITEM[0]} {graph[1] + WRITE_ITEM[1]}",
+        f"input pointer {at[0]} {at[1]}",
+        f"menu file for {gone}",  # shown with the first frame, before the moves
+        f"input pointer {at[0] + FILE_ITEM[0]} {at[1] + FILE_ITEM[1]}",
+        f"input pointer {at[0] + REMOVE_ITEM[0]} {at[1] + REMOVE_ITEM[1]}",
         "input button down left",
         "input button up left",
     ]
@@ -426,12 +427,12 @@ def test() -> None:
         if numbers(zoomed) != {"zoom": [1]}:
             sys.exit(f"ide: expected the font to keep zoom = 1 after zooming in and out, "
                      f"it kept\n{zoomed}")
-        typed_into = folder / "typed.txt"
-        typed_into.write_text(NOTE, encoding="utf-8")
-        drive(folder, "menu", menu(typed_into, width))
-        if (held := typed_into.read_text(encoding="utf-8")) != TYPED + NOTE:
-            sys.exit(f"ide: expected the file menu's write to write {TYPED + NOTE!r}, "
-                     f"got {held!r}")
+        gone = folder / "gone.txt"
+        gone.write_text(NOTE, encoding="utf-8")
+        removing = drive(folder, "menu", menu(gone, width))
+        if gone.exists():
+            sys.exit(f"ide: expected the file menu's file remove to delete {gone}, got:\n"
+                     f"{removing}")
         if "{!!!}" in (moved := drive(folder, "docked", docked(width, height))):
             sys.exit(f"ide: expected the panels to move with no line refused, got:\n"
                      f"{moved}")

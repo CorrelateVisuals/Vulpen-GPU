@@ -122,9 +122,11 @@ std::optional<std::string> host_of(Port &port, std::string_view name) {
   return std::nullopt;
 }
 
-// A path as a line takes it, from where vulpen started, as the prompt shows a folder.
+// A path as a line takes it, from where vulpen started, as the prompt shows a folder, and
+// ./ before one at the top, which open would take for a file the view holds by name.
 std::string typed_path(const std::filesystem::path &path) {
-  return path.lexically_proximate(std::filesystem::current_path()).generic_string();
+  const std::filesystem::path typed = path.lexically_proximate(std::filesystem::current_path());
+  return (typed.has_parent_path() ? typed : "." / typed).generic_string();
 }
 
 // Whether a path names a folder, as its folder lists it with a / after its name, as the
@@ -716,7 +718,9 @@ void Graph::context(VP::Cook &frame) {
       return;
     names.push_back(std::move(name));
   }
-  std::string line = std::format("menu {} for", kind);
+  // A background's menu ends with what the terminal does for the whole project, muted.
+  const bool background = kind == "ground" || kind == "inside" || kind == "level";
+  std::string line = std::format("menu {}{} for", kind, background ? " project" : "");
   for (const std::string &name : names)
     line.append(" ").append(name);
   frame.commands().send(line);
@@ -750,18 +754,17 @@ Graph::menu_of(VP::Cook &frame, std::size_t at, bool by_row) const {
   return ground(frame);
 }
 
-// The level shown: a view's top, its folder, or a folder's, or a node's inside, its folder
-// the node's name as a path (RV08); none for a view with no folder.
+// The level shown: a folder's, by its path, a node's inside, by the node's name, or a
+// view's top, by its folder; none for a view with no folder.
 std::pair<std::string, std::string> Graph::ground(VP::Cook &frame) const {
   if (!_relations->folder.empty())
     return {"level", typed_path(_relations->folder)};
+  if (!_inside.empty())
+    return {"inside", _inside};
   const VP::View *const view = frame.view(_shown);
   if (!view || view->file.empty())
     return {};
-  std::string inside = _inside;
-  std::ranges::replace(inside, '.', '/');
-  return {_inside.empty() ? "ground" : "level",
-          typed_path(view->file.parent_path() / inside)};
+  return {"ground", typed_path(view->file.parent_path())};
 }
 
 // A corner pressed selects its box as a press on it does, and grabs the corner of it and
