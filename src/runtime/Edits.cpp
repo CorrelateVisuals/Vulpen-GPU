@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <format>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <optional>
 #include <set>
@@ -115,6 +116,10 @@ std::uint32_t whole_number(std::string_view text) {
   std::uint32_t value = 0;
   const auto [end, error] =
       std::from_chars(text.data(), text.data() + text.size(), value);
+  if (end == text.data() + text.size() && error == std::errc::result_out_of_range)
+    throw std::runtime_error(std::format("{} is more than the largest count, {}",
+                                         text,
+                                         std::numeric_limits<std::uint32_t>::max()));
   if (error != std::errc{} || end != text.data() + text.size())
     throw std::runtime_error(std::format("{} is not a whole number", text));
   return value;
