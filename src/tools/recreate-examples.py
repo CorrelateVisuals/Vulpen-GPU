@@ -432,9 +432,9 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # A project to try the library's lines in: a recipe dropped, synced, renamed, a file
-    # added beside what it copied, which a sync lets be, and one of those taken, so a sync
-    # refuses; then the node removed, folder and all.
+    # A project to try the library's lines in: a recipe dropped, synced, renamed; a file
+    # added beside what it copied, or one of those taken, is a change a sync refuses; then
+    # the node removed, folder and all.
     e = Example("scratch", compared=False)
     shot = at(e.copy, "picture")
     e.steps = [
@@ -444,7 +444,9 @@ def examples(scratch: Path) -> list[Example]:
         ok("recipe sync shot"),
         ok("node rename shot picture"),
         ok(f"file new {shot}/notes.txt"),
+        no("recipe sync picture", "changed since it was dropped"),
         ok(f"file rename {shot}/notes.txt {shot}/readme.txt"),
+        ok(f"file remove {shot}/readme.txt"),
         ok("recipe sync picture"),
         ok(f"file remove {shot}/Snapshot.comp"),
         no("recipe sync picture", "changed since it was dropped"),
