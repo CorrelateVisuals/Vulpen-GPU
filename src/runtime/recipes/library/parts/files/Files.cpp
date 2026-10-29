@@ -243,11 +243,16 @@ class Files final : public VP::Operator {
   }
 
   // A rename takes what it names along, so a node's folder or a view's own stays where
-  // its name puts it; a copy leaves it, so only where the copy lands counts.
+  // its name puts it; a copy leaves it, so only where the copy lands counts. Both name
+  // the paths as typed, as file new and file remove do.
   void move(VP::Call &call,
             const std::filesystem::path &from,
             const std::filesystem::path &to,
             bool copy) const {
+    if (!there(call.files(), from))
+      throw std::runtime_error(std::format("{} is not there", shown(from)));
+    if (there(call.files(), to))
+      throw std::runtime_error(std::format("{} is there already", shown(to)));
     if (!copy)
       check_kept(held_by(call, from), from, true);
     const std::optional<Held> held = held_by(call, to);
