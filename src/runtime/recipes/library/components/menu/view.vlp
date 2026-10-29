@@ -1,21 +1,16 @@
-# The menu component: menus, and three columns of list, hit, rects and glyphs. A line, as
-# a right press in the graph sends it, opens the words of menu.ini's lines for the kind
-# of thing pressed at the pointer, or, typed, at the top left of the Rect its host
-# connects to menus.area, over what lies there, which takes no press while it shows: the
-# first column drops below where it opened, and the pointer on a word opens the words
-# after it in the next column, beside it; a press on the word that ends a line hands the
-# line to the terminal through menus.handed, until a press anywhere or escape shuts it.
-# Its host connects menus.handed to the terminal's command line, the keys part's typed to
-# menus.typed, the font's metrics to each column's list, the theme to the rects and the
-# glyphs, and the font and its atlas to the glyphs, and lists it after what it drops
-# over, so it draws over it.
+# The menu component: three columns of list, hit, rects and glyphs, which drop as a menu
+# does: the first below where its host's menus part says it opened, at its at, and the
+# words after the word the pointer is on in the next column, beside it, each column's
+# words those the menus part hands it as first, second and third. Its host lists the
+# menus part apart, ahead of the node that reads the lines it hands, and this after what
+# it drops over, so it draws over it; and connects the menus part's at to menu.first's
+# place, its first, second and third to each column's list and hit's items, the font's
+# metrics to each column's list, the theme to the rects and the glyphs, and the font and
+# its atlas to the glyphs.
 [manifest]
 version = 1
 
 [node "menu"]
-
-[node "menu.menus"]
-recipe = menus
 
 [node "menu.first"]
 recipe = list
@@ -56,16 +51,6 @@ recipe = rects
 [node "menu.third-glyphs"]
 recipe = glyphs
 
-# Where the menus were opened, which the first column drops below.
-[connection "at"]
-from = menu.menus.at
-to   = menu.first.place
-
-[connection "first"]
-from = menu.menus.first
-to   = menu.first.items
-to   = menu.first-hit.items
-
 [connection "first-shown"]
 from = menu.first.shown
 to   = menu.first-hit.rects
@@ -91,11 +76,6 @@ to   = menu.first-glyphs.characters
 from = menu.first.current
 to   = menu.second.place
 
-[connection "second"]
-from = menu.menus.second
-to   = menu.second.items
-to   = menu.second-hit.items
-
 [connection "second-shown"]
 from = menu.second.shown
 to   = menu.second-hit.rects
@@ -119,11 +99,6 @@ to   = menu.second-glyphs.characters
 [connection "second-open"]
 from = menu.second.current
 to   = menu.third.place
-
-[connection "third"]
-from = menu.menus.third
-to   = menu.third.items
-to   = menu.third-hit.items
 
 [connection "third-shown"]
 from = menu.third.shown

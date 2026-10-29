@@ -17,7 +17,7 @@
 #                                     a project's window by its tab, a frame of each held
 #                                     still, or a preview; a panel more for each split
 #   Menubar    panel + join           a button a panel and the run's, along the top
-#   Menu       menu                   the menus of menu.ini, at a right press in the graph
+#   Menu       menus + menu           the menus of menu.ini, at a right press in the graph
 #   Tooltip    tooltip
 #   Modes      modes + image          edit or perform: the dock, or the view presented
 [manifest]
@@ -148,6 +148,17 @@ param  = moves=yes
 [node "ide.perform-panel"]
 recipe = panel
 
+# The menus of menu.ini, which a right press in the graph opens there, for what it is on,
+# their words handed to the menu's columns; a line a press ends goes to the terminal,
+# which runs it or, for a word the person adds, begins it, its panel shown. Listed before
+# the terminal, which reads what it hands, so the terminal and its panel go where they are
+# listed, under what the docking part draws over the panels, as a node waits for what it
+# reads.
+[node "ide.menus"]
+recipe = menus
+param  = line=ide.terminal.command-line
+param  = shows=ide.terminal-panel
+
 [node "ide.terminal"]
 recipe = terminal
 
@@ -169,14 +180,10 @@ recipe = rects
 [node "ide.docking-glyphs"]
 recipe = glyphs
 
-# The menus of menu.ini, which a right press in the graph opens there, for what it is on;
-# listed after the panels and what the docking part draws over them, so they drop over
-# all of it. A line a press ends goes to the terminal, which runs it or, for a word the
-# person adds, begins it, its panel shown.
+# The menus' columns, listed after the panels and what the docking part draws over them,
+# so they drop over all of it.
 [node "ide.menu"]
 recipe = menu
-param  = menus.line=ide.terminal.command-line
-param  = menus.shows=ide.terminal-panel
 
 # What is presented, over the whole window in perform mode; in edit mode it has no room.
 [node "ide.screen"]
@@ -271,7 +278,7 @@ to   = ide.graph-find.command-line.area
 [connection "graph-rest"]
 from = ide.graph-find.command-line.rest
 to   = ide.graph.bar.area
-to   = ide.menu.menus.area
+to   = ide.menus.area
 
 [connection "graph-tabs"]
 from = ide.graph.graph.tabs
@@ -329,8 +336,28 @@ to   = ide.terminal.command-line.place
 
 # The lines a menu's press ends, which the terminal runs as typed, or begins.
 [connection "handed"]
-from = ide.menu.menus.handed
+from = ide.menus.handed
 to   = ide.terminal.command-line.handed
+
+# Each column's words, and where the menus opened, which the first column drops below.
+[connection "menu-at"]
+from = ide.menus.at
+to   = ide.menu.first.place
+
+[connection "menu-first"]
+from = ide.menus.first
+to   = ide.menu.first.items
+to   = ide.menu.first-hit.items
+
+[connection "menu-second"]
+from = ide.menus.second
+to   = ide.menu.second.items
+to   = ide.menu.second-hit.items
+
+[connection "menu-third"]
+from = ide.menus.third
+to   = ide.menu.third.items
+to   = ide.menu.third-hit.items
 
 [connection "terminal-tabs"]
 from = ide.terminal.command-line.tabs
@@ -352,7 +379,7 @@ to   = ide.projects.typed
 to   = ide.panes.typed
 to   = ide.preview.typed
 to   = ide.modes.typed
-to   = ide.menu.menus.typed
+to   = ide.menus.typed
 to   = ide.docking.typed
 
 [connection "palette"]
