@@ -549,13 +549,21 @@ class Library final : public VP::Operator {
     return copy_of(graph, recipe);
   }
 
-  // A view's copy of a drop, each node with its folder in the view.
-  static Copy copy_in(const VP::View &view,
+  // A view's copy of a drop, each node with its folder in the view and the files that
+  // folder holds now, as the manifest read anew lists them: a file line changes a folder
+  // between the edits that list it again, so the view's own list may be behind.
+  static Copy copy_in(VP::FilePort &files,
+                      const VP::View &view,
                       const std::filesystem::path &folder,
                       std::string_view root) {
+    const VP::View read = files.manifest(view.file.string());
     Copy copy = copy_of(view, root);
-    for (Inner &inner : copy.nodes)
+    for (Inner &inner : copy.nodes) {
       inner.node.folder = folder / path_of(outer_name(root, inner.name));
+      if (const auto now = std::ranges::find(read.nodes, inner.node.name, &VP::Node::name);
+          now != read.nodes.end())
+        inner.node.files = now->files;
+    }
     return copy;
   }
 
@@ -717,7 +725,7 @@ class Library final : public VP::Operator {
     const auto [from, print] = origin(view, root);
     VP::FilePort &files = call.files();
     const std::filesystem::path folder = view_folder(call);
-    const Copy mine = copy_in(view, folder, root);
+    const Copy mine = copy_in(files, view, folder, root);
     if (fingerprint(files, mine) != print)
       throw std::runtime_error(
           std::format("node {} changed since it was dropped from {}, and a sync would "
