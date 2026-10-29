@@ -37,7 +37,7 @@ NUMBER = re.compile(r"[-+]?\d[\d.e+-]*")
 # manifest has it.
 EDITS = """\
 disconnect values
-node remove probe
+node remove keep probe
 node add probe invocations=8 param=step=128 param=every=60 log=info
 connect values wave.values probe.values
 param set wave amplitude 1.0

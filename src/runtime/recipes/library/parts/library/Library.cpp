@@ -382,6 +382,10 @@ class Library final : public VP::Operator {
                            "renames a node, the nodes inside it and the connections "
                            "naming them, and moves its folder with it; a name with dots "
                            "moves it inside another node; then saves the view");
+    _remove = node.command("node remove <node>",
+                           "removes a node with the nodes inside it, the connections "
+                           "they write, and them from the connections they read, and "
+                           "deletes its folder with all it holds; then saves the view");
   }
 
   void command(VP::Call &call) override {
@@ -397,6 +401,8 @@ class Library final : public VP::Operator {
       sync(call);
     else if (call.is(_rename))
       rename(call);
+    else if (call.is(_remove))
+      remove(call);
   }
 
   // A recipe is a folder in a kind's folder, but the shared code's; the contracts' folder
@@ -758,7 +764,7 @@ class Library final : public VP::Operator {
         gone.push_back(&inner);
     std::ranges::sort(gone, std::greater{}, &Inner::name);
     for (const Inner *const inner : gone)
-      lines.push_back(std::format("node remove {}", outer_name(root, inner->name)));
+      lines.push_back(std::format("node remove keep {}", outer_name(root, inner->name)));
     for (const Inner &inner : fresh.nodes) {
       const Inner *const before = mine.find(inner.name);
       lines.push_back(std::format(
@@ -810,6 +816,35 @@ class Library final : public VP::Operator {
                            moves ? ", moved its folder" : ""));
   }
 
+  // A node goes whole: the engine's edit takes the nodes inside it too, and its folder
+  // goes with the folders it holds, theirs (RV08), through the line that deletes one, so
+  // no folder is left that no node names; then the view is saved, so its manifest names
+  // no node whose folder is gone. A view of the library's or an app's holds no folder of
+  // a node's, so there the refusal names the edit alone. The view is read before the edit
+  // replaces it.
+  void remove(VP::Call &call) const {
+    const std::string name(call.arguments().front());
+    const VP::View &view = call.view();
+    if (std::ranges::find(view.nodes, name, &VP::Node::name) == view.nodes.end())
+      throw std::runtime_error(std::format("no node is named {}; ls lists them", name));
+    if (inside(view.file.parent_path(), _library.parent_path()))
+      throw std::runtime_error(std::format(
+          "{} is in the library or an app beside it, whose nodes have no folders of "
+          "their own; node remove keep {} takes the node from the view running",
+          view.file.string(),
+          name));
+    const std::filesystem::path folder = view.file.parent_path() / path_of(name);
+    const bool there =
+        holds(call.files(), folder.parent_path(), folder.filename().string() + '/');
+    call.commands().send(std::format("node remove keep {}", name));
+    if (there)
+      call.commands().send(std::format("file remove force {}/", folder.string()));
+    save_view(call);
+    call.reply(std::format("removed node {}{}, and saved the view",
+                           name,
+                           there ? " and its folder" : ""));
+  }
+
   // The graph's side of a rename, as the edits a person would type, so a replay renames it
   // alike (V08): the connections reaching the node or the nodes inside it out, the node
   // out, and each of them back under the new name with the words it had, in the order
@@ -837,7 +872,7 @@ class Library final : public VP::Operator {
         lines.push_back(std::format("disconnect {}", connection.name));
       }
     }
-    lines.push_back(std::format("node remove {}", from));
+    lines.push_back(std::format("node remove keep {}", from));
     std::optional<std::string> after;
     bool past = false;
     for (const VP::Node &node : view.nodes) {
@@ -879,6 +914,7 @@ class Library final : public VP::Operator {
   VP::Command _drop;
   VP::Command _sync;
   VP::Command _rename;
+  VP::Command _remove;
 };
 
 } // namespace

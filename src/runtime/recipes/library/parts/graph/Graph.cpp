@@ -132,7 +132,8 @@ std::string typed_path(const std::filesystem::path &path) {
 // The folders of a view's level no node names: at its top, but the folders of what its
 // nodes share, the hidden ones and its hosted views', or in a node's inside; each shows as
 // a box, which a right press makes a node, as every folder in a view is a node's (RV08).
-// Read as the level is built, as a node remove, which leaves the folder, builds it anew.
+// Read as the level is built, as a node remove keep, which leaves the folder, builds it
+// anew.
 std::vector<std::string>
 strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) {
   std::string path(inside);
@@ -1297,11 +1298,11 @@ void Graph::arrange_anew(VP::FilePort &files) {
 }
 
 // The nodes and the views selected go, a line each, as node remove takes a node with the
-// nodes inside it and the part it has in connections, and view close stops hosting a
-// view; a node inside another selected goes with that one. Their boxes leave the .ini,
-// a node's files' with it. Files, folders and the nodes a recipe brings stay, and stay
-// selected: no line removes them here. What it reads of the view is read first, since
-// each line replaces the view.
+// nodes inside it, the part it has in connections and its folder, and view close stops
+// hosting a view; a node inside another selected goes with that one. Their boxes leave
+// the .ini, a node's files' with it. Files, folders and the nodes a recipe brings stay,
+// and stay selected: no line removes them here. What it reads of the view is read first,
+// since each line replaces the view.
 void Graph::erase(VP::Cook &frame, const VP::View &view) {
   const auto removed = [&](const std::string &name) {
     const auto &children = view.children;

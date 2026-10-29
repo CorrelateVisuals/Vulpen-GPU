@@ -507,9 +507,9 @@ constexpr std::array edits{
          "adds a node, given the manifest's node words; its files are what its folder "
          "holds",
          node_add},
-    Edit{"node remove <node>",
+    Edit{"node remove keep <node>",
          "removes a node with the nodes inside it, the connections they write, and them "
-         "from the connections they read; its folder stays",
+         "from the connections they read, keeping its folder",
          node_remove},
     Edit{"node move <node> <node>",
          "lists a node, with the nodes inside it, just before another, so it draws under "

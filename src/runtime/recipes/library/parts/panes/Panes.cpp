@@ -248,7 +248,7 @@ class Panes final : public VP::Operator {
         });
       });
     for (const std::string &node : going)
-      commands.send(std::format("{}: node remove {}", _view, node));
+      commands.send(std::format("{}: node remove keep {}", _view, node));
     for (const auto &[pane, deck] : moving) {
       commands.send(std::format("{}: disconnect {}", _view, pane.room.name));
       send_connect(commands,

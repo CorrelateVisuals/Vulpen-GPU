@@ -339,7 +339,8 @@ def no_limit(vulpen: str, folder: Path) -> str | None:
 def terminal(vulpen: str, folder: Path) -> str | None:
     """Why lines piped to a node that reads the terminal did not run as commands, or None."""
     view = view_in(folder, "terminal", HEAD + operator("Echo"))
-    code, output = run(vulpen, [view], typed="echo one two\nnode remove nothing\necho three")
+    code, output = run(vulpen, [view],
+                       typed="echo one two\nnode remove keep nothing\necho three")
     said = [line.strip() for line in output.splitlines()]
     if (code != 0 or problems(output) or "one two" not in said or "three" not in said
             or not any(line.endswith("no node is named nothing") for line in said)

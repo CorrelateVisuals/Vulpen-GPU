@@ -36,7 +36,7 @@ param set wave spare 1
 param unset wave spare
 node set wave invocations=1024
 disconnect values
-node remove probe
+node remove keep probe
 node add probe invocations=8 param=step=64
 param set probe every 30
 connect values wave.values probe.values

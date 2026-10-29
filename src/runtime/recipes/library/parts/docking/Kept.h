@@ -200,7 +200,7 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
         }))
       continue;
     removed.push_back(node.name);
-    lines.push_back(std::format("node remove {}", node.name));
+    lines.push_back(std::format("node remove keep {}", node.name));
     const auto goes = [&](const VP::Endpoint &end) {
       return !end.view() && within(end.node, node.name);
     };

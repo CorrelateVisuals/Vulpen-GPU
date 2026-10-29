@@ -179,8 +179,8 @@ void check_kept(const std::optional<Held> &held,
                                shown(path),
                                *node,
                                *node)
-                 : std::format("{}/ is node {}'s folder, which stays until node remove {} "
-                               "takes the node",
+                 : std::format("{}/ is node {}'s folder, which node remove {} deletes "
+                               "with the node",
                                shown(path),
                                *node,
                                *node));
@@ -211,8 +211,8 @@ class Files final : public VP::Operator {
                          "copies a file, or a folder with all it holds, whole or not at "
                          "all; in a view each folder it brings is a node, which it adds");
     _remove = node.command("file remove <file>",
-                           "deletes a file or an empty folder; a node's folder once node "
-                           "remove took the node, a view's once view close let it go");
+                           "deletes a file or an empty folder; a node's folder goes with "
+                           "node remove, a view's once view close let it go");
     _remove_force = node.command("file remove force <file>",
                                  "deletes a folder with all it holds, as file remove does "
                                  "the rest");

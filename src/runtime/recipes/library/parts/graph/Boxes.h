@@ -84,8 +84,8 @@ struct Box {
   std::size_t list_from = 0;
   std::size_t listed = 0;
   std::filesystem::path opens; // a file's, which a press on its name opens
-  // A folder of the level no node names, as one a node remove left, which every load
-  // warns of (RV08); its name the node's it would be, which a right press makes it.
+  // A folder of the level no node names, as one a node remove keep left, which every
+  // load warns of (RV08); its name the node's it would be, which a right press makes it.
   bool stray = false;
 };
 

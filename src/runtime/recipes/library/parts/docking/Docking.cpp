@@ -1050,7 +1050,7 @@ class Docking final : public VP::Operator {
     } else if (side == middle) {
       const Content going = *held;
       leave(call, panel);
-      send(call, std::format("node remove {}", panel));
+      send(call, std::format("node remove keep {}", panel));
       join(call, going, target);
     } else {
       move_beside(call, panel, target, side);
@@ -1174,7 +1174,7 @@ class Docking final : public VP::Operator {
           std::format("{} seats {} alone, or has no Rect", split, panel));
     const VP::Connection seats = *above;
     const VP::Endpoint kept = rest->to.front();
-    send(call, std::format("node remove {}", parent_of(split)));
+    send(call, std::format("node remove keep {}", parent_of(split)));
     if (named(*call.view(_view), seats.name))
       send(call, std::format("disconnect {}", seats.name));
     reseat(call, seats, split, kept);
@@ -1194,7 +1194,7 @@ class Docking final : public VP::Operator {
     const VP::Connection room = *from(view, panel + std::string(bar_node), rest_port);
     const VP::Connection tabs =
         *into(view, panel + std::string(tabs_node), items_port);
-    send(call, std::format("node remove {}", stack));
+    send(call, std::format("node remove keep {}", stack));
     connect(call, {.name = room.name, .from = room.from, .to = staying->area});
     const std::string named_tabs =
         std::format("{}-{}", content_name(*staying), tabs_port);
@@ -1493,7 +1493,7 @@ class Docking final : public VP::Operator {
                               .name = before->name, .from = before->from, .to = after->to})
                         : std::nullopt;
     remove_seated(call, text);
-    send(call, std::format("node remove {}", editor));
+    send(call, std::format("node remove keep {}", editor));
     if (chained)
       connect(call, *chained);
   }
@@ -1502,7 +1502,7 @@ class Docking final : public VP::Operator {
   // does.
   void remove_deck(VP::Call &call, const std::string &deck) {
     remove_seated(call, deck);
-    send(call, std::format("node remove {}", deck));
+    send(call, std::format("node remove keep {}", deck));
   }
 
   // The panel holding alone the content whose room the node takes goes, the dock seating
@@ -1516,7 +1516,7 @@ class Docking final : public VP::Operator {
     if (room.ends_with(bar_node) && port == rest_port) {
       const std::string panel = room.substr(0, room.size() - bar_node.size());
       leave(call, panel);
-      send(call, std::format("node remove {}", panel));
+      send(call, std::format("node remove keep {}", panel));
     } else if (room.ends_with(switch_node)) {
       const VP::Connection *const holding = feeding(view, room);
       if (!holding || !holding->from.node.ends_with(bar_node))
