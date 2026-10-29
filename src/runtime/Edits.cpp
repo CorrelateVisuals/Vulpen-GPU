@@ -558,6 +558,9 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
   } else if (key == "operator") {
     set_once(node.operator_name, key, value);
   } else if (key == "log") {
+    if (!level_named(value))
+      throw std::runtime_error(
+          std::format("log = {} is not error, warn, info or debug", value));
     set_once(node.log, key, value);
   } else if (key == "invocations") {
     set_count(node.invocations, key, value, "on a node with no .comp");
