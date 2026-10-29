@@ -545,11 +545,26 @@ class Docking final : public VP::Operator {
   // it may hold one, and the next change saves them as they are. Then every editor it
   // brought back that the docking part added goes, so a run starts with the manifest's
   // editors alone, and the docks go in the order they nest, as a file kept before moves
-  // ordered them may list them otherwise.
+  // ordered them may list them otherwise. Its lines change the panels as the manifest
+  // has them, so panels the file keeps as they are need none, and panels moved otherwise
+  // are refused before a line changes them.
   void restore(VP::Call &call) {
+    const std::filesystem::path kept(_kept);
+    const std::vector<std::string> names = call.files().list(kept.parent_path().string());
+    if (std::ranges::find(names, kept.filename().string()) == names.end())
+      throw std::runtime_error(
+          std::format("no panels are kept yet: {} keeps them once they change", _kept));
     const std::string text = call.files().read(_kept);
     if (!_written_read || kept_for(text) != fingerprint_of(_written))
       throw std::runtime_error(stale());
+    const VP::View &now = *call.view(_view);
+    if (kept_text(_written, now) == text)
+      return call.reply(std::format("the panels are as {} keeps them already", _kept));
+    if (!as_written(now, _written))
+      throw std::runtime_error(std::format("{} changes the panels as {} has them, as a "
+                                           "run starts, and they moved since",
+                                           _kept,
+                                           _manifest));
     const std::vector<std::string> lines = kept_lines(text);
     std::optional<std::string> stopped;
     for (const std::string &line : lines) {
@@ -818,12 +833,13 @@ class Docking final : public VP::Operator {
 
   // Whether a panel holds several contents, as a stack, or an editor holding several
   // files, or a deck holding several views hosted, so the one it shows may leave it for a
-  // panel beside it.
+  // panel beside it; a deck holding fewer in a stack still leaves the stack several.
   bool several(const VP::View &view,
                const VP::View &top,
                const std::string &panel) const {
-    if (const std::string deck = deck_in(view, panel); !deck.empty())
-      return held(view, top, deck).size() >= 2;
+    if (const std::string deck = deck_in(view, panel);
+        !deck.empty() && held(view, top, deck).size() >= 2)
+      return true;
     const std::optional<Content> held = content_of(view, panel);
     if (!held)
       return false;
@@ -1076,7 +1092,7 @@ class Docking final : public VP::Operator {
     if (const std::string deck = deck_in(view, panel); !deck.empty()) {
       const bool into_deck =
           panel != target && side == middle && !deck_in(view, target).empty();
-      if (into_deck || (side != middle && several(view, top, panel))) {
+      if (into_deck || (side != middle && held(view, top, deck).size() >= 2)) {
         move_view(call, deck, panel, target, side);
         order_docks(call);
         return;
