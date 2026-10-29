@@ -109,6 +109,41 @@ bool addressed(std::string_view line) {
   return words.empty() || words.front().ends_with(':');
 }
 
+// Where a line one word short of its usage lacks a node, or a view hosted: that word's
+// place among the line's words, the first the usage may not leave out being of that
+// kind; none for any other line. The usage is the one whose command words start the
+// line, the longest, as the command port picks it.
+struct Wanted {
+  std::size_t at = 0;
+  bool view = false;
+};
+
+std::optional<Wanted> wanted(std::span<const VP::Usage> usages,
+                             std::span<const std::string_view> words) {
+  std::vector<std::string_view> best;
+  std::size_t named = 0; // its command words
+  for (const VP::Usage &usage : usages) {
+    std::vector<std::string_view> its = words_of(usage.usage);
+    const auto count =
+        static_cast<std::size_t>(std::ranges::find_if(its, placeholder) - its.begin());
+    if (count <= named || count > words.size() ||
+        !std::ranges::equal(std::span(its).first(count), words.first(count)))
+      continue;
+    best = std::move(its);
+    named = count;
+  }
+  std::size_t needed = best.size() - named;
+  if (needed > 0 && best.back().starts_with('['))
+    --needed;
+  if (named == 0 || words.size() - named + 1 != needed)
+    return std::nullopt;
+  for (std::size_t at = named; at < named + needed; ++at)
+    if (const std::string_view kind = kind_of(best[at]).name;
+        kind == "<node>" || kind == "<view>")
+      return Wanted{at, kind == "<view>"};
+  return std::nullopt;
+}
+
 // Each line of a text, without its line breaks, as an answer or the log writes them.
 std::vector<std::string_view> lines_of(std::string_view text) {
   std::vector<std::string_view> lines;
@@ -305,7 +340,9 @@ struct Mark {
 // press on which takes the focus back from the host; the rest of its area goes to the
 // host. A line that names no view goes to the current view, which view switch moves, so
 // it needs no name and every log line still has one. The prompt shows that view's folder,
-// as a shell shows the one it is in, and the log keeps to that view.
+// as a shell shows the one it is in, and the log keeps to that view. A line one word
+// short of the node its usage wants acts on the nodes the graph selects, a line each, as
+// Tab with no word begun offers them.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string on = node.param<std::string>("on");
@@ -426,8 +463,9 @@ class CommandLine final : public VP::Operator {
       return typing(frame, terminal);
     const std::span<const std::string> lines = terminal.lines();
     for (const std::string &line : lines)
-      if (const std::string answer = run(frame, line); !answer.empty())
-        terminal.print(answer);
+      for (const std::string &each : filled(frame, line))
+        if (const std::string answer = run(frame, each); !answer.empty())
+          terminal.print(answer);
     if (terminal.ended() && !frame.input().windowed()) {
       terminal.prompt(
           "\n"); // ends the prompt's line, as a shell does at the end of input
@@ -628,6 +666,67 @@ class CommandLine final : public VP::Operator {
   std::string address(std::string_view line) const {
     return _view.empty() || addressed(line) ? std::string(line)
                                             : std::format("{}: {}", _view, line);
+  }
+
+  // Whether a line names a view other than the one lines go to, whose selection the
+  // graph does not show.
+  bool elsewhere(std::string_view line) const {
+    const std::vector<std::string_view> words = words_of(line);
+    return !words.empty() && words.front().ends_with(':') &&
+           words.front().substr(0, words.front().size() - 1) != _view;
+  }
+
+  // What the graph has selected in the view lines go to, as selected lists it; none where
+  // no part selects.
+  static std::vector<std::string> selection(VP::Cook &frame,
+                                            std::span<const VP::Usage> usages,
+                                            const std::string &asked) {
+    if (std::ranges::find(usages, "selected", &VP::Usage::usage) == usages.end())
+      return {};
+    std::vector<std::string> names;
+    for (const std::string_view name : lines_of(frame.commands().send(asked)))
+      names.emplace_back(name);
+    return names;
+  }
+
+  // The lines a line typed runs: itself, or, one word short of a node its usage wants,
+  // or a view hosted, a line for each the graph selects of that kind, its name where the
+  // usage wants it, as the graph's delete sends a line each; so the lines shown and kept
+  // name what they act on (V08).
+  std::vector<std::string> filled(VP::Cook &frame, std::string_view line) const {
+    std::vector<std::string_view> words = words_of(line);
+    const VP::View *const view = frame.view(_view);
+    if (elsewhere(line) || !view)
+      return {std::string(line)};
+    const std::string named = addressed(line) && !words.empty()
+                                  ? std::string(words.front()).append(" ")
+                                  : std::string();
+    if (!named.empty())
+      words.erase(words.begin());
+    const std::vector<VP::Usage> usages = frame.commands().usages();
+    const std::optional<Wanted> slot = wanted(usages, words);
+    if (!slot)
+      return {std::string(line)};
+    std::vector<std::string> lines;
+    for (const std::string &name : selection(frame, usages, address("selected"))) {
+      if (slot->view ? std::ranges::find(view->children, name, &VP::Child::name) ==
+                           view->children.end()
+                     : std::ranges::find(view->nodes, name, &VP::Node::name) ==
+                           view->nodes.end())
+        continue;
+      std::string each = named;
+      for (std::size_t at = 0; at <= words.size(); ++at) {
+        if (at == slot->at)
+          each.append(name).append(" ");
+        if (at < words.size())
+          each.append(words[at]).append(" ");
+      }
+      each.pop_back();
+      lines.push_back(std::move(each));
+    }
+    if (lines.empty())
+      lines.emplace_back(line);
+    return lines;
   }
 
   std::string prompt() const {
@@ -884,21 +983,24 @@ class CommandLine final : public VP::Operator {
   }
 
   // A blank line only shows the prompt again, as a shell's does. Either shows the newest
-  // rows, so what the line answers shows.
+  // rows, so what the line answers shows. The history keeps the line as typed, and the
+  // rows each line it runs, the selection filled in.
   void submit(VP::Cook &frame) {
     ++_sent;
     const std::string line = std::exchange(_line, {});
     _caret = 0;
     _scroll.move(static_cast<float>(_scrollback.size()));
-    show(prompt() + line, VP_VIEW::role("accent"));
     if (line.find_first_not_of(' ') == std::string::npos)
-      return;
+      return show(prompt() + line, VP_VIEW::role("accent"));
     if (_history.empty() || _history.back() != line)
       _history.push_back(line);
     if (_history.size() > history_lines)
       _history.erase(_history.begin());
     _recalled = _history.size();
-    show(run(frame, line), VP_VIEW::role("text"));
+    for (const std::string &each : filled(frame, line)) {
+      show(prompt() + each, VP_VIEW::role("accent"));
+      show(run(frame, each), VP_VIEW::role("text"));
+    }
   }
 
   // The lines a menu handed since it last looked, with room or not, as no key is pressed:
@@ -938,14 +1040,25 @@ class CommandLine final : public VP::Operator {
   // As a shell does: the word at the caret takes what every candidate shares, a word
   // only one candidate fits is finished, and several are listed. A placeholder, as
   // <name>, shows what may come but is never typed in. A folder is finished with no
-  // blank, so Tab again lists what it holds.
+  // blank, so Tab again lists what it holds. With no word begun, the candidates the
+  // graph selects are the only ones, so Tab fills in the node a line acts on; a letter
+  // typed brings the rest back.
   void complete_word(VP::Cook &frame) {
     const std::string_view before = std::string_view(_line).substr(0, _caret);
     const std::size_t start = before.find_last_of(' ') + 1; // 0 when there is none
     const std::string_view word = before.substr(start);
     const std::string answer = frame.commands().send(address(std::format(
         "complete {}{}", before.substr(0, start), word.empty() ? no_word : word)));
-    const std::vector<std::string_view> candidates = lines_of(answer);
+    std::vector<std::string_view> candidates = lines_of(answer);
+    if (word.empty() && !elsewhere(before)) {
+      const std::vector<std::string> chosen =
+          selection(frame, frame.commands().usages(), address("selected"));
+      const auto unchosen = [&](std::string_view candidate) {
+        return std::ranges::find(chosen, candidate) == chosen.end();
+      };
+      if (!std::ranges::all_of(candidates, unchosen))
+        std::erase_if(candidates, unchosen);
+    }
     std::vector<std::string_view> typeable;
     std::ranges::copy_if(
         candidates, std::back_inserter(typeable), [](std::string_view candidate) {
