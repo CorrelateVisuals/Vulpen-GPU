@@ -42,7 +42,8 @@ constexpr auto rate_every = std::chrono::seconds(1);
 // shows. A project presented anew, as a press on its tab presents it, shows: the switch
 // its switch param names gives the view presented its first half, in place of a preview,
 // and for one hosted since the frame before, as view load hosts one, the panel its shows
-// param names comes back if it was hidden.
+// param names comes back if it was hidden, or the panel holding the node it names, as
+// panel show finds it.
 // It takes the keys no part in focus takes: escape leaves perform mode, and in edit mode
 // ends the run, once the part in focus let go of its selection and of the focus. It hands
 // on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
@@ -249,7 +250,7 @@ class Modes final : public VP::Operator {
   }
 
   bool _perform = false;
-  std::string _shows;  // the panel a project loaded shows in, as its shows param names it
+  std::string _shows;  // the panel a project loaded shows in, or a node it holds
   std::string _switch; // and the switch giving the view presented its first half
   std::string _presented; // the view presented, as the frame before found it
   std::vector<std::string> _known; // the projects hosted the frame before

@@ -237,7 +237,7 @@ private:
   // The node whose inside the graph shows, in the view shown; with none, or one that view
   // does not hold, the top.
   std::string _inside;
-  std::string _shows; // the panel a file a press opens shows in, as its shows param names it
+  std::string _shows; // the panel a file a press opens shows in, or a node it holds
   VP::Command _select;
   VP::Command _selected;
   VP::Command _arrange;

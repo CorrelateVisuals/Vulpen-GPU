@@ -545,7 +545,7 @@ class Menus final : public VP::Operator {
   std::string _name;
   std::string _view; // the view it runs in, where the panel it shows is
   std::string _line; // the node whose line a begun one is typed into, as the terminal
-  std::string _shows; // the panel holding it, shown for a begun line; none for none
+  std::string _shows; // the panel holding it, or a node it holds; none for none
   VP::File _file;
   std::optional<std::string> _read; // the file the lines are from
   std::vector<Line> _lines;

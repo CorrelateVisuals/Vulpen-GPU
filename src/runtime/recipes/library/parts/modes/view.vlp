@@ -1,8 +1,9 @@
 # The modes part: one node whose operator is Modes. It hands the Rect its area gives to
 # the dock in edit mode, and to what is presented in perform mode, which a panes part
-# connects; a project loaded shows the panel its shows param names again, and the first
-# half of the switch its switch param names, which its host may set. Its buttons are
-# edit, run and gpu, and beside them the frames a second, for a bar.
+# connects; a project loaded shows the panel its shows param names again, or the panel
+# holding the node it names, and the first half of the switch its switch param names,
+# which its host may set. Its buttons are edit, run and gpu, and beside them the frames a
+# second, for a bar.
 [manifest]
 version = 1
 

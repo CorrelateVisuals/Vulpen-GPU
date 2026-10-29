@@ -60,6 +60,8 @@ constexpr std::string_view items_port = "items";
 constexpr std::string_view tabs_port = "tabs";
 constexpr std::string_view switch_node = ".switch";
 constexpr std::string_view switch_tabs_node = ".tabs";
+// A stack's param, the half its switch shows, as the switch's shown param sets it.
+constexpr std::string_view shown_switch = "switch.shown";
 // The recipes a move adds: a stack for a panel holding two contents, a panel for one torn
 // out of a stack, and a dock to seat it.
 constexpr std::string_view stack_recipe = "stack";
@@ -243,6 +245,35 @@ std::string stack_of(const VP::View &view, const Content &held) {
                                                                      : std::string();
 }
 
+// The panel whose room a node takes, through what hands the room on, as a find bar's rest
+// and a stack's switch, and each stack it is in with the half holding it, innermost
+// first; none for a node no panel's room reaches. A node a panel holds follows it through
+// moves, as its panel may go.
+struct Holder {
+  std::string panel;
+  std::vector<std::pair<std::string, std::size_t>> halves;
+};
+
+std::optional<Holder> holder_of(const VP::View &view, std::string_view node) {
+  Holder holder;
+  for (std::string at(node);;) {
+    const VP::Connection *const into = feeding(view, at);
+    if (!into)
+      return std::nullopt;
+    const std::string &from = into->from.node;
+    if (from.ends_with(bar_node) && into->from.port == rest_port) {
+      holder.panel = from.substr(0, from.size() - bar_node.size());
+      return holder;
+    }
+    const std::string stack = from.substr(0, from.size() - switch_node.size());
+    const auto found = std::ranges::find(view.nodes, stack, &VP::Node::name);
+    if (from.ends_with(switch_node) && found != view.nodes.end() &&
+        found->recipe == stack_recipe)
+      holder.halves.emplace_back(stack, into->from.port == half_ports[0] ? 0 : 1);
+    at = from;
+  }
+}
+
 // The node a content is, past the node the view's nodes are inside: terminal for
 // ide.terminal.command-line, perform for ide.perform.
 std::string_view content_name(const Content &content) {
@@ -342,7 +373,8 @@ class Docking final : public VP::Operator {
                          "or the dock's own when nothing beside it shows");
     _show = node.command("panel show <node>",
                          "gives a panel hidden its room again, as its docks' ratios were "
-                         "before it hid, or halved");
+                         "before it hid, or halved; given a node a panel holds, as "
+                         "ide.perform, the panel holding it now, its tab in front");
     _restore = node.command("panel restore",
                             "arranges the panels as a person left them, as .vulpen/"
                             "layout.log beside the view's manifest keeps them");
@@ -976,7 +1008,9 @@ class Docking final : public VP::Operator {
 
   // Every dock above the panel gives its half room again: at the ratio it had before it
   // gave none, or halved; but a dock that a dock above it hid gives the panel's half all
-  // of it, as what else it holds was hidden before.
+  // of it, as what else it holds was hidden before. A node a panel holds shows that
+  // panel, each stack it is in showing the half holding it, so a part naming what it
+  // shows in finds it after a move took it into another panel.
   void show(VP::Call &call, const std::string &panel) {
     const VP::View &view = *call.view(_view);
     std::vector<Seating> way; // from the panel up, read before a line changes the view
@@ -984,8 +1018,24 @@ class Docking final : public VP::Operator {
          seating;
          seating = seating_of(view, seating->split))
       way.push_back(*seating);
+    if (const std::optional<Holder> holder = way.empty() ? holder_of(view, panel)
+                                                         : std::nullopt) {
+      std::vector<std::string> fronts; // read before a line changes the view
+      for (const auto &[stack, half] : holder->halves)
+        if (param_of(*std::ranges::find(view.nodes, stack, &VP::Node::name),
+                     shown_switch) != half_ports[half])
+          fronts.push_back(std::format("param set {}{} {} {}",
+                                       stack,
+                                       switch_node,
+                                       shown_param,
+                                       half_ports[half]));
+      for (const std::string &line : fronts)
+        send(call, line);
+      return show(call, holder->panel);
+    }
     if (way.empty())
-      throw std::runtime_error(std::format("{} is no panel a dock seats", panel));
+      throw std::runtime_error(
+          std::format("{} is no panel a dock seats, nor a node one holds", panel));
     for (auto seating = way.begin(); seating != way.end(); ++seating) {
       if (!seating->gives_none(seating->half))
         continue;
@@ -1189,7 +1239,7 @@ class Docking final : public VP::Operator {
     const VP::View &view = *call.view(_view);
     const std::string stack = stack_of(view, *content_of(view, panel));
     const auto node = std::ranges::find(view.nodes, stack, &VP::Node::name);
-    const std::size_t shown = param_of(*node, "switch.shown") == half_ports[1] ? 1 : 0;
+    const std::size_t shown = param_of(*node, shown_switch) == half_ports[1] ? 1 : 0;
     const std::optional<Content> going = half_of(view, stack, shown);
     const std::optional<Content> staying = half_of(view, stack, 1 - shown);
     if (!going || !staying)
@@ -1217,9 +1267,10 @@ class Docking final : public VP::Operator {
     const std::string switcher = stack + std::string(switch_node);
     const std::string tabs_of = stack + std::string(switch_tabs_node);
     send(call,
-         std::format("node add {} recipe={} param=switch.shown={}",
+         std::format("node add {} recipe={} param={}={}",
                      stack,
                      stack_recipe,
+                     shown_switch,
                      half_ports[1]));
     // Listed before the target, the content joining it too, so the panel's strip draws
     // over both, and before what draws over the panels.

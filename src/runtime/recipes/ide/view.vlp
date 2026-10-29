@@ -40,11 +40,12 @@ param  = focus=ide.terminal.command-line
 recipe = viewport
 
 # Edit mode gives the dock the window, and perform mode the view presented, which the
-# panes part connects; each project loaded is presented as it comes, the Perform panel
-# showing again if it was hidden, with the view presented in place of a preview.
+# panes part connects; each project loaded is presented as it comes, the panel holding
+# the Perform panel's switch showing again if it was hidden, wherever a move took the
+# switch, with the view presented in place of a preview.
 [node "ide.modes"]
 recipe = modes
-param  = shows=ide.perform-panel
+param  = shows=ide.perform
 param  = switch=ide.perform
 
 # The window's top: a button a panel, lit while it shows, whose press hides it or brings
@@ -95,10 +96,11 @@ recipe = find-bar
 param  = command-line.host=ide.graph.graph
 param  = command-line.finds=select,find
 
-# The graph of the view the terminal's lines go to, under a tab naming it.
+# The graph of the view the terminal's lines go to, under a tab naming it; a file a press
+# opens shows the panel holding the editor.
 [node "ide.graph"]
 recipe = graph-editor
-param  = graph.shows=ide.editor-panel
+param  = graph.shows=ide.editor.text
 
 [node "ide.graph-panel"]
 recipe = panel
@@ -157,7 +159,7 @@ recipe = panel
 [node "ide.menus"]
 recipe = menus
 param  = line=ide.terminal.command-line
-param  = shows=ide.terminal-panel
+param  = shows=ide.terminal.command-line
 
 [node "ide.terminal"]
 recipe = terminal

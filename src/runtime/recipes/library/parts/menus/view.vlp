@@ -4,8 +4,9 @@
 # lists that drop below where at says, and beside the word open before them, and a line a
 # press ends as handed, for the terminal to run, or to begin, for the person to finish.
 # Its host names the node a begun line is typed into with the line param, which has no
-# default, and the panel holding it with shows, which it shows for one, and connects the
-# keys part's typed to its typed, so escape shuts the menus.
+# default, and the panel holding it, or that node, with shows, which it shows for one,
+# as panel show finds it, and connects the keys part's typed to its typed, so escape
+# shuts the menus.
 [manifest]
 version = 1
 
