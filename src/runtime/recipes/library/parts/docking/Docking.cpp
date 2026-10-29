@@ -1016,6 +1016,13 @@ class Docking final : public VP::Operator {
           "side {}: left, right, top, bottom or middle of {}", side, target));
     const VP::View &view = *call.view(_view);
     const VP::View &top = *call.view("");
+    // Before a deck's view moves too, which seats a panel in the target's place.
+    if (!feeding(view, target + std::string(bar_node)) || !content_of(view, target))
+      throw std::runtime_error(std::format(
+          "{} moves beside or into another panel a dock seats, not {}; ls lists the "
+          "nodes",
+          panel,
+          target));
     if (const std::string deck = deck_in(view, panel); !deck.empty()) {
       const bool into_deck =
           panel != target && side == middle && !deck_in(view, target).empty();
@@ -1032,13 +1039,9 @@ class Docking final : public VP::Operator {
           "{} splits beside itself only holding several, at an edge, the one it shows "
           "leaving it",
           panel));
-    if (!into || !into->from.node.ends_with(split_node) || !held ||
-        !feeding(view, target + std::string(bar_node)) || !content_of(view, target))
-      throw std::runtime_error(std::format(
-          "{} moves beside or into another panel a dock seats, not {}; ls lists the "
-          "nodes",
-          panel,
-          target));
+    if (!into || !into->from.node.ends_with(split_node) || !held)
+      throw std::runtime_error(
+          std::format("{} is no panel a dock seats; ls lists the nodes", panel));
     if (VP_VIEW::Editor *const editor = editor_of(*held); editor && editor->count() > 1) {
       move_file(call, *editor, panel, target, side);
     } else if (!stack_of(view, *held).empty()) {
