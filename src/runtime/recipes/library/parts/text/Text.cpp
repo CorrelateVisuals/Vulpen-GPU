@@ -332,7 +332,12 @@ void Text::bind(VP::Bind &node) {
   *_editors = _before ? *_before : VP_VIEW::Editors{};
   _editors->push_back(this);
   if (_head) {
-    _write = node.command("write", "saves the file the editor in focus shows");
+    _write = node.command("write",
+                          "saves the file the editor in focus shows, unless it moved, "
+                          "went or changed on disk since it was read");
+    _write_force = node.command("write force",
+                                "saves the file the editor in focus shows where it was "
+                                "read, whatever became of it on disk since");
     _close = node.command("close [<file>]",
                           "closes a file an editor holds, or with none the one the "
                           "editor in focus shows, unless it has changes");
@@ -758,8 +763,8 @@ void Text::write_lines(VP::Cook &frame,
 void Text::command(VP::Call &call) {
   if (std::exchange(_opening, false))
     route(call.files());
-  if (call.is(_write)) {
-    target().write(call);
+  if (call.is(_write) || call.is(_write_force)) {
+    target().write(call, call.is(_write_force));
   } else if (call.is(_close) || call.is(_close_force) || call.is(_close_left) ||
              call.is(_close_right) || call.is(_close_all)) {
     const std::string_view named =
@@ -1035,7 +1040,8 @@ void Text::open(VP::FilePort &files, std::string_view path) {
     _documents.push_back({.path = std::string(path),
                           .lines = lines_of(text),
                           .crlf = text.find("\r\n") != std::string::npos,
-                          .syntax = syntax_of(path)});
+                          .syntax = syntax_of(path),
+                          .disk = std::hash<std::string>{}(text)});
   }
   _shown = shown;
   _dragging = false;
@@ -1043,11 +1049,32 @@ void Text::open(VP::FilePort &files, std::string_view path) {
   name_tabs();
 }
 
-void Text::write(VP::Call &call) {
+// A file a line or another program moved, deleted or changed since it was read is not
+// written over unasked: the write would bring a moved node's folder back as a stray, put
+// a second shader beside a renamed one, or take back what was saved there (A02).
+void Text::write(VP::Call &call, bool force) {
   if (_documents.empty())
     throw std::runtime_error("no file is open");
   Document &document = _documents[_shown];
-  call.files().save(document.path, joined(document.lines, document.crlf));
+  VP::FilePort &files = call.files();
+  if (!force) {
+    const std::filesystem::path path(document.path);
+    const std::vector<std::string> names = files.list(path.parent_path().string());
+    if (std::ranges::find(names, path.filename().string()) == names.end())
+      throw std::runtime_error(
+          std::format("{} is gone since it was read, moved or deleted: write force "
+                      "makes it again, and close force drops its changes",
+                      label_of(document)));
+    if (std::hash<std::string>{}(files.read(document.path)) != document.disk)
+      throw std::runtime_error(
+          std::format("{} changed on disk since it was read: write force writes over "
+                      "that, and close force drops what was typed, so open reads it "
+                      "anew",
+                      label_of(document)));
+  }
+  const std::string text = joined(document.lines, document.crlf);
+  files.save(document.path, text);
+  document.disk = std::hash<std::string>{}(text);
   document.changed = false;
   document.saved = document.undone.size();
   name_tabs();

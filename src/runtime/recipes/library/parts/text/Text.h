@@ -67,6 +67,9 @@ struct Document {
   Scroll scroll; // the rows shown
   Scroll columns{Scroll::Axis::across};
   bool changed = false; // since it was opened or last written
+  // The file as it was read or last written, hashed, so write sees a change on disk
+  // since, by a line or another program.
+  std::size_t disk = 0;
   std::vector<Change> undone; // the edits so far, the newest last
   std::vector<Change> redone; // those taken back since, the newest last
   // How many edits undone held as the file was read or last written, so changed says
@@ -112,7 +115,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   std::string_view shown() const override;
   bool changed() const override;
   void show(VP::FilePort &files, std::string_view path) override;
-  void write(VP::Call &call) override;
+  void write(VP::Call &call, bool force) override;
   void close(VP::Call &call, std::string_view path, bool force) override;
   void close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside beside) override;
   void find(VP::Call &call) override;
@@ -164,6 +167,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   void name_tabs();
 
   VP::Command _write;
+  VP::Command _write_force;
   VP::Command _close;
   VP::Command _close_force;
   VP::Command _close_left;

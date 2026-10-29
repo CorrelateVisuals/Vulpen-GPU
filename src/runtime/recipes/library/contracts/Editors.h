@@ -32,7 +32,9 @@ public:
   virtual bool changed() const = 0;
   // Shows the file, opening it first when it holds it not.
   virtual void show(VP::FilePort &files, std::string_view path) = 0;
-  virtual void write(VP::Call &call) = 0;
+  // The file it shows; one moved, deleted or changed on disk since it was read only by
+  // force.
+  virtual void write(VP::Call &call, bool force) = 0;
   // The file named, which it holds, or the one it shows; with changes only by force.
   virtual void close(VP::Call &call, std::string_view path, bool force) = 0;
   // The files left of the one named, which it holds, or of the one it shows, or right of
