@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """Make every example project again, as projects/re-<example>, from the terminal alone, as
 a person would type it (V06), with mistakes made on purpose and put right; then check
-each copy against its example: its manifest, its files, and that it runs.
+each copy against its example: its manifest, its files, and that it runs. Then, in a
+project of its own, what a person may not expect to matter: the editor holding a file a
+line renames, moves or another program changes, a count a digit too long, a folder that
+holds a running view's.
 
 The run is the cli hosting the ide with no window (V07), from the repository's top, so the
 live build compiles each node as it comes, as in a person's run; the lines go to the cli's
 terminal on standard input, or are typed into the ide's terminal as keys. Each line is
-expected to run, or to be refused naming why: a line that does otherwise, or a problem
-that stays once a copy is built, is a finding. The copies go before the run and, without
---keep, after it; what the run rewrites in .vulpen/ folders as panels move and the graph
-zooms is put back.
+expected to run, or to be refused naming why. A finding is a line that does otherwise, a
+problem that stays once a copy is built, a warning, a live build that fails on files
+still there, a validation message or a sanitizer report (RVK00, A03), or vulpen ending or
+hanging. The copies go before the run and, without --keep, after it; what the run
+rewrites in .vulpen/ folders as panels move and the graph zooms is put back. What vulpen
+said is kept, in recreate-examples.log beside the binary unless --said names a file.
 
-Run it while no other vulpen of this tree runs, as both would build into out/.
+It refuses to run while another vulpen of this tree runs, as both would build into out/
+and write the .vulpen/ folders.
 
 Usage: python3 src/tools/recreate-examples.py BINARY [--only NAME,...] [--keep]
                                                      [--said FILE]
@@ -27,6 +33,9 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tests"))
+from harness import PROBLEM  # noqa: E402 (the tests' folder is no package)
+
 ROOT = Path(__file__).resolve().parents[2]
 PROJECTS = ROOT / "projects"
 COPY = "re-"           # a copy's name: re-<example>
@@ -36,6 +45,8 @@ FRAMES_A_LINE = 3      # at least, from one line to the next
 SETTLE_FRAMES = 30     # a window of frames, as the live build goes on beside them
 SETTLE_S = 0.5         # between windows, so the live build's watch sees each change
 SETTLE_ROUNDS = 240    # at most, before the build counts as never idle
+QUIT_S = 3             # for quit to end the run, before quit force
+TAIL_LINES = 20        # of what vulpen said last, when it ends or hangs
 ERROR = "{!!!}"
 SETUP = f"""view add ide {ROOT}/src/runtime/recipes/ide/view.vlp
 node add cli.snapshot recipe=snapshot
@@ -46,10 +57,15 @@ connect snapshot ide: cli.snapshot.picture
 @dataclass
 class Step:
     """Lines sent together, in one frame, and what they should do: run (refused None) or
-    be refused, naming the words given; typed into the ide's terminal when ide."""
+    be refused, by the line or by a node as it binds, naming the words given; typed into
+    the ide's terminal when ide. Once the live build is idle when settled, so a node is
+    bound, or no build reads the files the lines remove; another program writes a line
+    at the end of the file elsewhere names first, as the person's own editor would."""
     lines: list[str]
     refused: str | None = None
     ide: bool = False
+    settled: bool = False
+    elsewhere: str | None = None
 
 
 def ok(*lines: str) -> Step:
@@ -64,6 +80,16 @@ def typed(line: str, refused: str | None = None) -> Step:
     """A line typed into the ide's terminal, pressed into focus first, as a person
     clicks it, since open gives the focus to the editor."""
     return Step([line], refused, ide=True)
+
+
+def settled(*lines: str, refused: str | None = None) -> Step:
+    return Step(list(lines), refused, settled=True)
+
+
+def gone(project: str) -> Step:
+    """A project closed and deleted, once no build reads its files, as a build that
+    loses them half way fails (the report's open call on what the live build builds)."""
+    return settled(f"view close {project}", f"file remove force projects/{project}/")
 
 
 @dataclass
@@ -389,7 +415,7 @@ def examples(scratch: Path) -> list[Example]:
         no("ide: panel move ide.perform-panel ide.side bottom", "not ide.side"),
         ok("ide: panel move ide.perform-panel ide.graph-panel middle"),
         ok(f"view new {e.copy}-two"),
-        ok(f"view close {e.copy}-two", f"file remove force projects/{e.copy}-two/"),
+        gone(f"{e.copy}-two"),
         ok(f"view switch {e.copy}"),
         no("ide: panel move ide.perform-panel ide.graph-panel bottom", "ide.perform-panel"),
         ok("ide: panel move ide.graph-panel ide.graph-panel bottom"),
@@ -426,8 +452,7 @@ def examples(scratch: Path) -> list[Example]:
         ok("view save"),
         ok(f"view save as {COPY}life-two"),
         ok(f"view load {e.copy}"),
-        ok(f"view close {COPY}life-two"),
-        ok(f"file remove force projects/{COPY}life-two/"),
+        gone(f"{COPY}life-two"),
         ok(f"view switch {e.copy}"),
     ]
     every.append(e)
@@ -451,7 +476,57 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"file remove {shot}/Snapshot.comp"),
         no("recipe sync picture", "changed since it was dropped"),
         ok("node remove picture"),
-        ok(f"view close {e.copy}", f"file remove force projects/{e.copy}/"),
+        gone(e.copy),
+    ]
+    every.append(e)
+
+    # surprises: what a person does that the lines before did not see coming. A view hosted
+    # from a folder inside another, which holds it, so that folder stays while it runs. The
+    # editor holding a file, typed into, as a line renames its node, renames it, or moves
+    # the project, and one another program changes: write must not bring a folder back as
+    # a stray, put a second shader beside a renamed one, or write over what was saved
+    # there. A count past the largest is named so, and a script sourcing itself is
+    # refused. No line asks for a count the GPU cannot hold: until vulpen refuses one
+    # before it makes a buffer, the driver may take it from the machine's memory.
+    e = Example("surprises", compared=False)
+    spin, turn = at(e.copy, "spin", "Spin.comp"), at(e.copy, "turn", "Turn.comp")
+    loop = scratch / "loop.txt"
+    loop.write_text(f"source {loop}\n")
+    e.steps = [
+        ok("file new projects/re-nest/"),
+        ok("view add re-nest-inner projects/re-nest/inner/view.vlp", "re-nest-inner: view save"),
+        no("file remove force projects/re-nest/", "view re-nest-inner's folder"),
+        no("file rename projects/re-nest/ projects/re-nested/", "view re-nest-inner's folder"),
+        ok("view close re-nest-inner", "file remove force projects/re-nest/"),
+        ok(f"view new {e.copy}"),
+        ok("node new dispatch spin", "node new dispatch turn"),
+        ok(f"open {spin}"),
+        ok("focus ide.editor.text"),
+        ok("input text // typed"),
+        ok("node rename spin swirl"),
+        no("write", "is gone since it was read"),
+        ok("close force"),
+        ok(f"open {turn}"),
+        ok("focus ide.editor.text"),
+        ok("input text // typed"),
+        ok(f"file rename {turn} {at(e.copy, 'turn', 'Twist.comp')}"),
+        no("write", "is gone since it was read"),
+        ok("close force"),
+        ok(f"open {at(e.copy, 'turn', 'Turn.cpp')}"),
+        Step([], elsewhere=at(e.copy, "turn", "Turn.cpp")),
+        no("write", "changed on disk since it was read"),
+        ok("close"),
+        ok(f"open {at(e.copy, 'swirl', 'Spin.cpp')}"),
+        ok("focus ide.editor.text"),
+        ok("input text // typed"),
+        ok(f"view rename {e.copy}-moved"),
+        no("write", "is gone since it was read"),
+        ok("close force"),
+        ok(f"view rename {e.copy}"),
+        no("node set swirl invocations=99999999999", "more than the largest count"),
+        no(f"source {loop}", "would never end"),
+        ok("  ls  "),
+        gone(e.copy),
     ]
     every.append(e)
     return every
@@ -485,19 +560,36 @@ class Finding:
 # A problem a view's node meets as it binds names where its words come from, the view's
 # manifest or a sourced file's line, and the node; a line's refusal names neither.
 BOUND = re.compile(r"\{!!!\} \S+ node \S+: ")
+WARNING = "{ ! }"
 STARTED = "a file changed; building"
-FINISHED = ("built in", "the build failed")
+FAILED = "the build failed"
+FINISHED = ("built in", FAILED)
+TAGGED = re.compile(r"\{[^}]*\}")
+# What a compiler says of a file a line removed or renamed while the build read it: the
+# build failed on the lines, not on the code (the report's open call on what the live
+# build builds).
+VANISHED = re.compile(r"No such file|unable to open input file|No rule to make target")
+# What vulpen says once the modules were built against other engine headers than its own:
+# none swaps in, so the run would only wait for builds that never take.
+STALE = re.compile(r"built against other engine headers|cannot load into this vulpen")
+
+
+class Ended(Exception):
+    """vulpen ended, or stopped answering, before the run was done."""
 
 
 class Run:
     """The cli hosting the ide, at the debug level, so the live build says when it starts,
-    its output in a file read as it grows."""
+    its output in a file read as it grows. What it says that no line asked for, a warning,
+    a build failing on code, a validation message or a sanitizer report, gathers in
+    problems."""
 
     def __init__(self, binary: Path, said: Path, scratch: Path):
         self.said, self.scratch, self.read = said, scratch, 0
         self.barriers = 0
         self.building = False
         self.last = ""  # the line sent last, which a run that ends names
+        self.problems: list[tuple[str, list[str]]] = []
         (scratch / "setup.txt").write_text(SETUP)
         env = {key: value for key, value in os.environ.items()
                if key not in ("DISPLAY", "WAYLAND_DISPLAY")}
@@ -516,10 +608,13 @@ class Run:
             self.vulpen.stdin.flush()
             deadline = time.monotonic() + TIMEOUT_S
             while not mark.exists():
-                if self.vulpen.poll() is not None or time.monotonic() > deadline:
+                if self.vulpen.poll() is not None:
+                    raise Ended(f"vulpen ended, exit {self.vulpen.returncode}, after "
+                                f"{self.last!r}")
+                if time.monotonic() > deadline:
                     self.vulpen.kill()
-                    sys.exit(f"vulpen ended (exit {self.vulpen.wait()}) or hung after "
-                             f"{self.last!r}; what it said is in {self.said}")
+                    self.vulpen.wait()
+                    raise Ended(f"vulpen stopped answering after {self.last!r}")
                 time.sleep(POLL_S)
             mark.unlink()
 
@@ -530,15 +625,43 @@ class Run:
             text = said.read()
             self.read = said.tell()
         lines = text.splitlines()
-        for line in lines:
+        for at, line in enumerate(lines):
+            if STALE.search(line):
+                raise Ended(f"the binary is older than the tree's engine headers, so no "
+                            f"module it builds loads: build vulpen first ({line.strip()})")
             if STARTED in line:
                 self.building = True
             elif any(word in line for word in FINISHED):
                 self.building = False
+            if FAILED in line:
+                self.failed(lines[at + 1:])
+            elif WARNING in line:
+                self.problems.append(("a warning", [line.strip()]))
+            elif PROBLEM.search(line):
+                self.problems.append(("a validation message or sanitizer report",
+                                      [line.strip()]))
         return lines
 
+    def failed(self, after: list[str]) -> None:
+        """A live build that failed, by what the compilers said, which follows untagged."""
+        said = []
+        for line in after:
+            if TAGGED.search(line):
+                break
+            said.append(line.strip())
+        errors = [line for line in said if "error" in line.lower() and "***" not in line]
+        if not errors or not all(VANISHED.search(line) for line in errors):
+            self.problems.append(("the live build failed", errors[:8] or said[-8:]))
+
     def send(self, step: Step) -> list[str]:
-        self.last = step.lines[-1]
+        if step.settled and not self.idle():
+            self.problems.append(("the live build never went idle", []))
+        if step.elsewhere:
+            with (ROOT / step.elsewhere).open("a") as file:
+                file.write("// changed by another program\n")
+            self.last = f"a change to {step.elsewhere} from outside"
+        if step.lines:
+            self.last = step.lines[-1]
         if step.ide:
             for line in ("focus ide.terminal.command-line", f"input text {step.lines[0]}",
                          "input key down enter", "input key up enter"):
@@ -568,7 +691,7 @@ class Run:
         self.vulpen.stdin.write("quit\n")
         self.vulpen.stdin.flush()
         try:
-            code = self.vulpen.wait(FRAMES_A_LINE)
+            code = self.vulpen.wait(QUIT_S)
         except subprocess.TimeoutExpired:
             self.vulpen.stdin.write("quit force\n")
             self.vulpen.stdin.close()
@@ -651,6 +774,46 @@ def check(example: Example, run: Run, findings: list[Finding]) -> None:
              if want[name] != have[name]])))
 
 
+def judge(example: str, step: Step, said: list[str], findings: list[Finding]) -> None:
+    """Whether the step's lines ran, none refused, or were refused, by a line or by a node
+    as it binds, naming the words the step gives."""
+    if step.refused is None:
+        if errors := refusals(said):
+            findings.append(Finding(example, f"refused: {' | '.join(step.lines)}", errors))
+    elif not any(step.refused in line for line in said if ERROR in line):
+        findings.append(Finding(example, f"not refused for {step.refused!r}: "
+                                f"{step.lines[0]}", refusals(said)))
+
+
+def gathered(example: str, run: Run, findings: list[Finding]) -> None:
+    """What vulpen said since that no line asked for, after the line sent last."""
+    findings.extend(Finding(example, f"{what}, after {run.last!r}", said)
+                    for what, said in run.problems)
+    run.problems.clear()
+
+
+def last_said(said: Path) -> list[str]:
+    """What vulpen said last, but the frames' barriers and the memory it made, as a run
+    that ends or hangs says why there."""
+    lines = [line.rstrip() for line in said.read_text(errors="replace").splitlines()
+             if "log save" not in line and "{mem}" not in line]
+    return lines[-TAIL_LINES:]
+
+
+def running() -> list[str]:
+    """The vulpen runs of this tree's builds, by their process and program: Linux names
+    each process's program in /proc, and elsewhere none is found."""
+    found = []
+    for program in Path("/proc").glob("[0-9]*/exe"):
+        try:
+            path = Path(os.readlink(program).removesuffix(" (deleted)"))
+        except OSError:  # another person's, or one that ended
+            continue
+        if path.name == "vulpen" and ROOT / "out" in path.parents:
+            found.append(f"process {program.parent.name}: {path}")
+    return found
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("binary", type=Path)
@@ -659,17 +822,21 @@ def main() -> None:
     parser.add_argument("--said", type=Path, help="where to keep what the run printed")
     arguments = parser.parse_args()
     binary = arguments.binary.resolve()
+    if others := running():
+        sys.exit("another vulpen of this tree runs, which builds into out/ and writes the "
+                 ".vulpen/ folders too; quit it first:\n" + "\n".join(others))
+    said = (arguments.said or binary.parent / "recreate-examples.log").resolve()
     findings: list[Finding] = []
-    sent = 0
+    sent, code, at = 0, None, "start"
     with tempfile.TemporaryDirectory() as scratch:
         chosen = examples(Path(scratch))
         if arguments.only:
             names = arguments.only.split(",")
             chosen = [example for example in chosen if example.name in names]
-        others = [f"{COPY}lif", f"{COPY}life-two", f"{COPY}wave-two"]
+        others = [f"{COPY}lif", f"{COPY}life-two", f"{COPY}wave-two", f"{COPY}nest",
+                  f"{COPY}surprises-moved"]
         for name in [example.copy for example in chosen] + others:
             forget(binary, name)
-        said = arguments.said.resolve() if arguments.said else Path(scratch) / "said.txt"
         before = kept()
         try:
             run = Run(binary, said, Path(scratch))
@@ -677,24 +844,22 @@ def main() -> None:
             for step in (ok("help"), ok("recipe list"), ok('complete node ""')):
                 run.send(step)
             for example in chosen:
+                at = example.name
                 print(f"{example.name}: {len(example.steps)} steps", flush=True)
                 for step in example.steps:
                     sent += len(step.lines)
-                    errors = refusals(run.send(step))
-                    if step.refused is None and errors:
-                        findings.append(Finding(
-                            example.name, f"refused: {' | '.join(step.lines)}", errors))
-                    elif step.refused is not None and not any(step.refused in line
-                                                              for line in errors):
-                        findings.append(Finding(example.name,
-                                                f"not refused for {step.refused!r}: "
-                                                f"{step.lines[0]}", errors))
+                    judge(example.name, step, run.send(step), findings)
+                    gathered(example.name, run, findings)
                 check(example, run, findings)
+                gathered(example.name, run, findings)
+            at = "end"
             if not arguments.keep:
                 for example in filter(lambda example: example.compared, chosen):
-                    run.send(ok(f"view close {example.copy}",
-                                f"file remove force projects/{example.copy}/"))
+                    run.send(gone(example.copy))
+            gathered(at, run, findings)
             code = run.end()
+        except Ended as ended:
+            findings.append(Finding(at, str(ended), last_said(said)))
         finally:
             put_back(before)
     print(f"{len(chosen)} examples, {sent} lines, {len(findings)} findings, exit {code}")
@@ -702,6 +867,8 @@ def main() -> None:
         print(f"\n{finding.example}: {finding.what}")
         for line in finding.said:
             print(f"    {line}")
+    if findings:
+        print(f"\nwhat vulpen said is in {said}")
     sys.exit(1 if findings or code != 0 else 0)
 
 
