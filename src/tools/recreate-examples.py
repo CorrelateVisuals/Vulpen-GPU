@@ -68,8 +68,10 @@ def typed(line: str, refused: str | None = None) -> Step:
 
 @dataclass
 class Example:
+    """An example made again, or, not compared, a project only to try lines in."""
     name: str
     steps: list[Step] = field(default_factory=list)
+    compared: bool = True
 
     @property
     def copy(self) -> str:
@@ -135,6 +137,7 @@ def examples(scratch: Path) -> list[Example]:
         ok("node set triangle vertex_count=3 instance_count= param=frames_per_turn=600"),
         ok("info triangle"),
         ok("ls"),
+        ok("clear"),
         ok("view save"),
     ]
     every.append(e)
@@ -230,14 +233,22 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
         ok(f"file new {at(e.copy, 'raster')}/"),
         no(f"file new {at(e.copy, 'raster')}/", "is there already"),
-        ok(*(f"file copy {at(e.name, 'raster', name)} {at(e.copy, 'raster', name)}"
-             for name in files_of(e.name, "raster")),
+        ok(f"file copy {at(e.name, 'raster', 'Raster.comp')} {at(e.copy, 'raster', 'Raster.com')}"),
+        ok(f"file rename {at(e.copy, 'raster', 'Raster.com')} "
+           f"{at(e.copy, 'raster', 'Raster.comp')}"),
+        ok(f"file copy {at(e.name, 'raster', 'Raster.cpp')} {at(e.copy, 'raster', 'Raster.cpp')}",
            "node set raster invocations=65536 param=frames_per_turn=600 param=side=256"),
         ok(f"file copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
            "node set screen vertex_count=6 instance_count=cells"),
         ok("connect cells screen.cells raster.cells"),
         ok("disconnect cells"),
         ok("connect cells raster.cells screen.cells"),
+        *(ok(f"open {at(e.copy, *path)}") for path in (("raster", "Raster.comp"),
+                                                      ("raster", "Raster.cpp"),
+                                                      ("screen", "Screen.frag"))),
+        ok(f"close left {at(e.copy, 'raster', 'Raster.cpp')}"),
+        ok(f"close right {at(e.copy, 'raster', 'Raster.cpp')}"),
+        ok("close force"),
         ok("view save"),
     ]
     every.append(e)
@@ -318,6 +329,11 @@ def examples(scratch: Path) -> list[Example]:
         ok("select find corners"),
         ok("info"),
         ok("probe stats"),
+        # A right press on the graph's ground opens its menu, escape shuts it; the wheel
+        # zooms the graph in and out.
+        ok("input pointer 760 180", "input button down right", "input button up right"),
+        ok("input key down escape", "input key up escape"),
+        ok("input pointer 900 150", "input wheel 0 1", "input wheel 0 -1"),
         ok("view save"),
     ]
     every.append(e)
@@ -377,8 +393,11 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"view switch {e.copy}"),
         no("ide: panel move ide.perform-panel ide.graph-panel bottom", "ide.perform-panel"),
         ok("ide: panel move ide.graph-panel ide.graph-panel bottom"),
+        ok("ide: panel restore"),
         ok("zoom in", "zoom out", "zoom reset"),
         ok("mode toggle"),
+        ok("mode edit"),
+        ok("mode perform"),
         ok("mode edit"),
         ok("arrange"),
         ok("view list"),
@@ -410,6 +429,27 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"view close {COPY}life-two"),
         ok(f"file remove force projects/{COPY}life-two/"),
         ok(f"view switch {e.copy}"),
+    ]
+    every.append(e)
+
+    # A project to try the library's lines in: a recipe dropped, synced, renamed, a file
+    # added beside what it copied, which a sync lets be, and one of those taken, so a sync
+    # refuses; then the node removed, folder and all.
+    e = Example("scratch", compared=False)
+    shot = at(e.copy, "picture")
+    e.steps = [
+        ok(f"view new {e.copy}"),
+        no("recipe drop nothing shot", "no recipe nothing"),
+        ok("recipe drop snapshot shot"),
+        ok("recipe sync shot"),
+        ok("node rename shot picture"),
+        ok(f"file new {shot}/notes.txt"),
+        ok(f"file rename {shot}/notes.txt {shot}/readme.txt"),
+        ok("recipe sync picture"),
+        ok(f"file remove {shot}/Snapshot.comp"),
+        no("recipe sync picture", "changed since it was dropped"),
+        ok("node remove picture"),
+        ok(f"view close {e.copy}", f"file remove force projects/{e.copy}/"),
     ]
     every.append(e)
     return every
@@ -520,10 +560,17 @@ class Run:
                 return True
         return False
 
+    # quit, as a person ends the run, which refuses while a node holds work, then quit
+    # force.
     def end(self) -> int:
-        self.vulpen.stdin.write("quit force\n")
-        self.vulpen.stdin.close()
-        code = self.vulpen.wait(TIMEOUT_S)
+        self.vulpen.stdin.write("quit\n")
+        self.vulpen.stdin.flush()
+        try:
+            code = self.vulpen.wait(FRAMES_A_LINE)
+        except subprocess.TimeoutExpired:
+            self.vulpen.stdin.write("quit force\n")
+            self.vulpen.stdin.close()
+            code = self.vulpen.wait(TIMEOUT_S)
         self.out.close()
         return code
 
@@ -576,6 +623,8 @@ def forget(binary: Path, name: str) -> None:
 # Once built, the copy is closed and loaded again from what view save wrote, as a person
 # loads it another day: what its nodes meet as they bind then is what stays.
 def check(example: Example, run: Run, findings: list[Finding]) -> None:
+    if not example.compared:
+        return
     if not run.idle():
         findings.append(Finding(example.name, "the live build never went idle", []))
     said = run.send(ok(f"view close {example.copy}"))
@@ -640,7 +689,7 @@ def main() -> None:
                                                 f"{step.lines[0]}", errors))
                 check(example, run, findings)
             if not arguments.keep:
-                for example in chosen:
+                for example in filter(lambda example: example.compared, chosen):
                     run.send(ok(f"view close {example.copy}",
                                 f"file remove force projects/{example.copy}/"))
             code = run.end()
