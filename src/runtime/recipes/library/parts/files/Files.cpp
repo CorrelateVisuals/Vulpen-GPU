@@ -53,11 +53,17 @@ struct Held {
   std::filesystem::path inside;
 };
 
-// From the view vulpen started with down the views each hosts, the one whose folder holds
-// the path nearest; none for a path no hosted view's folder holds, which is a folder like
-// any other, as a project not loaded is.
-std::optional<Held> held_by(VP::Call &call, const std::filesystem::path &path) {
-  std::optional<Held> nearest;
+// A view vulpen hosts: the name lines address it with, empty for the view vulpen started
+// with, the view, and its folder.
+struct Hosted {
+  std::string name;
+  const VP::View *view = nullptr;
+  std::filesystem::path folder;
+};
+
+// From the view vulpen started with down the views each hosts.
+std::vector<Hosted> hosted_views(VP::Call &call) {
+  std::vector<Hosted> views;
   std::vector<std::string> names{std::string()};
   for (std::size_t at = 0; at < names.size(); ++at) {
     const VP::View *const view = call.view(names[at]);
@@ -65,15 +71,27 @@ std::optional<Held> held_by(VP::Call &call, const std::filesystem::path &path) {
       continue;
     for (const VP::Child &child : view->children)
       names.push_back(child.name);
-    std::filesystem::path inside = path.lexically_relative(
-        std::filesystem::absolute(view->file.parent_path()).lexically_normal());
+    views.push_back(
+        {names[at],
+         view,
+         std::filesystem::absolute(view->file.parent_path()).lexically_normal()});
+  }
+  return views;
+}
+
+// The hosted view whose folder holds the path nearest; none for a path no hosted view's
+// folder holds, which is a folder like any other, as a project not loaded is.
+std::optional<Held> held_by(VP::Call &call, const std::filesystem::path &path) {
+  std::optional<Held> nearest;
+  for (const Hosted &hosted : hosted_views(call)) {
+    std::filesystem::path inside = path.lexically_relative(hosted.folder);
     if (inside.empty() || *inside.begin() == "..")
       continue;
     if (inside == ".")
       inside.clear();
     if (!nearest || std::distance(inside.begin(), inside.end()) <
                         std::distance(nearest->inside.begin(), nearest->inside.end()))
-      nearest = Held{names[at], view, inside};
+      nearest = Held{hosted.name, hosted.view, inside};
   }
   return nearest;
 }
@@ -155,11 +173,35 @@ std::vector<std::string> nodes_for(VP::FilePort &files,
   return nodes;
 }
 
+// A folder holding a hosted view's folder, as projects/ holds every project's, moves and
+// goes only once that view is let go, as the view's own folder does.
+void check_holds(VP::Call &call, const std::filesystem::path &path) {
+  for (const Hosted &hosted : hosted_views(call)) {
+    const std::filesystem::path inside = hosted.folder.lexically_relative(path);
+    if (inside.empty() || inside == "." || *inside.begin() == "..")
+      continue;
+    throw std::runtime_error(
+        hosted.name.empty()
+            ? std::format("{}/ holds {}/, the folder of the view vulpen started with, "
+                          "which stays while vulpen runs",
+                          shown(path),
+                          shown(hosted.folder))
+            : std::format("{}/ holds {}/, view {}'s folder, which stays while the view "
+                          "runs: view close {} lets it go",
+                          shown(path),
+                          shown(hosted.folder),
+                          hosted.name,
+                          hosted.name));
+  }
+}
+
 // A view's folder and manifest, and a node's folder, move and go only with the lines
 // that keep a view and its folders together, which the refusal names (A02).
-void check_kept(const std::optional<Held> &held,
+void check_kept(VP::Call &call,
+                const std::optional<Held> &held,
                 const std::filesystem::path &path,
                 bool renaming) {
+  check_holds(call, path);
   if (!held)
     return;
   if (held->inside.empty() || held->inside == manifest)
@@ -254,7 +296,7 @@ class Files final : public VP::Operator {
     if (there(call.files(), to))
       throw std::runtime_error(std::format("{} is there already", shown(to)));
     if (!copy)
-      check_kept(held_by(call, from), from, true);
+      check_kept(call, held_by(call, from), from, true);
     const std::optional<Held> held = held_by(call, to);
     const std::vector<std::string> nodes =
         adopted(call, held, listed(call.files(), from, "/"), from);
@@ -312,7 +354,7 @@ class Files final : public VP::Operator {
     VP::FilePort &files = call.files();
     if (!there(files, path))
       throw std::runtime_error(std::format("{} is not there", shown(path)));
-    check_kept(held_by(call, path), path, false);
+    check_kept(call, held_by(call, path), path, false);
     if (!listed(files, path, "/")) {
       files.remove(path.string());
       return call.reply(std::format("removed {}", shown(path)));
