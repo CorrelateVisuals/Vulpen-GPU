@@ -26,6 +26,7 @@ function App($flag) {
     @(Join-Path $recipes 'cli\view.vlp') + @(if ($flag -eq '--ide') { Join-Path $recipes 'ide\view.vlp' })
 }
 $arguments = @()
+$opened = @() # the targets of the projects it opens, as nodes.cmake names them
 $named = $false
 $verbose = $false
 $log = $null
@@ -40,9 +41,13 @@ for ($i = 0; $i -lt $rest.Count; $i++) {
     } elseif ($rest[$i] -like '--*') {
         $project = Join-Path $projects "$($rest[$i] -replace '^--')\view.vlp"
         # vulpen names an option it does not know.
-        if (Test-Path -LiteralPath $project) { $arguments += $project; $named = $true } else { $arguments += $rest[$i] }
+        if (Test-Path -LiteralPath $project) {
+            $arguments += $project; $named = $true; $opened += "vulpen_view_$($rest[$i] -replace '^--')"
+        } else { $arguments += $rest[$i] }
     } else {
         $arguments += $rest[$i]; $named = $true
+        $folder = Split-Path -Parent ([System.IO.Path]::GetFullPath($rest[$i]))
+        if ((Split-Path -Parent $folder) -eq $projects) { $opened += "vulpen_view_$(Split-Path -Leaf $folder)" }
     }
 }
 if (-not $named) { $arguments = @(App $default) + $arguments }
@@ -61,6 +66,9 @@ if ($folder) { New-Item -ItemType Directory -Force -Path $folder | Out-Null }
 # caller's, since nothing in it may depend on the working directory. One build at a time
 # on a tree, as two at once corrupt it: the build folder's build.lock, opened unshared,
 # which a running vulpen's builds open so too, and let go before vulpen starts.
+# vulpen's target builds the engine, the library and the apps, which vulpen needs; a
+# project's builds its nodes, and only for the projects it opens, so one broken never
+# keeps vulpen from starting: its nodes name why, as run.sh says.
 $built = Join-Path $PSScriptRoot "out\build\$preset"
 New-Item -ItemType Directory -Force -Path $built | Out-Null
 $lock = $null
@@ -72,20 +80,35 @@ Push-Location -LiteralPath $PSScriptRoot
 try {
     # Continue: a native command's stderr is part of what the build said, not a failure.
     $ErrorActionPreference = 'Continue'
-    $said = & {
-        cmake --preset $preset
-        if ($LASTEXITCODE -eq 0) { cmake --build --preset $preset --parallel }
-    } 2>&1 | ForEach-Object {
-        if ($verbose) { "$_" | Out-Host } elseif ("$_") { Write-Progress -Activity 'build' -Status "$_" }
-        "$_"
+    function Build($target) {
+        & {
+            if ($target -eq 'vulpen') { cmake --preset $preset }
+            if ($LASTEXITCODE -eq 0) { cmake --build --preset $preset --parallel --target $target }
+        } 2>&1 | ForEach-Object {
+            if ($verbose) { "$_" | Out-Host } elseif ("$_") { Write-Progress -Activity 'build' -Status "$_" }
+            "$_"
+        }
+        Write-Progress -Activity 'build' -Completed
     }
-    Write-Progress -Activity 'build' -Completed
+    $said = Build 'vulpen'
+    $engine = $LASTEXITCODE
+    if ($engine -ne 0 -and -not $verbose) { $said | Out-Host }
+    $failed = @()
+    if ($engine -eq 0) {
+        foreach ($target in $opened) {
+            $project = Build $target
+            if ($LASTEXITCODE -ne 0) { $failed += $target; $said += $project }
+            elseif ($verbose) { $said += $project }
+        }
+    }
     $ErrorActionPreference = 'Stop'
-    if ($LASTEXITCODE -ne 0 -and -not $verbose) { $said | Out-Host }
 } finally { Pop-Location; $lock.Dispose() }
 # From the caller's folder, as vulpen names it.
-if ($LASTEXITCODE -ne 0 -or $verbose) { Add-Content -LiteralPath $log -Value $said -Encoding utf8 }
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($engine -ne 0 -or $failed -or $verbose) { Add-Content -LiteralPath $log -Value $said -Encoding utf8 }
+if ($engine -ne 0) { exit $engine }
+foreach ($target in $failed) {
+    Write-Host "$($target -replace '^vulpen_view_') failed to build, so its nodes say why as vulpen starts; the build said it in $log"
+}
 
 & "$PSScriptRoot\out\build\$preset\vulpen.exe" @arguments
 exit $LASTEXITCODE

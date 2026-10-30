@@ -2,9 +2,11 @@
 """Run every gate in src/tools/gates/; any failing gate fails the build.
 
 A gate that reads the build (its compile commands) takes the build folder; the build
-passes it, and each gate gets the same arguments.
+passes it, and each gate gets the same arguments. With --view, each checks only that
+view's folder, as that view's build runs them, so a rule a project breaks stops its own
+build alone; without, they check src/.
 
-Usage: python3 src/tools/gates.py [BUILD_DIR]
+Usage: python3 src/tools/gates.py [BUILD_DIR] [--view FOLDER]
 """
 import subprocess
 import sys

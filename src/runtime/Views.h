@@ -8,6 +8,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace VP {
@@ -55,8 +56,9 @@ public:
   // draws in one render pass; and the draws into the window last, the host's first, so a
   // hosted view draws over a host that draws nothing there itself.
   void gather(std::vector<Pass> &passes) const;
-  // The folders the live scan watches: each view's.
-  std::vector<std::filesystem::path> roots() const;
+  // The folders the live scan watches, each view's, by the name the build tree mirrors
+  // the view by, which names its target.
+  std::vector<std::pair<std::string, std::filesystem::path>> roots() const;
   // What the views' manifests do not hold yet: each hosted view's edits since it was
   // hosted or saved, in the order they ran, a line each, a file named from
   // the folder, as the log names it. Replayed on the same manifests, they rebuild the

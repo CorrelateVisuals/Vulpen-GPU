@@ -37,7 +37,9 @@ def problems(entry: dict) -> list[str]:
 
 
 def main() -> None:
-    if len(sys.argv) < 2:
+    # The flags are the build's, the same for every view, which nothing in a view
+    # changes, so the run with no view checks them, for every file, projects' too.
+    if len(sys.argv) < 2 or "--view" in sys.argv:
         return  # run by hand, with no build to read
     commands = Path(sys.argv[1]) / "compile_commands.json"
     if not commands.is_file():

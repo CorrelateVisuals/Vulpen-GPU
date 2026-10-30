@@ -23,7 +23,10 @@
 Comments and string literals are left out of every other rule, so prose and log text
 never trip one.
 
-Usage: python3 src/tools/gates/code-rules.py
+With --view FOLDER it checks that view's folder alone, as the view's own build runs it,
+so a project's mistake stops that project's build; without, src/.
+
+Usage: python3 src/tools/gates/code-rules.py [BUILD_DIR] [--view FOLDER]
 """
 import re
 import sys
@@ -31,7 +34,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / "src"
-PROJECTS = ROOT / "projects"  # built into vulpen as src/ is, in a release build
 VENDORED = SOURCE / "external-libraries"  # not our code, so not our rules
 PLATFORM = {"baseclasses/Platform.h", "baseclasses/Platform.cpp"}
 # What any file may include; the include map says which files do.
@@ -125,8 +127,10 @@ def problems(file: Path) -> list[str]:
 def main() -> None:
     ids = set(DEFINED.findall("".join((DOCS / rules).read_text(encoding="utf-8")
                                       for rules in ("principles.md", "requirements.md"))))
-    files = sorted(file for suffix in COMMENTED for folder in (SOURCE, PROJECTS)
-                   for file in folder.rglob(suffix) if VENDORED not in file.parents)
+    folder = (Path(sys.argv[sys.argv.index("--view") + 1]).resolve() if "--view" in sys.argv
+              else SOURCE)
+    files = sorted(file for suffix in COMMENTED for file in folder.rglob(suffix)
+                   if VENDORED not in file.parents)
     found = []
     for file in files:
         found += citations(name_of(file), file.read_text(encoding="utf-8"), ids)

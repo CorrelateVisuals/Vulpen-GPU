@@ -323,12 +323,14 @@ std::string Views::unsaved(const std::filesystem::path &folder) const {
   return _port.session().after(marks, folder);
 }
 
-std::vector<std::filesystem::path> Views::roots() const {
-  std::vector<std::filesystem::path> roots;
+std::vector<std::pair<std::string, std::filesystem::path>> Views::roots() const {
+  std::vector<std::pair<std::string, std::filesystem::path>> roots;
   for (const std::unique_ptr<Hosted> &hosted : _hosted)
     if (const std::filesystem::path root = Manifest::root(hosted->current());
-        !hosted->removed && std::ranges::find(roots, root) == roots.end())
-      roots.push_back(root);
+        !hosted->removed && std::ranges::none_of(roots, [&](const auto &named) {
+          return named.second == root;
+        }))
+      roots.emplace_back(hosted->current().name, root);
   return roots;
 }
 

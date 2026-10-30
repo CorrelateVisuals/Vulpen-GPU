@@ -213,5 +213,6 @@ if(VULPEN_LIVE)
 endif()
 vulpen_recipes(${PROJECT_SOURCE_DIR}/src/runtime/recipes)
 vulpen_link_modules(${generated}/linked-modules.h)
+vulpen_list_views()
 
 include(src/tools/tests/tests.cmake)

@@ -281,7 +281,7 @@ private:
   void host();
   void loop();
   void watch();
-  void swap();
+  void swap(std::span<const std::string> failed);
   Relaunch restarted(std::uint64_t ran);
   void prepare();
   void gather();
@@ -542,6 +542,13 @@ void Runtime::watch() {
       _log.write(
           Level::debug, Tag::mod, "a file changed; building the modules and shaders");
       break;
+    case Live::Build::failed:
+      _log.write(Level::error,
+                 Tag::mod,
+                 std::format("live: the build of {} failed, so its running code stays\n{}",
+                             joined(_live->failed()),
+                             _live->said()));
+      [[fallthrough]];
     case Live::Build::succeeded:
       // Each module would refuse to load, and every node with C++ would drop out.
       if (!_live->loads()) {
@@ -552,12 +559,7 @@ void Runtime::watch() {
                    "engine and runs it");
         break;
       }
-      swap();
-      break;
-    case Live::Build::failed:
-      _log.write(Level::error,
-                 Tag::mod,
-                 "live: the build failed, so the running code stays\n" + _live->said());
+      swap(_live->failed());
       break;
     case Live::Build::none:
       break;
@@ -571,9 +573,17 @@ void Runtime::watch() {
                            changed.string()));
 }
 
-// Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest.
-void Runtime::swap() {
-  const std::vector<std::string> rewritten = _modules.rewritten();
+// Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest; a
+// view that failed to build keeps its modules, as its nodes share contracts (V03), which
+// some built and others not would read otherwise.
+void Runtime::swap(std::span<const std::string> failed) {
+  std::vector<std::string> rewritten = _modules.rewritten();
+  std::erase_if(rewritten, [&](const std::string &module) {
+    return std::ranges::any_of(failed, [&](const std::string &view) {
+      return module.starts_with(view) && module.size() > view.size() &&
+             module[view.size()] == '/';
+    });
+  });
   prepare();
   for (Schedule *const schedule : _views->schedules())
     schedule->drop_operators(rewritten);

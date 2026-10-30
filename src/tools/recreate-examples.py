@@ -564,8 +564,8 @@ class Finding:
 BOUND = re.compile(r"\{!!!\} \S+ node \S+: ")
 WARNING = "{ ! }"
 STARTED = "a file changed; building"
-FAILED = "the build failed"
-FINISHED = ("built in", FAILED)
+# A live build builds each view vulpen hosts by itself, naming those that failed.
+FAILED = re.compile(r"live: the build of .+ failed")
 TAGGED = re.compile(r"\{[^}]*\}")
 # What a compiler says of a file a line removed or renamed while the build read it: the
 # build failed on the lines, not on the code (the report's open call on what the live
@@ -633,9 +633,9 @@ class Run:
                             f"module it builds loads: build vulpen first ({line.strip()})")
             if STARTED in line:
                 self.building = True
-            elif any(word in line for word in FINISHED):
+            elif "built in" in line or FAILED.search(line):
                 self.building = False
-            if FAILED in line:
+            if FAILED.search(line):
                 self.failed(lines[at + 1:])
             elif WARNING in line:
                 self.problems.append(("a warning", [line.strip()]))

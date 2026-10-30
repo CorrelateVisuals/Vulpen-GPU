@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace VP {
@@ -19,20 +20,31 @@ class Log;
 // nothing compiles here. Every build takes the tree's build.lock first, as run.sh and
 // run.ps1 do, so two never write one tree at once.
 
-// Notices saves under the views' folders and builds their modules and shaders.
+// Notices saves under the views' folders and builds their modules and shaders, a view at
+// a time, so a view that fails to build keeps running as it was and holds back no other.
 class Live {
 public:
   enum class Build { none, started, succeeded, failed };
+  // A view it builds: the name the build tree mirrors it by, the library's for the
+  // recipes, as src/runtime/cmake/nodes.cmake names its target, and the folder whose
+  // saves build it.
+  using Root = std::pair<std::string, std::filesystem::path>;
 
   // build: the build folder, where vulpen is.
-  Live(std::vector<std::filesystem::path> folders, const std::filesystem::path &build);
+  Live(std::vector<Root> roots, const std::filesystem::path &build);
   ~Live();
   Live(const Live &) = delete;
   Live &operator=(const Live &) = delete;
 
   // Once a frame. A change must be seen twice, so a file still being written never
-  // builds.
+  // builds; a view watched since the run began builds at once, as one no build made yet,
+  // as run.sh builds the projects after vulpen and starts it even if one fails. Failed
+  // when any view failed to build.
   Build poll();
+  // The views the last build failed on, by name; the others built.
+  const std::vector<std::string> &failed() const;
+  // The targets of the views it watches, as nodes.cmake names them.
+  std::vector<std::string> targets() const;
   // Whether the modules just built can load: they carry the stamp of the engine headers
   // they were built against, and this vulpen loads only its own (live code rule 6).
   bool loads() const;
@@ -45,16 +57,18 @@ public:
   // Since the last build started.
   std::chrono::duration<double> took() const;
   // A view hosted or no longer hosted brings its folder or takes it along.
-  void watch(std::vector<std::filesystem::path> folders);
+  void watch(const std::vector<Root> &roots);
 
 private:
   struct Scan;
   std::unique_ptr<Scan> _scan;
 };
 
-// quit restart: builds vulpen, once no live build runs, then ends the run for the new
+// quit restart: builds vulpen, once no live build runs, and the views hosted, whose
+// modules a new engine loads only once built against it, then ends the run for the new
 // vulpen to run in its place with what the views' files do not hold yet replayed, so a
-// change to the engine runs with the session as it was (V08).
+// change to the engine runs with the session as it was (V08). A view that fails to build
+// keeps no one from the new vulpen, which names its nodes' failure, as ./run.sh starts.
 class Restart final : public CommandHandler {
 public:
   Restart(Commands &commands, const Log &log, const std::filesystem::path &build);

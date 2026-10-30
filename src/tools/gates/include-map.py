@@ -14,7 +14,11 @@ or of its view, shared code from the shared/ folder in the library's parts/ or a
 top of its view, or an engine file the map's node table lists. Engine code never
 includes node code.
 
-Usage: python3 src/tools/gates/include-map.py
+With --view FOLDER it checks the node code of that view alone, as the view's own build
+runs it, so a project's mistake stops that project's build, and a file under projects/
+in no project, which no build compiles, stops none.
+
+Usage: python3 src/tools/gates/include-map.py [BUILD_DIR] [--view FOLDER]
 """
 import os
 import re
@@ -91,9 +95,14 @@ def resolve(file: Path, quote: str, name: str) -> str | None:
     return name  # generated into the build tree, such as commit.h
 
 
-def included() -> dict[str, set[str]]:
+def view_folder() -> Path | None:
+    """The folder of the one view --view names; None for src/."""
+    return Path(sys.argv[sys.argv.index("--view") + 1]).resolve() if "--view" in sys.argv else None
+
+
+def included(folder: Path) -> dict[str, set[str]]:
     edges = {}
-    for file in sorted(file for folder in (SOURCE, PROJECTS) for file in folder.rglob("*")):
+    for file in sorted(folder.rglob("*")):
         if file.suffix in SUFFIXES and VENDORED not in file.parents:
             text = file.read_text(encoding="utf-8")
             names = (resolve(file, quote, name) for quote, name in INCLUDE.findall(text))
@@ -200,9 +209,12 @@ def cycle(edges: dict[str, set[str]]) -> list[str]:
 
 def main() -> None:
     problems: list[str] = []
-    code = included()
+    view = view_folder()
+    code = included(view or SOURCE)
     page = tables()
-    problems += differences(code, mapped(page, problems))
+    mapping = mapped(page, problems)
+    if not view:  # the map's rows are the engine's, which no view holds
+        problems += differences(code, mapping)
     problems += node_rule(code, reachable(page))
     if loop := cycle(code):
         problems.append("include cycle: " + " -> ".join(loop))

@@ -23,6 +23,7 @@ file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${module_stamp_file} CONTENT "${module
 # The files vulpen itself compiles, one a line, which no live build builds into the
 # running vulpen, so its runtime says, once one changes, that a restart runs it.
 set(engine_sources_file engine-sources)
+set(views_file built-views)
 get_target_property(engine_sources vulpen SOURCES)
 get_target_property(runtime_sources runtime SOURCES)
 get_target_property(layer_sources baseclasses SOURCES)
@@ -40,22 +41,36 @@ else()
   set(module_export "[[gnu::visibility(\"default\")]]")
 endif()
 
-# What a live build rebuilds; the include map guards it like every build (A00).
-add_custom_target(vulpen_modules)
+# Every view's modules and shaders, which the full build builds. vulpen needs only the
+# library's, so ./run.sh builds those and the projects it opens, and the live build each
+# view vulpen hosts, a target each, vulpen_view_<name>: a project that fails to build then
+# holds back no other, nor the start. The include map guards each like every build (A00):
+# the library by the gates over src/, a project by the gates over its own folder.
+add_custom_target(vulpen_modules ALL)
 add_dependencies(vulpen_modules gates)
-add_dependencies(vulpen vulpen_modules)
 target_compile_definitions(runtime PRIVATE
   VP_LIVE=$<BOOL:${VULPEN_LIVE}>
   VP_CMAKE_COMMAND="${CMAKE_COMMAND}"
   VP_MODULE_SUFFIX="${CMAKE_SHARED_MODULE_SUFFIX}"
   VP_MODULE_STAMP="${module_stamp}"
   VP_MODULE_STAMP_FILE="${module_stamp_file}"
-  VP_ENGINE_SOURCES_FILE="${engine_sources_file}")
+  VP_ENGINE_SOURCES_FILE="${engine_sources_file}"
+  VP_VIEWS_FILE="${views_file}")
 
-# A view: each folder in it is a node, but its contracts/ and its shared/ (RV05, RV09).
+# A view: each folder in it is a node, but its contracts/ and its shared/ (RV05, RV09). One
+# named so no target can be is named, and not built, so it stops no other build.
 function(vulpen_view folder)
   get_filename_component(view ${folder} NAME)
+  if(NOT view MATCHES "^[A-Za-z0-9_.+-]+$")
+    message(WARNING "${folder} is not built: a view's name is letters, digits and _.+-")
+    return()
+  endif()
   vulpen_name(${view} ${folder})
+  add_custom_target(vulpen_view_${view}_gates
+    COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py ${CMAKE_BINARY_DIR} --view ${folder}
+    VERBATIM)
+  add_custom_target(vulpen_view_${view})
+  add_dependencies(vulpen_modules vulpen_view_${view})
   vulpen_nodes(${view} ${folder} ${folder})
 endfunction()
 
@@ -69,6 +84,16 @@ function(vulpen_name view folder)
                         "build tree holds one view of each name; rename one")
   endif()
   set_property(GLOBAL PROPERTY vulpen_view_${view} ${folder})
+  set_property(GLOBAL APPEND PROPERTY vulpen_views ${view})
+endfunction()
+
+# The views the build compiles, a name a line, beside vulpen, so the live build builds
+# a view vulpen hosts only when the build has its target, as one hosted from a folder
+# outside projects/ has none.
+function(vulpen_list_views)
+  get_property(views GLOBAL PROPERTY vulpen_views)
+  list(JOIN views "\n" listed)
+  file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${views_file} CONTENT "${listed}\n")
 endfunction()
 
 # The recipes build as one view named library, which runtime/Manifest.cpp names the same:
@@ -77,6 +102,10 @@ endfunction()
 # parts/shared/ is the code parts share, which no node is (RV09).
 function(vulpen_recipes folder)
   vulpen_name(library ${folder})
+  add_custom_target(vulpen_view_library)
+  add_dependencies(vulpen_view_library gates)
+  add_dependencies(vulpen_modules vulpen_view_library)
+  add_dependencies(vulpen vulpen_view_library)
   file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/library/parts/*
        ${folder}/library/components/* ${folder}/*)
   foreach(recipe IN LISTS recipes)
@@ -121,6 +150,12 @@ function(vulpen_node view folder root)
   endif()
   list(TRANSFORM includes PREPEND -I OUTPUT_VARIABLE include_flags)
 
+  # The gates the view's build runs first, so a broken rule compiles nothing of it.
+  set(gates gates)
+  if(TARGET vulpen_view_${view}_gates)
+    set(gates vulpen_view_${view}_gates)
+  endif()
+
   file(GLOB shaders CONFIGURE_DEPENDS ${folder}/*.comp ${folder}/*.vert ${folder}/*.frag)
   set(spirv "")
   foreach(shader IN LISTS shaders)
@@ -130,7 +165,8 @@ function(vulpen_node view folder root)
   endforeach()
   if(spirv)
     add_custom_target(${target}_spirv DEPENDS ${spirv})
-    add_dependencies(vulpen_modules ${target}_spirv)
+    add_dependencies(${target}_spirv ${gates})
+    add_dependencies(vulpen_view_${view} ${target}_spirv)
   endif()
 
   file(GLOB sources CONFIGURE_DEPENDS ${folder}/*.cpp)
@@ -173,7 +209,8 @@ function(vulpen_node view folder root)
   target_link_libraries(${target} PRIVATE Vulkan::Headers)
   target_compile_options(${target} PRIVATE "${warnings}")
   set_target_properties(${target} PROPERTIES COMPILE_WARNING_AS_ERROR ON)
-  add_dependencies(vulpen_modules ${target})
+  add_dependencies(${target} ${gates})
+  add_dependencies(vulpen_view_${view} ${target})
 endfunction()
 
 # The table a release build finds its linked modules in; a live build's is empty.

@@ -26,6 +26,7 @@ projects=$root/projects
 # build's output with it; --log-file names another file, and that one alone is written.
 app() { views=("$recipes/cli/view.vlp"); [[ $1 == --cli ]] || views+=("$recipes/ide/view.vlp"); }
 arguments=()
+opened=() # the targets of the projects it opens, as nodes.cmake names them
 named=false
 verbose=false
 log=
@@ -40,11 +41,16 @@ while (($#)); do
     --*)
       if [[ -f $projects/${1#--}/view.vlp ]]; then
         arguments+=("$projects/${1#--}/view.vlp"); named=true
+        opened+=("vulpen_view_${1#--}")
       else
         arguments+=("$1") # vulpen names an option it does not know
       fi
       shift ;;
-    *) arguments+=("$1"); named=true; shift ;;
+    *)
+      arguments+=("$1"); named=true
+      folder=$(cd "$(dirname -- "$1")" 2>/dev/null && pwd) || folder=
+      [[ ${folder%/*} == "$projects" ]] && opened+=("vulpen_view_${folder##*/}")
+      shift ;;
   esac
 done
 $named || { app "$default"; arguments=("${views[@]}" "${arguments[@]}"); }
@@ -60,11 +66,17 @@ mkdir -p -- "$(dirname -- "$log")"
 # caller's, since nothing in it may depend on the working directory. One build at a time
 # on a tree, as two at once corrupt it: the build folder's build.lock, which a running
 # vulpen's builds take too, held in a subshell, so it is let go before vulpen starts.
+# vulpen's target builds the engine, the library and the apps, which vulpen needs; a
+# project's builds its nodes, and only for the projects it opens, so one broken, or
+# half typed when vulpen last quit, never keeps it from starting: its nodes name why, and
+# the live build builds a project once it is opened or saved. The full build,
+# cmake --build --preset debug, builds and checks every project, and the statistics.
 build() (
   cd "$root" && mkdir -p "out/build/$preset"
   exec 9>"out/build/$preset/build.lock"
   if command -v flock >/dev/null; then flock 9; fi
-  cmake --preset "$preset" && cmake --build --preset "$preset" --parallel
+  if [[ $1 == vulpen ]]; then cmake --preset "$preset" || exit; fi
+  cmake --build --preset "$preset" --parallel --target "$1"
 )
 # Each line kept for a failure, and shown in place cut to the terminal's width, so it
 # never wraps onto a row the next line would leave behind.
@@ -80,9 +92,18 @@ shown() {
 }
 said=
 if $verbose; then
-  (build) 2>&1 | tee -a "$log"
-elif ! build 2>&1 | shown; then
+  (build vulpen) 2>&1 | tee -a "$log"
+  for target in "${opened[@]}"; do (build "$target") 2>&1 | tee -a "$log" || true; done
+elif ! build vulpen 2>&1 | shown; then
   printf '%s' "$said" | tee -a "$log" >&2
   exit 1
+else
+  for target in "${opened[@]}"; do
+    said=
+    build "$target" 2>&1 | shown && continue
+    printf '%s' "$said" >>"$log"
+    printf '%s failed to build, so its nodes say why as vulpen starts; the build said it in %s\n' \
+      "${target#vulpen_view_}" "$log" >&2
+  done
 fi
 exec "$root/out/build/$preset/vulpen" "${arguments[@]}"
