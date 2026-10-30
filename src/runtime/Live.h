@@ -37,8 +37,8 @@ public:
   Live &operator=(const Live &) = delete;
 
   // Once a frame. A change must be seen twice, so a file still being written never
-  // builds; a view watched since the run began builds at once, as one no build made yet,
-  // as run.sh builds the projects after vulpen and starts it even if one fails. Failed
+  // builds; a view first watched after the start, as a project loaded, builds at once,
+  // as no build may have made it yet: run.sh builds only the projects it opens. Failed
   // when any view failed to build.
   Build poll();
   // The views the last build failed on, by name; the others built.
