@@ -483,13 +483,17 @@ def examples(scratch: Path) -> list[Example]:
     # surprises: what a person does that the lines before did not see coming. A view hosted
     # from a folder inside another, which holds it, so that folder stays while it runs. The
     # editor holding a file, typed into, as a line renames its node, renames it, or moves
-    # the project, and one another program changes: write must not bring a folder back as
-    # a stray, put a second shader beside a renamed one, or write over what was saved
-    # there. A count past the largest is named so, and a script sourcing itself is
+    # the project, where its tab follows it, so write saves it there; one another program
+    # changes, which write must not write over; one deleted, whose tab closes, or with
+    # changes keeps them for write force. A count past the largest is named so, and a
+    # script sourcing itself is
     # refused. No line asks for a count the GPU cannot hold: until vulpen refuses one
     # before it makes a buffer, the driver may take it from the machine's memory.
     e = Example("surprises", compared=False)
     spin, turn = at(e.copy, "spin", "Spin.comp"), at(e.copy, "turn", "Turn.comp")
+    notes = at(e.copy, "notes.txt")
+    # A line typed at a file's start, on a line of its own, so the code after it stays.
+    typing = ["input text // typed", "input key down enter", "input key up enter"]
     loop = scratch / "loop.txt"
     loop.write_text(f"source {loop}\n")
     e.steps = [
@@ -504,27 +508,37 @@ def examples(scratch: Path) -> list[Example]:
         ok("node new dispatch spin", "node new dispatch turn"),
         ok(f"open {spin}"),
         ok("focus ide.editor.text"),
-        ok("input text // typed"),
+        ok(*typing),
         ok("node rename spin swirl"),
-        no("write", "is gone since it was read"),
-        ok("close force"),
+        ok("write"),
+        ok("close"),
         ok(f"open {turn}"),
         ok("focus ide.editor.text"),
-        ok("input text // typed"),
+        ok(*typing),
         ok(f"file rename {turn} {at(e.copy, 'turn', 'Twist.comp')}"),
-        no("write", "is gone since it was read"),
-        ok("close force"),
+        ok("write"),
+        ok("close"),
         ok(f"open {at(e.copy, 'turn', 'Turn.cpp')}"),
         Step([], elsewhere=at(e.copy, "turn", "Turn.cpp")),
         no("write", "changed on disk since it was read"),
         ok("close"),
         ok(f"open {at(e.copy, 'swirl', 'Spin.cpp')}"),
         ok("focus ide.editor.text"),
-        ok("input text // typed"),
+        ok(*typing),
         ok(f"view rename {e.copy}-moved"),
-        no("write", "is gone since it was read"),
-        ok("close force"),
+        ok("write"),
+        ok("close"),
         ok(f"view rename {e.copy}"),
+        ok(f"file new {notes}", f"open {notes}"),
+        ok(f"file remove {notes}"),
+        no(f"close {notes}", "is not open in an editor"),
+        ok(f"file new {notes}", f"open {notes}"),
+        ok("focus ide.editor.text"),
+        ok("input text typed"),
+        ok(f"file remove {notes}"),
+        no("write", "is gone since it was read"),
+        ok("write force", "close"),
+        ok(f"file remove {notes}"),
         no("node set swirl invocations=99999999999", "more than the largest count"),
         no(f"source {loop}", "would never end"),
         ok("  ls  "),

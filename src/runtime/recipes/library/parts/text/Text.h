@@ -164,6 +164,8 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
                    const Grid &grid,
                    std::size_t rows);
   void open(VP::FilePort &files, std::string_view path);
+  void follow(VP::FilePort &files, VP::CommandPort &commands);
+  void drop(VP::CommandPort &commands, std::size_t at);
   void name_tabs();
 
   VP::Command _write;

@@ -222,6 +222,7 @@ void Ports::save(std::string_view file, std::string_view text) {
 
 void Ports::remove(std::string_view file) {
   Files::remove(absolute(file));
+  _moved.push_back({absolute(file).lexically_normal().string(), {}});
 }
 
 std::vector<std::string> Ports::list(std::string_view folder) {
@@ -246,10 +247,16 @@ void Ports::copy(std::string_view from, std::string_view to) {
 
 void Ports::rename(std::string_view from, std::string_view to) {
   Files::rename(absolute(from), absolute(to));
+  _moved.push_back({absolute(from).lexically_normal().string(),
+                    absolute(to).lexically_normal().string()});
 }
 
 void Ports::make(std::string_view folder) {
   Files::make(absolute(folder));
+}
+
+std::span<const Moved> Ports::moved() const {
+  return _moved;
 }
 
 void Ports::save(const View &view, std::string_view file) {
@@ -312,6 +319,8 @@ Ports::~Ports() {
 
 void Ports::frame() {
   ++_frames;
+  _moved.erase(_moved.begin(), _moved.begin() + static_cast<std::ptrdiff_t>(_moved_before));
+  _moved_before = _moved.size();
   _lines.clear();
   _read = false;
   _keys.clear();

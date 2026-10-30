@@ -85,6 +85,7 @@ private:
   void copy(std::string_view from, std::string_view to) override;
   void rename(std::string_view from, std::string_view to) override;
   void make(std::string_view folder) override;
+  std::span<const Moved> moved() const override;
   void save(const View &view, std::string_view file) override;
   void start(std::string_view program, std::span<const std::string> arguments) override;
   View manifest(std::string_view file) override;
@@ -126,6 +127,10 @@ private:
   glm::vec2 _pointer{};
   const Window *_window = nullptr; // borrowed from the runtime, which owns it (A01)
   std::string _clipboard;          // what was copied last, for a run with no window
+  // The renames and removes of the frame before, then this frame's: how many are the
+  // frame before's.
+  std::vector<Moved> _moved;
+  std::size_t _moved_before = 0;
   // The input command's forms, as the window's events come in.
   struct Input {
     Command key_down, key_up, text, pointer, button_down, button_up, wheel, focus_on,

@@ -333,11 +333,12 @@ void Text::bind(VP::Bind &node) {
   _editors->push_back(this);
   if (_head) {
     _write = node.command("write",
-                          "saves the file the editor in focus shows, unless it moved, "
-                          "went or changed on disk since it was read");
+                          "saves the file the editor in focus shows, where a line "
+                          "moved it, unless it went or changed on disk since it was "
+                          "read");
     _write_force = node.command("write force",
-                                "saves the file the editor in focus shows where it was "
-                                "read, whatever became of it on disk since");
+                                "saves the file the editor in focus shows where it is "
+                                "named, whatever became of it on disk since");
     _close = node.command("close [<file>]",
                           "closes a file an editor holds, or with none the one the "
                           "editor in focus shows, unless it has changes");
@@ -380,6 +381,8 @@ void Text::bind(VP::Bind &node) {
 // press, so a press moves the caret after them, as they came. A key let go while another
 // part had the focus never came, so out of focus shift and control count as up.
 void Text::cook(VP::Cook &frame) {
+  if (!frame.files().moved().empty())
+    follow(frame.files(), frame.commands());
   if (std::exchange(_opening, false)) {
     try {
       route(frame.files());
@@ -1049,10 +1052,12 @@ void Text::open(VP::FilePort &files, std::string_view path) {
   name_tabs();
 }
 
-// A file a line or another program moved, deleted or changed since it was read is not
-// written over unasked: the write would bring a moved node's folder back as a stray, put
-// a second shader beside a renamed one, or take back what was saved there (A02).
+// A file a line moved is written where it went, as its tab follows it; one deleted, moved
+// by another program, or changed since it was read is not written over unasked: the write
+// would bring a moved node's folder back as a stray, or take back what was saved there
+// (A02).
 void Text::write(VP::Call &call, bool force) {
+  follow(call.files(), call.commands());
   if (_documents.empty())
     throw std::runtime_error("no file is open");
   Document &document = _documents[_shown];
@@ -1085,6 +1090,7 @@ void Text::write(VP::Call &call, bool force) {
 // by force, so nothing typed goes unasked. The file shown keeps showing, and when it is
 // the one closed, the one after it, or else the one before.
 void Text::close(VP::Call &call, std::string_view path, bool force) {
+  follow(call.files(), call.commands());
   if (_documents.empty())
     throw std::runtime_error("no file is open");
   std::size_t at = _shown;
@@ -1099,10 +1105,15 @@ void Text::close(VP::Call &call, std::string_view path, bool force) {
         std::format("{} has changes: {}write saves them, and close force drops them",
                     label_of(_documents[at]),
                     at == _shown ? "" : "a press on its tab, then "));
-  // The param names the file shown no longer, so open names it again as a change.
+  drop(call.commands(), at);
+}
+
+// The file at a place among the tabs goes. The param names it no longer, so open names
+// it again as a change.
+void Text::drop(VP::CommandPort &commands, std::size_t at) {
   if (_documents[at].path == _file) {
     _file.clear();
-    call.commands().send(std::format("{}: param unset {} file", _view, _name));
+    commands.send(std::format("{}: param unset {} file", _view, _name));
   }
   _documents.erase(_documents.begin() + static_cast<std::ptrdiff_t>(at));
   if (at < _shown)
@@ -1112,6 +1123,38 @@ void Text::close(VP::Call &call, std::string_view path, bool force) {
   _dragging = false;
   _follow = true;
   name_tabs();
+}
+
+// A file a line moved, or the folder holding it, as node, file and view rename do, goes
+// on showing where it went, so write saves it there, the param naming it there too; one
+// deleted with nothing typed closes, and one with changes stays, its text kept, which
+// write force makes the file of again, and close force drops.
+void Text::follow(VP::FilePort &files, VP::CommandPort &commands) {
+  for (const VP::Moved &moved : files.moved())
+    for (std::size_t at = _documents.size(); at-- > 0;) {
+      Document &document = _documents[at];
+      const std::filesystem::path inside =
+          std::filesystem::path(document.path).lexically_normal().lexically_relative(
+              moved.from);
+      if (inside.empty() || *inside.begin() == "..")
+        continue;
+      if (moved.to.empty()) {
+        if (!document.changed)
+          drop(commands, at);
+        continue;
+      }
+      const std::string to =
+          inside == "." ? moved.to
+                        : (std::filesystem::path(moved.to) / inside).lexically_normal().string();
+      if (document.path == _file) {
+        _file = to;
+        commands.send(std::format("{}: param set {} file {}", _view, _name, to));
+      }
+      document.path = to;
+      document.syntax = syntax_of(to);
+      document.restyle = true;
+      name_tabs();
+    }
 }
 
 // Of the files beside the one named, or the one shown, those with changes stay, named in

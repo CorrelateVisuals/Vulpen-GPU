@@ -253,6 +253,12 @@ protected:
   ~InputPort() = default;
 };
 
+// A file or a folder the file port moved, or deleted, by absolute path.
+struct Moved {
+  std::string from;
+  std::string to; // empty for one deleted
+};
+
 // Files a node reads, watches and saves. A save writes a temp file and renames it over
 // the old one, so a killed run never leaves half a file. Each call throws naming the
 // path it could not use.
@@ -285,9 +291,14 @@ public:
   // manifest's first mistake.
   virtual View manifest(std::string_view file) = 0;
   // A folder, with the folders it is in, where nothing is yet, as a file save makes a
-  // file's. Last, so a module built before it reaches the others where it found them, as
-  // a dev build swaps modules into a run.
+  // file's. After the others, so a module built before it reaches them where it found
+  // them, as a dev build swaps modules into a run.
   virtual void make(std::string_view folder) = 0;
+  // What rename and remove moved and deleted since the frame before began, in the order
+  // they did, so a part that holds a file by its path, as an editor its tabs, follows it
+  // in its next cook, or in a command it runs first, as a line runs between cooks; a
+  // part reads a move twice, so following one again must change nothing. Last, as make.
+  virtual std::span<const Moved> moved() const = 0;
 
 protected:
   ~FilePort() = default;
