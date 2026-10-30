@@ -76,6 +76,9 @@ class Projects final : public VP::Operator {
     _rename = node.command("view rename <name>",
                            "saves the view, renames its folder where it is, and hosts it "
                            "under the new name");
+    _remove = node.command("view remove <project>",
+                           "closes a project, if it is hosted, and deletes its folder "
+                           "with all it holds, as node remove does a node's");
   }
 
   void command(VP::Call &call) override {
@@ -85,6 +88,8 @@ class Projects final : public VP::Operator {
       save_as(call);
     else if (call.is(_rename))
       rename(call);
+    else if (call.is(_remove))
+      remove(call);
   }
 
   // A <project> comes resolved when it is a path, and as typed when it names one; a path
@@ -163,11 +168,35 @@ class Projects final : public VP::Operator {
     call.commands().send(std::format("view switch {}", name));
   }
 
+  // By a project's name alone, so no path reaches an app's folder or one elsewhere. Closed
+  // first, as a folder holding a view that runs is never deleted, then deleted by the
+  // files part's line, which refuses a folder holding another view that runs, naming it.
+  void remove(VP::Call &call) const {
+    const std::string_view name = call.arguments().front();
+    if (!project_name(name))
+      throw std::runtime_error(std::format(
+          "{} is no project's name, which is letters, digits, _ and -, as view list "
+          "shows it; view remove takes no path",
+          name));
+    const std::filesystem::path folder = _folder / name;
+    const std::vector<std::string> names = call.files().list(folder.string());
+    if (std::ranges::find(names, manifest) == names.end())
+      throw std::runtime_error(std::format("no project is named {}: {} holds no {}",
+                                           name,
+                                           folder.string(),
+                                           manifest));
+    if (const VP::View *const hosted = call.view(name);
+        hosted && hosted->file.lexically_normal() == (folder / manifest).lexically_normal())
+      call.commands().send(std::format(": view close {}", name));
+    call.reply(call.commands().send(std::format("file remove force {}/", folder.string())));
+  }
+
   std::filesystem::path _folder;
   VP::Command _new;
   VP::Command _load;
   VP::Command _save_as;
   VP::Command _rename;
+  VP::Command _remove;
 };
 
 } // namespace

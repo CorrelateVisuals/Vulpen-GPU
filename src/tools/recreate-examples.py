@@ -89,7 +89,7 @@ def settled(*lines: str, refused: str | None = None) -> Step:
 def gone(project: str) -> Step:
     """A project closed and deleted, once no build reads its files, as a build that
     loses them half way fails (the report's open call on what the live build builds)."""
-    return settled(f"view close {project}", f"file remove force projects/{project}/")
+    return settled(f"view remove {project}")
 
 
 @dataclass
@@ -498,6 +498,8 @@ def examples(scratch: Path) -> list[Example]:
         no("file remove force projects/re-nest/", "view re-nest-inner's folder"),
         no("file rename projects/re-nest/ projects/re-nested/", "view re-nest-inner's folder"),
         ok("view close re-nest-inner", "file remove force projects/re-nest/"),
+        no("view remove re-nest", "no project is named re-nest"),
+        no("view remove ../src", "view remove takes no path"),
         ok(f"view new {e.copy}"),
         ok("node new dispatch spin", "node new dispatch turn"),
         ok(f"open {spin}"),
