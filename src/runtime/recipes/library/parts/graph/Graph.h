@@ -147,7 +147,7 @@ private:
   void show(std::string_view name);
   void arrange(VP::Cook &frame, const std::filesystem::path &beside);
   void build(VP::FilePort &files, const VP::View *edited, const VP::View *flat);
-  void name_tab();
+  void name_tab(VP::Cook &frame);
   void show_view(VP::CommandPort &commands) const;
   void show_folder(VP::CommandPort &commands,
                    const std::filesystem::path &folder) const;
@@ -266,6 +266,7 @@ private:
   Shown _layers = every_layer;        // as its relations param names them
   bool _manhattan = true; // the curves turn in their lanes, as its manhattan param says
   std::string _shown; // the view the tab names; empty for the one vulpen started with
+  bool _tab_named = false; // the tab names what shows, named again only as that changes
   // The boxes of the view shown, built again only when the views they were built from
   // change, which each edit replaces, and laid out again only then, as the font's cell
   // changes, or as a box is dragged, so a frame allocates nothing for them.

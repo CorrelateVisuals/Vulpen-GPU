@@ -71,7 +71,8 @@ VP_VIEW::Rect within(VP_VIEW::Rect rect, const VP_VIEW::Rect &strip) {
 
 // Lays out the Items it is handed in the Rect its place gives: stacked, a row each, over
 // a framed fill, or with axis x side by side, each as wide as its label, up to tab_cells
-// of it, the rest cut at its start, over a ground, the current one in the content's
+// of it, the rest cut at its start, one joined to the one before it going on from it as
+// one tab, each still pressed apart, over a ground, the current one in the content's
 // color, so it joins the content it names, the strip scrolling across as the wheel turns
 // over it, with no bar, and to show the current one as it changes, its end cells left
 // free for a mark its host draws there, and the pointer over a label cut showing it whole
@@ -209,10 +210,11 @@ class List final : public VP::Operator {
       }
       const std::size_t cells = std::min(item.label.size(), tab_cells) +
                                 (item.close.empty() ? 0 : mark_cells);
-      const auto wide = (static_cast<std::int32_t>(cells) + padding_cells) * across;
+      const std::int32_t pads = padding_cells - (joins(at) ? 1 : 0) - (joins(at + 1) ? 1 : 0);
+      const auto wide = (static_cast<std::int32_t>(cells) + pads) * across;
       if (item.current)
         current = _laid.size();
-      if (item.toggles && at > 0 && (*_items)[at - 1].toggles)
+      if (joins(at) || (item.toggles && at > 0 && (*_items)[at - 1].toggles))
         reach -= gap;
       _laid.push_back({.offset = {reach, place.offset.y},
                        .extent = {static_cast<std::uint32_t>(wide), place.extent.y},
@@ -227,7 +229,7 @@ class List final : public VP::Operator {
       _shown->push_back(within(tab, strip));
       // The mark's cell is the last before the tab's right padding.
       const VP_VIEW::Rect mark{
-          .offset = {right_of(tab) - padding_cells * across, tab.offset.y},
+          .offset = {right_of(tab) - (joins(at + 1) ? 1 : 2) * across, tab.offset.y},
           .extent = {cell.x, place.extent.y}};
       const VP_VIEW::Item &item = (*_items)[at];
       _marks->push_back(item.close.empty() || within(mark, strip).extent != mark.extent
@@ -242,6 +244,11 @@ class List final : public VP::Operator {
       for (std::size_t at = 0; at < _shown->size(); ++at)
         if ((*_items)[at].stuck && VP_VIEW::contains((*_shown)[at], *pressed))
           _flash = Flash{.tab = at, .from = frame.index()};
+  }
+
+  // Whether an Item goes on from the one before it as one tab, its label right after.
+  bool joins(std::size_t at) const {
+    return at > 0 && at < _items->size() && (*_items)[at].joined;
   }
 
   // A tab's fill: for one that toggles, the accent's while it is on, or the role it
@@ -394,7 +401,7 @@ class List final : public VP::Operator {
       return;
     fit(_fitted, (*_items)[at].label, tab_cells);
     const auto wide = static_cast<std::int32_t>(cell.x);
-    const std::int32_t start = _laid[at].offset.x + wide;
+    const std::int32_t start = _laid[at].offset.x + (joins(at) ? 0 : wide);
     const std::int32_t from = std::max(start, shows.offset.x);
     const std::int32_t to = std::min(
         {start + static_cast<std::int32_t>(std::min(_fitted.size(), tab_cells)) * wide,

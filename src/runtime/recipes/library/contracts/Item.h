@@ -42,6 +42,9 @@ struct Item {
   // What the pointer coming onto it sends while it is not current, as a menu's word opens
   // the words that may follow it beside it; empty for none.
   std::string hover;
+  // In a strip, drawn on from the Item before it as one tab, with no gap or blank between,
+  // as the words of where a graph is, each pressed going to its own place.
+  bool joined = false;
 
   bool operator==(const Item &) const = default;
 };

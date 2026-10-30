@@ -297,6 +297,8 @@ void Graph::cook(VP::Cook &frame) {
       _relations->folder != _built_folder || _relations->changes != _built_changes ||
       _hosted != _built_hosted)
     build(frame.files(), edited, flat);
+  if (!std::exchange(_tab_named, true))
+    name_tab(frame);
   const glm::uvec2 cell = _font->cell;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
                     cell.x != 0 && cell.y != 0;
@@ -485,7 +487,7 @@ void Graph::show(std::string_view name) {
   _heating.stale();
   if (_selected_in != name)
     _selection.clear();
-  name_tab();
+  _tab_named = false;
   _homing = true;
   _grab.reset();
   _select_from.reset();
@@ -557,7 +559,7 @@ void Graph::build(VP::FilePort &files, const VP::View *edited, const VP::View *f
                                      : std::vector<std::string>());
   }
   draw_order(_boxes, _raised, _order);
-  name_tab();
+  _tab_named = false;
   place(edited, flat);
   _laid = false;
   _grab.reset();
@@ -578,21 +580,48 @@ void Graph::show_folder(VP::CommandPort &commands,
                                     folder.generic_string()));
 }
 
-// The tab names the view shown and the node whose inside shows, or the folder shown, from
-// the folder holding its repository's top, so the repository's name leads it.
-void Graph::name_tab() {
-  std::string label(title);
-  const std::filesystem::path folder(_relations->folder);
-  if (!folder.empty())
-    label += std::format(
-        " - {}",
-        folder.lexically_relative(std::filesystem::path(_relations->top).parent_path())
-            .generic_string());
-  else if (!_shown.empty())
-    label += std::format(" - {}", _shown);
-  if (!_boxes.scope.empty() && folder.empty())
-    label += std::format(" - {}", _boxes.scope);
-  _tabs->assign(1, {.label = std::move(label), .current = true});
+// The tab names where the graph is, a word a level, joined as one tab, a press on a word
+// going there as cd and the inside param go: its own word for the view vulpen started
+// with, then the views hosting the view shown, that view and the nodes whose inside
+// shows, or the folders down to the one shown, from the folder holding its repository's
+// top, so the repository's name leads them. Where it is takes no line.
+void Graph::name_tab(VP::Cook &frame) {
+  _tabs->clear();
+  const auto word = [&](std::string label, std::string line) {
+    _tabs->push_back({.label = std::move(label),
+                      .command = std::move(line),
+                      .current = true,
+                      .joined = !_tabs->empty()});
+  };
+  const auto cd = [](const std::filesystem::path &folder) {
+    return std::format("cd {}", typed_path(folder));
+  };
+  const VP::View *const top = frame.view("");
+  word(std::string(title), top ? cd(top->file.parent_path()) : std::string());
+  if (const std::filesystem::path folder(_relations->folder); !folder.empty()) {
+    std::filesystem::path at = std::filesystem::path(_relations->top).parent_path();
+    for (const std::filesystem::path &name : folder.lexically_relative(at)) {
+      at /= name;
+      word(std::format("{}{}", _tabs->size() == 1 ? " - " : "/", name.generic_string()),
+           cd(at));
+    }
+  } else {
+    std::vector<std::string> views; // the view shown, after the views hosting it
+    for (std::optional<std::string> view = _shown; view && !view->empty();
+         view = host_of(frame, *view))
+      views.insert(views.begin(), *view);
+    for (const std::string &view : views)
+      if (const VP::View *const hosted = frame.view(view))
+        word(std::format(" - {}", view), cd(hosted->file.parent_path()));
+    const std::string_view scope = _boxes.scope;
+    for (std::size_t from = 0; from < scope.size();) {
+      const std::size_t end = std::min(scope.find('.', from), scope.size());
+      word(std::format("{}{}", from == 0 ? " - " : ".", scope.substr(from, end - from)),
+           std::format("{}: param set {} inside {}", _view, _name, scope.substr(0, end)));
+      from = end + 1;
+    }
+  }
+  _tabs->back().command.clear();
 }
 
 // Every box in the middle of the area, as near as lets them all show with a margin round
