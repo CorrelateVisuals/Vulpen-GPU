@@ -326,7 +326,7 @@ void Schedule::make_buffers(Schedule *replaced) {
   for (const Bound &bound : _bound)
     for (const std::string &port : bound.readbacks)
       read_back.insert(buffer_name(bound.node->name, port));
-  for (const Bound &bound : _bound)
+  for (Bound &bound : _bound)
     for (const Field &field : bound.fields) {
       const Bound::Written *const upload = bound.upload(field.name);
       if (!field.buffer() || (!writes(field.access) && !upload))
@@ -341,7 +341,7 @@ void Schedule::make_buffers(Schedule *replaced) {
     }
   // C++ fills these for a connection to take to another node's shader, with the room it
   // asked for, as no shader of its node holds them.
-  for (const Bound &bound : _bound)
+  for (Bound &bound : _bound)
     for (const Bound::Written &written : bound.uploads)
       if (!bound.field(written.port) && written.count != 0)
         make_buffer(bound,
@@ -369,8 +369,10 @@ void Schedule::make_buffers(Schedule *replaced) {
   }
 }
 
-// The node that writes the buffer speaks for it, at that node's log level (V09).
-void Schedule::make_buffer(const Bound &writer,
+// The node that writes the buffer speaks for it, at that node's log level (V09). One the
+// GPU cannot hold, as a count past what it has free makes, is the writer's error, before
+// any memory is taken, so the node drops out and the run goes on (A02, A03).
+void Schedule::make_buffer(Bound &writer,
                            const std::string &name,
                            std::uint32_t elements,
                            std::uint32_t stride,
@@ -393,17 +395,23 @@ void Schedule::make_buffer(const Bound &writer,
       return;
     }
   }
-  Buffer made = _wiring.resources.buffer(
-      size,
-      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-      memory);
+  std::optional<Buffer> made;
+  try {
+    made.emplace(_wiring.resources.buffer(
+        size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, memory));
+  } catch (const std::runtime_error &failure) {
+    writer.errors.push_back(
+        std::format("{} of {} elements: {}", name, elements, failure.what()));
+    _used.erase(name);
+    return;
+  }
   // The operator writes an upload buffer before the frame whose clears would zero it,
   // so the CPU zeroes it instead (C01).
   if (memory == Memory::upload) {
-    std::ranges::fill(made.bytes(), std::byte{});
-    made.flush();
+    std::ranges::fill(made->bytes(), std::byte{});
+    made->flush();
   }
-  const auto placed = _buffers.emplace(name, std::move(made)).first;
+  const auto placed = _buffers.emplace(name, std::move(*made)).first;
   if (memory != Memory::upload)
     _fresh.push_back(&placed->second);
   const std::string_view where = memory_words[static_cast<std::size_t>(memory)];
@@ -425,14 +433,23 @@ void Schedule::make_blocks() {
     std::byte *const bytes = bound.block->bytes().data();
     for (const Field &field : bound.fields) {
       if (field.buffer()) {
-        const VkDeviceAddress address =
-            _buffers.at(buffer_name(bound.node->name, field.name)).address();
+        // Gone only where the GPU could not hold it, as its writer says.
+        const auto made = _buffers.find(buffer_name(bound.node->name, field.name));
+        if (made == _buffers.end()) {
+          bound.errors.push_back(std::format(
+              "{} has no buffer, which the GPU could not hold for its writer", field.name));
+          break;
+        }
+        const VkDeviceAddress address = made->second.address();
         std::memcpy(bytes + field.offset, &address, sizeof address);
       } else if (const Param *const param = bound.param(field.name)) {
         write_value(param->value, field.type, bytes + field.offset);
       }
     }
-    bound.block->flush();
+    if (!bound.errors.empty())
+      bound.block.reset();
+    else
+      bound.block->flush();
   }
   for (const Picture &picture : _images)
     point_readers(picture.name, picture.sampled.slot());

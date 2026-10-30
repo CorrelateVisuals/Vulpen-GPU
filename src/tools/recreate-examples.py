@@ -486,9 +486,10 @@ def examples(scratch: Path) -> list[Example]:
     # the project, where its tab follows it, so write saves it there; one another program
     # changes, which write must not write over; one deleted, whose tab closes, or with
     # changes keeps them for write force. A count past the largest is named so, and a
-    # script sourcing itself is
-    # refused. No line asks for a count the GPU cannot hold: until vulpen refuses one
-    # before it makes a buffer, the driver may take it from the machine's memory.
+    # script sourcing itself is refused. No line asks for a count the GPU cannot hold:
+    # vulpen refuses one before it makes a buffer, but that is tested on lavapipe alone,
+    # under a memory cap, as a GPU's driver may take what it hands out from the
+    # machine's own memory.
     e = Example("surprises", compared=False)
     spin, turn = at(e.copy, "spin", "Spin.comp"), at(e.copy, "turn", "Turn.comp")
     notes = at(e.copy, "notes.txt")

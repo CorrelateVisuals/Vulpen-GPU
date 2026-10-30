@@ -92,6 +92,15 @@ void Schedule::check_stages(Bound &bound) const {
         std::format("invocations = {} is not a multiple of local_size_x = {}",
                     node.invocations,
                     size[0]));
+  else if (const std::uint32_t most = _wiring.resources.max_compute_work_group_count();
+           node.invocations / size[0] > most)
+    bound.errors.push_back(
+        std::format("invocations = {} makes {} workgroups of local_size_x = {}, more than "
+                    "this GPU dispatches at once, {}",
+                    node.invocations,
+                    node.invocations / size[0],
+                    size[0],
+                    most));
 }
 
 // Before the pipeline is made, which each of these would make wrongly: a fragment node's

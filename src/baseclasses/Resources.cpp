@@ -5,11 +5,45 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#include <array>
+#include <format>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <utility>
 
 namespace VP {
 
 namespace {
+
+constexpr double bytes_a_gigabyte = 1e9; // as a person reads a size
+
+// Every allocation stays within what the GPU has free, so one it cannot hold fails before
+// any memory is taken, rather than taking it from the machine's own (A03).
+constexpr VmaAllocationCreateFlags within = VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT;
+
+// What the heap of a memory type has free: its budget less what this process uses of it.
+VkDeviceSize free_of(VmaAllocator allocator, std::uint32_t type) {
+  const VkPhysicalDeviceMemoryProperties *memory = nullptr;
+  vmaGetMemoryProperties(allocator, &memory);
+  std::array<VmaBudget, VK_MAX_MEMORY_HEAPS> budgets{};
+  vmaGetHeapBudgets(allocator, budgets.data());
+  const VmaBudget &heap = budgets[memory->memoryTypes[type].heapIndex];
+  return heap.budget > heap.usage ? heap.budget - heap.usage : 0;
+}
+
+std::string gigabytes(VkDeviceSize bytes) {
+  return std::format("{:.2f} GB", static_cast<double>(bytes) / bytes_a_gigabyte);
+}
+
+// Throws naming what an allocation that failed asked for and what is free, as a count
+// the GPU cannot hold fails so (A02); any other failure as check does.
+void allocated(VkResult result, const char *call, std::string_view asked, VkDeviceSize free) {
+  if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY || result == VK_ERROR_OUT_OF_HOST_MEMORY)
+    throw std::runtime_error(std::format(
+        "{} is more than the GPU can give, with {} free", asked, gigabytes(free)));
+  check(result, call);
+}
 
 VmaAllocationCreateFlags placement(Memory memory) {
   switch (memory) {
@@ -124,10 +158,13 @@ Fill Image::fill() const {
 
 Resources::Resources(VkInstance instance,
                      VkPhysicalDevice physical_device,
-                     VkDevice device)
+                     VkDevice device,
+                     bool budget)
     : _physical_device(physical_device), _device(device) {
+  const VmaAllocatorCreateFlags told =
+      budget ? VmaAllocatorCreateFlags{VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT} : 0;
   const VmaAllocatorCreateInfo info{.flags =
-                                        VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+                                        VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | told,
                                     .physicalDevice = physical_device,
                                     .device = device,
                                     .instance = instance,
@@ -145,15 +182,27 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
                                 .size = size,
                                 .usage =
                                     usage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT};
-  const VmaAllocationCreateInfo where{.flags = placement(memory),
+  const VmaAllocationCreateInfo where{.flags = placement(memory) | within,
                                       .usage = VMA_MEMORY_USAGE_AUTO};
   Buffer buffer;
-  VmaAllocationInfo allocated{};
-  check(vmaCreateBuffer(
-            _allocator, &info, &where, &buffer._buffer, &buffer._allocation, &allocated),
-        "vmaCreateBuffer");
+  VmaAllocationInfo made{};
+  if (const VkResult result = vmaCreateBuffer(
+          _allocator, &info, &where, &buffer._buffer, &buffer._allocation, &made);
+      result != VK_SUCCESS) {
+    // The type such a buffer takes, found for one of a byte, as one of the size that
+    // failed would fail again.
+    VkBufferCreateInfo least = info;
+    least.size = 1;
+    std::uint32_t type = 0;
+    const bool typed =
+        vmaFindMemoryTypeIndexForBufferInfo(_allocator, &least, &where, &type) == VK_SUCCESS;
+    allocated(result,
+              "vmaCreateBuffer",
+              gigabytes(size),
+              typed ? free_of(_allocator, type) : 0);
+  }
   buffer._allocator = _allocator;
-  buffer._mapped = static_cast<std::byte *>(allocated.pMappedData);
+  buffer._mapped = static_cast<std::byte *>(made.pMappedData);
   buffer._size = size;
   buffer._memory = memory;
   const VkBufferDeviceAddressInfo address{
@@ -177,11 +226,21 @@ Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
                                .samples = VK_SAMPLE_COUNT_1_BIT,
                                .tiling = VK_IMAGE_TILING_OPTIMAL,
                                .usage = VK_IMAGE_USAGE_SAMPLED_BIT | filled};
-  const VmaAllocationCreateInfo where{.usage = VMA_MEMORY_USAGE_AUTO};
+  const VmaAllocationCreateInfo where{.flags = within, .usage = VMA_MEMORY_USAGE_AUTO};
   Image image;
-  check(vmaCreateImage(
-            _allocator, &info, &where, &image._image, &image._allocation, nullptr),
-        "vmaCreateImage");
+  if (const VkResult result = vmaCreateImage(
+          _allocator, &info, &where, &image._image, &image._allocation, nullptr);
+      result != VK_SUCCESS) {
+    VkImageCreateInfo least = info; // as a buffer's, for a pixel
+    least.extent = {1, 1, 1};
+    std::uint32_t type = 0;
+    const bool typed =
+        vmaFindMemoryTypeIndexForImageInfo(_allocator, &least, &where, &type) == VK_SUCCESS;
+    allocated(result,
+              "vmaCreateImage",
+              std::format("an image of {} by {} pixels", extent.width, extent.height),
+              typed ? free_of(_allocator, type) : 0);
+  }
   image._allocator = _allocator;
   image._device = _device;
   image._extent = extent;
@@ -217,6 +276,12 @@ bool Resources::samples(VkFormat format, Fill fill) const {
   vkGetPhysicalDeviceFeatures(_physical_device, &features);
   return (properties.optimalTilingFeatures & needed) == needed &&
          (fill != Fill::store || features.shaderStorageImageArrayDynamicIndexing);
+}
+
+std::uint32_t Resources::max_compute_work_group_count() const {
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(_physical_device, &properties);
+  return properties.limits.maxComputeWorkGroupCount[0];
 }
 
 } // namespace VP

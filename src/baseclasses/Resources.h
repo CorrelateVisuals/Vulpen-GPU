@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 
 struct VmaAllocator_T;
@@ -75,17 +76,25 @@ private:
 
 class Resources {
 public:
-  Resources(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device);
+  // budget: whether the device tells what memory it has free (VK_EXT_memory_budget).
+  Resources(VkInstance instance,
+            VkPhysicalDevice physical_device,
+            VkDevice device,
+            bool budget);
   ~Resources();
   Resources(const Resources &) = delete;
   Resources &operator=(const Resources &) = delete;
 
   // Every buffer is reachable by its device address, the way shaders take buffers (RV02).
+  // A buffer or an image is made only within the memory the GPU has free, so one it
+  // cannot hold throws, naming its size and what is free, before any memory is taken.
   Buffer buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const;
   Image image(VkExtent2D extent, VkFormat format, Fill fill = Fill::copy) const;
   // Whether shaders may sample, filtered, an image of the format filled so; a draw also
   // blends into it, and a dispatch stores into it from images[].
   bool samples(VkFormat format, Fill fill = Fill::copy) const;
+  // The most workgroups a dispatch runs along x on this GPU.
+  std::uint32_t max_compute_work_group_count() const;
 
 private:
   const VkPhysicalDevice _physical_device;

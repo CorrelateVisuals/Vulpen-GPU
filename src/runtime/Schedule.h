@@ -152,7 +152,7 @@ private:
   void keep_images(Schedule &replaced);
   void keep_stored(Schedule &replaced);
   void make_buffers(Schedule *replaced);
-  void make_buffer(const Bound &writer,
+  void make_buffer(Bound &writer,
                    const std::string &name,
                    std::uint32_t elements,
                    std::uint32_t stride,

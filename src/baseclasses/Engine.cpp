@@ -120,7 +120,10 @@ void upload(VkCommandBuffer commands, const Copy &copy) {
 struct Engine::Gpu {
   Gpu(const Log &log, const Window *window, std::string_view prefer)
       : log(log), mechanics(log, window, prefer),
-        resources(mechanics.instance(), mechanics.physical_device(), mechanics.device()),
+        resources(mechanics.instance(),
+                  mechanics.physical_device(),
+                  mechanics.device(),
+                  mechanics.budget()),
         pipelines(mechanics.device(), resources),
         tick(mechanics.timestamp_bits() == 0
                  ? 0.0

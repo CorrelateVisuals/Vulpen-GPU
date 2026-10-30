@@ -37,6 +37,9 @@ public:
   std::string_view takes(std::string_view prefer) const;
   VkInstance instance() const;
   VkPhysicalDevice physical_device() const;
+  // Whether the device tells the memory it has free, VK_EXT_memory_budget; without it the
+  // allocator guesses at it from the heaps' sizes.
+  bool budget() const;
   VkDevice device() const;
   VkQueue queue() const;
   // Whether the device's one queue can draw frames and show them on the window this

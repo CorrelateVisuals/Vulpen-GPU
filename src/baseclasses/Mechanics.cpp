@@ -102,14 +102,18 @@ bool meets_floor(VkPhysicalDevice device) {
          features12.bufferDeviceAddress;
 }
 
-bool has_swapchain(VkPhysicalDevice device) {
+bool has_extension(VkPhysicalDevice device, const char *name) {
   std::uint32_t count = 0;
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
   std::vector<VkExtensionProperties> extensions(count);
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
-  return std::ranges::any_of(extensions, [](const VkExtensionProperties &extension) {
-    return std::strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
+  return std::ranges::any_of(extensions, [&](const VkExtensionProperties &extension) {
+    return std::strcmp(extension.extensionName, name) == 0;
   });
+}
+
+bool has_swapchain(VkPhysicalDevice device) {
+  return has_extension(device, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 }
 
 std::vector<VkQueueFamilyProperties> families_of(VkPhysicalDevice device) {
@@ -230,14 +234,20 @@ VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
       .descriptorBindingPartiallyBound = VK_TRUE,
       .runtimeDescriptorArray = VK_TRUE,
       .bufferDeviceAddress = VK_TRUE};
-  const char *const swapchain = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+  // What the GPU has free, which every allocation stays within, where the GPU tells it,
+  // so a count it cannot hold is refused before any memory is taken (A02, A03).
+  std::vector<const char *> extensions;
+  for (const char *const name :
+       {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME})
+    if (has_extension(physical_device, name))
+      extensions.push_back(name);
   const VkDeviceCreateInfo info{.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
                                 .pNext = &features12,
                                 .queueCreateInfoCount = 1,
                                 .pQueueCreateInfos = &queue,
                                 .enabledExtensionCount =
-                                    has_swapchain(physical_device) ? 1u : 0u,
-                                .ppEnabledExtensionNames = &swapchain,
+                                    static_cast<std::uint32_t>(extensions.size()),
+                                .ppEnabledExtensionNames = extensions.data(),
                                 .pEnabledFeatures = &features};
   VkDevice device = VK_NULL_HANDLE;
   check(vkCreateDevice(physical_device, &info, nullptr, &device), "vkCreateDevice");
@@ -288,6 +298,10 @@ VkInstance Mechanics::instance() const {
 
 VkPhysicalDevice Mechanics::physical_device() const {
   return _choice.device;
+}
+
+bool Mechanics::budget() const {
+  return has_extension(_choice.device, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 }
 
 VkDevice Mechanics::device() const {
