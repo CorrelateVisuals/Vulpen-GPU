@@ -4,6 +4,7 @@
 #include "Graph.h"
 
 #include "runtime/View.h"
+#include "shared/Paths.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -1136,8 +1137,10 @@ void Graph::into_folder(Port &port, const std::filesystem::path &folder) {
 
 // Out of the node whose inside shows, to the inside of the node holding it, or the top;
 // out of a view's top to the view hosting it, as view switch shows it, and out of the top
-// of the view vulpen started with to the folder holding its folder, where its folder is a
-// box; out of a folder to the one holding it, up to the top of its repository. The level
+// of the view vulpen started with, the root of the views, to the root of the folders, the
+// top of its repository, where the projects show beside what holds the apps, the box
+// holding its folder in focus, or outside one to the folder holding its folder; out of a
+// folder to the one holding it, up to the top of its repository. The level
 // shown next shows the box left in focus, unless the caller lets go of it. Once a line
 // left a node's inside, the boxes show it still until the next frame builds them, so a
 // wheel turning on leaves it once, as its inside param, which it keeps as the line set it,
@@ -1159,8 +1162,11 @@ template <class Port> void Graph::leave(Port &port) {
       port.commands().send(host->empty() ? std::string("view switch")
                                          : std::format("view switch {}", *host));
     } else if (view && !view->file.empty()) {
-      _left = view->file.parent_path().lexically_normal().generic_string();
-      show_folder(port.commands(), view->file.parent_path().parent_path());
+      const std::filesystem::path folder = view->file.parent_path().lexically_normal();
+      const std::filesystem::path top = top_of(port.files(), folder);
+      const std::filesystem::path out = top == folder ? folder.parent_path() : top;
+      _left = (out / *folder.lexically_relative(out).begin()).generic_string();
+      show_folder(port.commands(), out);
     }
     return;
   }
