@@ -35,7 +35,10 @@ constexpr std::string_view empty_tab = "perform";
 // param follows the view presented as that comes to one it holds, so a save keeps the one
 // it shows and the docking part finds it. The focus on the pane it hides, while its host
 // connects the keys part's typed to its typed, goes to the pane it shows, the node of it
-// listed where the other's was, so keys go to the view seen.
+// listed where the other's was, so keys go to the view seen. Showing none, it takes the
+// focus itself at a press in its room, as an empty editor does, so the panel holding it
+// is framed as the one in focus, and escape lets go of it; the first view it shows then
+// takes it, at the pane's first node.
 class Deck final : public VP::Operator {
   // A port to a pane: the view it is named for, the Rect it hands, and the nodes it
   // reaches, in the order the connection lists them.
@@ -91,6 +94,22 @@ class Deck final : public VP::Operator {
       choose(frame.commands(), frame.view());
     for (const Room &room : _rooms)
       *room.rect = room.view == _shows ? *_area : VP_VIEW::Rect{};
+    if (_typed)
+      take_focus(frame);
+  }
+
+  // In the order the events came, so a press is tested where the pointer was then.
+  void take_focus(VP::Cook &frame) {
+    for (const VP::Event &event : frame.input().events())
+      if (event.kind == VP::Event::Kind::pointer)
+        _pointer = event.at;
+      else if (event.kind == VP::Event::Kind::button && event.down &&
+               event.name == "left" && _shows.empty() &&
+               VP_VIEW::contains(*_area, _pointer) && _typed->focus != _name)
+        frame.commands().send(std::format("{}: focus {}", _view, _name));
+    for (const VP::Event &event : _typed->to(_name))
+      if (event.kind == VP::Event::Kind::key && event.down && event.name == "escape")
+        frame.commands().send(std::format("{}: focus", _view));
   }
 
   // The view it shows, its tabs, and the focus and its shown param following them; only
@@ -123,14 +142,20 @@ class Deck final : public VP::Operator {
   }
 
   // The focus on the pane it hid goes to the node of the pane it shows listed where the
-  // focused one was in its own.
+  // focused one was in its own, and the focus on itself to the pane's first node.
   void refocus(VP::CommandPort &commands, std::string_view hid) const {
     const auto room_of = [&](std::string_view view) {
       return std::ranges::find(_rooms, view, &Room::view);
     };
     const auto was = room_of(hid);
     const auto now = room_of(_shows);
-    if (!_typed || was == _rooms.end() || now == _rooms.end())
+    if (!_typed || now == _rooms.end() || now->nodes.empty())
+      return;
+    if (_typed->focus == _name) {
+      commands.send(std::format("{}: focus {}", _view, now->nodes.front()));
+      return;
+    }
+    if (was == _rooms.end())
       return;
     const auto focus = std::ranges::find(was->nodes, _typed->focus);
     const auto listed = static_cast<std::size_t>(focus - was->nodes.begin());
@@ -150,6 +175,7 @@ class Deck final : public VP::Operator {
   std::string _presented;
   std::string _shows; // the view it shows; empty for none
   bool _named = false; // its tabs and the view it shows follow what is
+  glm::vec2 _pointer{}; // as the events so far left it
 };
 
 } // namespace
