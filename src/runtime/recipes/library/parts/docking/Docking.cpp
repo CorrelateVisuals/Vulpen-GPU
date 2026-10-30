@@ -547,7 +547,10 @@ class Docking final : public VP::Operator {
   // editors alone, and the docks go in the order they nest, as a file kept before moves
   // ordered them may list them otherwise. Its lines change the panels as the manifest
   // has them, so panels the file keeps as they are need none, and panels moved otherwise
-  // are refused before a line changes them.
+  // are refused before a line changes them. The panels are as the manifest has them when
+  // no edit makes them so, as the file is written: the view as edited holds a param the
+  // manifest sets on a node inside a panel's on the panel's own, so it never reads the
+  // same as the manifest's view, which the file port hands unfolded.
   void restore(VP::Call &call) {
     const std::filesystem::path kept(_kept);
     const std::vector<std::string> names = call.files().list(kept.parent_path().string());
@@ -560,7 +563,7 @@ class Docking final : public VP::Operator {
     const VP::View &now = *call.view(_view);
     if (kept_text(_written, now) == text)
       return call.reply(std::format("the panels are as {} keeps them already", _kept));
-    if (!as_written(now, _written))
+    if (!edits_from(_written, now).empty())
       throw std::runtime_error(std::format("{} changes the panels as {} has them, as a "
                                            "run starts, and they moved since",
                                            _kept,
