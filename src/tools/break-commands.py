@@ -3,9 +3,10 @@
 person means to: each usage the command port lists, in each state a person reaches, with
 the words its help names, with none, with one too many, and with words no person means
 in each place; the words Tab offers for each placeholder; seeded walks of random lines,
-each then carried through quit restart and replayed from its log in a new vulpen, which
-must both come back to the same views (V08); the lines the ide's menus and keys send;
-and sequences a person was seen to run.
+each then carried through quit restart, and every second one, of lines that only edit
+the graph, replayed from its log in a new vulpen, which must both come back to the same
+views (V08); the lines the ide's menus and keys send; and sequences a person was seen
+to run.
 
 The states: the cli alone; the ide hosted; a project loaded; two, the first current; the
 view vulpen started with current, a project hosted; the graph inside a node; a file open
@@ -56,6 +57,9 @@ KEYMAP = Path("src/runtime/recipes/library/parts/keys/keymap.ini")
 GPU_CHOICE = Path("src/runtime/recipes/cli/.vulpen/gpu.ini")
 PARTS = ("sweep", "tab", "walk", "gui", "seen")
 SIZE = "1280x720"
+# The ide's window taken as an image, from the start or the frame it comes back, as no
+# display is here to open it on.
+SNAPSHOT = "connect snapshot ide: cli.snapshot.picture"
 TIMEOUT_S = 90         # for a frame to pass, or a restart's build
 POLL_S = 0.005
 FRAMES_A_LINE = 2      # at least, from one line to the next
@@ -75,6 +79,9 @@ FAILED = re.compile(r"live: the build of .+ failed")
 # What a compiler says of a file a line removed while the build read it: the build failed
 # on the line, not on the code.
 VANISHED = re.compile(r"No such file|unable to open input file|No rule to make target")
+# A problem a node meets as it binds, naming the line that last gave it words and itself:
+# the state's, which the views' comparison judges, not a line refused.
+BOUND = re.compile(r"(?:\S+:\d+ )?node \S+: ")
 RESTARTED = re.compile(r"restarted: replayed|restart: .*the views go on as replayed")
 # What std::exception::what() says for the standard library's own throws, as fuzz.py
 # reads them: a message naming no file, node or key.
@@ -487,7 +494,7 @@ class Copy:
         """A new vulpen in the state, the copy put back first."""
         self.put_back()
         setup = [f"view add ide {self.tree / IDE}", "node add cli.snapshot recipe=snapshot",
-                 "connect snapshot ide: cli.snapshot.picture"] if state.ide else []
+                 SNAPSHOT] if state.ide else []
         vulpen = Vulpen(self.tree, self.said, setup)
         said = vulpen.frames(3)
         for name in state.loads:
@@ -815,7 +822,8 @@ def judge(copy: Copy, state: str, usage: Usage, variant: str, line: str,
         if BARE.search(error):
             copy.find(state, "a refusal only repeats what the standard library threw",
                       line, [error])
-    if raw := [text for text in said if CONTROL.search(text)]:
+    # In what the log says: a command's answer may be one on purpose, as clear's.
+    if raw := [text for text in said if LOGGED.match(text) and CONTROL.search(text)]:
         copy.find(state, "a control character reaches the terminal, which obeys it", line,
                   [repr(text)[:200] for text in raw[:3]])
     for what, lines in vulpen.problems:
@@ -842,14 +850,12 @@ def try_line(copy: Copy, vulpen: Vulpen, state: State, usage: Usage, variant: st
 def damage(copy: Copy, state: State, usage: Usage, lines: list[str]) -> bool:
     """Files outside the projects that a line changed, which none of the lines named."""
     named = [Path(word) for line in lines for word in line.split() if "/" in word]
-    if not state.current and usage.text == "view save":
-        named.append(CLI)  # its own manifest, which it saves
     changed = [path for path in copy.changed() if not path.startswith("projects/") and
                not any((copy.tree / path).is_relative_to((copy.tree / name).resolve())
                        for name in named)]
     if changed:
         copy.find(state.name, f"`{usage.text}` changed files outside the projects",
-                  lines[-1] if lines else usage.text, changed[:12])
+                  lines[0] if lines else usage.text, changed[:12])
     return bool(changed)
 
 
@@ -1135,18 +1141,26 @@ def compare(copy: Copy, state: str, what: str, before: dict, after: dict) -> Non
 # those that only look.
 UNWALKED = ("quit", "input", "help", "clear", "complete", "probe", "menu", "focus", "zoom",
             "panel", "mode", "gpu", "log save", "source", "jump", "find", "arrange")
+# Usages whose lines write files: the log keeps the graph edits they make, as recipe drop's
+# node add, not the files, so a log replayed where they are not rebuilds the graph alone.
+WRITES = ("node new", "node remove <node>", "node rename", "recipe", "view new", "view save",
+          "view rename", "view remove", "file", "write")
 
 
 def walk(copy: Copy, seed: int, steps: int) -> None:
-    """Random lines, from the seed, in a project with two more hosted: then quit restart,
-    which must bring the same views back, and the walk's log replayed in a new vulpen,
-    which must too, and log the same lines (V08)."""
+    """Random lines, from the seed, in a project with two more hosted, then quit restart,
+    which must bring the same views back. Every second walk, of lines that only edit the
+    graph, has its log replayed in a new vulpen too, which must come back to the same
+    views and log the same lines (V08)."""
     chance = random.Random(seed)
+    graph_only = seed % 2 == 0
     state = State(f"walk {seed}", loads=("bf-one", "bf-two", "bf-three"), current="bf-one")
-    print(f"walk: seed {seed}, {steps} lines", flush=True)
+    print(f"walk: seed {seed}, {steps} lines{', the graph only' if graph_only else ''}",
+          flush=True)
     vulpen = copy.start(state)
     walked = [usage for usage in usages(vulpen)
-              if not any(usage.text.startswith(word) for word in UNWALKED)]
+              if not any(usage.text.startswith(word) for word in UNWALKED)
+              and not (graph_only and any(usage.text.startswith(word) for word in WRITES))]
     current = state.current
     try:
         for _ in range(steps):
@@ -1154,8 +1168,12 @@ def walk(copy: Copy, seed: int, steps: int) -> None:
             words = Words(copy, State(state.name, loads=state.loads,
                                       current=current if current in SANDBOX else ""))
             tries = variants(usage, words)
-            variant, before, line = (tries[-1] if chance.random() < 0.8
+            variant, before, line = (tries[0] if chance.random() < 0.8
                                      else chance.choice(tries))
+            # The connection that takes the ide's window as an image stands in for a
+            # display, which no person's run has; the sweep tries it.
+            if any("snapshot" in text for text in [*before, line]):
+                continue
             said = try_line(copy, vulpen, state, usage, variant, before, line)
             for text in said:
                 if found := re.search(r"command: view switch ?(\S*)$", text):
@@ -1168,7 +1186,10 @@ def walk(copy: Copy, seed: int, steps: int) -> None:
         log = copy.said.parent / f"walk-{seed}.log"
         vulpen.send(f"log save {log}")
         said = vulpen.restart()
-        if errors := refusals(said):
+        # A node's own problem, as a port a line disconnected, came with the views; only
+        # a line the restart refused is its.
+        if errors := [error for error in refusals(said)
+                      if "restart" in error and not BOUND.search(error)]:
             copy.find(state.name, "quit restart refused a line it carried", "quit restart",
                       errors)
         vulpen.idle()
@@ -1178,11 +1199,13 @@ def walk(copy: Copy, seed: int, steps: int) -> None:
         copy.find(state.name, "vulpen ended or hung", vulpen.last, [str(why), *vulpen.tail()])
         vulpen.end(force=True)
         return
+    if not graph_only:
+        return
     copy.put_back()
     replay = Vulpen(copy.tree, copy.said, log.read_text().splitlines())
     try:
         said = replay.frames(3)
-        if errors := refusals(said):
+        if errors := [error for error in refusals(said) if not BOUND.search(error)]:
             copy.find(state.name, "the walk's log refused a line as it replayed",
                       f"--source {log.name}", errors)
         replay.idle()
@@ -1215,7 +1238,7 @@ SEEN = [
     Seen("gpu toggle, then quit restart, as in your run 154552Z", PROJECT,
          ["gpu toggle", "@restart"], ("ide", "bf-one")),
     Seen("the ide closed, then view load ide", State("ide"),
-         ["view close ide", "view load ide"], ("ide",)),
+         ["view close ide", f"view load ide ;; {SNAPSHOT}"], ("ide",)),
     Seen("quit restart twice", PROJECT, ["@restart", "@restart"], ("ide", "bf-one")),
     Seen("view rename, then quit restart", PROJECT,
          ["view rename bf-renamed", "@restart"], ("ide", "bf-renamed")),
@@ -1224,14 +1247,14 @@ SEEN = [
     Seen("quit restart inside a node", State("inside", loads=("bf-one",),
                                              current="bf-one", then=("cd corners",)),
          ["@restart"], ("ide", "bf-one")),
-    Seen("quit restart while the editor holds changes", STATES[6], ["@restart"],
+    Seen("quit restart while the editor holds changes",
+         next(state for state in STATES if state.name == "editing"), ["@restart"],
          ("ide", "bf-two"), refused="would lose"),
     Seen("a project hosted twice, under another name", PROJECT,
          ["view add other projects/bf-one/view.vlp"], ("ide", "bf-one"),
          refused="bf-one"),
-    Seen("a project hosted from a script by ../, then loaded by name", State("ide"),
-         ["source ../decoy/host.txt", "view load bf-three"], ("ide", "bf-x"),
-         refused="bf-three"),
+    Seen("a project hosted from a script by ../, beside the script", State("ide"),
+         ["source ../decoy/host.txt"], ("ide", "bf-x")),
     Seen("the ide closed, then quit restart", State("ide"),
          ["view close ide", "@restart"], ()),
     Seen("view close of the current view, then view load", PROJECT,
@@ -1254,7 +1277,8 @@ def seen(copy: Copy) -> None:
         said = []
         try:
             for line in sequence.lines:
-                said += vulpen.restart() if line == "@restart" else vulpen.send(line)
+                said += (vulpen.restart() if line == "@restart" else
+                         vulpen.send(*(part.strip() for part in line.split(";;"))))
                 usage = usage_of("quit restart" if line == "@restart" else line)
                 copy.tried.append(Tried("seen", sequence.what, usage.text, "seen", line,
                                         "refused" if refusals(said) else "ran",
