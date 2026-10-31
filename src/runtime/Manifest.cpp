@@ -141,8 +141,9 @@ place(std::string_view section, std::string_view key = {}, std::string_view valu
 // ignored.
 class Reader {
 public:
+  // Normal, as every path a view keeps, so two names of one file compare equal.
   explicit Reader(const std::filesystem::path &file)
-      : _file(std::filesystem::absolute(file)) {}
+      : _file(std::filesystem::absolute(file).lexically_normal()) {}
   View read();
   const Notes &notes() const {
     return _notes;
@@ -641,7 +642,8 @@ View Manifest::load(const std::filesystem::path &file) {
 }
 
 View Manifest::empty(const std::filesystem::path &file) {
-  const std::filesystem::path absolute = std::filesystem::absolute(file);
+  const std::filesystem::path absolute =
+      std::filesystem::absolute(file).lexically_normal();
   return {.name = name_of(absolute), .file = absolute};
 }
 

@@ -596,11 +596,14 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words) c
 }
 
 // A relative path names a file beside the one running (RP02), so a script and the files
-// it reads and writes move together; in a line typed, beside where it was typed.
+// it reads and writes move together; in a line typed, beside where it was typed. Normal,
+// as a replay names a file through .. from beside the log, and the view it hosts must be
+// the one the same file named another way made.
 std::filesystem::path Commands::resolved(const std::filesystem::path &file) const {
   return std::filesystem::absolute(file.is_relative() && !_sourcing.empty()
                                        ? _sourcing.back().file.parent_path() / file
-                                       : file);
+                                       : file)
+      .lexically_normal();
 }
 
 } // namespace VP
