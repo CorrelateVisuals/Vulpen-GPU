@@ -10,6 +10,7 @@
 #include <ranges>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <utility>
 
 namespace VP {
@@ -473,7 +474,13 @@ std::string Commands::send(std::string_view line) {
 }
 
 void Commands::source(const std::filesystem::path &file) {
-  const std::filesystem::path path = std::filesystem::weakly_canonical(resolved(file));
+  // A name the system cannot even look up, as one too long for it, is unreadable too.
+  std::error_code unread;
+  const std::filesystem::path path =
+      std::filesystem::weakly_canonical(resolved(file), unread);
+  if (unread)
+    throw std::runtime_error(std::format(
+        "{}: cannot be read: {}", resolved(file).string(), unread.message()));
   if (std::ranges::find(_sourcing, path, &Source::file) != _sourcing.end())
     throw std::runtime_error(std::format(
         "{} is running already, so sourcing it again would never end", path.string()));
