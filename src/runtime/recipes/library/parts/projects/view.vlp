@@ -1,7 +1,9 @@
 # The projects part: one node whose operator is Projects. Its folder param names where the
-# projects are, from this folder: projects/ at the top of the repository.
+# projects are, from this folder: projects/ at the top of the repository; its apps param
+# where the apps are, beside the library, whose name view load also takes.
 [manifest]
 version = 1
 
 [node "projects"]
 param = folder=../../../../../../projects
+param = apps=../../..

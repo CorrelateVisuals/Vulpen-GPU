@@ -66,11 +66,14 @@ class Projects final : public VP::Operator {
     // param.
     _folder = (std::filesystem::path(node.folder()) / node.param<std::string>("folder"))
                   .lexically_normal();
+    _apps = (std::filesystem::path(node.folder()) / node.param<std::string>("apps"))
+                .lexically_normal();
     _new = node.command("view new <project>",
                         "hosts a new, empty view, a project's by name or a folder's by "
                         "path, and saves its view.vlp");
     _load = node.command("view load <project>",
-                         "hosts the view of a project by name, or of a folder by path");
+                         "hosts the view of a project by name, or of a folder by path; "
+                         "an app's name, as ide, hosts the app beside the projects again");
     _save_as = node.command("view save as <name>",
                             "copies the view, its edits too, into a new project and "
                             "works on the copy; the view's own files stay as last saved");
@@ -83,8 +86,12 @@ class Projects final : public VP::Operator {
   }
 
   void command(VP::Call &call) override {
-    if (call.is(_new) || call.is(_load))
-      host(call, folder_of(call, call.arguments().front()), call.is(_new));
+    const std::string_view word = call.arguments().empty() ? "" : call.arguments().front();
+    if (call.is(_load) && project_name(word) && found(call, word).empty() &&
+        holds_view(call, _apps / word))
+      host_app(call, _apps / word);
+    else if (call.is(_new) || call.is(_load))
+      host(call, folder_of(call, word), call.is(_new));
     else if (call.is(_save_as))
       save_as(call);
     else if (call.is(_rename))
@@ -124,6 +131,31 @@ class Projects final : public VP::Operator {
     return std::ranges::find(names, manifest) != names.end();
   }
 
+  // An app, as the ide, hosted beside the projects as vulpen hosts it at the start, after
+  // a view close took it. The current view stays: an app's view is a window to work in,
+  // not one to work on.
+  static void host_app(VP::Call &call, const std::filesystem::path &folder) {
+    const std::string name = folder.filename().string();
+    if (call.view("")->file.lexically_normal() == (folder / manifest).lexically_normal())
+      throw std::runtime_error(
+          std::format("{} is the view vulpen started with, which runs already", name));
+    check_free(call, name);
+    call.commands().send(
+        std::format(": view add {} {}", name, (folder / manifest).string()));
+  }
+
+  // An app's folder is the library's to keep, as the build and ./run.sh name it, and its
+  // nodes use recipes as they are, which no project's may; so only a project is renamed
+  // or copied into one.
+  void check_project(VP::Call &call, std::string_view hosted) const {
+    const std::filesystem::path inside = call.view().file.lexically_relative(_apps);
+    if (!inside.empty() && *inside.begin() != "..")
+      throw std::runtime_error(std::format(
+          "{} is an app beside the library, not a project, so its folder stays as it is; "
+          "recipe drop copies a recipe into a project",
+          hosted));
+  }
+
   // The build holds one view of each name, so a new project's name is one no project has,
   // in a group or not.
   void check_unused(VP::Call &call, std::string_view name) const {
@@ -158,6 +190,7 @@ class Projects final : public VP::Operator {
   // copied under the same name, and the build holds one view of each name.
   void save_as(VP::Call &call) const {
     const std::string hosted = hosted_name(call);
+    check_project(call, hosted);
     const std::string name(call.arguments().front());
     check_name(name);
     check_free(call, name);
@@ -186,6 +219,7 @@ class Projects final : public VP::Operator {
   // changes.
   void rename(VP::Call &call) const {
     const std::string hosted = hosted_name(call);
+    check_project(call, hosted);
     const std::string name(call.arguments().front());
     check_name(name);
     check_free(call, name);
@@ -224,6 +258,7 @@ class Projects final : public VP::Operator {
   }
 
   std::filesystem::path _folder;
+  std::filesystem::path _apps; // the recipes' folder, where each app beside the library is
   VP::Command _new;
   VP::Command _load;
   VP::Command _save_as;
