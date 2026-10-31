@@ -27,24 +27,27 @@ std::string module_of(const View &view, const Node &node) {
 // Whether a live build has made none of a node's code yet, neither its shaders' SPIR-V
 // nor its module, as for a node of a project loaded before it was ever built, which it
 // then builds. Without a live build, nothing will.
-bool unbuilt(const Node &node,
-             const std::string &module,
-             const std::filesystem::path &folder,
-             const Modules &modules) {
-  if constexpr (!VP_LIVE)
-    return false;
-  bool code = runs_operator(node);
-  if (code && modules.built(module, folder))
-    return false;
-  for (const std::string &file : node.files) {
-    if (std::ranges::none_of(stages, [&](auto stage) { return file.ends_with(stage); }))
-      continue;
-    std::error_code unread;
-    if (std::filesystem::exists(spirv_of(folder, file), unread))
+// The one branch, so a build with no live build has no code it never reaches.
+bool unbuilt([[maybe_unused]] const Node &node,
+             [[maybe_unused]] const std::string &module,
+             [[maybe_unused]] const std::filesystem::path &folder,
+             [[maybe_unused]] const Modules &modules) {
+  if constexpr (VP_LIVE) {
+    bool code = runs_operator(node);
+    if (code && modules.built(module, folder))
       return false;
-    code = true;
+    for (const std::string &file : node.files) {
+      if (std::ranges::none_of(stages, [&](auto stage) { return file.ends_with(stage); }))
+        continue;
+      std::error_code unread;
+      if (std::filesystem::exists(spirv_of(folder, file), unread))
+        return false;
+      code = true;
+    }
+    return code;
+  } else {
+    return false;
   }
-  return code;
 }
 
 } // namespace
