@@ -487,6 +487,19 @@ VP::View tree_of(VP::FilePort &files,
   return tree;
 }
 
+// The folder going up from the one shown stops at: the nearest holding .git, the top of
+// its repository; outside one, the one shown.
+std::string top_of(VP::FilePort &files, const std::filesystem::path &shown) {
+  for (std::filesystem::path folder = shown;; folder = folder.parent_path()) {
+    const std::vector<std::string> names = names_in(files, folder.string());
+    if (std::ranges::find(names, ".git/") != names.end() ||
+        std::ranges::find(names, ".git") != names.end())
+      return folder.string();
+    if (folder == folder.parent_path())
+      return shown.string();
+  }
+}
+
 // A folder a tool keeps its state in, as a build tree, which CMake marks with its cache,
 // or a Python environment, which its config marks: as a hidden folder, it holds none of
 // the relations of the files a person writes, but many files of its own.

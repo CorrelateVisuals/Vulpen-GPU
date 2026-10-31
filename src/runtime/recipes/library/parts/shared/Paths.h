@@ -23,20 +23,6 @@ inline std::vector<std::string> names_in(VP::FilePort &files, const std::string 
   }
 }
 
-// The folder going up from one stops at: the nearest holding .git, the top of its
-// repository; outside one, the folder itself, as the relations part shows folders up to
-// it and the graph goes out of the view vulpen started with to it.
-inline std::string top_of(VP::FilePort &files, const std::filesystem::path &shown) {
-  for (std::filesystem::path folder = shown;; folder = folder.parent_path()) {
-    const std::vector<std::string> names = names_in(files, folder.string());
-    if (std::ranges::find(names, ".git/") != names.end() ||
-        std::ranges::find(names, ".git") != names.end())
-      return folder.string();
-    if (folder == folder.parent_path())
-      return shown.string();
-  }
-}
-
 // The names in each folder looked in, each folder listed once, kept by the part that
 // looks, as the relations part keeps them between the frames a reading takes, so where a
 // file's names lead is found alike by every part that follows them (RV09).
