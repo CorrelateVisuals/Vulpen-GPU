@@ -286,6 +286,9 @@ struct Bound {
   // loaded before it was ever built: left out as by an error, but only waiting, so it says
   // so quietly, as the build that makes it says why if it cannot (A02).
   bool unbuilt = false;
+  // How many of its errors only wait for such a node, as a reader of what it writes: when
+  // all of them, it says so quietly too.
+  std::size_t waits = 0;
 
   bool loaded() const {
     return !shaders.empty();

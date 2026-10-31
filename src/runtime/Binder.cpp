@@ -24,30 +24,35 @@ std::string module_of(const View &view, const Node &node) {
   return std::format("{}/{}", view.name, node.module.generic_string());
 }
 
-// Whether a live build has made none of a node's code yet, neither its shaders' SPIR-V
-// nor its module, as for a node of a project loaded before it was ever built, which it
-// then builds. Without a live build, nothing will.
-// The one branch, so a build with no live build has no code it never reaches.
-bool unbuilt([[maybe_unused]] const Node &node,
-             [[maybe_unused]] const std::string &module,
-             [[maybe_unused]] const std::filesystem::path &folder,
-             [[maybe_unused]] const Modules &modules) {
+// Whether a view's nodes wait for a live build that has not made their code yet: a view
+// this one hosts, in a run with one. The view vulpen started with fails loud as ever. One
+// branch each, so a build with no live build has no code it never reaches.
+bool waits_for_build([[maybe_unused]] std::string_view view) {
   if constexpr (VP_LIVE) {
-    bool code = runs_operator(node);
-    if (code && modules.built(module, folder))
-      return false;
-    for (const std::string &file : node.files) {
-      if (std::ranges::none_of(stages, [&](auto stage) { return file.ends_with(stage); }))
-        continue;
-      std::error_code unread;
-      if (std::filesystem::exists(spirv_of(folder, file), unread))
-        return false;
-      code = true;
-    }
-    return code;
+    return !view.empty();
   } else {
     return false;
   }
+}
+
+// Whether the build has made none of a node's code yet, neither its shaders' SPIR-V nor
+// its module, as for a node of a project loaded before it was ever built.
+bool unbuilt(const Node &node,
+             const std::string &module,
+             const std::filesystem::path &folder,
+             const Modules &modules) {
+  bool code = runs_operator(node);
+  if (code && modules.built(module, folder))
+    return false;
+  for (const std::string &file : node.files) {
+    if (std::ranges::none_of(stages, [&](auto stage) { return file.ends_with(stage); }))
+      continue;
+    std::error_code unread;
+    if (std::filesystem::exists(spirv_of(folder, file), unread))
+      return false;
+    code = true;
+  }
+  return code;
 }
 
 } // namespace
@@ -256,11 +261,14 @@ private:
     _bound.inputs.emplace_back(port);
     const Connection *const connection = _schedule.connection_of(_bound.node->name, port);
     const Held *const held = connection ? _schedule.held(connection->name) : nullptr;
+    const Bound *const writer = connection ? _schedule.find(connection->from.node) : nullptr;
     if (!connection)
       _bound.errors.push_back(
           std::format("the operator reads {}, which no connection reaches: connect "
                       "another node's output to it",
                       port));
+    else if (!held && writer && writer->unbuilt) // check_connections says it waits
+      return stand_in(kind);
     else if (!held)
       _bound.errors.push_back(std::format("connection {}: {} gives no C++ output {}",
                                           connection->name,
@@ -401,7 +409,7 @@ Bound Schedule::bind(const Node &node,
   Bound *const old = replaced ? replaced->find(node.name) : nullptr;
   // Its every error would be what the build has not made yet, and the view vulpen started
   // with fails loud on any, as ever.
-  if (!_name.empty() && unbuilt(node, module_of(_view, node), folder, _wiring.modules)) {
+  if (waits_for_build(_name) && unbuilt(node, module_of(_view, node), folder, _wiring.modules)) {
     bound.unbuilt = true;
     bound.errors.emplace_back(
         "is not built yet: the live build builds it, and says why if it cannot");
@@ -424,6 +432,13 @@ Bound Schedule::bind(const Node &node,
                                    : node.operator_name;
       bound.op = _wiring.modules.make(module, folder, name);
       log(Level::info, Tag::nod, bound, "new operator " + name);
+    } catch (const Modules::Outdated &outdated) {
+      bound.unbuilt = waits_for_build(_name);
+      bound.errors.emplace_back(bound.unbuilt
+                                    ? "was built against older engine headers than this "
+                                      "vulpen's: the live build builds it again, and says "
+                                      "why if it cannot"
+                                    : outdated.what());
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
     }

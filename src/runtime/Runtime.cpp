@@ -551,7 +551,7 @@ void Runtime::watch() {
       [[fallthrough]];
     case Live::Build::succeeded:
       // Each module would refuse to load, and every node with C++ would drop out.
-      if (!_live->loads()) {
+      if (!Modules::builds_loadable()) {
         _log.write(Level::warn,
                    Tag::mod,
                    "live: the engine's headers changed, so the modules built now cannot "

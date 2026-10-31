@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -25,6 +26,13 @@ struct LinkedModule {
 // build finds the same code linked in.
 class Modules final : public Registry {
 public:
+  // A module built against older engine headers than this vulpen's, while the build
+  // tree's are its own: a build makes it again, so a node waits for it as for one not
+  // built yet. One built against other headers asks for a restart instead.
+  struct Outdated : std::runtime_error {
+    using std::runtime_error::runtime_error;
+  };
+
   Modules();
   ~Modules();
   Modules(const Modules &) = delete;
@@ -44,6 +52,9 @@ public:
   // Whether the build made the module: linked in, or in the build tree, where a dev build
   // puts it once it first builds the node's folder.
   bool built(const std::string &module, const std::filesystem::path &folder) const;
+  // Whether the build tree builds modules this vulpen loads: the stamp the build writes
+  // beside vulpen from the engine headers is its own (live code rule 6).
+  static bool builds_loadable();
   // The next make() loads the rebuilt module. The caller has destroyed the module's
   // operators first: their code is in it.
   void unload(const std::string &module);

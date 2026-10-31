@@ -45,9 +45,6 @@ public:
   const std::vector<std::string> &failed() const;
   // The targets of the views it watches, as nodes.cmake names them.
   std::vector<std::string> targets() const;
-  // Whether the modules just built can load: they carry the stamp of the engine headers
-  // they were built against, and this vulpen loads only its own (live code rule 6).
-  bool loads() const;
   // An engine file written since this vulpen was built and since the last call said one,
   // the newest; empty for none. Only a restart runs the engine anew.
   std::filesystem::path engine_changed();

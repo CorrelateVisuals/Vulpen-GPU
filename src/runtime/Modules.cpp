@@ -86,6 +86,12 @@ std::vector<std::string> Modules::rewritten() const {
   return modules;
 }
 
+bool Modules::builds_loadable() {
+  const std::string stamp =
+      Files::text(Files::executable().parent_path() / VP_MODULE_STAMP_FILE);
+  return stamp.substr(0, stamp.find_last_not_of(" \r\n") + 1) == VP_MODULE_STAMP;
+}
+
 bool Modules::built(const std::string &module, const std::filesystem::path &folder) const {
   std::error_code unread;
   return std::ranges::any_of(linked_modules,
@@ -130,6 +136,12 @@ void Modules::load(Loaded &loaded) {
   void *const symbol = loaded.library->symbol(module_entry);
   if (!symbol) {
     loaded.library.reset();
+    // The build tree's headers are this vulpen's own, so the module's are older, and a
+    // build makes it again; else the headers changed since this vulpen was built.
+    if (builds_loadable())
+      throw Outdated(std::format("the C++ of {} was built against older engine headers "
+                                 "than this vulpen's: a build makes it again",
+                                 loaded.module));
     throw std::runtime_error(std::format("the C++ of {} was built against other engine "
                                          "headers than this vulpen; restart vulpen",
                                          loaded.module));

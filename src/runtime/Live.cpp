@@ -165,7 +165,7 @@ struct Live::Scan {
   };
 
   Scan(const std::vector<Root> &roots, const std::filesystem::path &build)
-      : stamp_file(build / VP_MODULE_STAMP_FILE), builder(build, build_log),
+      : builder(build, build_log),
         engine(lines_of(build / VP_ENGINE_SOURCES_FILE)),
         engine_said(written(Files::executable())) {
     for (const auto &[name, folder] : roots) {
@@ -184,7 +184,6 @@ struct Live::Scan {
   }
 
   std::vector<View> views;
-  const std::filesystem::path stamp_file;
   Builder builder;
   const std::vector<std::filesystem::path> engine; // as the build lists them
   std::filesystem::file_time_type engine_said; // the newest engine file's, once said
@@ -260,11 +259,6 @@ std::vector<std::string> Live::targets() const {
   for (const Scan::View &view : _scan->views)
     targets.push_back(std::format("{}{}", view_target, view.name));
   return targets;
-}
-
-bool Live::loads() const {
-  const std::string stamp = Files::text(_scan->stamp_file);
-  return stamp.substr(0, stamp.find_last_not_of(" \r\n") + 1) == VP_MODULE_STAMP;
 }
 
 std::filesystem::path Live::engine_changed() {

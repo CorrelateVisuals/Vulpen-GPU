@@ -17,6 +17,14 @@ std::string format_names() {
   return names;
 }
 
+// One more reason a node waits for the build, rather than an error of its own.
+void waits(Bound &bound, std::string why) {
+  if (bound.unbuilt)
+    return;
+  bound.errors.push_back(std::move(why));
+  ++bound.waits;
+}
+
 std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
                            std::string_view stage) {
   return std::ranges::count_if(
@@ -149,13 +157,31 @@ void Schedule::pair_draws(Schedule *replaced) {
       bound.errors.emplace_back(failure.what());
     }
   }
+  // A vertex node its varyings come from that the build has not made yet draws with it
+  // once built.
+  const auto unbuilt_writer = [&](const Bound &reader) -> const Bound * {
+    for (const Connection &connection : _view.connections) {
+      const Bound *const writer = find(connection.from.node);
+      if (writer && writer->unbuilt &&
+          std::ranges::find(connection.to, reader.node->name, &Endpoint::node) !=
+              connection.to.end())
+        return writer;
+    }
+    return nullptr;
+  };
   for (Bound &bound : _bound)
     if (is_fragment(*bound.node) && bound.loaded() && bound.errors.empty() &&
         std::ranges::none_of(_bound, [&](const Bound &vertex) {
           return vertex.fragment == &bound;
-        }))
-      bound.errors.emplace_back("no vertex node draws with it: a fragment node draws "
-                                "with the vertex node whose varyings reach its inputs");
+        })) {
+      if (const Bound *const vertex = unbuilt_writer(bound))
+        waits(bound,
+              std::format("waits for the vertex node {}, which the live build builds",
+                          vertex->node->name));
+      else
+        bound.errors.emplace_back("no vertex node draws with it: a fragment node draws "
+                                  "with the vertex node whose varyings reach its inputs");
+    }
 }
 
 // The fragment node a vertex node's varyings reach, which makes one draw with it, or
@@ -200,6 +226,12 @@ Bound *Schedule::fragment_of(Bound &vertex) {
   }
   if (fragment->loaded())
     check_varyings(vertex, *fragment, varyings);
+  if (fragment->unbuilt) {
+    waits(vertex,
+          std::format("waits for its fragment node {}, which the live build builds",
+                      fragment->node->name));
+    return nullptr;
+  }
   if (!fragment->errors.empty()) {
     vertex.errors.push_back(
         std::format("its fragment node {} is left out", fragment->node->name));
@@ -298,6 +330,15 @@ void Schedule::check_connections() {
       continue;
     }
     Bound &writer = *find(connection.from.node);
+    // Its readers wait for a writer the build has not made yet, which the build starts.
+    if (writer.unbuilt) {
+      for (const Endpoint &to : connection.to)
+        waits(*find(to.node),
+              std::format("connection {}: waits for {}, which the live build builds",
+                          connection.name,
+                          writer.node->name));
+      continue;
+    }
     if (std::ranges::find(writer.outputs, connection.from.port) != writer.outputs.end()) {
       check_inputs(connection);
       continue;

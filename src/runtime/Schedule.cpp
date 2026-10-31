@@ -175,8 +175,10 @@ Schedule::Schedule(const Wiring &wiring,
   for (Bound &bound : _bound) {
     if (!bound.errors.empty())
       drop_commands(bound);
+    // A node only waiting for the build says so quietly: the build says why if it fails.
+    const bool waiting = bound.unbuilt || bound.waits == bound.errors.size();
     for (const std::string &error : bound.errors)
-      _wiring.log.write(bound.unbuilt ? Level::info : Level::error,
+      _wiring.log.write(waiting ? Level::info : Level::error,
                         Tag::nod,
                         std::format("{} node {}: {}",
                                     bound.node->where.empty() ? file : bound.node->where,
