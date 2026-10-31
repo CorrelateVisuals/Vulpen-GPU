@@ -1,0 +1,66 @@
+// A vertex node: a draw's vertex shader in a node of its own, which draws with the
+// fragment node its varyings reach, so the two halves change apart and the graph shows
+// what passes between them as connections. node new vertex wrote it: squares on a
+// sunflower's spiral, as many as instance_count, turning.
+//
+// Use: it draws once its uv and color reach a fragment node's inputs, and until then it
+// names what it lacks:
+//   node new fragment <look>
+//   connect <node>-uv <node>.uv <look>.uv
+//   connect <node>-color <node>.color <look>.color
+// param set <node> size 0.12 or frames_per_turn 0, and node set <node>
+// instance_count=200, change it as it runs.
+// Alter: main places a vertex; another shape is another vertex_count and a corner a
+// gl_VertexIndex, as quad_corner gives a square's. To place what another node writes,
+// add a VP_READS line and a field, and connect that node's buffer to it.
+// Repeat: another varying is an out at the next location, an in of the same type at that
+// location in the fragment node, and a connection between the two; another value a field
+// here and a param of its name. A fragment node declares no pass block, so a value of
+// this one it needs reaches it as a varying.
+#include "baseclasses/GpuLayout.glsl"
+
+// Filled by the node's params, by their names: a vertex node holds the draw's pass block,
+// and its fragment node none.
+layout(set = 1, binding = 0) uniform Pass {
+  uint frames_per_turn; // a param: frames a whole turn takes; 0 holds the squares still
+  float size;           // a param: a square's side, in clip space
+} pass;
+
+layout(location = 0) out vec2 uv;    // a varying: 0 to 1 across the square
+layout(location = 1) out vec4 color; // a varying: the square's hue
+
+const float turn = 6.28318530718;   // radians in a whole turn
+const float golden = 2.39996322973; // the golden angle, the turn from a square to the next
+const float spread = 0.06;          // how far out each square sits, in clip space
+
+// How far a whole turn every frames_per_turn frames has come, counted from the frame
+// index, so it never drifts. frame is the frame block every shader reads: its time,
+// index, resolution and cursor.
+float angle_at(uint frames_per_turn) {
+  if (frames_per_turn == 0u)
+    return 0.0;
+  return turn * float(frame.index % frames_per_turn) / float(frames_per_turn);
+}
+
+// A color of the hue circle at an angle, so each square shows its own.
+vec4 hue(float at) {
+  return vec4(0.5 + 0.5 * cos(at), 0.5 + 0.5 * cos(at - turn / 3.0),
+              0.5 + 0.5 * cos(at + turn / 3.0), 1.0);
+}
+
+// Square in the middle of any window: its shorter side spans -1 to 1.
+vec2 square(vec2 at) {
+  const vec2 size = vec2(frame.resolution);
+  return at * min(size.yx / size, vec2(1.0));
+}
+
+// A square an instance, each a golden angle on from the one before and a little further
+// out, so any instance_count fills a disc evenly.
+void main() {
+  const float index = float(gl_InstanceIndex);
+  const float at = index * golden + angle_at(pass.frames_per_turn);
+  const vec2 middle = sqrt(index) * spread * vec2(cos(at), sin(at));
+  uv = quad_corner(gl_VertexIndex);
+  gl_Position = vec4(square(middle + (uv - 0.5) * pass.size), 0.0, 1.0);
+  color = hue(index * golden);
+}

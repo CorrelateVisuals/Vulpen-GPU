@@ -4,13 +4,19 @@ version = 1
 
 [node "library"]
 
-# The templates, a kind of node each. Their files end in .in, so they build only once
-# node new writes them.
+# The templates, a kind of node each; a group, a node of nodes, has no files, so none.
+# Their files end in .in, so they build only once node new writes them.
 [node "library.template"]
 
 [node "library.template.draw"]
 
 [node "library.template.dispatch"]
+
+[node "library.template.vertex"]
+
+[node "library.template.fragment"]
+
+[node "library.template.cpp"]
 
 # The same operator with its class in a header, for C++ that outgrows one file.
 [node "library.template.header"]

@@ -1,3 +1,13 @@
+// The draw's vertex shader: where each vertex goes, vertex_count of them an instance and
+// instance_count instances, here six vertices making a square and an instance a point.
+//
+// Use: gl_Position places the vertex; uv and color reach Name.frag, blended across each
+// triangle.
+// Alter: another shape is another vertex_count and a corner per gl_VertexIndex, as
+// quad_corner gives a square's; with no buffer, gl_VertexIndex and gl_InstanceIndex
+// place the vertices alone, instance_count a number.
+// Repeat: another varying is an out at the next location here and an in of the same type
+// at that location in Name.frag.
 #include "Name.glsl"
 
 layout(location = 0) out vec2 uv;    // to Name.frag: 0 to 1 across the square

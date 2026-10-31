@@ -129,12 +129,16 @@ def files_of(example: str, node: str) -> list[str]:
     return sorted(path.name for path in folder.iterdir() if path.is_file())
 
 
+# What node new writes for each kind of node, by its files' ends; a group writes none.
+KINDS = {"draw": (".cpp", ".glsl", ".vert", ".frag"), "dispatch": (".cpp", ".comp"),
+         "vertex": (".vert",), "fragment": (".frag",), "cpp": (".cpp",), "group": ()}
+
+
 def made_by(kind: str, node: str) -> list[str]:
     """The files node new writes for a node: its class's name, from its own name."""
     own = node.rsplit(".", 1)[-1]
     name = "".join(word.capitalize() for word in own.split("-"))
-    ends = (".cpp", ".glsl", ".vert", ".frag") if kind == "draw" else (".cpp", ".comp")
-    return [name + end for end in ends]
+    return [name + end for end in KINDS[kind]]
 
 
 def made(kind: str, example: str, node: str) -> list[Step]:
@@ -317,15 +321,19 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # triangle-files: a draw split over two nodes; a connection named twice, then one
-    # misnamed, let go of and made again.
+    # triangle-files: a node a file, each started from its kind's template, a draw split
+    # over two nodes; a connection named twice, then one misnamed, let go of and made
+    # again.
     e = Example("triangle-files")
     e.steps = [
         ok(f"view new {e.copy}"),
         ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        *(ok(f"file copy {at(e.name, node)}/ {at(e.copy, node)}/")
-          for node in ("clock", "corners", "face", "blend")),
-        ok("node set clock param=frames_per_turn=600", "node set face vertex_count=3"),
+        *made("cpp", e.name, "clock"),
+        *made("cpp", e.name, "corners"),
+        *made("vertex", e.name, "face"),
+        *made("fragment", e.name, "blend"),
+        ok("node set clock param=frames_per_turn=600", "node set corners param=",
+           "node set face vertex_count=3 instance_count= param="),
         ok("connect spin clock.spin corners.spin"),
         no("connect spin corners.corners face.corners", "two connections are named spin"),
         ok("connect corner corners.corners face.corners"),
@@ -336,14 +344,14 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # triangle-header: a node with a header beside its C++, looked at as the graph goes
-    # into it by cd, and through ls, info and probe stats.
+    # triangle-header: a node with a header beside its C++, started as a C++ node, looked
+    # at as the graph goes into it by cd, and through ls, info and probe stats.
     e = Example("triangle-header")
     e.steps = [
         ok(f"view new {e.copy}"),
         ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        ok(f"file copy {at(e.name, 'corners')}/ {at(e.copy, 'corners')}/",
-           "node set corners param=frames_per_turn=600"),
+        *made("cpp", e.name, "corners"),
+        ok("node set corners param=frames_per_turn=600"),
         ok(f"file copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
            "node set face vertex_count=3"),
         ok("connect corners corners.corners face.corners"),
@@ -464,6 +472,17 @@ def examples(scratch: Path) -> list[Example]:
     shot = at(e.copy, "picture")
     e.steps = [
         ok(f"view new {e.copy}"),
+        # A node of nodes, made empty, the kinds no example starts from made inside it: a
+        # C++ node that says where its points go, and a draw split over two nodes, joined
+        # by their varyings; then all of it removed with the group.
+        ok("node new group stage"),
+        no("node new group stage", "has a node stage already"),
+        ok("node new cpp stage.source", "node new vertex stage.shape",
+           "node new fragment stage.look"),
+        settled("source points"),
+        ok("connect shape-uv stage.shape.uv stage.look.uv",
+           "connect shape-color stage.shape.color stage.look.color"),
+        ok("node remove stage"),
         no("recipe drop nothing shot", "no recipe nothing"),
         ok("recipe drop snapshot shot"),
         ok("recipe sync shot"),

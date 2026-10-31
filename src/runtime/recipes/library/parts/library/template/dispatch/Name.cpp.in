@@ -1,3 +1,23 @@
+// A dispatch node's C++, the CPU half of a compute pass: node new dispatch wrote it with
+// Name.comp. Each frame it turns a ring of points and writes them for the shader, which
+// moves a value a point toward a pattern it samples, keeps the values, stores a point a
+// pixel into an image and writes samples that C++ reads back a frame later.
+//
+// Use: keep what the node needs and delete the rest, a field of Name.comp together with
+// its handle here, as the loader names whatever is left half joined (A02). <node>
+// samples answers with what came back; param set <node> glide 0.5 or frames_per_turn 0
+// changes it as it runs; node set <node> invocations=128 runs more points, a multiple of
+// local_size_x.
+// Alter: to read a buffer another node writes, delete _points here, in bind, cook and the
+// members, and connect that node's buffer to <node>.points; to hand samples or values on,
+// connect them to a buffer another node's shader reads. To compute with no C++ at all,
+// delete this file, make angle a param, and connect points and pattern.
+// Repeat: another value is a field in Name.comp and a Value<T> here, bound in bind and
+// set in cook, as angle; another buffer C++ writes a VP_READS line, a field and an
+// Upload<T>, as points; one C++ reads back a VP_WRITES line, a field and a Readback<T>,
+// as samples; another image C++ fills a Texture field and a Texture<T>, as pattern;
+// another command a node.command in bind and an is() in command. Another compute pass is
+// another node, node new dispatch <name>, its buffers joined to this one's by connections.
 #include "runtime/Operator.h"
 
 #include <algorithm>

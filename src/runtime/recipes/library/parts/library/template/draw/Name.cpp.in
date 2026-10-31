@@ -1,3 +1,21 @@
+// A draw node's C++, the CPU half of the draw: node new draw wrote it with Name.glsl, the
+// pass block both shaders share, Name.vert and Name.frag. Together they draw a ring of
+// squares, each its own hue and checkered, turning, and pass data from C++ to the
+// shaders every way a draw can.
+//
+// Use: keep what the node needs and delete the rest, a field of Name.glsl together with
+// its handle here, as the loader names whatever is left half joined (A02). The params
+// change it as it runs: param set <node> count 6, tint 1,0.5,0.5, frames_per_turn 0; so
+// does its command, <node> count 6.
+// Alter: cook's points are where the squares go, Name.vert makes each a square and
+// Name.frag colors it. To draw points another node writes, delete _points here, in bind,
+// cook and the members, and connect that node's buffer to <node>.points. To draw with no
+// C++ at all, delete this file, make angle a param, and connect points and pattern.
+// Repeat: another value is a field in Name.glsl and a Value<T> here, bound in bind and
+// set in cook, as angle; another buffer a VP_READS line and a field there and an
+// Upload<T> here, as points; another image a Texture field and a Texture<T>, as pattern;
+// another command a node.command in bind and an is() in command. Another draw is another
+// node, node new draw <name>: a node runs one draw.
 #include "runtime/Operator.h"
 
 #include <algorithm>

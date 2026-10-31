@@ -1,0 +1,33 @@
+// A fragment node: a draw's fragment shader in a node of its own, which draws with the
+// vertex node whose varyings reach its inputs. node new fragment wrote it: a disc in each
+// square, its edge soft, in the color the vertex node hands on, pulsing.
+//
+// Use: it draws once a vertex node's varyings reach each of its inputs, and until then it
+// names what it lacks; from a vertex node <shape>, as node new vertex writes one:
+//   connect <shape>-uv <shape>.uv <node>.uv
+//   connect <shape>-color <shape>.color <node>.color
+// Another fragment node connected in its place changes the look and leaves the shape.
+// Alter: the color is any function of the inputs and the frame block. A fragment node
+// declares no pass block: a value it needs reaches it from its vertex node, as a varying.
+// Repeat: another input is an in at the next location, of the type the vertex node's out
+// at that location has, and a connection from it; a draw writes one color.
+#include "baseclasses/GpuLayout.glsl"
+
+layout(location = 0) in vec2 uv;     // a connection: 0 to 1 across the square
+layout(location = 1) in vec4 color;  // a connection: the square's color
+layout(location = 0) out vec4 pixel; // the window's, or an image's a connection takes
+
+const float turn = 6.28318530718;    // radians in a whole turn
+const float soft = 0.08;             // of a disc's radius, how far its edge fades out
+const float seconds_per_pulse = 2.0; // from bright to dim and back
+const float dimmest = 0.5;           // of the color, at the pulse's lowest
+
+// Draws stack by alpha, each over what is there, so the color is premultiplied: the disc
+// in full, fading out past its edge, and nothing in the square's corners.
+void main() {
+  const float from_middle = length(uv - 0.5) * 2.0; // 0 at the middle, 1 at the edge
+  const float pulse =
+      mix(dimmest, 1.0, 0.5 + 0.5 * sin(turn * frame.time / seconds_per_pulse));
+  const float alpha = 1.0 - smoothstep(1.0 - soft, 1.0, from_middle);
+  pixel = vec4(color.rgb * pulse, 1.0) * alpha;
+}

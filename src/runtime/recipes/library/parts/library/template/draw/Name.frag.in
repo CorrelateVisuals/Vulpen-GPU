@@ -1,3 +1,11 @@
+// The draw's fragment shader: the color of each pixel a triangle covers.
+//
+// Use: pixel goes into the window, or into an image once a connection takes <node>.pixel
+// to another node's Texture; draws stack in the order the graph runs them, each over
+// what is there by its alpha, so a color is premultiplied, its rgb times its a.
+// Alter: the color is any function of the varyings, the pass block and the frame block.
+// Repeat: another input is an in at the next location, as Name.vert's out there; a draw
+// writes one color.
 #include "Name.glsl"
 
 layout(location = 0) in vec2 uv;

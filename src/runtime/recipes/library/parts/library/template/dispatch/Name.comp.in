@@ -1,3 +1,15 @@
+// The dispatch's compute shader: main runs once an invocation, invocations of them, in
+// workgroups of local_size_x, and each buffer it writes holds an element an invocation.
+//
+// Use: gl_GlobalInvocationID.x is the invocation's own element of every buffer; a write
+// to another's is a race between invocations, which GPUs settle differently (GLSL02).
+// Alter: main is the work; a buffer another node writes is a VP_READS field whose
+// connection brings it, and one another node reads a VP_WRITES field whose connection
+// takes it there. A pass that keeps a buffer between frames, as values, declares it
+// VP_BUFFER and is its only reader and writer.
+// Repeat: another value is a field and a param of its name, or a Value<T> in Name.cpp;
+// another buffer a VP_READS, VP_WRITES or VP_BUFFER line for its element and a field;
+// another image to store into an Image field, at the frame's size.
 #include "baseclasses/GpuLayout.glsl"
 
 layout(local_size_x = 64) in; // the node's invocations, 64 to a workgroup

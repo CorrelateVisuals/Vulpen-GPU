@@ -34,21 +34,70 @@ constexpr std::string_view template_class = "Name";
 constexpr std::array<std::string_view, 4> draw_files{
     "Name.cpp", "Name.glsl", "Name.vert", "Name.frag"};
 constexpr std::array<std::string_view, 2> dispatch_files{"Name.cpp", "Name.comp"};
-// A kind of node node new starts: its template's folder and files, and the node's words,
-// each read by its template's C++ or shaders. A draw counts six vertices a square and an
-// instance a point its C++ writes; a dispatch one workgroup of its compute shader.
+constexpr std::array<std::string_view, 1> vertex_files{"Name.vert"};
+constexpr std::array<std::string_view, 1> fragment_files{"Name.frag"};
+constexpr std::array<std::string_view, 1> cpp_files{"Name.cpp"};
+// A kind of node node new starts: the word naming it, which names its template's folder
+// too, its files, the node's words, each read by its template's C++ or shaders, what
+// help says of it, and how it joins others, {0} its name. A draw counts six vertices a
+// square and an instance a point its C++ writes; a dispatch one workgroup of its compute
+// shader; a vertex node six vertices a square and 64 squares. A group has no files, only
+// the nodes inside it, and so no template.
 struct Kind {
   std::string_view folder;
   std::span<const std::string_view> files;
   std::string_view words;
+  std::string_view help;
+  std::string_view joins;
 };
-constexpr Kind draw_kind{"draw",
-                         draw_files,
-                         "vertex_count=6 instance_count=points param=tint=1,1,1 "
-                         "param=count=12 param=frames_per_turn=600"};
-constexpr Kind dispatch_kind{"dispatch",
-                             dispatch_files,
-                             "invocations=64 param=glide=0.1 param=frames_per_turn=600"};
+constexpr std::array<Kind, 6> kinds{{
+    {"draw",
+     draw_files,
+     "vertex_count=6 instance_count=points param=tint=1,1,1 param=count=12 "
+     "param=frames_per_turn=600",
+     "adds a draw node, and writes its first files from the template into its folder: "
+     "its C++, its pass block and its two shaders, passing data every way they can, or "
+     "takes a folder there no node names as it is; then saves the view",
+     ""},
+    {"dispatch",
+     dispatch_files,
+     "invocations=64 param=glide=0.1 param=frames_per_turn=600",
+     "adds a dispatch node, and writes its first files from the template into its folder: "
+     "its C++ and its compute shader, passing data every way they can, or takes a folder "
+     "there no node names as it is; then saves the view",
+     ""},
+    {"vertex",
+     vertex_files,
+     "vertex_count=6 instance_count=64 param=frames_per_turn=600 param=size=0.08",
+     "adds a vertex node, a draw's vertex shader alone, which draws with the fragment "
+     "node its varyings reach, and writes it from the template into its folder, or takes "
+     "a folder there no node names as it is; then saves the view",
+     "; it draws once its varyings reach a fragment node: node new fragment <look>, "
+     "connect {0}-uv {0}.uv <look>.uv, connect {0}-color {0}.color <look>.color"},
+    {"fragment",
+     fragment_files,
+     "",
+     "adds a fragment node, a draw's fragment shader alone, which draws with the vertex "
+     "node whose varyings reach it, and writes it from the template into its folder, or "
+     "takes a folder there no node names as it is; then saves the view",
+     "; it draws once a vertex node's varyings reach it: connect <shape>-uv <shape>.uv "
+     "{0}.uv, connect <shape>-color <shape>.color {0}.color"},
+    {"cpp",
+     cpp_files,
+     "param=count=12 param=frames_per_turn=600",
+     "adds a C++ node, with no shader, and writes its C++ from the template into its "
+     "folder: points made on the CPU, handed to another node's shader once a connection "
+     "takes them, a command and a file, or takes a folder there no node names as it is; "
+     "then saves the view",
+     "; connect <name> {0}.points <node>.<buffer> hands its points to a shader"},
+    {"group",
+     {},
+     "",
+     "adds a node of nodes, with no files of its own, and makes its folder, where node new "
+     "<kind> <group>.<name> puts a node inside it, or takes a folder there no node names "
+     "as it is; then saves the view",
+     "; node new <kind> {0}.<name> puts a node inside it"},
+}};
 // Between a drop's recipe and the fingerprint of what it copied: probe@3f2a9c1e.
 constexpr char fingerprint_mark = '@';
 // FNV-1a over 64 bits: the same fingerprint on every machine and compiler (C01).
@@ -357,19 +406,12 @@ class Library final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // A part's folder is <recipes>/library/<kind>/<name>.
     _library = std::filesystem::path(node.folder()).parent_path().parent_path();
-    _draw_templates = templates(node, draw_kind);
-    _dispatch_templates = templates(node, dispatch_kind);
     _list = node.command("recipe list", "lists the library's recipes, by kind");
-    _draw = node.command("node new draw <name>",
-                         "adds a draw node, and writes its first files from the template "
-                         "into its folder: its C++, its pass block and its two shaders, "
-                         "passing data every way they can, or takes a folder there no "
-                         "node names as it is; then saves the view");
-    _dispatch = node.command("node new dispatch <name>",
-                             "adds a dispatch node, and writes its first files from the "
-                             "template into its folder: its C++ and its compute shader, "
-                             "passing data every way they can, or takes a folder there "
-                             "no node names as it is; then saves the view");
+    for (std::size_t kind = 0; kind < kinds.size(); ++kind) {
+      _templates[kind] = templates(node, kinds[kind]);
+      _new[kind] = node.command(std::format("node new {} <name>", kinds[kind].folder),
+                                kinds[kind].help);
+    }
     _drop = node.command("recipe drop <recipe> <name>",
                          "copies a library recipe into the view as a node of that name, "
                          "with the nodes inside it and the contracts and shared code "
@@ -389,12 +431,11 @@ class Library final : public VP::Operator {
   }
 
   void command(VP::Call &call) override {
+    for (std::size_t kind = 0; kind < kinds.size(); ++kind)
+      if (call.is(_new[kind]))
+        return start(call, kinds[kind], _templates[kind]);
     if (call.is(_list))
       list(call);
-    else if (call.is(_draw))
-      start(call, draw_kind, _draw_templates);
-    else if (call.is(_dispatch))
-      start(call, dispatch_kind, _dispatch_templates);
     else if (call.is(_drop))
       drop(call);
     else if (call.is(_sync))
@@ -484,9 +525,10 @@ class Library final : public VP::Operator {
 
   // A node's first files from the template, in the folder its name names, and the node.
   // They build and run at once, passing data between C++ and the shaders every way they
-  // can, so a person keeps what the node uses. A folder there no node names becomes the
-  // node, with the kind's words and the files it holds, none written over them, as every
-  // folder in a view is a node's (RV08).
+  // can, so a person keeps what the node uses; the reply says how a kind joins others,
+  // as a half of a draw draws only with the other. A group's folder is made empty. A
+  // folder there no node names becomes the node, with the kind's words and the files it
+  // holds, none written over them, as every folder in a view is a node's (RV08).
   void
   start(VP::Call &call, const Kind &kind, const std::vector<VP::File> &templates) const {
     const std::string_view name = call.arguments().front();
@@ -500,14 +542,19 @@ class Library final : public VP::Operator {
     const bool there =
         holds(call.files(), folder.parent_path(), folder.filename().string() + '/');
     check_new(call, view, name, there);
+    const std::string joins = std::vformat(kind.joins, std::make_format_args(name));
+    const std::string add = kind.words.empty()
+                                ? std::format("node add {}", name)
+                                : std::format("node add {} {}", name, kind.words);
     if (there) {
-      call.commands().send(std::format("node add {} {}", name, kind.words));
+      call.commands().send(add);
       save_view(call);
       return call.reply(std::format("added node {} with a {}'s words, its files those {} "
-                                    "holds, and saved the view",
+                                    "holds, and saved the view{}",
                                     name,
                                     kind.folder,
-                                    folder.string()));
+                                    folder.string(),
+                                    joins));
     }
     const std::string type = class_of(own);
     std::string wrote;
@@ -520,12 +567,15 @@ class Library final : public VP::Operator {
                                  type));
       wrote.append(wrote.empty() ? "" : ", ").append(named);
     }
-    call.commands().send(std::format("node add {} {}", name, kind.words));
+    if (kind.files.empty())
+      call.files().make(folder.string());
+    call.commands().send(add);
     save_view(call);
-    call.reply(std::format("wrote {} in {}, added node {} and saved the view",
-                           wrote,
+    call.reply(std::format("{} {}, added node {} and saved the view{}",
+                           wrote.empty() ? "made" : "wrote " + wrote + " in",
                            folder.string(),
-                           name));
+                           name,
+                           joins));
   }
 
   // A recipe as a drop copies it: its own node, named like its folder, and the nodes
@@ -914,11 +964,9 @@ class Library final : public VP::Operator {
   }
 
   std::filesystem::path _library;
-  std::vector<VP::File> _draw_templates;
-  std::vector<VP::File> _dispatch_templates;
+  std::array<std::vector<VP::File>, kinds.size()> _templates; // by kinds
+  std::array<VP::Command, kinds.size()> _new;
   VP::Command _list;
-  VP::Command _draw;
-  VP::Command _dispatch;
   VP::Command _drop;
   VP::Command _sync;
   VP::Command _rename;
