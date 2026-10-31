@@ -124,12 +124,15 @@ HELD = ["param set spin speed 0", "param set orbit frames_per_turn 0",
 # caret blinks: the picture is the same at whatever frame it is taken. No line shows an
 # absolute path, which names the copy, a new folder each run. The sizes and the text's
 # zoom are for the README's column, about 880 pixels wide, so the text reads there.
-# The cover: a node's C++ beside the project's graph and what it draws, wide.
+# The cover: a node's C++ beside the project's graph and what it draws, wide. The text
+# small enough that a narrow editor shows the code's width, the graph and the project
+# wider; the wheel over the Perform panel zooms the project in until it fills the panel's
+# width, so no bars show beside it, the cubes kept in view.
 HERO = {
     "hero": [*CLEAR, *typed("view load ray-cubes"), *HELD, *typed("open Orbit.cpp"),
-             *typed("info orbit"), *zoom(7), *panels("hide", "terminal"),
-             *ratio("top", 0.5), *ratio("side", 0.46), *scroll(500, 400, -7, 2400),
-             "ide: focus"],
+             *typed("info orbit"), *zoom(5), *panels("hide", "terminal"),
+             *ratio("top", 0.4), *ratio("side", 0.46), *scroll(500, 400, -7, 2400),
+             *scroll(1680, 717, 7.5, 2400), "ide: focus"],
 }
 # Three squares side by side: the graph, a shader and the terminal, each given the window.
 TILES = {
