@@ -67,9 +67,12 @@ struct Document {
   Scroll scroll; // the rows shown
   Scroll columns{Scroll::Axis::across};
   bool changed = false; // since it was opened or last written
-  // The file as it was read or last written, hashed, so write sees a change on disk
-  // since, by a line or another program.
-  std::size_t disk = 0;
+  // The file as it was read or last written, so write sees a change on disk since, by a
+  // line or another program, and the editor shows one it holds no changes of.
+  std::string disk;
+  // The file port's watch of it, from the bind it was opened in or the one after; none
+  // before, or once it moved.
+  VP::File watched;
   std::vector<Change> undone; // the edits so far, the newest last
   std::vector<Change> redone; // those taken back since, the newest last
   // How many edits undone held as the file was read or last written, so changed says
@@ -92,7 +95,9 @@ struct Grid {
 // is only a front end on it.
 //
 // It holds the files open, shows one, and hands a panel a tab for each, whose press shows
-// it again; while one has changes, quit refuses, naming it. Several text nodes are
+// it again; while one has changes, quit refuses, naming it. The file shown, changed on
+// disk by a line or another program, shows as it is there, unless it has changes. Several
+// text nodes are
 // several editors: each hands on, as editors, those a connection to its before brings and
 // itself, and the one whose editors reach no text node's before registers write, close
 // and find, acting on the editor in focus, or the one in focus last, and takes open's
@@ -114,7 +119,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   std::size_t count() const override;
   std::string_view shown() const override;
   bool changed() const override;
-  void show(VP::FilePort &files, std::string_view path) override;
+  void show(VP::FilePort &files, std::string_view path, VP::File watched) override;
   void write(VP::Call &call, bool force) override;
   void close(VP::Call &call, std::string_view path, bool force) override;
   void close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside beside) override;
@@ -163,7 +168,8 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
                    const Document &document,
                    const Grid &grid,
                    std::size_t rows);
-  void open(VP::FilePort &files, std::string_view path);
+  void open(VP::FilePort &files, std::string_view path, VP::File watched);
+  void reread(VP::Cook &frame, Document &document);
   void follow(VP::FilePort &files, VP::CommandPort &commands);
   void drop(VP::CommandPort &commands, std::size_t at);
   void name_tabs();
@@ -189,6 +195,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   std::string _last; // the editor in focus last, by name, which the commands act on
   // What the file param names, from the node's folder; empty while it is not set.
   std::string _file;
+  VP::File _watched;     // its watch, which the editor showing it takes
   bool _opening = false; // the param named another file, which opens where the port is
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Font *_font = nullptr;

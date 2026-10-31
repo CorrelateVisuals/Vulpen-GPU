@@ -30,8 +30,9 @@ public:
   virtual std::size_t count() const = 0;
   virtual std::string_view shown() const = 0;
   virtual bool changed() const = 0;
-  // Shows the file, opening it first when it holds it not.
-  virtual void show(VP::FilePort &files, std::string_view path) = 0;
+  // Shows the file, opening it first when it holds it not, with the file port's watch of
+  // it, which the node whose param named it took as it bound.
+  virtual void show(VP::FilePort &files, std::string_view path, VP::File watched) = 0;
   // The file it shows; one moved, deleted or changed on disk since it was read only by
   // force.
   virtual void write(VP::Call &call, bool force) = 0;

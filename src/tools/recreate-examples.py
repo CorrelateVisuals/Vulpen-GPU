@@ -630,14 +630,15 @@ def examples(scratch: Path) -> list[Example]:
 
     # surprises: what a person does that the lines before did not see coming. A view hosted
     # from a folder inside another, which holds it, so that folder stays while it runs. The
-    # editor holding a file, typed into, as a line renames its node, renames it, or moves
-    # the project, where its tab follows it, so write saves it there; one another program
-    # changes, which write must not write over; one deleted, whose tab closes, or with
-    # changes keeps them for write force. A count past the largest is named so, and a
-    # script sourcing itself is refused. No line asks for a count the GPU cannot hold:
-    # vulpen refuses one before it makes a buffer, but that is tested on lavapipe alone,
-    # under a memory cap, as a GPU's driver may take what it hands out from the
-    # machine's own memory.
+    # editor holding the manifest as node new saves it, which it shows as saved. The editor
+    # holding a file, typed into, as a line renames its node, renames it, or moves the
+    # project, where its tab follows it, so write saves it there; one another program
+    # changes, which it shows as changed, or typed into, keeps for write force, as write
+    # must not write over it; one deleted, whose tab closes, or with changes keeps them for
+    # write force. A count past the largest is named so, and a script sourcing itself is
+    # refused. No line asks for a count the GPU cannot hold: vulpen refuses one before it
+    # makes a buffer, but that is tested on lavapipe alone, under a memory cap, as a GPU's
+    # driver may take what it hands out from the machine's own memory.
     e = Example("surprises", compared=False)
     spin, turn = at(e.copy, "spin", "Spin.comp"), at(e.copy, "turn", "Turn.comp")
     notes = at(e.copy, "notes.txt")
@@ -654,7 +655,10 @@ def examples(scratch: Path) -> list[Example]:
         no("view remove re-nest", "no project is named re-nest"),
         no("view remove ../src", "view remove takes no path"),
         ok(f"view new {e.copy}"),
+        ok("open"),
         ok("node new dispatch spin", "node new dispatch turn"),
+        ok("jump spin", "jump turn"),
+        ok("close"),
         ok(f"open {spin}"),
         ok("focus ide.editor.text"),
         ok(*typing),
@@ -669,8 +673,12 @@ def examples(scratch: Path) -> list[Example]:
         ok("close"),
         ok(f"open {at(e.copy, 'turn', 'Turn.cpp')}"),
         Step([], elsewhere=at(e.copy, "turn", "Turn.cpp")),
+        ok("write"),
+        ok("focus ide.editor.text"),
+        ok(*typing),
+        Step([], elsewhere=at(e.copy, "turn", "Turn.cpp")),
         no("write", "changed on disk since it was read"),
-        ok("close"),
+        ok("close force"),
         ok(f"open {at(e.copy, 'swirl', 'Spin.cpp')}"),
         ok("focus ide.editor.text"),
         ok(*typing),

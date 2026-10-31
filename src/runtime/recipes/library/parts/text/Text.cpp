@@ -309,6 +309,10 @@ void Text::bind(VP::Bind &node) {
                .string();
   if (std::exchange(_file, file) != file)
     _opening = !file.empty();
+  // Watched anew at every bind, as the watches go with the schedule that took them.
+  _watched = file.empty() ? VP::File{} : node.file(file);
+  for (Document &document : _documents)
+    document.watched = node.file(document.path);
   _name = node.name();
   _view = node.view_name();
   _library = node.folder();
@@ -390,6 +394,8 @@ void Text::cook(VP::Cook &frame) {
       frame.log(VP::Level::error, failure.what());
     }
   }
+  if (!_documents.empty())
+    reread(frame, _documents[_shown]);
   if (_head && holder_named(_typed->focus))
     _last = _typed->focus;
   const Grid grid = this->grid();
@@ -845,8 +851,8 @@ bool Text::changed() const {
   return !_documents.empty() && _documents[_shown].changed;
 }
 
-void Text::show(VP::FilePort &files, std::string_view path) {
-  open(files, path);
+void Text::show(VP::FilePort &files, std::string_view path, VP::File watched) {
+  open(files, path, watched);
 }
 
 std::span<const std::string> Text::rows() const {
@@ -864,7 +870,7 @@ void Text::reveal(VP::FilePort &files,
                   std::size_t row,
                   std::size_t column,
                   std::size_t length) {
-  open(files, path);
+  open(files, path, {});
   Document &document = _documents[_shown];
   document.anchor = at(document, row, column);
   document.caret = at(document, row, column + length);
@@ -1027,29 +1033,64 @@ VP_VIEW::Editor *Text::holder_named(std::string_view name) const {
 // any other text node in itself.
 void Text::route(VP::FilePort &files) {
   if (!_head) {
-    open(files, _file);
+    open(files, _file, _watched);
     return;
   }
   VP_VIEW::Editor *const holding = holder(_file);
-  (holding ? *holding : target()).show(files, _file);
+  (holding ? *holding : target()).show(files, _file, _watched);
 }
 
-// Read once, when it opens, so what was typed is never read over.
-void Text::open(VP::FilePort &files, std::string_view path) {
+// Read when it opens, so the editor holds it as typed; a watch given to a file open
+// already, which one opened between binds lacks, watches it from now on.
+void Text::open(VP::FilePort &files, std::string_view path, VP::File watched) {
   const auto found = std::ranges::find(_documents, path, &Document::path);
   const auto shown = static_cast<std::size_t>(found - _documents.begin());
   if (found == _documents.end()) {
-    const std::string text = files.read(path);
+    std::string text = files.read(path);
     _documents.push_back({.path = std::string(path),
                           .lines = lines_of(text),
                           .crlf = text.find("\r\n") != std::string::npos,
                           .syntax = syntax_of(path),
-                          .disk = std::hash<std::string>{}(text)});
+                          .disk = std::move(text),
+                          .watched = watched});
+  } else if (watched.index != 0) {
+    found->watched = watched;
   }
   _shown = shown;
   _dragging = false;
   _follow = true;
   name_tabs();
+}
+
+// A file shown that changed on disk since it was read or written, by a line, as node
+// new's save of a manifest, or by another program, shows as it is there, its caret and
+// rows shown kept as far as it reaches; its edits go, as they were of the text before.
+// One with changes keeps them, which write then refuses to write over. One gone reads as
+// empty, as the file port gives it, and keeps its text, so write force can make it again;
+// one that cannot be read is named once and no longer watched, the editor going on.
+void Text::reread(VP::Cook &frame, Document &document) {
+  if (document.changed || document.watched.index == 0)
+    return;
+  std::string_view text;
+  try {
+    text = frame.files().text(document.watched);
+  } catch (const std::runtime_error &failure) {
+    document.watched = {};
+    frame.log(VP::Level::warn, std::format("{}; the editor shows it as it was read",
+                                           failure.what()));
+    return;
+  }
+  if (text.empty() || text == document.disk)
+    return;
+  document.lines = lines_of(text);
+  document.crlf = text.find("\r\n") != std::string_view::npos;
+  document.disk = text;
+  document.restyle = true;
+  document.undone.clear();
+  document.redone.clear();
+  document.saved = 0;
+  document.caret = at(document, document.caret.row, document.caret.column);
+  document.anchor = at(document, document.anchor.row, document.anchor.column);
 }
 
 // A file a line moved is written where it went, as its tab follows it; one deleted, moved
@@ -1070,16 +1111,16 @@ void Text::write(VP::Call &call, bool force) {
           std::format("{} is gone since it was read, moved or deleted: write force "
                       "makes it again, and close force drops its changes",
                       label_of(document)));
-    if (std::hash<std::string>{}(files.read(document.path)) != document.disk)
+    if (files.read(document.path) != document.disk)
       throw std::runtime_error(
           std::format("{} changed on disk since it was read: write force writes over "
                       "that, and close force drops what was typed, so open reads it "
                       "anew",
                       label_of(document)));
   }
-  const std::string text = joined(document.lines, document.crlf);
+  std::string text = joined(document.lines, document.crlf);
   files.save(document.path, text);
-  document.disk = std::hash<std::string>{}(text);
+  document.disk = std::move(text);
   document.changed = false;
   document.saved = document.undone.size();
   name_tabs();
@@ -1153,6 +1194,7 @@ void Text::follow(VP::FilePort &files, VP::CommandPort &commands) {
       document.path = to;
       document.syntax = syntax_of(to);
       document.restyle = true;
+      document.watched = {}; // of where it was, till the next bind watches it here
       name_tabs();
     }
 }
