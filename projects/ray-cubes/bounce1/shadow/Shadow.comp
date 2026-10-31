@@ -15,15 +15,16 @@ layout(set = 1, binding = 0) uniform Pass {
   FloatsOut lit;       // a connection: to this bounce's shade
 } pass;
 
+// A face turned from the lamp gets none of its light, so no ray need tell.
 void main() {
   const uint i = gl_GlobalInvocationID.x;
   const Hit hit = pass.hits.at[i];
-  if (hit.position.w < 0.0) {
+  const vec3 from = hit.position.xyz + nudge * hit.normal;
+  const vec3 toward = pass.light.at[0].position.xyz - from;
+  if (hit.position.w < 0.0 || dot(hit.normal, toward) <= 0.0) {
     pass.lit.at[i] = 0.0;
     return;
   }
-  const vec3 from = hit.position.xyz + nudge * hit.normal.xyz;
-  const vec3 toward = pass.light.at[0].position.xyz - from;
   const float distance = length(toward);
   const bool shadowed = blocked(pass.instances,
                                 pass.count.at[0],

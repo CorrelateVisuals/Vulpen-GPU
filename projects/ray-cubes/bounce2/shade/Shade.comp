@@ -29,25 +29,28 @@ const float tiny = 1.0e-6; // no direction is shorter, so none divides by zero (
 // lamp and back to the eye.
 vec3 found_at(Hit hit, vec3 eye, float lit) {
   const Light light = pass.light.at[0];
-  const vec3 normal = hit.normal.xyz;
+  const vec4 look = unpackUnorm4x8(hit.look);
   const vec3 toward = light.position.xyz - hit.position.xyz;
   const vec3 to_light = toward / max(length(toward), tiny);
   const vec3 between = to_light + eye;
   const vec3 halfway = between / max(length(between), tiny);
-  const float diffuse = max(dot(normal, to_light), 0.0) * lit;
-  const float highlight = pow(max(dot(normal, halfway), 0.0), pass.sharpness) * lit;
-  const float mirrored = fresnel(hit.normal.w, dot(normal, eye));
-  return (1.0 - mirrored) * hit.color.rgb * (pass.ambient + diffuse * light.color.rgb) +
+  const float diffuse = max(dot(hit.normal, to_light), 0.0) * lit;
+  const float highlight = pow(max(dot(hit.normal, halfway), 0.0), pass.sharpness) * lit;
+  const float mirrored = fresnel(look.a, dot(hit.normal, eye));
+  return (1.0 - mirrored) * look.rgb * (pass.ambient + diffuse * light.color.rgb) +
          pass.shine * highlight * light.color.rgb;
 }
 
+// A ray that ended finds nothing, so its hit and lit go unread.
 void main() {
   const uint i = gl_GlobalInvocationID.x;
   const Ray ray = pass.rays.at[i];
-  const Hit hit = pass.hits.at[i];
+  const vec3 weight = weight_of(ray);
   vec3 found = vec3(0.0);
-  if (ray.weight.a != 0.0)
-    found = hit.position.w < 0.0 ? sky(ray.direction.xyz)
-                                 : found_at(hit, -ray.direction.xyz, pass.lit.at[i]);
-  pass.after.at[i] = pass.before.at[i] + vec4(ray.weight.rgb * found, 0.0);
+  if (goes_on(ray)) {
+    const Hit hit = pass.hits.at[i];
+    found = hit.position.w < 0.0 ? sky(ray.direction)
+                                 : found_at(hit, -ray.direction, pass.lit.at[i]);
+  }
+  pass.after.at[i] = pass.before.at[i] + vec4(weight * found, 0.0);
 }

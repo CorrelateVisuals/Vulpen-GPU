@@ -11,9 +11,18 @@ const float dark_tiles = 0.35;
 // A vector in the cube's own frame, scaled to the unit cube: a point once its center is
 // taken off, or a direction, along which the distances stay the world's.
 vec3 into(Instance cube, vec3 v) {
-  return vec3(dot(v, cube.x.xyz) / cube.x.w,
-              dot(v, cube.y.xyz) / cube.y.w,
-              dot(v, cube.z.xyz) / cube.z.w);
+  return vec3(dot(v, cube.x.xyz), dot(v, cube.y.xyz), dot(v, cube.z.xyz)) *
+         cube.inverse.xyz;
+}
+
+// Whether the ray, from its origin on, passes within the sphere around the cube, for a
+// unit direction: a few multiplies that rule out most cubes before the slabs, as a ray
+// meets few of them.
+bool near(Instance cube, vec3 origin, vec3 direction) {
+  const vec3 offset = origin - cube.center.xyz;
+  const float along = dot(offset, direction);
+  const float outside = dot(offset, offset) - cube.inverse.w * cube.inverse.w;
+  return (outside <= 0.0 || along <= 0.0) && along * along >= outside;
 }
 
 // Each part at least tiny away from zero, keeping its sign.
@@ -28,6 +37,8 @@ vec3 away_from_zero(vec3 v) {
 // the face it leaves.
 float box_hit(Instance cube, vec3 origin, vec3 direction, out vec3 normal) {
   normal = vec3(0.0);
+  if (!near(cube, origin, direction))
+    return -1.0;
   const vec3 from = into(cube, origin - cube.center.xyz);
   const vec3 along = away_from_zero(into(cube, direction));
   const vec3 low = (-1.0 - from) / along;

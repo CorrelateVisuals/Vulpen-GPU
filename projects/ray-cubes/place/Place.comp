@@ -1,6 +1,7 @@
-// Each cube's frame, worked out once a frame, so every ray meets it with dot products
-// alone: its axes, turned, and half its side along each. Also how many there are, for
-// the nodes that test them all, from its invocations, one a cube.
+// Each cube's frame, worked out once a frame, so every ray meets it with dot products and
+// multiplies alone: its axes, turned, half its side along each and 1 over it, and the
+// sphere around it. Also how many there are, for the nodes that test them all, from its
+// invocations, one a cube.
 #include "baseclasses/GpuLayout.glsl"
 #include "contracts/Cube.glsl"
 #include "contracts/Instance.glsl"
@@ -30,6 +31,7 @@ void main() {
                                   vec4(axes[0], cube.size.x),
                                   vec4(axes[1], cube.size.y),
                                   vec4(axes[2], cube.size.z),
+                                  vec4(1.0 / cube.size.xyz, length(cube.size.xyz)),
                                   cube.color,
                                   cube.look);
   pass.count.at[i] = gl_NumWorkGroups.x * gl_WorkGroupSize.x;

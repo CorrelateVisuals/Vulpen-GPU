@@ -20,19 +20,20 @@ void main() {
   const Ray ray = pass.rays.at[i];
   vec3 normal = vec3(0.0);
   uint which = 0u;
-  const float far = ray.weight.a == 0.0 ? -1.0
-                                        : nearest(pass.instances,
-                                                  pass.count.at[0],
-                                                  ray.origin.xyz,
-                                                  ray.direction.xyz,
-                                                  normal,
-                                                  which);
+  const float far = goes_on(ray) ? nearest(pass.instances,
+                                           pass.count.at[0],
+                                           ray.origin,
+                                           ray.direction,
+                                           normal,
+                                           which)
+                                 : -1.0;
   if (far < 0.0) {
-    pass.hits.at[i] = Hit(vec4(0.0, 0.0, 0.0, -1.0), vec4(0.0), vec4(0.0));
+    pass.hits.at[i] = Hit(vec4(0.0, 0.0, 0.0, -1.0), vec3(0.0), 0u);
     return;
   }
   const Instance cube = pass.instances.at[which];
-  const vec3 point = ray.origin.xyz + far * ray.direction.xyz;
-  pass.hits.at[i] =
-      Hit(vec4(point, far), vec4(normal, cube.color.a), vec4(surface(cube, point), 1.0));
+  const vec3 point = ray.origin + far * ray.direction;
+  pass.hits.at[i] = Hit(vec4(point, far),
+                        normal,
+                        packUnorm4x8(vec4(surface(cube, point), cube.color.a)));
 }

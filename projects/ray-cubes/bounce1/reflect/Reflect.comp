@@ -1,6 +1,6 @@
 // Each ray sent on from the cube it met, mirrored about its face, carrying the part of
 // the light the face mirrors, tinted a little by its color; a ray that met nothing, or
-// ended, ends.
+// ended, or would carry too little to see, ends.
 #include "baseclasses/GpuLayout.glsl"
 #include "contracts/Hit.glsl"
 #include "contracts/Ray.glsl"
@@ -15,18 +15,25 @@ layout(set = 1, binding = 0) uniform Pass {
   RaysOut bounced; // a connection: to the next bounce, or sky
 } pass;
 
+// Of the light a ray carries to the eye, the least worth tracing on: the bounces after
+// would add less than a step of the picture's 8 bits, and ended rays cost the next
+// bounce's trace and shadow nothing.
+const float faint = 0.02;
+
 void main() {
   const uint i = gl_GlobalInvocationID.x;
   const Ray ray = pass.rays.at[i];
-  const Hit hit = pass.hits.at[i];
-  if (ray.weight.a == 0.0 || hit.position.w < 0.0) {
-    pass.bounced.at[i] = Ray(ray.origin, ray.direction, vec4(0.0));
+  if (!goes_on(ray)) {
+    pass.bounced.at[i] = ray;
     return;
   }
-  const vec3 normal = hit.normal.xyz;
-  const float mirrored = fresnel(hit.normal.w, dot(normal, -ray.direction.xyz));
-  const vec3 color = mix(vec3(1.0), hit.color.rgb, pass.tint);
-  pass.bounced.at[i] = Ray(vec4(hit.position.xyz + nudge * normal, 1.0),
-                           vec4(reflect(ray.direction.xyz, normal), 0.0),
-                           vec4(ray.weight.rgb * mirrored * color, 1.0));
+  const Hit hit = pass.hits.at[i];
+  const vec4 look = unpackUnorm4x8(hit.look);
+  const float mirrored = fresnel(look.a, dot(hit.normal, -ray.direction));
+  vec3 carried = weight_of(ray) * mirrored * mix(vec3(1.0), look.rgb, pass.tint);
+  if (hit.position.w < 0.0 || max(carried.r, max(carried.g, carried.b)) < faint)
+    carried = vec3(0.0);
+  pass.bounced.at[i] = ray_of(hit.position.xyz + nudge * hit.normal,
+                              reflect(ray.direction, hit.normal),
+                              carried);
 }

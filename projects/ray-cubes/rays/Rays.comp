@@ -25,6 +25,6 @@ void main() {
   const Camera camera = pass.camera.at[0];
   const vec3 direction = normalize(camera.ahead.xyz * camera.ahead.w +
                                    camera.right.xyz * at.x + camera.up.xyz * at.y);
-  pass.rays.at[i] = Ray(vec4(camera.eye.xyz, 1.0), vec4(direction, 0.0), vec4(1.0));
+  pass.rays.at[i] = ray_of(camera.eye.xyz, direction, vec3(1.0));
   pass.gathered.at[i] = vec4(0.0);
 }
