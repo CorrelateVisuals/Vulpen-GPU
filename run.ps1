@@ -39,15 +39,24 @@ for ($i = 0; $i -lt $rest.Count; $i++) {
         $arguments += $rest[$i]
         if ($i + 1 -lt $rest.Count) { $i++; $arguments += $rest[$i] }
     } elseif ($rest[$i] -like '--*') {
-        $project = Join-Path $projects "$($rest[$i] -replace '^--')\view.vlp"
+        # In projects\, or in a folder there that groups projects, as triangles\ does.
+        $name = $rest[$i] -replace '^--'
+        $project = @(Join-Path $projects "$name\view.vlp"
+                     Get-ChildItem -LiteralPath $projects -Directory -ErrorAction SilentlyContinue |
+                         ForEach-Object { Join-Path $_.FullName "$name\view.vlp" }) |
+            Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
         # vulpen names an option it does not know.
-        if (Test-Path -LiteralPath $project) {
-            $arguments += $project; $named = $true; $opened += "vulpen_view_$($rest[$i] -replace '^--')"
+        if ($project) {
+            $arguments += $project; $named = $true; $opened += "vulpen_view_$name"
         } else { $arguments += $rest[$i] }
     } else {
         $arguments += $rest[$i]; $named = $true
         $folder = Split-Path -Parent ([System.IO.Path]::GetFullPath($rest[$i]))
-        if ((Split-Path -Parent $folder) -eq $projects) { $opened += "vulpen_view_$(Split-Path -Leaf $folder)" }
+        $above = Split-Path -Parent $folder
+        if ($above -eq $projects -or ((Split-Path -Parent $above) -eq $projects -and
+                -not (Test-Path -LiteralPath (Join-Path $above 'view.vlp')))) {
+            $opened += "vulpen_view_$(Split-Path -Leaf $folder)"
+        }
     }
 }
 if (-not $named) { $arguments = @(App $default) + $arguments }

@@ -55,7 +55,7 @@ if(VULPEN_TEST_DRIVER AND NOT VULPEN_SANITIZERS)
   # The same goldens on this machine's own GPU, within the tolerance between drivers.
   vulpen_test(wave-gpu ${python} ${tests}/golden.py ${vulpen_file} --own-gpu)
 endif()
-vulpen_test(triangle ${launch} ${vulpen_file} ${examples}/triangle/view.vlp
+vulpen_test(triangle ${launch} ${vulpen_file} ${examples}/triangles/triangle/view.vlp
             --frames 120 --fps 0)
 # It opens a window, so where no display exists it is skipped, not failed (V07).
 set_tests_properties(triangle PROPERTIES SKIP_REGULAR_EXPRESSION "glfwInit failed")

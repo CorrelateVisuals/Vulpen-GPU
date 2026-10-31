@@ -78,7 +78,7 @@ IDE = RUNTIME / "recipes" / "ide" / "view.vlp"
 # each run starts without, so every run starts from the manifest's.
 ZOOMED = RUNTIME / "recipes/library/parts/font/.vulpen/font.ini"
 LAID = RUNTIME / "recipes/ide/.vulpen/layout.log"
-TRIANGLE = RUNTIME.parents[1] / "projects" / "triangle"
+TRIANGLE = RUNTIME.parents[1] / "projects" / "triangles" / "triangle"
 PRESENT = [f"view load {TRIANGLE}"]  # presented as it comes
 PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode toggle
 # Back to edit mode, out of the terminal's focus, and out of the run.

@@ -39,8 +39,13 @@ while (($#)); do
       arguments+=("${@:1:2}")
       shift $(($# > 1 ? 2 : 1)) ;;
     --*)
-      if [[ -f $projects/${1#--}/view.vlp ]]; then
-        arguments+=("$projects/${1#--}/view.vlp"); named=true
+      # In projects/, or in a folder there that groups projects, as triangles/ does.
+      project=
+      for found in "$projects/${1#--}/view.vlp" "$projects"/*/"${1#--}"/view.vlp; do
+        [[ -f $found ]] && { project=$found; break; }
+      done
+      if [[ -n $project ]]; then
+        arguments+=("$project"); named=true
         opened+=("vulpen_view_${1#--}")
       else
         arguments+=("$1") # vulpen names an option it does not know
@@ -49,7 +54,10 @@ while (($#)); do
     *)
       arguments+=("$1"); named=true
       folder=$(cd "$(dirname -- "$1")" 2>/dev/null && pwd) || folder=
-      [[ ${folder%/*} == "$projects" ]] && opened+=("vulpen_view_${folder##*/}")
+      above=${folder%/*}
+      if [[ $above == "$projects" || (${above%/*} == "$projects" && ! -f $above/view.vlp) ]]; then
+        opened+=("vulpen_view_${folder##*/}")
+      fi
       shift ;;
   esac
 done

@@ -198,12 +198,16 @@ set_target_properties(baseclasses-triangle PROPERTIES COMPILE_WARNING_AS_ERROR O
   OUTPUT_NAME triangle RUNTIME_OUTPUT_DIRECTORY ${triangle_out}$<0:>)
 add_dependencies(baseclasses-triangle commit)
 
-# Every folder under projects/ with a view.vlp is a view the build compiles; a project
-# made while vulpen runs builds at the next live build.
+# Every folder under projects/ with a view.vlp is a view the build compiles, and so is each
+# one in a folder there that has none, which groups projects, as triangles/ does the
+# triangle's variants; a project made while vulpen runs builds at the next live build.
 include(src/runtime/cmake/nodes.cmake)
-file(GLOB views LIST_DIRECTORIES true CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/projects/*)
+set(projects ${PROJECT_SOURCE_DIR}/projects)
+file(GLOB views LIST_DIRECTORIES true CONFIGURE_DEPENDS ${projects}/* ${projects}/*/*)
 foreach(view IN LISTS views)
-  if(EXISTS ${view}/view.vlp)
+  get_filename_component(above ${view} DIRECTORY)
+  if(EXISTS ${view}/view.vlp
+     AND ("${above}" STREQUAL "${projects}" OR NOT EXISTS ${above}/view.vlp))
     vulpen_view(${view})
   endif()
 endforeach()

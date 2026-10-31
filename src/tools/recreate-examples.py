@@ -104,9 +104,18 @@ class Example:
         return COPY + self.name
 
 
+def folder_of(project: str) -> Path:
+    """A project's folder: in projects/, or in a folder there that groups projects, as
+    triangles/ does; in projects/ for one not made yet."""
+    for folder in (PROJECTS / project, *PROJECTS.glob(f"*/{project}")):
+        if (folder / "view.vlp").exists():
+            return folder
+    return PROJECTS / project
+
+
 def at(example: str, *parts: str) -> str:
     """A path from the repository's top, as a line names it."""
-    return "/".join(("projects", example, *parts))
+    return "/".join((folder_of(example).relative_to(ROOT).as_posix(), *parts))
 
 
 def swapped(example: str, node: str, made: list[str], wanted: list[str]) -> list[Step]:
@@ -125,7 +134,7 @@ def swapped(example: str, node: str, made: list[str], wanted: list[str]) -> list
 
 
 def files_of(example: str, node: str) -> list[str]:
-    folder = PROJECTS / example / node.replace(".", "/")
+    folder = folder_of(example) / node.replace(".", "/")
     return sorted(path.name for path in folder.iterdir() if path.is_file())
 
 
@@ -145,7 +154,7 @@ def manifest_of(example: str) -> tuple[list[tuple[str, list[str]]], list[list[st
     """The example's nodes, each with its words as node set takes them, and its
     connections, each its name, its writer and its readers, in the manifest's order."""
     nodes, connections, section = [], [], ""
-    for line in comparable(PROJECTS / example / "view.vlp"):
+    for line in comparable(folder_of(example) / "view.vlp"):
         if line.startswith("["):
             section = line.split()[0]
             if section == "[node":
@@ -876,7 +885,8 @@ def kept() -> dict[Path, bytes]:
     """What the parts keep beside the views in .vulpen/, which a run rewrites as panels
     move and the graph zooms, but the copies': put back after the run, so it leaves a
     person's ide and graphs as they were."""
-    folders = [ROOT / ".vulpen", *ROOT.glob("src/**/.vulpen"), *PROJECTS.glob("*/.vulpen")]
+    folders = [ROOT / ".vulpen", *ROOT.glob("src/**/.vulpen"), *PROJECTS.glob("*/.vulpen"),
+               *PROJECTS.glob("*/*/.vulpen")]
     return {path: path.read_bytes() for folder in folders if folder.is_dir()
             and not folder.parent.name.startswith(COPY)
             for path in folder.iterdir() if path.is_file()}
@@ -913,7 +923,7 @@ def check(example: Example, run: Run, findings: list[Finding]) -> None:
     run.frames(SETTLE_FRAMES)
     if problems := bound(said + run.new(), example.copy):
         findings.append(Finding(example.name, "problems as the saved copy loads", problems))
-    original, copy = PROJECTS / example.name, PROJECTS / example.copy
+    original, copy = folder_of(example.name), PROJECTS / example.copy
     if not (copy / "view.vlp").exists():
         findings.append(Finding(example.name, "no manifest saved", []))
         return

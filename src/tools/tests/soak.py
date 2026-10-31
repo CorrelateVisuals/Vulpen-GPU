@@ -34,6 +34,7 @@ WARM_UP = 0.2  # of the samples, left out while caches and pools fill
 ALLOWED = {"memory KiB": 1024, "GPU MiB": 1, "threads": 0, "files": 0, "modules": 0}
 SWAP_TIMEOUT = 300  # seconds for one build and swap
 WAVE = EXAMPLES / "wave"
+TRIANGLE = EXAMPLES / "triangles" / "triangle"
 SAVED = [WAVE / "wave" / "Wave.comp", WAVE / "wave" / "Wave.cpp", WAVE / "view.vlp"]
 STATISTICS = ROOT / "docs" / "statistics" / "soak.md"
 NOTHING = "[manifest]\nversion = 1\n"  # a view with no node, so no window
@@ -130,7 +131,7 @@ def growth(samples: list[dict[str, int]]) -> list[str]:
 def soak(vulpen: str, minutes: float) -> None:
     runs = {"wave": Run(vulpen, [WAVE / "view.vlp", "--fps", 0], headless=True)}
     if display():
-        runs["triangle"] = Run(vulpen, [EXAMPLES / "triangle" / "view.vlp"], headless=False)
+        runs["triangle"] = Run(vulpen, [TRIANGLE / "view.vlp"], headless=False)
     samples: dict[str, list[dict[str, int]]] = {name: [] for name in runs}
     end = time.monotonic() + minutes * 60
     while time.monotonic() < end:
@@ -164,11 +165,11 @@ def windows(vulpen: str, count: int) -> None:
     if not display():
         print("skipped: no display to open a window on")
         return
-    drawn = (EXAMPLES / "triangle" / "view.vlp").read_text(encoding="utf-8")
+    drawn = (TRIANGLE / "view.vlp").read_text(encoding="utf-8")
     with tempfile.TemporaryDirectory() as temporary:
         # A copy of the whole view, named triangle, so it finds what the build made for it.
         view = Path(temporary) / "triangle" / "view.vlp"
-        shutil.copytree(EXAMPLES / "triangle", view.parent)
+        shutil.copytree(TRIANGLE, view.parent)
         one = Run(vulpen, [view, "--fps", 60, "--log", "info"], headless=False,
                   listen=True)
         one.wait_for("live code:", SWAP_TIMEOUT)

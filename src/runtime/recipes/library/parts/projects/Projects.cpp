@@ -56,9 +56,10 @@ std::string hosted_name(VP::Call &call) {
       view.file.string()));
 }
 
-// The projects: views of their own in one folder (V03), which the commands here make,
-// host, copy and rename, by a project's name or by a folder's path; each view they host
-// becomes the current one.
+// The projects: views of their own in one folder (V03), or in a folder there that groups
+// some and is no view itself, as triangles/ groups the triangle's variants, which the
+// commands here make, host, copy and rename, by a project's name or by a folder's path;
+// each view they host becomes the current one.
 class Projects final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // From the part's own folder (RP02), so a person who works elsewhere changes one
@@ -83,7 +84,7 @@ class Projects final : public VP::Operator {
 
   void command(VP::Call &call) override {
     if (call.is(_new) || call.is(_load))
-      host(call, folder_of(call.arguments().front()), call.is(_new));
+      host(call, folder_of(call, call.arguments().front()), call.is(_new));
     else if (call.is(_save_as))
       save_as(call);
     else if (call.is(_rename))
@@ -92,26 +93,56 @@ class Projects final : public VP::Operator {
       remove(call);
   }
 
-  // A <project> comes resolved when it is a path, and as typed when it names one; a path
-  // to a project's view.vlp names its folder, as ./run.sh takes either.
-  std::filesystem::path folder_of(std::string_view word) const {
+  // A <project> comes resolved when it is a path, and as typed when it names one, which
+  // a new project takes in the projects' folder; a path to a project's view.vlp names its
+  // folder, as ./run.sh takes either.
+  std::filesystem::path folder_of(VP::Call &call, std::string_view word) const {
     const std::filesystem::path path(word);
     if (path.is_relative()) {
       check_name(word);
-      return _folder / path;
+      const std::filesystem::path there = found(call, word);
+      return there.empty() ? _folder / path : there;
     }
     return path.filename().empty() || path.filename() == manifest ? path.parent_path()
                                                                    : path;
   }
 
-  static void host(VP::Call &call, const std::filesystem::path &folder, bool fresh) {
+  // The folder of the project of that name, among the projects or in a folder grouping
+  // some; none where no folder of that name holds a view.
+  std::filesystem::path found(VP::Call &call, std::string_view name) const {
+    if (holds_view(call, _folder / name))
+      return _folder / name;
+    for (const std::string &entry : call.files().list(_folder.string()))
+      if (entry.ends_with('/') && !holds_view(call, _folder / entry) &&
+          holds_view(call, _folder / entry / name))
+        return _folder / entry / name;
+    return {};
+  }
+
+  static bool holds_view(VP::Call &call, const std::filesystem::path &folder) {
+    const std::vector<std::string> names = call.files().list(folder.string());
+    return std::ranges::find(names, manifest) != names.end();
+  }
+
+  // The build holds one view of each name, so a new project's name is one no project has,
+  // in a group or not.
+  void check_unused(VP::Call &call, std::string_view name) const {
+    if (const std::filesystem::path there = found(call, name); !there.empty())
+      throw std::runtime_error(std::format(
+          "{} holds a project named {} already, and the build holds one view of each name",
+          there.string(),
+          name));
+  }
+
+  void host(VP::Call &call, const std::filesystem::path &folder, bool fresh) const {
     const std::string name = folder.filename().string();
     check_free(call, name);
-    const std::vector<std::string> names = call.files().list(folder.string());
-    const bool exists = std::ranges::find(names, manifest) != names.end();
+    const bool exists = holds_view(call, folder);
     if (fresh && exists)
       throw std::runtime_error(
           std::format("{} holds a view already; view load hosts it", folder.string()));
+    if (fresh && project_name(name))
+      check_unused(call, name);
     if (!fresh && !exists)
       throw std::runtime_error(std::format(
           "{} holds no {}; view new starts a view there", folder.string(), manifest));
@@ -130,6 +161,7 @@ class Projects final : public VP::Operator {
     const std::string name(call.arguments().front());
     check_name(name);
     check_free(call, name);
+    check_unused(call, name);
     const VP::View &view = call.view();
     const std::filesystem::path folder = view.file.parent_path();
     for (const VP::Child &child : view.children)
@@ -152,11 +184,12 @@ class Projects final : public VP::Operator {
   // The folder moves whole, with the views it hosts. Nothing inside a project names it,
   // as the build names its contracts and modules from the folder, so nothing else
   // changes.
-  static void rename(VP::Call &call) {
+  void rename(VP::Call &call) const {
     const std::string hosted = hosted_name(call);
     const std::string name(call.arguments().front());
     check_name(name);
     check_free(call, name);
+    check_unused(call, name);
     // Kept, since the view addressed goes once it is closed.
     const std::filesystem::path file = call.view().file;
     const std::filesystem::path to = file.parent_path().parent_path() / name;
@@ -178,12 +211,11 @@ class Projects final : public VP::Operator {
           "{} is no project's name, which is letters, digits, _ and -, as view list "
           "shows it; view remove takes no path",
           name));
-    const std::filesystem::path folder = _folder / name;
-    const std::vector<std::string> names = call.files().list(folder.string());
-    if (std::ranges::find(names, manifest) == names.end())
+    const std::filesystem::path folder = found(call, name);
+    if (folder.empty())
       throw std::runtime_error(std::format("no project is named {}: {} holds no {}",
                                            name,
-                                           folder.string(),
+                                           (_folder / name).string(),
                                            manifest));
     if (const VP::View *const hosted = call.view(name);
         hosted && hosted->file.lexically_normal() == (folder / manifest).lexically_normal())
