@@ -563,6 +563,8 @@ void Views::follow(const std::string &host, const View &view) {
 
 void Views::unhost(Hosted &hosted) {
   hosted.removed = true;
+  if (hosted.schedule)
+    hosted.schedule->retire();
   for (const std::unique_ptr<Hosted> &other : _hosted)
     if (!other->removed && other->parent == hosted.name)
       unhost(*other);

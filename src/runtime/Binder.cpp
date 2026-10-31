@@ -484,7 +484,8 @@ void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
   for (const auto &entry : _buffers)
     if (entry.second.memory() == Memory::readback)
       entry.second.invalidate();
-  for (std::size_t at = 0; at < _bound.size(); ++at) {
+  // A node may close the view in its cook, so each asks again whether it still runs.
+  for (std::size_t at = 0; at < _bound.size() && !_retired; ++at) {
     Bound &bound = _bound[at];
     Cost &cost = _costs[at];
     if (!bound.errors.empty() || !bound.op) {
@@ -515,6 +516,12 @@ void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
     for (const Bound::Written &upload : bound.uploads)
       upload.buffer->flush();
   }
+}
+
+void Schedule::retire() {
+  for (Bound &bound : _bound)
+    drop_commands(bound);
+  _retired = true;
 }
 
 void Schedule::drop_commands(Bound &bound) {

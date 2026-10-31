@@ -93,6 +93,10 @@ public:
   // resolution: the window's size, or without one --size's, zero without either; the
   // images draws render into take it too.
   void cook(std::uint64_t frame, VkExtent2D resolution);
+  // Its view closed in the middle of a frame, as by a line a node's cook runs: its nodes
+  // cook no more and their commands go at once, as each reads its own view, gone now,
+  // until the rebuild before the next frame drops the schedule.
+  void retire();
   // The buffers made since the last call, which the next frame zeroes first.
   std::vector<VkBuffer> take_clears();
   // The images C++ filled since the last call, which the next frame copies in before
@@ -211,6 +215,7 @@ private:
   std::vector<std::size_t> _passed; // by _passes, its node's place in _bound
   std::vector<std::size_t> _landed; // by _passes, its place among the frame's
   std::vector<Cost> _costs;         // by _bound
+  bool _retired = false;
 };
 
 } // namespace VP
