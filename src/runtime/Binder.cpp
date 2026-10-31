@@ -376,7 +376,8 @@ Bound Schedule::bind(const Node &node,
   // So an edit makes blocks only for the nodes it changed.
   if (old && old->block && old->block_size == bound.block_size)
     bound.block = std::move(old->block);
-  if (old && old->op && old->node->module == node.module &&
+  // A folder whose C++ was removed runs none, though its module stays loaded till a swap.
+  if (old && old->op && runs_operator(node) && old->node->module == node.module &&
       old->node->operator_name == node.operator_name) {
     bound.op = std::move(old->op);
     log(Level::debug, Tag::nod, bound, "keeps its operator");
