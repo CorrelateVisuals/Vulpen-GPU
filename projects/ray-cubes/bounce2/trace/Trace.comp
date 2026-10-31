@@ -1,0 +1,38 @@
+// The nearest cube each pixel's ray meets, and what the nodes after it need of it there.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Hit.glsl"
+#include "contracts/Instance.glsl"
+#include "contracts/Ray.glsl"
+#include "shared/Box.glsl"
+
+layout(local_size_x = 64) in; // a pixel an invocation
+
+layout(set = 1, binding = 0) uniform Pass {
+  Rays rays;           // a connection: rays', or the bounce before's reflect's
+  Instances instances; // a connection: place's
+  Count count;         // a connection: place's, how many instances
+  HitsOut hits;        // a connection: to this bounce's shadow, shade and reflect
+} pass;
+
+// A ray that ended meets nothing, nor does one going past every cube.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const Ray ray = pass.rays.at[i];
+  vec3 normal = vec3(0.0);
+  uint which = 0u;
+  const float far = ray.weight.a == 0.0 ? -1.0
+                                        : nearest(pass.instances,
+                                                  pass.count.at[0],
+                                                  ray.origin.xyz,
+                                                  ray.direction.xyz,
+                                                  normal,
+                                                  which);
+  if (far < 0.0) {
+    pass.hits.at[i] = Hit(vec4(0.0, 0.0, 0.0, -1.0), vec4(0.0), vec4(0.0));
+    return;
+  }
+  const Instance cube = pass.instances.at[which];
+  const vec3 point = ray.origin.xyz + far * ray.direction.xyz;
+  pass.hits.at[i] =
+      Hit(vec4(point, far), vec4(normal, cube.color.a), vec4(surface(cube, point), 1.0));
+}

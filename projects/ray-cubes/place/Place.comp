@@ -1,0 +1,36 @@
+// Each cube's frame, worked out once a frame, so every ray meets it with dot products
+// alone: its axes, turned, and half its side along each. Also how many there are, for
+// the nodes that test them all, from its invocations, one a cube.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cube.glsl"
+#include "contracts/Instance.glsl"
+
+layout(local_size_x = 1) in; // a cube an invocation, as many as join's
+
+layout(set = 1, binding = 0) uniform Pass {
+  Cubes scene;            // a connection: join's
+  InstancesOut instances; // a connection: to every trace and shadow
+  CountOut count;         // a connection: to the same, each element the count
+} pass;
+
+// Rodrigues': the matrix turning by an angle about a unit axis, its columns where the x,
+// y and z axes go.
+mat3 turned(vec3 axis, float angle) {
+  const float c = cos(angle);
+  const mat3 crossing =
+      mat3(0.0, axis.z, -axis.y, -axis.z, 0.0, axis.x, axis.y, -axis.x, 0.0);
+  return c * mat3(1.0) + sin(angle) * crossing + (1.0 - c) * outerProduct(axis, axis);
+}
+
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const Cube cube = pass.scene.at[i];
+  const mat3 axes = turned(cube.turn.xyz, cube.turn.w);
+  pass.instances.at[i] = Instance(vec4(cube.center.xyz, 0.0),
+                                  vec4(axes[0], cube.size.x),
+                                  vec4(axes[1], cube.size.y),
+                                  vec4(axes[2], cube.size.z),
+                                  cube.color,
+                                  cube.look);
+  pass.count.at[i] = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+}

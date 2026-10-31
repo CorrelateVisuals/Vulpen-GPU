@@ -1,0 +1,30 @@
+// A ray a pixel of a picture size wide and high, from the camera's eye through the
+// pixel's middle, each carrying all of the light it finds to the eye; and the light
+// gathered before any bounce, none yet, which the first shade adds to.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Camera.glsl"
+#include "contracts/Color.glsl"
+#include "contracts/Ray.glsl"
+
+layout(local_size_x = 64) in; // a pixel an invocation: size.x * size.y of them
+
+layout(set = 1, binding = 0) uniform Pass {
+  uvec2 size;         // a param: the picture's pixels across and down
+  Cameras camera;     // a connection: orbit's
+  RaysOut rays;       // a connection: to the first bounce
+  ColorsOut gathered; // a connection: to the first bounce's shade
+} pass;
+
+// Down the picture -1 to 1, y pointing up, and across as far as its shape gives.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const uvec2 pixels = max(pass.size, uvec2(1u));
+  const vec2 size = vec2(pixels);
+  const vec2 pixel = vec2(i % pixels.x, i / pixels.x) + 0.5;
+  const vec2 at = (pixel / size * 2.0 - 1.0) * vec2(size.x / size.y, -1.0);
+  const Camera camera = pass.camera.at[0];
+  const vec3 direction = normalize(camera.ahead.xyz * camera.ahead.w +
+                                   camera.right.xyz * at.x + camera.up.xyz * at.y);
+  pass.rays.at[i] = Ray(vec4(camera.eye.xyz, 1.0), vec4(direction, 0.0), vec4(1.0));
+  pass.gathered.at[i] = vec4(0.0);
+}

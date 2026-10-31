@@ -1,0 +1,53 @@
+// The light each pixel's ray finds at this bounce: at a hit, what the face shows of its
+// own, the part it does not mirror, lit a little everywhere and by the lamp where shadow
+// found it lit, with the lamp's highlight; past every cube, the sky. Added to what the
+// bounces before gathered, as much as reaches the eye.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Color.glsl"
+#include "contracts/Hit.glsl"
+#include "contracts/Light.glsl"
+#include "contracts/Ray.glsl"
+#include "shared/Shading.glsl"
+
+layout(local_size_x = 64) in; // a pixel an invocation
+
+layout(set = 1, binding = 0) uniform Pass {
+  float ambient;    // a param: the light every face gets, of its color
+  float shine;      // a param: how bright the lamp's highlight is
+  float sharpness;  // a param: how small it is
+  Rays rays;        // a connection: the rays this bounce traced
+  Hits hits;        // a connection: this bounce's trace's
+  FloatsIn lit;     // a connection: this bounce's shadow's
+  Lights light;     // a connection: lamp's
+  Colors before;    // a connection: what the bounces before gathered
+  ColorsOut after;  // a connection: to the next bounce's shade, or sky
+} pass;
+
+const float tiny = 1.0e-6; // no direction is shorter, so none divides by zero (GLSL02)
+
+// Blinn's highlight: around where the face's normal is halfway between the ways to the
+// lamp and back to the eye.
+vec3 found_at(Hit hit, vec3 eye, float lit) {
+  const Light light = pass.light.at[0];
+  const vec3 normal = hit.normal.xyz;
+  const vec3 toward = light.position.xyz - hit.position.xyz;
+  const vec3 to_light = toward / max(length(toward), tiny);
+  const vec3 between = to_light + eye;
+  const vec3 halfway = between / max(length(between), tiny);
+  const float diffuse = max(dot(normal, to_light), 0.0) * lit;
+  const float highlight = pow(max(dot(normal, halfway), 0.0), pass.sharpness) * lit;
+  const float mirrored = fresnel(hit.normal.w, dot(normal, eye));
+  return (1.0 - mirrored) * hit.color.rgb * (pass.ambient + diffuse * light.color.rgb) +
+         pass.shine * highlight * light.color.rgb;
+}
+
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const Ray ray = pass.rays.at[i];
+  const Hit hit = pass.hits.at[i];
+  vec3 found = vec3(0.0);
+  if (ray.weight.a != 0.0)
+    found = hit.position.w < 0.0 ? sky(ray.direction.xyz)
+                                 : found_at(hit, -ray.direction.xyz, pass.lit.at[i]);
+  pass.after.at[i] = pass.before.at[i] + vec4(ray.weight.rgb * found, 0.0);
+}

@@ -1,0 +1,26 @@
+// The one light: a lamp circling above the cubes, which every bounce's shadow and shade
+// reads.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Light.glsl"
+
+layout(local_size_x = 1) in; // one lamp, one invocation
+
+layout(set = 1, binding = 0) uniform Pass {
+  vec3 center;          // a param: what the lamp circles about
+  vec3 color;           // a param: its color times its strength
+  float radius;         // a param: how far out it circles
+  uint frames_per_turn; // a param: frames a whole circle takes; 0 holds it still
+  LightsOut light;      // a connection: to every bounce's shadow and shade
+} pass;
+
+const float turn = 6.28318530718; // radians in a whole turn
+
+// Counted from the frame index, so it never drifts.
+void main() {
+  const float angle = pass.frames_per_turn == 0u
+                          ? 0.0
+                          : turn * float(frame.index % pass.frames_per_turn) /
+                                float(pass.frames_per_turn);
+  const vec3 at = pass.center + pass.radius * vec3(cos(angle), 0.0, sin(angle));
+  pass.light.at[0] = Light(vec4(at, 1.0), vec4(pass.color, 1.0));
+}

@@ -1,0 +1,263 @@
+# Mirror cubes, ray traced, as a chain of small nodes, a file or two each: each does one
+# step and hands what it made to the next through a connection, a buffer that stays on the
+# GPU. The scene: orbit, the camera, C++ alone; lamp, the one light; grid lays the cubes
+# out, spin moves them, floor makes one flat cube more, join lists them all, place works
+# out each one's frame, one unit cube instanced. Then rays casts a ray a pixel, and each
+# bounce, a group of four, traces where its rays meet a cube, shadows the hits, shades
+# them and sends the rays on mirrored to the next bounce. sky gives the rays still going
+# the sky, tone puts the light on the frame, screen shows it, and meter reads it back.
+# The shared code is in shared/, what the connections carry in contracts/. Run
+# ./run.sh --ray-cubes, then type `param set spin speed 0` to hold the cubes, `param set
+# orbit frames_per_turn 0` the camera, or `meter read` for the light at eight spots.
+
+[manifest]
+version = 1
+
+# The camera, on a circle about the target, a whole circle every frames_per_turn frames,
+# and 0 holds it still; lens, how far the picture is from the eye, so the longer, the
+# narrower the view.
+[node "orbit"]
+param = target=0,0.6,0
+param = distance=14
+param = height=6
+param = lens=1.8
+param = frames_per_turn=3600
+
+[node "lamp"]
+invocations = 1
+param       = center=0,7,0
+param       = color=1.1,1.05,0.95
+param       = radius=5
+param       = frames_per_turn=1800
+
+# A cube an invocation, columns a row: 64 cubes, 8 rows of 8. spin moves each of grid's
+# cubes, so it runs as many invocations.
+[node "grid"]
+invocations = 64
+param       = columns=8
+param       = spacing=1.6
+param       = side=0.8
+
+[node "spin"]
+invocations = 64
+param       = speed=1
+
+[node "floor"]
+invocations = 1
+param       = color=0.85,0.85,0.82
+param       = extent=10
+param       = tiles=20
+param       = mirror=0.15
+
+# Grid's cubes and the floor: one more invocation than spin's, the last taking the floor;
+# place as many, a cube each, the count every trace and shadow tests.
+[node "join"]
+invocations = 65
+
+[node "place"]
+invocations = 65
+
+# A ray a pixel: size.x * size.y = 518400 invocations, as every node after it but tone,
+# which fills the frame, and meter, which reads 8 spots.
+[node "rays"]
+invocations = 518400
+param       = size=960,540
+
+# A bounce: trace, shadow, shade and reflect, a group. Each bounce after it is a copy,
+# its rays the reflected rays of the one before, its light added to theirs.
+[node "bounce1"]
+
+[node "bounce1.trace"]
+invocations = 518400
+
+[node "bounce1.shadow"]
+invocations = 518400
+
+[node "bounce1.shade"]
+invocations = 518400
+param       = ambient=0.1
+param       = shine=0.6
+param       = sharpness=48
+
+[node "bounce1.reflect"]
+invocations = 518400
+param       = tint=0.6
+
+[node "bounce2"]
+
+[node "bounce2.trace"]
+invocations = 518400
+
+[node "bounce2.shadow"]
+invocations = 518400
+
+[node "bounce2.shade"]
+invocations = 518400
+param       = ambient=0.1
+param       = shine=0.6
+param       = sharpness=48
+
+[node "bounce2.reflect"]
+invocations = 518400
+param       = tint=0.6
+
+[node "bounce3"]
+
+[node "bounce3.trace"]
+invocations = 518400
+
+[node "bounce3.shadow"]
+invocations = 518400
+
+[node "bounce3.shade"]
+invocations = 518400
+param       = ambient=0.1
+param       = shine=0.6
+param       = sharpness=48
+
+[node "bounce3.reflect"]
+invocations = 518400
+param       = tint=0.6
+
+[node "sky"]
+invocations = 518400
+
+[node "tone"]
+invocations = 65536
+param       = size=960,540
+param       = exposure=1.4
+
+# One triangle over the window, a pixel showing its own texel.
+[node "screen"]
+vertex_count = 3
+
+[node "meter"]
+invocations = 8
+param       = size=960,540
+
+# The scene, into the bounces.
+[connection "camera"]
+from = orbit.camera
+to   = rays.camera
+
+[connection "light"]
+from = lamp.light
+to   = bounce1.shadow.light
+to   = bounce1.shade.light
+to   = bounce2.shadow.light
+to   = bounce2.shade.light
+to   = bounce3.shadow.light
+to   = bounce3.shade.light
+
+[connection "rest"]
+from = grid.cubes
+to   = spin.rest
+
+[connection "moved"]
+from = spin.moved
+to   = join.cubes
+
+[connection "ground"]
+from = floor.cube
+to   = join.floor
+
+[connection "scene"]
+from = join.scene
+to   = place.scene
+
+[connection "instances"]
+from = place.instances
+to   = bounce1.trace.instances
+to   = bounce1.shadow.instances
+to   = bounce2.trace.instances
+to   = bounce2.shadow.instances
+to   = bounce3.trace.instances
+to   = bounce3.shadow.instances
+
+[connection "count"]
+from = place.count
+to   = bounce1.trace.count
+to   = bounce1.shadow.count
+to   = bounce2.trace.count
+to   = bounce2.shadow.count
+to   = bounce3.trace.count
+to   = bounce3.shadow.count
+
+# A pixel's ray and its light, from bounce to bounce.
+[connection "primary"]
+from = rays.rays
+to   = bounce1.trace.rays
+to   = bounce1.shade.rays
+to   = bounce1.reflect.rays
+
+[connection "dark"]
+from = rays.gathered
+to   = bounce1.shade.before
+
+[connection "hits1"]
+from = bounce1.trace.hits
+to   = bounce1.shadow.hits
+to   = bounce1.shade.hits
+to   = bounce1.reflect.hits
+
+[connection "lit1"]
+from = bounce1.shadow.lit
+to   = bounce1.shade.lit
+
+[connection "gathered1"]
+from = bounce1.shade.after
+to   = bounce2.shade.before
+
+[connection "bounced1"]
+from = bounce1.reflect.bounced
+to   = bounce2.trace.rays
+to   = bounce2.shade.rays
+to   = bounce2.reflect.rays
+
+[connection "hits2"]
+from = bounce2.trace.hits
+to   = bounce2.shadow.hits
+to   = bounce2.shade.hits
+to   = bounce2.reflect.hits
+
+[connection "lit2"]
+from = bounce2.shadow.lit
+to   = bounce2.shade.lit
+
+[connection "gathered2"]
+from = bounce2.shade.after
+to   = bounce3.shade.before
+
+[connection "bounced2"]
+from = bounce2.reflect.bounced
+to   = bounce3.trace.rays
+to   = bounce3.shade.rays
+to   = bounce3.reflect.rays
+
+[connection "hits3"]
+from = bounce3.trace.hits
+to   = bounce3.shadow.hits
+to   = bounce3.shade.hits
+to   = bounce3.reflect.hits
+
+[connection "lit3"]
+from = bounce3.shadow.lit
+to   = bounce3.shade.lit
+
+[connection "gathered3"]
+from = bounce3.shade.after
+to   = sky.before
+
+[connection "bounced3"]
+from = bounce3.reflect.bounced
+to   = sky.rays
+
+# The light gathered, onto the window, and read back.
+[connection "final"]
+from = sky.after
+to   = tone.gathered
+to   = meter.gathered
+
+[connection "picture"]
+from = tone.picture
+to   = screen.picture

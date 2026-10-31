@@ -141,6 +141,25 @@ def made_by(kind: str, node: str) -> list[str]:
     return [name + end for end in KINDS[kind]]
 
 
+def manifest_of(example: str) -> tuple[list[tuple[str, list[str]]], list[list[str]]]:
+    """The example's nodes, each with its words as node set takes them, and its
+    connections, each its name, its writer and its readers, in the manifest's order."""
+    nodes, connections, section = [], [], ""
+    for line in comparable(PROJECTS / example / "view.vlp"):
+        if line.startswith("["):
+            section = line.split()[0]
+            if section == "[node":
+                nodes.append((line.split('"')[1], []))
+            elif section == "[connection":
+                connections.append([line.split('"')[1]])
+        elif section == "[node":
+            key, value = line.split(" = ", 1)
+            nodes[-1][1].append(f"{key}={value}")
+        elif section == "[connection":
+            connections[-1].append(line.split(" = ", 1)[1])
+    return nodes, connections
+
+
 def made(kind: str, example: str, node: str) -> list[Step]:
     """A node started from the template, its files then swapped for the example's."""
     return [ok(f"node new {kind} {node}"),
@@ -463,6 +482,32 @@ def examples(scratch: Path) -> list[Example]:
         gone(f"{COPY}life-two"),
         ok(f"view switch {e.copy}"),
     ]
+    every.append(e)
+
+    # ray-cubes: a long chain made again from its own manifest, a line a node and one a
+    # connection; the scene's nodes copied a folder at a time, the bounces made as groups,
+    # the first one's nodes started as dispatches whose C++ goes, so each runs its shader
+    # alone, the later ones' copied a node at a time, in the chain's order.
+    e = Example("ray-cubes")
+    nodes, connections = manifest_of(e.name)
+    groups = {name for name, _ in nodes if any(other.startswith(name + ".") for other, _ in nodes)}
+    e.steps = [ok(f"view new {e.copy}"),
+               ok(*(f"file copy {at(e.name, folder)}/ {at(e.copy, folder)}/"
+                    for folder in ("contracts", "shared")))]
+    for name, words in nodes:
+        path = name.replace(".", "/")
+        if name in groups:
+            e.steps.append(ok(f"node new group {name}"))
+        elif name.startswith("bounce1."):
+            e.steps += [*made("dispatch", e.name, name),
+                        ok(f"node set {name} {' '.join(words)} param=" if not any(
+                            word.startswith("param=") for word in words)
+                           else f"node set {name} {' '.join(words)}")]
+        else:
+            e.steps.append(ok(f"file copy {at(e.name, path)}/ {at(e.copy, path)}/",
+                              *([f"node set {name} {' '.join(words)}"] if words else [])))
+    e.steps += [ok(f"connect {' '.join(ends)}") for ends in connections]
+    e.steps.append(ok("view save"))
     every.append(e)
 
     # A project to try the library's lines in: a recipe dropped, synced, renamed; a file

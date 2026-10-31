@@ -1,0 +1,56 @@
+// The cubes at rest: rows of them hovering over the floor, each its own color, size,
+// turn, mirror and motion, from a hash of its place, so every run lays them out alike
+// (C01).
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cube.glsl"
+
+layout(local_size_x = 64) in; // a cube an invocation
+
+layout(set = 1, binding = 0) uniform Pass {
+  uint columns;   // a param: cubes a row; the rows are the invocations over it
+  float spacing;  // a param: from a cube's middle to the next one's
+  float side;     // a param: a cube's side, give or take a fifth
+  CubesOut cubes; // a connection: to spin
+} pass;
+
+const float turn = 6.28318530718; // radians in a whole turn
+const vec2 sizes = vec2(0.8, 1.2);      // of side, the smallest and the largest
+const vec2 mirrors = vec2(0.25, 0.75);  // how much a cube mirrors head on, least and most
+const vec2 turns = vec2(0.03, 0.15);    // a cube's turns a second, least and most
+const vec2 bobs = vec2(0.1, 0.5);       // how high a cube bobs, least and most
+const float upright = 0.6;              // how far each turning axis leans to the vertical
+
+// A number from 0 to 1 for a whole number and a salt, by integer steps alone, so every
+// GPU gives the same (PCG's output step).
+float hash(uint value, uint salt) {
+  uint h = value * 747796405u + salt * 2891336453u + 1u;
+  h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
+  h = (h >> 22u) ^ h;
+  return float(h) / 4294967295.0;
+}
+
+// A color of a cosine palette, so cubes near in the hash are near in color.
+vec3 palette(float at) {
+  return 0.5 + 0.5 * cos(turn * (at + vec3(0.0, 0.33, 0.67)));
+}
+
+// Each cube's middle as high as its side, so turned any way its corners stay above the
+// floor, half a diagonal being less.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const uint count = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  const uint columns = max(pass.columns, 1u);
+  const uint rows = (count + columns - 1u) / columns;
+  const vec2 cell = vec2(i % columns, i / columns) - 0.5 * vec2(columns - 1u, rows - 1u);
+  const float side = pass.side * mix(sizes.x, sizes.y, hash(i, 1u));
+  const vec3 axis = normalize(vec3(hash(i, 2u), hash(i, 3u), hash(i, 4u)) - 0.5 +
+                              vec3(0.0, upright, 0.0));
+  pass.cubes.at[i] =
+      Cube(vec4(cell.x * pass.spacing, side, cell.y * pass.spacing, 0.0),
+           vec4(vec3(0.5 * side), 0.0),
+           vec4(axis, turn * hash(i, 5u)),
+           vec4(palette(hash(i, 6u)), mix(mirrors.x, mirrors.y, hash(i, 7u))),
+           vec4(mix(turns.x, turns.y, hash(i, 8u)), mix(bobs.x, bobs.y, hash(i, 9u)),
+                turn * hash(i, 10u), 0.0),
+           vec4(0.0));
+}

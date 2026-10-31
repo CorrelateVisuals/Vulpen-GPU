@@ -1,0 +1,34 @@
+// Whether the lamp reaches each hit, or a cube stands between: 1 lit, 0 in shadow.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Hit.glsl"
+#include "contracts/Instance.glsl"
+#include "contracts/Light.glsl"
+#include "shared/Box.glsl"
+
+layout(local_size_x = 64) in; // a pixel an invocation
+
+layout(set = 1, binding = 0) uniform Pass {
+  Hits hits;           // a connection: this bounce's trace's
+  Lights light;        // a connection: lamp's
+  Instances instances; // a connection: place's
+  Count count;         // a connection: place's, how many instances
+  FloatsOut lit;       // a connection: to this bounce's shade
+} pass;
+
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const Hit hit = pass.hits.at[i];
+  if (hit.position.w < 0.0) {
+    pass.lit.at[i] = 0.0;
+    return;
+  }
+  const vec3 from = hit.position.xyz + nudge * hit.normal.xyz;
+  const vec3 toward = pass.light.at[0].position.xyz - from;
+  const float distance = length(toward);
+  const bool shadowed = blocked(pass.instances,
+                                pass.count.at[0],
+                                from,
+                                toward / max(distance, tiny),
+                                distance);
+  pass.lit.at[i] = shadowed ? 0.0 : 1.0;
+}

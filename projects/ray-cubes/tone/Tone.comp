@@ -1,0 +1,48 @@
+// The gathered light onto the frame: fitted in whatever the frame's shape, with bars
+// where the shapes differ, blended between the picture's pixels where the frame has more,
+// and its brightest squeezed in below 1. Stored as its square root, which 8 bits keep the
+// dark tones of better; the screen squares it back.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Color.glsl"
+
+layout(local_size_x = 64) in; // each invocation every pixel this many from its own
+
+layout(set = 1, binding = 0) uniform Pass {
+  uvec2 size;      // a param: the picture's pixels across and down, as rays casts them
+  float exposure;  // a param: how bright, before the brightest is squeezed in
+  Colors gathered; // a connection: sky's
+  Image picture;   // a connection: to the screen, at the frame's size
+} pass;
+
+vec3 gathered_at(ivec2 pixel) {
+  const ivec2 last = ivec2(max(pass.size, uvec2(1u))) - 1;
+  const ivec2 at = clamp(pixel, ivec2(0), last);
+  return pass.gathered.at[at.y * (last.x + 1) + at.x].rgb;
+}
+
+// Between the four pixels around a point, in the picture's pixels, their middles at .5.
+vec3 blended(vec2 at) {
+  const vec2 from = at - 0.5;
+  const ivec2 corner = ivec2(floor(from));
+  const vec2 part = from - floor(from);
+  return mix(mix(gathered_at(corner), gathered_at(corner + ivec2(1, 0)), part.x),
+             mix(gathered_at(corner + ivec2(0, 1)), gathered_at(corner + ivec2(1, 1)), part.x),
+             part.y);
+}
+
+void main() {
+  const ivec2 frame_size = image_size(pass.picture);
+  const uint pixels = uint(frame_size.x * frame_size.y);
+  const uint threads = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  const vec2 size = vec2(max(pass.size, uvec2(1u)));
+  const float scale = min(float(frame_size.x) / size.x, float(frame_size.y) / size.y);
+  const vec2 corner = 0.5 * (vec2(frame_size) - size * scale);
+  for (uint p = gl_GlobalInvocationID.x; p < pixels; p += threads) {
+    const ivec2 pixel = ivec2(p % uint(frame_size.x), p / uint(frame_size.x));
+    const vec2 at = (vec2(pixel) + 0.5 - corner) / scale;
+    vec3 color = vec3(0.0);
+    if (all(greaterThanEqual(at, vec2(0.0))) && all(lessThan(at, size)))
+      color = sqrt(1.0 - exp(-pass.exposure * blended(at)));
+    store(pass.picture, pixel, vec4(color, 1.0));
+  }
+}

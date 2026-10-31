@@ -1,0 +1,23 @@
+// The cubes moving: each turns about its own axis and bobs above its place by the
+// frame's time, so a frame shows them alike in every run (C01).
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cube.glsl"
+
+layout(local_size_x = 64) in; // a cube an invocation, as many as grid's
+
+layout(set = 1, binding = 0) uniform Pass {
+  float speed;    // a param: how fast it all moves; 0 holds the cubes still
+  Cubes rest;     // a connection: grid's
+  CubesOut moved; // a connection: to join
+} pass;
+
+const float turn = 6.28318530718; // radians in a whole turn
+
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  Cube cube = pass.rest.at[i];
+  const float time = frame.time * pass.speed;
+  cube.turn.w += turn * cube.motion.x * time;
+  cube.center.y += cube.motion.y * (0.5 + 0.5 * sin(time + cube.motion.z));
+  pass.moved.at[i] = cube;
+}

@@ -1,0 +1,18 @@
+// The scene's cubes in one list, spin's and then the floor, so the nodes after it test
+// one buffer. Its invocations are spin's and one more, the last taking the floor.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cube.glsl"
+
+layout(local_size_x = 1) in; // a cube an invocation, so any count runs
+
+layout(set = 1, binding = 0) uniform Pass {
+  Cubes cubes;    // a connection: spin's
+  Cubes floor;    // a connection: floor's, one cube
+  CubesOut scene; // a connection: to place
+} pass;
+
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  const uint last = gl_NumWorkGroups.x * gl_WorkGroupSize.x - 1u;
+  pass.scene.at[i] = i < last ? pass.cubes.at[i] : pass.floor.at[0];
+}

@@ -19,6 +19,7 @@ __pycache__/
 /projects/*
 !/projects/.gitkeep
 !/projects/life/
+!/projects/ray-cubes/
 !/projects/triangle/
 !/projects/triangle-compute/
 !/projects/triangle-cpp-clock/

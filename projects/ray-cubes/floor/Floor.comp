@@ -1,0 +1,25 @@
+// The floor: one cube more, flat and wide, checkered, mirroring a little, its top at
+// height 0, under the cubes.
+#include "baseclasses/GpuLayout.glsl"
+#include "contracts/Cube.glsl"
+
+layout(local_size_x = 1) in; // one floor, one invocation
+
+layout(set = 1, binding = 0) uniform Pass {
+  vec3 color;    // a param: its lighter tiles'; the darker are a share of it
+  float extent;  // a param: half its side
+  float tiles;   // a param: tiles across it
+  float mirror;  // a param: how much it mirrors head on
+  CubesOut cube; // a connection: to join
+} pass;
+
+const float thickness = 0.1;
+
+void main() {
+  pass.cube.at[0] = Cube(vec4(0.0, -0.5 * thickness, 0.0, 0.0),
+                         vec4(pass.extent, 0.5 * thickness, pass.extent, 0.0),
+                         vec4(0.0, 1.0, 0.0, 0.0),
+                         vec4(pass.color, pass.mirror),
+                         vec4(0.0),
+                         vec4(pass.tiles, 0.0, 0.0, 0.0));
+}
