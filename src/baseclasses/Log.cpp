@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <exception>
 #include <format>
+#include <iterator>
 #include <utility>
 
 namespace VP {
@@ -52,6 +53,9 @@ constexpr std::array marks{Mark{"{run}", bold},
 constexpr std::array problems{Mark{"{!!!}", red}, Mark{"{ ! }", yellow}};
 constexpr Mark repeat{"{rep}", dim};
 constexpr std::size_t count_capacity = 64;
+// The characters a terminal obeys rather than shows: those before the space, and delete.
+constexpr unsigned char first_shown = 0x20;
+constexpr unsigned char delete_code = 0x7f;
 // Past this the file lets its oldest lines go, so memory stays bounded however long a run
 // logs (A03); the runs before a restart keep half of it.
 constexpr std::size_t file_capacity = std::size_t{1} << 20;
@@ -119,8 +123,17 @@ void Log::print(Level level,
   _line.assign(mark.text).append(" ");
   if (!node.empty())
     _line.append(node).append(": ");
-  // Text read from a file, such as a build's output, ends in a newline the line adds.
-  _line.append(text.substr(0, text.find_last_not_of('\n') + 1));
+  // Text read from a file, such as a build's output, ends in a newline the line adds. A
+  // control character in it, as a refusal quoting a file's bytes holds, shows as its code,
+  // since the terminal would obey it, as an escape that clears the screen; a line break
+  // and a tab stay what they are.
+  for (const char letter : text.substr(0, text.find_last_not_of('\n') + 1)) {
+    const auto code = static_cast<unsigned char>(letter);
+    if ((code < first_shown && letter != '\n' && letter != '\t') || code == delete_code)
+      std::format_to(std::back_inserter(_line), "\\x{:02x}", code);
+    else
+      _line.push_back(letter);
+  }
   if (_line == _previous && view == _previous_view) {
     ++_repeats;
     return;
