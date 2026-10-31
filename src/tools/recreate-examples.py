@@ -484,30 +484,105 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # ray-cubes: a long chain made again from its own manifest, a line a node and one a
-    # connection; the scene's nodes copied a folder at a time, the bounces made as groups,
-    # the first one's nodes started as dispatches whose C++ goes, so each runs its shader
-    # alone, the later ones' copied a node at a time, in the chain's order.
+    # ray-cubes: the long chain rebuilt by hand, as a beta user rebuilds it from the
+    # example: node by node in its order, some from their kind's template, the rest copied,
+    # the bounces as groups, the later ones copied a node at a time from the copy's own
+    # first; then every connection in order. On the way the mistakes such a chain invites:
+    # a path misspelled, a node copied under a wrong name and renamed, words mistyped or
+    # left out, a count no multiple of the workgroup, a group copied onto one there already,
+    # a command sent before its node, a port joined twice, a connection made with too few
+    # readers and made again with all, a misspelled port let go of and made again. A node
+    # binds only once built, so a mistake its binding finds waits for the build to settle.
+    # Its words and wires come from the example's manifest, so the steps follow its edits.
     e = Example("ray-cubes")
     nodes, connections = manifest_of(e.name)
-    groups = {name for name, _ in nodes if any(other.startswith(name + ".") for other, _ in nodes)}
-    e.steps = [ok(f"view new {e.copy}"),
-               ok(*(f"file copy {at(e.name, folder)}/ {at(e.copy, folder)}/"
-                    for folder in ("contracts", "shared")))]
-    for name, words in nodes:
-        path = name.replace(".", "/")
-        if name in groups:
-            e.steps.append(ok(f"node new group {name}"))
-        elif name.startswith("bounce1."):
-            e.steps += [*made("dispatch", e.name, name),
-                        ok(f"node set {name} {' '.join(words)} param=" if not any(
-                            word.startswith("param=") for word in words)
-                           else f"node set {name} {' '.join(words)}")]
-        else:
-            e.steps.append(ok(f"file copy {at(e.name, path)}/ {at(e.copy, path)}/",
-                              *([f"node set {name} {' '.join(words)}"] if words else [])))
-    e.steps += [ok(f"connect {' '.join(ends)}") for ends in connections]
-    e.steps.append(ok("view save"))
+    words = {name: " ".join(said) for name, said in nodes}
+    ends = {said[0]: " ".join(said[1:]) for said in connections}
+
+    def copied(node: str, into: str | None = None, source: str = e.name) -> str:
+        path = node.replace(".", "/")
+        return f"file copy {at(source, path)}/ {at(e.copy, into or path)}/"
+
+    def wired(name: str) -> Step:
+        return ok(f"connect {name} {ends[name]}")
+
+    def later_bounce(bounce: str) -> list[Step]:
+        return [ok(f"node new group {bounce}"),
+                no(f"file copy {at(e.copy, 'bounce1')}/ {at(e.copy, bounce)}/",
+                   "is there already"),
+                *(ok(copied(f"bounce1.{node}", f"{bounce}/{node}", e.copy),
+                     f"node set {bounce}.{node} {words[f'{bounce}.{node}']}")
+                  for node in ("trace", "shadow", "shade", "reflect"))]
+
+    params = " ".join(word for word in words["lamp"].split() if word.startswith("param="))
+    e.steps = [
+        ok(f"view new {e.copy}"),
+        no(f"file copy {at(e.name, 'contract')}/ {at(e.copy, 'contracts')}/", "contract"),
+        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/",
+           f"file copy {at(e.name, 'shared')}/ {at(e.copy, 'shared')}/"),
+        *made("cpp", e.name, "orbit"),
+        settled(f"node set orbit {words['orbit'].replace('distance=14', 'distance=fourteen')}",
+                refused="fourteen"),
+        ok(f"node set orbit {words['orbit']}"),
+        ok(copied("lamp", "lmap")),
+        ok("node rename lmap lamp"),
+        settled(f"node set lamp {params}", refused="invocations"),
+        ok(f"node set lamp {words['lamp']}"),
+        ok(copied("grid")),
+        settled(f"node set grid {words['grid'].replace('invocations=64', 'invocations=60')}",
+                refused="local_size_x"),
+        ok(f"node set grid {words['grid']}"),
+        *made("dispatch", e.name, "spin"),
+        ok(f"node set spin {words['spin']}"),
+        ok(copied("floor"), f"node set floor {words['floor']}"),
+        ok(copied("join"), f"node set join {words['join']}"),
+        ok(copied("place")),
+        settled(f"node set place {words['place']} param=cubes=65", refused="cubes"),
+        ok(f"node set place {words['place']} param="),
+        ok(copied("rays")),
+        settled(f"node set rays {words['rays'].replace('1920,1080', '1920x1080')}",
+                refused="1920x1080"),
+        ok(f"node set rays {words['rays']}"),
+        no("node new group Bounce1", "no name for a new node"),
+        ok("node new group bounce1"),
+        *made("dispatch", e.name, "bounce1.trace"),
+        ok(f"node set bounce1.trace {words['bounce1.trace']} param="),
+        ok(copied("bounce1.shadow"), f"node set bounce1.shadow {words['bounce1.shadow']}"),
+        ok(copied("bounce1.shade")),
+        settled("node set bounce1.shade invocations=2073600 param=ambient=0.1",
+                refused="shine"),
+        ok(f"node set bounce1.shade {words['bounce1.shade']}"),
+        ok(copied("bounce1.reflect"), f"node set bounce1.reflect {words['bounce1.reflect']}"),
+        *later_bounce("bounce2"),
+        *later_bounce("bounce3"),
+        ok(copied("sky"), f"node set sky {words['sky']}"),
+        ok(copied("smooth"), f"node set smooth {words['smooth']}"),
+        ok(copied("tone"), f"node set tone {words['tone']}"),
+        ok(copied("screen")),
+        settled("node set screen invocations=3", refused="vertex_count"),
+        ok(f"node set screen invocations= {words['screen']}"),
+        no("meter read", "unknown command meter"),
+        ok(copied("meter"), f"node set meter {words['meter']}"),
+        wired("camera"),
+        ok("connect light lamp.light bounce1.shadow.light bounce1.shade.light"),
+        no("connect light2 lamp.light bounce2.shadow.light", "joins two connections"),
+        ok("disconnect light"),
+        *(wired(name) for name in ("light", "rest", "moved", "ground", "scene")),
+        settled(f"connect instances {ends['instances'].replace('place.instances', 'place.instance', 1)}",
+                refused="instance is not a buffer"),
+        ok("disconnect instances"),
+        *(wired(name) for name in ("instances", "count", "primary", "dark")),
+        no(f"connect hits1 {ends['hits1'].replace('bounce1.reflect.hits', 'bounce1.reflect.rays')}",
+           "joins two connections"),
+        *(wired(name) for name in [name for name, *_ in connections]
+          [[name for name, *_ in connections].index("hits1"):
+           [name for name, *_ in connections].index("final")]),
+        ok("connect final sky.after smooth.before"),
+        ok("disconnect final"),
+        *(wired(name) for name in ("final", "smoothed", "picture")),
+        ok("view save"),
+        settled("meter read"),
+    ]
     every.append(e)
 
     # A project to try the library's lines in: a recipe dropped, synced, renamed; a file
