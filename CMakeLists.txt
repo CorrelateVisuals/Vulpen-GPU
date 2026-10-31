@@ -145,8 +145,9 @@ add_dependencies(vulpen gates)
 if(NOT MSVC) # it reads the objects with objdump
   add_custom_target(globals ALL
     COMMAND ${Python3_EXECUTABLE} ${tools}/mutable-globals.py ${CMAKE_BINARY_DIR} VERBATIM)
-  # barriers: src/tools/tests/tests.cmake
-  add_dependencies(globals vulpen baseclasses-triangle barriers)
+  # barriers: src/tools/tests/tests.cmake. It reads every view's objects too, which a dev
+  # build makes as modules vulpen does not wait for.
+  add_dependencies(globals vulpen vulpen_modules baseclasses-triangle barriers)
 endif()
 add_custom_target(statistics ALL
   COMMAND ${Python3_EXECUTABLE} ${tools}/fetch-statistics.py
