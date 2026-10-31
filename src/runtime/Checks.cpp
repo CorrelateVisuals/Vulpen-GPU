@@ -248,9 +248,11 @@ void Schedule::check_varyings(const Bound &vertex,
 }
 
 // Every param is read by someone, and every value in the pass block is set by someone.
-// Without its operator, a node cannot say what the operator would have read or set.
+// Without its operator, or its shaders, a node cannot say what they would have read or
+// set; what kept them from loading is its error.
 void Schedule::check_fields(Bound &bound) const {
-  if (runs_operator(*bound.node) && !bound.op)
+  if ((runs_operator(*bound.node) && !bound.op) ||
+      (!bound.shaders_named.empty() && !bound.loaded()))
     return;
   for (const Param &param : bound.node->params) {
     const Field *const field = bound.field(param.key);
@@ -408,6 +410,8 @@ void Schedule::check_connections() {
 // as the ide's waits for the view it presents.
 void Schedule::check_images() {
   for (Bound &bound : _bound) {
+    if (bound.unbuilt)
+      continue;
     for (const Field &field : bound.fields) {
       if (!field.texture())
         continue;

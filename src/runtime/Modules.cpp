@@ -86,6 +86,13 @@ std::vector<std::string> Modules::rewritten() const {
   return modules;
 }
 
+bool Modules::built(const std::string &module, const std::filesystem::path &folder) const {
+  std::error_code unread;
+  return std::ranges::any_of(linked_modules,
+                             [&](const LinkedModule &linked) { return linked.module == module; }) ||
+         std::filesystem::exists(folder / module_file, unread);
+}
+
 void Modules::unload(const std::string &module) {
   _operators.erase(module);
   std::ranges::find(_loaded, module, &Loaded::module)->library.reset();

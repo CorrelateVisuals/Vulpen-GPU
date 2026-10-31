@@ -78,6 +78,12 @@ inline constexpr std::string_view fragment_stage = ".frag";
 inline constexpr std::array<std::string_view, 6> stages{
     compute_stage, vertex_stage, fragment_stage, ".geom", ".tesc", ".tese"};
 
+// Where the build puts a shader's SPIR-V: beside it in the node's folder of the build tree.
+inline std::filesystem::path spirv_of(const std::filesystem::path &folder,
+                                      std::string_view shader) {
+  return folder / (std::string(shader) + ".spv");
+}
+
 inline bool holds_stage(const Node &node, std::string_view stage) {
   return std::ranges::any_of(
       node.files, [&](const std::string &file) { return file.ends_with(stage); });
@@ -276,6 +282,10 @@ struct Bound {
   // error; made by its module, so it goes with it.
   std::vector<Object> stand_ins;
   std::vector<std::string> errors;
+  // A hosted view's node of which a live run's build made nothing yet, as one of a project
+  // loaded before it was ever built: left out as by an error, but only waiting, so it says
+  // so quietly, as the build that makes it says why if it cannot (A02).
+  bool unbuilt = false;
 
   bool loaded() const {
     return !shaders.empty();

@@ -176,7 +176,7 @@ Schedule::Schedule(const Wiring &wiring,
     if (!bound.errors.empty())
       drop_commands(bound);
     for (const std::string &error : bound.errors)
-      _wiring.log.write(Level::error,
+      _wiring.log.write(bound.unbuilt ? Level::info : Level::error,
                         Tag::nod,
                         std::format("{} node {}: {}",
                                     bound.node->where.empty() ? file : bound.node->where,
@@ -204,7 +204,7 @@ void Schedule::load_shaders(Bound &bound,
     return;
   for (const std::string &shader : shaders) {
     std::error_code missing;
-    bound.spirv.push_back(folder / (shader + ".spv"));
+    bound.spirv.push_back(spirv_of(folder, shader));
     bound.built.push_back(std::filesystem::last_write_time(bound.spirv.back(), missing));
     if (missing) {
       bound.errors.push_back(std::format("{} is not built: the build compiles it to {}",

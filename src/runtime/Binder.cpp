@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <format>
 #include <optional>
 #include <span>
@@ -21,6 +22,29 @@ namespace {
 // Views own their copies (V03), so the build names a node's module "view/folder".
 std::string module_of(const View &view, const Node &node) {
   return std::format("{}/{}", view.name, node.module.generic_string());
+}
+
+// Whether a live build has made none of a node's code yet, neither its shaders' SPIR-V
+// nor its module, as for a node of a project loaded before it was ever built, which it
+// then builds. Without a live build, nothing will.
+bool unbuilt(const Node &node,
+             const std::string &module,
+             const std::filesystem::path &folder,
+             const Modules &modules) {
+  if constexpr (!VP_LIVE)
+    return false;
+  bool code = runs_operator(node);
+  if (code && modules.built(module, folder))
+    return false;
+  for (const std::string &file : node.files) {
+    if (std::ranges::none_of(stages, [&](auto stage) { return file.ends_with(stage); }))
+      continue;
+    std::error_code unread;
+    if (std::filesystem::exists(spirv_of(folder, file), unread))
+      return false;
+    code = true;
+  }
+  return code;
 }
 
 } // namespace
@@ -372,6 +396,14 @@ Bound Schedule::bind(const Node &node,
           std::format("log = {} is not error, warn, info or debug", node.log));
   }
   Bound *const old = replaced ? replaced->find(node.name) : nullptr;
+  // Its every error would be what the build has not made yet, and the view vulpen started
+  // with fails loud on any, as ever.
+  if (!_name.empty() && unbuilt(node, module_of(_view, node), folder, _wiring.modules)) {
+    bound.unbuilt = true;
+    bound.errors.emplace_back(
+        "is not built yet: the live build builds it, and says why if it cannot");
+    return bound;
+  }
   load_shaders(bound, folder, old);
   // So an edit makes blocks only for the nodes it changed.
   if (old && old->block && old->block_size == bound.block_size)

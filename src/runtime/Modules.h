@@ -41,6 +41,9 @@ public:
   std::string sole(const std::string &module, const std::filesystem::path &folder);
   // Modules, as "view/folder", that the build rewrote since they loaded.
   std::vector<std::string> rewritten() const;
+  // Whether the build made the module: linked in, or in the build tree, where a dev build
+  // puts it once it first builds the node's folder.
+  bool built(const std::string &module, const std::filesystem::path &folder) const;
   // The next make() loads the rebuilt module. The caller has destroyed the module's
   // operators first: their code is in it.
   void unload(const std::string &module);
