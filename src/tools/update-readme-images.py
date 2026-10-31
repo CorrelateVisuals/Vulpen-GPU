@@ -115,9 +115,10 @@ CLEAR = ["input key down control", "input key down l", "input key up l",
          "input key up control"]
 INSIDE_IDE = ["ide: param unset ide.graph.relations folder", "view switch ide",
               "ide: param set ide.graph.graph inside ide", "ide: focus"]
-# Life, sown again and held after as many generations on every run, however many frames
-# the lines before took, so its cells draw alike (C01).
-HELD = ["param set engine generations 40", "engine seed"]
+# Ray-cubes held still: the cubes, the camera and the lamp each where it is at frame 0,
+# however many frames the lines before took, so it draws alike on every run (C01).
+HELD = ["param set spin speed 0", "param set orbit frames_per_turn 0",
+        "param set lamp frames_per_turn 0"]
 # Each picture, by its file's name, and the lines that make it, from where the scene
 # before left the ide. Whatever turns is held still, and each ends with no focus, so no
 # caret blinks: the picture is the same at whatever frame it is taken. No line shows an
@@ -125,30 +126,30 @@ HELD = ["param set engine generations 40", "engine seed"]
 # zoom are for the README's column, about 880 pixels wide, so the text reads there.
 # The cover: a node's C++ beside the project's graph and what it draws, wide.
 HERO = {
-    "hero": [*CLEAR, *typed("view load life"), *HELD, *typed("open Engine.cpp"),
-             *typed("info engine"), *zoom(7), *panels("hide", "terminal"),
-             *ratio("top", 0.5), *ratio("side", 0.46), *scroll(500, 400, -6, 2400),
+    "hero": [*CLEAR, *typed("view load ray-cubes"), *HELD, *typed("open Orbit.cpp"),
+             *typed("info orbit"), *zoom(7), *panels("hide", "terminal"),
+             *ratio("top", 0.5), *ratio("side", 0.46), *scroll(500, 400, -7, 2400),
              "ide: focus"],
 }
 # Three squares side by side: the graph, a shader and the terminal, each given the window.
 TILES = {
-    "tile-graph": [*CLEAR, "view load life", *HELD, *zoom(9), *panels("maximize", "graph"),
-                   "ide: focus"],
-    "tile-code": [*panels("maximize", "graph"), "open Engine.comp",
+    "tile-graph": [*CLEAR, "view load ray-cubes", *HELD, "cd bounce1", *zoom(9),
+                   *panels("maximize", "graph"), "ide: focus"],
+    "tile-code": [*panels("maximize", "graph"), "cd ..", "open Rays.comp",
                   *panels("maximize", "editor"), "ide: focus"],
     "tile-terminal": [*panels("maximize", "editor"), *panels("maximize", "terminal"),
                       "ide: focus ide.terminal.command-line", *typed("ls"),
-                      *typed("info engine"), "ide: focus"],
+                      *typed("info rays"), "ide: focus"],
 }
 # The sections' pictures: the manifest beside its graph, the project in the whole window,
 # the command line, the repository's top in the graph, and the ide inside its own graph.
 DETAILS = {
-    "manifest": [*CLEAR, "view load life", *HELD, *zoom(5), "open",
+    "manifest": [*CLEAR, "view load ray-cubes", *HELD, *zoom(5), "open",
                  *panels("hide", "perform", "terminal"), "ide: focus"],
     "perform": ["ide: mode perform"],
     "cli": ["ide: mode edit", *panels("maximize", "terminal"),
             "ide: focus ide.terminal.command-line", *CLEAR, *typed("help"), *typed("ls"),
-            *typed("info engine"), "ide: focus"],
+            *typed("info rays"), "ide: focus"],
     "graph-repository": [*panels("maximize", "terminal", "graph"), *graph("./")],
     "graph-ide": INSIDE_IDE,
 }

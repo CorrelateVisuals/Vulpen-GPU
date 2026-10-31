@@ -25,22 +25,22 @@
   <a href="#license">License</a>
 </p>
 
-![The Vulpen ide: a node's C++ on the left, the project's graph and the cells of Conway's Game of Life it steps on the right](docs/images/hero.png)
+![The Vulpen ide: a node's C++ on the left, the camera of the ray-cubes example, and on the right the project's graph and the mirror cubes it ray traces](docs/images/hero.png)
 
 ## What you get
 
 <table>
 <tr>
 <td width="33%" valign="top">
-<img src="docs/images/tile-graph.png" alt="The graph of the life example: seed-cells, engine and cells" /><br />
+<img src="docs/images/tile-graph.png" alt="The graph inside the first bounce of the ray-cubes example: trace, shadow, shade and reflect, and the wires between them" /><br />
 <b>Programs are graphs.</b> A small manifest names the nodes and the connections between them. The graph is that manifest as it runs, and Vulpen places every Vulkan barrier from it.
 </td>
 <td width="33%" valign="top">
-<img src="docs/images/tile-code.png" alt="Engine.comp, the compute shader that steps the life example's cells, its pass block set by Engine.cpp" /><br />
+<img src="docs/images/tile-code.png" alt="Rays.comp, the compute shader that casts a ray a pixel in the ray-cubes example, its pass block's connections from orbit and to the first bounce" /><br />
 <b>C++ and GLSL meet by name.</b> A node's C++ asks for its shaders' values, buffers and images by the names the shaders give them, checked against SPIR-V reflection before the first frame.
 </td>
 <td width="33%" valign="top">
-<img src="docs/images/tile-terminal.png" alt="The terminal: ls and info engine on the life example" /><br />
+<img src="docs/images/tile-terminal.png" alt="The terminal: ls and info rays on the ray-cubes example" /><br />
 <b>Every action is a command.</b> The ide's presses and drags included: anything it does can be typed, scripted with <code>--source</code>, or replayed from a log, with no window at all.
 </td>
 </tr>
@@ -93,7 +93,7 @@ GLFW, GLM, stb, tinyobjloader and the Vulkan Memory Allocator come with the repo
 
 A project is a view: one manifest, `view.vlp`, and a folder for each node. A node is a C++ class, shaders, or both, and a connection carries a GPU buffer, an image or a C++ object from one node's port to the others.
 
-![The manifest of the life example beside the graph it makes](docs/images/manifest.png)
+![The manifest of the ray-cubes example beside the graph it makes](docs/images/manifest.png)
 
 - **Barriers come from the graph.** Each node declares what it reads and writes, and Vulpen places the Vulkan barriers between passes.
 - **Data stays on the GPU** from node to node, until C++ reads it back.
@@ -112,7 +112,7 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 <details>
 <summary><b>Perform mode, the graph of a whole repository, and the ide inside its own graph</b></summary>
 
-![The life example in perform mode, filling the window](docs/images/perform.png)
+![The ray-cubes example in perform mode, filling the window](docs/images/perform.png)
 *Perform mode, <kbd>F1</kbd>: the project in the whole window, as it would run on its own.*
 
 ![The repository's top in the graph, its folders and the relations between them](docs/images/graph-repository.png)
