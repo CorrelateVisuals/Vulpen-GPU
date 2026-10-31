@@ -5,7 +5,8 @@
 # out each one's frame, one unit cube instanced. Then rays casts a ray a pixel, and each
 # bounce, a group of four, traces where its rays meet a cube, shadows the hits, shades
 # them and sends the rays on mirrored to the next bounce. sky gives the rays still going
-# the sky, tone puts the light on the frame, screen shows it, and meter reads it back.
+# the sky, smooth smooths its edges, tone puts the light on the frame, screen shows it,
+# and meter reads it back.
 # The shared code is in shared/, what the connections carry in contracts/. Run
 # ./run.sh --ray-cubes, then type `param set spin speed 0` to hold the cubes, `param set
 # orbit frames_per_turn 0` the camera, or `meter read` for the light at eight spots.
@@ -57,74 +58,78 @@ invocations = 65
 [node "place"]
 invocations = 65
 
-# A ray a pixel: size.x * size.y = 518400 invocations, as every node after it but tone,
+# A ray a pixel: size.x * size.y = 2073600 invocations, as every node after it but tone,
 # which fills the frame, and meter, which reads 8 spots.
 [node "rays"]
-invocations = 518400
-param       = size=960,540
+invocations = 2073600
+param       = size=1920,1080
 
 # A bounce: trace, shadow, shade and reflect, a group. Each bounce after it is a copy,
 # its rays the reflected rays of the one before, its light added to theirs.
 [node "bounce1"]
 
 [node "bounce1.trace"]
-invocations = 518400
+invocations = 2073600
 
 [node "bounce1.shadow"]
-invocations = 518400
+invocations = 2073600
 
 [node "bounce1.shade"]
-invocations = 518400
+invocations = 2073600
 param       = ambient=0.1
 param       = shine=0.6
 param       = sharpness=48
 
 [node "bounce1.reflect"]
-invocations = 518400
+invocations = 2073600
 param       = tint=0.6
 
 [node "bounce2"]
 
 [node "bounce2.trace"]
-invocations = 518400
+invocations = 2073600
 
 [node "bounce2.shadow"]
-invocations = 518400
+invocations = 2073600
 
 [node "bounce2.shade"]
-invocations = 518400
+invocations = 2073600
 param       = ambient=0.1
 param       = shine=0.6
 param       = sharpness=48
 
 [node "bounce2.reflect"]
-invocations = 518400
+invocations = 2073600
 param       = tint=0.6
 
 [node "bounce3"]
 
 [node "bounce3.trace"]
-invocations = 518400
+invocations = 2073600
 
 [node "bounce3.shadow"]
-invocations = 518400
+invocations = 2073600
 
 [node "bounce3.shade"]
-invocations = 518400
+invocations = 2073600
 param       = ambient=0.1
 param       = shine=0.6
 param       = sharpness=48
 
 [node "bounce3.reflect"]
-invocations = 518400
+invocations = 2073600
 param       = tint=0.6
 
 [node "sky"]
-invocations = 518400
+invocations = 2073600
+
+[node "smooth"]
+invocations = 2073600
+param       = size=1920,1080
 
 [node "tone"]
 invocations = 65536
-param       = size=960,540
+param       = size=1920,1080
 param       = exposure=1.4
 
 # One triangle over the window, a pixel showing its own texel.
@@ -133,7 +138,7 @@ vertex_count = 3
 
 [node "meter"]
 invocations = 8
-param       = size=960,540
+param       = size=1920,1080
 
 # The scene, into the bounces.
 [connection "camera"]
@@ -255,8 +260,12 @@ to   = sky.rays
 # The light gathered, onto the window, and read back.
 [connection "final"]
 from = sky.after
-to   = tone.gathered
+to   = smooth.before
 to   = meter.gathered
+
+[connection "smoothed"]
+from = smooth.after
+to   = tone.gathered
 
 [connection "picture"]
 from = tone.picture
