@@ -18,12 +18,9 @@
 
 namespace {
 
-constexpr std::string_view manifest = "view.vlp";
 // What a drop copies besides the nodes' files: the contracts and the shared code they
 // include, at the same path from the view's top (RV05, RV09). The library keeps its
 // shared code in parts/, beside the parts that include it, and lists it as no recipe.
-constexpr std::string_view contracts = "contracts";
-constexpr std::string_view shared = "shared";
 constexpr std::string_view parts = "parts";
 constexpr std::string_view include_start = "#include \"";
 // The template's files, a folder of the library part's template node for each kind of
@@ -123,7 +120,7 @@ bool holds(VP::FilePort &files,
 
 // Whether a folder of a kind's, as the file port names them, is the shared code's.
 bool shared_code(std::string_view kind, std::string_view folder) {
-  return kind.substr(0, kind.size() - 1) == parts && folder == shared;
+  return kind.substr(0, kind.size() - 1) == parts && folder == VP::shared_folder;
 }
 
 // As text, since neither path need exist.
@@ -131,24 +128,6 @@ bool inside(const std::filesystem::path &path, const std::filesystem::path &fold
   const std::filesystem::path relative =
       path.lexically_normal().lexically_relative(folder.lexically_normal());
   return !relative.empty() && *relative.begin() != "..";
-}
-
-// Names of letters, digits, _ and -, joined by dots: the nodes a node is inside, then
-// its own.
-bool is_path(std::string_view text) {
-  const auto name = [](std::string_view part) {
-    return !part.empty() && std::ranges::all_of(part, [](char letter) {
-      return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
-             (letter >= '0' && letter <= '9') || letter == '_' || letter == '-';
-    });
-  };
-  for (std::size_t dot = text.find('.'); dot != std::string_view::npos;
-       dot = text.find('.')) {
-    if (!name(text.substr(0, dot)))
-      return false;
-    text.remove_prefix(dot + 1);
-  }
-  return name(text);
 }
 
 // What a file includes that a drop copies along, each once, in the order found: a
@@ -165,24 +144,13 @@ void includes_of(std::string_view text,
       continue;
     const std::filesystem::path top = *name.begin();
     std::filesystem::path file;
-    if (top == contracts || top == shared)
+    if (top == VP::contracts_folder || top == VP::shared_folder)
       file = name;
     else if (!folder.empty() && name == top)
       file = folder / name;
     if (!file.empty() && std::ranges::find(found, file) == found.end())
       found.push_back(std::move(file));
   }
-}
-
-// ui.panel as the path ui/panel, as a node's folder is its name's path (RV08).
-std::filesystem::path path_of(std::string_view name) {
-  std::filesystem::path path;
-  for (std::size_t dot = name.find('.'); dot != std::string_view::npos;
-       dot = name.find('.')) {
-    path /= name.substr(0, dot);
-    name.remove_prefix(dot + 1);
-  }
-  return path / name;
 }
 
 // A new node's own name, which names its C++ class too: a lowercase letter, then
@@ -254,11 +222,9 @@ struct Copy {
 
 // A node's name inside the one named root; none for a node outside it.
 std::optional<std::string> inner_name(std::string_view root, std::string_view name) {
-  if (name == root)
-    return std::string();
-  if (name.size() > root.size() && name.starts_with(root) && name[root.size()] == '.')
-    return std::string(name.substr(root.size() + 1));
-  return std::nullopt;
+  if (!VP::within(name, root))
+    return std::nullopt;
+  return name == root ? std::string() : std::string(name.substr(root.size() + 1));
 }
 
 std::string outer_name(std::string_view root, std::string_view inner) {
@@ -487,7 +453,7 @@ class Library final : public VP::Operator {
                         const std::filesystem::path &view,
                         std::string_view name,
                         bool folder_there = false) {
-    if (!is_path(name))
+    if (!VP::is_path(name))
       throw std::runtime_error(std::format("{} is no node's name: names of letters, "
                                            "digits, _ and -, joined by dots",
                                            name));
@@ -500,7 +466,7 @@ class Library final : public VP::Operator {
             graph.nodes.end())
       throw std::runtime_error(
           std::format("{} is inside {}, which is no node", name, name.substr(0, dot)));
-    const std::filesystem::path folder = view / path_of(name);
+    const std::filesystem::path folder = view / VP::path_of(name);
     if (!folder_there &&
         holds(call.files(), folder.parent_path(), folder.filename().string() + '/'))
       throw std::runtime_error(std::format(
@@ -538,7 +504,7 @@ class Library final : public VP::Operator {
                                            "letter, then lowercase letters, digits and -",
                                            own));
     const std::filesystem::path view = view_folder(call);
-    const std::filesystem::path folder = view / path_of(name);
+    const std::filesystem::path folder = view / VP::path_of(name);
     const bool there =
         holds(call.files(), folder.parent_path(), folder.filename().string() + '/');
     check_new(call, view, name, there);
@@ -581,7 +547,8 @@ class Library final : public VP::Operator {
   // A recipe as a drop copies it: its own node, named like its folder, and the nodes
   // inside it, with each recipe they use unfolded, as a view would run it (V11).
   Copy recipe(VP::FilePort &files, const std::string &recipe) const {
-    const VP::View graph = files.manifest((find(files, recipe) / manifest).string());
+    const VP::View graph =
+        files.manifest((find(files, recipe) / VP::manifest_file).string());
     if (std::ranges::find(graph.nodes, recipe, &VP::Node::name) == graph.nodes.end())
       throw std::runtime_error(
           std::format("recipe {} has no node {}: a recipe is one node "
@@ -609,7 +576,7 @@ class Library final : public VP::Operator {
     const VP::View read = files.manifest(view.file.string());
     Copy copy = copy_of(view, root);
     for (Inner &inner : copy.nodes) {
-      inner.node.folder = folder / path_of(outer_name(root, inner.name));
+      inner.node.folder = folder / VP::path_of(outer_name(root, inner.name));
       if (const auto now = std::ranges::find(read.nodes, inner.node.name, &VP::Node::name);
           now != read.nodes.end())
         inner.node.files = now->files;
@@ -629,14 +596,15 @@ class Library final : public VP::Operator {
       for (const std::string &file : inner.node.files) {
         const std::string text = files.read((inner.node.folder / file).string());
         includes_of(text, {}, included);
-        files.save((view / path_of(outer_name(root, inner.name)) / file).string(), text);
+        files.save((view / VP::path_of(outer_name(root, inner.name)) / file).string(),
+                   text);
       }
     for (std::size_t next = 0; next < included.size(); ++next) {
       const std::filesystem::path file = included[next];
       if (holds(files, view / file.parent_path(), file.filename().string()))
         continue;
       const std::filesystem::path from =
-          *file.begin() == shared ? _library / parts / file : _library / file;
+          *file.begin() == VP::shared_folder ? _library / parts / file : _library / file;
       const std::string text = files.read(from.string());
       includes_of(text, file.parent_path(), included);
       files.save((view / file).string(), text);
@@ -679,7 +647,7 @@ class Library final : public VP::Operator {
     call.reply(
         std::format("copied {} into {}, as node {} of recipe {}{}{}, and saved the view",
                     from,
-                    (view / path_of(name)).string(),
+                    (view / VP::path_of(name)).string(),
                     name,
                     from,
                     fingerprint_mark,
@@ -860,11 +828,11 @@ class Library final : public VP::Operator {
     const std::filesystem::path folder = view_folder(call);
     check_new(call, folder, to);
     const std::vector<std::string> lines = renames(view, from, to);
-    const std::filesystem::path old_folder = folder / path_of(from);
+    const std::filesystem::path old_folder = folder / VP::path_of(from);
     const bool moves =
         holds(call.files(), old_folder.parent_path(), old_folder.filename().string() + '/');
     if (moves)
-      call.files().rename(old_folder.string(), (folder / path_of(to)).string());
+      call.files().rename(old_folder.string(), (folder / VP::path_of(to)).string());
     for (const std::string &line : lines)
       call.commands().send(line);
     save_view(call);
@@ -891,7 +859,7 @@ class Library final : public VP::Operator {
           "their own; node remove keep {} takes the node from the view running",
           view.file.string(),
           name));
-    const std::filesystem::path folder = view.file.parent_path() / path_of(name);
+    const std::filesystem::path folder = view.file.parent_path() / VP::path_of(name);
     const bool there =
         holds(call.files(), folder.parent_path(), folder.filename().string() + '/');
     call.commands().send(std::format("node remove keep {}", name));
