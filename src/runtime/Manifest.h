@@ -6,6 +6,7 @@
 
 namespace VP {
 
+struct Recipes;
 struct View;
 
 // The .vlp text of a view, both ways, and the folders it names. Load, save and migrate
@@ -28,11 +29,26 @@ public:
   // The view as the schedule runs it: each node with its folder, and in a recipe of the
   // library each recipe a node uses unfolded into that node and the nodes inside it,
   // with the params the node sets (V11). Throws naming what does not unfold: a recipe
-  // the library lacks, uses that form a cycle (RV06), a node inside no node.
-  static View flatten(const View &view);
+  // the library lacks, uses that form a cycle (RV06), a node inside no node. A recipe
+  // recipes holds is taken from there while the files it was read from are unchanged.
+  static View flatten(const View &view, Recipes &recipes);
   // The folder a view's files are in, which the live scan watches: the view's own, or
   // every recipe's, the library's and the apps', for a recipe or an app run as a view.
   static std::filesystem::path root(const View &view);
+};
+
+// The library's recipes as flatten unfolded them, each with the times its manifest, its
+// nodes' folders and those of the recipes it uses were written, so a flatten reads again
+// only a recipe whose files changed since: every edit flattens its view (C03).
+struct Recipes {
+  struct Kept; // in Manifest.cpp, which alone reads them
+
+  Recipes();
+  ~Recipes();
+  Recipes(const Recipes &) = delete;
+  Recipes &operator=(const Recipes &) = delete;
+
+  std::vector<Kept> kept;
 };
 
 } // namespace VP

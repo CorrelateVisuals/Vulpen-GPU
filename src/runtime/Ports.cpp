@@ -273,7 +273,7 @@ void Ports::start(std::string_view program, std::span<const std::string> argumen
 View Ports::manifest(std::string_view file) {
   View view = Manifest::load(absolute(file));
   Manifest::refresh(view);
-  return Manifest::flatten(view);
+  return Manifest::flatten(view, _recipes);
 }
 
 // What a node reads of the input while a node outside the one it is in holds the
@@ -306,8 +306,8 @@ private:
   Ports &_ports;
 };
 
-Ports::Ports(const Log &log)
-    : _log(log), _unheld_input(std::make_unique<Unheld>(*this)) {}
+Ports::Ports(const Log &log, Recipes &recipes)
+    : _log(log), _recipes(recipes), _unheld_input(std::make_unique<Unheld>(*this)) {}
 
 Ports::~Ports() {
   if (!_raw)

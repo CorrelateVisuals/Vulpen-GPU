@@ -297,7 +297,8 @@ private:
   std::optional<Window> _window;   // outlives the engine, which draws into it
   std::optional<Engine> _engine;
   Modules _modules; // outlives the schedules, whose operators run its code
-  Ports _ports{_log};
+  Recipes _recipes; // outlives the views and the file port, which unfold from it
+  Ports _ports{_log, _recipes};
   Feed _feed{_ports};
   Commands _commands;
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
@@ -427,7 +428,7 @@ bool Runtime::start() {
   const std::filesystem::path folder = Manifest::root(view);
   // Only a view that draws into the window opens one; every other view runs headless
   // (V07), its draws into images at --size.
-  const bool shows = Schedule::shows(Manifest::flatten(view));
+  const bool shows = Schedule::shows(Manifest::flatten(view, _recipes));
   _log.write(Level::info,
              Tag::run,
              std::format("view {} from {}: {}",
@@ -453,7 +454,7 @@ bool Runtime::start() {
                          .views = _mirror,
                          .commands = _commands,
                          .ports = _ports});
-  _views.emplace(*_wiring, std::move(view), _commands);
+  _views.emplace(*_wiring, std::move(view), _commands, _recipes);
   _commands.look_in(*_views);
   _edits.emplace(_commands, *_views);
   if (!ok())

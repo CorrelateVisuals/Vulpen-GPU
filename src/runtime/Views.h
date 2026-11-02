@@ -18,6 +18,7 @@ class Schedule;
 struct Child;
 struct Offscreen;
 struct Pass;
+struct Recipes;
 struct Wiring;
 
 // Every view this process runs: the one it started with and the views it hosts (V03),
@@ -26,8 +27,9 @@ struct Wiring;
 class Views final : public ViewLookup, public CommandHandler {
 public:
   // Builds the schedule of the view vulpen started with, hosts the views it names, and
-  // registers view save, view list and image clear.
-  Views(const Wiring &wiring, View view, Commands &commands);
+  // registers view save, view list and image clear. recipes: what each view's recipes
+  // unfold from, borrowed (A01).
+  Views(const Wiring &wiring, View view, Commands &commands, Recipes &recipes);
   ~Views();
   Views(const Views &) = delete;
   Views &operator=(const Views &) = delete;
@@ -122,6 +124,7 @@ private:
 
   const Wiring &_wiring;
   Commands &_port; // which says the view a command addresses, and the current view
+  Recipes &_recipes;
   std::vector<std::unique_ptr<Hosted>> _hosted; // the host first
   std::vector<Schedule *> _schedules;           // by _hosted, once built
   const Hosted *_owner = nullptr; // the window's, as the last rebuild chose it

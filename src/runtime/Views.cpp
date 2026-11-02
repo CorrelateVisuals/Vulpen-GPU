@@ -26,8 +26,8 @@ std::filesystem::file_time_type stamp(const std::filesystem::path &file) {
 
 // Throws naming what keeps it from running: a recipe the library lacks, or a cycle that
 // runs through the nodes of a recipe a node uses, which no single edit could show.
-std::unique_ptr<View> flat_of(const View &view) {
-  auto flat = std::make_unique<View>(Manifest::flatten(view));
+std::unique_ptr<View> flat_of(const View &view, Recipes &recipes) {
+  auto flat = std::make_unique<View>(Manifest::flatten(view, recipes));
   Schedule::order(*flat);
   return flat;
 }
@@ -79,13 +79,13 @@ struct Views::Hosted {
 
 // The view vulpen started with is built before any command registers, so no command
 // is left to a handler whose constructor threw.
-Views::Views(const Wiring &wiring, View view, Commands &commands)
-    : _wiring(wiring), _port(commands), _hosted([&] {
+Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recipes)
+    : _wiring(wiring), _port(commands), _recipes(recipes), _hosted([&] {
         std::vector<std::unique_ptr<Hosted>> hosted;
         Hosted &host = *hosted.emplace_back(std::make_unique<Hosted>());
         host.read = stamp(view.file);
         host.view = std::make_unique<View>(std::move(view));
-        host.flat = flat_of(*host.view);
+        host.flat = flat_of(*host.view, recipes);
         host.schedule =
             std::make_unique<Schedule>(wiring, "", *host.flat, Schedule::Into::window);
         return hosted;
@@ -362,7 +362,7 @@ void Views::reload(Hosted &hosted) {
   View view = *hosted.view;
   const std::vector<std::string> notes = Manifest::refresh(view);
   try {
-    hosted.edited_flat = flat_of(view);
+    hosted.edited_flat = flat_of(view, _recipes);
     hosted.edited = std::make_unique<View>(std::move(view));
     note(_wiring.log, *hosted.edited, Level::info, notes);
   } catch (const std::exception &failure) {
@@ -384,7 +384,7 @@ void Views::reread(Hosted &hosted) {
   const CommandLog::Mark mark{hosted.name, hosted.marked};
   const std::string unsaved = _port.session().after(std::span(&mark, 1), {});
   auto view = std::make_unique<View>(read(_wiring.log, hosted.current().file));
-  auto flat = flat_of(*view);
+  auto flat = flat_of(*view, _recipes);
   std::unique_ptr<View> was = std::exchange(hosted.edited, std::move(view));
   std::unique_ptr<View> was_flat = std::exchange(hosted.edited_flat, std::move(flat));
   try {
@@ -424,7 +424,7 @@ void Views::replace(std::string_view name, View view) {
   if (!found)
     throw std::runtime_error(std::format("no view is named {}", name));
   const std::vector<std::string> notes = Manifest::refresh(view);
-  auto flat = flat_of(view);
+  auto flat = flat_of(view, _recipes);
   if (!_port.replaying())
     follow(found->name, view);
   found->edited_flat = std::move(flat);
@@ -490,7 +490,7 @@ void Views::host(const Child &child, const std::string &parent) {
           child.file.string(),
           view->name,
           hosted->current().file.string()));
-  auto flat = flat_of(*view);
+  auto flat = flat_of(*view, _recipes);
   if (!exists)
     _wiring.log.write(
         Level::info,

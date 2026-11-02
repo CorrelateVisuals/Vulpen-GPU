@@ -17,6 +17,7 @@ class Commands;
 class Log;
 class RawTerminal;
 class Window;
+struct Recipes;
 
 // The general ports a node reads besides commands (V05): input from the window or the
 // input command, files, and the terminal's lines. One owner feeds every node, so each
@@ -27,8 +28,9 @@ class Ports final : public InputPort,
                     public TerminalPort,
                     public CommandHandler {
 public:
-  // log: what clears the line typed at the terminal before it prints.
-  explicit Ports(const Log &log);
+  // log: what clears the line typed at the terminal before it prints. recipes: what a
+  // manifest read here unfolds its recipes from, borrowed (A01).
+  Ports(const Log &log, Recipes &recipes);
   // The line typed goes first, so what prints after the run starts on a clean row.
   ~Ports();
   Ports(const Ports &) = delete;
@@ -110,6 +112,7 @@ private:
   std::uint32_t _opened = 0;
   std::uint64_t _frames = 0;
   const Log &_log;
+  Recipes &_recipes;
   std::vector<std::string> _lines; // this frame's
   std::string _partial;            // a line still being typed
   bool _read = false;              // whether this frame read standard input

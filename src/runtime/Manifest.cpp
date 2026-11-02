@@ -20,6 +20,18 @@
 
 namespace VP {
 
+// A recipe as unfolded, and each file and folder it was read from, as written then.
+struct Recipes::Kept {
+  struct Read {
+    std::filesystem::path path;
+    std::filesystem::file_time_type written;
+  };
+  std::string name;
+  std::filesystem::path root; // its library's
+  View recipe;
+  std::vector<Read> read;
+};
+
 namespace {
 
 constexpr std::uint32_t manifest_version = 1;
@@ -494,9 +506,26 @@ std::string at(const Node &node) {
   return node.where.empty() ? std::string() : node.where + ": ";
 }
 
-View flattened(View view,
-               const std::filesystem::path &root,
-               std::vector<std::string> &using_recipes);
+// What a flatten carries into each recipe it unfolds.
+struct Unfolding {
+  std::filesystem::path root; // the library's
+  Recipes &recipes;
+  std::vector<std::string> using_recipes; // outermost first, so a cycle shows
+};
+
+View flattened(View view, Unfolding &unfolding);
+
+// One that is gone reads as never written, so it is read again once it is back.
+std::filesystem::file_time_type written(const std::filesystem::path &path) {
+  std::error_code gone;
+  return std::filesystem::last_write_time(path, gone);
+}
+
+auto kept_of(Unfolding &unfolding, std::string_view name) {
+  return std::ranges::find_if(unfolding.recipes.kept, [&](const Recipes::Kept &kept) {
+    return kept.name == name && kept.root == unfolding.root;
+  });
+}
 
 // A param of a node that uses a recipe sets the recipe's own node, or with a dotted key
 // a node inside it, by its name inside the recipe: panel.rows=4.
@@ -524,35 +553,83 @@ void set_params(View &recipe, const Node &user) {
   }
 }
 
-// Into the view, the recipe a node uses, as that node and the nodes inside it (V11): a
-// recipe is one node named like its folder, and the nodes inside it.
-void unfold(View &view,
-            const Node &user,
-            const std::filesystem::path &root,
-            std::vector<std::string> &using_recipes) {
-  if (std::ranges::find(using_recipes, user.recipe) != using_recipes.end())
-    throw std::runtime_error(
-        std::format("the recipes it uses form a cycle through {} (RV06)", user.recipe));
-  View recipe = Manifest::load(recipe_folder(root, user.recipe) / manifest_file);
-  Manifest::refresh(recipe);
-  using_recipes.push_back(user.recipe);
-  recipe = flattened(std::move(recipe), root, using_recipes);
-  using_recipes.pop_back();
-  const std::string inside = user.recipe + '.';
-  if (std::ranges::find(recipe.nodes, user.recipe, &Node::name) == recipe.nodes.end())
+// A recipe is one node named like its folder and the nodes inside it, hosting no view.
+void check_recipe(const View &recipe, const std::string &name) {
+  const std::string inside = name + '.';
+  if (std::ranges::find(recipe.nodes, name, &Node::name) == recipe.nodes.end())
     throw std::runtime_error(std::format(
         "recipe {} has no node {}: a recipe is one node named like its folder, and the "
         "nodes inside it",
-        user.recipe,
-        user.recipe));
+        name,
+        name));
   for (const Node &node : recipe.nodes)
-    if (node.name != user.recipe && !node.name.starts_with(inside))
+    if (node.name != name && !node.name.starts_with(inside))
       throw std::runtime_error(std::format(
           "recipe {} holds node {}, which is not inside its node {}: a recipe is one "
           "node, and the nodes inside it",
-          user.recipe,
+          name,
           node.name,
-          user.recipe));
+          name));
+  for (const Connection &connection : recipe.connections)
+    if (connection.from.view())
+      throw std::runtime_error(
+          std::format("recipe {} takes the window of view {}, which a node that uses "
+                      "the recipe does not host",
+                      name,
+                      connection.from.node));
+}
+
+// A recipe as a node that uses it unfolds it, before its params and names: its manifest,
+// its nodes' files, and the recipes they use, unfolded in turn. What it is read from is
+// timed before it is read, so a change meanwhile reads it again at the next flatten.
+View read_recipe(const std::string &name,
+                 Unfolding &unfolding,
+                 std::vector<Recipes::Kept::Read> &reads) {
+  if (std::ranges::find(unfolding.using_recipes, name) != unfolding.using_recipes.end())
+    throw std::runtime_error(
+        std::format("the recipes it uses form a cycle through {} (RV06)", name));
+  const std::filesystem::path file = recipe_folder(unfolding.root, name) / manifest_file;
+  reads.push_back({file, written(file)});
+  View recipe = Manifest::load(file);
+  const std::filesystem::path base = base_of(recipe);
+  std::vector<std::string> uses;
+  for (const Node &node : recipe.nodes)
+    if (node.uses())
+      uses.push_back(node.recipe);
+    else
+      reads.push_back({base / path_of(node.name), written(base / path_of(node.name))});
+  Manifest::refresh(recipe);
+  unfolding.using_recipes.push_back(name);
+  recipe = flattened(std::move(recipe), unfolding);
+  unfolding.using_recipes.pop_back();
+  // Each kept now, as it unfolded; one two of them use was read from the same files.
+  for (const std::string &used : uses)
+    for (const Recipes::Kept::Read &read : kept_of(unfolding, used)->read)
+      if (std::ranges::find(reads, read.path, &Recipes::Kept::Read::path) == reads.end())
+        reads.push_back(read);
+  check_recipe(recipe, name);
+  return recipe;
+}
+
+// The recipe as read_recipe reads it, from those kept while what it was read from is
+// unchanged; one that does not unfold is not kept, so each use names its mistake.
+View recipe_of(const std::string &name, Unfolding &unfolding) {
+  std::vector<Recipes::Kept> &kept = unfolding.recipes.kept;
+  if (const auto found = kept_of(unfolding, name); found != kept.end()) {
+    if (std::ranges::all_of(found->read, [](const Recipes::Kept::Read &read) {
+          return written(read.path) == read.written;
+        }))
+      return found->recipe;
+    kept.erase(found);
+  }
+  Recipes::Kept fresh{.name = name, .root = unfolding.root};
+  fresh.recipe = read_recipe(name, unfolding, fresh.read);
+  return kept.emplace_back(std::move(fresh)).recipe;
+}
+
+// Into the view, the recipe a node uses, as that node and the nodes inside it (V11).
+void unfold(View &view, const Node &user, Unfolding &unfolding) {
+  View recipe = recipe_of(user.recipe, unfolding);
   set_params(recipe, user);
   const auto named = [&](std::string &name) {
     name = user.name + name.substr(user.recipe.size());
@@ -569,12 +646,6 @@ void unfold(View &view,
     view.nodes.push_back(std::move(node));
   }
   for (Connection &connection : recipe.connections) {
-    if (connection.from.view())
-      throw std::runtime_error(
-          std::format("recipe {} takes the window of view {}, which a node that uses "
-                      "the recipe does not host",
-                      user.recipe,
-                      connection.from.node));
     connection.name = std::format("{}.{}", user.name, connection.name);
     named(connection.from.node);
     for (Endpoint &to : connection.to)
@@ -584,19 +655,17 @@ void unfold(View &view,
 }
 
 // Each node with its folder, and each node that uses a recipe unfolded in its place.
-View flattened(View view,
-               const std::filesystem::path &root,
-               std::vector<std::string> &using_recipes) {
+View flattened(View view, Unfolding &unfolding) {
   const std::filesystem::path base = base_of(view);
   for (Node &node : std::exchange(view.nodes, {})) {
     if (!node.uses()) {
       node.folder = base / path_of(node.name);
-      node.module = node.folder.lexically_relative(root);
+      node.module = node.folder.lexically_relative(unfolding.root);
       view.nodes.push_back(std::move(node));
       continue;
     }
     try {
-      unfold(view, node, root, using_recipes);
+      unfold(view, node, unfolding);
     } catch (const std::runtime_error &failure) {
       throw std::runtime_error(
           std::format("{}node {}: {}", at(node), node.name, failure.what()));
@@ -691,11 +760,11 @@ std::vector<std::string> Manifest::unnamed(const View &view) {
 
 // A connection may name a node inside a recipe a node uses, which only the view with
 // those recipes unfolded shows.
-View Manifest::flatten(const View &view) {
+View Manifest::flatten(const View &view, Recipes &recipes) {
   if (!library_of(view.file))
     check_copies(view);
-  std::vector<std::string> using_recipes;
-  View flat = flattened(view, root(view), using_recipes);
+  Unfolding unfolding{.root = root(view), .recipes = recipes};
+  View flat = flattened(view, unfolding);
   check_inside(flat);
   // A view's window names a view the edits found it hosts.
   for (const Connection &connection : flat.connections) {
@@ -714,6 +783,9 @@ View Manifest::flatten(const View &view) {
 std::filesystem::path Manifest::root(const View &view) {
   return library_of(view.file).value_or(view.file.parent_path());
 }
+
+Recipes::Recipes() = default;
+Recipes::~Recipes() = default;
 
 // The comments come from the file being replaced, read as a load reads it.
 void Manifest::save(const View &view) {
