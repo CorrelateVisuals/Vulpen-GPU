@@ -1,5 +1,6 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Costs.h"
 
 #include <algorithm>
 #include <cmath>
@@ -24,22 +25,12 @@ constexpr std::size_t no_node = static_cast<std::size_t>(-1);
 // the folder is, empty for none.
 using Rows = std::vector<std::pair<std::string, std::string>>;
 
-// What a node and the nodes inside it cost together, in milliseconds a frame, smoothed:
-// whether any of them cooks or has a pass, and whether a pass of theirs went untimed.
-struct Sum {
-  float cpu = 0.0f;
-  float gpu = 0.0f;
-  bool cooks = false;
-  bool runs = false;
-  bool untimed = false;
-};
-
 // What the nodes of a view cost, as probe stats prints them: each node's parent, the
-// nodes inside each, the roots last, and each node's sum.
+// nodes inside each, the roots last, and what each costs with the nodes inside it.
 struct Tree {
   std::vector<std::size_t> parents;
   std::vector<std::vector<std::size_t>> inside;
-  std::vector<Sum> sums;
+  std::vector<Weight> sums;
 };
 
 // A node's parent is the node whose name its own starts with, up to a dot, the longest
@@ -47,7 +38,7 @@ struct Tree {
 Tree tree_of(std::span<const VP::Cost> costs) {
   Tree tree{.parents = std::vector<std::size_t>(costs.size(), no_node),
             .inside = std::vector<std::vector<std::size_t>>(costs.size() + 1),
-            .sums = std::vector<Sum>(costs.size())};
+            .sums = std::vector<Weight>(costs.size())};
   for (std::size_t at = 0; at < costs.size(); ++at) {
     const std::string_view name = costs[at].node;
     for (std::size_t dot = name.rfind('.');
@@ -58,14 +49,8 @@ Tree tree_of(std::span<const VP::Cost> costs) {
           tree.parents[at] = other;
     const std::size_t parent = tree.parents[at];
     tree.inside[parent == no_node ? costs.size() : parent].push_back(at);
-    for (std::size_t up = at; up != no_node; up = tree.parents[up]) {
-      Sum &sum = tree.sums[up];
-      sum.cpu += costs[at].cooks ? costs[at].cpu : 0.0f;
-      sum.gpu += costs[at].timed ? costs[at].gpu : 0.0f;
-      sum.cooks = sum.cooks || costs[at].cooks;
-      sum.runs = sum.runs || costs[at].runs;
-      sum.untimed = sum.untimed || (costs[at].runs && !costs[at].timed);
-    }
+    for (std::size_t up = at; up != no_node; up = tree.parents[up])
+      add(tree.sums[up], costs[at]);
   }
   return tree;
 }
@@ -332,7 +317,7 @@ class Inspect final : public VP::Operator {
         "{:<{}}  {:<{}} {}", "ms a frame", width, "cpu", 8 + bar_room, "gpu"));
     for (const auto &[name, columns] : rows)
       call.reply(std::format("{:<{}}  {}", name, width, columns));
-    Sum frame;
+    Weight frame;
     for (const std::size_t root : roots) {
       frame.cpu += tree.sums[root].cpu;
       frame.gpu += tree.sums[root].gpu;
@@ -364,7 +349,7 @@ class Inspect final : public VP::Operator {
       most_gpu = std::max(most_gpu, tree.sums[other].gpu);
     }
     const std::string_view name = costs[at].node;
-    const Sum &sum = tree.sums[at];
+    const Weight &sum = tree.sums[at];
     rows.emplace_back(
         std::string(2 * depth, ' ')
             .append(depth == 0 ? name : name.substr(name.rfind('.') + 1)),

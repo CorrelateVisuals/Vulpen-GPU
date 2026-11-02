@@ -3,6 +3,7 @@
 #include "contracts/Item.h"
 #include "contracts/Palette.h"
 #include "runtime/Operator.h"
+#include "shared/Costs.h"
 #include "Boxes.h"
 
 #include <algorithm>
@@ -68,34 +69,10 @@ Heat heat_of(std::string_view text) {
   return heat;
 }
 
-// What a box costs, in milliseconds a frame, smoothed and as the last frame took it: the
-// nodes it holds, of a view's box every node of the view and of the views it hosts, and
-// of a folder's every node whose files it holds; whether any of them cooks or has a pass,
-// and whether a pass of theirs went untimed. Nothing times a file on its own, so a file's
-// box costs nothing: the heat ends at a node, as the costs are measured.
-struct Weight {
-  float cpu = 0.0f;
-  float cpu_last = 0.0f;
-  float gpu = 0.0f;
-  float gpu_last = 0.0f;
-  bool cooks = false;
-  bool runs = false;
-  bool untimed = false;
-};
-
-void add(Weight &weight, const VP::Cost &cost) {
-  if (cost.cooks) {
-    weight.cpu += cost.cpu;
-    weight.cpu_last += cost.cpu_last;
-  }
-  if (cost.timed) {
-    weight.gpu += cost.gpu;
-    weight.gpu_last += cost.gpu_last;
-  }
-  weight.cooks = weight.cooks || cost.cooks;
-  weight.runs = weight.runs || cost.runs;
-  weight.untimed = weight.untimed || (cost.runs && !cost.timed);
-}
+// A box weighs what the nodes it holds cost: of a view's box every node of the view and
+// of the views it hosts, and of a folder's every node whose files it holds. Nothing times
+// a file on its own, so a file's box costs nothing: the heat ends at a node, as the costs
+// are measured.
 
 float shown(const Weight &weight, Heat heat) {
   return heat.on == Heat::On::gpu ? weight.gpu : weight.cpu;
