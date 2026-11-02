@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -58,11 +59,12 @@ float zoom_of(std::string_view text) {
 
 // Bakes the monospace font file its face param names at the height its height param
 // gives, times its zoom, a cell a glyph, into an atlas that glyphs samples a texel a
-// pixel. It bakes after it binds, as an edit of either param makes it do, once the
-// zoom changes the height, and once image clear empties the atlas, so a frame allocates
-// nothing (CPP10). The zoom is a look at the text, not the view, so it stays out of the
-// manifest, in .vulpen/font.ini in the node's folder, which a restart reads, and every
-// part that lays text out in cells grows with it.
+// pixel. It bakes once the face's bytes or the height change, as an edit of either param
+// or a new file does, once the zoom changes the height, and once image clear empties the
+// atlas, so neither a frame nor a rebind for another node's edit bakes (CPP10, C03). The
+// zoom is a look at the text, not the view, so it stays out of the manifest, in
+// .vulpen/font.ini in the node's folder, which a restart reads, and every part that lays
+// text out in cells grows with it.
 class Font final : public VP::Operator {
   // The ports first, so a face refused leaves no other error.
   void bind(VP::Bind &node) override {
@@ -77,7 +79,7 @@ class Font final : public VP::Operator {
     _kept = node.file(kept_file);
     _height = node.param<std::uint32_t>("height");
     _face = node.param<std::string>("face");
-    _baked = {};
+    _rebound = true;
     // In its folder, so the font moves with its view (V03).
     if (_face.find_first_of("/\\") != std::string::npos)
       throw std::runtime_error(std::format(
@@ -90,8 +92,13 @@ class Font final : public VP::Operator {
   // from metrics, so both measure with the font that draws.
   void cook(VP::Cook &frame) override {
     look(frame);
-    if (_baked.count == 0 || _baked.cell.y != height() || frame.empty(_atlas))
+    // Once after a bind: another face, or its file changed on disk, reads as new bytes.
+    if (std::exchange(_rebound, false) && frame.files().text(_file) != _baked_from)
+      _baked = {};
+    if (_baked.count == 0 || _baked.cell.y != height() || frame.empty(_atlas)) {
       _baked = bake(frame);
+      _baked_from = frame.files().text(_file);
+    }
     frame.write(_font).front() = _baked;
     *_metrics = _baked;
   }
@@ -143,6 +150,8 @@ class Font final : public VP::Operator {
   std::string _face;
   VP::File _file;
   VP_VIEW::Font _baked;
+  std::string _baked_from; // the face's bytes
+  bool _rebound = false;
 };
 
 // A cell is as wide as the font's advance and as tall as the height param times the
