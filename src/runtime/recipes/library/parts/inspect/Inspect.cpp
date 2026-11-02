@@ -110,8 +110,8 @@ param_there(VP::Call &call, std::string_view target, std::string_view key) {
     }
   if (!holder)
     return std::nullopt;
-  const auto param = std::ranges::find(holder->params, wanted, &VP::Param::key);
-  if (param == holder->params.end() || param->value.empty())
+  const VP::Param *const param = holder->param(wanted);
+  if (!param || param->value.empty())
     return std::nullopt;
   return param->value;
 }
