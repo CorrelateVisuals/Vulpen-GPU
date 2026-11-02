@@ -840,9 +840,7 @@ void Relations::relate_stages() {
 // project's C++ and shaders show joined where its manifest joins them.
 void Relations::relate_wires() {
   const auto folder_of = [](const Wired &wired, std::string_view end) {
-    std::string node(end.substr(0, end.rfind('.')));
-    std::ranges::replace(node, '.', '/');
-    return wired.manifest.parent_path() / node;
+    return wired.manifest.parent_path() / VP::path_of(end.substr(0, end.rfind('.')));
   };
   const auto port_of = [](std::string_view end) {
     return end.substr(end.rfind('.') + 1);
