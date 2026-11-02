@@ -46,11 +46,6 @@ bool kept_param(const VP::Param &param) {
   return param.key.find('.') != std::string::npos && !param.key.starts_with(strip_params);
 }
 
-// Whether a node is the one named or inside it, as node remove and node move take it.
-bool within(std::string_view node, std::string_view name) {
-  return node.starts_with(name) && (node.size() == name.size() || node[name.size()] == '.');
-}
-
 const VP::Node *node_in(const VP::View &view, std::string_view name) {
   const auto found = std::ranges::find(view.nodes, name, &VP::Node::name);
   return found == view.nodes.end() ? nullptr : &*found;
@@ -83,7 +78,7 @@ void move_into_order(std::vector<std::string> &order,
     const auto moving = std::ranges::find(order, wanted[at - 1]);
     if ((moving + 1 != order.end() && *(moving + 1) == wanted[at]) ||
         std::ranges::any_of(order, [&](const std::string &name) {
-          return name != *moving && within(name, *moving);
+          return name != *moving && VP::within(name, *moving);
         }))
       continue;
     lines.push_back(std::format("node move {} {}", wanted[at - 1], wanted[at]));
@@ -97,7 +92,7 @@ void move_into_order(std::vector<std::string> &order,
 // nodes use brings, inside a node that uses one, which the manifest itself does not write.
 bool brought(const VP::View &written, std::string_view name) {
   return std::ranges::any_of(written.nodes, [&](const VP::Node &user) {
-    return user.uses() && name != user.name && within(name, user.name);
+    return user.uses() && name != user.name && VP::within(name, user.name);
   });
 }
 
@@ -161,7 +156,7 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
   const auto known = [&](const VP::Endpoint &end) {
     return end.view() || node_in(written, end.node) ||
            std::ranges::any_of(panels, [&](std::string_view panel) {
-             return within(end.node, panel);
+             return VP::within(end.node, panel);
            });
   };
   std::vector<VP::Connection> kept_now;
@@ -176,7 +171,7 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
   const auto ours = [&](const VP::Connection *connection) {
     const auto of = [&](const VP::Endpoint &end) {
       return !end.view() && std::ranges::any_of(panels, [&](std::string_view panel) {
-        return within(end.node, panel);
+        return VP::within(end.node, panel);
       });
     };
     return connection && (of(connection->from) || std::ranges::any_of(connection->to, of));
@@ -196,13 +191,13 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
       continue;
     }
     if (std::ranges::any_of(removed, [&](const std::string &gone) {
-          return within(node.name, gone);
+          return VP::within(node.name, gone);
         }))
       continue;
     removed.push_back(node.name);
     lines.push_back(std::format("node remove keep {}", node.name));
     const auto goes = [&](const VP::Endpoint &end) {
-      return !end.view() && within(end.node, node.name);
+      return !end.view() && VP::within(end.node, node.name);
     };
     for (VP::Connection &connection : left)
       std::erase_if(connection.to, goes);

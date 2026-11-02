@@ -143,8 +143,8 @@ template <class T> T number(std::string_view text) {
 }
 
 std::string_view param_of(const VP::Node &node, std::string_view key) {
-  const auto found = std::ranges::find(node.params, key, &VP::Param::key);
-  return found == node.params.end() ? std::string_view() : std::string_view(found->value);
+  const VP::Param *const param = node.param(key);
+  return param ? std::string_view(param->value) : std::string_view();
 }
 
 // What a panel holds: the ports its room goes to, and the port its tabs come from, as a
