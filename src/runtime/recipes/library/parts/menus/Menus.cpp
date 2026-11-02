@@ -438,10 +438,9 @@ class Menus final : public VP::Operator {
       return typed(folder ? bare : bare.parent_path());
     }
     const VP::View *const view = call.view(call.commands().current());
-    std::string inside(named);
-    std::ranges::replace(inside, '.', '/');
     const std::filesystem::path own =
-        view ? std::filesystem::absolute(view->file.parent_path() / inside).lexically_normal()
+        view ? std::filesystem::absolute(view->file.parent_path() / VP::path_of(named))
+                   .lexically_normal()
              : std::filesystem::path();
     if (view && std::ranges::find(view->nodes, named, &VP::Node::name) != view->nodes.end())
       return typed(own);
