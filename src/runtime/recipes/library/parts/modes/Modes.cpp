@@ -244,8 +244,8 @@ class Modes final : public VP::Operator {
     const auto node = std::ranges::find(own.nodes, _switch, &VP::Node::name);
     if (node == own.nodes.end())
       return;
-    const auto shown = std::ranges::find(node->params, "shown", &VP::Param::key);
-    if (shown != node->params.end() && shown->value != "first")
+    const VP::Param *const shown = node->param("shown");
+    if (shown && shown->value != "first")
       commands.send(std::format("{}: param set {} shown first", _view, _switch));
   }
 
