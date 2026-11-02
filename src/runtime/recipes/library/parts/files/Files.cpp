@@ -129,15 +129,6 @@ void each_below(VP::FilePort &files,
     }
 }
 
-// Letters, digits, _ and -, as a node's name is between its dots, which a folder's name
-// becomes.
-bool node_word(std::string_view word) {
-  return !word.empty() && std::ranges::all_of(word, [](char letter) {
-    return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
-           (letter >= '0' && letter <= '9') || letter == '_' || letter == '-';
-  });
-}
-
 // Every folder in a view is a node's (RV08), so the folders a line makes there are nodes
 // the line adds: each folder on the way to the path no node names, and, for a folder
 // brought there, the path itself and every folder below it, as a copy or a move brings
@@ -152,7 +143,7 @@ std::vector<std::string> nodes_for(VP::FilePort &files,
     const std::optional<std::string> node = node_of(inside);
     if (!node || named(*held.view, *node) || std::ranges::find(nodes, *node) != nodes.end())
       return;
-    if (!node_word(inside.filename().string()))
+    if (!VP::is_name(inside.filename().string()))
       throw std::runtime_error(std::format(
           "{}/ in view {} would be node {}'s folder, as every folder in a view is a node's "
           "(RV08), but a node's name holds letters, digits, _ and -",
