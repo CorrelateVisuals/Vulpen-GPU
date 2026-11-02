@@ -12,6 +12,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace VP {
@@ -134,6 +135,11 @@ private:
   struct Stored;   // so is this
   class Binder;
   class Cooker;
+  // Each port a connection joins, by its node and port: the first connection naming it.
+  using Joined =
+      std::map<std::pair<std::string_view, std::string_view>, const Connection *>;
+
+  static Joined joined_of(const View &view);
 
   Bound bind(const Node &node, const std::filesystem::path &folder, Schedule *replaced);
   void load_shaders(Bound &bound, const std::filesystem::path &folder, Bound *old);
@@ -189,6 +195,9 @@ private:
   const Wiring _wiring;
   const std::string _name;
   const View &_view;
+  // Found once a rebuild, as the lookups of every node and field search them (C03).
+  const Joined _joined;
+  std::map<std::string_view, std::size_t> _places; // in _bound, by each node's name
   // What its draws into its window record in; null while that is a window none opened,
   // or while they draw nowhere.
   const VkRenderPass _window;

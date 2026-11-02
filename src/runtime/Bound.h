@@ -267,10 +267,12 @@ struct Bound {
     std::uint32_t *used = nullptr;
   };
   std::vector<Written> uploads;
-  // An image its C++ fills, by Texture::index: the port, and the format its node gives
-  // it, null when the node names one there is not.
+  // An image its C++ fills, by Texture::index: the port, the image's name, as the
+  // writer's node.port, made once so asking whether it is empty allocates nothing a frame
+  // (CPP10), and the format its node gives it, null when the node names one there is not.
   struct Filled {
     std::string port;
+    std::string name;
     const PixelFormat *format = nullptr;
   };
   std::vector<Filled> textures;

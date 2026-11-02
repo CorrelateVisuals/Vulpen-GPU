@@ -140,7 +140,7 @@ Schedule::Schedule(const Wiring &wiring,
                    const View &view,
                    Into into,
                    Schedule *replaced)
-    : _wiring(wiring), _name(name), _view(view),
+    : _wiring(wiring), _name(name), _view(view), _joined(joined_of(view)),
       _window(into == Into::image
                   ? wiring.pipelines.render_pass(pixel_format(window_format)->format)
               : into == Into::window ? wiring.render_pass
@@ -153,8 +153,10 @@ Schedule::Schedule(const Wiring &wiring,
     for (Bound &bound : replaced->_bound)
       replaced->drop_commands(bound);
   _bound.reserve(nodes.size());
-  for (const Node *const node : nodes)
+  for (const Node *const node : nodes) {
     _bound.push_back(bind(*node, wiring.views / view.name / node->module, replaced));
+    _places.emplace(node->name, _bound.size() - 1);
+  }
   pair_draws(replaced);
   check_connections();
   check_images();
@@ -462,8 +464,7 @@ void Schedule::make_blocks() {
 void Schedule::keep_images(Schedule &replaced) {
   for (const Bound &bound : _bound)
     for (const Bound::Filled &filled : bound.textures) {
-      const std::string name = std::format("{}.{}", bound.node->name, filled.port);
-      const auto kept = std::ranges::find(replaced._images, name, &Picture::name);
+      const auto kept = std::ranges::find(replaced._images, filled.name, &Picture::name);
       if (kept == replaced._images.end() || !filled.format ||
           kept->sampled.image().format() != filled.format->format)
         continue;
@@ -513,10 +514,7 @@ void Schedule::upload(const Bound &writer,
                     filled.port,
                     extent.width,
                     extent.height));
-  const Image &image = image_for(writer,
-                                 std::format("{}.{}", writer.node->name, filled.port),
-                                 extent,
-                                 *filled.format);
+  const Image &image = image_for(writer, filled.name, extent, *filled.format);
   Buffer staged = _wiring.resources.buffer(
       pixels.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::upload);
   std::ranges::copy(pixels, staged.bytes().begin());
@@ -806,21 +804,27 @@ const Held *Schedule::held(std::string_view name) const {
   return found == _objects.end() ? nullptr : &*found;
 }
 
+// In the view's order, as a scan of it finds them.
+Schedule::Joined Schedule::joined_of(const View &view) {
+  Joined joined;
+  for (const Connection &connection : view.connections) {
+    joined.try_emplace({connection.from.node, connection.from.port}, &connection);
+    for (const Endpoint &to : connection.to)
+      joined.try_emplace({to.node, to.port}, &connection);
+  }
+  return joined;
+}
+
+// A node binding finds those bound before it.
 Bound *Schedule::find(std::string_view node) {
-  const auto found = std::ranges::find_if(
-      _bound, [&](const Bound &bound) { return bound.node->name == node; });
-  return found == _bound.end() ? nullptr : &*found;
+  const auto found = _places.find(node);
+  return found == _places.end() ? nullptr : &_bound[found->second];
 }
 
 const Connection *Schedule::connection_of(std::string_view node,
                                           std::string_view port) const {
-  const auto at = [&](const Endpoint &end) {
-    return end.node == node && end.port == port;
-  };
-  for (const Connection &connection : _view.connections)
-    if (at(connection.from) || std::ranges::any_of(connection.to, at))
-      return &connection;
-  return nullptr;
+  const auto found = _joined.find({node, port});
+  return found == _joined.end() ? nullptr : found->second;
 }
 
 // An image goes by the port that fills it, so a connection made or removed keeps it, or

@@ -182,7 +182,9 @@ private:
     else if (format && !_schedule._wiring.resources.samples(format->format))
       _bound.errors.push_back(
           std::format("{}: this GPU cannot sample {} images", port, format->name));
-    _bound.textures.push_back({.port = std::string(port), .format = format});
+    _bound.textures.push_back({.port = std::string(port),
+                               .name = std::format("{}.{}", _bound.node->name, port),
+                               .format = format});
     return static_cast<std::uint32_t>(_bound.textures.size() - 1);
   }
 
@@ -383,10 +385,9 @@ private:
     _schedule.upload(_bound, index, pixels, {size.x, size.y});
   }
   bool image_empty(std::uint32_t index) const override {
-    const std::string name =
-        std::format("{}.{}", _bound.node->name, _bound.textures.at(index).port);
-    return std::ranges::find(_schedule._images, name, &Picture::name) ==
-           _schedule._images.end();
+    return std::ranges::find(_schedule._images,
+                             _bound.textures.at(index).name,
+                             &Picture::name) == _schedule._images.end();
   }
 
   Schedule &_schedule;
