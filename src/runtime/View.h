@@ -1,11 +1,60 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace VP {
+
+// The rules of the graph, written once here, where the engine and every part that reads
+// the graph look (C02).
+
+// A view's manifest in its folder, and the folders at its top that hold the contracts and
+// the code its nodes share (RV05, RV09), which are no node's.
+inline constexpr std::string_view manifest_file = "view.vlp";
+inline constexpr std::string_view contracts_folder = "contracts";
+inline constexpr std::string_view shared_folder = "shared";
+
+// A name joins a manifest's section headers, its endpoints, the command line and a
+// folder's name, so it holds only what each of them leaves whole.
+inline bool is_name(std::string_view text) {
+  return !text.empty() && std::ranges::all_of(text, [](char letter) {
+    return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
+           (letter >= '0' && letter <= '9') || letter == '_' || letter == '-';
+  });
+}
+
+// Names joined by dots: the nodes a node is inside, then its own, as its folder is the
+// path of their folders (RV08).
+inline bool is_path(std::string_view text) {
+  for (std::size_t dot = text.find('.'); dot != std::string_view::npos;
+       dot = text.find('.')) {
+    if (!is_name(text.substr(0, dot)))
+      return false;
+    text.remove_prefix(dot + 1);
+  }
+  return is_name(text);
+}
+
+// A node's folder in its view: ui.panel is ui/panel (RV08).
+inline std::filesystem::path path_of(std::string_view node) {
+  std::filesystem::path path;
+  for (std::size_t dot = node.find('.'); dot != std::string_view::npos;
+       dot = node.find('.')) {
+    path /= node.substr(0, dot);
+    node.remove_prefix(dot + 1);
+  }
+  return path / node;
+}
+
+// Whether the node named is the other or inside it, by their names.
+inline bool within(std::string_view node, std::string_view other) {
+  return node.starts_with(other) &&
+         (node.size() == other.size() || node[other.size()] == '.');
+}
 
 struct Param {
   std::string key;
@@ -53,6 +102,11 @@ struct Node {
   // fingerprint.
   bool uses() const {
     return !recipe.empty() && recipe.find('@') == std::string::npos;
+  }
+  // The param it sets of that key; null for none.
+  const Param *param(std::string_view key) const {
+    const auto found = std::ranges::find(params, key, &Param::key);
+    return found == params.end() ? nullptr : &*found;
   }
 };
 

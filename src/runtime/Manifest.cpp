@@ -43,11 +43,6 @@ constexpr std::string_view recipes_folder = "recipes";
 constexpr std::string_view library_folder = "library";
 constexpr std::array<std::string_view, 2> recipe_kinds{"parts", "components"};
 constexpr std::string_view library_view = "library";
-constexpr std::string_view manifest_file = "view.vlp";
-// The folders at a view's top that hold the contracts and the code its nodes share (RV05,
-// RV09): no node's.
-constexpr std::string_view contracts = "contracts";
-constexpr std::string_view shared = "shared";
 
 std::string_view trim(std::string_view text) {
   const std::size_t first = text.find_first_not_of(blanks);
@@ -82,17 +77,6 @@ std::string name_of(const std::filesystem::path &file) {
 std::filesystem::path base_of(const View &view) {
   const std::filesystem::path folder = view.file.parent_path();
   return library_of(view.file) ? folder.parent_path() : folder;
-}
-
-// ui.panel as the path ui/panel.
-std::filesystem::path path_of(std::string_view name) {
-  std::filesystem::path path;
-  for (std::size_t dot = name.find('.'); dot != std::string_view::npos;
-       dot = name.find('.')) {
-    path /= name.substr(0, dot);
-    name.remove_prefix(dot + 1);
-  }
-  return path / name;
 }
 
 // The library's recipe of that name, in the first kind that holds it.
@@ -487,7 +471,7 @@ void unnamed_below(const View &view,
     if (!entry.is_directory(gone) || name.starts_with('.') ||
         std::filesystem::exists(entry.path() / manifest_file, gone) ||
         (top &&
-         (name == contracts || name == shared ||
+         (name == contracts_folder || name == shared_folder ||
           std::ranges::find(view.children, name, &Child::name) != view.children.end())))
       continue;
     const std::string node = top ? name : parent + '.' + name;
@@ -555,7 +539,6 @@ void set_params(View &recipe, const Node &user) {
 
 // A recipe is one node named like its folder and the nodes inside it, hosting no view.
 void check_recipe(const View &recipe, const std::string &name) {
-  const std::string inside = name + '.';
   if (std::ranges::find(recipe.nodes, name, &Node::name) == recipe.nodes.end())
     throw std::runtime_error(std::format(
         "recipe {} has no node {}: a recipe is one node named like its folder, and the "
@@ -563,7 +546,7 @@ void check_recipe(const View &recipe, const std::string &name) {
         name,
         name));
   for (const Node &node : recipe.nodes)
-    if (node.name != name && !node.name.starts_with(inside))
+    if (!within(node.name, name))
       throw std::runtime_error(std::format(
           "recipe {} holds node {}, which is not inside its node {}: a recipe is one "
           "node, and the nodes inside it",

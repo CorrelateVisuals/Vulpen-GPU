@@ -32,10 +32,6 @@ struct Around {
 };
 
 constexpr std::string_view blanks = " \t\r";
-// The folders at a view's top that hold the contracts and the code its nodes share (RV05,
-// RV09).
-constexpr std::string_view contracts = "contracts";
-constexpr std::string_view shared = "shared";
 
 std::string_view trim(std::string_view text) {
   const std::size_t first = text.find_first_not_of(blanks);
@@ -44,31 +40,10 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
-// A name joins a manifest's section headers, its endpoints, the command line and a
-// folder's name, so it holds only what each of them leaves whole.
-bool is_name(std::string_view text) {
-  return !text.empty() && std::ranges::all_of(text, [](char letter) {
-    return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
-           (letter >= '0' && letter <= '9') || letter == '_' || letter == '-';
-  });
-}
-
 void check_name(std::string_view what, std::string_view name) {
   if (!is_name(name))
     throw std::runtime_error(std::format(
         "{} {} is not a name: a name holds letters, digits, _ and -", what, name));
-}
-
-// Names joined by dots: the nodes a node is inside, then its own, as its folder is the
-// path of their folders (RV08).
-bool is_path(std::string_view text) {
-  for (std::size_t dot = text.find('.'); dot != std::string_view::npos;
-       dot = text.find('.')) {
-    if (!is_name(text.substr(0, dot)))
-      return false;
-    text.remove_prefix(dot + 1);
-  }
-  return is_name(text);
 }
 
 void check_path(std::string_view what, std::string_view path) {
@@ -377,18 +352,15 @@ void node_remove(View &view, Arguments arguments, const Around &) {
   // A copy of the argument, not the node's own name, which the erase below moves.
   const std::string name(arguments.front());
   existing(view, name);
-  const auto goes = [&](std::string_view node) {
-    return node == name || node.starts_with(name + '.');
-  };
   const auto ends_here = [&](const Endpoint &end) {
-    return !end.view() && goes(end.node);
+    return !end.view() && within(end.node, name);
   };
   for (Connection &connection : view.connections)
     std::erase_if(connection.to, ends_here);
   std::erase_if(view.connections, [&](const Connection &connection) {
     return ends_here(connection.from) || connection.to.empty();
   });
-  std::erase_if(view.nodes, [&](const Node &node) { return goes(node.name); });
+  std::erase_if(view.nodes, [&](const Node &node) { return within(node.name, name); });
 }
 
 // The node goes with the nodes inside it, in their order, just before the other: the
@@ -399,14 +371,11 @@ void node_move(View &view, Arguments arguments, const Around &) {
   const std::string before(arguments[1]);
   existing(view, name);
   existing(view, before);
-  const auto goes = [&](std::string_view node) {
-    return node == name || node.starts_with(name + '.');
-  };
-  if (goes(before))
+  if (within(before, name))
     throw std::runtime_error(
         std::format("{} is {} or inside it, so it cannot go before it", before, name));
   const auto moving = std::ranges::stable_partition(
-      view.nodes, [&](const Node &node) { return !goes(node.name); });
+      view.nodes, [&](const Node &node) { return !within(node.name, name); });
   std::vector<Node> moved(std::make_move_iterator(moving.begin()),
                           std::make_move_iterator(moving.end()));
   view.nodes.erase(moving.begin(), moving.end());
@@ -601,7 +570,7 @@ Endpoint Edits::endpoint(std::string_view text) {
 // the views it hosts and of its contracts and shared code, so none of them shares a name.
 void Edits::add(View &view, Node node) {
   check_path("node", node.name);
-  if (node.name == contracts || node.name == shared)
+  if (node.name == contracts_folder || node.name == shared_folder)
     throw std::runtime_error(std::format("{}/ holds what the view's nodes share (RV05, "
                                          "RV09), so no node is named {}",
                                          node.name,

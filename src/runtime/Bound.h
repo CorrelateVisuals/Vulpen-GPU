@@ -317,8 +317,7 @@ struct Bound {
     return std::ranges::find(textures, port, &Filled::port) != textures.end();
   }
   const Param *param(std::string_view key) const {
-    const auto found = std::ranges::find(node->params, key, &Param::key);
-    return found == node->params.end() ? nullptr : &*found;
+    return node->param(key);
   }
 };
 
