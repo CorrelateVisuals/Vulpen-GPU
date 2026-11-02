@@ -1341,7 +1341,7 @@ void Graph::erase(VP::Cook &frame, const VP::View &view) {
   std::vector<std::string> lines;
   for (const std::string &name : _selection) {
     if (!removed(name) || std::ranges::any_of(_selection, [&](const std::string &other) {
-          return removed(other) && name.starts_with(other + '.');
+          return removed(other) && name != other && VP::within(name, other);
         }))
       continue;
     const bool hosted =
@@ -1350,8 +1350,7 @@ void Graph::erase(VP::Cook &frame, const VP::View &view) {
         std::format("{}: {} {}", _shown, hosted ? "view close" : "node remove", name));
     for (auto *kept : {&_arranged.places, &_arranged.sizes})
       std::erase_if(*kept, [&](const auto &box) {
-        return box.first == name || box.first.starts_with(name + '.') ||
-               box.first.starts_with(name + '/');
+        return VP::within(box.first, name) || box.first.starts_with(name + '/');
       });
   }
   std::erase_if(_selection, removed);
