@@ -11,19 +11,12 @@
 
 namespace {
 
-constexpr std::string_view manifest = "view.vlp";
+constexpr std::string_view manifest = VP::manifest_file;
 
-// Letters, digits, _ and -, so a project's name also addresses its view, as `name: ls`,
-// and runs it, as ./run.sh --name.
-bool project_name(std::string_view name) {
-  return !name.empty() && std::ranges::all_of(name, [](char letter) {
-    return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
-           (letter >= '0' && letter <= '9') || letter == '_' || letter == '-';
-  });
-}
-
+// A node's name, so a project's name also addresses its view, as `name: ls`, and runs
+// it, as ./run.sh --name.
 void check_name(std::string_view name) {
-  if (!project_name(name))
+  if (!VP::is_name(name))
     throw std::runtime_error(std::format(
         "{} is no project's name, which is letters, digits, _ and -; a path to a folder "
         "holds a /",
@@ -87,7 +80,7 @@ class Projects final : public VP::Operator {
 
   void command(VP::Call &call) override {
     const std::string_view word = call.arguments().empty() ? "" : call.arguments().front();
-    if (call.is(_load) && project_name(word) && found(call, word).empty() &&
+    if (call.is(_load) && VP::is_name(word) && found(call, word).empty() &&
         holds_view(call, _apps / word))
       host_app(call, _apps / word);
     else if (call.is(_new) || call.is(_load))
@@ -173,7 +166,7 @@ class Projects final : public VP::Operator {
     if (fresh && exists)
       throw std::runtime_error(
           std::format("{} holds a view already; view load hosts it", folder.string()));
-    if (fresh && project_name(name))
+    if (fresh && VP::is_name(name))
       check_unused(call, name);
     if (!fresh && !exists)
       throw std::runtime_error(std::format(
@@ -240,7 +233,7 @@ class Projects final : public VP::Operator {
   // files part's line, which refuses a folder holding another view that runs, naming it.
   void remove(VP::Call &call) const {
     const std::string_view name = call.arguments().front();
-    if (!project_name(name))
+    if (!VP::is_name(name))
       throw std::runtime_error(std::format(
           "{} is no project's name, which is letters, digits, _ and -, as view list "
           "shows it; view remove takes no path",
