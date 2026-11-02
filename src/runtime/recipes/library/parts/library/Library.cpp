@@ -316,32 +316,25 @@ std::string sendable(std::string_view key, std::string_view value) {
   return std::format(" {}={}", key, value);
 }
 
-// A node's words as node add or node set takes them, but its files, which are what its
-// folder holds. Set gives each word the node lacks empty, so it clears it.
-std::string
-words_of(const VP::Node &node, const std::vector<VP::Param> &params, bool set) {
+// A node's words as node add or node set takes them, with these params, but its recipe,
+// which a drop and a sync name themselves, and its log, which is the view's to set (V02).
+// Set gives each word the node lacks empty, so it clears it.
+std::string words_of(VP::Node node, std::vector<VP::Param> params, bool set) {
+  node.params = std::move(params);
+  const std::vector<VP::Word> given = VP::words_of(node);
   std::string words;
-  const auto word = [&](std::string_view key, const std::string &value) {
-    if (!value.empty())
-      words += sendable(key, value);
-    else if (set)
+  for (const std::string_view key : VP::node_words) {
+    if (key == "recipe" || key == "log")
+      continue;
+    bool any = false;
+    for (const VP::Word &word : given)
+      if (word.key == key) {
+        words += sendable(key, word.value);
+        any = true;
+      }
+    if (set && !any)
       words += std::format(" {}=", key);
-  };
-  const auto count = [](std::uint32_t value) {
-    return value == 0 ? std::string() : std::to_string(value);
-  };
-  word("operator", node.operator_name);
-  word("invocations", count(node.invocations));
-  word("vertex_count", count(node.vertex_count));
-  word("instance_count", node.instance_count);
-  for (const VP::Param &param : params)
-    words += sendable("param", std::format("{}={}", param.key, param.value));
-  if (set && params.empty())
-    words += " param=";
-  for (const VP::ImagePort &image : node.images)
-    words += sendable("image", std::format("{}={}", image.port, image.format));
-  if (set && node.images.empty())
-    words += " image=";
+  }
   return words;
 }
 
