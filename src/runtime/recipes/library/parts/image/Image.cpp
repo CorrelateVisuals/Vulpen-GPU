@@ -4,6 +4,7 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/PanZoom.h"
+#include "shared/Params.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -40,8 +41,7 @@ class Image final : public VP::Operator {
     _pan = node.value<glm::vec2>("pan");
     _zoom = node.value<float>("zoom");
     const std::string moves = node.param<std::string>("moves");
-    if (moves != "yes" && moves != "no")
-      throw std::runtime_error(std::format("param moves = {}: yes or no", moves));
+    check_word("moves", moves, {"yes", "no"});
     _moves = moves == "yes";
     // Only an image that moves takes keys, so one that stays still needs no connection
     // for them.

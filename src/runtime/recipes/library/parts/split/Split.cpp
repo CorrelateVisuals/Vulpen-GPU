@@ -2,6 +2,7 @@
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
 #include "shared/Halves.h"
+#include "shared/Params.h"
 
 #include <cstdint>
 #include <format>
@@ -22,9 +23,7 @@ constexpr std::uint32_t backing = 2; // the ground under both Rects, then the se
 class Split final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string axis = node.param<std::string>("axis");
-    if (!axis.empty() && axis != "x" && axis != "y") // the loader names it unset
-      throw std::runtime_error(
-          std::format("param axis = {}: x, side by side, or y, stacked", axis));
+    check_word("axis", axis, {"x", "y"});
     _along = axis == "y" ? 1 : 0;
     _ratio = node.param<float>("ratio");
     if (!(_ratio >= 0.0f && _ratio <= 1.0f)) // NaN too

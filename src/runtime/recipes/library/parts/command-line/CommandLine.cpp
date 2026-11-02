@@ -13,6 +13,7 @@
 #include "runtime/View.h"
 #include "shared/Caret.h"
 #include "shared/Labels.h"
+#include "shared/Params.h"
 #include "shared/Scroll.h"
 #include "shared/Words.h"
 
@@ -337,9 +338,7 @@ struct Mark {
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string on = node.param<std::string>("on");
-    if (!on.empty() && on != "terminal" && on != "window" && on != "find")
-      throw std::runtime_error( // the loader names it unset
-          std::format("param on = {}: terminal, window or find", on));
+    check_word("on", on, {"terminal", "window", "find"});
     _window = on != "terminal";
     _finder = on == "find";
     if (!_window) {

@@ -2,6 +2,7 @@
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
 #include "shared/Halves.h"
+#include "shared/Params.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -21,16 +22,12 @@ namespace {
 class Bar final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string edge = node.param<std::string>("edge");
-    if (!edge.empty() && edge != "top" && edge != "bottom" && edge != "left" &&
-        edge != "right") // the loader names it unset
-      throw std::runtime_error(
-          std::format("param edge = {}: top, bottom, left or right", edge));
+    check_word("edge", edge, {"top", "bottom", "left", "right"});
     _along = edge == "left" || edge == "right" ? 0 : 1;
     _far = edge == "bottom" || edge == "right";
     _size = node.param<std::uint32_t>("size");
     const std::string seam = node.param<std::string>("seam");
-    if (seam != "yes" && seam != "no")
-      throw std::runtime_error(std::format("param seam = {}: yes or no", seam));
+    check_word("seam", seam, {"yes", "no"});
     _seam = seam == "yes" ? static_cast<std::uint32_t>(seam_width) : 0;
     _area = &node.input<VP_VIEW::Rect>("area");
     _font = &node.input<VP_VIEW::Font>("font");

@@ -5,6 +5,7 @@
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
 #include "shared/Labels.h"
+#include "shared/Params.h"
 
 #include <glm/common.hpp>
 
@@ -89,13 +90,10 @@ VP_VIEW::Rect within(VP_VIEW::Rect rect, const VP_VIEW::Rect &strip) {
 class List final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string axis = node.param<std::string>("axis");
-    if (!axis.empty() && axis != "x" && axis != "y") // the loader names it unset
-      throw std::runtime_error(
-          std::format("param axis = {}: x, side by side, or y, stacked", axis));
+    check_word("axis", axis, {"x", "y"});
     _side_by_side = axis == "x";
     const std::string drop = node.param<std::string>("drop");
-    if (drop != "no" && drop != "below" && drop != "right")
-      throw std::runtime_error(std::format("param drop = {}: no, below or right", drop));
+    check_word("drop", drop, {"no", "below", "right"});
     _drop = drop == "below" ? Drop::below : drop == "right" ? Drop::right : Drop::no;
     _end = node.param<std::uint32_t>("end");
     _items = &node.input<VP_VIEW::Items>("items");

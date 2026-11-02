@@ -3,6 +3,7 @@
 #include "contracts/Item.h"
 #include "contracts/Palette.h"
 #include "contracts/Relation.h"
+#include "shared/Params.h"
 
 #include <array>
 #include <cstddef>
@@ -94,8 +95,7 @@ void buttons(VP_VIEW::Items &items, Shown shown, std::string_view view, std::str
 // Whether the curves turn in their lanes, as the manhattan param says: yes, as when it is
 // unset, or no, each curve straight from end to end (A02).
 bool manhattan_of(std::string_view text) {
-  if (text != "yes" && text != "no")
-    throw std::runtime_error(std::format("param manhattan = {}: yes or no", text));
+  check_word("manhattan", text, {"yes", "no"});
   return text == "yes";
 }
 

@@ -5,6 +5,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Params.h"
 #include "shared/Presented.h"
 
 #include <algorithm>
@@ -57,8 +58,7 @@ constexpr auto rate_every = std::chrono::seconds(1);
 class Modes final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string mode = node.param<std::string>("mode");
-    if (!mode.empty() && mode != "edit" && mode != "perform") // the loader names it unset
-      throw std::runtime_error(std::format("param mode = {}: edit or perform", mode));
+    check_word("mode", mode, {"edit", "perform"});
     _perform = mode == "perform";
     _shows = node.sets("shows") ? node.param<std::string>("shows") : std::string();
     _switch = node.sets("switch") ? node.param<std::string>("switch") : std::string();

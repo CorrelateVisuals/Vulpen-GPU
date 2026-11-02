@@ -1,5 +1,6 @@
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
+#include "shared/Params.h"
 
 #include <array>
 #include <cstddef>
@@ -18,8 +19,7 @@ constexpr std::array<std::string_view, 2> halves{"first", "second"};
 class Switch final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string shown = node.param<std::string>("shown");
-    if (shown != halves[0] && shown != halves[1])
-      throw std::runtime_error(std::format("param shown = {}: first or second", shown));
+    check_word("shown", shown, {halves[0], halves[1]});
     _shown = shown == halves[0] ? 0 : 1;
     _area = &node.input<VP_VIEW::Rect>("area");
     _halves = {&node.output<VP_VIEW::Rect>(halves[0]),
