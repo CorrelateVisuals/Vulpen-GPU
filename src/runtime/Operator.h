@@ -581,6 +581,11 @@ public:
   virtual std::span<const Cost> costs() const = 0;
   virtual FilePort &files() = 0;
   virtual ProcessPort &processes() = 0;
+  // The view the command addresses as the next frame runs it, as Cook::unfolded reads
+  // one: each node with its folder and the files it held at the last change, and each
+  // recipe a node of the library uses unfolded, as the graph shows it. Last, so a module
+  // built before it reaches the others where it found them.
+  virtual const View &unfolded() const = 0;
 
 protected:
   ~Call() = default;

@@ -66,22 +66,11 @@ std::optional<std::pair<std::string, std::string>> running(VP::Call &call,
 }
 
 // The files of that name a view holds, in its nodes' folders (RV08), as it runs, each
-// recipe a node uses unfolded, so the ide's nodes hold their recipes' files; as the view
-// holds them, while its manifest cannot be read, as a new project's before its save. A
-// recipe two nodes use shows once.
+// recipe a node uses unfolded, so the ide's nodes hold their recipes' files. A recipe two
+// nodes use shows once.
 std::vector<std::filesystem::path> held(VP::Call &call, const std::string &name) {
-  VP::View view = call.view();
-  try {
-    view = call.files().manifest(view.file.string());
-  } catch (const std::runtime_error &) {
-    for (VP::Node &node : view.nodes) {
-      std::string folder = node.name;
-      std::ranges::replace(folder, '.', '/');
-      node.folder = view.file.parent_path() / folder;
-    }
-  }
   std::vector<std::filesystem::path> found;
-  for (const VP::Node &node : view.nodes)
+  for (const VP::Node &node : call.unfolded().nodes)
     if (std::ranges::find(node.files, name) != node.files.end() &&
         std::ranges::find(found, node.folder / name) == found.end())
       found.push_back(node.folder / name);

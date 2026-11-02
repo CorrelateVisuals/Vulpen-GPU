@@ -172,20 +172,11 @@ std::vector<std::string> paths(VP::FilePort &files, std::string_view begun) {
 }
 
 // The names of the files the view holds, as a word naming no folder names one: its
-// nodes', as it runs, each recipe unfolded, or as the view holds them while its manifest
-// cannot be read. A name with a blank is left out, as a path's is.
+// nodes', as it runs, each recipe unfolded. A name with a blank is left out, as a path's
+// is.
 std::vector<std::string> held(VP::Call &call) {
-  const VP::View *view = &call.view();
-  VP::View unfolded;
-  try {
-    unfolded = call.files().manifest(view->file.string());
-    view = &unfolded;
-  } catch (const std::runtime_error &) {
-    // A manifest not saved yet, or one with a mistake, which open names: the files as
-    // the view holds them.
-  }
   std::vector<std::string> names;
-  for (const VP::Node &node : view->nodes)
+  for (const VP::Node &node : call.unfolded().nodes)
     for (const std::string &file : node.files)
       if (file.find(' ') == std::string::npos)
         names.push_back(file);

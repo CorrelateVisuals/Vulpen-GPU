@@ -153,10 +153,7 @@ private:
   }
   // Found anew each time, since a command this one sends may replace the view.
   const View &view() const override {
-    const View *const view = this->view(_address);
-    if (!view)
-      throw std::runtime_error("no view to read yet");
-    return *view;
+    return found(this->view(_address));
   }
   const View *view(std::string_view name) const override {
     return _views ? _views->find(name) : nullptr;
@@ -169,6 +166,14 @@ private:
   }
   ProcessPort &processes() override {
     return _processes;
+  }
+  const View &unfolded() const override {
+    return found(_views ? _views->unfolded(_address) : nullptr);
+  }
+  static const View &found(const View *view) {
+    if (!view)
+      throw std::runtime_error("no view to read yet");
+    return *view;
   }
 
   Nested _port;
