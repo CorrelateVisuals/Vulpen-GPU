@@ -68,10 +68,12 @@ void check_value(std::string_view key, std::string_view value) {
 }
 
 [[noreturn]] void unknown_word(std::string_view key) {
+  std::string words;
+  for (const std::string_view word : node_words)
+    words.append(words.empty() ? "" : word == node_words.back() ? " and " : ", ")
+        .append(word);
   throw std::runtime_error(
-      std::format("unknown word {} in a node; its words are recipe, operator, "
-                  "invocations, vertex_count, instance_count, param, image and log",
-                  key));
+      std::format("unknown word {} in a node; its words are {}", key, words));
 }
 
 // A node's files are what its folder holds (RV08), so no command or manifest names one.

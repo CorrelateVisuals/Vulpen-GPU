@@ -355,35 +355,6 @@ void Reader::note(const std::string &line, std::string_view text, std::string at
                            line.find('#') == std::string::npos ? "" : line.substr(end)};
 }
 
-// One word of a section, as a save writes it.
-struct Word {
-  std::string_view key;
-  std::string value;
-};
-
-// In the order a person reads a node: where it came from and what it runs, then its
-// settings. Its files are what its folder holds (RV08), so no word lists them.
-std::vector<Word> words(const Node &node) {
-  std::vector<Word> words;
-  if (!node.recipe.empty())
-    words.push_back({"recipe", node.recipe});
-  if (!node.operator_name.empty())
-    words.push_back({"operator", node.operator_name});
-  if (node.invocations != 0)
-    words.push_back({"invocations", std::to_string(node.invocations)});
-  if (node.vertex_count != 0)
-    words.push_back({"vertex_count", std::to_string(node.vertex_count)});
-  if (!node.instance_count.empty())
-    words.push_back({"instance_count", node.instance_count});
-  for (const Param &param : node.params)
-    words.push_back({"param", std::format("{}={}", param.key, param.value)});
-  for (const ImagePort &image : node.images)
-    words.push_back({"image", std::format("{}={}", image.port, image.format)});
-  if (!node.log.empty())
-    words.push_back({"log", node.log});
-  return words;
-}
-
 // A child's file only when it is not <name>/view.vlp beside the manifest, from the
 // manifest's folder.
 std::vector<Word> words(const Child &child, const std::filesystem::path &folder) {
@@ -443,7 +414,7 @@ std::string text(const View &view, const Notes &notes) {
   for (const Child &child : view.children)
     section(text, notes, "view", child.name, words(child, view.file.parent_path()));
   for (const Node &node : view.nodes)
-    section(text, notes, "node", node.name, words(node));
+    section(text, notes, "node", node.name, words_of(node));
   // A manifest names only what is inside its view (V03), so not the window of a view
   // beside it, which a connection takes only while both are hosted.
   for (const Connection &connection : view.connections)

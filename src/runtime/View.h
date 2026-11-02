@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -38,6 +39,18 @@ inline bool is_path(std::string_view text) {
   }
   return is_name(text);
 }
+
+// The words of a node section (V04), in the order a save writes them: where a node came
+// from and what it runs, then its settings. Its files are what its folder holds (RV08),
+// so no word lists them.
+inline constexpr std::array<std::string_view, 8> node_words{"recipe",
+                                                            "operator",
+                                                            "invocations",
+                                                            "vertex_count",
+                                                            "instance_count",
+                                                            "param",
+                                                            "image",
+                                                            "log"};
 
 // A node's folder in its view: ui.panel is ui/panel (RV08).
 inline std::filesystem::path path_of(std::string_view node) {
@@ -131,6 +144,35 @@ struct Connection {
   Endpoint from;
   std::vector<Endpoint> to;
 };
+
+// One word of a section and its value, as a save writes it.
+struct Word {
+  std::string_view key;
+  std::string value;
+};
+
+// A node's words in the order of node_words, a param or an image a word each, as a save
+// writes them and info shows them.
+inline std::vector<Word> words_of(const Node &node) {
+  std::vector<Word> words;
+  if (!node.recipe.empty())
+    words.push_back({"recipe", node.recipe});
+  if (!node.operator_name.empty())
+    words.push_back({"operator", node.operator_name});
+  if (node.invocations != 0)
+    words.push_back({"invocations", std::to_string(node.invocations)});
+  if (node.vertex_count != 0)
+    words.push_back({"vertex_count", std::to_string(node.vertex_count)});
+  if (!node.instance_count.empty())
+    words.push_back({"instance_count", node.instance_count});
+  for (const Param &param : node.params)
+    words.push_back({"param", param.key + '=' + param.value});
+  for (const ImagePort &image : node.images)
+    words.push_back({"image", image.port + '=' + image.format});
+  if (!node.log.empty())
+    words.push_back({"log", node.log});
+  return words;
+}
 
 // A view this one hosts (V03), which runs with its own schedule and is addressed by its
 // name: <name>/view.vlp beside this view's manifest, unless the manifest names a file.
