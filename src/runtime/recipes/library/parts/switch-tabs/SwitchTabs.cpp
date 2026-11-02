@@ -64,8 +64,8 @@ class SwitchTabs final : public VP::Operator {
         const auto node = std::ranges::find(view.nodes, _switch, &VP::Node::name);
         if (node == view.nodes.end())
           break;
-        const auto shown = std::ranges::find(node->params, "shown", &VP::Param::key);
-        return shown != node->params.end() && shown->value == halves[1] ? 1 : 0;
+        const VP::Param *const shown = node->param("shown");
+        return shown && shown->value == halves[1] ? 1 : 0;
       }
     return 0;
   }
