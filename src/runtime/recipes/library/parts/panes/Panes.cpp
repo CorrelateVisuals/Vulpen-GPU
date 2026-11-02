@@ -244,7 +244,7 @@ class Panes final : public VP::Operator {
     if (grown)
       std::erase_if(grown->to, [&](const VP::Endpoint &end) {
         return std::ranges::any_of(going, [&](const std::string &node) {
-          return end.node == node || end.node.starts_with(node + '.');
+          return VP::within(end.node, node);
         });
       });
     for (const std::string &node : going)
