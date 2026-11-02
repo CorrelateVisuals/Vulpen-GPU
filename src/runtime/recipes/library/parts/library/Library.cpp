@@ -1,5 +1,6 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Hash.h"
 
 #include <algorithm>
 #include <array>
@@ -97,9 +98,6 @@ constexpr std::array<Kind, 6> kinds{{
 }};
 // Between a drop's recipe and the fingerprint of what it copied: probe@3f2a9c1e.
 constexpr char fingerprint_mark = '@';
-// FNV-1a over 64 bits: the same fingerprint on every machine and compiler (C01).
-constexpr std::uint64_t fnv_offset = 14695981039346656037ULL;
-constexpr std::uint64_t fnv_prime = 1099511628211ULL;
 constexpr int half_bits = 32; // a fingerprint shows the hash folded to 32 bits
 
 // The folders in a folder, each named with the / that marks it.
@@ -259,12 +257,7 @@ Copy copy_of(const VP::View &graph, std::string_view root) {
 
 // Each piece by its length and its bytes, so no two lists of pieces hash alike.
 void hash_in(std::uint64_t &hash, std::string_view piece) {
-  const std::string length = std::format("{}:", piece.size());
-  for (const std::string_view text : {std::string_view(length), piece})
-    for (const char letter : text) {
-      hash ^= static_cast<unsigned char>(letter);
-      hash *= fnv_prime;
-    }
+  hash = hashed(hashed(hash, std::format("{}:", piece.size())), piece);
 }
 
 // What a copy is made of, but its params and log, which are its user's to set (V02): its

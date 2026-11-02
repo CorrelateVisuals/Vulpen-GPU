@@ -1,6 +1,7 @@
 #pragma once
 
 #include "runtime/View.h"
+#include "shared/Hash.h"
 
 #include <algorithm>
 #include <array>
@@ -32,9 +33,6 @@ constexpr std::array<std::string_view, 5> laid_recipes{"dock", "panel", "stack",
 constexpr std::string_view strip_params = "bar."; // a panel's strip's, which no file keeps
 // The line naming what the manifest wrote as the file was kept, a comment to a replay.
 constexpr std::string_view written_line = "# written ";
-// FNV-1a, 64 bits: a fingerprint that reads the same on every machine and every build.
-constexpr std::uint64_t fnv_offset = 14695981039346656037ull;
-constexpr std::uint64_t fnv_prime = 1099511628211ull;
 
 bool laid(const VP::Node &node) {
   return std::ranges::find(laid_recipes, node.recipe) != laid_recipes.end();
@@ -102,10 +100,9 @@ bool brought(const VP::View &written, std::string_view name) {
 // land on what its names mean now, as a node renamed or made another.
 std::string fingerprint_of(const VP::View &written) {
   std::uint64_t hash = fnv_offset;
+  // Where one word ends, so two words never read as one.
   const auto add = [&](std::string_view text) {
-    for (const char byte : text)
-      hash = (hash ^ static_cast<unsigned char>(byte)) * fnv_prime;
-    hash = (hash ^ '\n') * fnv_prime; // where one word ends, so two words never read as one
+    hash = hashed(hashed(hash, text), "\n");
   };
   for (const VP::Node &node : written.nodes)
     if (!brought(written, node.name)) {
