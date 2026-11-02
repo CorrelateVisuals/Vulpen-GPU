@@ -271,22 +271,8 @@ class Inspect final : public VP::Operator {
     const auto node = std::ranges::find(view.nodes, name, &VP::Node::name);
     if (node == view.nodes.end())
       return inside(call, view, name);
-    if (!node->recipe.empty())
-      call.reply(std::format("recipe = {}", node->recipe));
-    if (!node->operator_name.empty())
-      call.reply(std::format("operator = {}", node->operator_name));
-    if (node->invocations != 0)
-      call.reply(std::format("invocations = {}", node->invocations));
-    if (node->vertex_count != 0)
-      call.reply(std::format("vertex_count = {}", node->vertex_count));
-    if (!node->instance_count.empty())
-      call.reply(std::format("instance_count = {}", node->instance_count));
-    for (const VP::Param &param : node->params)
-      call.reply(std::format("param = {}={}", param.key, param.value));
-    for (const VP::ImagePort &image : node->images)
-      call.reply(std::format("image = {}={}", image.port, image.format));
-    if (!node->log.empty())
-      call.reply(std::format("log = {}", node->log));
+    for (const VP::Word &word : VP::words_of(*node))
+      call.reply(std::format("{} = {}", word.key, word.value));
     for (const std::string &file : node->files)
       call.reply(std::format("holds {}", file));
     for (const VP::Connection &connection : view.connections) {
