@@ -40,9 +40,10 @@ param  = focus=ide.terminal.command-line
 recipe = viewport
 
 # Edit mode gives the dock the window, and perform mode the view presented, which the
-# panes part connects; each project loaded is presented as it comes, the panel holding
-# the Perform panel's switch showing again if it was hidden, wherever a move took the
-# switch, with the view presented in place of a preview.
+# panes part connects; each project loaded is presented as it comes, with the view
+# presented in place of a preview, and once it has something to perform, the panel
+# holding the Perform panel's switch shows again if it was hidden, wherever a move took
+# the switch.
 [node "ide.modes"]
 recipe = modes
 param  = shows=ide.perform
