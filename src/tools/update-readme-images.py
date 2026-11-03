@@ -80,7 +80,8 @@ def typed(line: str) -> list[str]:
 
 
 def graph(folder: str) -> list[str]:
-    """A folder of the copy in the graph, as open shows it."""
+    """A folder of the copy in the graph, as open shows it, by its path from where the
+    prompt is, as a path typed counts: the copy's top while no project is current."""
     return [f"open {folder}", "ide: focus"]
 
 
@@ -153,7 +154,7 @@ DETAILS = {
     "cli": ["ide: mode edit", *panels("maximize", "terminal"),
             "ide: focus ide.terminal.command-line", *CLEAR, *typed("help"), *typed("ls"),
             *typed("info rays"), "ide: focus"],
-    "graph-repository": [*panels("maximize", "terminal", "graph"), *graph("./")],
+    "graph-repository": [*panels("maximize", "terminal", "graph"), *graph("../../")],
     "graph-ide": INSIDE_IDE,
 }
 # A dive through the repository in the graph, a level a frame, down to the part that draws

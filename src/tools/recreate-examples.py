@@ -114,8 +114,9 @@ def folder_of(project: str) -> Path:
 
 
 def at(example: str, *parts: str) -> str:
-    """A path from the repository's top, as a line names it."""
-    return "/".join((folder_of(example).relative_to(ROOT).as_posix(), *parts))
+    """A path whole, as a line takes it wherever the prompt is, since a path typed counts
+    from the folder the prompt shows, which moves with the view lines go to."""
+    return "/".join((folder_of(example).as_posix(), *parts))
 
 
 def swapped(example: str, node: str, made: list[str], wanted: list[str]) -> list[Step]:
@@ -601,6 +602,13 @@ def examples(scratch: Path) -> list[Example]:
     shot = at(e.copy, "picture")
     e.steps = [
         ok(f"view new {e.copy}"),
+        # A path typed counts from the folder the prompt shows, the project's, in either
+        # terminal: a file made there, or the line removing it is refused, and a folder
+        # made there, which is a node, or node remove is refused.
+        ok("file new typed.txt"),
+        ok(f"file remove {at(e.copy, 'typed.txt')}"),
+        typed("file new typed/"),
+        ok("node remove typed"),
         # A node of nodes, made empty, the kinds no example starts from made inside it: a
         # C++ node that says where its points go, and a draw split over two nodes, joined
         # by their varyings; then all of it removed with the group.
@@ -646,12 +654,13 @@ def examples(scratch: Path) -> list[Example]:
     typing = ["input text // typed", "input key down enter", "input key up enter"]
     loop = scratch / "loop.txt"
     loop.write_text(f"source {loop}\n")
+    nest = at(f"{COPY}nest")
     e.steps = [
-        ok("file new projects/re-nest/"),
-        ok("view add re-nest-inner projects/re-nest/inner/view.vlp", "re-nest-inner: view save"),
-        no("file remove force projects/re-nest/", "view re-nest-inner's folder"),
-        no("file rename projects/re-nest/ projects/re-nested/", "view re-nest-inner's folder"),
-        ok("view close re-nest-inner", "file remove force projects/re-nest/"),
+        ok(f"file new {nest}/"),
+        ok(f"view add re-nest-inner {nest}/inner/view.vlp", "re-nest-inner: view save"),
+        no(f"file remove force {nest}/", "view re-nest-inner's folder"),
+        no(f"file rename {nest}/ {at(f'{COPY}nested')}/", "view re-nest-inner's folder"),
+        ok("view close re-nest-inner", f"file remove force {nest}/"),
         no("view remove re-nest", "no project is named re-nest"),
         no("view remove ../src", "view remove takes no path"),
         ok(f"view new {e.copy}"),

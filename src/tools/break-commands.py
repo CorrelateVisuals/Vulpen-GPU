@@ -165,7 +165,7 @@ STATES = [
     State("ide current", loads=("bf-one",), current="ide"),
     State("inside", loads=("bf-one",), current="bf-one", then=("cd corners",)),
     State("editing", loads=("bf-two",), current="bf-two",
-          then=("open projects/bf-two/engine/Engine.cpp", "focus ide.editor.text",
+          then=("open engine/Engine.cpp", "focus ide.editor.text",
                 *TYPING)),
     State("restarted", loads=("bf-one", "bf-three"), current="bf-one",
           then=("param set face frames_per_turn 400",), restarted=True),
@@ -568,7 +568,7 @@ VALID = {
     "file copy <file> <file>": "file copy {scrap} {newfile}",
     "file new <file>": "file new {newfile}",
     "file remove <file>": "file remove {scrap}",
-    "file remove force <file>": "file remove force ../decoy/folder/",
+    "file remove force <file>": "file remove force {tree}/../decoy/folder/",
     "file rename <file> <file>": "file rename {scrap} {newfile}",
     "gpu": "gpu",
     "gpu toggle": "gpu toggle",
@@ -584,7 +584,7 @@ VALID = {
     "input pointer <value> <value>": "input pointer 640 360",
     "input text <value>...": "input text hello",
     "input wheel <value> <value>": "input wheel 0 1",
-    "log save <file>": "log save ../decoy/{fresh}.log",
+    "log save <file>": "log save {tree}/../decoy/{fresh}.log",
     "ls": "ls",
     "node add <name> [<word=value>...]": "node add {fresh} log=info",
     "node move <node> <node>": "node move {leaf} {group}",
@@ -608,8 +608,8 @@ VALID = {
     "recipe drop <recipe> <name>": "recipe drop snapshot {fresh}",
     "recipe list": "recipe list",
     "recipe sync <node>": "recipe drop snapshot {fresh} ;; recipe sync {same}",
-    "source <file>": "source ../decoy/script.txt",
-    "view add <name> <file>": "view add {fresh} ../decoy/{same}/view.vlp",
+    "source <file>": "source {tree}/../decoy/script.txt",
+    "view add <name> <file>": "view add {fresh} {tree}/../decoy/{same}/view.vlp",
     "view close <view>": "view close {view}",
     "view list": "view list",
     "view load <project>": "view load {project}",
@@ -667,13 +667,16 @@ NASTY = {
     "key": ["nokey", "a=b", "invocations", LONG],
     "value": ["nan", "inf", "-1", "1e30", "-0", "0x10", "1,2,3,4,5", LONG, "ñ", "{}", "#",
               "=", ":"],
-    "file": ["projects/{home}/nothing/x.txt", "projects/{home}/view.vlp/x", "projects/",
-             "./", "projects/{home}/../bf-three/" + SCRAP, "{tree}/projects/{home}/abs.txt",
-             "../decoy/binary.bin", "projects/{home}/" + LONG],
+    "file": ["{tree}/projects/{home}/nothing/x.txt", "{tree}/projects/{home}/view.vlp/x",
+             "{tree}/projects/", "./", "nothing/", "{tree}/projects/{home}/../bf-three/"
+             + SCRAP, "{tree}/projects/{home}/abs.txt", "{tree}/../decoy/binary.bin",
+             "{tree}/projects/{home}/" + LONG],
     "view": ["nobody", "library", "cli", LONG, ":"],
-    "project": ["ide", "cli", "Bad", "nobody", "../decoy", "src/runtime/recipes/ide/",
-                "projects/{home}/view.vlp", LONG],
-    "path": ["nobody.txt", "Point.comp", "../decoy/binary.bin", "../decoy/folder/", LONG],
+    "project": ["ide", "cli", "Bad", "nobody", "{tree}/../decoy",
+                "{tree}/src/runtime/recipes/ide/", "{tree}/projects/{home}/view.vlp",
+                LONG],
+    "path": ["nobody.txt", "Point.comp", "{tree}/../decoy/binary.bin",
+             "{tree}/../decoy/folder/", LONG],
     "recipe": ["nothing", "../parts", "library", "projects", LONG],
 }
 SLOT = re.compile(r"\{([a-z0-9]+)\}")
@@ -703,10 +706,13 @@ class Words:
     def fill(self, text: str) -> str:
         project = SANDBOX[self.state.home]
         node, key, value = project.params
-        files = [f"projects/{self.state.home}/{path}" for path in project.files]
+        # Whole, as a path typed counts from the folder the prompt shows, which the
+        # state's current view moves.
+        home = self.copy.tree / "projects" / self.state.home
+        files = [str(home / path) for path in project.files]
         slots = {
-            "home": self.state.home, "tree": str(self.copy.tree), "scrap": f"projects/"
-            f"{self.state.home}/{SCRAP}", "file": files[0], "file2": files[1],
+            "home": self.state.home, "tree": str(self.copy.tree),
+            "scrap": str(home / SCRAP), "file": files[0], "file2": files[1],
             "leaf": project.leaf, "group": project.group, "connection": project.connection,
             "writer": project.writer, "reader": project.reader, "pnode": node,
             "key": key, "value": value,
@@ -718,7 +724,7 @@ class Words:
             self.same = self.copy.name()
             text = (text.replace("{fresh}", self.same, 1)
                     .replace("{freshproject}", f"bf-{self.same}", 1)
-                    .replace("{newfile}", f"projects/{self.state.home}/{self.same}.txt", 1))
+                    .replace("{newfile}", str(home / f"{self.same}.txt"), 1))
         slots["same"] = self.same
         # Only the slots: a word no person means may hold braces of its own.
         return SLOT.sub(lambda found: slots.get(found.group(1), found.group(0)), text)
@@ -1044,22 +1050,25 @@ def menu_lines(tree: Path) -> dict[str, list[str]]:
 
 
 # What a right press puts for {} and {/} on each kind of thing in bf-one, with the lines
-# that make it first, and a word for each placeholder a line begins for the person.
+# that make it first, and a word for each placeholder a line begins for the person; a path
+# whole from the copy's top, {tree}, as the terminal they go to counts a path typed from
+# the folder its prompt shows.
 PRESSED = {
-    "ground": ("projects/bf-one", "projects/bf-one", []),
-    "inside": ("corners", "projects/bf-one/corners", ["cd corners"]),
-    "level": ("projects/bf-one/face", "projects/bf-one", []),
-    "node": ("face", "projects/bf-one/face", []),
-    "dropped": ("shot", "projects/bf-one/shot", ["recipe drop snapshot shot"]),
-    "file": ("projects/bf-one/face/Face.frag", "projects/bf-one/face", []),
-    "folder": ("projects/bf-one/face", "projects/bf-one", []),
-    "view": ("bf-two", "projects/bf-two", ["view switch"]),
-    "stray": ("corners.left", "projects/bf-one/corners/left",
+    "ground": ("{tree}/projects/bf-one", "{tree}/projects/bf-one", []),
+    "inside": ("corners", "{tree}/projects/bf-one/corners", ["cd corners"]),
+    "level": ("{tree}/projects/bf-one/face", "{tree}/projects/bf-one", []),
+    "node": ("face", "{tree}/projects/bf-one/face", []),
+    "dropped": ("shot", "{tree}/projects/bf-one/shot", ["recipe drop snapshot shot"]),
+    "file": ("{tree}/projects/bf-one/face/Face.frag", "{tree}/projects/bf-one/face", []),
+    "folder": ("{tree}/projects/bf-one/face", "{tree}/projects/bf-one", []),
+    "view": ("bf-two", "{tree}/projects/bf-two", ["view switch"]),
+    "stray": ("corners.left", "{tree}/projects/bf-one/corners/left",
               ["node remove keep corners.left"]),
-    "connection": ("top", "projects/bf-one", []),
-    "relation": ("projects/bf-one/face/Face.frag", "projects/bf-one/face", []),
-    "tab": ("projects/bf-one/face/Face.frag", "projects/bf-one/face",
-            ["open projects/bf-one/face/Face.frag"]),
+    "connection": ("top", "{tree}/projects/bf-one", []),
+    "relation": ("{tree}/projects/bf-one/face/Face.frag", "{tree}/projects/bf-one/face",
+                 []),
+    "tab": ("{tree}/projects/bf-one/face/Face.frag", "{tree}/projects/bf-one/face",
+            ["open {tree}/projects/bf-one/face/Face.frag"]),
     "project": ("", "", []),
 }
 
@@ -1071,11 +1080,14 @@ def gui(copy: Copy) -> None:
     vulpen = copy.start(state)
     print("gui: menus", flush=True)
     for section, lines in menu_lines(copy.tree).items():
-        name, folder, before = PRESSED.get(section, ("face", "projects/bf-one", []))
+        tree = str(copy.tree)
+        name, folder, before = PRESSED.get(section, ("face", "{tree}/projects/bf-one", []))
+        name, folder = name.replace("{tree}", tree), folder.replace("{tree}", tree)
+        before = [made.replace("{tree}", tree) for made in before]
         for line in lines:
             sent = (line.replace("{/}", folder).replace("{}", name)
                     .replace("<name>", copy.name()).replace("<recipe>", "snapshot")
-                    .replace("<file>", f"projects/bf-one/{copy.name()}.txt")
+                    .replace("<file>", f"{tree}/projects/bf-one/{copy.name()}.txt")
                     .replace("<project>", "bf-three").replace("<view>", "bf-two"))
             usage = usage_of(f"menu [{section}] {line}")
             try:
@@ -1251,7 +1263,7 @@ SEEN = [
          next(state for state in STATES if state.name == "editing"), ["@restart"],
          ("ide", "bf-two"), refused="would lose"),
     Seen("a project hosted twice, under another name", PROJECT,
-         ["view add other projects/bf-one/view.vlp"], ("ide", "bf-one"),
+         ["view add other {tree}/projects/bf-one/view.vlp"], ("ide", "bf-one"),
          refused="bf-one"),
     Seen("a project hosted from a script by ../, beside the script", State("ide"),
          ["source ../decoy/host.txt"], ("ide", "bf-x")),
@@ -1278,7 +1290,8 @@ def seen(copy: Copy) -> None:
         try:
             for line in sequence.lines:
                 said += (vulpen.restart() if line == "@restart" else
-                         vulpen.send(*(part.strip() for part in line.split(";;"))))
+                         vulpen.send(*(part.strip().replace("{tree}", str(copy.tree))
+                                       for part in line.split(";;"))))
                 usage = usage_of("quit restart" if line == "@restart" else line)
                 copy.tried.append(Tried("seen", sequence.what, usage.text, "seen", line,
                                         "refused" if refusals(said) else "ran",

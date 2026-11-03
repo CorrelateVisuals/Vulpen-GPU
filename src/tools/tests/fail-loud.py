@@ -658,7 +658,8 @@ def files(vulpen: str, folder: Path) -> str | None:
     """Why a file line deleted, moved or made what it must not, or None: a delete cannot be
     undone, so a folder holding files goes only with force, and in a view a node's folder
     moves and goes only with the node, a folder made there is a node, which the line adds
-    and saves, and an app makes no folder of its own."""
+    and saves, and an app makes no folder of its own; a path typed counts from the folder
+    the prompt shows, the project's once it is loaded."""
     recipes = cli_copy(folder / "files")
     project = folder / "files" / "project"
     (project / "keep").mkdir(parents=True)
@@ -672,7 +673,7 @@ def files(vulpen: str, folder: Path) -> str | None:
                f"file new {recipes / 'cli' / 'own'}/"]
     typed = "\n".join([f"view load {project}", *refused,
                        f"file new {project / 'keep' / 'c.txt'}",
-                       f"file new {project / 'made' / 'b.txt'}",
+                       f"file new {project / 'made' / 'b.txt'}", "file new typed.txt",
                        f"file rename {loose / 'inner' / 'a.txt'} {loose / 'new' / 'a.txt'}"])
     _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed + "\n")
     if (problems(output) or output.count("{!!!}") != len(refused)
@@ -680,7 +681,8 @@ def files(vulpen: str, folder: Path) -> str | None:
             or not (project / "keep" / "c.txt").is_file() or (project / "moved").exists()
             or (recipes / "cli" / "own").exists() or not (project / "made" / "b.txt").is_file()
             or '[node "made"]' not in (project / "view.vlp").read_text(encoding="utf-8")
-            or not (loose / "new" / "a.txt").is_file()):
+            or not (loose / "new" / "a.txt").is_file()
+            or not (project / "typed.txt").is_file()):
         return f"files: a file line went past what keeps files and nodes whole:\n{output}"
     return None
 
