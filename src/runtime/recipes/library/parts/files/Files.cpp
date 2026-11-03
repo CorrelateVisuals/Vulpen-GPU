@@ -512,9 +512,10 @@ class Files final : public VP::Operator {
     return text;
   }
 
-  // A rename takes what it names along, so a node's folder or a view's own stays where
-  // its name puts it; a copy leaves it, so only where the copy lands counts. Both name
-  // the paths as typed, as new and remove do.
+  // A rename takes what it names along, so a view's own folder stays where its name puts
+  // it, and a node's folder takes its node; a copy leaves it, so only where the copy lands
+  // counts, a node's folder or a recipe's coming as a drop. Both name the paths as typed,
+  // as new and remove do.
   void move(VP::Call &call,
             const std::filesystem::path &from,
             const std::filesystem::path &to,
@@ -523,8 +524,8 @@ class Files final : public VP::Operator {
       throw std::runtime_error(std::format("{} is not there", shown(from)));
     if (there(call.files(), to))
       throw std::runtime_error(std::format("{} is there already", shown(to)));
-    const std::optional<Held> left = held_by(call, from);
     if (!copy) {
+      const std::optional<Held> left = held_by(call, from);
       check_kept(call, left, from, true);
       if (const std::optional<std::string> node = node_at(left))
         return rename_node(call, *left, *node, from, to);
