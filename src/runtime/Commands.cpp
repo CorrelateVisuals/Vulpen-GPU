@@ -281,6 +281,22 @@ struct Commands::Spec {
     return kind == "file" || ((kind == "project" || kind == "path") &&
                               std::filesystem::path(word).has_parent_path());
   }
+
+  // What a refusal adds for the words past the usage's last placeholder: which they
+  // are, and after a path, that it holds no blank, as a path a blank split reads (A02).
+  std::string too_many(std::span<const std::string_view> arguments) const {
+    if (more || arguments.size() <= placeholders.size())
+      return {};
+    const std::span<const std::string_view> past = arguments.subspan(placeholders.size());
+    const std::string_view last = placeholders.empty() ? "" : placeholders.back();
+    return std::format(": {} {} {} too many{}",
+                       joined(past, " "),
+                       past.size() == 1 ? "is" : "are",
+                       past.size() == 1 ? std::string("one word")
+                                        : std::format("{} words", past.size()),
+                       last == "file" || last == "path" ? ", as a path holds no blank"
+                                                        : "");
+  }
 };
 
 Commands::Commands(const Log &log, FilePort &files, ProcessPort &processes)
@@ -375,8 +391,10 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
   const std::size_t expected = spec->placeholders.size();
   const std::size_t least = spec->optional ? expected - 1 : expected;
   if (arguments.size() < least || (arguments.size() > expected && !spec->more))
-    throw std::runtime_error(
-        std::format("{} does not fit the usage `{}`", typed, spec->usage));
+    throw std::runtime_error(std::format("{} does not fit the usage `{}`{}",
+                                         typed,
+                                         spec->usage,
+                                         spec->too_many(arguments)));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
   std::filesystem::path from = paths_from(typed_at);
   const std::vector<std::string> paths = resolve(*spec, arguments, from);
