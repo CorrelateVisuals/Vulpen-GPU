@@ -118,7 +118,8 @@ recipe = switch-tabs
 # press on one presents it, which the graph and the terminal follow, and it shows here. A
 # tab dragged onto the panel's own edge, or beside another panel, goes into a Perform
 # panel of its own there, a divider between, and into another Perform panel's middle
-# joins its tabs; a Perform panel added goes once its last tab closes or leaves.
+# joins its tabs; a Perform panel added goes once its last tab closes or leaves, and this
+# one hides then, as the editor's panel does once its last file closes.
 [node "ide.projects"]
 recipe = deck
 

@@ -77,6 +77,10 @@ constexpr std::string_view typed_port = "typed";
 // A deck a view goes into, as one of a panel holding several leaves for a panel of its
 // own, named so its panel's button reads as the Perform panel's do.
 constexpr std::string_view deck_name = "perform";
+// An image file's params: the switch whose other half shows its preview, and the file it
+// holds, so a preview beside the manifest's deck keeps their panel showing.
+constexpr std::string_view switch_param = "switch";
+constexpr std::string_view file_param = "file";
 constexpr float even = 0.5f;      // a moved dock's ratio: half its place for each panel
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 constexpr std::int32_t ring = 2;  // how wide the frame where a drop puts a panel is
@@ -329,7 +333,8 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // into a deck of its own, or into the deck in the target's middle, so a pane and what it
 // holds stay; let go on its own strip, a panel does nothing, as a tab let go on another
 // moves among them there. An editor or a deck it added goes with its panel once it holds
-// nothing, as its last tab closes or leaves. It hides a panel and shows it again,
+// nothing, as its last tab closes or leaves, and the manifest's own hide with theirs, a
+// file opened showing its editor's panel again. It hides a panel and shows it again,
 // as its dock's ratio gives its half no room and back, and hands on a button a panel,
 // lit while it shows, whose press hides or shows it. It finds where each
 // panel and its strip show as the splits and the bars lay them out, from the Rect its
@@ -433,35 +438,53 @@ class Docking final : public VP::Operator {
 
   // A panel whose content the docking part added, an editor or a deck, goes once that
   // content held a tab and holds none, as its last file closed or its last view closed or
-  // left, by panel hide, which takes it: the last tab closed closes the panel. An
-  // editor's files are read each frame, without allocating; a deck's views change only
-  // with an edit, so they are read after a rebuild.
+  // left, by panel hide, which takes it: the last tab closed closes the panel. The
+  // manifest's own editor and deck hide so, while each is all its panel holds, the deck
+  // once a preview beside it holds no file either. A file an editor comes to show, opened
+  // rather than left by a close, shows its panel again, as a person who opens a file
+  // looks at it. An editor's files are read each frame, without allocating; a deck's
+  // views and a preview's file change only with an edit, so they are read after a
+  // rebuild.
   void sweep(VP::Cook &frame) {
     if (!_written_read)
       return;
     if (_editors)
       for (const VP_VIEW::Editor *editor : *_editors) {
         const std::size_t count = editor->count();
-        const auto had = _counts.find(editor->name());
-        const bool emptied = editor != _editors->back() && count == 0 &&
-                             had != _counts.end() && had->second > 0;
-        if (had == _counts.end() || had->second != count)
-          _counts[editor->name()] = count;
-        if (emptied)
+        const std::string_view shown = editor->shown();
+        const auto had = _editors_seen.find(editor->name());
+        const bool seen = had != _editors_seen.end();
+        const bool emptied = seen && count == 0 && had->second.count > 0;
+        const bool opened = seen && !shown.empty() && shown != had->second.shown &&
+                            count >= had->second.count;
+        if (!seen || had->second.count != count || had->second.shown != shown)
+          _editors_seen[editor->name()] = {count, std::string(shown)};
+        if (emptied &&
+            (editor != _editors->back() || alone(frame.view(), editor->name())))
           hide_holding(frame, editor->name());
+        else if (opened)
+          frame.commands().send(std::format("{}: panel show {}", _view, editor->name()));
       }
     if (!std::exchange(_swept, true)) {
       std::vector<std::string> emptied;
+      std::vector<std::string> previewed;
       for (const VP::Node &node : frame.view().nodes) {
-        if (node.recipe != deck_recipe || node_in(_written, node.name))
+        if (node.recipe != deck_recipe)
           continue;
-        const bool holding = !held(frame.view(), *frame.view(""), node.name).empty();
-        if (!holding && _decks_held[node.name])
+        const bool own = node_in(_written, node.name);
+        const bool preview = own && previews(frame.view(), node.name);
+        const bool holding =
+            preview || !held(frame.view(), *frame.view(""), node.name).empty();
+        const DeckSeen was = std::exchange(_decks_seen[node.name], {holding, preview});
+        if (!holding && was.holding && (!own || alone(frame.view(), node.name)))
           emptied.push_back(node.name);
-        _decks_held[node.name] = holding;
+        else if (preview && !was.preview)
+          previewed.push_back(node.name);
       }
       for (const std::string &deck : emptied)
         hide_holding(frame, deck);
+      for (const std::string &deck : previewed)
+        frame.commands().send(std::format("{}: panel show {}", _view, deck));
     }
   }
 
@@ -472,6 +495,22 @@ class Docking final : public VP::Operator {
     });
     if (holding != _seated.end())
       frame.commands().send(std::format("{}: panel hide {}", _view, holding->panel));
+  }
+
+  // Whether a node is all its panel holds, in no stack beside another content.
+  static bool alone(const VP::View &view, std::string_view node) {
+    const std::optional<Holder> holder = holder_of(view, node);
+    return holder && holder->halves.empty();
+  }
+
+  // Whether a node in the other half of the switch handing a content its room holds a
+  // file there, as an image file's preview names its switch and its file.
+  static bool previews(const VP::View &view, std::string_view content) {
+    const VP::Connection *const room = feeding(view, content);
+    return room && std::ranges::any_of(view.nodes, [&](const VP::Node &node) {
+             return param_of(node, switch_param) == room->from.node &&
+                    !param_of(node, file_param).empty();
+           });
   }
 
   // At the first frame, on a view as its manifest has it, the panels as the file keeps
@@ -1661,10 +1700,19 @@ class Docking final : public VP::Operator {
   // found for yet after a rebuild, or since the panels were seated anew.
   std::optional<std::string> _framed_for;
   std::optional<std::size_t> _framed;
-  // How many files each editor held, by its text node, and whether each deck the docking
-  // part added held a view, as last seen, so one that held some and holds none goes.
-  std::map<std::string, std::size_t, std::less<>> _counts;
-  std::map<std::string, bool, std::less<>> _decks_held;
+  // How many files each editor held and the one it showed, by its text node, and whether
+  // each deck held a view or, beside the manifest's own, a preview a file, as last seen,
+  // so one that held some and holds none goes, or hides, and a file opened shows.
+  struct EditorSeen {
+    std::size_t count = 0;
+    std::string shown;
+  };
+  struct DeckSeen {
+    bool holding = false;
+    bool preview = false;
+  };
+  std::map<std::string, EditorSeen, std::less<>> _editors_seen;
+  std::map<std::string, DeckSeen, std::less<>> _decks_seen;
   bool _swept = false; // the decks, since the last rebuild
   // A dock's ratio before it hid a half, by its split, so showing it gives it back; and the
   // panel maximized last, with the splits its maximize gave the panel's half all of.
