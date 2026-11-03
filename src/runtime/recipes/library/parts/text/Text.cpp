@@ -29,6 +29,7 @@ constexpr std::size_t indent = 2; // Tab types spaces to a multiple of this colu
 // bounded (A03); and the key that takes one back with control, with shift too again.
 constexpr std::size_t undo_room = 1000;
 constexpr std::string_view undo_key = "z";
+constexpr std::string_view select_all_key = "a"; // with control, the whole file
 // The tab of an editor holding no file, so it still shows as open, empty, and a strip that
 // stacks it with other contents has a tab to show it again by.
 constexpr std::string_view empty_tab = "editor";
@@ -556,9 +557,9 @@ bool Text::escape(VP::Cook &frame, const VP::Event &event, const Grid &grid) {
 }
 
 // Typed text goes in at the caret, and a key moves the caret, selecting while shift is
-// held, changes the text, or with control copies, cuts or pastes, or takes the last edit
-// back, with shift too makes it again; any other does nothing here. With no room it
-// takes none.
+// held, changes the text, or with control copies, cuts or pastes, selects the whole file,
+// or takes the last edit back, with shift too makes it again; any other does nothing
+// here. With no room it takes none.
 void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) {
   if (event.kind == VP::Event::Kind::key && event.name == "shift")
     _shift = event.down;
@@ -578,6 +579,10 @@ void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) 
     keep(document, std::move(change), rows, event.name);
   } else if (_control && event.name == undo_key) {
     undo(document, _shift);
+  } else if (_control && event.name == select_all_key) {
+    document.anchor = {};
+    document.caret = {rows - 1, document.lines.back().size()};
+    return; // the rows shown stay, as other editors leave them
   } else if (const std::optional<Spot> to = moved(document, event.name, grid)) {
     document.caret = *to;
     if (!_shift)
