@@ -120,8 +120,8 @@ def at(example: str, *parts: str) -> str:
 
 
 def swapped(example: str, node: str, made: list[str], wanted: list[str]) -> list[Step]:
-    """The files node new wrote, which the example's node does not hold, removed, and the
-    example's copied in: one copied over a file there first, which is refused."""
+    """The files new wrote removed, and the example's copied in: one copied over a file
+    there first, which is refused."""
     copy, folder = COPY + example, node.replace(".", "/")
     steps = []
     clash = next((name for name in wanted if name in made), None)
@@ -137,18 +137,6 @@ def swapped(example: str, node: str, made: list[str], wanted: list[str]) -> list
 def files_of(example: str, node: str) -> list[str]:
     folder = folder_of(example) / node.replace(".", "/")
     return sorted(path.name for path in folder.iterdir() if path.is_file())
-
-
-# What node new writes for each kind of node, by its files' ends; a group writes none.
-KINDS = {"draw": (".cpp", ".glsl", ".vert", ".frag"), "dispatch": (".cpp", ".comp"),
-         "vertex": (".vert",), "fragment": (".frag",), "cpp": (".cpp",), "group": ()}
-
-
-def made_by(kind: str, node: str) -> list[str]:
-    """The files node new writes for a node: its class's name, from its own name."""
-    own = node.rsplit(".", 1)[-1]
-    name = "".join(word.capitalize() for word in own.split("-"))
-    return [name + end for end in KINDS[kind]]
 
 
 def manifest_of(example: str) -> tuple[list[tuple[str, list[str]]], list[list[str]]]:
@@ -170,10 +158,12 @@ def manifest_of(example: str) -> tuple[list[tuple[str, list[str]]], list[list[st
     return nodes, connections
 
 
-def made(kind: str, example: str, node: str) -> list[Step]:
-    """A node started from the template, its files then swapped for the example's."""
-    return [ok(f"node new {kind} {node}"),
-            *swapped(example, node, made_by(kind, node), files_of(example, node))]
+def made(example: str, node: str) -> list[Step]:
+    """A node started by new, a file for each of the example's node, each the least that
+    builds and runs, then swapped for the example's."""
+    folder, files = node.replace(".", "/"), files_of(example, node)
+    return [ok("new " + " ".join(at(COPY + example, folder, name) for name in files)),
+            *swapped(example, node, files, files)]
 
 
 def examples(scratch: Path) -> list[Example]:
@@ -182,15 +172,15 @@ def examples(scratch: Path) -> list[Example]:
     later line puts right."""
     every = []
 
-    # triangle: the template, its files swapped for the example's, the words set.
+    # triangle: its files started by new, swapped for the example's, the words set.
     e = Example("triangle")
     e.steps = [
         no("view new", "does not fit the usage"),
         ok(f"view new {e.copy}"),
         no(f"view new {e.copy}", e.copy),
-        no("node new draw Triangle", "no name for a new node"),
-        no("nod new draw triangle", "unknown command nod"),
-        *made("draw", e.name, "triangle"),
+        no(f"new {at(e.copy, 'tri.angle')}/", "a node's name holds"),
+        no(f"nwe {at(e.copy, 'triangle')}/", "unknown command nwe"),
+        *made(e.name, "triangle"),
         no("node set triangle vertex_count=three", "three is not a whole number"),
         no("node set triangle vertex_count=3 invocations=8", "invocations"),
         ok("node set triangle vertex_count=3 instance_count= param=frames_per_turn=600"),
@@ -225,13 +215,13 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # triangle-params: the template; the params set on the node the graph selects, a line
+    # triangle-params: new; the params set on the node the graph selects, a line
     # short of it, the selection filling it in, typed in the ide's terminal too; a
     # misspelled key taken back.
     e = Example("triangle-params")
     e.steps = [
         ok(f"view new {e.copy}"),
-        *made("draw", e.name, "triangle"),
+        *made(e.name, "triangle"),
         ok("node set triangle vertex_count=3 instance_count= param=frames_per_turn=600"),
         no("param set top 0,-0.5", "does not fit the usage"),
         ok("select triangle"),
@@ -266,13 +256,13 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # triangle-compute: two templates, a connection to a misspelled port, which the line
+    # triangle-compute: two nodes by new, a connection to a misspelled port, which the line
     # takes and the bind refuses, so it is let go of and made again.
     e = Example("triangle-compute")
     e.steps = [
         ok(f"view new {e.copy}"),
-        *made("dispatch", e.name, "raster"),
-        *made("draw", e.name, "screen"),
+        *made(e.name, "raster"),
+        *made(e.name, "screen"),
         ok("node set raster invocations=65536 param=frames_per_turn=600",
            "node set screen vertex_count=3 instance_count= param="),
         ok("connect canvas raster.canvas screen.pictur"),
@@ -284,14 +274,14 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # triangle-cpp-raster: the contracts, a folder made by file new and filled file by
+    # triangle-cpp-raster: the contracts, a folder made by new and filled file by
     # file, a connection first made backwards.
     e = Example("triangle-cpp-raster")
     e.steps = [
         ok(f"view new {e.copy}"),
         ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        ok(f"file new {at(e.copy, 'raster')}/"),
-        no(f"file new {at(e.copy, 'raster')}/", "is there already"),
+        ok(f"new {at(e.copy, 'raster')}/"),
+        no(f"new {at(e.copy, 'raster')}/", "is there already"),
         ok(f"file copy {at(e.name, 'raster', 'Raster.comp')} {at(e.copy, 'raster', 'Raster.com')}"),
         ok(f"file rename {at(e.copy, 'raster', 'Raster.com')} "
            f"{at(e.copy, 'raster', 'Raster.comp')}"),
@@ -350,17 +340,16 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # triangle-files: a node a file, each started from its kind's template, a draw split
-    # over two nodes; a connection named twice, then one misnamed, let go of and made
-    # again.
+    # triangle-files: a node a file, each started by new, a draw split over two nodes; a
+    # connection named twice, then one misnamed, let go of and made again.
     e = Example("triangle-files")
     e.steps = [
         ok(f"view new {e.copy}"),
         ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        *made("cpp", e.name, "clock"),
-        *made("cpp", e.name, "corners"),
-        *made("vertex", e.name, "face"),
-        *made("fragment", e.name, "blend"),
+        *made(e.name, "clock"),
+        *made(e.name, "corners"),
+        *made(e.name, "face"),
+        *made(e.name, "blend"),
         ok("node set clock param=frames_per_turn=600", "node set corners param=",
            "node set face vertex_count=3 instance_count= param="),
         ok("connect spin clock.spin corners.spin"),
@@ -379,7 +368,7 @@ def examples(scratch: Path) -> list[Example]:
     e.steps = [
         ok(f"view new {e.copy}"),
         ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        *made("cpp", e.name, "corners"),
+        *made(e.name, "corners"),
         ok("node set corners param=frames_per_turn=600"),
         ok(f"file copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
            "node set face vertex_count=3"),
@@ -426,7 +415,7 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # wave: two templates; the words from a file of lines, sourced; the panels moved
+    # wave: two nodes by new; the words from a file of lines, sourced; the panels moved
     # about, the Perform panel into the graph's and a project made while it is there, then
     # out again; the modes switched, the graph zoomed and arranged.
     e = Example("wave")
@@ -438,8 +427,8 @@ def examples(scratch: Path) -> list[Example]:
                      "log=info\n")
     e.steps = [
         ok(f"view new {e.copy}"),
-        *made("dispatch", e.name, "wave"),
-        *made("dispatch", e.name, "probe"),
+        *made(e.name, "wave"),
+        *made(e.name, "probe"),
         no("source nowhere.txt", "nowhere.txt"),
         ok(f"source {lines}"),
         ok("connect values wave.values probe.value"),
@@ -475,8 +464,8 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"view new {COPY}lif"),
         ok(f"view rename {e.copy}"),
         ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        no("node new dispatch seed_cells", "no name for a new node"),
-        *made("dispatch", e.name, "seed-cells"),
+        no(f"new {at(e.copy, 'contracts')}/", "is there already"),
+        *made(e.name, "seed-cells"),
         ok(f"file copy {at(e.name, 'engine')}/ {at(e.copy, 'enigne')}/"),
         ok("node rename enigne engine"),
         ok(f"file copy {at(e.name, 'cells')}/ {at(e.copy, 'cells')}/"),
@@ -495,7 +484,7 @@ def examples(scratch: Path) -> list[Example]:
     every.append(e)
 
     # ray-cubes: the long chain rebuilt by hand, as a beta user rebuilds it from the
-    # example: node by node in its order, some from their kind's template, the rest copied,
+    # example: node by node in its order, some started by new, the rest copied,
     # the bounces as groups, the later ones copied a node at a time from the copy's own
     # first; then every connection in order. On the way the mistakes such a chain invites:
     # a path misspelled, a node copied under a wrong name and renamed, words mistyped or
@@ -517,7 +506,7 @@ def examples(scratch: Path) -> list[Example]:
         return ok(f"connect {name} {ends[name]}")
 
     def later_bounce(bounce: str) -> list[Step]:
-        return [ok(f"node new group {bounce}"),
+        return [ok(f"new {at(e.copy, bounce)}/"),
                 no(f"file copy {at(e.copy, 'bounce1')}/ {at(e.copy, bounce)}/",
                    "is there already"),
                 *(ok(copied(f"bounce1.{node}", f"{bounce}/{node}", e.copy),
@@ -530,7 +519,7 @@ def examples(scratch: Path) -> list[Example]:
         no(f"file copy {at(e.name, 'contract')}/ {at(e.copy, 'contracts')}/", "contract"),
         ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/",
            f"file copy {at(e.name, 'shared')}/ {at(e.copy, 'shared')}/"),
-        *made("cpp", e.name, "orbit"),
+        *made(e.name, "orbit"),
         settled(f"node set orbit {words['orbit'].replace('distance=14', 'distance=fourteen')}",
                 refused="fourteen"),
         ok(f"node set orbit {words['orbit']}"),
@@ -542,7 +531,7 @@ def examples(scratch: Path) -> list[Example]:
         settled(f"node set grid {words['grid'].replace('invocations=64', 'invocations=60')}",
                 refused="local_size_x"),
         ok(f"node set grid {words['grid']}"),
-        *made("dispatch", e.name, "spin"),
+        *made(e.name, "spin"),
         ok(f"node set spin {words['spin']}"),
         ok(copied("floor"), f"node set floor {words['floor']}"),
         ok(copied("join"), f"node set join {words['join']}"),
@@ -553,9 +542,9 @@ def examples(scratch: Path) -> list[Example]:
         settled(f"node set rays {words['rays'].replace('1920,1080', '1920x1080')}",
                 refused="1920x1080"),
         ok(f"node set rays {words['rays']}"),
-        no("node new group Bounce1", "no name for a new node"),
-        ok("node new group bounce1"),
-        *made("dispatch", e.name, "bounce1.trace"),
+        no(f"new {at(e.copy, 'bounce.1')}/", "a node's name holds"),
+        ok(f"new {at(e.copy, 'bounce1')}/"),
+        *made(e.name, "bounce1.trace"),
         ok(f"node set bounce1.trace {words['bounce1.trace']} param="),
         ok(copied("bounce1.shadow"), f"node set bounce1.shadow {words['bounce1.shadow']}"),
         ok(copied("bounce1.shade")),
@@ -605,26 +594,22 @@ def examples(scratch: Path) -> list[Example]:
         # A path typed counts from the folder the prompt shows, the project's, in either
         # terminal: a file made there, or the line removing it is refused, and a folder
         # made there, which is a node, or node remove is refused.
-        ok("file new typed.txt"),
+        ok("new typed.txt"),
         ok(f"file remove {at(e.copy, 'typed.txt')}"),
-        typed("file new typed/"),
+        typed("new typed/"),
         ok("node remove typed"),
-        # A node of nodes, made empty, the kinds no example starts from made inside it: a
-        # C++ node that says where its points go, and a draw split over two nodes, joined
-        # by their varyings; then all of it removed with the group.
-        ok("node new group stage"),
-        no("node new group stage", "has a node stage already"),
-        ok("node new cpp stage.source", "node new vertex stage.shape",
-           "node new fragment stage.look"),
-        settled("source points"),
-        ok("connect shape-uv stage.shape.uv stage.look.uv",
-           "connect shape-color stage.shape.color stage.look.color"),
-        ok("node remove stage"),
+        # A node of nodes, made empty, and inside it a C++ node and a draw, each file the
+        # least that builds and runs, bound once built; then all of it removed with the
+        # group.
+        ok("new stage/"),
+        no("new stage/", "is there already"),
+        ok("new stage/source/Source.cpp stage/shape/Shape.vert stage/shape/Shape.frag"),
+        settled("node remove stage"),
         no("recipe drop nothing shot", "no recipe nothing"),
         ok("recipe drop snapshot shot"),
         ok("recipe sync shot"),
         ok("node rename shot picture"),
-        ok(f"file new {shot}/notes.txt"),
+        ok(f"new {shot}/notes.txt"),
         no("recipe sync picture", "changed since it was dropped"),
         ok(f"file rename {shot}/notes.txt {shot}/readme.txt"),
         ok(f"file remove {shot}/readme.txt"),
@@ -638,7 +623,7 @@ def examples(scratch: Path) -> list[Example]:
 
     # surprises: what a person does that the lines before did not see coming. A view hosted
     # from a folder inside another, which holds it, so that folder stays while it runs. The
-    # editor holding the manifest as node new saves it, which it shows as saved. The editor
+    # editor holding the manifest as new saves it, which it shows as saved. The editor
     # holding a file, typed into, as a line renames its node, renames it, or moves the
     # project, where its tab follows it, so write saves it there; one another program
     # changes, which it shows as changed, or typed into, keeps for write force, as write
@@ -656,7 +641,7 @@ def examples(scratch: Path) -> list[Example]:
     loop.write_text(f"source {loop}\n")
     nest = at(f"{COPY}nest")
     e.steps = [
-        ok(f"file new {nest}/"),
+        ok(f"new {nest}/"),
         ok(f"view add re-nest-inner {nest}/inner/view.vlp", "re-nest-inner: view save"),
         no(f"file remove force {nest}/", "view re-nest-inner's folder"),
         no(f"file rename {nest}/ {at(f'{COPY}nested')}/", "view re-nest-inner's folder"),
@@ -665,7 +650,7 @@ def examples(scratch: Path) -> list[Example]:
         no("view remove ../src", "view remove takes no path"),
         ok(f"view new {e.copy}"),
         ok("open"),
-        ok("node new dispatch spin", "node new dispatch turn"),
+        ok("new spin/Spin.comp spin/Spin.cpp turn/Turn.comp turn/Turn.cpp"),
         ok("jump spin", "jump turn"),
         ok("close"),
         ok(f"open {spin}"),
@@ -695,10 +680,10 @@ def examples(scratch: Path) -> list[Example]:
         ok("write"),
         ok("close"),
         ok(f"view rename {e.copy}"),
-        ok(f"file new {notes}", f"open {notes}"),
+        ok(f"new {notes}", f"open {notes}"),
         ok(f"file remove {notes}"),
         no(f"close {notes}", "is not open in an editor"),
-        ok(f"file new {notes}", f"open {notes}"),
+        ok(f"new {notes}", f"open {notes}"),
         ok("focus ide.editor.text"),
         ok("input text typed"),
         ok(f"file remove {notes}"),

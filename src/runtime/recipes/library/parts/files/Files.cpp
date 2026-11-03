@@ -20,6 +20,21 @@ constexpr std::string_view manifest = "view.vlp";
 // The folders at a view's top that hold what its nodes share (RV05, RV09), so neither is
 // a node's, nor any folder in them.
 constexpr std::array<std::string_view, 2> shared_folders{"contracts", "shared"};
+// What new starts a file with, by its extension: the start file of that extension in the
+// start folder, the least that builds and runs, Name in it becoming the class the file's
+// stem names; and the word its node needs to run it, which the node gets where it has
+// none: the three corners of the start's triangle, and one workgroup of its threads. A
+// file of any other extension starts empty.
+struct Start {
+  std::string_view extension;
+  std::string_view word; // as node set takes it; empty for none
+};
+constexpr std::array<Start, 5> starts{{{".vert", "vertex_count=3"},
+                                       {".frag", ""},
+                                       {".comp", "invocations=64"},
+                                       {".cpp", ""},
+                                       {".h", ""}}};
+constexpr std::string_view start_name = "Name";
 
 // A path as the prompt shows a folder, from where vulpen started, so an answer names it
 // as the person typed it.
@@ -42,6 +57,58 @@ bool listed(VP::FilePort &files, const std::filesystem::path &path, std::string_
 
 bool there(VP::FilePort &files, const std::filesystem::path &path) {
   return listed(files, path, "") || listed(files, path, "/");
+}
+
+// The C++ class a name gives: command-line gives CommandLine.
+std::string class_of(std::string_view name) {
+  std::string type;
+  bool upper = true;
+  for (const char letter : name) {
+    if (letter == '-') {
+      upper = true;
+      continue;
+    }
+    type.push_back(upper && letter >= 'a' && letter <= 'z'
+                       ? static_cast<char>(letter - 'a' + 'A')
+                       : letter);
+    upper = false;
+  }
+  return type;
+}
+
+bool word_letter(char letter) {
+  return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
+         (letter >= '0' && letter <= '9') || letter == '_';
+}
+
+// Each whole word `from` in the text, whether code or a comment's, becomes `to`.
+std::string replaced(std::string text, std::string_view from, std::string_view to) {
+  for (std::size_t at = text.find(from); at != std::string::npos;
+       at = text.find(from, at)) {
+    const std::size_t end = at + from.size();
+    if ((at != 0 && word_letter(text[at - 1])) ||
+        (end != text.size() && word_letter(text[end]))) {
+      at = end;
+      continue;
+    }
+    text.replace(at, from.size(), to);
+    at += to.size();
+  }
+  return text;
+}
+
+// The class a start names: its file's stem as a C++ class, Clock of Clock.cpp and MyNode
+// of my-node.cpp; a stem no class can be named by is refused before a file is written.
+std::string class_named(const std::filesystem::path &file) {
+  const std::string stem = file.stem().string();
+  const char first = stem.empty() ? '\0' : stem.front();
+  const bool letter = (first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z');
+  if (!VP::is_name(stem) || !letter)
+    throw std::runtime_error(std::format("{} names no C++ class: its name before the "
+                                         "extension is letters, digits, _ and -, a "
+                                         "letter first",
+                                         shown(file)));
+  return class_of(stem);
 }
 
 // Where a path lies in a view vulpen hosts: the name lines address the view with, the
@@ -219,24 +286,82 @@ void check_kept(VP::Call &call,
                                *node));
 }
 
+// A node and the words a line gives it, each after a blank, as node add and node set
+// take them.
+struct Words {
+  std::string node;
+  std::string words;
+};
+
+// What a line changes in a view's graph, known before anything is written: the nodes it
+// adds, and the words it sets on nodes the view has.
+struct Graphed {
+  std::string view; // the name lines address it with
+  std::vector<Words> adds;
+  std::vector<Words> sets;
+};
+
+Graphed &graphed(std::vector<Graphed> &graphs, const std::string &view) {
+  const auto found = std::ranges::find(graphs, view, &Graphed::view);
+  return found != graphs.end() ? *found : graphs.emplace_back(Graphed{.view = view});
+}
+
+// The word a start needs, given to a node as the line adds it, or set on the view's node,
+// while the node counts nothing yet, by the view's words or the line's: a node counts its
+// vertices or its invocations, never both, so a start that asks for the other leaves it,
+// for the bind to name (A02).
+void give(Graphed &graph,
+          const VP::View &view,
+          const std::string &node,
+          std::string_view word) {
+  std::string words; // the node's, as the view and the line give them
+  if (const auto had = std::ranges::find(view.nodes, node, &VP::Node::name);
+      had != view.nodes.end())
+    for (const VP::Word &given : VP::words_of(*had))
+      words.append(std::format(" {}={}", given.key, given.value));
+  const auto added = std::ranges::find(graph.adds, node, &Words::node);
+  if (added != graph.adds.end())
+    words.append(added->words);
+  for (const Words &set : graph.sets)
+    if (set.node == node)
+      words.append(set.words);
+  const bool counts = std::ranges::any_of(starts, [&](const Start &start) {
+    const std::string_view key = start.word.substr(0, start.word.find('='));
+    return !key.empty() && words.find(std::format(" {}=", key)) != std::string::npos;
+  });
+  if (counts)
+    return;
+  if (added != graph.adds.end())
+    added->words.append(" ").append(word);
+  else
+    graph.sets.push_back({node, std::format(" {}", word)});
+}
+
 // Files and folders made, renamed, copied and deleted through the file port (V05), so a
 // person does all of it from inside vulpen, by lines a GUI sends too (V06). A path typed
 // counts from the folder the prompt shows, as in a shell, and one in a script from beside
 // it. In a view vulpen hosts every folder is a node's (RV08): a folder a line makes or
-// brings there is a node, which the line adds, saving the view, as node new does; a line
-// that would move or delete a node's folder or the view's own is refused, naming the line
-// that keeps them together (A02), and so is a folder in an app, whose nodes use the
-// library's recipes as they are. Nothing is written over: a line whose path is taken is
-// refused, and a folder holding files goes only with force, as quit force ends a run that
-// would lose work.
+// brings there is a node, which the line adds, saving the view, so new makes nodes as it
+// makes their folders, and a shader or C++ file it makes starts as the least code that
+// builds and runs; a line that would move or delete a node's folder or the view's own is
+// refused, naming the line that keeps them together (A02), and so is a folder in an app,
+// whose nodes use the library's recipes as they are. Nothing is written over: a line
+// whose path is taken is refused, and a folder holding files goes only with force, as
+// quit force ends a run that would lose work.
 class Files final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // A part's folder is <recipes>/library/parts/<name>; the apps are beside the library.
     _recipes = std::filesystem::path(node.folder()).parent_path().parent_path().parent_path();
-    _new = node.command("file new <file>",
-                        "makes an empty file, and the folders it is in; a path ending in "
-                        "/ makes a folder; in a view a folder is a node, which it adds, "
-                        "saving the view");
+    for (std::size_t start = 0; start < starts.size(); ++start)
+      _starts[start] =
+          node.file(std::format("start/{}{}.in", start_name, starts[start].extension));
+    _new = node.command("new <file>...",
+                        "makes files and folders, and the folders they are in: a path "
+                        "ending in / or with no extension a folder, else a file, a "
+                        "shader's or C++'s with the least code that builds and runs; in a "
+                        "view a folder is a node, which it adds, a draw's with its "
+                        "vertex_count and a dispatch's with its invocations, saving the "
+                        "view");
     _rename = node.command("file rename <file> <file>",
                            "renames a file or a folder, or moves it, into folders made "
                            "for it, in a view nodes; a node's folder moves with node "
@@ -255,30 +380,72 @@ class Files final : public VP::Operator {
   void command(VP::Call &call) override {
     const std::span<const std::string_view> words = call.arguments();
     if (call.is(_new))
-      make(call, words[0]);
+      make(call);
     else if (call.is(_rename) || call.is(_copy))
       move(call, bare(words[0]), bare(words[1]), call.is(_copy));
     else if (call.is(_remove) || call.is(_remove_force))
       remove(call, bare(words[0]), call.is(_remove_force));
   }
 
-  void make(VP::Call &call, std::string_view word) const {
-    const std::filesystem::path path = bare(word);
-    const bool folder = std::filesystem::path(word).filename().empty();
-    if (there(call.files(), path))
-      throw std::runtime_error(std::format("{} is there already", shown(path)));
-    const std::optional<Held> held = held_by(call, path);
-    const std::vector<std::string> nodes = adopted(call, held, folder, std::nullopt);
-    if (folder)
-      call.files().make(path.string());
-    else
-      call.files().save(path.string(), {});
-    call.reply(std::format("made {}{}{}", shown(path), folder ? "/" : "", add(call, held, nodes)));
+  // Each path, all checked before one is made, so a line refused makes nothing: a folder
+  // for one ending in / or with no extension, as a node's name has none, else a file, as
+  // its start has it. In a view each folder made is a node the line adds, a node a start
+  // needs a word of gets it where it has none, and each view is saved once.
+  void make(VP::Call &call) const {
+    std::vector<std::pair<std::filesystem::path, std::optional<std::string>>> made;
+    std::vector<Graphed> graphs;
+    for (const std::string_view word : call.arguments()) {
+      const std::filesystem::path path = bare(word);
+      const bool folder =
+          std::filesystem::path(word).filename().empty() || !path.has_extension();
+      const bool twice =
+          std::ranges::any_of(made, [&](const auto &one) { return one.first == path; });
+      if (twice || there(call.files(), path))
+        throw std::runtime_error(std::format("{} is there already", shown(path)));
+      const std::optional<Held> held = held_by(call, path);
+      Graphed *const graph = held ? &graphed(graphs, held->name) : nullptr;
+      for (std::string &node : adopted(call, held, folder, std::nullopt))
+        if (std::ranges::find(graph->adds, node, &Words::node) == graph->adds.end())
+          graph->adds.push_back({std::move(node), {}});
+      made.emplace_back(path,
+                        folder ? std::nullopt
+                               : std::optional(started(call.files(), path, held, graph)));
+    }
+    std::string names;
+    for (const auto &[path, text] : made) {
+      if (text)
+        call.files().save(path.string(), *text);
+      else
+        call.files().make(path.string());
+      names.append(names.empty() ? "" : ", ").append(shown(path)).append(text ? "" : "/");
+    }
+    call.reply(std::format("made {}{}", names, edit(call, graphs)));
+  }
+
+  // A file's start, by its extension, its class named by the file's stem where the start
+  // names one, and the word it needs given to the node whose folder holds the file.
+  std::string started(VP::FilePort &files,
+                      const std::filesystem::path &file,
+                      const std::optional<Held> &held,
+                      Graphed *graph) const {
+    const auto start =
+        std::ranges::find(starts, file.extension().string(), &Start::extension);
+    if (start == starts.end())
+      return {};
+    const auto at = static_cast<std::size_t>(start - starts.begin());
+    std::string text(files.text(_starts[at]));
+    if (text.find(start_name) != std::string::npos)
+      text = replaced(std::move(text), start_name, class_named(file));
+    const std::optional<std::string> node =
+        held ? node_of(held->inside.parent_path()) : std::nullopt;
+    if (node && !node->empty() && !start->word.empty())
+      give(*graph, *held->view, *node, start->word);
+    return text;
   }
 
   // A rename takes what it names along, so a node's folder or a view's own stays where
   // its name puts it; a copy leaves it, so only where the copy lands counts. Both name
-  // the paths as typed, as file new and file remove do.
+  // the paths as typed, as new and file remove do.
   void move(VP::Call &call,
             const std::filesystem::path &from,
             const std::filesystem::path &to,
@@ -290,8 +457,9 @@ class Files final : public VP::Operator {
     if (!copy)
       check_kept(call, held_by(call, from), from, true);
     const std::optional<Held> held = held_by(call, to);
-    const std::vector<std::string> nodes =
-        adopted(call, held, listed(call.files(), from, "/"), from);
+    std::vector<Graphed> graphs;
+    for (std::string &node : adopted(call, held, listed(call.files(), from, "/"), from))
+      graphed(graphs, held->name).adds.push_back({std::move(node), {}});
     if (copy)
       call.files().copy(from.string(), to.string());
     else
@@ -300,7 +468,7 @@ class Files final : public VP::Operator {
                            copy ? "copied" : "renamed",
                            shown(from),
                            shown(to),
-                           add(call, held, nodes)));
+                           edit(call, graphs)));
   }
 
   // The nodes the folders a line makes or brings into a view are, known before anything is
@@ -325,21 +493,36 @@ class Files final : public VP::Operator {
     return nodes;
   }
 
-  // Each node added to the view holding them, and the view saved, so its manifest holds
-  // every node whose folder is there, as node new does; what the answer adds.
-  static std::string
-  add(VP::Call &call, const std::optional<Held> &held, std::span<const std::string> nodes) {
-    if (nodes.empty())
-      return {};
-    std::string names;
-    for (const std::string &node : nodes) {
-      call.commands().send(std::format("{}: node add {}", held->name, node));
-      names.append(names.empty() ? "" : ", ").append(node);
+  // Each view's nodes added with their words, the words set, and the view saved, so its
+  // manifest holds every node whose folder is there; what the answer adds, as ", added
+  // node cube vertex_count=3 and saved the view".
+  static std::string edit(VP::Call &call, std::span<const Graphed> graphs) {
+    std::string added;
+    std::string given;
+    std::size_t count = 0;
+    for (const Graphed &graph : graphs) {
+      for (const Words &add : graph.adds) {
+        call.commands().send(
+            std::format("{}: node add {}{}", graph.view, add.node, add.words));
+        added.append(added.empty() ? "" : ", ").append(add.node).append(add.words);
+        ++count;
+      }
+      for (const Words &set : graph.sets) {
+        call.commands().send(
+            std::format("{}: node set {}{}", graph.view, set.node, set.words));
+        given.append(given.empty() ? "" : ", ").append(set.node).append(set.words);
+      }
+      if (!graph.adds.empty() || !graph.sets.empty())
+        call.commands().send(std::format("{}: view save", graph.view));
     }
-    call.commands().send(std::format("{}: view save", held->name));
-    return std::format(", added node{} {} and saved the view",
-                       nodes.size() == 1 ? "" : "s",
-                       names);
+    if (added.empty() && given.empty())
+      return {};
+    return std::format("{}{} and saved the view",
+                       added.empty() ? ""
+                                     : std::format(", added node{} {}",
+                                                   count == 1 ? "" : "s",
+                                                   added),
+                       given.empty() ? "" : std::format(", gave node {}", given));
   }
 
   static void remove(VP::Call &call, const std::filesystem::path &path, bool force) {
@@ -384,6 +567,9 @@ class Files final : public VP::Operator {
   }
 
   std::filesystem::path _recipes; // the library's folder and the apps' beside it
+  // The start files, by starts, which the file port watches, so new writes them as they
+  // are now.
+  std::array<VP::File, starts.size()> _starts;
   VP::Command _new;
   VP::Command _rename;
   VP::Command _copy;

@@ -1,0 +1,13 @@
+#include "runtime/Operator.h"
+
+namespace {
+
+// What the node does on the CPU: bind as its view is built, cook each frame.
+class Name final : public VP::Operator {
+  void bind(VP::Bind &) override {}
+  void cook(VP::Cook &) override {}
+};
+
+} // namespace
+
+VP_OPERATOR(Name);

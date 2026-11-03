@@ -670,10 +670,10 @@ def files(vulpen: str, folder: Path) -> str | None:
     (loose / "inner" / "a.txt").write_text("a", encoding="utf-8")
     refused = [f"file remove {loose}", f"file remove {project / 'keep'}",
                f"file rename {project / 'keep'} {project / 'moved'}",
-               f"file new {recipes / 'cli' / 'own'}/"]
+               f"new {recipes / 'cli' / 'own'}/"]
     typed = "\n".join([f"view load {project}", *refused,
-                       f"file new {project / 'keep' / 'c.txt'}",
-                       f"file new {project / 'made' / 'b.txt'}", "file new typed.txt",
+                       f"new {project / 'keep' / 'c.txt'}",
+                       f"new {project / 'made' / 'b.txt'}", "new typed.txt",
                        f"file rename {loose / 'inner' / 'a.txt'} {loose / 'new' / 'a.txt'}"])
     _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed + "\n")
     if (problems(output) or output.count("{!!!}") != len(refused)

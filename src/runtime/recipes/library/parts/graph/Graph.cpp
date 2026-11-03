@@ -134,7 +134,7 @@ std::string typed_path(const std::filesystem::path &path) {
 // The folders of a view's level no node names: at its top, but the folders of what its
 // nodes share, the hidden ones and its hosted views', or in a node's inside; each shows as
 // a box, which a right press makes a node, as every folder in a view is a node's (RV08).
-// At its top too the files beside its manifest, which no node holds, as file new leaves
+// At its top too the files beside its manifest, which no node holds, as new leaves
 // one there, each a box a press opens, as the manifest's; in a node's inside every file
 // is the node's. A folder's name ends with /, as the file port lists it. Read as the
 // level is built, as a node remove keep, which leaves the folder, builds it anew.

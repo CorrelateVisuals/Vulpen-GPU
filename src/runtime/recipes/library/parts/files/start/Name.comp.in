@@ -1,0 +1,5 @@
+// What each of the node's invocations does, 64 to a workgroup.
+layout(local_size_x = 64) in;
+
+void main() {
+}
