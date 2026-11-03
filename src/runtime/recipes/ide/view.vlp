@@ -331,10 +331,12 @@ from = ide.terminal-panel.bar.rest
 to   = ide.terminal.command-line.area
 
 # Where the graph is, the folder it shows or a node's whose inside shows, which the
-# terminal's prompt shows, as cd moves it.
+# terminal's prompt shows, as cd moves it, and the paths typed there count from, so the
+# menus name a path in a line they hand it from there too.
 [connection "place"]
 from = ide.graph.graph.place
 to   = ide.terminal.command-line.place
+to   = ide.menus.place
 
 # The lines a menu's press ends, which the terminal runs as typed, or begins.
 [connection "handed"]

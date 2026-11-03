@@ -122,8 +122,10 @@ std::optional<std::string> host_of(Port &port, std::string_view name) {
   return std::nullopt;
 }
 
-// A path as a line takes it, from where vulpen started, as the prompt shows a folder, and
-// ./ before one at the top, which open would take for a file the view holds by name.
+// A path as a line sent takes it, from where vulpen started, as the prompt names its
+// folder, and ./ before one at the top, which open would take for a file the view holds
+// by name; the menus name it from where the prompt is, in the lines they hand the
+// terminal.
 std::string typed_path(const std::filesystem::path &path) {
   const std::filesystem::path typed = path.lexically_proximate(std::filesystem::current_path());
   return (typed.has_parent_path() ? typed : "." / typed).generic_string();

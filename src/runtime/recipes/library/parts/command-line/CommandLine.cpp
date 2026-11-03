@@ -156,17 +156,16 @@ std::vector<std::string_view> lines_of(std::string_view text) {
   return lines;
 }
 
-// The folders and files where a path begun points, each as the whole word, from where
-// vulpen started, as a typed line's <file> resolves. A name with a blank would split into
-// two words, so it is left out, and a hidden one shows once the name begun starts with a
-// dot, as in a shell. A folder that cannot be listed, as a file followed by /, is refused
-// by the file port, naming why.
-std::vector<std::string> paths(VP::FilePort &files, std::string_view begun) {
+// The folders and files where a path begun points, each as the whole word, from where the
+// line asking counts, as its <file> would resolve: the folder a person typed it at. A
+// name with a blank would split into two words, so it is left out, and a hidden one shows
+// once the name begun starts with a dot, as in a shell. A folder that cannot be listed,
+// as a file followed by /, is refused by the file port, naming why.
+std::vector<std::string> paths(VP::Call &call, std::string_view begun) {
   const std::string_view folder = begun.substr(0, begun.find_last_of(separators) + 1);
   const bool hidden = begun.substr(folder.size()).starts_with('.');
   std::vector<std::string> paths;
-  for (const std::string &name :
-       files.list((std::filesystem::current_path() / folder).string()))
+  for (const std::string &name : call.files().list(call.resolved(folder)))
     if ((hidden || !name.starts_with('.')) && name.find(' ') == std::string::npos)
       paths.push_back(std::string(folder).append(name));
   return paths;
@@ -239,7 +238,7 @@ std::vector<std::string> names(std::string_view word,
     names = recipes(call);
   } else if (kind == "<file>" || kind == "<project>" ||
              (kind == "<path>" && std::filesystem::path(begun).has_parent_path())) {
-    names = paths(call.files(), begun);
+    names = paths(call, begun);
   } else if (kind == "<path>") {
     names = held(call);
   } else {
@@ -332,9 +331,9 @@ struct Mark {
 // press on which takes the focus back from the host; the rest of its area goes to the
 // host. A line that names no view goes to the current view, which view switch moves, so
 // it needs no name and every log line still has one. The prompt shows that view's folder,
-// as a shell shows the one it is in, and the log keeps to that view. A line one word
-// short of the node its usage wants acts on the nodes the graph selects, a line each, as
-// Tab with no word begun offers them.
+// as a shell shows the one it is in, where a line's relative paths count from, and the
+// log keeps to that view. A line one word short of the node its usage wants acts on the
+// nodes the graph selects, a line each, as Tab with no word begun offers them.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string on = node.param<std::string>("on");
@@ -426,7 +425,8 @@ class CommandLine final : public VP::Operator {
   // as a line typed may change it. The prompt names its folder from where vulpen
   // started, as a shell names one, or where a graph is, as a connection to its place
   // brings it, the folder shown or a node's whose inside shows; the view vulpen started
-  // with has none to show.
+  // with has none to show. A line typed counts its relative paths from that folder, as a
+  // shell does, and with none from where vulpen started.
   void follow(VP::Cook &frame) {
     const std::string_view now = frame.commands().current();
     const bool moved = _place && _place->folder != _placed;
@@ -643,7 +643,7 @@ class CommandLine final : public VP::Operator {
   // Sends a line to the view it names, else to the current one, and returns what its
   // command answers; the line may switch the current view, which the next line follows.
   std::string run(VP::Cook &frame, std::string_view line) {
-    std::string answer = frame.commands().send(address(line));
+    std::string answer = frame.commands().send_typed(address(line), _folder);
     follow(frame);
     // As the port answers it, a line, with the line break a reply ends with.
     if (_window && answer.starts_with(clear_screen)) {
@@ -1037,8 +1037,10 @@ class CommandLine final : public VP::Operator {
     const std::string_view before = std::string_view(_line).substr(0, _caret);
     const std::size_t start = before.find_last_of(' ') + 1; // 0 when there is none
     const std::string_view word = before.substr(start);
-    const std::string answer = frame.commands().send(address(std::format(
-        "complete {}{}", before.substr(0, start), word.empty() ? no_word : word)));
+    const std::string answer = frame.commands().send_typed(
+        address(std::format(
+            "complete {}{}", before.substr(0, start), word.empty() ? no_word : word)),
+        _folder);
     std::vector<std::string_view> candidates = lines_of(answer);
     if (word.empty() && !elsewhere(before)) {
       const std::vector<std::string> chosen =

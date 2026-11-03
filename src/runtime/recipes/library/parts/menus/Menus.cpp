@@ -1,6 +1,7 @@
 #include "contracts/Handed.h"
 #include "contracts/Item.h"
 #include "contracts/Palette.h"
+#include "contracts/Place.h"
 #include "contracts/Rect.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
@@ -199,6 +200,7 @@ class Menus final : public VP::Operator {
                 &node.output<VP_VIEW::Items>("third")};
     _at = &node.output<VP_VIEW::Rect>("at");
     _handed = &node.output<VP_VIEW::Handed>("handed");
+    _place = &node.input<VP_VIEW::Place>("place");
     _written = false;
   }
 
@@ -386,21 +388,27 @@ class Menus final : public VP::Operator {
   }
 
   // A line made from menu.ini's: a value chosen in place of the placeholder that lists it,
-  // {} naming what was pressed and {/} its folder. Whole, it is run; else it is begun up to
-  // the first word it still wants, as <name>, or {} for nothing pressed, past the part of
-  // that word before it, as docs/ before <name>; and for the placeholder chosen in place of
-  // a list too long, what may come there listed.
-  static VP_VIEW::Handed::Line handed(VP::Call &call,
-                                      const Line &line,
-                                      const std::optional<std::string> &value,
-                                      std::string_view named) {
+  // {} naming what was pressed, a path as the terminal takes it, and {/} its folder.
+  // Whole, it is run; else it is begun up to the first word it still wants, as <name>, or
+  // {} for nothing pressed, past the part of that word before it, as docs/ before <name>;
+  // and for the placeholder chosen in place of a list too long, what may come there
+  // listed.
+  VP_VIEW::Handed::Line handed(VP::Call &call,
+                               const Line &line,
+                               const std::optional<std::string> &value,
+                               std::string_view named) const {
     std::vector<std::string> words = line.words;
     if (value)
       words[line.first + line.path] = *value;
     const std::string folder = named.empty() ? std::string() : folder_of(call, named);
+    const std::string pressed =
+        named.find('/') == std::string_view::npos
+            ? std::string(named)
+            : typed(std::filesystem::absolute(std::filesystem::path(named))
+                        .lexically_normal());
     std::string text;
     for (std::string word : words) {
-      replace(word, subject, named);
+      replace(word, subject, pressed);
       replace(word, folder_mark, folder);
       const std::size_t wanted = std::min(word.find('<'), word.find('{'));
       text.append(text.empty() ? "" : " ").append(word.substr(0, wanted));
@@ -418,16 +426,28 @@ class Menus final : public VP::Operator {
       word.replace(at, mark.size(), with);
   }
 
+  // Where the terminal's lines count from, as its prompt shows: where the graph is, or
+  // where vulpen started while it shows nothing.
+  std::filesystem::path from() const {
+    return _place->folder.empty() ? std::filesystem::current_path()
+                                  : std::filesystem::path(_place->folder);
+  }
+
+  // A path as the terminal takes it, from there: ./ before a name there, which open would
+  // take for a file the view holds by name, and . for the folder itself, so a line making
+  // something in it reads ./<name>.
+  std::string typed(const std::filesystem::path &path) const {
+    const std::filesystem::path shown = path.lexically_proximate(from());
+    const bool bare = shown != "." && !shown.has_parent_path();
+    return (bare ? "." / shown : shown).generic_string();
+  }
+
   // The folder of what was pressed, as a line takes it: a path, which holds a /, as the
-  // graph names one, ./ at the top, is a folder's own or names the folder holding it; a
-  // name is a node's of the view lines go to, its name's path in the view's folder (RV08),
-  // a hosted view's, or a folder there no node names yet. None for none of them.
-  static std::string folder_of(VP::Call &call, std::string_view named) {
-    const auto typed = [](const std::filesystem::path &path) {
-      const std::filesystem::path shown =
-          path.lexically_proximate(std::filesystem::current_path());
-      return (shown.has_parent_path() ? shown : "." / shown).generic_string();
-    };
+  // graph names one from where vulpen started, ./ at the top, is a folder's own or names
+  // the folder holding it; a name is a node's of the view lines go to, its name's path in
+  // the view's folder (RV08), a hosted view's, or a folder there no node names yet. None
+  // for none of them.
+  std::string folder_of(VP::Call &call, std::string_view named) const {
     if (named.find('/') != std::string_view::npos) {
       const std::filesystem::path path =
           std::filesystem::absolute(std::filesystem::path(named)).lexically_normal();
@@ -553,6 +573,7 @@ class Menus final : public VP::Operator {
   std::array<VP_VIEW::Items *, column_count> _columns{};
   VP_VIEW::Rect *_at = nullptr;
   VP_VIEW::Handed *_handed = nullptr;
+  const VP_VIEW::Place *_place = nullptr; // where the terminal's lines count from
   bool _shown = false;
   glm::ivec2 _corner{};              // where it was opened
   std::vector<std::string> _sections; // the kind it opened for, then those muted

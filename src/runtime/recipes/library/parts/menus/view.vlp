@@ -6,7 +6,8 @@
 # Its host names the node a begun line is typed into with the line param, which has no
 # default, and the panel holding it, or that node, with shows, which it shows for one,
 # as panel show finds it, and connects the keys part's typed to its typed, so escape
-# shuts the menus.
+# shuts the menus, and the graph's place to its place, where the terminal's prompt is, so
+# a path in a line handed counts from there, as the terminal takes it.
 [manifest]
 version = 1
 
