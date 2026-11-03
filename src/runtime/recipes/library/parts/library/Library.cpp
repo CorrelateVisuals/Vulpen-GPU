@@ -426,9 +426,12 @@ class Library final : public VP::Operator {
     const std::filesystem::path folder = call.view().file.parent_path();
     if (inside(folder, _library.parent_path()))
       throw std::runtime_error(std::format(
-          "{} is in the library or an app beside it, whose recipes are their own; view "
-          "new or view load hosts a view to work on",
-          call.view().file.string()));
+          "{} is {}, which holds no nodes of yours; view new <name> starts a project to "
+          "make them in",
+          folder.lexically_normal()
+              .lexically_relative(_library.parent_path().lexically_normal())
+              .generic_string(),
+          inside(folder, _library) ? "a recipe of the library" : "an app, vulpen's own"));
     return folder;
   }
 
