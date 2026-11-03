@@ -568,7 +568,6 @@ VALID = {
     "file copy <file> <file>": "file copy {scrap} {newfile}",
     "file remove <file>": "file remove {scrap}",
     "file remove force <file>": "file remove force {tree}/../decoy/folder/",
-    "file rename <file> <file>": "file rename {scrap} {newfile}",
     "gpu": "gpu",
     "gpu toggle": "gpu toggle",
     "help": "help",
@@ -592,7 +591,7 @@ VALID = {
                      "{tree}/projects/{home}/{same}/Shape.frag",
     "node remove <node>": "node remove {leaf}",
     "node remove keep <node>": "node remove keep {leaf}",
-    "node rename <node> <name>": "node rename {leaf} {fresh}",
+    "rename <file> <file>": "rename {scrap} {newfile}",
     "node set <node> <word=value>...": "node set {leaf} log=info",
     "open [<path>]": "open {file}",
     "param set <node> <key> <value>": "param set {pnode} {key} {value}",
@@ -1151,7 +1150,7 @@ UNWALKED = ("quit", "input", "help", "clear", "complete", "probe", "menu", "focu
             "panel", "mode", "gpu", "log save", "source", "jump", "find", "arrange")
 # Usages whose lines write files: the log keeps the graph edits they make, as recipe drop's
 # node add, not the files, so a log replayed where they are not rebuilds the graph alone.
-WRITES = ("new", "node remove <node>", "node rename", "recipe", "view new", "view save",
+WRITES = ("new", "node remove <node>", "rename", "recipe", "view new", "view save",
           "view rename", "view remove", "file", "write")
 
 

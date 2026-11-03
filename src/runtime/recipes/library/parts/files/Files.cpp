@@ -253,8 +253,9 @@ void check_holds(VP::Call &call, const std::filesystem::path &path) {
   }
 }
 
-// A view's folder and manifest, and a node's folder, move and go only with the lines
-// that keep a view and its folders together, which the refusal names (A02).
+// A view's folder and manifest move and go only with the lines that keep a view and its
+// folders together, and a node's folder goes only with its node, which the refusal names
+// (A02); a rename of a node's folder renames its node.
 void check_kept(VP::Call &call,
                 const std::optional<Held> &held,
                 const std::filesystem::path &path,
@@ -272,18 +273,86 @@ void check_kept(VP::Call &call,
                  : std::format("goes once view close {} lets the view go",
                                held->view->name)));
   if (const std::optional<std::string> node = node_of(held->inside);
-      node && named(*held->view, *node))
-    throw std::runtime_error(
-        renaming ? std::format("{}/ is node {}'s folder, which node rename {} <name> moves "
-                               "with the node",
-                               shown(path),
-                               *node,
-                               *node)
-                 : std::format("{}/ is node {}'s folder, which node remove {} deletes "
-                               "with the node",
-                               shown(path),
-                               *node,
-                               *node));
+      !renaming && node && named(*held->view, *node))
+    throw std::runtime_error(std::format(
+        "{}/ is node {}'s folder, which node remove {} deletes with the node",
+        shown(path),
+        *node,
+        *node));
+}
+
+// The node whose folder a path in a view is; none for any other path.
+std::optional<std::string> node_at(const std::optional<Held> &held) {
+  if (!held || held->inside.empty())
+    return std::nullopt;
+  std::optional<std::string> node = node_of(held->inside);
+  return node && named(*held->view, *node) ? node : std::nullopt;
+}
+
+// A command's words carry no blanks, so a value holding one cannot be sent.
+std::string sendable(std::string_view key, std::string_view value) {
+  if (value.find_first_of(" \t") != std::string_view::npos)
+    throw std::runtime_error(std::format(
+        "{} {} holds a blank, which a command's word cannot carry", key, value));
+  return std::format(" {}={}", key, value);
+}
+
+// The graph's side of a node's rename, as the edits a person would type, so a replay
+// renames it alike (V08): the connections reaching the node or the nodes inside it out,
+// the node out, and each of them back under the new name with the words it had, in the
+// order they were, back where the node was among the others, and the connections back,
+// those named inside it renamed too.
+std::vector<std::string>
+renames(const VP::View &view, const std::string &from, const std::string &to) {
+  const auto moved = [&](std::string_view name) -> std::optional<std::string> {
+    if (!VP::within(name, from))
+      return std::nullopt;
+    return std::format("{}{}", to, name.substr(from.size()));
+  };
+  const auto end = [&](VP::Endpoint endpoint) {
+    if (!endpoint.view())
+      endpoint.node = moved(endpoint.node).value_or(endpoint.node);
+    return endpoint.text();
+  };
+  std::vector<std::string> lines;
+  std::vector<const VP::Connection *> reaching;
+  for (const VP::Connection &connection : view.connections) {
+    const auto inside = [&](const VP::Endpoint &endpoint) {
+      return !endpoint.view() && moved(endpoint.node);
+    };
+    if (inside(connection.from) || std::ranges::any_of(connection.to, inside)) {
+      reaching.push_back(&connection);
+      lines.push_back(std::format("disconnect {}", connection.name));
+    }
+  }
+  lines.push_back(std::format("node remove keep {}", from));
+  std::optional<std::string> after;
+  bool past = false;
+  for (const VP::Node &node : view.nodes) {
+    if (const std::optional<std::string> name = moved(node.name)) {
+      past = true;
+      std::string line = std::format("node add {}", *name);
+      for (const VP::Word &word : VP::words_of(node))
+        line += sendable(word.key, word.value);
+      lines.push_back(std::move(line));
+    } else if (past && !after) {
+      after = node.name;
+    }
+  }
+  if (after)
+    lines.push_back(std::format("node move {} {}", to, *after));
+  // Only a name inside the node's is the node's, as a drop names a connection inside the
+  // recipe; one named as the node is, as corners carrying corners, keeps its name.
+  for (const VP::Connection *const connection : reaching) {
+    const std::string &name = connection->name;
+    std::string line = std::format("connect {} {}",
+                                   name == from ? name : moved(name).value_or(name),
+                                   end(connection->from));
+    for (const VP::Endpoint &reader : connection->to)
+      line += ' ' + end(reader);
+    lines.push_back(std::move(line));
+  }
+  return lines;
 }
 
 // A node and the words a line gives it, each after a blank, as node add and node set
@@ -299,6 +368,7 @@ struct Graphed {
   std::string view; // the name lines address it with
   std::vector<Words> adds;
   std::vector<Words> sets;
+  std::vector<std::string> then; // lines after those, before the save, as a rename's
 };
 
 Graphed &graphed(std::vector<Graphed> &graphs, const std::string &view) {
@@ -362,10 +432,12 @@ class Files final : public VP::Operator {
                         "view a folder is a node, which it adds, a draw's with its "
                         "vertex_count and a dispatch's with its invocations, saving the "
                         "view");
-    _rename = node.command("file rename <file> <file>",
+    _rename = node.command("rename <file> <file>",
                            "renames a file or a folder, or moves it, into folders made "
-                           "for it, in a view nodes; a node's folder moves with node "
-                           "rename, a view's with view rename");
+                           "for it, in a view nodes; a node's folder renames the node, "
+                           "the nodes inside it and the connections naming them, inside "
+                           "another node's folder inside that node; a view's folder "
+                           "moves with view rename");
     _copy = node.command("file copy <file> <file>",
                          "copies a file, or a folder with all it holds, whole or not at "
                          "all; in a view each folder it brings is a node, which it adds");
@@ -454,8 +526,12 @@ class Files final : public VP::Operator {
       throw std::runtime_error(std::format("{} is not there", shown(from)));
     if (there(call.files(), to))
       throw std::runtime_error(std::format("{} is there already", shown(to)));
-    if (!copy)
-      check_kept(call, held_by(call, from), from, true);
+    const std::optional<Held> left = held_by(call, from);
+    if (!copy) {
+      check_kept(call, left, from, true);
+      if (const std::optional<std::string> node = node_at(left))
+        return rename_node(call, *left, *node, from, to);
+    }
     const std::optional<Held> held = held_by(call, to);
     std::vector<Graphed> graphs;
     for (std::string &node : adopted(call, held, listed(call.files(), from, "/"), from))
@@ -468,6 +544,50 @@ class Files final : public VP::Operator {
                            copy ? "copied" : "renamed",
                            shown(from),
                            shown(to),
+                           edit(call, graphs)));
+  }
+
+  // A node's folder renamed renames the node, the nodes inside it and the connections
+  // naming them, its folder going where the new path is, inside another node's folder
+  // inside that node, and folders on the way no node names becoming nodes. It stays in
+  // its view, whose edits these are; copy brings a node into another. The edits are
+  // known, and the new name checked, before the folder moves.
+  void rename_node(VP::Call &call,
+                   const Held &held,
+                   const std::string &node,
+                   const std::filesystem::path &from,
+                   const std::filesystem::path &to) const {
+    const std::optional<Held> into = held_by(call, to);
+    if (!into || into->name != held.name)
+      throw std::runtime_error(std::format("{}/ is node {}'s folder, which a rename moves "
+                                           "within view {}; copy brings it into another",
+                                           shown(from),
+                                           node,
+                                           held.view->name));
+    const std::optional<std::string> name = node_of(into->inside);
+    const bool nameable =
+        std::ranges::all_of(into->inside, [](const std::filesystem::path &part) {
+          return VP::is_name(part.string());
+        });
+    if (!name || name->empty() || !nameable)
+      throw std::runtime_error(std::format(
+          "{}/ would be no node's folder, as node {}'s must be: a node's name holds "
+          "letters, digits, _ and -, and a shared or hidden folder holds no node",
+          shown(to),
+          node));
+    if (VP::within(*name, node))
+      throw std::runtime_error(std::format("{} would be inside {} itself", *name, node));
+    std::vector<Graphed> graphs;
+    Graphed &graph = graphed(graphs, held.name);
+    for (std::string &way : adopted(call, into, false, std::nullopt))
+      graph.adds.push_back({std::move(way), {}});
+    graph.then = renames(*held.view, node, *name);
+    call.files().rename(from.string(), to.string());
+    call.reply(std::format("renamed {}/ to {}/, node {} to {}{}",
+                           shown(from),
+                           shown(to),
+                           node,
+                           *name,
                            edit(call, graphs)));
   }
 
@@ -493,9 +613,9 @@ class Files final : public VP::Operator {
     return nodes;
   }
 
-  // Each view's nodes added with their words, the words set, and the view saved, so its
-  // manifest holds every node whose folder is there; what the answer adds, as ", added
-  // node cube vertex_count=3 and saved the view".
+  // Each view's nodes added with their words, the words set, the lines after them sent,
+  // and the view saved, so its manifest holds every node whose folder is there; what the
+  // answer adds, as ", added node cube vertex_count=3 and saved the view".
   static std::string edit(VP::Call &call, std::span<const Graphed> graphs) {
     std::string added;
     std::string given;
@@ -512,10 +632,14 @@ class Files final : public VP::Operator {
             std::format("{}: node set {}{}", graph.view, set.node, set.words));
         given.append(given.empty() ? "" : ", ").append(set.node).append(set.words);
       }
-      if (!graph.adds.empty() || !graph.sets.empty())
+      for (const std::string &line : graph.then)
+        call.commands().send(std::format("{}: {}", graph.view, line));
+      if (!graph.adds.empty() || !graph.sets.empty() || !graph.then.empty())
         call.commands().send(std::format("{}: view save", graph.view));
     }
-    if (added.empty() && given.empty())
+    if (std::ranges::all_of(graphs, [](const Graphed &graph) {
+          return graph.adds.empty() && graph.sets.empty() && graph.then.empty();
+        }))
       return {};
     return std::format("{}{} and saved the view",
                        added.empty() ? ""

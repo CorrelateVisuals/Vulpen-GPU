@@ -77,16 +77,6 @@ void includes_of(std::string_view text,
   }
 }
 
-// A new node's own name, which names its C++ class too: a lowercase letter, then
-// lowercase letters, digits and -.
-bool node_name(std::string_view name) {
-  const auto lower = [](char letter) { return letter >= 'a' && letter <= 'z'; };
-  return !name.empty() && lower(name.front()) &&
-         std::ranges::all_of(name, [&](char letter) {
-           return lower(letter) || (letter >= '0' && letter <= '9') || letter == '-';
-         });
-}
-
 // A node of a recipe, or of a view's copy of one, by its name inside it: empty for the
 // recipe's own node. Its folder is where its files are.
 struct Inner {
@@ -240,7 +230,7 @@ std::vector<VP::Param> kept_params(const VP::Node &fresh, const VP::Node &mine) 
 }
 
 // Works on recipe and view folders through the file port: lists recipes, drops and syncs
-// them, and renames and removes nodes. A drop copies files, and then adds nodes, so the
+// them, and removes nodes. A drop copies files, and then adds nodes, so the
 // view owns its copy from the first edit on (V03).
 class Library final : public VP::Operator {
   void bind(VP::Bind &node) override {
@@ -255,10 +245,6 @@ class Library final : public VP::Operator {
                          "brings a dropped recipe up to the library's, while what it "
                          "copied is unchanged; its params and connections stay; then "
                          "saves the view");
-    _rename = node.command("node rename <node> <name>",
-                           "renames a node, the nodes inside it and the connections "
-                           "naming them, and moves its folder with it; a name with dots "
-                           "moves it inside another node; then saves the view");
     _remove = node.command("node remove <node>",
                            "removes a node with the nodes inside it, the connections "
                            "they write, and them from the connections they read, and "
@@ -272,8 +258,6 @@ class Library final : public VP::Operator {
       drop(call);
     else if (call.is(_sync))
       sync(call);
-    else if (call.is(_rename))
-      rename(call);
     else if (call.is(_remove))
       remove(call);
   }
@@ -608,41 +592,6 @@ class Library final : public VP::Operator {
     return lines;
   }
 
-  // A node's name and folder changed together, as its folder is its name's path (RV08).
-  // Its edits are known, and the new name and folder checked, before the folder moves, so
-  // one that cannot be sent leaves the view and the folder as they were.
-  void rename(VP::Call &call) const {
-    const std::string from(call.arguments()[0]);
-    const std::string to(call.arguments()[1]);
-    const VP::View view = call.view();
-    if (std::ranges::find(view.nodes, from, &VP::Node::name) == view.nodes.end())
-      throw std::runtime_error(std::format("no node is named {}", from));
-    if (to == from)
-      throw std::runtime_error(std::format("node {} is named {} already", from, to));
-    if (inner_name(from, to))
-      throw std::runtime_error(std::format("{} would be inside {} itself", to, from));
-    const std::string_view own = std::string_view(to).substr(to.rfind('.') + 1);
-    if (!node_name(own))
-      throw std::runtime_error(std::format("{} is no name for a node: a lowercase letter, "
-                                           "then lowercase letters, digits and -",
-                                           own));
-    const std::filesystem::path folder = view_folder(call);
-    check_new(call, folder, to);
-    const std::vector<std::string> lines = renames(view, from, to);
-    const std::filesystem::path old_folder = folder / VP::path_of(from);
-    const bool moves =
-        holds(call.files(), old_folder.parent_path(), old_folder.filename().string() + '/');
-    if (moves)
-      call.files().rename(old_folder.string(), (folder / VP::path_of(to)).string());
-    for (const std::string &line : lines)
-      call.commands().send(line);
-    save_view(call);
-    call.reply(std::format("renamed node {} to {}{}, and saved the view",
-                           from,
-                           to,
-                           moves ? ", moved its folder" : ""));
-  }
-
   // A node goes whole: the engine's edit takes the nodes inside it too, and its folder
   // goes with the folders it holds, theirs (RV08), through the line that deletes one, so
   // no folder is left that no node names; then the view is saved, so its manifest names
@@ -672,71 +621,10 @@ class Library final : public VP::Operator {
                            there ? " and its folder" : ""));
   }
 
-  // The graph's side of a rename, as the edits a person would type, so a replay renames it
-  // alike (V08): the connections reaching the node or the nodes inside it out, the node
-  // out, and each of them back under the new name with the words it had, in the order
-  // they were, back where the node was among the others, and the connections back, those
-  // named inside it renamed too.
-  static std::vector<std::string>
-  renames(const VP::View &view, std::string_view from, std::string_view to) {
-    const auto moved = [&](std::string_view name) -> std::optional<std::string> {
-      const std::optional<std::string> inner = inner_name(from, name);
-      return inner ? std::optional(outer_name(to, *inner)) : std::nullopt;
-    };
-    const auto end = [&](VP::Endpoint endpoint) {
-      if (!endpoint.view())
-        endpoint.node = moved(endpoint.node).value_or(endpoint.node);
-      return endpoint.text();
-    };
-    std::vector<std::string> lines;
-    std::vector<const VP::Connection *> reaching;
-    for (const VP::Connection &connection : view.connections) {
-      const auto inside = [&](const VP::Endpoint &endpoint) {
-        return !endpoint.view() && moved(endpoint.node);
-      };
-      if (inside(connection.from) || std::ranges::any_of(connection.to, inside)) {
-        reaching.push_back(&connection);
-        lines.push_back(std::format("disconnect {}", connection.name));
-      }
-    }
-    lines.push_back(std::format("node remove keep {}", from));
-    std::optional<std::string> after;
-    bool past = false;
-    for (const VP::Node &node : view.nodes) {
-      if (const std::optional<std::string> name = moved(node.name)) {
-        past = true;
-        lines.push_back(std::format("node add {}{}{}{}",
-                                    *name,
-                                    node.recipe.empty() ? "" : sendable("recipe", node.recipe),
-                                    node.log.empty() ? "" : sendable("log", node.log),
-                                    words_of(node, node.params, false)));
-      } else if (past && !after) {
-        after = node.name;
-      }
-    }
-    if (after)
-      lines.push_back(std::format("node move {} {}", to, *after));
-    // Only a name inside the node's is the node's, as a drop names a connection inside the
-    // recipe; one named as the node is, as corners carrying corners, keeps its name.
-    const auto named = [&](const std::string &name) {
-      const std::optional<std::string> inner = inner_name(from, name);
-      return inner && !inner->empty() ? outer_name(to, *inner) : name;
-    };
-    for (const VP::Connection *const connection : reaching) {
-      std::string line =
-          std::format("connect {} {}", named(connection->name), end(connection->from));
-      for (const VP::Endpoint &reader : connection->to)
-        line += ' ' + end(reader);
-      lines.push_back(std::move(line));
-    }
-    return lines;
-  }
-
   std::filesystem::path _library;
   VP::Command _list;
   VP::Command _drop;
   VP::Command _sync;
-  VP::Command _rename;
   VP::Command _remove;
 };
 
