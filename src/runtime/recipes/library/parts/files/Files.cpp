@@ -220,14 +220,15 @@ void check_kept(VP::Call &call,
 }
 
 // Files and folders made, renamed, copied and deleted through the file port (V05), so a
-// person does all of it from inside vulpen, by lines a GUI sends too (V06). A path counts
-// from where vulpen started. In a view vulpen hosts every folder is a node's (RV08): a
-// folder a line makes or brings there is a node, which the line adds, saving the view, as
-// node new does; a line that would move or delete a node's folder or the view's own is
-// refused, naming the line that keeps them together (A02), and so is a folder in an app,
-// whose nodes use the library's recipes as they are. Nothing is written over: a line
-// whose path is taken is refused, and a folder holding files goes only with force, as
-// quit force ends a run that would lose work.
+// person does all of it from inside vulpen, by lines a GUI sends too (V06). A path typed
+// counts from the folder the prompt shows, as in a shell, and one in a script from beside
+// it. In a view vulpen hosts every folder is a node's (RV08): a folder a line makes or
+// brings there is a node, which the line adds, saving the view, as node new does; a line
+// that would move or delete a node's folder or the view's own is refused, naming the line
+// that keeps them together (A02), and so is a folder in an app, whose nodes use the
+// library's recipes as they are. Nothing is written over: a line whose path is taken is
+// refused, and a folder holding files goes only with force, as quit force ends a run that
+// would lose work.
 class Files final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // A part's folder is <recipes>/library/parts/<name>; the apps are beside the library.

@@ -142,7 +142,7 @@ class Editor final : public VP::Operator {
       throw std::runtime_error(
           found.empty()
               ? std::format("the view holds no file named {}; a path names any, as ./{} "
-                            "from where vulpen started",
+                            "in the folder the prompt shows",
                             word,
                             word)
               : std::format("the view holds {} files named {}: {}; a path names one",
@@ -155,7 +155,7 @@ class Editor final : public VP::Operator {
       const std::vector<std::filesystem::path> there =
           held(call, path.filename().string());
       throw std::runtime_error(std::format(
-          "{} names nothing, as a typed path counts from where vulpen started{}",
+          "{} names nothing, as a typed path counts from the folder the prompt shows{}",
           path.string(),
           there.empty() ? "" : std::format("; the view holds {}", shown(there.front()))));
     }
