@@ -128,7 +128,7 @@ def swapped(example: str, node: str, made: list[str], wanted: list[str]) -> list
     if clash:
         steps.append(no(f"file copy {at(example, folder, clash)} {at(copy, folder, clash)}",
                         "is there already"))
-    steps.append(ok(*(f"file remove {at(copy, folder, name)}" for name in made)))
+    steps.append(ok(*(f"remove {at(copy, folder, name)}" for name in made)))
     steps.append(ok(*(f"file copy {at(example, folder, name)} {at(copy, folder, name)}"
                       for name in wanted)))
     return steps
@@ -199,7 +199,7 @@ def examples(scratch: Path) -> list[Example]:
     e.steps = [
         ok(f"view new {e.copy}"),
         ok(f"file copy {at(e.name, 'triangle')}/ {at(e.copy, 'Triangle')}/"),
-        ok("node remove Triangle"),
+        ok(f"remove force {at(e.copy, 'Triangle')}/"),
         ok(f"file copy {at(e.name, 'triangle')}/ {at(e.copy, 'triangle')}/",
            "node set triangle vertex_count=3 param=frames_per_turn=600"),
         no("node set triangle log=loud", "loud"),
@@ -248,7 +248,7 @@ def examples(scratch: Path) -> list[Example]:
     e.steps = [
         ok(f"view new {e.copy}"),
         ok(f"file copy {at(e.name, 'shared')}/ {at(e.copy, 'share')}/"),
-        ok("node remove share"),
+        ok(f"remove force {at(e.copy, 'share')}/"),
         ok(f"file copy {at(e.name, 'shared')}/ {at(e.copy, 'shared')}/"),
         ok(f"file copy {at(e.name, 'triangle')}/ {at(e.copy, 'triangle')}/",
            "node set triangle vertex_count=3 param=frames_per_turn=600"),
@@ -407,7 +407,7 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"file copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
            "node set face vertex_count=3 param=frames_per_turn=600"),
         ok("node remove keep corners.left"),
-        no(f"file remove {at(e.copy, 'corners')}/", "node corners's folder"),
+        no(f"remove {at(e.copy, 'corners')}/", "which a delete cannot bring back"),
         ok(f"node add corners.left invocations=1 {words['left']}"),
         ok("node move corners.left face"),
         *(ok(f"connect {corner} corners.{corner}.corner face.{corner}") for corner in words),
@@ -593,18 +593,18 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"view new {e.copy}"),
         # A path typed counts from the folder the prompt shows, the project's, in either
         # terminal: a file made there, or the line removing it is refused, and a folder
-        # made there, which is a node, or node remove is refused.
+        # made there, which is a node, or remove is refused.
         ok("new typed.txt"),
-        ok(f"file remove {at(e.copy, 'typed.txt')}"),
+        ok(f"remove {at(e.copy, 'typed.txt')}"),
         typed("new typed/"),
-        ok("node remove typed"),
+        ok("remove typed/"),
         # A node of nodes, made empty, and inside it a C++ node and a draw, each file the
         # least that builds and runs, bound once built; then all of it removed with the
         # group.
         ok("new stage/"),
         no("new stage/", "is there already"),
         ok("new stage/source/Source.cpp stage/shape/Shape.vert stage/shape/Shape.frag"),
-        settled("node remove stage"),
+        settled("remove force stage/"),
         no("recipe drop nothing shot", "no recipe nothing"),
         ok("recipe drop snapshot shot"),
         ok("recipe sync shot"),
@@ -612,11 +612,11 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"new {shot}/notes.txt"),
         no("recipe sync picture", "changed since it was dropped"),
         ok(f"rename {shot}/notes.txt {shot}/readme.txt"),
-        ok(f"file remove {shot}/readme.txt"),
+        ok(f"remove {shot}/readme.txt"),
         ok("recipe sync picture"),
-        ok(f"file remove {shot}/Snapshot.comp"),
+        ok(f"remove {shot}/Snapshot.comp"),
         no("recipe sync picture", "changed since it was dropped"),
-        ok("node remove picture"),
+        ok(f"remove force {shot}/"),
         gone(e.copy),
     ]
     every.append(e)
@@ -643,9 +643,9 @@ def examples(scratch: Path) -> list[Example]:
     e.steps = [
         ok(f"new {nest}/"),
         ok(f"view add re-nest-inner {nest}/inner/view.vlp", "re-nest-inner: view save"),
-        no(f"file remove force {nest}/", "view re-nest-inner's folder"),
+        no(f"remove force {nest}/", "view re-nest-inner's folder"),
         no(f"rename {nest}/ {at(f'{COPY}nested')}/", "view re-nest-inner's folder"),
-        ok("view close re-nest-inner", f"file remove force {nest}/"),
+        ok("view close re-nest-inner", f"remove force {nest}/"),
         no("view remove re-nest", "no project is named re-nest"),
         no("view remove ../src", "view remove takes no path"),
         ok(f"view new {e.copy}"),
@@ -681,15 +681,15 @@ def examples(scratch: Path) -> list[Example]:
         ok("close"),
         ok(f"view rename {e.copy}"),
         ok(f"new {notes}", f"open {notes}"),
-        ok(f"file remove {notes}"),
+        ok(f"remove {notes}"),
         no(f"close {notes}", "is not open in an editor"),
         ok(f"new {notes}", f"open {notes}"),
         ok("focus ide.editor.text"),
         ok("input text typed"),
-        ok(f"file remove {notes}"),
+        ok(f"remove {notes}"),
         no("write", "is gone since it was read"),
         ok("write force", "close"),
-        ok(f"file remove {notes}"),
+        ok(f"remove {notes}"),
         no("node set swirl invocations=99999999999", "more than the largest count"),
         no(f"source {loop}", "would never end"),
         ok("  ls  "),

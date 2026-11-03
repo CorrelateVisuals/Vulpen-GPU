@@ -254,8 +254,7 @@ void check_holds(VP::Call &call, const std::filesystem::path &path) {
 }
 
 // A view's folder and manifest move and go only with the lines that keep a view and its
-// folders together, and a node's folder goes only with its node, which the refusal names
-// (A02); a rename of a node's folder renames its node.
+// folders together, which the refusal names (A02); a node's folder takes its node along.
 void check_kept(VP::Call &call,
                 const std::optional<Held> &held,
                 const std::filesystem::path &path,
@@ -272,13 +271,6 @@ void check_kept(VP::Call &call,
         renaming ? std::format("{}: view rename <name> moves", held->view->name)
                  : std::format("goes once view close {} lets the view go",
                                held->view->name)));
-  if (const std::optional<std::string> node = node_of(held->inside);
-      !renaming && node && named(*held->view, *node))
-    throw std::runtime_error(std::format(
-        "{}/ is node {}'s folder, which node remove {} deletes with the node",
-        shown(path),
-        *node,
-        *node));
 }
 
 // The node whose folder a path in a view is; none for any other path.
@@ -441,12 +433,13 @@ class Files final : public VP::Operator {
     _copy = node.command("file copy <file> <file>",
                          "copies a file, or a folder with all it holds, whole or not at "
                          "all; in a view each folder it brings is a node, which it adds");
-    _remove = node.command("file remove <file>",
-                           "deletes a file or an empty folder; a node's folder goes with "
-                           "node remove, a view's once view close let it go");
-    _remove_force = node.command("file remove force <file>",
-                                 "deletes a folder with all it holds, as file remove does "
-                                 "the rest");
+    _remove = node.command("remove <file>",
+                           "deletes a file or an empty folder; a node's folder takes the "
+                           "node with it, the nodes inside it and their connections, saving "
+                           "the view; a view's goes once view close let it go");
+    _remove_force = node.command("remove force <file>",
+                                 "deletes a folder with all it holds, a node's with the node, "
+                                 "as remove does the rest");
   }
 
   void command(VP::Call &call) override {
@@ -517,7 +510,7 @@ class Files final : public VP::Operator {
 
   // A rename takes what it names along, so a node's folder or a view's own stays where
   // its name puts it; a copy leaves it, so only where the copy lands counts. Both name
-  // the paths as typed, as new and file remove do.
+  // the paths as typed, as new and remove do.
   void move(VP::Call &call,
             const std::filesystem::path &from,
             const std::filesystem::path &to,
@@ -649,25 +642,39 @@ class Files final : public VP::Operator {
                        given.empty() ? "" : std::format(", gave node {}", given));
   }
 
+  // A node's folder takes the node out with it, the nodes inside it and the connections
+  // they write and read, as the engine's edit does, before its files go, so no node is
+  // left whose folder is gone; the view is saved, so its manifest names none either.
   static void remove(VP::Call &call, const std::filesystem::path &path, bool force) {
     VP::FilePort &files = call.files();
     if (!there(files, path))
       throw std::runtime_error(std::format("{} is not there", shown(path)));
-    check_kept(call, held_by(call, path), path, false);
+    const std::optional<Held> left = held_by(call, path);
+    check_kept(call, left, path, false);
     if (!listed(files, path, "/")) {
       files.remove(path.string());
       return call.reply(std::format("removed {}", shown(path)));
     }
+    const std::optional<std::string> node = node_at(left);
     const std::size_t held = count(files, path);
     const std::string some = std::format("{} file{}", held, held == 1 ? "" : "s");
     if (held > 0 && !force)
       throw std::runtime_error(std::format("{}/ holds {}, which a delete cannot bring "
-                                           "back: file remove force {}/ deletes them",
+                                           "back: remove force {}/ deletes them{}",
                                            shown(path),
                                            some,
-                                           shown(path)));
+                                           shown(path),
+                                           node ? std::format(" and node {}", *node) : ""));
+    std::vector<Graphed> graphs;
+    if (node)
+      graphed(graphs, left->name).then.push_back(std::format("node remove keep {}", *node));
+    const std::string saved = edit(call, graphs);
     remove_all(files, path);
-    call.reply(std::format("removed {}/{}", shown(path), held == 0 ? "" : " and " + some));
+    call.reply(std::format("removed {}/{}{}{}",
+                           shown(path),
+                           held == 0 ? "" : " and " + some,
+                           node ? std::format(", node {}", *node) : "",
+                           saved));
   }
 
   // The files a folder holds, and those the folders in it hold.

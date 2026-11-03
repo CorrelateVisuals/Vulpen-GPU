@@ -1,6 +1,6 @@
-# The files part: one node whose operator is Files, which owns new, file rename, file copy
-# and file remove, so a person makes, moves and deletes files and folders from inside
-# vulpen, and in a project its nodes, which are its folders.
+# The files part: one node whose operator is Files, which owns new, rename, file copy and
+# remove, so a person makes, moves and deletes files and folders from inside vulpen, and
+# in a project its nodes, which are its folders.
 [manifest]
 version = 1
 

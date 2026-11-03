@@ -21,7 +21,7 @@ recipe = library
 [node "cli.projects"]
 recipe = projects
 
-# new, file rename, copy and remove, on files and folders anywhere, and in a view on what
+# new, rename, file copy and remove, on files and folders anywhere, and in a view on what
 # keeps its folders and nodes together.
 [node "cli.files"]
 recipe = files

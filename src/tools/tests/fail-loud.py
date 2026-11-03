@@ -657,7 +657,7 @@ def projects(vulpen: str, folder: Path) -> str | None:
 def files(vulpen: str, folder: Path) -> str | None:
     """Why a file line deleted, moved or made what it must not, or None: a delete cannot be
     undone, so a folder holding files goes only with force, and in a view a node's folder
-    goes only with the node and moves only within its view, renaming the node, a folder
+    goes with the node, and moves only within its view, renaming the node, a folder
     made there is a node, which the line adds and saves, and an app makes no folder of its
     own; a path typed counts from the folder the prompt shows, the project's once it is
     loaded."""
@@ -669,7 +669,7 @@ def files(vulpen: str, folder: Path) -> str | None:
     loose = folder / "files" / "loose"
     (loose / "inner").mkdir(parents=True)
     (loose / "inner" / "a.txt").write_text("a", encoding="utf-8")
-    refused = [f"file remove {loose}", f"file remove {project / 'keep'}",
+    refused = [f"remove {loose}", f"remove {project / 'keep'}",
                f"rename {project / 'keep'} {loose / 'moved'}",
                f"new {recipes / 'cli' / 'own'}/"]
     typed = "\n".join([f"view load {project}", *refused,

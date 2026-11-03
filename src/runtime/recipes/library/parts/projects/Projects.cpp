@@ -247,7 +247,7 @@ class Projects final : public VP::Operator {
     if (const VP::View *const hosted = call.view(name);
         hosted && hosted->file.lexically_normal() == (folder / manifest).lexically_normal())
       call.commands().send(std::format(": view close {}", name));
-    call.reply(call.commands().send(std::format("file remove force {}/", folder.string())));
+    call.reply(call.commands().send(std::format("remove force {}/", folder.string())));
   }
 
   std::filesystem::path _folder;

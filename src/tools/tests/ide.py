@@ -118,11 +118,10 @@ MENUBAR = STRIP + 4
 # blank, then the mark, a cell wide, as wave/Wave.comp's.
 MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2,
         MENUBAR + STRIP // 2)
-# A line opens a file's menu at the pointer, its first column past a frame of 4 pixels,
-# open then file, 4 cells wide; file's words open beside it, level with it, past a frame
-# more, 7 pixels in all: new, rename, copy and remove.
-FILE_ITEM = (4 + CELL_WIDE * 2, 4 + CELL + CELL // 2)
-REMOVE_ITEM = (4 + CELL_WIDE * 4 + 7 + CELL_WIDE * 2, 4 + CELL * 4 + CELL // 2)
+# A line opens a file's menu at the pointer, its first column past a frame of 4 pixels:
+# open, new, rename, file and remove, whose press removes the file, as the line it ends
+# names it.
+REMOVE_ITEM = (4 + CELL_WIDE * 2, 4 + CELL * 4 + CELL // 2)
 # A node left out as its view loads, or whose operator stops, names itself in the log.
 STOPPED = re.compile(r"\{!!!\} (?:\S+ )?node [\w.-]+: ")
 INFO = ['[node "probe"]', '[view "inner"]']  # info's headers for the boxes selected
@@ -254,7 +253,6 @@ def menu(gone: Path, width: int) -> list[str]:
     return [
         f"input pointer {at[0]} {at[1]}",
         f"menu file for {gone}",  # shown with the first frame, before the moves
-        f"input pointer {at[0] + FILE_ITEM[0]} {at[1] + FILE_ITEM[1]}",
         f"input pointer {at[0] + REMOVE_ITEM[0]} {at[1] + REMOVE_ITEM[1]}",
         "input button down left",
         "input button up left",
@@ -431,7 +429,7 @@ def test() -> None:
         gone.write_text(NOTE, encoding="utf-8")
         removing = drive(folder, "menu", menu(gone, width))
         if gone.exists():
-            sys.exit(f"ide: expected the file menu's file remove to delete {gone}, got:\n"
+            sys.exit(f"ide: expected the file menu's remove to delete {gone}, got:\n"
                      f"{removing}")
         if "{!!!}" in (moved := drive(folder, "docked", docked(width, height))):
             sys.exit(f"ide: expected the panels to move with no line refused, got:\n"
