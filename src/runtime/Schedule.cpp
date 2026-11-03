@@ -124,17 +124,6 @@ std::vector<const Node *> Schedule::order(const View &view) {
   return placed;
 }
 
-// A draw's color comes from the node holding its .frag, a fragment node's for a draw
-// split over two.
-bool Schedule::shows(const View &view) {
-  return std::ranges::any_of(view.nodes, [&](const Node &node) {
-    return holds_stage(node, fragment_stage) &&
-           std::ranges::none_of(view.connections, [&](const Connection &connection) {
-             return connection.from.node == node.name;
-           });
-  });
-}
-
 Schedule::Schedule(const Wiring &wiring,
                    std::string_view name,
                    const View &view,

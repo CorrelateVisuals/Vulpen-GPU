@@ -67,9 +67,6 @@ public:
 
   // Writers before their readers. Throws when the connections form a cycle.
   static std::vector<const Node *> order(const View &view);
-  // Whether a draw of the view renders into its window, so the view needs one: a draw no
-  // connection starts from. One whose output is connected renders into an image instead.
-  static bool shows(const View &view);
 
   // Binds every node and checks each name that joins its manifest entry, shader and C++
   // (A02); a node with a mistake is left out, with its errors. From the schedule it

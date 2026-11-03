@@ -428,7 +428,7 @@ bool Runtime::start() {
   const std::filesystem::path folder = Manifest::root(view);
   // Only a view that draws into the window opens one; every other view runs headless
   // (V07), its draws into images at --size.
-  const bool shows = Schedule::shows(Manifest::flatten(view, _recipes));
+  const bool shows = draws_into_window(Manifest::flatten(view, _recipes));
   _log.write(Level::info,
              Tag::run,
              std::format("view {} from {}: {}",

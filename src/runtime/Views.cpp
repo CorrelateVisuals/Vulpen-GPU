@@ -123,7 +123,7 @@ bool Views::shows() const {
   const Hosted *const owner = this->owner();
   return std::ranges::any_of(_hosted, [&](const std::unique_ptr<Hosted> &hosted) {
     return !hosted->removed && target(*hosted, owner) == nullptr &&
-           Schedule::shows(hosted->next());
+           draws_into_window(hosted->next());
   });
 }
 
@@ -155,7 +155,7 @@ bool Views::rebuild() {
                                       : Schedule::Into::window;
     // So a project that shows nothing says why.
     if ((into == Schedule::Into::none) != (hosted.into == Schedule::Into::none) &&
-        Schedule::shows(hosted.next()))
+        draws_into_window(hosted.next()))
       _wiring.log.write(
           Level::info,
           Tag::run,
@@ -263,7 +263,7 @@ bool Views::presents(const Hosted &hosted) const {
 }
 
 bool Views::draws(const Hosted &hosted) const {
-  return Schedule::shows(hosted.next()) ||
+  return draws_into_window(hosted.next()) ||
          std::ranges::any_of(_hosted, [&](const std::unique_ptr<Hosted> &other) {
            return !other->removed && !other->name.empty() &&
                   other->parent == hosted.name && !taker(*other) && draws(*other);
@@ -299,7 +299,7 @@ std::optional<const Views::Hosted *> Views::target(const Hosted &hosted,
   const Hosted *const host = this->hosted(hosted.parent);
   if (!host)
     return nullptr;
-  if (Schedule::shows(host->next()) || (host->name.empty() && &hosted != owner))
+  if (draws_into_window(host->next()) || (host->name.empty() && &hosted != owner))
     return std::nullopt;
   return target(*host, owner);
 }
@@ -307,7 +307,7 @@ std::optional<const Views::Hosted *> Views::target(const Hosted &hosted,
 // Walking up as target does, to where it stopped.
 std::string_view Views::nowhere(const Hosted &hosted) const {
   const Hosted &host = *this->hosted(hosted.parent);
-  if (Schedule::shows(host.next()))
+  if (draws_into_window(host.next()))
     return "its host draws there and no connection takes its window";
   if (host.name.empty())
     return "the window shows another view";

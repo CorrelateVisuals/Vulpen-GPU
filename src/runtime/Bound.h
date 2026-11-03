@@ -69,24 +69,10 @@ inline bool writes(Access access) {
   return access != Access::read;
 }
 
-// The build compiles each shader as the stage its extension names, as glslang does, so
-// the loader reads the stage from the same place. Every stage glslang names counts, so a
-// node holding one Vulpen does not run yet is told so.
-inline constexpr std::string_view compute_stage = ".comp";
-inline constexpr std::string_view vertex_stage = ".vert";
-inline constexpr std::string_view fragment_stage = ".frag";
-inline constexpr std::array<std::string_view, 6> stages{
-    compute_stage, vertex_stage, fragment_stage, ".geom", ".tesc", ".tese"};
-
 // Where the build puts a shader's SPIR-V: beside it in the node's folder of the build tree.
 inline std::filesystem::path spirv_of(const std::filesystem::path &folder,
                                       std::string_view shader) {
   return folder / (std::string(shader) + ".spv");
-}
-
-inline bool holds_stage(const Node &node, std::string_view stage) {
-  return std::ranges::any_of(
-      node.files, [&](const std::string &file) { return file.ends_with(stage); });
 }
 
 // A node runs the operator its operator word names, or with none the one its folder's C++

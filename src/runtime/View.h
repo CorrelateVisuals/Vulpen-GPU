@@ -123,6 +123,20 @@ struct Node {
   }
 };
 
+// The build compiles each shader as the stage its extension names, as glslang does, so
+// the loader reads the stage from the same place. Every stage glslang names counts, so a
+// node holding one Vulpen does not run yet is told so.
+inline constexpr std::string_view compute_stage = ".comp";
+inline constexpr std::string_view vertex_stage = ".vert";
+inline constexpr std::string_view fragment_stage = ".frag";
+inline constexpr std::array<std::string_view, 6> stages{
+    compute_stage, vertex_stage, fragment_stage, ".geom", ".tesc", ".tese"};
+
+inline bool holds_stage(const Node &node, std::string_view stage) {
+  return std::ranges::any_of(
+      node.files, [&](const std::string &file) { return file.ends_with(stage); });
+}
+
 // A node's port, or with no port a view this view hosts, as `<view>:`: what the view
 // draws into its window, as one image, which only the view that hosts it takes (V03).
 struct Endpoint {
@@ -191,5 +205,18 @@ struct View {
   std::vector<Node> nodes;
   std::vector<Connection> connections;
 };
+
+// Whether a draw of the view renders into its window, so the view needs one, as the
+// engine opens a window by it and a GUI tells a project with something to show: a draw no
+// connection starts from, by the node holding its .frag, a fragment node's for a draw
+// split over two. One whose output is connected renders into an image instead.
+inline bool draws_into_window(const View &view) {
+  return std::ranges::any_of(view.nodes, [&](const Node &node) {
+    return holds_stage(node, fragment_stage) &&
+           std::ranges::none_of(view.connections, [&](const Connection &connection) {
+             return connection.from.node == node.name;
+           });
+  });
+}
 
 } // namespace VP
