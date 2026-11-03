@@ -77,6 +77,15 @@ bool placeholder(std::string_view word) {
          std::ranges::find(kinds, word.substr(1, word.size() - 2)) != kinds.end();
 }
 
+// A path from a folder, an empty one being where vulpen started, and none the folder
+// itself. Normal, as a replay names a file through .. from beside the log, and the view
+// it hosts must be the one the same file named another way made.
+std::filesystem::path resolved_from(const std::filesystem::path &folder,
+                                    const std::filesystem::path &file) {
+  const std::filesystem::path path = file.is_relative() ? folder / file : file;
+  return std::filesystem::absolute(path.empty() ? "." : path).lexically_normal();
+}
+
 // Puts a value back when the scope ends, however it ends.
 template <class T> class Restore {
 public:
@@ -115,22 +124,28 @@ private:
   std::string_view current() override {
     return _port.current();
   }
+  std::string send_typed(std::string_view line, std::string_view folder) override {
+    return _port.run(line, folder);
+  }
 
   Commands &_port;
 };
 
 class Run final : public Call {
 public:
-  // address: the name of the view the command addresses, which outlives the run.
+  // address: the name of the view the command addresses, which outlives the run; from:
+  // where the line's relative paths count from.
   Run(Commands &port,
       ViewLookup *views,
       std::string_view address,
       FilePort &files,
       ProcessPort &processes,
       Command command,
-      std::span<const std::string_view> arguments)
+      std::span<const std::string_view> arguments,
+      std::filesystem::path from)
       : _port(port), _views(views), _address(address), _files(files),
-        _processes(processes), _command(command), _arguments(arguments) {}
+        _processes(processes), _command(command), _arguments(arguments),
+        _from(std::move(from)) {}
   // Every line the command answered.
   std::string answer() && {
     return std::move(_reply);
@@ -170,6 +185,9 @@ private:
   const View &unfolded() const override {
     return found(_views ? _views->unfolded(_address) : nullptr);
   }
+  std::string resolved(std::string_view path) const override {
+    return resolved_from(_from, path).string();
+  }
   static const View &found(const View *view) {
     if (!view)
       throw std::runtime_error("no view to read yet");
@@ -183,6 +201,7 @@ private:
   ProcessPort &_processes;
   const Command _command;
   const std::span<const std::string_view> _arguments;
+  const std::filesystem::path _from;
   std::string _reply;
 };
 
@@ -335,7 +354,7 @@ void Commands::remove(Command command) {
                 [&](const Spec &spec) { return spec.command.index == command.index; });
 }
 
-std::string Commands::run(std::string_view line) {
+std::string Commands::run(std::string_view line, std::string_view typed_at) {
   // A line from outside the port opens a group and addresses the view it names; a line
   // a command sends joins the group, and the view, of the line that runs the command.
   if (_depth == 0)
@@ -359,7 +378,8 @@ std::string Commands::run(std::string_view line) {
     throw std::runtime_error(
         std::format("{} does not fit the usage `{}`", typed, spec->usage));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
-  const std::vector<std::string> paths = resolve(*spec, arguments);
+  std::filesystem::path from = paths_from(typed_at);
+  const std::vector<std::string> paths = resolve(*spec, arguments, from);
   // Read first: a handler that rebuilds a view binds operators, which may register
   // commands and so move the specs.
   const Primitive primitive = spec->primitive;
@@ -375,7 +395,14 @@ std::string Commands::run(std::string_view line) {
   const Restore depth(_depth, _depth + 1);
   const Restore addressed(_addressed, address);
   const Restore changed(_changed, address);
-  Run call(*this, _views, address, _files, _processes, spec->command, arguments);
+  Run call(*this,
+           _views,
+           address,
+           _files,
+           _processes,
+           spec->command,
+           arguments,
+           std::move(from));
   spec->handler->command(call);
   if (primitive != Primitive::no && !_replaying)
     _session.keep(std::move(kept), std::move(files), _changed, primitive);
@@ -394,15 +421,18 @@ std::string Commands::view_named(std::vector<std::string_view> &words) const {
   return name;
 }
 
-// Here, beside the file running, so a command and the log name the same file (RP02).
-// Returns where the paths are, reserved first, so adding one never moves the others.
-std::vector<std::string>
-Commands::resolve(const Spec &spec, std::vector<std::string_view> &arguments) const {
+// Here, as the line was typed or the script running it, so a command and the log name
+// the same file (RP02). Returns where the paths are, reserved first, so adding one never
+// moves the others.
+std::vector<std::string> Commands::resolve(const Spec &spec,
+                                           std::vector<std::string_view> &arguments,
+                                           const std::filesystem::path &from) const {
   std::vector<std::string> paths;
   paths.reserve(arguments.size());
   for (std::size_t index = 0; index < arguments.size(); ++index)
     if (spec.names_file(index, arguments[index]))
-      arguments[index] = paths.emplace_back(resolved(arguments[index]).string());
+      arguments[index] =
+          paths.emplace_back(resolved_from(from, arguments[index]).string());
   return paths;
 }
 
@@ -470,8 +500,12 @@ std::vector<std::string_view> Commands::holding() const {
 }
 
 std::string Commands::send(std::string_view line) {
+  return send_typed(line, {});
+}
+
+std::string Commands::send_typed(std::string_view line, std::string_view folder) {
   try {
-    return run(line);
+    return run(line, folder);
   } catch (const std::runtime_error &failure) {
     _log.write(Level::error, Tag::run, failure.what());
     return {};
@@ -608,14 +642,15 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words) c
 }
 
 // A relative path names a file beside the one running (RP02), so a script and the files
-// it reads and writes move together; in a line typed, beside where it was typed. Normal,
-// as a replay names a file through .. from beside the log, and the view it hosts must be
-// the one the same file named another way made.
+// it reads and writes move together; in a line typed, in the folder it was typed at, as
+// its prompt shows it, as in a shell; in any other, from where vulpen started.
+std::filesystem::path Commands::paths_from(std::string_view typed_at) const {
+  return _sourcing.empty() ? std::filesystem::path(typed_at)
+                           : _sourcing.back().file.parent_path();
+}
+
 std::filesystem::path Commands::resolved(const std::filesystem::path &file) const {
-  return std::filesystem::absolute(file.is_relative() && !_sourcing.empty()
-                                       ? _sourcing.back().file.parent_path() / file
-                                       : file)
-      .lexically_normal();
+  return resolved_from(paths_from({}), file);
 }
 
 } // namespace VP

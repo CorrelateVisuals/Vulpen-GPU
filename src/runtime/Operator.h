@@ -208,6 +208,12 @@ public:
   // vulpen started with: where view switch moved it, and once that view is no longer
   // hosted, the nearest view that held it and still is. Every face shows it.
   virtual std::string_view current() = 0;
+  // As send, for a line a person typed at a prompt that shows folder, or one a menu
+  // handed a terminal as typed: its relative paths count from that folder, as a shell's
+  // do, where a line sent counts them from where vulpen started and a script's from
+  // beside it (RP02); an empty folder is where vulpen started. Last, so a module built
+  // before it reaches the others where it found them.
+  virtual std::string send_typed(std::string_view line, std::string_view folder) = 0;
 
 protected:
   ~CommandPort() = default;
@@ -583,9 +589,13 @@ public:
   virtual ProcessPort &processes() = 0;
   // The view the command addresses as the next frame runs it, as Cook::unfolded reads
   // one: each node with its folder and the files it held at the last change, and each
-  // recipe a node of the library uses unfolded, as the graph shows it. Last, so a module
-  // built before it reaches the others where it found them.
+  // recipe a node of the library uses unfolded, as the graph shows it.
   virtual const View &unfolded() const = 0;
+  // A path as the line's <file> arguments resolve, absolute: a relative one from the
+  // folder the line was typed at, beside the script running it, or from where vulpen
+  // started, so a command lists or names one as the line meant it. Last, so a module
+  // built before it reaches the others where it found them.
+  virtual std::string resolved(std::string_view path) const = 0;
 
 protected:
   ~Call() = default;

@@ -95,7 +95,9 @@ private:
 // not at all (RV04). A usage's last placeholder may end in ..., taking one argument or
 // more, and stand in brackets, which a line may leave out: node add <name>
 // [<word=value>...]. A <file> argument reaches its command resolved, as an absolute path,
-// and so does a <view> that holds a /; one without names a project, and comes as typed.
+// a relative one counting from the folder a person typed it at, beside the script
+// running it, or from where vulpen started; so does a <project> or a <path> that holds a
+// /, and one without names a project or a file the view holds, and comes as typed.
 //
 // A line addresses a hosted view by its name, as `<name>: <command>`, and `:` alone
 // addresses the view vulpen started with, which a line naming none addresses too. A line
@@ -118,10 +120,12 @@ public:
   // Before the command's handler goes, so no run reaches it after.
   void remove(Command command);
   // A line from outside the port, in a group of its own; returns what its command
-  // answers. Throws naming the mistake: a command nobody registered, or words its usage
-  // does not take.
-  std::string run(std::string_view line);
+  // answers. typed_at: the folder a person typed it at, which its relative paths count
+  // from, as send_typed's. Throws naming the mistake: a command nobody registered, or
+  // words its usage does not take.
+  std::string run(std::string_view line, std::string_view typed_at = {});
   std::string send(std::string_view line) override;
+  std::string send_typed(std::string_view line, std::string_view folder) override;
   std::vector<Usage> usages() const override;
   std::span<const Logged> log() const override;
   void keep_log_to(std::span<const std::string> views) override;
@@ -187,8 +191,10 @@ private:
   const Spec *match(std::span<const std::string_view> words) const;
   std::string view_named(std::vector<std::string_view> &words) const;
   std::vector<std::string> resolve(const Spec &spec,
-                                   std::vector<std::string_view> &arguments) const;
+                                   std::vector<std::string_view> &arguments,
+                                   const std::filesystem::path &from) const;
   void switch_to(std::string_view name);
+  std::filesystem::path paths_from(std::string_view typed_at) const;
   std::filesystem::path resolved(const std::filesystem::path &file) const;
 
   const Log &_log;
