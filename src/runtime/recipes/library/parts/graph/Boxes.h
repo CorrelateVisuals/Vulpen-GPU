@@ -576,10 +576,12 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
 // and relations reach in at their left and out at their right, the scope's own ports and
 // files among them, as the tab names the scope and no box shows it; with none, the boxes
 // of the nodes at the top, of the view's manifest, and of the views the view hosts, as the
-// view as edited names them, each as hosted lists its top nodes. A node of the view as
-// edited is its own; one a recipe brings is not, nor a folder or a file. The paths outside
-// are named from base. Every layer's curves are ends, so the boxes and where they show are
-// the same whichever layers show, as the graph draws only theirs.
+// view as edited names them, each as hosted lists its top nodes. The strays are the
+// folders of the level no node names, each ending with /, and at the top the files no
+// node holds, each a box as the manifest's. A node of the view as edited is its own; one
+// a recipe brings is not, nor a folder or a file. The paths outside are named from base.
+// Every layer's curves are ends, so the boxes and where they show are the same whichever
+// layers show, as the graph draws only theirs.
 Boxes boxes_of(const VP::View &edited,
                const VP::View &flat,
                std::string_view scope,
@@ -629,13 +631,23 @@ Boxes boxes_of(const VP::View &edited,
                              .title = child.name,
                              .role = VP_VIEW::role("view"),
                              .view = true});
-  for (const std::string &stray : strays)
-    if (boxes.boxes.size() < node_room)
-      boxes.boxes.push_back(
-          {.name = boxes.scope.empty() ? stray : std::format("{}.{}", boxes.scope, stray),
-           .title = stray + '/',
-           .role = VP_VIEW::role("hidden"),
-           .stray = true});
+  for (const std::string &stray : strays) {
+    if (boxes.boxes.size() >= node_room)
+      break;
+    if (!stray.ends_with('/')) {
+      boxes.boxes.push_back({.name = std::format("/{}", stray),
+                             .title = stray,
+                             .role = file_role(stray),
+                             .opens = edited.file.parent_path() / stray});
+      continue;
+    }
+    const std::string bare = stray.substr(0, stray.size() - 1);
+    boxes.boxes.push_back(
+        {.name = boxes.scope.empty() ? bare : std::format("{}.{}", boxes.scope, bare),
+         .title = stray,
+         .role = VP_VIEW::role("hidden"),
+         .stray = true});
+  }
   building.ports.resize(boxes.boxes.size());
   connect(boxes, building, flat);
   relate(boxes, building, relations, flat.connections.size());

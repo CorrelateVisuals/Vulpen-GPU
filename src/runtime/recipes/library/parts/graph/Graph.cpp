@@ -134,8 +134,10 @@ std::string typed_path(const std::filesystem::path &path) {
 // The folders of a view's level no node names: at its top, but the folders of what its
 // nodes share, the hidden ones and its hosted views', or in a node's inside; each shows as
 // a box, which a right press makes a node, as every folder in a view is a node's (RV08).
-// Read as the level is built, as a node remove keep, which leaves the folder, builds it
-// anew.
+// At its top too the files beside its manifest, which no node holds, as file new leaves
+// one there, each a box a press opens, as the manifest's; in a node's inside every file
+// is the node's. A folder's name ends with /, as the file port lists it. Read as the
+// level is built, as a node remove keep, which leaves the folder, builds it anew.
 std::vector<std::string>
 strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) {
   std::string path(inside);
@@ -149,15 +151,21 @@ strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) 
     return strays; // a folder it cannot list holds none it shows
   }
   for (const std::string &name : names) {
+    if (name.starts_with('.'))
+      continue;
+    if (!name.ends_with('/')) {
+      if (inside.empty() && name != VP::manifest_file && !name.ends_with('~'))
+        strays.push_back(name);
+      continue;
+    }
     const std::string bare = name.substr(0, name.size() - 1);
     const std::string node = inside.empty() ? bare : std::format("{}.{}", inside, bare);
-    if (!name.ends_with('/') || bare.starts_with('.') ||
-        (inside.empty() && (bare == "contracts" || bare == "shared" ||
+    if ((inside.empty() && (bare == VP::contracts_folder || bare == VP::shared_folder ||
                             std::ranges::find(edited.children, bare, &VP::Child::name) !=
                                 edited.children.end())) ||
         std::ranges::find(edited.nodes, node, &VP::Node::name) != edited.nodes.end())
       continue;
-    strays.push_back(bare);
+    strays.push_back(name);
   }
   return strays;
 }
