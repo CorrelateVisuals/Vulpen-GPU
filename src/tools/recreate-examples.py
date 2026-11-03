@@ -126,10 +126,10 @@ def swapped(example: str, node: str, made: list[str], wanted: list[str]) -> list
     steps = []
     clash = next((name for name in wanted if name in made), None)
     if clash:
-        steps.append(no(f"file copy {at(example, folder, clash)} {at(copy, folder, clash)}",
+        steps.append(no(f"copy {at(example, folder, clash)} {at(copy, folder, clash)}",
                         "is there already"))
     steps.append(ok(*(f"remove {at(copy, folder, name)}" for name in made)))
-    steps.append(ok(*(f"file copy {at(example, folder, name)} {at(copy, folder, name)}"
+    steps.append(ok(*(f"copy {at(example, folder, name)} {at(copy, folder, name)}"
                       for name in wanted)))
     return steps
 
@@ -198,9 +198,9 @@ def examples(scratch: Path) -> list[Example]:
     shader = at(e.copy, "triangle", "Triangle.vert")
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"file copy {at(e.name, 'triangle')}/ {at(e.copy, 'Triangle')}/"),
+        ok(f"copy {at(e.name, 'triangle')}/ {at(e.copy, 'Triangle')}/"),
         ok(f"remove force {at(e.copy, 'Triangle')}/"),
-        ok(f"file copy {at(e.name, 'triangle')}/ {at(e.copy, 'triangle')}/",
+        ok(f"copy {at(e.name, 'triangle')}/ {at(e.copy, 'triangle')}/",
            "node set triangle vertex_count=3 param=frames_per_turn=600"),
         no("node set triangle log=loud", "loud"),
         ok(f"open {shader}"),
@@ -247,10 +247,10 @@ def examples(scratch: Path) -> list[Example]:
     e = Example("triangle-twin")
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"file copy {at(e.name, 'shared')}/ {at(e.copy, 'share')}/"),
+        ok(f"copy {at(e.name, 'shared')}/ {at(e.copy, 'share')}/"),
         ok(f"remove force {at(e.copy, 'share')}/"),
-        ok(f"file copy {at(e.name, 'shared')}/ {at(e.copy, 'shared')}/"),
-        ok(f"file copy {at(e.name, 'triangle')}/ {at(e.copy, 'triangle')}/",
+        ok(f"copy {at(e.name, 'shared')}/ {at(e.copy, 'shared')}/"),
+        ok(f"copy {at(e.name, 'triangle')}/ {at(e.copy, 'triangle')}/",
            "node set triangle vertex_count=3 param=frames_per_turn=600"),
         ok("view save"),
     ]
@@ -279,15 +279,15 @@ def examples(scratch: Path) -> list[Example]:
     e = Example("triangle-cpp-raster")
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
+        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
         ok(f"new {at(e.copy, 'raster')}/"),
         no(f"new {at(e.copy, 'raster')}/", "is there already"),
-        ok(f"file copy {at(e.name, 'raster', 'Raster.comp')} {at(e.copy, 'raster', 'Raster.com')}"),
+        ok(f"copy {at(e.name, 'raster', 'Raster.comp')} {at(e.copy, 'raster', 'Raster.com')}"),
         ok(f"rename {at(e.copy, 'raster', 'Raster.com')} "
            f"{at(e.copy, 'raster', 'Raster.comp')}"),
-        ok(f"file copy {at(e.name, 'raster', 'Raster.cpp')} {at(e.copy, 'raster', 'Raster.cpp')}",
+        ok(f"copy {at(e.name, 'raster', 'Raster.cpp')} {at(e.copy, 'raster', 'Raster.cpp')}",
            "node set raster invocations=65536 param=frames_per_turn=600 param=side=256"),
-        ok(f"file copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
+        ok(f"copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
            "node set screen vertex_count=6 instance_count=cells"),
         ok("connect cells screen.cells raster.cells"),
         ok("disconnect cells"),
@@ -306,12 +306,12 @@ def examples(scratch: Path) -> list[Example]:
     e = Example("triangle-cpp-clock")
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        ok(f"file copy {at(e.name, 'raster')}/ {at(e.copy, 'rastr')}/",
+        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
+        ok(f"copy {at(e.name, 'raster')}/ {at(e.copy, 'rastr')}/",
            "node set rastr invocations=65536 param=frames_per_turn=600 param=side=256"),
         no(f"rename {at(e.copy, 'rastr')}/ {at(e.copy, 'ras.ter')}/", "no node's folder"),
         ok(f"rename {at(e.copy, 'rastr')}/ {at(e.copy, 'raster')}/"),
-        ok(f"file copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
+        ok(f"copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
            "node set screen vertex_count=6 instance_count=cells"),
         ok("connect cells raster.cells screen.cells"),
         ok("focus"),
@@ -324,12 +324,12 @@ def examples(scratch: Path) -> list[Example]:
     e = Example("triangle-cpp-corners")
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        ok(f"file copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
+        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
+        ok(f"copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
            "node set screen vertex_count=6 instance_count=cells"),
-        ok(f"file copy {at(e.name, 'raster')}/ {at(e.copy, 'raster')}/",
+        ok(f"copy {at(e.name, 'raster')}/ {at(e.copy, 'raster')}/",
            "node set raster invocations=65536 param=side=256"),
-        ok(f"file copy {at(e.name, 'corners')}/ {at(e.copy, 'corners')}/",
+        ok(f"copy {at(e.name, 'corners')}/ {at(e.copy, 'corners')}/",
            "node set corners param=frames_per_turn=600"),
         no("node move corners corners", "corners"),
         ok("node move corners screen"),
@@ -345,7 +345,7 @@ def examples(scratch: Path) -> list[Example]:
     e = Example("triangle-files")
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
+        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
         *made(e.name, "clock"),
         *made(e.name, "corners"),
         *made(e.name, "face"),
@@ -367,10 +367,10 @@ def examples(scratch: Path) -> list[Example]:
     e = Example("triangle-header")
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
+        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
         *made(e.name, "corners"),
         ok("node set corners param=frames_per_turn=600"),
-        ok(f"file copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
+        ok(f"copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
            "node set face vertex_count=3"),
         ok("connect corners corners.corners face.corners"),
         ok("cd corners"),
@@ -390,8 +390,8 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # triangle-points: a node holding nodes, brought by one copy, in the order its
-    # folders sort, moved into the example's; one let go of, its folder kept, and taken
+    # triangle-points: a node holding nodes, brought by one copy with their words, moved
+    # about and back into the example's order; one let go of, its folder kept, and taken
     # back by node add.
     e = Example("triangle-points")
     words = {"top": "param=at=0,-0.5 param=color=1,0,0",
@@ -399,12 +399,12 @@ def examples(scratch: Path) -> list[Example]:
              "left": "param=at=-0.5,0.5 param=color=0,0,1"}
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        ok(f"file copy {at(e.name, 'corners')}/ {at(e.copy, 'corners')}/",
+        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
+        ok(f"copy {at(e.name, 'corners')}/ {at(e.copy, 'corners')}/",
            *(f"node set corners.{corner} invocations=1 {set}" for corner, set in words.items())),
         ok("node move corners.top corners.left"),
         ok("node move corners.right corners.left"),
-        ok(f"file copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
+        ok(f"copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
            "node set face vertex_count=3 param=frames_per_turn=600"),
         ok("node remove keep corners.left"),
         no(f"remove {at(e.copy, 'corners')}/", "which a delete cannot bring back"),
@@ -463,12 +463,12 @@ def examples(scratch: Path) -> list[Example]:
     e.steps = [
         ok(f"view new {COPY}lif"),
         ok(f"view rename {e.copy}"),
-        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
+        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
         no(f"new {at(e.copy, 'contracts')}/", "is there already"),
         *made(e.name, "seed-cells"),
-        ok(f"file copy {at(e.name, 'engine')}/ {at(e.copy, 'enigne')}/"),
+        ok(f"copy {at(e.name, 'engine')}/ {at(e.copy, 'enigne')}/"),
         ok(f"rename {at(e.copy, 'enigne')}/ {at(e.copy, 'engine')}/"),
-        ok(f"file copy {at(e.name, 'cells')}/ {at(e.copy, 'cells')}/"),
+        ok(f"copy {at(e.name, 'cells')}/ {at(e.copy, 'cells')}/"),
         ok("node set seed-cells invocations=65536 param=alive_percent=30 param=seed=1",
            "node set engine invocations=65536 param=grid_xy=256,256 "
            "param=frames_per_generation=3",
@@ -488,7 +488,7 @@ def examples(scratch: Path) -> list[Example]:
     # the bounces as groups, the later ones copied a node at a time from the copy's own
     # first; then every connection in order. On the way the mistakes such a chain invites:
     # a path misspelled, a node copied under a wrong name and renamed, words mistyped or
-    # left out, a count no multiple of the workgroup, a group copied onto one there already,
+    # cleared, a count no multiple of the workgroup, a group copied onto one there already,
     # a command sent before its node, a port joined twice, a connection made with too few
     # readers and made again with all, a misspelled port let go of and made again. A node
     # binds only once built, so a mistake its binding finds waits for the build to settle.
@@ -500,14 +500,14 @@ def examples(scratch: Path) -> list[Example]:
 
     def copied(node: str, into: str | None = None, source: str = e.name) -> str:
         path = node.replace(".", "/")
-        return f"file copy {at(source, path)}/ {at(e.copy, into or path)}/"
+        return f"copy {at(source, path)}/ {at(e.copy, into or path)}/"
 
     def wired(name: str) -> Step:
         return ok(f"connect {name} {ends[name]}")
 
     def later_bounce(bounce: str) -> list[Step]:
         return [ok(f"new {at(e.copy, bounce)}/"),
-                no(f"file copy {at(e.copy, 'bounce1')}/ {at(e.copy, bounce)}/",
+                no(f"copy {at(e.copy, 'bounce1')}/ {at(e.copy, bounce)}/",
                    "is there already"),
                 *(ok(copied(f"bounce1.{node}", f"{bounce}/{node}", e.copy),
                      f"node set {bounce}.{node} {words[f'{bounce}.{node}']}")
@@ -516,16 +516,16 @@ def examples(scratch: Path) -> list[Example]:
     params = " ".join(word for word in words["lamp"].split() if word.startswith("param="))
     e.steps = [
         ok(f"view new {e.copy}"),
-        no(f"file copy {at(e.name, 'contract')}/ {at(e.copy, 'contracts')}/", "contract"),
-        ok(f"file copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/",
-           f"file copy {at(e.name, 'shared')}/ {at(e.copy, 'shared')}/"),
+        no(f"copy {at(e.name, 'contract')}/ {at(e.copy, 'contracts')}/", "contract"),
+        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/",
+           f"copy {at(e.name, 'shared')}/ {at(e.copy, 'shared')}/"),
         *made(e.name, "orbit"),
         settled(f"node set orbit {words['orbit'].replace('distance=14', 'distance=fourteen')}",
                 refused="fourteen"),
         ok(f"node set orbit {words['orbit']}"),
         ok(copied("lamp", "lmap")),
         ok(f"rename {at(e.copy, 'lmap')}/ {at(e.copy, 'lamp')}/"),
-        settled(f"node set lamp {params}", refused="invocations"),
+        settled(f"node set lamp invocations= {params}", refused="invocations"),
         ok(f"node set lamp {words['lamp']}"),
         ok(copied("grid")),
         settled(f"node set grid {words['grid'].replace('invocations=64', 'invocations=60')}",

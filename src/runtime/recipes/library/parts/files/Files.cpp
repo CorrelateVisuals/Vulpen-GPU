@@ -413,33 +413,37 @@ void give(Graphed &graph,
 class Files final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // A part's folder is <recipes>/library/parts/<name>; the apps are beside the library.
-    _recipes = std::filesystem::path(node.folder()).parent_path().parent_path().parent_path();
+    _library = std::filesystem::path(node.folder()).parent_path().parent_path();
+    _recipes = _library.parent_path();
     for (std::size_t start = 0; start < starts.size(); ++start)
       _starts[start] =
           node.file(std::format("start/{}{}.in", start_name, starts[start].extension));
     _new = node.command("new <file>...",
                         "makes files and folders, and the folders they are in: a path "
                         "ending in / or with no extension a folder, else a file, a "
-                        "shader's or C++'s with the least code that builds and runs; in a "
-                        "view a folder is a node, which it adds, a draw's with its "
-                        "vertex_count and a dispatch's with its invocations, saving the "
-                        "view");
+                        "shader's or C++'s with the least code that builds and runs; "
+                        "in a view a folder is a node, which it adds, a draw's with its "
+                        "vertex_count and a dispatch's with its invocations, saving "
+                        "the view");
     _rename = node.command("rename <file> <file>",
                            "renames a file or a folder, or moves it, into folders made "
                            "for it, in a view nodes; a node's folder renames the node, "
                            "the nodes inside it and the connections naming them, inside "
                            "another node's folder inside that node; a view's folder "
                            "moves with view rename");
-    _copy = node.command("file copy <file> <file>",
+    _copy = node.command("copy <file> <file>",
                          "copies a file, or a folder with all it holds, whole or not at "
-                         "all; in a view each folder it brings is a node, which it adds");
+                         "all; in a view each folder it brings is a node, which it adds, "
+                         "and a node's folder or a recipe's comes as recipe drop brings "
+                         "one: with its words, the nodes inside it, their connections and "
+                         "the contracts and shared code they include");
     _remove = node.command("remove <file>",
                            "deletes a file or an empty folder; a node's folder takes the "
-                           "node with it, the nodes inside it and their connections, saving "
-                           "the view; a view's goes once view close let it go");
+                           "node with it, the nodes inside it and their connections, "
+                           "saving the view; a view's goes once view close let it go");
     _remove_force = node.command("remove force <file>",
-                                 "deletes a folder with all it holds, a node's with the node, "
-                                 "as remove does the rest");
+                                 "deletes a folder with all it holds, a node's with the "
+                                 "node, as remove does the rest");
   }
 
   void command(VP::Call &call) override {
@@ -526,6 +530,11 @@ class Files final : public VP::Operator {
         return rename_node(call, *left, *node, from, to);
     }
     const std::optional<Held> held = held_by(call, to);
+    if (copy && held && listed(call.files(), from, "/") && drops(call.files(), from))
+      if (const std::optional<std::string> name = node_of(held->inside);
+          name && !name->empty())
+        return call.reply(call.commands().send(
+            std::format("{}: recipe drop {}/ {}", held->name, from.string(), *name)));
     std::vector<Graphed> graphs;
     for (std::string &node : adopted(call, held, listed(call.files(), from, "/"), from))
       graphed(graphs, held->name).adds.push_back({std::move(node), {}});
@@ -552,11 +561,12 @@ class Files final : public VP::Operator {
                    const std::filesystem::path &to) const {
     const std::optional<Held> into = held_by(call, to);
     if (!into || into->name != held.name)
-      throw std::runtime_error(std::format("{}/ is node {}'s folder, which a rename moves "
-                                           "within view {}; copy brings it into another",
-                                           shown(from),
-                                           node,
-                                           held.view->name));
+      throw std::runtime_error(std::format(
+          "{}/ is node {}'s folder, which a rename moves within view {}; copy brings it "
+          "into another",
+          shown(from),
+          node,
+          held.view->name));
     const std::optional<std::string> name = node_of(into->inside);
     const bool nameable =
         std::ranges::all_of(into->inside, [](const std::filesystem::path &part) {
@@ -582,6 +592,21 @@ class Files final : public VP::Operator {
                            node,
                            *name,
                            edit(call, graphs)));
+  }
+
+  // Whether a folder is what a drop copies: a node's, as the nearest manifest at or above
+  // it names it, or a recipe's own in the library.
+  bool drops(VP::FilePort &files, const std::filesystem::path &folder) const {
+    std::filesystem::path at = folder;
+    for (; !listed(files, at / manifest, ""); at = at.parent_path())
+      if (at == at.parent_path())
+        return false;
+    if (at == folder) {
+      const std::filesystem::path inside = folder.lexically_relative(_library);
+      return !inside.empty() && *inside.begin() != "..";
+    }
+    const std::optional<std::string> node = node_of(folder.lexically_relative(at));
+    return node && named(files.manifest((at / manifest).string()), *node);
   }
 
   // The nodes the folders a line makes or brings into a view are, known before anything is
@@ -659,15 +684,17 @@ class Files final : public VP::Operator {
     const std::size_t held = count(files, path);
     const std::string some = std::format("{} file{}", held, held == 1 ? "" : "s");
     if (held > 0 && !force)
-      throw std::runtime_error(std::format("{}/ holds {}, which a delete cannot bring "
-                                           "back: remove force {}/ deletes them{}",
-                                           shown(path),
-                                           some,
-                                           shown(path),
-                                           node ? std::format(" and node {}", *node) : ""));
+      throw std::runtime_error(
+          std::format("{}/ holds {}, which a delete cannot bring back: remove force {}/ "
+                      "deletes them{}",
+                      shown(path),
+                      some,
+                      shown(path),
+                      node ? std::format(" and node {}", *node) : ""));
     std::vector<Graphed> graphs;
     if (node)
-      graphed(graphs, left->name).then.push_back(std::format("node remove keep {}", *node));
+      graphed(graphs, left->name)
+          .then.push_back(std::format("node remove keep {}", *node));
     const std::string saved = edit(call, graphs);
     remove_all(files, path);
     call.reply(std::format("removed {}/{}{}{}",
@@ -697,6 +724,7 @@ class Files final : public VP::Operator {
       files.remove(folder.string());
   }
 
+  std::filesystem::path _library;
   std::filesystem::path _recipes; // the library's folder and the apps' beside it
   // The start files, by starts, which the file port watches, so new writes them as they
   // are now.

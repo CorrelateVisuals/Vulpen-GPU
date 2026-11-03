@@ -565,7 +565,7 @@ VALID = {
     "connect <name> <port> <port>...":
         "disconnect {connection} ;; connect {fresh} {writer} {reader}",
     "disconnect <connection>": "disconnect {connection}",
-    "file copy <file> <file>": "file copy {scrap} {newfile}",
+    "copy <file> <file>": "copy {scrap} {newfile}",
     "gpu": "gpu",
     "gpu toggle": "gpu toggle",
     "help": "help",
@@ -1150,7 +1150,7 @@ UNWALKED = ("quit", "input", "help", "clear", "complete", "probe", "menu", "focu
 # Usages whose lines write files: the log keeps the graph edits they make, as recipe drop's
 # node add, not the files, so a log replayed where they are not rebuilds the graph alone.
 WRITES = ("new", "remove", "rename", "recipe", "view new", "view save",
-          "view rename", "view remove", "file", "write")
+          "view rename", "view remove", "copy", "write")
 
 
 def walk(copy: Copy, seed: int, steps: int) -> None:

@@ -47,6 +47,11 @@ bool shared_code(std::string_view kind, std::string_view folder) {
   return kind.substr(0, kind.size() - 1) == parts && folder == VP::shared_folder;
 }
 
+// A path as an answer names it, from where vulpen started, as the prompt names a folder.
+std::string shown(const std::filesystem::path &path) {
+  return path.lexically_proximate(std::filesystem::current_path()).generic_string();
+}
+
 // As text, since neither path need exist.
 bool inside(const std::filesystem::path &path, const std::filesystem::path &folder) {
   const std::filesystem::path relative =
@@ -240,7 +245,8 @@ class Library final : public VP::Operator {
     _drop = node.command("recipe drop <recipe> <name>",
                          "copies a library recipe into the view as a node of that name, "
                          "with the nodes inside it and the contracts and shared code "
-                         "they include; then saves the view");
+                         "they include, or by a path a node's folder from any view, with "
+                         "its words, as copy brings one; then saves the view");
     _sync = node.command("recipe sync <node>",
                          "brings a dropped recipe up to the library's, while what it "
                          "copied is unchanged; its params and connections stay; then "
@@ -364,12 +370,14 @@ class Library final : public VP::Operator {
   }
 
   // Each node's files into the folder its name names in the view, saved whole (RA04),
-  // and each contract and shared file they include that the view lacks, from the library,
-  // with what those include in turn (RV05, RV09). One the view has stays as it is.
+  // and each contract and shared file they include that the view lacks, from the top
+  // they came from, the library's or a view's, with what those include in turn (RV05,
+  // RV09). One the view has stays as it is.
   void write(VP::FilePort &files,
              const Copy &copy,
              const std::filesystem::path &view,
-             std::string_view root) const {
+             std::string_view root,
+             const std::filesystem::path &top) const {
     std::vector<std::filesystem::path> included;
     for (const Inner &inner : copy.nodes)
       for (const std::string &file : inner.node.files) {
@@ -382,8 +390,8 @@ class Library final : public VP::Operator {
       const std::filesystem::path file = included[next];
       if (holds(files, view / file.parent_path(), file.filename().string()))
         continue;
-      const std::filesystem::path from =
-          *file.begin() == VP::shared_folder ? _library / parts / file : _library / file;
+      const bool shared = top == _library && *file.begin() == VP::shared_folder;
+      const std::filesystem::path from = shared ? _library / parts / file : top / file;
       const std::string text = files.read(from.string());
       includes_of(text, file.parent_path(), included);
       files.save((view / file).string(), text);
@@ -398,39 +406,101 @@ class Library final : public VP::Operator {
     for (const Inner &inner : copy.nodes)
       lines.push_back(std::format("node add {}{}{}",
                                   outer_name(root, inner.name),
-                                  inner.name.empty() ? sendable("recipe", recipe) : "",
+                                  inner.name.empty() && !recipe.empty()
+                                      ? sendable("recipe", recipe)
+                                      : "",
                                   words_of(inner.node, inner.node.params, false)));
     for (const VP::Connection &connection : copy.connections)
       lines.push_back(connect_line(root, connection));
     return lines;
   }
 
-  // A copy of a library recipe, as the node named and the nodes inside it (V03). The
-  // node keeps its recipe and the fingerprint of what it copied, so a sync can tell a
-  // copy left as it was from one someone made their own. Its edits are known before a
-  // file is written, so one that cannot be sent leaves the view as it was.
+  // What a drop copies, the recipe its own node names, the top its contracts and shared
+  // code come from, and the words the answer names it by: a recipe of the library by its
+  // name or its own folder, its node keeping the recipe and the fingerprint of what it
+  // copied, so a sync can tell a copy left as it was from one someone made their own; or
+  // a node of a view by its folder, as the nearest manifest at or above it names it, with
+  // its words as the view gives them while vulpen hosts it, else as the manifest does,
+  // and the recipe it names itself, if any.
+  struct Source {
+    Copy copy;
+    std::string recipe;
+    std::filesystem::path top;
+    std::string named;
+  };
+
+  Source source_of(VP::Call &call, std::string_view word) const {
+    VP::FilePort &files = call.files();
+    if (word.find('/') == std::string_view::npos) {
+      Copy copy = recipe(files, std::string(word));
+      std::string print = fingerprint(files, copy);
+      return {std::move(copy),
+              std::format("{}{}{}", word, fingerprint_mark, print),
+              _library,
+              std::string(word)};
+    }
+    std::filesystem::path folder =
+        std::filesystem::path(call.resolved(word)).lexically_normal();
+    if (folder.filename().empty())
+      folder = folder.parent_path();
+    std::filesystem::path at = folder;
+    for (; !holds(files, at, VP::manifest_file); at = at.parent_path())
+      if (at == at.parent_path())
+        throw std::runtime_error(std::format(
+            "{} is in no view: a drop copies a node's folder, or a recipe's", word));
+    if (at == folder) {
+      if (!inside(folder, _library))
+        throw std::runtime_error(std::format(
+            "{} is a view's own folder: a drop copies a node's, or a recipe's", word));
+      return source_of(call, folder.filename().string());
+    }
+    std::string node;
+    for (const std::filesystem::path &part : folder.lexically_relative(at))
+      node += (node.empty() ? "" : ".") + part.string();
+    const std::filesystem::path manifest = at / VP::manifest_file;
+    const VP::View read = files.manifest(manifest.string());
+    const VP::View *const hosted = call.view(at.filename().string());
+    const bool runs =
+        hosted && hosted->file.lexically_normal() == manifest.lexically_normal();
+    const VP::View &view = runs ? *hosted : read;
+    const auto own = std::ranges::find(view.nodes, node, &VP::Node::name);
+    if (own == view.nodes.end())
+      throw std::runtime_error(std::format(
+          "{} is no node's folder: {} names no node {}", word, manifest.string(), node));
+    Source source{.copy = copy_of(view, node),
+                  .recipe = own->recipe,
+                  .top = at,
+                  .named = shown(folder)};
+    for (Inner &inner : source.copy.nodes) {
+      inner.node.folder = at / VP::path_of(outer_name(node, inner.name));
+      const auto listed = std::ranges::find(read.nodes, inner.node.name, &VP::Node::name);
+      if (listed != read.nodes.end())
+        inner.node.files = listed->files;
+    }
+    return source;
+  }
+
+  // A copy of a recipe of the library, or of a view's node, as the node named and the
+  // nodes inside it (V03). Its edits are known before a file is written, so one that
+  // cannot be sent leaves the view as it was.
   void drop(VP::Call &call) const {
-    const std::string from(call.arguments()[0]);
     const std::string name(call.arguments()[1]);
     VP::FilePort &files = call.files();
     const std::filesystem::path view = view_folder(call);
     check_new(call, view, name);
-    const Copy copy = recipe(files, from);
-    const std::string print = fingerprint(files, copy);
-    const std::vector<std::string> lines =
-        adds(copy, name, from + fingerprint_mark + print);
-    write(files, copy, view, name);
+    const Source source = source_of(call, call.arguments()[0]);
+    const std::vector<std::string> lines = adds(source.copy, name, source.recipe);
+    write(files, source.copy, view, name, source.top);
     for (const std::string &line : lines)
       call.commands().send(line);
     save_view(call);
-    call.reply(
-        std::format("copied {} into {}, as node {} of recipe {}{}{}, and saved the view",
-                    from,
-                    (view / VP::path_of(name)).string(),
-                    name,
-                    from,
-                    fingerprint_mark,
-                    print));
+    call.reply(std::format("copied {} into {}, as node {}{}, and saved the view",
+                           source.named,
+                           shown(view / VP::path_of(name)),
+                           name,
+                           source.recipe.empty()
+                               ? ""
+                               : std::format(" of recipe {}", source.recipe)));
   }
 
   // A connection from the rest of the view is the view's own, which a sync keeps, so
@@ -494,7 +564,7 @@ class Library final : public VP::Operator {
         if (!now || std::ranges::find(now->node.files, file) == now->node.files.end())
           files.remove((inner->node.folder / file).string());
     }
-    write(files, fresh, view, root);
+    write(files, fresh, view, root, _library);
   }
 
   // The recipe a dropped node came from, and the fingerprint of what it copied.
