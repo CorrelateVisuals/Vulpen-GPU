@@ -4,7 +4,10 @@
 
 #include <algorithm>
 #include <format>
+#include <span>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace VP {
 
@@ -29,6 +32,64 @@ std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
                            std::string_view stage) {
   return std::ranges::count_if(
       shaders, [&](const std::string &shader) { return shader.ends_with(stage); });
+}
+
+// The buffers no connection joins that other nodes write, holding what a loose field
+// reads, each as node.port: a shader's alike by stride and type, as a connection is
+// checked, and one C++ fills at a port no shader of its node holds, member for member.
+template <class Loose>
+std::vector<std::string> writers_alike(std::span<const Bound> bounds,
+                                       const Bound &reader,
+                                       const Field &in,
+                                       const Loose &loose) {
+  std::vector<std::string> found;
+  for (const Bound &writer : bounds) {
+    if (&writer == &reader || writer.unbuilt)
+      continue;
+    for (const Field &out : writer.fields)
+      if (out.buffer() && writes(out.access) && out.stride == in.stride &&
+          out.type == in.type && loose(writer, out.name))
+        found.push_back(std::format("{}.{}", writer.node->name, out.name));
+    for (const Bound::Written &filled : writer.uploads)
+      if (filled.count != 0 && !writer.field(filled.port) && loose(writer, filled.port) &&
+          disagreements(filled.element, in, "writes").empty())
+        found.push_back(std::format("{}.{}", writer.node->name, filled.port));
+  }
+  return found;
+}
+
+// The fields no connection joins, nor their own C++ fills, that other nodes' shaders read,
+// holding what C++ fills, member for member, each as node.port.
+template <class Loose>
+std::vector<std::string> readers_alike(std::span<const Bound> bounds,
+                                       const Bound &writer,
+                                       const Field &element,
+                                       const Loose &loose) {
+  std::vector<std::string> found;
+  for (const Bound &reader : bounds)
+    for (const Field &in : reader.fields)
+      if (&reader != &writer && in.buffer() && in.access == Access::read &&
+          !reader.uploads_to(in.name) && loose(reader, in.name) &&
+          disagreements(element, in, "writes").empty())
+        found.push_back(std::format("{}.{}", reader.node->name, in.name));
+  return found;
+}
+
+// The line that joins a writer to readers, its connection named for the writer's port,
+// or while a connection of the view holds that name, for its node's and the port's.
+std::string joining(const View &view,
+                    std::string_view writer,
+                    std::span<const std::string> readers) {
+  const std::size_t dot = writer.rfind('.');
+  const std::size_t before = writer.rfind('.', dot - 1);
+  const std::size_t node = before == std::string_view::npos ? 0 : before + 1;
+  std::string name(writer.substr(dot + 1));
+  if (std::ranges::find(view.connections, name, &Connection::name) != view.connections.end())
+    name = std::format("{}-{}", writer.substr(node, dot - node), name);
+  std::string line = std::format("connect {} {}", name, writer);
+  for (const std::string &reader : readers)
+    line.append(" ").append(reader);
+  return line;
 }
 
 } // namespace
@@ -418,17 +479,35 @@ void Schedule::check_connections() {
                         in->type));
     }
   }
+  // A port no connection joins names the line that joins it, where another node's port
+  // holds the same the other way round (A02): what to type, beside what is wrong.
+  const auto loose = [&](const Bound &bound, std::string_view port) {
+    return !connection_of(bound.node->name, port);
+  };
   for (Bound &bound : _bound)
     for (const Field &field : bound.fields) {
       if (!field.buffer() || field.access != Access::read)
         continue;
       const Connection *const connection = connection_of(bound.node->name, field.name);
       const bool uploaded = bound.uploads_to(field.name);
-      if (!connection && !uploaded)
+      const std::vector<std::string> writers =
+          connection || uploaded ? std::vector<std::string>()
+                                 : writers_alike(_bound, bound, field, loose);
+      const std::string reader = std::format("{}.{}", bound.node->name, field.name);
+      if (!connection && !uploaded && writers.empty())
         bound.errors.push_back(
             std::format("{} reads nothing: connect it to a buffer another node writes, "
                         "or write it from the operator",
                         field.name));
+      else if (!connection && !uploaded)
+        bound.errors.push_back(std::format(
+            "{} reads nothing: {}{}",
+            field.name,
+            joining(_view, writers.front(), std::span(&reader, 1)),
+            writers.size() == 1
+                ? std::string()
+                : std::format(", or from {}, which write it alike",
+                              joined({writers.begin() + 1, writers.end()}))));
       else if (connection && uploaded && connection->from.node != bound.node->name)
         bound.errors.push_back(
             std::format("{} is written both by the operator and through connection {}",
@@ -436,13 +515,24 @@ void Schedule::check_connections() {
                         connection->name));
     }
   for (Bound &bound : _bound)
-    for (const Bound::Written &written : bound.uploads)
-      if (!bound.field(written.port) && written.count != 0 &&
-          !connection_of(bound.node->name, written.port))
-        bound.errors.push_back(std::format("the operator writes {}, which nothing reads: "
-                                           "connect it to a buffer of another node's "
-                                           "shader",
-                                           written.port));
+    for (const Bound::Written &written : bound.uploads) {
+      if (bound.field(written.port) || written.count == 0 ||
+          connection_of(bound.node->name, written.port))
+        continue;
+      const std::vector<std::string> readers =
+          readers_alike(_bound, bound, written.element, loose);
+      bound.errors.push_back(
+          readers.empty()
+              ? std::format("the operator writes {}, which nothing reads: connect it to "
+                            "a buffer of another node's shader",
+                            written.port)
+              : std::format(
+                    "the operator writes {}, which nothing reads: {}",
+                    written.port,
+                    joining(_view,
+                            std::format("{}.{}", bound.node->name, written.port),
+                            readers)));
+    }
 }
 
 // Every image a node's C++ fills is sampled, by its own shaders or through a connection;
