@@ -25,6 +25,15 @@ public:
   virtual std::span<const Cost> costs(std::string_view name) = 0;
   // Each node's ports, as the running schedule bound them; none before the view runs.
   virtual std::span<const NodePort> ports(std::string_view name) = 0;
+  // Every view hosted, by the name a line addresses it with, the host's first.
+  virtual std::vector<std::string> names() = 0;
+  // A project's files that differ from what it kept as it was hosted or last saved, by
+  // their paths from its folder, a folder's ending in /; none for an app's or the
+  // library's view, which keeps none.
+  virtual std::vector<std::string> unkept(std::string_view name) = 0;
+  // A project's files put back as it kept them: each changed since written again, each
+  // made since deleted, with the folders made for them.
+  virtual void put_back(std::string_view name) = 0;
   // Takes a changed copy of the view. The schedule is rebuilt from it before the next
   // frame, once for every change since the last frame, on the path a live swap takes, so
   // it keeps what the changes left alone and checks only the view they leave. The
@@ -151,6 +160,8 @@ public:
   bool replaying() const;
   // Where a command finds the view it addresses, once the views exist.
   void look_in(ViewLookup &views);
+  // The file port its commands reach files through, which the views keep a project's by.
+  FilePort &files();
   // A hosted view by its name, as the changes so far left it, which a node reads while it
   // cooks; null when no view has the name, or none exists yet.
   const View *view(std::string_view name);
@@ -191,6 +202,7 @@ private:
   };
 
   void command(Call &call) override;
+  void quit(bool force);
   const Spec *match(std::span<const std::string_view> words) const;
   std::string view_named(std::vector<std::string_view> &words) const;
   std::vector<std::string> resolve(const Spec &spec,

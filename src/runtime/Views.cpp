@@ -6,8 +6,11 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
+#include <map>
 #include <ranges>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -22,6 +25,112 @@ namespace {
 std::filesystem::file_time_type stamp(const std::filesystem::path &file) {
   std::error_code gone;
   return std::filesystem::last_write_time(file, gone);
+}
+
+// A project: a view in a folder of its own, not an app beside the library nor a recipe in
+// it, which build from the recipes' folder.
+bool project(const View &view) {
+  return !view.file.empty() && Manifest::root(view) == view.file.parent_path();
+}
+
+// A file larger than this a project does not keep, so its data files are never held in
+// memory twice; view close force and quit force leave such a file as it is.
+constexpr std::uintmax_t kept_most = 16 * 1024 * 1024;
+
+// A project's files and folders, each by its path from the project's folder, a folder's
+// ending in /, but the hidden ones, as .vulpen/, where the parts keep what a run
+// rewrites as it goes; and apart, the files too large or unreadable to keep.
+struct Kept {
+  bool there = false; // the project's folder
+  std::map<std::string, std::string, std::less<>> files;
+  std::set<std::string, std::less<>> folders;
+  std::vector<std::string> left;
+};
+
+void walk(FilePort &files,
+          const std::filesystem::path &folder,
+          const std::string &inside,
+          Kept &kept) {
+  for (const std::string &name : files.list((folder / inside).string())) {
+    if (name.starts_with('.'))
+      continue;
+    std::string path = inside + name;
+    std::error_code unread;
+    if (name.ends_with('/')) {
+      walk(files, folder, path, kept);
+      kept.folders.insert(std::move(path));
+    } else if (std::filesystem::file_size(folder / path, unread) > kept_most || unread) {
+      kept.left.push_back(std::move(path));
+    } else {
+      try {
+        kept.files.emplace(path, files.read((folder / path).string()));
+      } catch (const std::runtime_error &) {
+        kept.left.push_back(std::move(path)); // gone or locked mid-walk
+      }
+    }
+  }
+}
+
+// A project's files as they are now; none for a view that is no project.
+Kept kept_of(FilePort &files, const View &view) {
+  Kept kept;
+  std::error_code missing;
+  if (!project(view) || !std::filesystem::is_directory(view.file.parent_path(), missing))
+    return kept;
+  kept.there = true;
+  walk(files, view.file.parent_path(), {}, kept);
+  return kept;
+}
+
+// What differs from what was kept, sorted: a file changed, made or deleted since, and a
+// folder made or deleted since.
+std::vector<std::string> differences(const Kept &kept, const Kept &now) {
+  std::vector<std::string> changed;
+  for (const auto &[path, text] : now.files)
+    if (const auto found = kept.files.find(path);
+        found == kept.files.end() || found->second != text)
+      changed.push_back(path);
+  for (const auto &[path, text] : kept.files)
+    if (!now.files.contains(path))
+      changed.push_back(path);
+  for (const std::string &folder : now.folders)
+    if (!kept.folders.contains(folder))
+      changed.push_back(folder);
+  for (const std::string &folder : kept.folders)
+    if (!now.folders.contains(folder))
+      changed.push_back(folder);
+  std::ranges::sort(changed);
+  return changed;
+}
+
+// The files made since deleted, the folders made for them after them, deepest first, as
+// a/b/ sorts after a/, and the files changed or deleted since written as kept; a folder
+// kept that a delete emptied and took made again. The port deletes and writes, so an
+// editor showing one of them follows (RA04: each write a temp renamed over the file).
+void put_back(FilePort &files, const std::filesystem::path &folder, const Kept &kept) {
+  Kept now;
+  walk(files, folder, {}, now);
+  for (const auto &[path, text] : now.files)
+    if (!kept.files.contains(path))
+      files.remove((folder / path).string());
+  for (auto made = now.folders.rbegin(); made != now.folders.rend(); ++made) {
+    std::error_code gone;
+    if (!kept.folders.contains(*made) &&
+        std::filesystem::is_empty(folder / *made, gone) && !gone)
+      files.remove((folder / *made).string());
+  }
+  for (const auto &[path, text] : kept.files)
+    if (const auto found = now.files.find(path);
+        found == now.files.end() || found->second != text)
+      files.save((folder / path).string(), text);
+  for (const std::string &held : kept.folders) {
+    std::error_code missing;
+    if (!std::filesystem::exists(folder / held, missing))
+      files.make((folder / held).string());
+  }
+  std::error_code missing;
+  if (kept.there && !std::filesystem::exists(folder, missing))
+    files.make(folder.string());
 }
 
 // Throws naming what keeps it from running: a recipe the library lacks, or a cycle that
@@ -64,6 +173,9 @@ struct Views::Hosted {
   std::unique_ptr<Schedule> schedule; // null until the frame after it was hosted
   // Where its schedule's draws into its window go.
   Schedule::Into into = Schedule::Into::window;
+  // Its files as at its hosting or last save, which a forced close or quit puts back;
+  // none for an app or a library view.
+  Kept kept;
   // It has taken the window of a view beside it, so it keeps the window until it closes.
   bool presented = false;
   bool removed = false; // its schedule goes before the next frame
@@ -84,6 +196,7 @@ Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recip
         std::vector<std::unique_ptr<Hosted>> hosted;
         Hosted &host = *hosted.emplace_back(std::make_unique<Hosted>());
         host.read = stamp(view.file);
+        host.kept = kept_of(commands.files(), view);
         host.view = std::make_unique<View>(std::move(view));
         host.flat = flat_of(*host.view, recipes);
         host.schedule =
@@ -93,7 +206,9 @@ Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recip
       _schedules{_hosted.front()->schedule.get()} {
   follow({}, _hosted.front()->current());
   _save = commands.add("view save",
-                       "writes the view over its manifest, keeping the comments in it",
+                       "writes the view over its manifest, keeping the comments in it, "
+                       "and keeps a project's files as they are, which view close force "
+                       "and quit force put back",
                        *this,
                        Primitive::save);
   _list = commands.add("view list",
@@ -450,10 +565,12 @@ void Views::command(Call &call) {
     if (!found)
       throw std::runtime_error("no view to save");
     save(*found);
-    call.reply(std::format("saved {}",
+    call.reply(std::format("saved {}{}",
                            found->current()
                                .file.lexically_proximate(std::filesystem::current_path())
-                               .generic_string()));
+                               .generic_string(),
+                           project(found->current()) ? ", the project kept as it is now"
+                                                     : ""));
   } else if (call.is(_list)) {
     for (const Child &child : call.view().children)
       call.reply(std::format("{} {}", child.name, child.file.string()));
@@ -508,13 +625,15 @@ void Views::host(const Child &child, const std::string &parent) {
             "child {}: no view at {} yet, so it starts empty; view save writes it",
             child.name,
             child.file.string()));
+  Kept kept = kept_of(_port.files(), *view);
   Hosted &hosted = *_hosted.emplace_back(
       std::make_unique<Hosted>(Hosted{.name = child.name,
                                       .parent = parent,
                                       .edited = std::move(view),
                                       .edited_flat = std::move(flat),
                                       .read = stamp(child.file),
-                                      .marked = _port.session().size()}));
+                                      .marked = _port.session().size(),
+                                      .kept = std::move(kept)}));
   follow(hosted.name, hosted.current());
 }
 
@@ -579,9 +698,18 @@ void Views::unhost(Hosted &hosted) {
       unhost(*other);
 }
 
-// A manifest changed since vulpen read or saved it holds what the view does not, which a
-// save would silently lose.
 void Views::save(Hosted &hosted) {
+  write(hosted);
+  hosted.kept = kept_of(_port.files(), hosted.current());
+  _wiring.log.write(Level::info,
+                    Tag::run,
+                    std::format("view save: {}", hosted.current().file.string()));
+}
+
+// The file holds the view, so a restart replays none of its edits so far, and a read
+// again finds it unchanged. A manifest changed since vulpen read or saved it holds what
+// the view does not, which a write would silently lose.
+void Views::write(Hosted &hosted) {
   const View &view = hosted.current();
   std::error_code missing;
   if (std::filesystem::exists(view.file, missing) && stamp(view.file) != hosted.read)
@@ -592,8 +720,26 @@ void Views::save(Hosted &hosted) {
   Manifest::save(view);
   hosted.read = stamp(view.file);
   hosted.marked = _port.session().size();
-  _wiring.log.write(
-      Level::info, Tag::run, std::format("view save: {}", view.file.string()));
+}
+
+std::vector<std::string> Views::names() {
+  std::vector<std::string> names;
+  for (const std::unique_ptr<Hosted> &hosted : _hosted)
+    if (!hosted->removed)
+      names.push_back(hosted->name);
+  return names;
+}
+
+std::vector<std::string> Views::unkept(std::string_view name) {
+  const Hosted *const found = hosted(name);
+  if (!found || !project(found->current()))
+    return {};
+  return differences(found->kept, kept_of(_port.files(), found->current()));
+}
+
+void Views::put_back(std::string_view name) {
+  if (const Hosted *const found = hosted(name); found && project(found->current()))
+    VP::put_back(_port.files(), found->current().file.parent_path(), found->kept);
 }
 
 } // namespace VP

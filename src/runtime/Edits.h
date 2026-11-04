@@ -40,6 +40,7 @@ public:
 
 private:
   void command(Call &call) override;
+  void let_go(std::string_view view, bool force);
 
   Commands &_port; // which says where each edit comes from, and its view
   ViewLookup &_views;

@@ -229,7 +229,8 @@ class Projects final : public VP::Operator {
     const std::filesystem::path to = _folder / name;
     call.files().copy(folder.string(), to.string());
     call.files().save(view, (to / manifest).string());
-    call.commands().send(std::format(": view close {}", hosted));
+    // The copy took what no view save kept, so the view copied goes back to its last.
+    call.commands().send(std::format(": view close force {}", hosted));
     call.commands().send(std::format(": view add {} {}", name, (to / manifest).string()));
     call.commands().send(std::format("view switch {}", name));
     call.reply(std::format("copied {} to {}, which runs in its place; lines go to {} now",
@@ -248,12 +249,13 @@ class Projects final : public VP::Operator {
     check_name(name);
     check_free(call, name);
     check_unused(call, name);
-    // Kept, since the view addressed goes once it is closed.
+    // Kept, since the view addressed goes once it is closed. Saved, then closed as its
+    // save left it, before its folder moves, so the close finds the files it kept.
     const std::filesystem::path file = call.view().file;
     const std::filesystem::path to = file.parent_path().parent_path() / name;
     call.commands().send(std::format("{}: view save", hosted));
-    call.files().rename(file.parent_path().string(), to.string());
     call.commands().send(std::format(": view close {}", hosted));
+    call.files().rename(file.parent_path().string(), to.string());
     call.commands().send(
         std::format(": view add {} {}", name, (to / file.filename()).string()));
     call.commands().send(std::format("view switch {}", name));
@@ -279,7 +281,7 @@ class Projects final : public VP::Operator {
                                            manifest));
     if (const VP::View *const hosted = call.view(name);
         hosted && hosted->file.lexically_normal() == (folder / manifest).lexically_normal())
-      call.commands().send(std::format(": view close {}", name));
+      call.commands().send(std::format(": view close force {}", name));
     call.reply(call.commands().send(std::format("remove force {}/", folder.string())));
   }
 

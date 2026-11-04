@@ -560,6 +560,11 @@ std::string view_closed(const View &, const View &, Arguments arguments) {
   return std::format("closed view {}, its files kept", arguments.front());
 }
 
+std::string view_put_back(const View &, const View &, Arguments arguments) {
+  return std::format("closed view {}, its files put back as its last view save left them",
+                     arguments.front());
+}
+
 struct Edit {
   std::string_view usage;
   std::string_view help;
@@ -609,10 +614,19 @@ constexpr std::array edits{
          view_added},
     Edit{"view close <view>",
          "stops hosting a view, letting go of the connections that take its window; its "
-         "files stay",
+         "files stay, unless a project's differ from its last view save, which refuses",
          view_close,
          view_closed},
+    Edit{"view close force <view>",
+         "stops hosting a view as view close does, a project's files put back first as "
+         "its last view save, or its load, left them",
+         view_close,
+         view_put_back},
 };
+
+constexpr std::string_view close_force = "view close force <view>";
+// The files a refusal names at most, the rest counted.
+constexpr std::size_t named_most = 6;
 
 } // namespace
 
@@ -762,9 +776,34 @@ void Edits::command(Call &call) {
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index])) {
       edits[index].change(edited, call.arguments(), {_port.where(), beside});
+      if (edits[index].change == view_close)
+        let_go(call.arguments().front(), edits[index].usage == close_force);
       call.reply(edits[index].said(*found, edited, call.arguments()));
     }
   _views.replace(address, std::move(edited));
+}
+
+// A project closes only as its last view save left it (1c): view close refuses while its
+// files differ from that, naming them, so a close never loses work by a slip, and view
+// close force puts them back first. Called once the close is known to be one, so a
+// refused one puts nothing back.
+void Edits::let_go(std::string_view view, bool force) {
+  if (force)
+    return _views.put_back(view);
+  const std::vector<std::string> changed = _views.unkept(view);
+  if (changed.empty())
+    return;
+  std::string named;
+  for (const std::string &file :
+       std::span(changed).first(std::min(changed.size(), named_most)))
+    named.append(named.empty() ? "" : ", ").append(file);
+  if (changed.size() > named_most)
+    named += std::format(" and {} more", changed.size() - named_most);
+  throw std::runtime_error(std::format("view close {} would lose what no view save kept: "
+                                       "{}; view save keeps it, view close force puts "
+                                       "the files back as last saved",
+                                       view,
+                                       named));
 }
 
 } // namespace VP

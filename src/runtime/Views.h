@@ -79,6 +79,9 @@ private:
   const View *unfolded(std::string_view name) override;
   std::span<const Cost> costs(std::string_view name) override;
   std::span<const NodePort> ports(std::string_view name) override;
+  std::vector<std::string> names() override;
+  std::vector<std::string> unkept(std::string_view name) override;
+  void put_back(std::string_view name) override;
   void replace(std::string_view name, View view) override;
   std::optional<std::string> host_of(std::string_view name) override;
   void command(Call &call) override;
@@ -120,6 +123,7 @@ private:
   void follow(const std::string &host, const View &view);
   void unhost(Hosted &hosted);
   void save(Hosted &hosted);
+  void write(Hosted &hosted);
   void reload(Hosted &hosted);
   void reread(Hosted &hosted);
 

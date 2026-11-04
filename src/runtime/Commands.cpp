@@ -310,11 +310,13 @@ Commands::Commands(const Log &log, FilePort &files, ProcessPort &processes)
     : _log(log), _files(files), _processes(processes),
       _quit(add("quit",
                 "ends the run before its next frame, unless a node holds work the end "
-                "would lose, as a file's changes",
+                "would lose, as a file's changes, or a project's files differ from its "
+                "last view save",
                 *this)),
       _quit_force(add("quit force",
                       "ends the run before its next frame, even while a node holds work "
-                      "the end would lose",
+                      "the end would lose, each project's files put back as its last "
+                      "view save left them",
                       *this)),
       _source(add("source <file>",
                   "runs a file's commands, one a line, and stops at the first that fails",
@@ -599,6 +601,10 @@ void Commands::look_in(ViewLookup &views) {
   _views = &views;
 }
 
+FilePort &Commands::files() {
+  return _files;
+}
+
 const View *Commands::view(std::string_view name) {
   return _views ? _views->find(name) : nullptr;
 }
@@ -640,13 +646,7 @@ std::string Commands::where() const {
 
 void Commands::command(Call &call) {
   if (call.is(_quit) || call.is(_quit_force)) {
-    if (const std::vector<std::string_view> held = holding();
-        call.is(_quit) && !held.empty())
-      throw std::runtime_error(std::format("quit would lose what nodes hold, so the run "
-                                           "goes on; quit force ends it anyway:\n{}",
-                                           joined(held, "\n")));
-    _quitting = true;
-    _log.write(Level::info, Tag::run, "quit: the run ends before its next frame");
+    quit(call.is(_quit_force));
   } else if (call.is(_source)) {
     source(call.arguments().front());
   } else if (call.is(_switch)) {
@@ -659,6 +659,35 @@ void Commands::command(Call &call) {
     Files::save(file, _session.text(std::filesystem::path(file).parent_path()));
     _log.write(Level::info, Tag::run, std::format("log save: {}", file));
   }
+}
+
+// The run ends before its next frame, unless quit finds what the end would lose, each
+// named: work a node holds, and a project's files no view save kept (1c). quit force
+// ends it anyway, each such project's files put back as its last view save left them.
+void Commands::quit(bool force) {
+  const std::vector<std::string_view> held = holding();
+  std::vector<std::string> lost(held.begin(), held.end());
+  std::vector<std::string> unkept; // the projects whose files no view save kept
+  for (const std::string &view : _views ? _views->names() : std::vector<std::string>())
+    if (const std::vector<std::string> files = _views->unkept(view); !files.empty()) {
+      unkept.push_back(view);
+      lost.push_back(std::format(
+          "{}: {}", view.empty() ? "the view vulpen started with" : view, joined(files)));
+    }
+  if (!force && !lost.empty())
+    throw std::runtime_error(
+        std::format("quit would lose what nodes hold, or what no view save kept, so the "
+                    "run goes on; view save keeps a project, quit force ends it anyway, "
+                    "a project's files put back as its last view save left them:\n{}",
+                    joined(lost, "\n")));
+  for (const std::string &view : unkept)
+    try {
+      _views->put_back(view);
+    } catch (const std::runtime_error &failure) {
+      _log.write(Level::error, Tag::run, failure.what());
+    }
+  _quitting = true;
+  _log.write(Level::info, Tag::run, "quit: the run ends before its next frame");
 }
 
 // The longest name the line starts with, so a name may begin another (`view`,

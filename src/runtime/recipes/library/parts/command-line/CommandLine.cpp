@@ -512,10 +512,12 @@ class CommandLine final : public VP::Operator {
       for (const std::string &each : filled(frame, line))
         if (const std::string answer = run(frame, each); !answer.empty())
           terminal.print(answer);
+    // No input is left to answer a refusal, so a project's files go back as its last
+    // view save left them, as a script that kept nothing leaves them.
     if (terminal.ended() && !frame.input().windowed()) {
       terminal.prompt(
           "\n"); // ends the prompt's line, as a shell does at the end of input
-      frame.commands().send("quit");
+      frame.commands().send("quit force");
     } else if (!lines.empty() || !_prompted) {
       terminal.prompt(prompt());
       _prompted = true;
