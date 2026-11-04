@@ -615,7 +615,7 @@ VALID = {
     "view save as <name>": "view save as {freshproject}",
     "view switch [<view>]": "view switch {view}",
     "arrange": "arrange",
-    "cd [<path>]": "cd {group}",
+    "cd [<folder>]": "cd {group}",
     "close [<file>]": "open {file} ;; close {file}",
     "close all [<file>]": "open {file} ;; close all",
     "close force [<file>]": "open {file} ;; close force {file}",
@@ -677,7 +677,7 @@ NASTY = {
 SLOT = re.compile(r"\{([a-z0-9]+)\}")
 # Kinds whose completion, the command port's own table says, offers words.
 COMPLETED = ("node", "port", "connection", "word=value", "key", "file", "view", "project",
-             "path", "recipe")
+             "path", "folder", "recipe")
 
 
 # What a line names where an app's view is current: the cli's own nodes, or the ide's, as
@@ -985,7 +985,7 @@ def tab(copy: Copy, states: list[State]) -> None:
     takes as it is must not be refused as naming nothing."""
     takes = {"info [<node>]", "select [<node>...]", "view switch [<view>]", "open [<path>]",
              "view load <project>", "disconnect <connection>", "param unset <node> <key>",
-             "probe stats [<node>]", "cd [<path>]", "recipe drop <recipe> <name>",
+             "probe stats [<node>]", "cd [<folder>]", "recipe drop <recipe> <name>",
              "node set <node> <word=value>...", "view close <view>"}
     offers: set[tuple[str, int]] = set()
     for state in states:

@@ -34,6 +34,7 @@ constexpr std::array kinds{
     std::string_view{"view"},       // a view hosted, by its name, at any depth
     std::string_view{"project"},    // a project by name, or a folder by path, as a file
     std::string_view{"path"},       // a file the view holds by name, or any by path
+    std::string_view{"folder"},     // a folder where the line counts from, or any by path
     std::string_view{"recipe"},     // the recipes of the library
 };
 // After the last placeholder: one argument or more.
@@ -273,13 +274,15 @@ struct Commands::Spec {
   Primitive primitive = Primitive::no;
 
   // A <project> that names no folder names a project, which its command finds, so only a
-  // path resolves, and the log names it from its own folder. A folder is named by either
-  // separator the system knows, as Windows takes \ beside /.
+  // path resolves, and the log names it from its own folder; a <path> or a <folder> so
+  // too, as its command finds a name where it is. A folder is named by either separator
+  // the system knows, as Windows takes \ beside /.
   bool names_file(std::size_t argument, std::string_view word) const {
     const std::string_view kind =
         placeholders[std::min(argument, placeholders.size() - 1)];
-    return kind == "file" || ((kind == "project" || kind == "path") &&
-                              std::filesystem::path(word).has_parent_path());
+    return kind == "file" ||
+           ((kind == "project" || kind == "path" || kind == "folder") &&
+            std::filesystem::path(word).has_parent_path());
   }
 
   // What a refusal adds for the words past the usage's last placeholder: which they
@@ -294,8 +297,9 @@ struct Commands::Spec {
                        past.size() == 1 ? "is" : "are",
                        past.size() == 1 ? std::string("one word")
                                         : std::format("{} words", past.size()),
-                       last == "file" || last == "path" ? ", as a path holds no blank"
-                                                        : "");
+                       last == "file" || last == "path" || last == "folder"
+                           ? ", as a path holds no blank"
+                           : "");
   }
 };
 

@@ -252,7 +252,7 @@ void Graph::bind(VP::Bind &node) {
                        "last, whose name or a row holds the words, joined by single "
                        "blanks, whatever their case, as its find bar finds them; the "
                        "graph stays where it is");
-  _cd = node.command("cd [<path>]",
+  _cd = node.command("cd [<folder>]",
                      "goes into a box the graph shows, a node's, a view's or a "
                      "folder's, as a second press on it does, or into a folder by its "
                      "path; .. goes up a level, as , does, and / to the top; with none, "

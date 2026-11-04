@@ -171,6 +171,28 @@ std::vector<std::string> paths(VP::Call &call, std::string_view begun) {
   return paths;
 }
 
+// The folders a <folder> begun may become, as cd goes into them: by path, each as paths
+// lists it, for a word naming a folder; else by name where the line counts from, as cd
+// names the box showing it, with the views hosted there, whose boxes show beside the
+// nodes. A name with a blank is left out, as a path's is.
+std::vector<std::string> folders(VP::Call &call, std::string_view begun) {
+  const bool typed = std::filesystem::path(begun).has_parent_path();
+  std::vector<std::string> folders;
+  for (std::string &path : paths(call, begun))
+    if (path.ends_with('/'))
+      folders.push_back(typed ? std::move(path) : path.substr(0, path.size() - 1));
+  const auto bare = [](std::filesystem::path path) {
+    path = path.lexically_normal();
+    return path.has_filename() ? path : path.parent_path();
+  };
+  const VP::View &view = call.view();
+  if (!typed && bare(call.resolved({})) == bare(view.file.parent_path()))
+    for (const VP::Child &child : view.children)
+      if (child.name.find(' ') == std::string::npos)
+        folders.push_back(child.name);
+  return folders;
+}
+
 // The names of the files the view holds, as a word naming no folder names one: its
 // nodes', as it runs, each recipe unfolded. A name with a blank is left out, as a path's
 // is.
@@ -212,9 +234,9 @@ std::vector<std::string> listed_names(VP::Call &call, std::string_view listing) 
 }
 
 // What a placeholder stands for: the view's nodes or connections, the views hosted, the
-// params of the node named just before a key, the recipes of the library, the paths a
-// word begun may become, or, for a word naming no folder, the projects or the files the
-// view holds. Any other answers as itself.
+// params of the node named just before a key, the recipes of the library, the folders cd
+// goes into, the paths a word begun may become, or, for a word naming no folder, the
+// projects or the files the view holds. Any other answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -237,6 +259,8 @@ std::vector<std::string> names(std::string_view word,
     hosted(call, {}, names);
   } else if (kind == "<recipe>") {
     names = listed_names(call, "recipe list");
+  } else if (kind == "<folder>") {
+    names = folders(call, begun);
   } else if (kind == "<file>" || ((kind == "<project>" || kind == "<path>") &&
                                   std::filesystem::path(begun).has_parent_path())) {
     names = paths(call, begun);
