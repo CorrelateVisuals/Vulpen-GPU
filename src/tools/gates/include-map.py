@@ -182,9 +182,13 @@ def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
                       # its patterns would else reach another recipe's code too (RV00).
                       or (not node_root(target)
                           and any(fnmatchcase(name, pattern) for pattern in reach))):
+                # A name with no dot or folder is a standard header's, written in quotes.
+                standard = "." not in name and "/" not in name
                 problems.append(f"{file} -> {name}: node code includes only its own folder, a "
                                 "contract, shared code's header, and what the map lists for "
-                                "node code (RV00, RV05, RV09)")
+                                "node code (RV00, RV05, RV09)"
+                                + (f"; a standard header goes in <>, as #include <{name}>"
+                                   if standard else ""))
     return problems
 
 

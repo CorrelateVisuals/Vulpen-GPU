@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <ctime>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -73,8 +74,34 @@ public:
   Log(const Log &) = delete;
   Log &operator=(const Log &) = delete;
 
+  // The node whose code runs, so what it prints to std::cout is about it: the view it
+  // runs in, its name, and its level (V09). Outside a node's call none speaks, at the
+  // process level.
+  struct Speaker {
+    std::string_view view;
+    std::string_view node;
+    Level shown = Level::warn;
+  };
+  // Makes the node the speaker while it lives, and the one before it the speaker again
+  // after, as calls nest.
+  class Speaking {
+  public:
+    Speaking(const Log &log, const Speaker &speaker);
+    ~Speaking();
+    Speaking(const Speaking &) = delete;
+    Speaking &operator=(const Speaking &) = delete;
+
+  private:
+    const Log &_log;
+    Speaker _before;
+  };
+
   Level level() const;
   void write(Level level, Tag tag, std::string_view text) const;
+  // A line node code printed, about the speaker: to std::cout shown at the warn level,
+  // so it shows unless the node's level is error, and marked as a node's output, not as
+  // a warning; to std::cerr as an error.
+  void printed(std::string_view text, bool error) const;
   // A line about a node: its own level wins over the process level (V09), and its name
   // leads the text. view: the one the node runs in, by the name a line addresses it
   // with, empty for the view vulpen started with.
@@ -135,6 +162,25 @@ private:
   mutable std::vector<Logged> _kept; // the first _count since the last take
   mutable std::size_t _count = 0;
   mutable bool _clears_row = false;
+  mutable Speaker _speaker; // none, at the process level, outside a node's call
+};
+
+// What node code prints to std::cout and std::cerr, a line at a time, as the log's own
+// lines about the node speaking (Log::printed), so a print shows where the log does: the
+// terminal, a terminal in a window, and the run's file. It holds both streams while it
+// lives, made once by the log's owner (A01), and hands them back, a line not ended
+// printed first. printf writes past it, to standard output.
+class Printed {
+public:
+  explicit Printed(const Log &log);
+  ~Printed();
+  Printed(const Printed &) = delete;
+  Printed &operator=(const Printed &) = delete;
+
+private:
+  class Lines; // a stream buffer, in Log.cpp
+  std::unique_ptr<Lines> _out;
+  std::unique_ptr<Lines> _err;
 };
 
 } // namespace VP

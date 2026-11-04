@@ -292,6 +292,8 @@ private:
   // nameless.
   const std::filesystem::path _executable = Files::executable();
   const Log _log;
+  // Node code's std::cout and std::cerr, into the log, from the first bind to the last.
+  Printed _printed{_log};
   std::filesystem::path _mirror; // the build tree's views, where the schedules look
   std::optional<Desktop> _desktop; // from the first window on, outliving each
   std::optional<Window> _window;   // outlives the engine, which draws into it

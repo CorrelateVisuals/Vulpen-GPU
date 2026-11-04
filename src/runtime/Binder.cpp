@@ -27,6 +27,21 @@ std::string module_of(const View &view, const Node &node) {
 // Whether a view's nodes wait for a live build that has not made their code yet: a view
 // this one hosts, in a run with one. The view vulpen started with fails loud as ever. One
 // branch each, so a build with no live build has no code it never reaches.
+// The log word of the node, or else of the nearest node it is inside that has one (V09),
+// as ui sets it for ui.panel; empty for none, the process level then holding. A word that
+// names no level counts as none here, and its own node names it.
+std::string_view log_word(const View &view, std::string_view name) {
+  for (;;) {
+    const auto node = std::ranges::find(view.nodes, name, &Node::name);
+    if (node != view.nodes.end() && level_named(node->log))
+      return node->log;
+    const std::size_t dot = name.rfind('.');
+    if (dot == std::string_view::npos)
+      return {};
+    name = name.substr(0, dot);
+  }
+}
+
 bool waits_for_build([[maybe_unused]] std::string_view view) {
   if constexpr (VP_LIVE) {
     return !view.empty();
@@ -403,13 +418,11 @@ Bound Schedule::bind(const Node &node,
                                const std::filesystem::path &folder,
                                Schedule *replaced) {
   Bound bound{.node = &node, .log = _wiring.log.level()};
-  if (!node.log.empty()) {
-    if (const std::optional<Level> level = level_named(node.log))
-      bound.log = *level;
-    else
-      bound.errors.push_back(
-          std::format("log = {} is not error, warn, info or debug", node.log));
-  }
+  if (!node.log.empty() && !level_named(node.log))
+    bound.errors.push_back(
+        std::format("log = {} is not error, warn, info or debug", node.log));
+  if (const std::string_view word = log_word(_view, node.name); !word.empty())
+    bound.log = *level_named(word);
   Bound *const old = replaced ? replaced->find(node.name) : nullptr;
   // Its every error would be what the build has not made yet, and the view vulpen started
   // with fails loud on any, as ever.
@@ -450,6 +463,7 @@ Bound Schedule::bind(const Node &node,
   if (bound.op) {
     Binder binder(*this, bound, replaced);
     try {
+      const Log::Speaking speaking(_wiring.log, {_name, bound.node->name, bound.log});
       bound.op->bind(binder);
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
@@ -499,6 +513,7 @@ void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
     Cooker cooker(*this, bound, frame, {resolution.width, resolution.height});
     const auto started = std::chrono::steady_clock::now();
     try {
+      const Log::Speaking speaking(_wiring.log, {_name, bound.node->name, bound.log});
       bound.op->cook(cooker);
       smooth(cost.cpu,
              cost.cpu_last,

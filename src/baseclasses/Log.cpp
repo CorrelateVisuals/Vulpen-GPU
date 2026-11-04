@@ -6,7 +6,9 @@
 #include <cstdio>
 #include <exception>
 #include <format>
+#include <iostream>
 #include <iterator>
+#include <streambuf>
 #include <utility>
 
 namespace VP {
@@ -64,7 +66,8 @@ constexpr std::size_t file_capacity = std::size_t{1} << 20;
 
 Log::Log(Level level, std::string_view title, std::string_view file)
     : _level(level), _colors(Terminal::colors()), _file(file),
-      _text(file.empty() ? std::string() : Files::text(_file)) {
+      _text(file.empty() ? std::string() : Files::text(_file)),
+      _speaker{.shown = level} {
   if (_text.size() > file_capacity / 2)
     _text.erase(0, _text.find('\n', _text.size() - file_capacity / 2) + 1);
   for (const std::string_view line : {rule, banner, rule})
@@ -91,6 +94,71 @@ void Log::write(Level level, Tag tag, std::string_view text) const {
   if (level <= _level)
     print(level, tag, {}, {}, text);
 }
+
+Log::Speaking::Speaking(const Log &log, const Speaker &speaker)
+    : _log(log), _before(std::exchange(log._speaker, speaker)) {}
+
+Log::Speaking::~Speaking() {
+  _log._speaker = _before;
+}
+
+// Kept to the views a part showing the log keeps to, as a node's info lines are, since a
+// print is no problem.
+void Log::printed(std::string_view text, bool error) const {
+  if (error)
+    write(Level::error, _speaker.shown, Tag::out, _speaker.view, _speaker.node, text);
+  else if (Level::warn <= _speaker.shown && kept(Level::info, _speaker.view))
+    print(Level::info, Tag::out, _speaker.view, _speaker.node, text);
+}
+
+// Unbuffered, so a line goes to the log as it ends, and no character waits in the stream
+// past the call that printed it.
+class Printed::Lines final : public std::streambuf {
+public:
+  Lines(const Log &log, std::ostream &stream, bool error)
+      : _log(log), _stream(stream), _error(error), _before(stream.rdbuf(this)) {}
+  ~Lines() override {
+    if (!_line.empty())
+      _log.printed(_line, _error);
+    _stream.rdbuf(_before);
+  }
+  Lines(const Lines &) = delete;
+  Lines &operator=(const Lines &) = delete;
+
+protected:
+  int_type overflow(int_type character) override {
+    if (!traits_type::eq_int_type(character, traits_type::eof()))
+      take(traits_type::to_char_type(character));
+    return traits_type::not_eof(character);
+  }
+  std::streamsize xsputn(const char *text, std::streamsize count) override {
+    for (const char letter : std::string_view(text, static_cast<std::size_t>(count)))
+      take(letter);
+    return count;
+  }
+
+private:
+  void take(char letter) {
+    if (letter != '\n') {
+      _line.push_back(letter);
+      return;
+    }
+    _log.printed(_line, _error);
+    _line.clear(); // keeping its room, so a line printed each frame allocates nothing
+  }
+
+  const Log &_log;
+  std::ostream &_stream;
+  const bool _error;
+  std::streambuf *const _before;
+  std::string _line;
+};
+
+Printed::Printed(const Log &log)
+    : _out(std::make_unique<Lines>(log, std::cout, false)),
+      _err(std::make_unique<Lines>(log, std::cerr, true)) {}
+
+Printed::~Printed() = default;
 
 void Log::write(Level level,
                 Level shown,
