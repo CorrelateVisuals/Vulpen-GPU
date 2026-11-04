@@ -1,0 +1,75 @@
+# Every push and pull request. A runner has no GPU and no display, so Linux runs the
+# tests on lavapipe, Mesa's Vulkan on the CPU, the windows' tests skipping (V07, RP00),
+# with the same packages the README names and the validation layer, which fails a test
+# at any message (RVK00). gpu-validation stays on a real GPU: its instrumented shaders
+# crash lavapipe. Windows runners have no Vulkan driver at all, so Windows builds
+# everything (RP01) and runs the one test that needs no GPU.
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake python3 libvulkan-dev \
+            glslang-tools spirv-tools libwayland-dev libxkbcommon-dev xorg-dev \
+            mesa-vulkan-drivers vulkan-validationlayers
+          # Ubuntu names lavapipe's manifest by its architecture.
+          echo "LAVAPIPE=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -n 1)" >> "$GITHUB_ENV"
+      - name: Configure
+        run: cmake --preset debug -DVULPEN_TEST_DRIVER="$LAVAPIPE"
+      - name: Build
+        run: cmake --build --preset debug --parallel
+      - name: Test
+        run: ctest --preset debug
+
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      SDK: 1.4.363.1
+    steps:
+      - uses: actions/checkout@v5
+      - name: Vulkan SDK cache
+        id: sdk
+        uses: actions/cache@v5
+        with:
+          path: C:\VulkanSDK
+          key: vulkan-sdk-${{ env.SDK }}
+      - name: Vulkan SDK
+        if: steps.sdk.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'vulkan-sdk.exe'
+          Invoke-WebRequest "https://sdk.lunarg.com/sdk/download/$env:SDK/windows/vulkansdk-windows-X64-$env:SDK.exe" -OutFile $installer
+          # A windowed installer: without -Wait the step would end before it does.
+          Start-Process -FilePath $installer -Wait -ArgumentList '--root', 'C:\VulkanSDK',
+            '--accept-licenses', '--default-answer', '--confirm-command', 'install'
+          if (-not (Test-Path 'C:\VulkanSDK\Bin\glslangValidator.exe')) { throw 'the Vulkan SDK did not install' }
+      - name: Vulkan SDK on the path
+        shell: pwsh
+        run: |
+          'VULKAN_SDK=C:\VulkanSDK' >> $env:GITHUB_ENV
+          'C:\VulkanSDK\Bin' >> $env:GITHUB_PATH
+      - name: Configure
+        run: cmake --preset debug
+      - name: Build
+        run: cmake --build --preset debug --parallel
+      - name: Test
+        run: ctest --preset debug -R "^barriers$"
