@@ -145,6 +145,27 @@ std::optional<Wanted> wanted(std::span<const VP::Usage> usages,
   return std::nullopt;
 }
 
+// Whether the word after these may be a node or a view hosted, in a usage they fit as
+// complete fits them: what the graph's selection names, so only there it stands in for
+// a word not begun, and view load lists every project whatever box is selected.
+bool selectable(std::span<const VP::Usage> usages,
+                std::span<const std::string_view> words) {
+  return std::ranges::any_of(usages, [&](const VP::Usage &usage) {
+    std::vector<std::string_view> its = words_of(usage.usage);
+    if (!its.empty() && kind_of(its.back()).more && its.size() <= words.size())
+      its.resize(words.size() + 1, its.back());
+    if (its.size() <= words.size() ||
+        !std::ranges::equal(words,
+                            std::span(its).first(words.size()),
+                            [](std::string_view given, std::string_view word) {
+                              return placeholder(word) || given == word;
+                            }))
+      return false;
+    const std::string_view kind = kind_of(its[words.size()]).name;
+    return kind == "<node>" || kind == "<view>";
+  });
+}
+
 // Each line of a text, without its line breaks, as an answer or the log writes them.
 std::vector<std::string_view> lines_of(std::string_view text) {
   std::vector<std::string_view> lines;
@@ -1096,9 +1117,9 @@ class CommandLine final : public VP::Operator {
   // As a shell does: the word at the caret takes what every candidate shares, a word
   // only one candidate fits is finished, and several are listed. A placeholder, as
   // <name>, shows what may come but is never typed in. A folder is finished with no
-  // blank, so Tab again lists what it holds. With no word begun, the candidates the
-  // graph selects are the only ones, so Tab fills in the node a line acts on; a letter
-  // typed brings the rest back.
+  // blank, so Tab again lists what it holds. With no word begun where a node or a view
+  // hosted may come, the candidates the graph selects are the only ones, so Tab fills in
+  // the node a line acts on; a letter typed brings the rest back.
   void complete_word(VP::Cook &frame) {
     const std::string_view before = std::string_view(_line).substr(0, _caret);
     const std::size_t start = before.find_last_of(' ') + 1; // 0 when there is none
@@ -1108,9 +1129,13 @@ class CommandLine final : public VP::Operator {
             "complete {}{}", before.substr(0, start), word.empty() ? no_word : word)),
         _folder);
     std::vector<std::string_view> candidates = lines_of(answer);
-    if (word.empty() && !elsewhere(before)) {
+    const std::vector<VP::Usage> usages = frame.commands().usages();
+    std::vector<std::string_view> given = words_of(before.substr(0, start));
+    if (!given.empty() && given.front().ends_with(':'))
+      given.erase(given.begin());
+    if (word.empty() && !elsewhere(before) && selectable(usages, given)) {
       const std::vector<std::string> chosen =
-          selection(frame, frame.commands().usages(), address("selected"));
+          selection(frame, usages, address("selected"));
       const auto unchosen = [&](std::string_view candidate) {
         return std::ranges::find(chosen, candidate) == chosen.end();
       };
