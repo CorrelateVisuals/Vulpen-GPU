@@ -1103,9 +1103,9 @@ void Graph::turn(VP::Cook &frame, float steps, glm::vec2 about) {
 }
 
 // A box's inside, as a second press or the wheel goes into it: a view's, as view switch,
-// a node's holding nodes or files, as the inside param, which a line sets as a press does
-// (V06), and a folder's, as the relations part's folder param, or, for a folder a view
-// vulpen hosts is, that view; and from the name of what lies outside, which has no role, a
+// a node's, empty or not, as the inside param, which a line sets as a press does (V06),
+// and a folder's, as the relations part's folder param, or, for a folder a view vulpen
+// hosts is, that view; and from the name of what lies outside, which has no role, a
 // level up. False for a box with no inside.
 template <class Port> bool Graph::enter(Port &port, std::size_t at) {
   const Box &entered = _boxes.boxes[at];
@@ -1119,12 +1119,12 @@ template <class Port> bool Graph::enter(Port &port, std::size_t at) {
   _left.clear(); // a level gone into starts at home
   if (entered.view)
     port.commands().send(std::format("view switch {}", entered.name));
-  else if (entered.holds && !_relations->folder.empty())
+  else if (entered.has_inside && !_relations->folder.empty())
     into_folder(port, folder_of(at));
-  else if (entered.holds)
+  else if (entered.has_inside)
     port.commands().send(
         std::format("{}: param set {} inside {}", _view, _name, entered.name));
-  return entered.view || entered.holds;
+  return entered.view || entered.has_inside;
 }
 
 // A folder shown, or, for a folder a view vulpen hosts is, that view; the frame and a

@@ -74,8 +74,9 @@ struct Box {
   // kind of file, as the theme names their roles; none for what lies outside.
   std::optional<std::uint32_t> role;
   bool view = false; // a view the view shown hosts
-  bool holds = false;    // it holds nodes or files, whose boxes zooming into it or a
-                         // second press on it shows
+  // A node's or a folder's, whose inside zooming into it or a second press on it shows,
+  // empty or not, as a shell goes into an empty folder.
+  bool has_inside = false;
   std::size_t first = 0; // its rows, in Boxes::rows
   std::size_t rows = 0;
   std::size_t ports = 0; // of its rows, the first, a port read or written on each
@@ -453,19 +454,12 @@ void list_rows(Boxes &boxes,
   listed.rows = boxes.rows.size() - listed.first;
 }
 
-// Whether a node holds nodes or files, which its inside shows as boxes.
-bool holds(const VP::View &flat, const std::vector<std::size_t> &parents, std::size_t at) {
-  return !flat.nodes[at].files.empty() || std::ranges::find(parents, at) != parents.end();
-}
-
-// The node whose inside shows: the scope named, where it holds nodes or files; else none,
-// and the top shows.
-std::size_t scope_of(const VP::View &flat,
-                     const std::vector<std::size_t> &parents,
-                     std::string_view scope) {
+// The node whose inside shows: the scope named, empty or not, so a node made with no file
+// yet can be gone into to make them; else none, and the top shows.
+std::size_t scope_of(const VP::View &flat, std::string_view scope) {
   const auto found = std::ranges::find(flat.nodes, scope, &VP::Node::name);
-  const auto at = static_cast<std::size_t>(found - flat.nodes.begin());
-  return found != flat.nodes.end() && holds(flat, parents, at) ? at : no_box;
+  return found != flat.nodes.end() ? static_cast<std::size_t>(found - flat.nodes.begin())
+                                   : no_box;
 }
 
 // Each node's parent, by the name each joins, a name looked up once.
@@ -571,8 +565,8 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
 }
 
 // The boxes of a view as it runs, each recipe a node uses unfolded, or of a folder, a
-// level at a time: with a scope that holds nodes or files, the boxes of the nodes and the
-// files inside it, named from it, and beside them what lies outside it, as connections
+// level at a time: with a scope, the boxes of the nodes and the files inside it, none for
+// an empty one, named from it, and beside them what lies outside it, as connections
 // and relations reach in at their left and out at their right, the scope's own ports and
 // files among them, as the tab names the scope and no box shows it; with none, the boxes
 // of the nodes at the top, of the view's manifest, and of the views the view hosts, as the
@@ -597,7 +591,7 @@ Boxes boxes_of(const VP::View &edited,
   building.box_of_node.assign(flat.nodes.size(), no_box);
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     building.nodes_in.emplace(flat.nodes[at].folder.generic_string(), at);
-  const std::size_t inside = scope_of(flat, building.parents, scope);
+  const std::size_t inside = scope_of(flat, scope);
   if (inside != no_box)
     boxes.scope = flat.nodes[inside].name;
   const std::size_t past = boxes.scope.empty() ? 0 : boxes.scope.size() + 1;
@@ -612,7 +606,7 @@ Boxes boxes_of(const VP::View &edited,
          .role = !folders                          ? VP_VIEW::role("node")
                  : node.name.substr(past).starts_with('.') ? VP_VIEW::role("hidden")
                                                            : VP_VIEW::role("folder"),
-         .holds = holds(flat, building.parents, at)});
+         .has_inside = true});
   };
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     if (building.parents[at] == inside)
