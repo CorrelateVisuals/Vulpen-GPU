@@ -34,9 +34,17 @@ std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
       shaders, [&](const std::string &shader) { return shader.ends_with(stage); });
 }
 
+// Whether a field a shader reads holds what a writer writes, as a connection between them
+// is checked: a shader's buffer alike by stride and type, what C++ fills member for
+// member.
+bool holds_alike(const Field &written, bool by_cpp, const Field &read) {
+  return by_cpp ? disagreements(written, read, "writes").empty()
+                : written.stride == read.stride && written.type == read.type;
+}
+
 // The buffers no connection joins that other nodes write, holding what a loose field
-// reads, each as node.port: a shader's alike by stride and type, as a connection is
-// checked, and one C++ fills at a port no shader of its node holds, member for member.
+// reads, each as node.port: a shader's, and one C++ fills at a port no shader of its node
+// holds.
 template <class Loose>
 std::vector<std::string> writers_alike(std::span<const Bound> bounds,
                                        const Bound &reader,
@@ -47,30 +55,31 @@ std::vector<std::string> writers_alike(std::span<const Bound> bounds,
     if (&writer == &reader || writer.unbuilt)
       continue;
     for (const Field &out : writer.fields)
-      if (out.buffer() && writes(out.access) && out.stride == in.stride &&
-          out.type == in.type && loose(writer, out.name))
+      if (out.buffer() && writes(out.access) && loose(writer, out.name) &&
+          holds_alike(out, false, in))
         found.push_back(std::format("{}.{}", writer.node->name, out.name));
     for (const Bound::Written &filled : writer.uploads)
       if (filled.count != 0 && !writer.field(filled.port) && loose(writer, filled.port) &&
-          disagreements(filled.element, in, "writes").empty())
+          holds_alike(filled.element, true, in))
         found.push_back(std::format("{}.{}", writer.node->name, filled.port));
   }
   return found;
 }
 
-// The fields no connection joins, nor their own C++ fills, that other nodes' shaders read,
-// holding what C++ fills, member for member, each as node.port.
+// The fields no connection joins, nor their own C++ fills, that other nodes' shaders
+// read, holding what a writer writes, its shader or by_cpp its C++, each as node.port.
 template <class Loose>
 std::vector<std::string> readers_alike(std::span<const Bound> bounds,
                                        const Bound &writer,
-                                       const Field &element,
+                                       const Field &written,
+                                       bool by_cpp,
                                        const Loose &loose) {
   std::vector<std::string> found;
   for (const Bound &reader : bounds)
     for (const Field &in : reader.fields)
       if (&reader != &writer && in.buffer() && in.access == Access::read &&
           !reader.uploads_to(in.name) && loose(reader, in.name) &&
-          disagreements(element, in, "writes").empty())
+          holds_alike(written, by_cpp, in))
         found.push_back(std::format("{}.{}", reader.node->name, in.name));
   return found;
 }
@@ -520,7 +529,7 @@ void Schedule::check_connections() {
           connection_of(bound.node->name, written.port))
         continue;
       const std::vector<std::string> readers =
-          readers_alike(_bound, bound, written.element, loose);
+          readers_alike(_bound, bound, written.element, true, loose);
       bound.errors.push_back(
           readers.empty()
               ? std::format("the operator writes {}, which nothing reads: connect it to "
@@ -600,6 +609,59 @@ void Schedule::check_inputs(const Connection &connection) {
                       connection.name,
                       connection.from.node,
                       to.port));
+  }
+}
+
+// Each node's ports as its bind found them, for parts to read as they read costs (V05):
+// its pass block's buffers and images, a buffer or an image its C++ fills at a port no
+// shader holds, a draw's color, its C++ objects, and a split draw's varyings; a loose
+// buffer with the loose ports of other nodes that would join it, as its error names them.
+void Schedule::list_ports() {
+  const auto loose = [&](const Bound &bound, std::string_view port) {
+    return !connection_of(bound.node->name, port);
+  };
+  for (const Bound &bound : _bound) {
+    const auto add = [&](std::string_view name,
+                         std::string_view kind,
+                         bool written,
+                         std::string_view holds) -> NodePort & {
+      return _ports.emplace_back(NodePort{.node = bound.node->name,
+                                          .name = name,
+                                          .kind = kind,
+                                          .writes = written,
+                                          .holds = std::string(holds),
+                                          .joined = !loose(bound, name)});
+    };
+    for (const Field &field : bound.fields)
+      if (field.buffer()) {
+        NodePort &port = add(field.name, "buffer", writes(field.access), field.type);
+        port.joined = port.joined || (!port.writes && bound.uploads_to(field.name));
+        if (!port.joined)
+          port.alike = port.writes ? readers_alike(_bound, bound, field, false, loose)
+                                   : writers_alike(_bound, bound, field, loose);
+      } else if (field.texture() || field.image()) {
+        add(field.name, "image", field.image() && writes(field.access), field.type);
+      }
+    for (const Bound::Written &filled : bound.uploads)
+      if (!bound.field(filled.port) && filled.count != 0)
+        if (NodePort &port = add(filled.port, "buffer", true, filled.element.type);
+            !port.joined)
+          port.alike = readers_alike(_bound, bound, filled.element, true, loose);
+    for (const Bound::Filled &filled : bound.textures)
+      if (!bound.field(filled.port))
+        add(filled.port, "image", true, filled.format ? filled.format->name : "");
+    if (!bound.output.empty())
+      add(bound.output, "image", true, bound.drawn ? bound.drawn->name : "");
+    for (const std::string &output : bound.outputs)
+      add(output, "object", true, "");
+    for (const std::string &input : bound.inputs)
+      add(input, "object", false, "");
+    if (bound.loaded() && is_vertex(*bound.node))
+      for (const Varying &varying : bound.stage(vertex_stage).outputs())
+        add(varying.name, "varying", true, varying.type);
+    if (bound.loaded() && is_fragment(*bound.node))
+      for (const Varying &varying : bound.stage(fragment_stage).inputs())
+        add(varying.name, "varying", false, varying.type);
   }
 }
 

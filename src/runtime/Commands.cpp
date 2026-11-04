@@ -177,6 +177,9 @@ private:
   std::span<const Cost> costs() const override {
     return _views ? _views->costs(_address) : std::span<const Cost>();
   }
+  std::span<const NodePort> ports() const override {
+    return _views ? _views->ports(_address) : std::span<const NodePort>();
+  }
   FilePort &files() override {
     return _files;
   }
@@ -606,6 +609,10 @@ const View *Commands::unfolded(std::string_view name) {
 
 std::span<const Cost> Commands::costs(std::string_view name) {
   return _views ? _views->costs(name) : std::span<const Cost>();
+}
+
+std::span<const NodePort> Commands::ports(std::string_view name) {
+  return _views ? _views->ports(name) : std::span<const NodePort>();
 }
 
 bool Commands::quitting() const {

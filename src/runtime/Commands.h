@@ -23,6 +23,8 @@ public:
   // What each node of the view costs, as its running schedule measured it; none before
   // the view runs.
   virtual std::span<const Cost> costs(std::string_view name) = 0;
+  // Each node's ports, as the running schedule bound them; none before the view runs.
+  virtual std::span<const NodePort> ports(std::string_view name) = 0;
   // Takes a changed copy of the view. The schedule is rebuilt from it before the next
   // frame, once for every change since the last frame, on the path a live swap takes, so
   // it keeps what the changes left alone and checks only the view they leave. The
@@ -156,6 +158,7 @@ public:
   const View *unfolded(std::string_view name);
   // What each node of the view costs, which a node reads while it cooks.
   std::span<const Cost> costs(std::string_view name);
+  std::span<const NodePort> ports(std::string_view name);
   // Whether quit, or quit force, ran, so the run ends before its next frame.
   bool quitting() const;
   // This frame's holds, then those of the frame before, `node: what` a line, each once:

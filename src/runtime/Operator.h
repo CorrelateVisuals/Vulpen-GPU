@@ -471,6 +471,22 @@ struct Cost {
   bool timed = false; // the GPU timed the pass, as one without timestamps cannot
 };
 
+// A port of a node, as its files declare it and its bind found it, where a connection
+// may join it (V00): a buffer, an image, a C++ object or a varying it reads or writes,
+// and what it holds, by which a connection is checked (A02). One no connection joins
+// names the ports of other nodes no connection joins either that hold the same the other
+// way round, each as node.port: what a line joining them would name.
+struct NodePort {
+  std::string_view node; // as the view runs it, each recipe a node uses unfolded
+  std::string_view name;
+  std::string_view kind; // buffer, image, object or varying
+  bool writes = false;   // else it reads
+  std::string holds;     // a buffer's element, as GLSL or C++ names it, an image's or a
+                         // varying's type; empty where nothing names it
+  bool joined = false;   // a connection names it, or its node's C++ fills what it reads
+  std::vector<std::string> alike;
+};
+
 // What a node's C++ gets every frame, before the GPU runs the node's pass.
 class Cook {
 public:
@@ -561,6 +577,10 @@ public:
   // pointer move but nothing pressed, let go or turned. Last, so a module built before it
   // reaches the others where it found them, as a dev build swaps modules into a run.
   virtual void hold_pointer() = 0;
+  // Each node's ports of a view, by the view's name as costs takes it, in the order the
+  // view runs its nodes; none for a view of no such name. Read it while the node cooks;
+  // a rebuild replaces it. Last, as above.
+  virtual std::span<const NodePort> ports(std::string_view view) const = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the
@@ -596,6 +616,9 @@ public:
   // started, so a command lists or names one as the line meant it. Last, so a module
   // built before it reaches the others where it found them.
   virtual std::string resolved(std::string_view path) const = 0;
+  // Each node's ports of the view the command addresses, as Cook::ports reads a view's.
+  // Last, as above.
+  virtual std::span<const NodePort> ports() const = 0;
 
 protected:
   ~Call() = default;

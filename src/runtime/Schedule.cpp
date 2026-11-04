@@ -149,6 +149,7 @@ Schedule::Schedule(const Wiring &wiring,
   pair_draws(replaced);
   check_connections();
   check_images();
+  list_ports();
   make_buffers(replaced);
   if (replaced)
     keep_images(*replaced);
@@ -762,6 +763,10 @@ void Schedule::clears(std::vector<Pass> &passes, const Offscreen *into) {
 
 std::span<const Cost> Schedule::costs() const {
   return _costs;
+}
+
+std::span<const NodePort> Schedule::ports() const {
+  return _ports;
 }
 
 void Schedule::time(std::span<const float> took) {

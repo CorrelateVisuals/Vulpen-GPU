@@ -26,6 +26,7 @@ struct Connection;
 struct Copy;
 struct Cost;
 struct Node;
+struct NodePort;
 struct Offscreen;
 struct Pass;
 struct PixelFormat;
@@ -117,6 +118,8 @@ public:
   // What each node costs, in graph order: its cook, as cook times it, and its pass, as
   // time hands it on.
   std::span<const Cost> costs() const;
+  // Each node's ports, in graph order, as it bound them.
+  std::span<const NodePort> ports() const;
   // How long each of the frame's passes took on the GPU, in milliseconds, by its place
   // among them, NaN for one not timed: read once the frame's fence passed, before
   // anything rebuilds, so the passes are the ones this schedule's work and draws gave.
@@ -156,6 +159,7 @@ private:
   void check_connections();
   void check_inputs(const Connection &connection);
   void check_images();
+  void list_ports();
   void keep_images(Schedule &replaced);
   void keep_stored(Schedule &replaced);
   void make_buffers(Schedule *replaced);
@@ -221,6 +225,7 @@ private:
   std::vector<std::size_t> _passed; // by _passes, its node's place in _bound
   std::vector<std::size_t> _landed; // by _passes, its place among the frame's
   std::vector<Cost> _costs;         // by _bound
+  std::vector<NodePort> _ports;     // by _bound, each node's in turn
   bool _retired = false;
 };
 
