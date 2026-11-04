@@ -30,6 +30,8 @@ constexpr std::string_view menu_file = "menu.ini";
 constexpr std::string_view subject = "{}";
 constexpr std::string_view address_mark = "{}:";
 constexpr std::string_view folder_mark = "{/}";
+// How a path from the prompt's folder starts when it names a file there or the folder.
+constexpr std::string_view here = "./";
 // The words before what a menu opens for, and before the words the pointer came onto or
 // pressed, as the hit part sends them.
 constexpr std::string_view for_word = "for";
@@ -392,7 +394,8 @@ class Menus final : public VP::Operator {
   // Whole, it is run; else it is begun up to the first word it still wants, as <name>, or
   // {} for nothing pressed, past the part of that word before it, as docs/ before <name>;
   // and for the placeholder chosen in place of a list too long, what may come there
-  // listed.
+  // listed. A path begun so loses its ./, as the person goes on typing a path the
+  // terminal counts from its prompt's folder anyway: new <name>, new face/<name>.
   VP_VIEW::Handed::Line handed(VP::Call &call,
                                const Line &line,
                                const std::optional<std::string> &value,
@@ -410,6 +413,8 @@ class Menus final : public VP::Operator {
     for (std::string word : words) {
       replace(word, subject, pressed);
       replace(word, folder_mark, folder);
+      if (word.find('<') != std::string::npos && word.starts_with(here))
+        word.erase(0, here.size());
       const std::size_t wanted = std::min(word.find('<'), word.find('{'));
       text.append(text.empty() ? "" : " ").append(word.substr(0, wanted));
       if (wanted != std::string::npos)
@@ -434,8 +439,7 @@ class Menus final : public VP::Operator {
   }
 
   // A path as the terminal takes it, from there: ./ before a name there, which open would
-  // take for a file the view holds by name, and . for the folder itself, so a line making
-  // something in it reads ./<name>.
+  // take for a file the view holds by name, and . for the folder itself.
   std::string typed(const std::filesystem::path &path) const {
     const std::filesystem::path shown = path.lexically_proximate(from());
     const bool bare = shown != "." && !shown.has_parent_path();
