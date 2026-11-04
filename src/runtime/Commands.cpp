@@ -128,6 +128,9 @@ private:
   std::string send_typed(std::string_view line, std::string_view folder) override {
     return _port.run(line, folder);
   }
+  std::size_t done() const override {
+    return _port.done();
+  }
 
   Commands &_port;
 };
@@ -212,8 +215,10 @@ private:
 } // namespace
 
 void CommandLog::open() {
-  if (_groups.empty() || !_groups.back().empty())
+  if (_groups.empty() || !_groups.back().empty()) {
     _groups.emplace_back();
+    _taken.push_back(false);
+  }
 }
 
 void CommandLog::keep(std::vector<std::string> words,
@@ -227,13 +232,23 @@ void CommandLog::keep(std::vector<std::string> words,
 
 std::string CommandLog::text(const std::filesystem::path &folder) const {
   std::string text;
-  for (const Kept &kept : _groups | std::views::join)
-    text += line(kept, folder);
+  for (std::size_t group = 0; group < _groups.size(); ++group)
+    for (const Kept &kept : _groups[group])
+      if (!_taken[group])
+        text += line(kept, folder);
   return text;
 }
 
 std::size_t CommandLog::size() const {
   return _size;
+}
+
+std::size_t CommandLog::group() const {
+  return _groups.size() - 1;
+}
+
+void CommandLog::take_back(std::size_t group, bool taken) {
+  _taken[group] = taken;
 }
 
 std::vector<std::string> CommandLog::views_since(std::size_t from) const {
@@ -252,12 +267,14 @@ std::string CommandLog::after(std::span<const Mark> marks,
                               const std::filesystem::path &folder) const {
   std::string text;
   std::size_t index = 0;
-  for (const Kept &kept : _groups | std::views::join) {
-    const auto mark = std::ranges::find(marks, kept.view, &Mark::view);
-    if (mark != marks.end() && index >= mark->kept && kept.primitive != Primitive::save)
-      text += line(kept, folder);
-    ++index;
-  }
+  for (std::size_t group = 0; group < _groups.size(); ++group)
+    for (const Kept &kept : _groups[group]) {
+      const auto mark = std::ranges::find(marks, kept.view, &Mark::view);
+      if (mark != marks.end() && index >= mark->kept &&
+          kept.primitive != Primitive::save && !_taken[group])
+        text += line(kept, folder);
+      ++index;
+    }
   return text;
 }
 
@@ -435,7 +452,7 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
   Run call(*this,
            _views,
            address,
-           _files,
+           this->files(),
            _processes,
            spec->command,
            arguments,
@@ -553,17 +570,37 @@ std::string Commands::answer(std::string_view line, std::string_view folder, boo
   const std::size_t from = _session.size();
   if (typed)
     _log.apart();
+  // A step of its own, refused or not, as a refused line may have run edits before the
+  // one refused; a line a step's line runs is part of that step.
+  const bool steps = typed && _depth == 0 && _views;
+  if (steps)
+    _views->begin_step(line);
+  const auto end_step = [&] {
+    if (steps)
+      _views->end_step(_session.size() > from ? std::optional(_session.group())
+                                              : std::nullopt);
+  };
   try {
     std::string answered = run(line, folder);
     if (typed)
       write_since(from);
+    end_step();
     return answered;
   } catch (const std::runtime_error &failure) {
     if (typed)
       write_since(from);
+    end_step();
     _log.write(Level::error, Tag::run, failure.what());
     return {};
   }
+}
+
+std::size_t Commands::done() const {
+  return _views ? _views->done() : 0;
+}
+
+void Commands::take_back(std::size_t group, bool taken) {
+  _session.take_back(group, taken);
 }
 
 void Commands::write_since(std::size_t from) {
@@ -635,7 +672,7 @@ void Commands::look_in(ViewLookup &views) {
 }
 
 FilePort &Commands::files() {
-  return _files;
+  return _views ? _views->files() : _files;
 }
 
 const View *Commands::view(std::string_view name) {

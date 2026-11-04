@@ -299,6 +299,7 @@ private:
   std::string _more;  // and a box's row standing for the rest, as it counts them
   Arranged _arranged;
   std::map<std::string, History, std::less<>> _histories; // by the .ini each changed
+  std::size_t _lines = 0; // the lines undo could take back as this frame's cook began
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over
   PanZoom _pan_zoom;

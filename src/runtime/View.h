@@ -19,6 +19,17 @@ inline constexpr std::string_view manifest_file = "view.vlp";
 inline constexpr std::string_view contracts_folder = "contracts";
 inline constexpr std::string_view shared_folder = "shared";
 
+// A hidden file, or one in a hidden folder, as .vulpen/ in a view's, which parts rewrite
+// as they go and no node's files list; the folders above it may be hidden too, as a
+// person's checkout can be.
+inline bool hidden(const std::filesystem::path &path) {
+  const std::filesystem::path normal = path.lexically_normal();
+  const auto dotted = [](const std::filesystem::path &part) {
+    return part.string().starts_with('.');
+  };
+  return dotted(normal.filename()) || dotted(normal.parent_path().filename());
+}
+
 // A name joins a manifest's section headers, its endpoints, the command line and a
 // folder's name, so it holds only what each of them leaves whole.
 inline bool is_name(std::string_view text) {

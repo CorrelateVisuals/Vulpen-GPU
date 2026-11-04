@@ -47,6 +47,15 @@ public:
   // The name of the view whose manifest names the hosted view, empty for the one vulpen
   // started with; none when no view of that name is hosted.
   virtual std::optional<std::string> host_of(std::string_view name) = 0;
+  // Around a line a person runs, which undo takes back as one step: begun before the
+  // line runs, and ended after it, with the group of the session log its primitives
+  // joined, none for none.
+  virtual void begin_step(std::string_view line) = 0;
+  virtual void end_step(std::optional<std::size_t> group) = 0;
+  // The file port the lines reach files through, which keeps each change of a step.
+  virtual FilePort &files() = 0;
+  // How many steps undo can take back now.
+  virtual std::size_t done() const = 0;
 
 protected:
   ~ViewLookup() = default;
@@ -83,8 +92,14 @@ public:
   // from the folder the log is saved in, where source resolves it, so a log moves with
   // the files it names (V08).
   std::string text(const std::filesystem::path &folder) const;
-  // How many primitives it kept so far.
+  // How many primitives it kept so far, those of groups undo took back too, so a mark
+  // stays where it was.
   std::size_t size() const;
+  // The group the primitives of the line running join.
+  std::size_t group() const;
+  // A group undo took back, or redo brought back: what the log hands on passes over a
+  // group taken back, as if its line never ran.
+  void take_back(std::size_t group, bool taken);
   // The views the primitives kept since the first so many changed, each once.
   std::vector<std::string> views_since(std::size_t from) const;
   // What the views' files do not hold yet: the edits of each view marked, kept since its
@@ -103,6 +118,7 @@ private:
   static std::string line(const Kept &kept, const std::filesystem::path &folder);
 
   std::vector<std::vector<Kept>> _groups;
+  std::vector<bool> _taken; // by _groups: undo took it back
   std::size_t _size = 0;
 };
 
@@ -193,6 +209,9 @@ public:
   // The name of the view the running command addresses; empty for the one vulpen
   // started with.
   std::string_view addressed() const;
+  std::size_t done() const override;
+  // A group undo took back, or redo brought back (CommandLog::take_back).
+  void take_back(std::size_t group, bool taken);
 
 private:
   struct Spec;

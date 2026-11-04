@@ -46,11 +46,19 @@ struct Arranged {
 // back as undo_room of them, so memory stays bounded (A03).
 constexpr std::size_t undo_room = 100;
 
+// What was arranged before a change, or after one taken back, with how many lines undo
+// could take back then (CommandPort::done), so control with z takes back whichever of
+// the boxes' change and a line came last.
+struct Placing {
+  Arranged arranged;
+  std::size_t lines = 0;
+};
+
 // What was arranged before each change, and after each change taken back, which control
 // with shift and z does again, the newest last; one an .ini.
 struct History {
-  std::vector<Arranged> undone;
-  std::vector<Arranged> redone;
+  std::vector<Placing> undone;
+  std::vector<Placing> redone;
 };
 
 // A line place <box> = x y or size <box> = width height, its box's name and its numbers;

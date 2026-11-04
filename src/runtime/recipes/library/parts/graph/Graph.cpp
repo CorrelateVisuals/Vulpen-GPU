@@ -277,6 +277,7 @@ void Graph::bind(VP::Bind &node) {
 // folder the relations part reads in its place, until a view is switched to. The keys
 // once it is known, and before it is read for the frame, as a removal changes it.
 void Graph::cook(VP::Cook &frame) {
+  _lines = frame.commands().done();
   const std::string shown(frame.commands().current());
   const bool folder = !_relations->folder.empty();
   if (_tabs->empty() || shown != _shown) {
@@ -416,9 +417,10 @@ void Graph::command(VP::Call &call) {
 
 // delete or backspace removes what is selected; an arrow moves it a line of the ground
 // that way; escape lets go of it, and with none of the focus, as the editor and the
-// terminal do; control with a selects every box; control with z takes the last change of
-// where the boxes are back, and with shift too does it again. The home key brings the
-// graph home once the frame has laid the boxes out.
+// terminal do; control with a selects every box; control with z takes back the last
+// change of where the boxes are, or the line a person ran after it, and with shift too
+// does it again. The home key brings the graph home once the frame has laid the boxes
+// out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
   const VP::View *const view = frame.view(_shown);
@@ -984,21 +986,30 @@ void Graph::nudge(VP::Cook &frame, glm::ivec2 way) {
 // arranged, and what was taken back goes, as an editor's redo does.
 void Graph::remember() {
   History &history = _histories[_ini];
-  history.undone.push_back(_arranged);
+  history.undone.push_back({_arranged, _lines});
   if (history.undone.size() > undo_room)
     history.undone.erase(history.undone.begin());
   history.redone.clear();
 }
 
 // What was arranged before the last change, or with again the change taken back last,
-// laid out and saved at once, as the change was.
+// laid out and saved at once, as the change was; or, when a line a person ran came after
+// it, undo or redo of that line, as typed, so a node the graph's Delete key took comes
+// back as a box moved does.
 void Graph::undo(VP::Cook &frame, bool again) {
   History &history = _histories[_ini];
-  std::vector<Arranged> &from = again ? history.redone : history.undone;
-  std::vector<Arranged> &to = again ? history.undone : history.redone;
+  std::vector<Placing> &from = again ? history.redone : history.undone;
+  std::vector<Placing> &to = again ? history.undone : history.redone;
+  const std::size_t lines = frame.commands().done();
+  const bool line = again ? from.empty() || from.back().lines > lines
+                          : lines > 0 && (from.empty() || from.back().lines < lines);
+  if (line) {
+    frame.commands().send_typed(again ? "redo" : "undo", {});
+    return;
+  }
   if (from.empty() || _grab)
     return;
-  to.push_back(std::exchange(_arranged, std::move(from.back())));
+  to.push_back({std::exchange(_arranged, std::move(from.back().arranged)), lines});
   from.pop_back();
   _laid = false;
   _at_home = false;
@@ -1370,8 +1381,9 @@ void Graph::erase(VP::Cook &frame, const VP::View &view) {
       });
   }
   std::erase_if(_selection, removed);
+  // As typed, so each is a line undo takes back, and its project is written at once.
   for (const std::string &line : lines)
-    frame.commands().send(line);
+    frame.commands().send_typed(line, {});
   _grab.reset();
   keep(frame.files());
 }

@@ -66,6 +66,9 @@ constexpr std::size_t history_lines = 100;
 // (A03); and that key, which with shift too makes one again.
 constexpr std::size_t undo_room = 100;
 constexpr std::string_view undo_key = "z";
+// What it runs with no edit of the line to take back: the lines a person ran.
+constexpr std::string_view undo_line = "undo";
+constexpr std::string_view redo_line = "redo";
 constexpr std::int32_t margin = 4; // around the text
 constexpr std::uint32_t rule_width = 1;
 constexpr std::uint32_t label_room = 256;
@@ -861,16 +864,22 @@ class CommandLine final : public VP::Operator {
   }
 
   // Control with z takes the line's last edit back, and with shift too makes it again;
-  // any other event edits the line, and an edit that changed it is kept to take back,
-  // the characters typed joining those typed just before them while the caret stayed
-  // where those left it and no blank starts a word, so a word goes back at once. A line
-  // sent, or a search begun or ended, starts the edits anew.
+  // with no edit of the line left to take back, as after a line was sent, it runs undo,
+  // or redo, as typed, which takes back the last line a person ran. Any other event edits
+  // the line, and an edit that changed it is kept to take back, the characters typed
+  // joining those typed just before them while the caret stayed where those left it and
+  // no blank starts a word, so a word goes back at once. A line sent, or a search begun
+  // or ended, starts the edits anew.
   void edit(VP::Cook &frame, const VP::Event &event) {
     if (event.kind == VP::Event::Kind::key && event.name == "shift")
       _shift = event.down;
     if (event.kind == VP::Event::Kind::key && event.down && _control &&
         event.name == undo_key) {
-      undo(_shift);
+      if (!(_shift ? _redone : _undone).empty())
+        return undo(_shift);
+      const std::string line(_shift ? redo_line : undo_line);
+      show(prompt() + line, VP_VIEW::role("accent"));
+      show(run(frame, line), VP_VIEW::role("text"));
       return;
     }
     Line before{_line, _caret};

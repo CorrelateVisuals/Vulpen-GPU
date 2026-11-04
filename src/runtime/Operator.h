@@ -214,6 +214,10 @@ public:
   // beside it (RP02); an empty folder is where vulpen started. Last, so a module built
   // before it reaches the others where it found them.
   virtual std::string send_typed(std::string_view line, std::string_view folder) = 0;
+  // How many lines undo can take back now, one fewer after each undo and one more after
+  // each redo, so a part that takes back changes of its own, as the graph its boxes'
+  // places, takes back whichever came last. Last, as send_typed.
+  virtual std::size_t done() const = 0;
 
 protected:
   ~CommandPort() = default;

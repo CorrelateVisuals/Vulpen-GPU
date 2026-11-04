@@ -271,16 +271,8 @@ bool Ports::relisted() {
   return std::exchange(_relisted, false);
 }
 
-// A hidden file, or one in a hidden folder, as .vulpen/ in a view's, is what the parts
-// rewrite as they go, which no node's files list; the folders above it may be hidden too,
-// as a person's checkout can be.
 void Ports::listing_changed(const std::filesystem::path &path) {
-  const std::filesystem::path normal = path.lexically_normal();
-  const auto hidden = [](const std::filesystem::path &part) {
-    return part.string().starts_with('.');
-  };
-  _relisted = _relisted || !(hidden(normal.filename()) ||
-                             hidden(normal.parent_path().filename()));
+  _relisted = _relisted || !hidden(path);
 }
 
 void Ports::save(const View &view, std::string_view file) {
