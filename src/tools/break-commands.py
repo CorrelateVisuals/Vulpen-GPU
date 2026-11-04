@@ -878,9 +878,9 @@ def put_back(copy: Copy, vulpen: Vulpen, state: State) -> Vulpen:
     if state.current not in SANDBOX or (state.ide and "ide" not in views):
         vulpen.end(force=True)
         return copy.start(state)
-    for name in views:
+    for name in views:  # with force, as the lines wrote what no view save kept
         if name != "ide":
-            vulpen.send(f"view close {name}")
+            vulpen.send(f"view close force {name}")
     copy.put_back()
     said = []
     for name in state.loads:
