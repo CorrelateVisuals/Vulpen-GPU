@@ -16,10 +16,11 @@ no image, a key there is not, a buffer C++ fills for another node's shader whose
 sit elsewhere, given no room, or that nothing reads, a draw's image taken to no Texture,
 or given a format there is not, a draw that stores into an image, an image a dispatch
 stores into given another format than images[] declares or taken to no Texture, a draw
-split over two nodes whose varyings meet at other locations or types, leave an input
-unreached or reach no fragment node, or whose fragment node declares a pass block or no
-vertex node draws with, and a view's window taken from a view the view does not host,
-taken to a view, or taken to no Texture.
+whose .frag reads what its .vert writes nothing to, a draw split over two nodes whose
+varyings meet at other locations or types, leave an input unreached or reach no fragment
+node, or whose fragment node declares a pass block or no vertex node draws with, and a
+view's window taken from a view the view does not host, taken to a view, or taken to no
+Texture.
 
 A view with more pass blocks than one pool holds is no mistake: it runs, and so does an
 edit on it. Nor is a command line on the terminal: what it reads runs, a refusal names
@@ -206,6 +207,10 @@ CASES = {
                      "image canvas=R8_UNORM: a dispatch stores into R8G8B8A8_UNORM images only"),
     "store-reader": (HEAD + STAMP + SUM + connection("stamped", "stamp.canvas", "sum.values"),
                      "connection stamped: stamp stores an image, which values is no Texture"),
+    "varying-unwritten": (HEAD + '[node "rub"]\nvertex_count = 3\n' + LOOK
+                          + connection("rubbed", "rub.color", "look.painted"),
+                          "node rub: tint: its .frag reads a vec3 at location 1, which its "
+                          ".vert writes nothing to"),
     "varying-type": (split("smudge", "uv", "shade"),
                      "connection uv: brush.uv is a vec2 at location 0, but smudge.uv is a "
                      "vec3 at location 0"),

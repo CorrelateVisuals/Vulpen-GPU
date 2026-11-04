@@ -183,13 +183,37 @@ void Schedule::check_stages(Bound &bound) const {
 
 // Before the pipeline is made, which each of these would make wrongly: a fragment node's
 // shader reads the pass block of the vertex node it draws with, so it declares none; a
-// draw stores into no image, as a store from a draw needs features past the Vulkan floor
-// (RVK01); and a dispatch stores into one only where this GPU indexes images[].
+// node's own .frag reads only what its .vert writes, at the same location with the same
+// type, as check_varyings asks of a draw over two nodes, so none reads what nothing wrote
+// (GLSL02); a draw stores into no image, as a store from a draw needs features past the
+// Vulkan floor (RVK01); and a dispatch stores into one only where this GPU indexes
+// images[].
 void Schedule::check_shaders(const Bound &bound) const {
   if (is_fragment(*bound.node) && !bound.fields.empty())
     throw std::runtime_error(
         "a fragment node declares no pass block yet: the vertex node it draws with holds "
         "the draw's, and hands on what the fragment shader needs as varyings");
+  if (is_draw(*bound.node) && !is_vertex(*bound.node)) {
+    const std::vector<Varying> &outputs = bound.stage(vertex_stage).outputs();
+    for (const Varying &input : bound.stage(fragment_stage).inputs()) {
+      const auto output = std::ranges::find(outputs, input.location, &Varying::location);
+      if (output == outputs.end())
+        throw std::runtime_error(std::format(
+            "{}: its .frag reads a {} at location {}, which its .vert writes nothing to",
+            input.name,
+            input.type,
+            input.location));
+      if (output->type != input.type)
+        throw std::runtime_error(std::format("{}: its .frag reads a {} at location {}, "
+                                             "but its .vert writes {} there as a {}; a "
+                                             "varying's ends share both",
+                                             input.name,
+                                             input.type,
+                                             input.location,
+                                             output->name,
+                                             output->type));
+    }
+  }
   const auto image = std::ranges::find_if(bound.fields, &Field::image);
   if (image == bound.fields.end())
     return;

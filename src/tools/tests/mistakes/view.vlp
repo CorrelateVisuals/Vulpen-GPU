@@ -106,6 +106,10 @@ vertex_count = 3
 [node "smear"]
 vertex_count = 3
 
+# Draws with a .frag that reads a varying its .vert writes nothing to.
+[node "rub"]
+vertex_count = 3
+
 # Stops when a pixel of paint's image reads back as another; its C++ also registers
 # operators that check scene's pattern, in the window of a view its view hosts, and the
 # pixels stamp stores.
