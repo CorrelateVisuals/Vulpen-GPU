@@ -17,6 +17,19 @@ Two libraries are subsets of their release archive, so the repository stays smal
 
 The Vulkan SDK (headers, loader, `glslangValidator`) and Python 3 come from the machine and are not vendored.
 
+## Logos
+
+The README's logos, in `docs/images/logos/`: the Simple Icons drawings with their brand color filled in, the GLSL logo byte for byte as Commons gives it.
+
+| Logo | File | Source | License |
+|---|---|---|---|
+| Vulkan | `vulkan.svg` | [Simple Icons](https://simpleicons.org/) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| C++ | `cplusplus.svg` | [Simple Icons](https://simpleicons.org/) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| CMake | `cmake.svg` | [Simple Icons](https://simpleicons.org/) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| GLSL | `GLSL_Logo_(Unofficial).svg` | [GLSL Logo (Unofficial)](https://commons.wikimedia.org/wiki/File:GLSL_Logo_(Unofficial).svg) by Jim McKeeth, on Wikimedia Commons | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+
+The drawings' licenses cover the files, not the marks: each logo stays its owner's trademark. Vulkan and the Vulkan logo are registered trademarks of the Khronos Group Inc.
+
 ## Fonts
 
 A font lives in the folder of the part that reads it, beside its license, so a drop of the part copies both (V03). The file is the upstream release's, byte for byte.

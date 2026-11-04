@@ -25,6 +25,10 @@
   <a href="#license">License</a>
 </p>
 
+<p align="center"><sub>
+  Early: commands and manifest words still change between versions. Tested on Linux and Windows; macOS is untested.
+</sub></p>
+
 ![The Vulpen ide: a node's C++ on the left, the camera of the ray-cubes example, and on the right the project's graph and the mirror cubes it ray traces](docs/images/hero.png)
 
 ## What you get
@@ -51,7 +55,7 @@
 On Linux:
 
 ```bash
-git clone https://github.com/CorrelateVisuals/Vulpen.git
+git clone https://github.com/CorrelateVisuals/Vulpen-GPU.git Vulpen
 cd Vulpen
 ./run.sh                 # builds the debug preset and opens the ide
 ```
@@ -59,7 +63,7 @@ cd Vulpen
 On Windows, in PowerShell:
 
 ```powershell
-git clone https://github.com/CorrelateVisuals/Vulpen.git
+git clone https://github.com/CorrelateVisuals/Vulpen-GPU.git Vulpen
 cd Vulpen
 .\run.ps1                # builds the debug preset and opens the ide
 ```
@@ -150,6 +154,6 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 
 ## License
 
-Vulpen is licensed under the [Mozilla Public License 2.0](LICENSE): use it in any project, open or closed source, and when you distribute changes to Vulpen's own files, share those files under the same license. The libraries in [`src/external-libraries/`](src/external-libraries) keep their own licenses, listed in [`docs/licenses/`](docs/licenses/README.md), and the logos above belong to their owners.
+Vulpen is licensed under the [Mozilla Public License 2.0](LICENSE): use it in any project, open or closed source, and when you distribute changes to Vulpen's own files, share those files under the same license. The libraries in [`src/external-libraries/`](src/external-libraries) keep their own licenses, listed in [`docs/licenses/`](docs/licenses/README.md). The Vulkan, C++ and CMake logos above are [Simple Icons](https://simpleicons.org/) drawings, CC0 1.0; the GLSL logo is [GLSL Logo (Unofficial)](https://commons.wikimedia.org/wiki/File:GLSL_Logo_(Unofficial).svg) by Jim McKeeth, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), unchanged. Vulkan and the Vulkan logo are registered trademarks of the Khronos Group Inc.
 
 <sub>Every release build takes these pictures anew: [`src/tools/update-readme-images.py`](src/tools/update-readme-images.py) replays the commands that make each, and the [`snapshot`](src/runtime/recipes/library/parts/snapshot) part saves the ide's window, with no window open.</sub>
