@@ -149,6 +149,11 @@ void Log::print(Level level,
     save();
 }
 
+void Log::apart() const {
+  print_repeats();
+  _previous.clear();
+}
+
 void Log::print_repeats() const {
   if (_repeats == 0)
     return;

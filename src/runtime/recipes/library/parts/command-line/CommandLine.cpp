@@ -51,6 +51,10 @@ constexpr std::string_view output_mark = "{out}"; // a node's lines, as the log 
 constexpr std::string_view find_prompt = "find: "; // the line a search's words are typed on
 // The command a find bar sends its words to, unless its finds param names another.
 constexpr std::string_view find_command = "find";
+// Between a node's word and its value, as node add and node set take it, and the word
+// whose values Tab lists: the log levels (V09).
+constexpr char word_equals = '=';
+constexpr std::string_view log_word = "log";
 // What parts a typed path into folders: Windows takes \ beside /.
 constexpr std::string_view separators =
     std::filesystem::path::preferred_separator == '/' ? "/" : "/\\";
@@ -281,17 +285,35 @@ std::vector<std::string> listed_names(VP::Call &call, std::string_view listing) 
   return names;
 }
 
+// The words a node takes, each up to its =, so Tab shows what node add and node set give;
+// past log=, the levels it takes (V09).
+std::vector<std::string> node_words(std::string_view begun) {
+  std::vector<std::string> names;
+  const std::string log = std::format("{}{}", log_word, word_equals);
+  if (begun.starts_with(log)) {
+    for (const std::string_view level : VP::level_names)
+      names.push_back(log + std::string(level));
+    return names;
+  }
+  for (const std::string_view word : VP::node_words)
+    names.push_back(std::format("{}{}", word, word_equals));
+  return names;
+}
+
 // What a placeholder stands for: the view's nodes, ports or connections, the views
-// hosted, the params of the node named just before a key, the recipes of the library,
-// the folders cd goes into, the paths a word begun may become, or, for a word naming no
-// folder, the projects or the files the view holds. Any other answers as itself.
+// hosted, the params of the node named just before a key, the words a node takes, the
+// recipes of the library, the folders cd goes into, the paths a word begun may become,
+// or, for a word naming no folder, the projects or the files the view holds. Any other
+// answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
                                std::string_view begun) {
   const std::string_view kind = kind_of(word).name;
   std::vector<std::string> names;
-  if (kind == "<node>") {
+  if (kind == "<word=value>") {
+    names = node_words(begun);
+  } else if (kind == "<node>") {
     for (const VP::Node &node : call.view().nodes)
       names.push_back(node.name);
   } else if (kind == "<connection>") {
@@ -1117,7 +1139,8 @@ class CommandLine final : public VP::Operator {
   // As a shell does: the word at the caret takes what every candidate shares, a word
   // only one candidate fits is finished, and several are listed. A placeholder, as
   // <name>, shows what may come but is never typed in. A folder is finished with no
-  // blank, so Tab again lists what it holds. With no word begun where a node or a view
+  // blank, so Tab again lists what it holds, and so is a node's word up to its =, as
+  // log=, so Tab again lists its values. With no word begun where a node or a view
   // hosted may come, the candidates the graph selects are the only ones, so Tab fills in
   // the node a line acts on; a letter typed brings the rest back.
   void complete_word(VP::Cook &frame) {
@@ -1151,11 +1174,11 @@ class CommandLine final : public VP::Operator {
     const std::string_view shared = typeable.empty() ? word : shared_start(typeable);
     const std::size_t typed = shared.size(); // the word at the caret, as completed
     const std::size_t name = shared.find_last_of(separators) + 1; // 0 for no folder
-    const bool folder = shared.ends_with('/');
+    const bool goes_on = shared.ends_with('/') || shared.ends_with(word_equals);
     _line.insert(_caret, shared.substr(word.size()));
     _caret += typed - word.size();
     if (candidates.size() == 1 && typeable.size() == 1) {
-      if (!folder)
+      if (!goes_on)
         _line.insert(_caret++, 1, ' ');
       return;
     }

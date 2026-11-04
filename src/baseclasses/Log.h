@@ -92,6 +92,10 @@ public:
   // While a person types a line at the terminal, each line the log prints takes the
   // line's place, which its owner then draws again; const, as keep_to is.
   void clears_row(bool clears) const;
+  // The next line prints whole even when it repeats the one before, so a line a person
+  // types gets its own answer, as a refusal the line before got too; a count waiting
+  // prints first. Const, as keep_to is.
+  void apart() const;
   // Swaps the lines printed since the last take into lines, and returns how many lead
   // it; what lines held is written over next, so a frame's take allocates nothing once
   // the lines have grown (CPP10), and what the log keeps stays bounded (A03).

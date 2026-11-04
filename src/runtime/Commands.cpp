@@ -551,6 +551,8 @@ std::string Commands::send_typed(std::string_view line, std::string_view folder)
 // sets a run up, as a restart's does (V08).
 std::string Commands::answer(std::string_view line, std::string_view folder, bool typed) {
   const std::size_t from = _session.size();
+  if (typed)
+    _log.apart();
   try {
     std::string answered = run(line, folder);
     if (typed)

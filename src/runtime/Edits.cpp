@@ -145,7 +145,11 @@ bool is_recipe(std::string_view text) {
 void add_param(Node &node, std::string_view value) {
   const std::size_t equals = value.find('=');
   if (equals == std::string_view::npos)
-    throw std::runtime_error("a param is written `param = name=value`");
+    throw std::runtime_error(std::format(
+        "param {} names no param: a param is name=value, so a line gives it as "
+        "param=tint=1,1,1, or alone as param set <node> tint 1,1,1, and a manifest as "
+        "param = tint=1,1,1",
+        value));
   const std::string_view name = trim(value.substr(0, equals));
   const std::string_view setting = trim(value.substr(equals + 1));
   check_path("param", name);
