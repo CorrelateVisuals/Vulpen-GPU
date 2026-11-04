@@ -79,6 +79,11 @@ function(vulpen_view folder)
     VERBATIM)
   add_custom_target(vulpen_view_${view})
   add_dependencies(vulpen_modules vulpen_view_${view})
+  # A release build links every view's C++ into vulpen and builds nothing while it runs, so
+  # vulpen needs every view's shaders too, as view load may host any of them.
+  if(NOT VULPEN_LIVE)
+    add_dependencies(vulpen vulpen_view_${view})
+  endif()
   vulpen_nodes(${view} ${folder} ${folder})
 endfunction()
 

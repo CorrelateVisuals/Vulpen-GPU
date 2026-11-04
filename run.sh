@@ -77,7 +77,8 @@ mkdir -p -- "$(dirname -- "$log")"
 # vulpen's target builds the engine, the library and the apps, which vulpen needs; a
 # project's builds its nodes, and only for the projects it opens, so one broken, or
 # half typed when vulpen last quit, never keeps it from starting: its nodes name why, and
-# the live build builds a project once it is opened or saved. The full build,
+# the live build builds a project once it is opened or saved. A release vulpen links
+# every project's nodes, so its target builds them all. The full build,
 # cmake --build --preset debug, builds and checks every project, and the statistics.
 build() (
   cd "$root" && mkdir -p "out/build/$preset"

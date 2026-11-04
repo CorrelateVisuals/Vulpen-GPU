@@ -77,7 +77,8 @@ if ($folder) { New-Item -ItemType Directory -Force -Path $folder | Out-Null }
 # which a running vulpen's builds open so too, and let go before vulpen starts.
 # vulpen's target builds the engine, the library and the apps, which vulpen needs; a
 # project's builds its nodes, and only for the projects it opens, so one broken never
-# keeps vulpen from starting: its nodes name why, as run.sh says.
+# keeps vulpen from starting: its nodes name why, as run.sh says. A release vulpen links
+# every project's nodes, so its target builds them all.
 $built = Join-Path $PSScriptRoot "out\build\$preset"
 New-Item -ItemType Directory -Force -Path $built | Out-Null
 $lock = $null
