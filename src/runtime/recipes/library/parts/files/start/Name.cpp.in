@@ -1,11 +1,38 @@
 #include "runtime/Operator.h"
 
+// #include <iostream>
+// #include <vector>
+
 namespace {
 
-// What the node does on the CPU: bind as its view is built, cook each frame.
+// What the node does on the CPU: bind as its view is built, cook each frame. Each way data
+// goes between this C++ and the node's shaders is below, commented out: uncomment a way
+// here and its field in the shader's pass block, both by one name, and delete the rest.
 class Name final : public VP::Operator {
-  void bind(VP::Bind &) override {}
-  void cook(VP::Cook &) override {}
+  void bind([[maybe_unused]] VP::Bind &node) override {
+    // _speed = node.param<float>("speed");             // from you: param=speed=0.02
+    // _phase = node.value<float>("phase");             // to a shader: float phase;
+    // _points = node.upload<glm::vec4>("points");      // to a shader: Vec4sIn points;
+    // _picture = node.texture<glm::u8vec4>("picture"); // to a shader: Texture picture;
+    // _results = node.readback<float>("results");      // from a .comp: FloatsOut results;
+  }
+
+  void cook([[maybe_unused]] VP::Cook &frame) override {
+    // frame.set(_phase, _speed * static_cast<float>(frame.index()));
+    // for (glm::vec4 &point : frame.write(_points)) // one a vertex, or an invocation
+    //   point = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    // if (frame.empty(_picture)) // once: the image keeps its pixels
+    //   frame.upload(_picture, std::vector(16, glm::u8vec4(255, 128, 0, 255)), {4, 4});
+    // const std::span<const float> results = frame.read(_results); // a frame late
+    // if (!results.empty() && frame.index() % 60 == 0) // once a second at 60 fps
+    //   std::cout << "results[0] = " << results[0] << std::endl; // under the node's name
+  }
+
+  // float _speed = 0;
+  // VP::Value<float> _phase;
+  // VP::Upload<glm::vec4> _points;
+  // VP::Texture<glm::u8vec4> _picture;
+  // VP::Readback<float> _results;
 };
 
 } // namespace

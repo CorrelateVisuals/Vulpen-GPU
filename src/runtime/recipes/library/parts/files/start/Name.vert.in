@@ -1,12 +1,29 @@
 // Where each of the node's vertex_count vertices goes, a triangle in the middle, and a
 // color a corner, which the GPU blends across the face on its way to the .frag.
+//
+// Each way data reaches here is commented out: uncomment what you use and delete the
+// rest; a pass block field nothing fills is refused. A node's shaders share one pass
+// block: declare it in the shader that reads it, or for both in a file both #include.
+// #include "baseclasses/GpuLayout.glsl" // the pass block's types, and frame.time
+// VP_READS(Vec4sIn, vec4);
+// layout(set = 1, binding = 0) uniform Pass {
+//   float scale;    // from you, no C++: node set <node> param=scale=0.5
+//   float phase;    // from C++, each frame: node.value<float>("phase")
+//   Vec4sIn points; // from C++, one a vertex: node.upload<glm::vec4>("points")
+// } pass;
 const vec2 corners[3] = vec2[](vec2(0.0, -0.5), vec2(0.5, 0.5), vec2(-0.5, 0.5));
 const vec3 colors[3] =
     vec3[](vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, 1.0));
 
+// To the .frag, which reads each at the same location and type.
 layout(location = 0) out vec3 color;
+// layout(location = 1) out vec2 uv;
 
 void main() {
   gl_Position = vec4(corners[gl_VertexIndex % 3], 0.0, 1.0);
+  // gl_Position.xy *= pass.scale;
+  // gl_Position.x += 0.25 * sin(pass.phase);
+  // gl_Position = pass.points.at[gl_VertexIndex];
   color = colors[gl_VertexIndex % 3];
+  // uv = corners[gl_VertexIndex % 3] + 0.5;
 }

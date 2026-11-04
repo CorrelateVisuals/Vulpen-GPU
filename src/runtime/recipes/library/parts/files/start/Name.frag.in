@@ -1,7 +1,26 @@
 // The color of each pixel the draw covers: the corners' colors, blended across the face.
+//
+// Each way data reaches here is commented out: uncomment what you use and delete the
+// rest; a pass block field nothing fills is refused. A node's shaders share one pass
+// block: declare it in the shader that reads it, or for both in a file both #include.
+// #include "baseclasses/GpuLayout.glsl" // the pass block's types, sample_linear
+// layout(set = 1, binding = 0) uniform Pass {
+//   float tint;      // from you, no C++: node set <node> param=tint=0.5
+//   Texture picture; // from C++: node.texture<glm::u8vec4>("picture"), or from another
+//                    // node's image: connect <name> <its node>.<its out> <node>.picture
+// } pass;
+
+// From the .vert, each at the location and type it writes.
 layout(location = 0) in vec3 color;
+// layout(location = 1) in vec2 uv;
+
+// The draw's picture: the window's, or, once a connection starts from <node>.pixel, an
+// image another node samples as a Texture; a .comp there can write what it sees into a
+// FloatsOut buffer its C++ reads back, the way back to C++, as a .frag writes no buffer.
 layout(location = 0) out vec4 pixel;
 
 void main() {
   pixel = vec4(color, 1.0);
+  // pixel.rgb *= pass.tint;
+  // pixel = sample_linear(pass.picture, uv);
 }

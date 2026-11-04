@@ -21,10 +21,11 @@ constexpr std::string_view manifest = "view.vlp";
 // a node's, nor any folder in them.
 constexpr std::array<std::string_view, 2> shared_folders{"contracts", "shared"};
 // What new starts a file with, by its extension: the start file of that extension in the
-// start folder, the least that builds and runs, Name in it becoming the class the file's
-// stem names; and the word its node needs to run it, which the node gets where it has
-// none: the three corners of the start's triangle, and one workgroup of its threads. A
-// file of any other extension starts empty.
+// start folder, the least that builds and runs, with each way data goes between the
+// node's files commented out, for the person to uncomment what they use; Name in it
+// becoming the class the file's stem names; and the word its node needs to run it, which
+// the node gets where it has none: the three corners of the start's triangle, and one
+// workgroup of its threads. A file of any other extension starts empty.
 struct Start {
   std::string_view extension;
   std::string_view word; // as node set takes it; empty for none

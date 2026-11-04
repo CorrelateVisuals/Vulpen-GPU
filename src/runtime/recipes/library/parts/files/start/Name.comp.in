@@ -1,5 +1,22 @@
 // What each of the node's invocations does, 64 to a workgroup.
+//
+// Each way data reaches here and leaves is commented out: uncomment what you use and
+// delete the rest; a pass block field nothing fills is refused.
+// #include "baseclasses/GpuLayout.glsl" // the pass block's types, sample_linear, store
+// layout(set = 1, binding = 0) uniform Pass {
+//   float speed;       // from you, no C++: node set <node> param=speed=0.5
+//   float phase;       // from C++, each frame: node.value<float>("phase")
+//   FloatsIn values;   // from another node: connect <name> <its node>.values <node>.values
+//   FloatsOut results; // to C++, a frame later: node.readback<float>("results")
+//   Texture picture;   // an image to sample: from C++, or another node's by a connection
+//   Image canvas;      // an image to store into, which another node samples by a connection
+// } pass;
 layout(local_size_x = 64) in;
 
 void main() {
+  // const uint i = gl_GlobalInvocationID.x; // one an invocation, as many as invocations
+  // pass.results.at[i] = pass.speed * float(i) + sin(pass.phase);
+  // pass.results.at[i] = pass.values.at[i];
+  // pass.results.at[i] = sample_linear(pass.picture, vec2(0.5)).r;
+  // store(pass.canvas, ivec2(i % 64u, i / 64u), vec4(1.0));
 }
