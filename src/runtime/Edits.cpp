@@ -772,15 +772,23 @@ void Edits::command(Call &call) {
     for (const Child &child : _views.find(*host)->children)
       if (child.name != address)
         beside.push_back(child.name);
+  const std::string current(_port.current());
   View edited = *found;
+  std::string said;
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index])) {
       edits[index].change(edited, call.arguments(), {_port.where(), beside});
       if (edits[index].change == view_close)
         let_go(call.arguments().front(), edits[index].usage == close_force);
-      call.reply(edits[index].said(*found, edited, call.arguments()));
+      said = edits[index].said(*found, edited, call.arguments());
     }
   _views.replace(address, std::move(edited));
+  // Closing the view lines go to moves them on, which the answer names, as view switch
+  // does.
+  if (const std::string_view now = _port.current(); now != current)
+    said += now.empty() ? std::string("; lines go to the view vulpen started with now")
+                        : std::format("; lines go to {} now", now);
+  call.reply(said);
 }
 
 // A project closes only as its last view save left it (1c): view close refuses while its

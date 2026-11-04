@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <format>
+#include <iterator>
 #include <map>
 #include <ranges>
 #include <set>
@@ -664,6 +665,7 @@ void Views::follow(const std::string &host, const View &view) {
     _hosted.erase(_hosted.begin() + static_cast<std::ptrdiff_t>(before), _hosted.end());
     throw;
   }
+  const std::string current(_port.current()); // where lines went before any goes
   std::vector<std::string> gone;
   for (const std::unique_ptr<Hosted> &hosted : _hosted)
     if (!hosted->removed && hosted->parent == host && !hosted->name.empty() &&
@@ -687,6 +689,27 @@ void Views::follow(const std::string &host, const View &view) {
       std::erase_if(kept.connections, from_it);
       replace(beside.name, std::move(kept));
     }
+  // Lines that went to a view now gone go on to a project hosted beside it, the next
+  // hosted after it, else the one before, as a closed tab gives way to its neighbour; to
+  // an app, as the cli or the ide, only once no project is left, as Commands::current
+  // then falls back to the views that held it.
+  if (gone.empty() || hosted(current))
+    return;
+  const auto open_project = [](const std::unique_ptr<Hosted> &hosted) {
+    return !hosted->removed && project(hosted->current());
+  };
+  const auto closed = std::ranges::find_if(_hosted, [&](const auto &hosted) {
+    return hosted->removed && hosted->name == current;
+  });
+  auto next = std::find_if(closed, _hosted.end(), open_project);
+  if (next == _hosted.end()) {
+    const auto earlier =
+        std::find_if(std::make_reverse_iterator(closed), _hosted.rend(), open_project);
+    if (earlier == _hosted.rend())
+      return;
+    next = std::prev(earlier.base());
+  }
+  _port.send(std::format("view switch {}", (*next)->name));
 }
 
 void Views::unhost(Hosted &hosted) {
