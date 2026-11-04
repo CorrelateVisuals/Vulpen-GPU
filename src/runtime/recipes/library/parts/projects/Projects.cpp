@@ -51,8 +51,8 @@ std::string hosted_name(VP::Call &call) {
 
 // The projects: views of their own in one folder (V03), or in a folder there that groups
 // some and is no view itself, as triangles/ groups the triangle's variants, which the
-// commands here make, host, copy and rename, by a project's name or by a folder's path;
-// each view they host becomes the current one.
+// commands here list, make, host, copy and rename, by a project's name or by a folder's
+// path; each view they host becomes the current one.
 class Projects final : public VP::Operator {
   void bind(VP::Bind &node) override {
     // From the part's own folder (RP02), so a person who works elsewhere changes one
@@ -76,6 +76,9 @@ class Projects final : public VP::Operator {
     _remove = node.command("view remove <project>",
                            "closes a project, if it is hosted, and deletes its folder "
                            "with all it holds, as node remove does a node's");
+    _list = node.command("view list projects",
+                         "lists the projects, by their folders from the projects' "
+                         "folder, whose names view load takes");
   }
 
   void command(VP::Call &call) override {
@@ -91,6 +94,9 @@ class Projects final : public VP::Operator {
       rename(call);
     else if (call.is(_remove))
       remove(call);
+    else if (call.is(_list))
+      for (const std::string &project : projects(call))
+        call.reply(project);
   }
 
   // A <project> comes resolved when it is a path, and as typed when it names one, which
@@ -107,15 +113,26 @@ class Projects final : public VP::Operator {
                                                                    : path;
   }
 
-  // The folder of the project of that name, among the projects or in a folder grouping
-  // some; none where no folder of that name holds a view.
-  std::filesystem::path found(VP::Call &call, std::string_view name) const {
-    if (holds_view(call, _folder / name))
-      return _folder / name;
+  // The projects, each by its folder from the projects' folder: one there holding a view,
+  // or one in a folder there that groups some and is no view itself.
+  std::vector<std::string> projects(VP::Call &call) const {
+    std::vector<std::string> listed;
     for (const std::string &entry : call.files().list(_folder.string()))
-      if (entry.ends_with('/') && !holds_view(call, _folder / entry) &&
-          holds_view(call, _folder / entry / name))
-        return _folder / entry / name;
+      if (entry.ends_with('/') && holds_view(call, _folder / entry))
+        listed.push_back(entry.substr(0, entry.size() - 1));
+      else if (entry.ends_with('/'))
+        for (const std::string &inside : call.files().list((_folder / entry).string()))
+          if (inside.ends_with('/') && holds_view(call, _folder / entry / inside))
+            listed.push_back(entry + inside.substr(0, inside.size() - 1));
+    return listed;
+  }
+
+  // The folder of the project of that name; none where no folder of that name holds a
+  // view.
+  std::filesystem::path found(VP::Call &call, std::string_view name) const {
+    for (const std::string &project : projects(call))
+      if (std::filesystem::path(project).filename() == name)
+        return _folder / project;
     return {};
   }
 
@@ -257,6 +274,7 @@ class Projects final : public VP::Operator {
   VP::Command _save_as;
   VP::Command _rename;
   VP::Command _remove;
+  VP::Command _list;
 };
 
 } // namespace

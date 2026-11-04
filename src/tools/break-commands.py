@@ -606,6 +606,7 @@ VALID = {
     "view add <name> <file>": "view add {fresh} {tree}/../decoy/{same}/view.vlp",
     "view close <view>": "view close {view}",
     "view list": "view list",
+    "view list projects": "view list projects",
     "view load <project>": "view load {project}",
     "view new <project>": "view new {freshproject}",
     "view remove <project>": "view remove {project}",

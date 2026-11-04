@@ -196,12 +196,13 @@ void hosted(VP::Call &call, std::string_view host, std::vector<std::string> &nam
       }
 }
 
-// The library's recipes, as recipe drop names them, past the kind recipe list lists each
-// under; none where no part lists them.
-std::vector<std::string> recipes(VP::Call &call) {
+// The names a listing answers, past the folder it lists each under, as recipe list lists
+// the library's recipes by kind and view list projects the projects in a folder grouping
+// some: the names recipe drop and view load take. None where no part lists them.
+std::vector<std::string> listed_names(VP::Call &call, std::string_view listing) {
   std::vector<std::string> names;
   try {
-    const std::string listed = call.commands().send("recipe list");
+    const std::string listed = call.commands().send(listing);
     for (const std::string_view line : lines_of(listed))
       if (!line.empty())
         names.emplace_back(line.substr(line.rfind('/') + 1));
@@ -211,9 +212,9 @@ std::vector<std::string> recipes(VP::Call &call) {
 }
 
 // What a placeholder stands for: the view's nodes or connections, the views hosted, the
-// params of the node named just before a key, the recipes of the library, the paths a word
-// begun may become, or, for a word naming no folder, the files the view holds. Any other
-// answers as itself.
+// params of the node named just before a key, the recipes of the library, the paths a
+// word begun may become, or, for a word naming no folder, the projects or the files the
+// view holds. Any other answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -235,10 +236,12 @@ std::vector<std::string> names(std::string_view word,
   } else if (kind == "<view>") {
     hosted(call, {}, names);
   } else if (kind == "<recipe>") {
-    names = recipes(call);
-  } else if (kind == "<file>" || kind == "<project>" ||
-             (kind == "<path>" && std::filesystem::path(begun).has_parent_path())) {
+    names = listed_names(call, "recipe list");
+  } else if (kind == "<file>" || ((kind == "<project>" || kind == "<path>") &&
+                                  std::filesystem::path(begun).has_parent_path())) {
     names = paths(call, begun);
+  } else if (kind == "<project>") {
+    names = listed_names(call, "view list projects");
   } else if (kind == "<path>") {
     names = held(call);
   } else {
