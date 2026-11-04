@@ -37,14 +37,16 @@ std::filesystem::file_time_type written(const std::filesystem::path &file) {
   return gone ? std::filesystem::file_time_type::min() : time;
 }
 
-// A file's lines that hold anything, as paths.
+// A file's lines that hold anything, as paths, without the \r a Windows build ends each
+// with: one kept would name no view the build has, and the live build would build none.
 std::vector<std::filesystem::path> lines_of(const std::filesystem::path &file) {
   std::vector<std::filesystem::path> lines;
   const std::string text = Files::text(file);
   for (std::size_t at = 0; at < text.size();) {
     const std::size_t end = std::min(text.find('\n', at), text.size());
-    if (end > at)
-      lines.emplace_back(text.substr(at, end - at));
+    const std::size_t stop = end > at && text[end - 1] == '\r' ? end - 1 : end;
+    if (stop > at)
+      lines.emplace_back(text.substr(at, stop - at));
     at = end + 1;
   }
   return lines;
@@ -167,7 +169,7 @@ struct Live::Scan {
   Scan(const std::vector<Root> &roots, const std::filesystem::path &build)
       : builder(build, build_log),
         engine(lines_of(build / VP_ENGINE_SOURCES_FILE)),
-        engine_said(written(Files::executable())) {
+        engine_said(written(build / VP_ENGINE_FILE)) {
     for (const auto &[name, folder] : roots) {
       const auto seen = newest(folder);
       views.push_back({name, folder, seen, seen});

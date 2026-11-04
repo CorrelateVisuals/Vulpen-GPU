@@ -32,6 +32,13 @@ list(TRANSFORM engine_sources PREPEND ${PROJECT_SOURCE_DIR}/)
 list(APPEND engine_sources ${engine_headers})
 list(JOIN engine_sources "\n" engine_list)
 file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${engine_sources_file} CONTENT "${engine_list}\n")
+# The file those compile into, beside vulpen, whose time a change is newer than: vulpen, or
+# a Windows live build's engine DLL, which a build relinks while vulpen stays as it was.
+if(TARGET engine)
+  set(engine_file $<TARGET_FILE_NAME:engine>)
+else()
+  set(engine_file $<TARGET_FILE_NAME:vulpen>)
+endif()
 
 # How a module marks its entry exported: a DLL exports only what is marked so, and GCC
 # and Clang, told to hide every symbol, export what is marked visible.
@@ -55,6 +62,7 @@ target_compile_definitions(runtime PRIVATE
   VP_MODULE_STAMP="${module_stamp}"
   VP_MODULE_STAMP_FILE="${module_stamp_file}"
   VP_ENGINE_SOURCES_FILE="${engine_sources_file}"
+  VP_ENGINE_FILE="${engine_file}"
   VP_VIEWS_FILE="${views_file}")
 
 # A view: each folder in it is a node, but its contracts/ and its shared/ (RV05, RV09). One
