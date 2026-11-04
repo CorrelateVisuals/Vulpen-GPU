@@ -12,6 +12,7 @@
 #include <limits>
 #include <map>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -471,10 +472,99 @@ void view_close(View &view, Arguments arguments, const Around &) {
   });
 }
 
+// What a line that made an edit answers, so a person sees it took, where the log names
+// only what fails (C09): from the view as it was and as it is, in the manifest's words,
+// paths from where vulpen started, as every answer names them.
+template <class Texts> std::string listed(const Texts &texts) {
+  std::string text;
+  for (const auto &each : texts)
+    text.append(text.empty() ? "" : ", ").append(each);
+  return text;
+}
+
+// The words a line named, as the node holds them now, each key once; one it holds no
+// longer, cleared.
+std::string named_words(const View &view, std::string_view name, Arguments words) {
+  const Node &node = *std::ranges::find(view.nodes, name, &Node::name);
+  std::vector<std::string> said;
+  std::set<std::string_view> keys;
+  for (const std::string_view word : words) {
+    const std::string_view key = key_and_value(word).first;
+    if (!keys.insert(key).second)
+      continue;
+    const std::size_t before = said.size();
+    for (const Word &held : words_of(node))
+      if (held.key == key)
+        said.push_back(std::format("{} = {}", key, held.value));
+    if (said.size() == before)
+      said.push_back(std::format("{} cleared", key));
+  }
+  return listed(said);
+}
+
+std::string node_added(const View &, const View &after, Arguments arguments) {
+  return arguments.size() == 1
+             ? std::format("added node {}", arguments.front())
+             : std::format("added node {}: {}",
+                           arguments.front(),
+                           named_words(after, arguments.front(), arguments.subspan(1)));
+}
+
+std::string node_removed(const View &, const View &, Arguments arguments) {
+  return std::format("removed node {}, keeping its folder", arguments.front());
+}
+
+std::string node_moved(const View &, const View &, Arguments arguments) {
+  return std::format("moved node {} before {}", arguments[0], arguments[1]);
+}
+
+std::string node_was_set(const View &, const View &after, Arguments arguments) {
+  return std::format("set node {}: {}",
+                     arguments.front(),
+                     named_words(after, arguments.front(), arguments.subspan(1)));
+}
+
+std::string connected(const View &, const View &, Arguments arguments) {
+  return std::format("connected {} to {} as {}",
+                     arguments[1],
+                     listed(arguments.subspan(2)),
+                     arguments[0]);
+}
+
+std::string disconnected(const View &before, const View &, Arguments arguments) {
+  const Connection &gone =
+      *std::ranges::find(before.connections, arguments.front(), &Connection::name);
+  return std::format("disconnected {}, from {} to {}",
+                     gone.name,
+                     gone.from.text(),
+                     listed(gone.to | std::views::transform(&Endpoint::text)));
+}
+
+std::string param_was_set(const View &, const View &, Arguments arguments) {
+  return std::format("set {}'s {} to {}", arguments[0], arguments[1], arguments[2]);
+}
+
+std::string param_was_unset(const View &, const View &, Arguments arguments) {
+  return std::format("unset {}'s {}", arguments[0], arguments[1]);
+}
+
+std::string view_added(const View &, const View &, Arguments arguments) {
+  return std::format("hosts view {}, from {}",
+                     arguments[0],
+                     std::filesystem::path(arguments[1])
+                         .lexically_proximate(std::filesystem::current_path())
+                         .generic_string());
+}
+
+std::string view_closed(const View &, const View &, Arguments arguments) {
+  return std::format("closed view {}, its files kept", arguments.front());
+}
+
 struct Edit {
   std::string_view usage;
   std::string_view help;
   void (*change)(View &view, Arguments arguments, const Around &around);
+  std::string (*said)(const View &before, const View &after, Arguments arguments);
 };
 
 // Each edit's usage and help (RV04), and what it changes.
@@ -482,33 +572,46 @@ constexpr std::array edits{
     Edit{"node add <name> [<word=value>...]",
          "adds a node, given the manifest's node words; its files are what its folder "
          "holds",
-         node_add},
+         node_add,
+         node_added},
     Edit{"node remove keep <node>",
          "removes a node with the nodes inside it, the connections they write, and them "
          "from the connections they read, keeping its folder",
-         node_remove},
+         node_remove,
+         node_removed},
     Edit{"node move <node> <node>",
          "lists a node, with the nodes inside it, just before another, so it draws under "
          "that one",
-         node_move},
+         node_move,
+         node_moved},
     Edit{"node set <node> <word=value>...",
          "gives a node the words named, clearing those given empty; param and image "
          "words replace them all",
-         node_set},
+         node_set,
+         node_was_set},
     Edit{"connect <name> <port> <port>...",
          "joins the port that writes a buffer to the ports that read it",
-         connect_ports},
-    Edit{"disconnect <connection>", "removes a connection", disconnect},
-    Edit{"param set <node> <key> <value>", "sets a param of a node", param_set},
-    Edit{"param unset <node> <key>", "removes a param of a node", param_unset},
+         connect_ports,
+         connected},
+    Edit{"disconnect <connection>", "removes a connection", disconnect, disconnected},
+    Edit{"param set <node> <key> <value>",
+         "sets a param of a node",
+         param_set,
+         param_was_set},
+    Edit{"param unset <node> <key>",
+         "removes a param of a node",
+         param_unset,
+         param_was_unset},
     Edit{"view add <name> <file>",
          "hosts the view a view.vlp holds, or an empty one that view save writes; a line "
          "`<name>: <command>` addresses it",
-         view_add},
+         view_add,
+         view_added},
     Edit{"view close <view>",
          "stops hosting a view, letting go of the connections that take its window; its "
          "files stay",
-         view_close},
+         view_close,
+         view_closed},
 };
 
 } // namespace
@@ -657,8 +760,10 @@ void Edits::command(Call &call) {
         beside.push_back(child.name);
   View edited = *found;
   for (std::size_t index = 0; index < edits.size(); ++index)
-    if (call.is(_commands[index]))
+    if (call.is(_commands[index])) {
       edits[index].change(edited, call.arguments(), {_port.where(), beside});
+      call.reply(edits[index].said(*found, edited, call.arguments()));
+    }
   _views.replace(address, std::move(edited));
 }
 

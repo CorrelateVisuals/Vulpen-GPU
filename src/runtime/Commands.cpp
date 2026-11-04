@@ -644,6 +644,9 @@ void Commands::command(Call &call) {
     source(call.arguments().front());
   } else if (call.is(_switch)) {
     switch_to(call.arguments().empty() ? std::string_view() : call.arguments().front());
+    call.reply(_current.empty()
+                   ? std::string("lines go to the view vulpen started with now")
+                   : std::format("lines go to {} now", _current));
   } else if (call.is(_log_save)) {
     const std::string_view file = call.arguments().front();
     Files::save(file, _session.text(std::filesystem::path(file).parent_path()));

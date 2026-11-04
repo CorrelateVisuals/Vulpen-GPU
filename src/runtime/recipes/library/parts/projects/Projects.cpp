@@ -136,6 +136,11 @@ class Projects final : public VP::Operator {
     return {};
   }
 
+  // A path as every answer names it, from where vulpen started.
+  static std::string shown(const std::filesystem::path &path) {
+    return path.lexically_proximate(std::filesystem::current_path()).generic_string();
+  }
+
   static bool holds_view(VP::Call &call, const std::filesystem::path &folder) {
     const std::vector<std::string> names = call.files().list(folder.string());
     return std::ranges::find(names, manifest) != names.end();
@@ -152,6 +157,7 @@ class Projects final : public VP::Operator {
     check_free(call, name);
     call.commands().send(
         std::format(": view add {} {}", name, (folder / manifest).string()));
+    call.reply(std::format("loaded the app {} beside the projects", name));
   }
 
   // An app's folder is the library's to keep, as the build and ./run.sh name it, and its
@@ -193,6 +199,10 @@ class Projects final : public VP::Operator {
     if (fresh)
       call.commands().send(std::format("{}: view save", name));
     call.commands().send(std::format("view switch {}", name));
+    call.reply(std::format("{} {}; lines go to {} now",
+                           fresh ? "made" : "loaded",
+                           shown(folder / manifest),
+                           name));
   }
 
   // The copy takes the view's folder whole, its look too, then the manifest as the edits
@@ -222,6 +232,10 @@ class Projects final : public VP::Operator {
     call.commands().send(std::format(": view close {}", hosted));
     call.commands().send(std::format(": view add {} {}", name, (to / manifest).string()));
     call.commands().send(std::format("view switch {}", name));
+    call.reply(std::format("copied {} to {}, which runs in its place; lines go to {} now",
+                           hosted,
+                           shown(to),
+                           name));
   }
 
   // The folder moves whole, with the views it hosts. Nothing inside a project names it,
@@ -243,6 +257,8 @@ class Projects final : public VP::Operator {
     call.commands().send(
         std::format(": view add {} {}", name, (to / file.filename()).string()));
     call.commands().send(std::format("view switch {}", name));
+    call.reply(std::format(
+        "saved {} and renamed it {}; lines go to {} now", hosted, shown(to), name));
   }
 
   // By a project's name alone, so no path reaches an app's folder or one elsewhere. Closed

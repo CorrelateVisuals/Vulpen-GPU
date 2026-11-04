@@ -445,6 +445,10 @@ void Views::command(Call &call) {
     if (!found)
       throw std::runtime_error("no view to save");
     save(*found);
+    call.reply(std::format("saved {}",
+                           found->current()
+                               .file.lexically_proximate(std::filesystem::current_path())
+                               .generic_string()));
   } else if (call.is(_list)) {
     for (const Child &child : call.view().children)
       call.reply(std::format("{} {}", child.name, child.file.string()));
