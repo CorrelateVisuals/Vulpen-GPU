@@ -207,6 +207,33 @@ std::vector<std::string> held(VP::Call &call) {
   return names;
 }
 
+// The ports a <port> may be, as node.port, as the view's nodes bound them: after a port
+// a node writes, which the line names before, the loose ports the bind finds alike to
+// it, else every port of its kind a node reads; before one, every port a node writes,
+// and the windows of the views it hosts, as <view>:, as a connection starts from its
+// writer.
+std::vector<std::string> ports_for(VP::Call &call, std::span<const std::string_view> typed) {
+  const std::span<const VP::NodePort> ports = call.ports();
+  const auto named = [](const VP::NodePort &port) {
+    return std::format("{}.{}", port.node, port.name);
+  };
+  const std::span<const std::string_view> before = typed.first(typed.size() - 1);
+  const auto writer = std::ranges::find_if(ports, [&](const VP::NodePort &port) {
+    return port.writes && std::ranges::find(before, named(port)) != before.end();
+  });
+  std::vector<std::string> names;
+  if (writer != ports.end() && !writer->alike.empty())
+    return writer->alike;
+  for (const VP::NodePort &port : ports)
+    if (writer == ports.end() ? port.writes
+                              : !port.writes && port.kind == writer->kind)
+      names.push_back(named(port));
+  for (const VP::Child &child : call.view().children)
+    if (writer == ports.end())
+      names.push_back(child.name + ':');
+  return names;
+}
+
 // Every view hosted, at any depth, by the name a line addresses it with: those the view
 // vulpen started with hosts, then those each of them hosts, each once.
 void hosted(VP::Call &call, std::string_view host, std::vector<std::string> &names) {
@@ -233,10 +260,10 @@ std::vector<std::string> listed_names(VP::Call &call, std::string_view listing) 
   return names;
 }
 
-// What a placeholder stands for: the view's nodes or connections, the views hosted, the
-// params of the node named just before a key, the recipes of the library, the folders cd
-// goes into, the paths a word begun may become, or, for a word naming no folder, the
-// projects or the files the view holds. Any other answers as itself.
+// What a placeholder stands for: the view's nodes, ports or connections, the views
+// hosted, the params of the node named just before a key, the recipes of the library,
+// the folders cd goes into, the paths a word begun may become, or, for a word naming no
+// folder, the projects or the files the view holds. Any other answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -261,6 +288,8 @@ std::vector<std::string> names(std::string_view word,
     names = listed_names(call, "recipe list");
   } else if (kind == "<folder>") {
     names = folders(call, begun);
+  } else if (kind == "<port>") {
+    names = ports_for(call, typed);
   } else if (kind == "<file>" || ((kind == "<project>" || kind == "<path>") &&
                                   std::filesystem::path(begun).has_parent_path())) {
     names = paths(call, begun);
