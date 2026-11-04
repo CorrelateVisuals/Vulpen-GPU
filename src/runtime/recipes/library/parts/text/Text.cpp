@@ -443,7 +443,7 @@ bool Text::focused() const {
 
 // In the order the events came, so a press is tested where the pointer was then. A drag
 // moves the caret and leaves the selection's start where it was pressed; a press on a
-// scroll bar only scrolls. The wheel scrolls across as it turns sideways, or with shift
+// scroll bar only scrolls; a right press with text selected opens the menus' selection. The wheel scrolls across as it turns sideways, or with shift
 // held, which the window says whatever part has the focus.
 void Text::point(VP::Cook &frame, const Grid &grid) {
   Document *const document =
@@ -472,6 +472,13 @@ void Text::point(VP::Cook &frame, const Grid &grid) {
       _dragging = event.down && inside && document != nullptr;
       if (event.down && inside)
         press(frame, grid, event.presses);
+    } else if (event.kind == VP::Event::Kind::button && event.name == "right" &&
+               event.down && inside && document && document->anchor != document->caret) {
+      // The menus offer what copies the selection, the focus here first, so copy reaches
+      // this editor once the menu gives the focus back.
+      if (!focused())
+        frame.commands().send(std::format("focus {}", _name));
+      frame.commands().send(std::format("menu selection for {}", _name));
     } else if (event.kind == VP::Event::Kind::wheel && inside && document) {
       const glm::vec2 turn = _sideways ? glm::vec2(event.turn.y, 0.0f) : event.turn;
       document->scroll.wheel(turn.y);

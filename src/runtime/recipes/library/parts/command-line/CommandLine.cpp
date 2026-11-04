@@ -537,7 +537,8 @@ class CommandLine final : public VP::Operator {
   // A press in its area gives it the focus, so typing goes where the pointer was, and one
   // on the rows above the line starts a selection there, which a drag stretches; in the
   // order the events came, so a press is tested where the pointer was then. A press on
-  // a scroll bar only scrolls. The wheel scrolls across as it turns sideways, or with
+  // a scroll bar only scrolls; a right press with text selected opens the menus'
+  // selection. The wheel scrolls across as it turns sideways, or with
   // shift held, which the window says whatever part has the focus.
   void point(VP::Cook &frame) {
     const Grid grid = this->grid();
@@ -556,6 +557,13 @@ class CommandLine final : public VP::Operator {
         const glm::vec2 turn = _sideways ? glm::vec2(event.turn.y, 0.0f) : event.turn;
         _scroll.wheel(turn.y);
         _columns.wheel(turn.x);
+      } else if (event.kind == VP::Event::Kind::button && event.name == "right" &&
+                 event.down && inside && (_anchor != _end || _from)) {
+        // The menus offer what copies the selection, the focus here first, so copy
+        // reaches this terminal once the menu gives the focus back.
+        if (!focused())
+          frame.commands().send(std::format("focus {}", _name));
+        frame.commands().send(std::format("menu selection for {}", _name));
       } else if (event.kind == VP::Event::Kind::key && event.name == "shift") {
         _sideways = event.down;
       } else if (event.kind == VP::Event::Kind::focus && !event.down) {

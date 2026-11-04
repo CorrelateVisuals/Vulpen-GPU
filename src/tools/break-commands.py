@@ -565,7 +565,7 @@ VALID = {
     "connect <name> <port> <port>...":
         "disconnect {connection} ;; connect {fresh} {writer} {reader}",
     "disconnect <connection>": "disconnect {connection}",
-    "copy <file> <file>": "copy {scrap} {newfile}",
+    "copy [<file>...]": "copy {scrap} {newfile}",
     "gpu": "gpu",
     "gpu toggle": "gpu toggle",
     "help": "help",

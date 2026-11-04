@@ -431,12 +431,14 @@ class Files final : public VP::Operator {
                            "the nodes inside it and the connections naming them, inside "
                            "another node's folder inside that node; a view's folder "
                            "moves with view rename");
-    _copy = node.command("copy <file> <file>",
-                         "copies a file, or a folder with all it holds, whole or not at "
-                         "all; in a view each folder it brings is a node, which it adds, "
-                         "and a node's folder or a recipe's comes as recipe drop brings "
-                         "one: with its words, the nodes inside it, their connections and "
-                         "the contracts and shared code they include");
+    _copy = node.command("copy [<file>...]",
+                         "copies a file to the second path, or a folder with all it "
+                         "holds, whole or not at all; in a view each folder it brings is "
+                         "a node, which it adds, and a node's folder or a recipe's comes "
+                         "as recipe drop brings one: with its words, the nodes inside it, "
+                         "their connections and the contracts and shared code they "
+                         "include; with none, what the part in focus has selected, as "
+                         "control with c does");
     _remove = node.command("remove <file>",
                            "deletes a file or an empty folder; a node's folder takes the "
                            "node with it, the nodes inside it and their connections, "
@@ -450,10 +452,30 @@ class Files final : public VP::Operator {
     const std::span<const std::string_view> words = call.arguments();
     if (call.is(_new))
       make(call);
+    else if (call.is(_copy) && words.empty())
+      copy_selected(call);
+    else if (call.is(_copy) && words.size() != 2)
+      throw std::runtime_error(std::format("copy takes a file and the path of its copy, or "
+                                           "nothing for what the part in focus has "
+                                           "selected, where it got {} word{}",
+                                           words.size(),
+                                           words.size() == 1 ? "" : "s"));
     else if (call.is(_rename) || call.is(_copy))
       move(call, bare(words[0]), bare(words[1]), call.is(_copy));
     else if (call.is(_remove) || call.is(_remove_force))
       remove(call, bare(words[0]), call.is(_remove_force));
+  }
+
+  // The keys that copy, as the window sends them, so the part in focus copies what it has
+  // selected as at control with c, the line reaching it as a key does, a frame later
+  // (V06); with nothing selected the clipboard stays as it was.
+  static void copy_selected(VP::Call &call) {
+    for (const std::string_view line : {"input key down control",
+                                        "input key down c",
+                                        "input key up c",
+                                        "input key up control"})
+      call.commands().send(line);
+    call.reply("copied what the part in focus has selected");
   }
 
   // Each path, all checked before one is made, so a line refused makes nothing: a folder
