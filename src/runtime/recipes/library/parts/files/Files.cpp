@@ -403,9 +403,9 @@ void give(Graphed &graph,
 // person does all of it from inside vulpen, by lines a GUI sends too (V06). A path typed
 // counts from the folder the prompt shows, as in a shell, and one in a script from beside
 // it. In a view vulpen hosts every folder is a node's (RV08): a folder a line makes or
-// brings there is a node, which the line adds, saving the view, so new makes nodes as it
-// makes their folders, and a shader or C++ file it makes starts as the least code that
-// builds and runs; a line that would move or delete a node's folder or the view's own is
+// brings there is a node, which the line adds, so new makes nodes as it makes their
+// folders, and a shader or C++ file it makes starts as the least code that builds and
+// runs; a line that would move or delete a node's folder or the view's own is
 // refused, naming the line that keeps them together (A02), and so is a folder in an app,
 // whose nodes use the library's recipes as they are. Nothing is written over: a line
 // whose path is taken is refused, and a folder holding files goes only with force, as
@@ -423,8 +423,7 @@ class Files final : public VP::Operator {
                         "ending in / or with no extension a folder, else a file, a "
                         "shader's or C++'s with the least code that builds and runs; "
                         "in a view a folder is a node, which it adds, a draw's with its "
-                        "vertex_count and a dispatch's with its invocations, saving "
-                        "the view");
+                        "vertex_count and a dispatch's with its invocations");
     _rename = node.command("rename <file> <file>",
                            "renames a file or a folder, or moves it, into folders made "
                            "for it, in a view nodes; a node's folder renames the node, "
@@ -441,8 +440,8 @@ class Files final : public VP::Operator {
                          "control with c does");
     _remove = node.command("remove <file>",
                            "deletes a file or an empty folder; a node's folder takes the "
-                           "node with it, the nodes inside it and their connections, "
-                           "saving the view; a view's goes once view close let it go");
+                           "node with it, the nodes inside it and their connections; "
+                           "a view's goes once view close let it go");
     _remove_force = node.command("remove force <file>",
                                  "deletes a folder with all it holds, a node's with the "
                                  "node, as remove does the rest");
@@ -654,9 +653,10 @@ class Files final : public VP::Operator {
     return nodes;
   }
 
-  // Each view's nodes added with their words, the words set, the lines after them sent,
-  // and the view saved, so its manifest holds every node whose folder is there; what the
-  // answer adds, as ", added node cube vertex_count=3 and saved the view".
+  // Each view's nodes added with their words, the words set and the lines after them
+  // sent, which the engine writes into its manifest once the line typed ran, so it holds
+  // every node whose folder is there; what the answer adds, as ", added node cube
+  // vertex_count=3".
   static std::string edit(VP::Call &call, std::span<const Graphed> graphs) {
     std::string added;
     std::string given;
@@ -675,14 +675,12 @@ class Files final : public VP::Operator {
       }
       for (const std::string &line : graph.then)
         call.commands().send(std::format("{}: {}", graph.view, line));
-      if (!graph.adds.empty() || !graph.sets.empty() || !graph.then.empty())
-        call.commands().send(std::format("{}: view save", graph.view));
     }
     if (std::ranges::all_of(graphs, [](const Graphed &graph) {
           return graph.adds.empty() && graph.sets.empty() && graph.then.empty();
         }))
       return {};
-    return std::format("{}{} and saved the view",
+    return std::format("{}{}",
                        added.empty() ? ""
                                      : std::format(", added node{} {}",
                                                    count == 1 ? "" : "s",

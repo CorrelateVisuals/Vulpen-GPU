@@ -658,9 +658,10 @@ def files(vulpen: str, folder: Path) -> str | None:
     """Why a file line deleted, moved or made what it must not, or None: a delete cannot be
     undone, so a folder holding files goes only with force, and in a view a node's folder
     goes with the node, and moves only within its view, renaming the node, a folder
-    made there is a node, which the line adds and saves, and an app makes no folder of its
-    own; a path typed counts from the folder the prompt shows, the project's once it is
-    loaded."""
+    made there is a node, which the line adds, and an app makes no folder of its own; a
+    path typed counts from the folder the prompt shows, the project's once it is loaded.
+    view save keeps what the lines made, as the end of the input puts back what no save
+    kept."""
     recipes = cli_copy(folder / "files")
     project = folder / "files" / "project"
     (project / "keep").mkdir(parents=True)
@@ -676,7 +677,7 @@ def files(vulpen: str, folder: Path) -> str | None:
                        f"new {project / 'keep' / 'c.txt'}",
                        f"new {project / 'made' / 'b.txt'}", "new typed.txt",
                        f"rename {loose / 'inner' / 'a.txt'} {loose / 'new' / 'a.txt'}",
-                       f"rename {project / 'keep'} {project / 'held'}"])
+                       f"rename {project / 'keep'} {project / 'held'}", "view save"])
     _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed + "\n")
     if (problems(output) or output.count("{!!!}") != len(refused)
             or not (project / "held" / "kept.txt").is_file()

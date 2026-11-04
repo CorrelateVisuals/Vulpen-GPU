@@ -246,11 +246,10 @@ class Library final : public VP::Operator {
                          "copies a library recipe into the view as a node of that name, "
                          "with the nodes inside it and the contracts and shared code "
                          "they include, or by a path a node's folder from any view, with "
-                         "its words, as copy brings one; then saves the view");
+                         "its words, as copy brings one");
     _sync = node.command("recipe sync <node>",
                          "brings a dropped recipe up to the library's, while what it "
-                         "copied is unchanged; its params and connections stay; then "
-                         "saves the view");
+                         "copied is unchanged; its params and connections stay");
   }
 
   void command(VP::Call &call) override {
@@ -321,12 +320,6 @@ class Library final : public VP::Operator {
     if (holds(call.files(), folder.parent_path(), folder.filename().string() + '/'))
       throw std::runtime_error(std::format(
           "{} is a folder already, and a new node's folder is its own", folder.string()));
-  }
-
-  // A command that writes a node's files saves the view too, so its manifest holds every
-  // node whose folder is there: a view closed and loaded again finds them all (RV08).
-  static void save_view(VP::Call &call) {
-    call.commands().send("view save");
   }
 
   // A recipe as a drop copies it: its own node, named like its folder, and the nodes
@@ -493,8 +486,7 @@ class Library final : public VP::Operator {
     write(files, source.copy, view, name, source.top);
     for (const std::string &line : lines)
       call.commands().send(line);
-    save_view(call);
-    call.reply(std::format("copied {} into {}, as node {}{}, and saved the view",
+    call.reply(std::format("copied {} into {}, as node {}{}",
                            source.named,
                            shown(view / VP::path_of(name)),
                            name,
@@ -612,9 +604,7 @@ class Library final : public VP::Operator {
     rewrite(files, mine, fresh, folder, root);
     for (const std::string &line : lines)
       call.commands().send(line);
-    save_view(call);
-    call.reply(std::format("synced node {} with the library's {}: {} is now {}{}{}, and "
-                           "saved the view",
+    call.reply(std::format("synced node {} with the library's {}: {} is now {}{}{}",
                            root,
                            from,
                            print,

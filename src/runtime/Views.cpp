@@ -208,7 +208,7 @@ Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recip
   _save = commands.add("view save",
                        "writes the view over its manifest, keeping the comments in it, "
                        "and keeps a project's files as they are, which view close force "
-                       "and quit force put back",
+                       "and quit force put back; a line typed writes the manifest anyway",
                        *this,
                        Primitive::save);
   _list = commands.add("view list",
@@ -720,6 +720,19 @@ void Views::write(Hosted &hosted) {
   Manifest::save(view);
   hosted.read = stamp(view.file);
   hosted.marked = _port.session().size();
+}
+
+// A project's own, never an app's or the library's, whose views the GUIs edit every
+// frame (their parts' params), and whose files the library keeps.
+void Views::write(std::string_view name) {
+  Hosted *const found = hosted(name);
+  if (!found || !project(found->current()))
+    return;
+  try {
+    write(*found);
+  } catch (const std::runtime_error &failure) {
+    _wiring.log.write(Level::error, Tag::run, failure.what());
+  }
 }
 
 std::vector<std::string> Views::names() {

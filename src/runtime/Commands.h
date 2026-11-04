@@ -25,6 +25,10 @@ public:
   virtual std::span<const Cost> costs(std::string_view name) = 0;
   // Each node's ports, as the running schedule bound them; none before the view runs.
   virtual std::span<const NodePort> ports(std::string_view name) = 0;
+  // A project's manifest written as the changes so far left it, after a line a person
+  // typed changed it, so its file shows each change; an app's and the library's views
+  // stay as their files have them.
+  virtual void write(std::string_view name) = 0;
   // Every view hosted, by the name a line addresses it with, the host's first.
   virtual std::vector<std::string> names() = 0;
   // A project's files that differ from what it kept as it was hosted or last saved, by
@@ -81,6 +85,8 @@ public:
   std::string text(const std::filesystem::path &folder) const;
   // How many primitives it kept so far.
   std::size_t size() const;
+  // The views the primitives kept since the first so many changed, each once.
+  std::vector<std::string> views_since(std::size_t from) const;
   // What the views' files do not hold yet: the edits of each view marked, kept since its
   // mark, in order, as text names them; a view not marked holds none, as one no longer
   // hosted. What a restart replays (V08).
@@ -202,7 +208,9 @@ private:
   };
 
   void command(Call &call) override;
+  std::string answer(std::string_view line, std::string_view folder, bool typed);
   void quit(bool force);
+  void write_since(std::size_t from);
   const Spec *match(std::span<const std::string_view> words) const;
   std::string view_named(std::vector<std::string_view> &words) const;
   std::vector<std::string> resolve(const Spec &spec,

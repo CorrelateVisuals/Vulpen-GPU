@@ -236,6 +236,16 @@ std::size_t CommandLog::size() const {
   return _size;
 }
 
+std::vector<std::string> CommandLog::views_since(std::size_t from) const {
+  std::vector<std::string> views;
+  std::size_t index = 0;
+  for (const Kept &kept : _groups | std::views::join)
+    if (index++ >= from && kept.primitive == Primitive::edit &&
+        std::ranges::find(views, kept.view) == views.end())
+      views.push_back(kept.view);
+  return views;
+}
+
 // A save writes what came before it, so its file holds it, and a replay of the save
 // would only write the file again.
 std::string CommandLog::after(std::span<const Mark> marks,
@@ -527,16 +537,37 @@ std::vector<std::string_view> Commands::holding() const {
 }
 
 std::string Commands::send(std::string_view line) {
-  return send_typed(line, {});
+  return answer(line, {}, false);
 }
 
 std::string Commands::send_typed(std::string_view line, std::string_view folder) {
+  return answer(line, folder, true);
+}
+
+// A line a person typed, at a terminal or through a menu, writes each project it changed
+// at once, refused or not, as a refused line may have run edits before the one refused,
+// and so do the lines of a script it sources; a line a node sends writes none, as it may
+// come every frame, nor does a script vulpen starts with, which replays a session or
+// sets a run up, as a restart's does (V08).
+std::string Commands::answer(std::string_view line, std::string_view folder, bool typed) {
+  const std::size_t from = _session.size();
   try {
-    return run(line, folder);
+    std::string answered = run(line, folder);
+    if (typed)
+      write_since(from);
+    return answered;
   } catch (const std::runtime_error &failure) {
+    if (typed)
+      write_since(from);
     _log.write(Level::error, Tag::run, failure.what());
     return {};
   }
+}
+
+void Commands::write_since(std::size_t from) {
+  if (_views)
+    for (const std::string &view : _session.views_since(from))
+      _views->write(view);
 }
 
 void Commands::source(const std::filesystem::path &file) {
