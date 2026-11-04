@@ -250,6 +250,13 @@ class Library final : public VP::Operator {
     _sync = node.command("recipe sync <node>",
                          "brings a dropped recipe up to the library's, while what it "
                          "copied is unchanged; its params and connections stay");
+    _make = node.command("recipe make <node> <name>",
+                         "makes the node a recipe of the library by that name, the node "
+                         "becoming a drop of it: a part of its files and words, with the "
+                         "contracts and shared code they include, for a node with none "
+                         "inside it; else a component of the recipes the nodes inside it "
+                         "were dropped from, unchanged since, their params and "
+                         "connections as the view gives them");
   }
 
   void command(VP::Call &call) override {
@@ -259,6 +266,8 @@ class Library final : public VP::Operator {
       drop(call);
     else if (call.is(_sync))
       sync(call);
+    else if (call.is(_make))
+      make(call);
   }
 
   // A recipe is a folder in a kind's folder, but the shared code's; the contracts' folder
@@ -646,10 +655,201 @@ class Library final : public VP::Operator {
     return lines;
   }
 
+  // A drop turned around, so a node a person made by hand is dropped elsewhere as a
+  // recipe (V02): a part holds one job's files and a component only uses recipes
+  // (RV06), so a node with nodes inside it is made of the recipes they were dropped
+  // from, and one inside it with code of its own is refused, naming the line that makes
+  // it a recipe first. Everything is checked before a file is written, and the node
+  // then names the recipe and the fingerprint of what it holds, as a drop of it would,
+  // so recipe sync brings it the library's later changes.
+  void make(VP::Call &call) const {
+    const std::string root(call.arguments()[0]);
+    const std::string name(call.arguments()[1]);
+    VP::FilePort &files = call.files();
+    const std::filesystem::path view = view_folder(call);
+    if (!VP::is_name(name))
+      throw std::runtime_error(std::format(
+          "{} is no recipe's name: letters, digits, _ and -, named for its job (RV07)",
+          name));
+    for (const std::string &kind : folders(files, _library))
+      if (holds(files, _library / kind, name + '/'))
+        throw std::runtime_error(std::format(
+            "the library holds {}{} already: recipe drop {} <name> uses it", kind, name, name));
+    const VP::View &graph = call.view();
+    if (std::ranges::find(graph.nodes, root, &VP::Node::name) == graph.nodes.end())
+      throw std::runtime_error(std::format("no node is named {}", root));
+    const Copy copy = copy_in(files, graph, view, root);
+    const bool part = copy.nodes.size() == 1;
+    const std::filesystem::path folder = _library / (part ? "parts" : "components") / name;
+    // Read before the node set below, which replaces the view.
+    const std::string made = std::format("made recipe {}{}{} of node {}, which is a drop "
+                                         "of it now",
+                                         part ? "parts/" : "components/",
+                                         name,
+                                         part ? "" : ", using " + uses_named(graph, root),
+                                         root);
+    if (part)
+      make_part(files, copy, folder, view, name);
+    else
+      make_component(files, graph, copy, folder, root, name);
+    const std::string print = fingerprint(files, recipe(files, name));
+    call.commands().send(
+        std::format("node set {} recipe={}{}{}", root, name, fingerprint_mark, print));
+    call.reply(made);
+  }
+
+  // Where a contract or shared code goes in the library, as a drop finds it (RV05, RV09).
+  std::filesystem::path in_library(const std::filesystem::path &file) const {
+    return *file.begin() == VP::shared_folder ? _library / parts / file : _library / file;
+  }
+
+  // The node's files, and the contracts and shared code they include that the library
+  // lacks; one the library holds otherwise is refused, as the library's other recipes
+  // read it (V11).
+  void make_part(VP::FilePort &files,
+                 const Copy &copy,
+                 const std::filesystem::path &folder,
+                 const std::filesystem::path &view,
+                 std::string_view name) const {
+    const VP::Node &node = copy.nodes.front().node;
+    std::vector<std::filesystem::path> included;
+    for (const std::string &file : node.files)
+      includes_of(files.read((node.folder / file).string()), {}, included);
+    for (std::size_t next = 0; next < included.size(); ++next)
+      includes_of(files.read((view / included[next]).string()),
+                  included[next].parent_path(),
+                  included);
+    std::vector<std::filesystem::path> brought;
+    for (const std::filesystem::path &file : included) {
+      const std::filesystem::path there = in_library(file);
+      if (!holds(files, there.parent_path(), there.filename().string()))
+        brought.push_back(file);
+      else if (files.read(there.string()) != files.read((view / file).string()))
+        throw std::runtime_error(std::format(
+            "{} differs from the library's {}, which its recipes include: name it apart",
+            shown(view / file),
+            shown(there)));
+    }
+    for (const std::string &file : node.files)
+      files.save((folder / file).string(), files.read((node.folder / file).string()));
+    for (const std::filesystem::path &file : brought)
+      files.save(in_library(file).string(), files.read((view / file).string()));
+    VP::Node own = node;
+    own.name = name;
+    own.recipe.clear();
+    own.log.clear();
+    own.files.clear();
+    own.where.clear();
+    files.save(VP::View{.name = std::string(name), .nodes = {std::move(own)}},
+               (folder / VP::manifest_file).string());
+  }
+
+  // The nodes a drop brought inside the node, each the one a drop named, and so in a
+  // component a use of its recipe; a node inside one of them came with it.
+  static std::vector<const VP::Node *> uses_of(const VP::View &graph, std::string_view root) {
+    std::vector<const VP::Node *> uses;
+    for (const VP::Node &node : graph.nodes)
+      if (node.name != root && VP::within(node.name, root) &&
+          node.recipe.find(fingerprint_mark) != std::string::npos &&
+          std::ranges::none_of(uses, [&](const VP::Node *use) {
+            return VP::within(node.name, use->name);
+          }))
+        uses.push_back(&node);
+    return uses;
+  }
+
+  static std::string uses_named(const VP::View &graph, std::string_view root) {
+    std::string named;
+    for (const VP::Node *const use : uses_of(graph, root))
+      named.append(named.empty() ? "" : ", ")
+          .append(use->recipe.substr(0, use->recipe.find(fingerprint_mark)));
+    return named;
+  }
+
+  // A use of each recipe a node inside was dropped from, with the params the view gives
+  // it and the nodes inside it that differ from the recipe's, by their paths in it, and
+  // the connections between them but those inside one use, which its recipe brings.
+  void make_component(VP::FilePort &files,
+                      const VP::View &graph,
+                      const Copy &copy,
+                      const std::filesystem::path &folder,
+                      std::string_view root,
+                      std::string_view name) const {
+    if (!copy.nodes.front().node.files.empty())
+      throw std::runtime_error(std::format(
+          "{} holds files of its own, and a component holds only the recipes it uses "
+          "(RV06): move them into a node inside it",
+          root));
+    const std::vector<const VP::Node *> uses = uses_of(graph, root);
+    for (const Inner &inner : copy.nodes) {
+      const std::string full = outer_name(root, inner.name);
+      if (!inner.name.empty() && std::ranges::none_of(uses, [&](const VP::Node *use) {
+            return VP::within(full, use->name);
+          }))
+        throw std::runtime_error(std::format(
+            "{} holds code of its own, and a component holds only the recipes it uses "
+            "(RV06): recipe make {} <name> makes it one first",
+            full,
+            full));
+    }
+    VP::View made{.name = std::string(name), .nodes = {VP::Node{.name = std::string(name)}}};
+    for (const VP::Node *const use : uses) {
+      const std::string from = use->recipe.substr(0, use->recipe.find(fingerprint_mark));
+      if (fingerprint(files, copy_in(files, graph, graph.file.parent_path(), use->name)) !=
+          use->recipe.substr(use->recipe.find(fingerprint_mark) + 1))
+        throw std::runtime_error(std::format(
+            "{} changed since it was dropped from {}, and a component uses {} as the "
+            "library has it: recipe make {} <name> makes the change a recipe of its own",
+            use->name,
+            from,
+            from,
+            use->name));
+      made.nodes.push_back({.name = outer_name(name, *inner_name(root, use->name)),
+                            .recipe = from,
+                            .params = changed_params(files, graph, *use, from)});
+    }
+    for (VP::Connection connection : copy.connections) {
+      if (std::ranges::any_of(uses, [&](const VP::Node *use) {
+            return VP::within(outer_name(root, connection.name), use->name);
+          }))
+        continue;
+      connection.name = outer_name(name, connection.name);
+      connection.from.node = outer_name(name, connection.from.node);
+      for (VP::Endpoint &to : connection.to)
+        to.node = outer_name(name, to.node);
+      made.connections.push_back(std::move(connection));
+    }
+    files.save(made, (folder / VP::manifest_file).string());
+  }
+
+  // The params a use gives its recipe: each the view sets on the use, or on a node
+  // inside it, that the recipe's own node there lacks or sets otherwise, a node inside
+  // by its path in the use.
+  std::vector<VP::Param> changed_params(VP::FilePort &files,
+                                        const VP::View &graph,
+                                        const VP::Node &use,
+                                        const std::string &from) const {
+    const Copy fresh = recipe(files, from);
+    std::vector<VP::Param> params;
+    for (const VP::Node &node : graph.nodes) {
+      const std::optional<std::string> inner = inner_name(use.name, node.name);
+      if (!inner)
+        continue;
+      const Inner *const theirs = fresh.find(*inner);
+      for (const VP::Param &param : node.params)
+        if (const VP::Param *const set = theirs ? theirs->node.param(param.key) : nullptr;
+            !set || set->value != param.value)
+          params.push_back({inner->empty() ? param.key : *inner + '.' + param.key,
+                            param.value});
+    }
+    return params;
+  }
+
   std::filesystem::path _library;
   VP::Command _list;
   VP::Command _drop;
   VP::Command _sync;
+  VP::Command _make;
 };
 
 } // namespace
