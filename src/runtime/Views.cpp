@@ -490,6 +490,30 @@ void Views::reload(Hosted &hosted) {
   }
 }
 
+// Over an edit waiting for the next frame too, as the files may have changed after it in
+// the same line: remove deletes a node's files after its node remove keep.
+void Views::relist() {
+  for (const std::unique_ptr<Hosted> &hosted : _hosted) {
+    if (hosted->removed)
+      continue;
+    View view = hosted->current();
+    const std::vector<std::string> notes = Manifest::refresh(view);
+    if (std::ranges::equal(view.nodes,
+                           hosted->current().nodes,
+                           std::ranges::equal_to{},
+                           &Node::files,
+                           &Node::files))
+      continue;
+    try {
+      hosted->edited_flat = flat_of(view, _recipes);
+      hosted->edited = std::make_unique<View>(std::move(view));
+      note(_wiring.log, *hosted->edited, Level::info, notes);
+    } catch (const std::exception &failure) {
+      _wiring.log.write(Level::error, Tag::mod, failure.what());
+    }
+  }
+}
+
 // The manifest as it is now, and over it the edits since its file last held the view, as
 // a restart replays them (V08), so a view a command hosted, as the ide the arguments
 // name, runs on, and no edit is lost; their mark stays, as the file holds them no more

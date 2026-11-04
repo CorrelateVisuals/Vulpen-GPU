@@ -217,12 +217,16 @@ std::string Ports::read(std::string_view file) {
 }
 
 void Ports::save(std::string_view file, std::string_view text) {
+  std::error_code unread;
+  if (!std::filesystem::exists(absolute(file), unread))
+    listing_changed(absolute(file));
   Files::save(absolute(file), text);
 }
 
 void Ports::remove(std::string_view file) {
   Files::remove(absolute(file));
   _moved.push_back({absolute(file).lexically_normal().string(), {}});
+  listing_changed(absolute(file));
 }
 
 std::vector<std::string> Ports::list(std::string_view folder) {
@@ -243,20 +247,40 @@ std::vector<std::string> Ports::list(std::string_view folder) {
 
 void Ports::copy(std::string_view from, std::string_view to) {
   Files::copy(absolute(from), absolute(to));
+  listing_changed(absolute(to));
 }
 
 void Ports::rename(std::string_view from, std::string_view to) {
   Files::rename(absolute(from), absolute(to));
   _moved.push_back({absolute(from).lexically_normal().string(),
                     absolute(to).lexically_normal().string()});
+  listing_changed(absolute(from));
+  listing_changed(absolute(to));
 }
 
 void Ports::make(std::string_view folder) {
   Files::make(absolute(folder));
+  listing_changed(absolute(folder));
 }
 
 std::span<const Moved> Ports::moved() const {
   return _moved;
+}
+
+bool Ports::relisted() {
+  return std::exchange(_relisted, false);
+}
+
+// A hidden file, or one in a hidden folder, as .vulpen/ in a view's, is what the parts
+// rewrite as they go, which no node's files list; the folders above it may be hidden too,
+// as a person's checkout can be.
+void Ports::listing_changed(const std::filesystem::path &path) {
+  const std::filesystem::path normal = path.lexically_normal();
+  const auto hidden = [](const std::filesystem::path &part) {
+    return part.string().starts_with('.');
+  };
+  _relisted = _relisted || !(hidden(normal.filename()) ||
+                             hidden(normal.parent_path().filename()));
 }
 
 void Ports::save(const View &view, std::string_view file) {

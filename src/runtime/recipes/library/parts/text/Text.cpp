@@ -75,11 +75,18 @@ std::string joined(const std::vector<std::string> &lines, bool crlf) {
 
 // Its folder and name, which tell apart the many view.vlp of a project, and a mark while
 // it has changes.
+// Whether a file is in its folder, as the file port lists it.
+bool there(VP::FilePort &files, const std::filesystem::path &path) {
+  const std::vector<std::string> names = files.list(path.parent_path().string());
+  return std::ranges::find(names, path.filename().string()) != names.end();
+}
+
 std::string label_of(const Document &document) {
   const std::filesystem::path path(document.path);
-  return std::format("{}/{}{}",
+  return std::format("{}/{}{}{}",
                      path.parent_path().filename().string(),
                      path.filename().string(),
+                     document.gone ? " (deleted)" : "",
                      document.changed ? "*" : "");
 }
 
@@ -1078,9 +1085,14 @@ void Text::open(VP::FilePort &files, std::string_view path, VP::File watched) {
 // new's save of a manifest, or by another program, shows as it is there, its caret and
 // rows shown kept as far as it reaches; its edits go, as they were of the text before.
 // One with changes keeps them, which write then refuses to write over. One gone reads as
-// empty, as the file port gives it, and keeps its text, so write force can make it again;
+// empty, as the file port gives it, and keeps its text, so write force can make it again,
+// its tab marked deleted until the file is there again;
 // one that cannot be read is named once and no longer watched, the editor going on.
 void Text::reread(VP::Cook &frame, Document &document) {
+  if (document.gone && there(frame.files(), document.path)) {
+    document.gone = false;
+    name_tabs();
+  }
   if (document.changed || document.watched.index == 0)
     return;
   std::string_view text;
@@ -1134,6 +1146,7 @@ void Text::write(VP::Call &call, bool force) {
   files.save(document.path, text);
   document.disk = std::move(text);
   document.changed = false;
+  document.gone = false;
   document.saved = document.undone.size();
   name_tabs();
   call.reply(std::format("wrote {}", document.path));
@@ -1180,8 +1193,8 @@ void Text::drop(VP::CommandPort &commands, std::size_t at) {
 
 // A file a line moved, or the folder holding it, as node, file and view rename do, goes
 // on showing where it went, so write saves it there, the param naming it there too; one
-// deleted with nothing typed closes, and one with changes stays, its text kept, which
-// write force makes the file of again, and close force drops.
+// deleted with nothing typed closes, and one with changes stays, its text kept and its tab
+// marked deleted, which write force makes the file of again, and close force drops.
 void Text::follow(VP::FilePort &files, VP::CommandPort &commands) {
   for (const VP::Moved &moved : files.moved())
     for (std::size_t at = _documents.size(); at-- > 0;) {
@@ -1194,6 +1207,9 @@ void Text::follow(VP::FilePort &files, VP::CommandPort &commands) {
       if (moved.to.empty()) {
         if (!document.changed)
           drop(commands, at);
+        else
+          document.gone = true;
+        name_tabs();
         continue;
       }
       const std::string to =
@@ -1286,8 +1302,13 @@ void Text::name_tabs() {
   std::string changed;
   std::size_t count = 0;
   for (std::size_t at = 0; at < _documents.size(); ++at) {
+    // open refuses a path that names nothing, so a file gone is shown as open shows it.
+    const std::string shows =
+        _documents[at].gone
+            ? std::format("{}: param set {} file {}", _view, _name, _documents[at].path)
+            : std::format("open {}", _documents[at].path);
     _tabs->push_back({.label = label_of(_documents[at]),
-                      .command = std::format("open {}", _documents[at].path),
+                      .command = shows,
                       .current = at == _shown,
                       .close = std::format("close {}", _documents[at].path),
                       .move = std::format("tab move {}", _documents[at].path),

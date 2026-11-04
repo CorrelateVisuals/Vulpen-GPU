@@ -507,6 +507,8 @@ void Runtime::loop() {
                    Tag::run,
                    std::format("quit restart: {}; the run goes on", failure.what()));
       }
+    if (_ports.relisted())
+      _views->relist();
     prepare();
     _ports.frame();
     _commands.frame();

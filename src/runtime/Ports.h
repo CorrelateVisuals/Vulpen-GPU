@@ -50,6 +50,10 @@ public:
   void listen(Commands &commands);
   // The window whose clipboard copy and paste use while it is open; null once it closes.
   void attach(const Window *window);
+  // Whether a file or a folder was made, removed, moved or copied through the port since
+  // the last ask, so the views list their nodes' files anew; a hidden one, as the parts
+  // keep in .vulpen/, never counts, as no node holds it.
+  bool relisted();
   // A file a node opens while it binds. One open already is shared, so a rebuild's open
   // reads nothing. Throws naming a file that is there but cannot be read (A02).
   File open(const std::filesystem::path &file);
@@ -78,6 +82,8 @@ private:
 
   Open &opened(File file);
   void refresh(Open &open);
+  // Marks a change a node's folder may hold, unless the path is hidden.
+  void listing_changed(const std::filesystem::path &path);
   std::string_view text(File file) override;
   void save(File file, std::string_view text) override;
   std::string read(std::string_view file) override;
@@ -134,6 +140,7 @@ private:
   // frame before's.
   std::vector<Moved> _moved;
   std::size_t _moved_before = 0;
+  bool _relisted = false; // since relisted last asked
   // The input command's forms, as the window's events come in.
   struct Input {
     Command key_down, key_up, text, pointer, button_down, button_up, wheel, focus_on,

@@ -1336,12 +1336,13 @@ void Graph::arrange_anew(VP::FilePort &files) {
   keep(files);
 }
 
-// The nodes and the views selected go, a line each, as node remove takes a node with the
-// nodes inside it, the part it has in connections and its folder, and view close stops
-// hosting a view; a node inside another selected goes with that one. Their boxes leave
-// the .ini, a node's files' with it. Files, folders and the nodes a recipe brings stay,
-// and stay selected: no line removes them here. What it reads of the view is read first,
-// since each line replaces the view.
+// The nodes and the views selected go, a line each, as the menus' remove of a node's
+// folder takes the node with the nodes inside it, the part it has in connections and its
+// folder, refusing one that holds files without force, and view close stops hosting a
+// view; a node with no folder goes by node remove keep, and a node inside another
+// selected with that one. Their boxes leave the .ini, a node's files' with it. Files,
+// folders and the nodes a recipe brings stay, and stay selected: no line removes them
+// here. What it reads of the view is read first, since each line replaces the view.
 void Graph::erase(VP::Cook &frame, const VP::View &view) {
   const auto removed = [&](const std::string &name) {
     const auto &children = view.children;
@@ -1356,8 +1357,13 @@ void Graph::erase(VP::Cook &frame, const VP::View &view) {
       continue;
     const bool hosted =
         std::ranges::find(view.children, name, &VP::Child::name) != view.children.end();
-    lines.push_back(
-        std::format("{}: {} {}", _shown, hosted ? "view close" : "node remove", name));
+    const std::filesystem::path folder = view.file.parent_path() / VP::path_of(name);
+    if (hosted)
+      lines.push_back(std::format("{}: view close {}", _shown, name));
+    else if (folder_named(frame.files(), folder))
+      lines.push_back(std::format("{}: remove {}/", _shown, folder.generic_string()));
+    else
+      lines.push_back(std::format("{}: node remove keep {}", _shown, name));
     for (auto *kept : {&_arranged.places, &_arranged.sizes})
       std::erase_if(*kept, [&](const auto &box) {
         return VP::within(box.first, name) || box.first.starts_with(name + '/');

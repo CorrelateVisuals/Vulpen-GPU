@@ -71,6 +71,10 @@ public:
   // was read, and the edits since its file last held the view are replayed over it, so
   // they stay; a running graph stays when its manifest does not load.
   void reload();
+  // After a line made, removed or moved files: each node lists the files its folder holds
+  // now, and a view whose lists changed rebuilds at the next frame, so what the graph,
+  // Tab and ls name is there, in a release build too, which has no live build to reload.
+  void relist();
 
 private:
   struct Hosted;

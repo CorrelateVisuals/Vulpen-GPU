@@ -67,6 +67,8 @@ struct Document {
   Scroll scroll; // the rows shown
   Scroll columns{Scroll::Axis::across};
   bool changed = false; // since it was opened or last written
+  // A line deleted its file while it held changes, which it keeps until written or closed.
+  bool gone = false;
   // The file as it was read or last written, so write sees a change on disk since, by a
   // line or another program, and the editor shows one it holds no changes of.
   std::string disk;
