@@ -673,8 +673,9 @@ void Graph::home() {
 // The font's zoom, as zoom in changes it, is the graph's too, as a browser's zoom is the
 // page's: the boxes keep their size on the ground, laid out in the font's cell at zoom 1,
 // and the graph draws as much nearer or farther as the font grew, about the area's
-// middle, or from home again while it was at home, so control with + never changes how
-// a box fits the ground's lines.
+// middle, so control with + never changes how a box fits the ground's lines and grows the
+// boxes as much as the text. It leaves home, as the wheel does: home would fit the boxes
+// to an area the panels' own bars, growing with the text, have made smaller.
 void Graph::follow_font() {
   const float drawn =
       static_cast<float>(_font->cell.y) / static_cast<float>(_font->base.y);
@@ -685,7 +686,7 @@ void Graph::follow_font() {
   _pan_zoom.pan = glm::round(middle - (middle - _pan_zoom.pan) * by);
   _pan_zoom.zoom *= by;
   _home_zoom *= by;
-  _homing = _homing || _at_home;
+  _at_home = false;
 }
 
 // In the order the events came, so a press is tested where the pointer was then. With
