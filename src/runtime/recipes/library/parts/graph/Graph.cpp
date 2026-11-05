@@ -643,11 +643,10 @@ void Graph::name_tab(VP::Cook &frame) {
   _tabs->back().command.clear();
 }
 
-// Every box in the middle of the area, as near as lets them all show with a margin round
-// them, never nearer than the font's zoom, so text keeps the size the font drew it at
-// where it can; where even the least zoom cannot hold them, from their left or their top,
-// at the least. Whole pixels from the area's top left, so text stays as sharp as the font
-// drew it.
+// The boxes at the font's zoom, so their text is the size the editor's is, the font's
+// glyphs one to one: in the middle of the area while they fit in it with a margin round
+// them, else from their left or their top, as the wheel zooms out to see them all. Whole
+// pixels from the area's top left, so text stays as sharp as the font drew it.
 void Graph::home() {
   _pan_zoom.home();
   _homed = _area->extent;
@@ -663,22 +662,20 @@ void Graph::home() {
   const glm::vec2 room(_area->extent);
   const glm::vec2 margin(margin_of());
   const glm::vec2 size(high - low);
-  const glm::vec2 fits = (room - 2.0f * margin) / size;
-  _pan_zoom.zoom =
-      std::clamp(std::min(fits.x, fits.y), PanZoom::least * _drawn, _drawn);
+  _pan_zoom.zoom = _drawn;
   _pan_zoom.pan = glm::round(glm::max((room - size * _pan_zoom.zoom) / 2.0f, margin) -
                              glm::vec2(low) * _pan_zoom.zoom);
 }
 
 // The font's zoom, as zoom in changes it, is the graph's too, as a browser's zoom is the
 // page's: the boxes keep their size on the ground, laid out in the font's cell at zoom 1,
-// and the graph draws as much nearer or farther as the font grew, about the area's
-// middle, so control with + never changes how a box fits the ground's lines and grows the
-// boxes as much as the text. It leaves home, as the wheel does: home would fit the boxes
-// to an area the panels' own bars, growing with the text, have made smaller.
+// and the graph draws as much nearer or farther as the font's glyphs grew wide, so at
+// home its text is the editor's, glyph for glyph, and control with + never changes how a
+// box fits the ground's lines. At home it goes home again, as the panels' bars grow with
+// the text; elsewhere it zooms about the area's middle.
 void Graph::follow_font() {
   const float drawn =
-      static_cast<float>(_font->cell.y) / static_cast<float>(_font->base.y);
+      static_cast<float>(_font->cell.x) / static_cast<float>(_font->base.x);
   if (drawn == _drawn)
     return;
   const float by = drawn / std::exchange(_drawn, drawn);
@@ -686,7 +683,7 @@ void Graph::follow_font() {
   _pan_zoom.pan = glm::round(middle - (middle - _pan_zoom.pan) * by);
   _pan_zoom.zoom *= by;
   _home_zoom *= by;
-  _at_home = false;
+  _homing = _homing || _at_home;
 }
 
 // In the order the events came, so a press is tested where the pointer was then. With
@@ -1676,8 +1673,7 @@ void Graph::write_row(glm::vec2 at,
     written.add({.offset = offset,
                  .extent = glm::uvec2(glm::max(glm::ivec2(high) - offset, glm::ivec2(0))),
                  .role = role,
-                 .scale = _pan_zoom.zoom * static_cast<float>(cell.x) /
-                          static_cast<float>(_font->cell.x),
+                 .scale = _pan_zoom.zoom / _drawn,
                  .cut = glm::uvec2(glm::max(glm::ivec2(low) - offset, glm::ivec2(0)))},
                 row.substr(first, last - first));
   }
