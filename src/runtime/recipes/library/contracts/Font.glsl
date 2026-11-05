@@ -3,6 +3,8 @@
 // monospace, so every glyph fills one cell, on screen as in the atlas.
 struct Font {
   uvec2 cell;   // a glyph's width and height, in pixels
+  uvec2 base;   // the cell at zoom 1, which a layout that keeps its size whatever the
+                // zoom counts in, as the graph's boxes on its ground
   uvec2 atlas;  // the atlas image's width and height, in pixels
   uint columns; // of cells in a row of the atlas
   uint first;   // the code of its first glyph

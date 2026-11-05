@@ -172,6 +172,8 @@ VP_VIEW::Font Font::bake(VP::Cook &frame) const {
   stbtt_GetFontVMetrics(&font, &ascent, &descent, &gap);
   stbtt_GetCodepointHMetrics(&font, first, &advance, nullptr);
   const glm::ivec2 cell(std::lround(static_cast<float>(advance) * scale), tall);
+  const float unzoomed = stbtt_ScaleForPixelHeight(&font, static_cast<float>(_height));
+  const glm::uvec2 base(std::lround(static_cast<float>(advance) * unzoomed), _height);
   if (cell.x <= 0 || cell.y <= 0)
     throw std::runtime_error(std::format("height = {} makes a cell of no size", tall));
   const glm::ivec2 size = cell * glm::ivec2(columns, rows);
@@ -202,6 +204,7 @@ VP_VIEW::Font Font::bake(VP::Cook &frame) const {
   }
   frame.upload(_atlas, pixels, glm::uvec2(size));
   return {.cell = glm::uvec2(cell),
+          .base = base,
           .atlas = glm::uvec2(size),
           .columns = columns,
           .first = first,

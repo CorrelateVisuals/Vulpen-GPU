@@ -316,9 +316,11 @@ void Graph::cook(VP::Cook &frame) {
     build(frame.files(), edited, flat);
   if (!std::exchange(_tab_named, true))
     name_tab(frame);
-  const glm::uvec2 cell = _font->cell;
+  const glm::uvec2 cell = _font->base;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
-                    cell.x != 0 && cell.y != 0;
+                    cell.x != 0 && cell.y != 0 && _font->cell.x != 0;
+  if (room)
+    follow_font();
   const auto lay_out = [&] {
     if (room && (!_laid || cell != _laid_cell)) {
       _layout.lay_out(_boxes, _arranged, cell);
@@ -479,7 +481,7 @@ void Graph::focus(std::string_view left) {
       continue;
     const Placed &placed = _layout.placed()[at];
     _pan_zoom.zoom =
-        std::max(std::min(enter_zoom, PanZoom::most) /
+        std::max(std::min(enter_zoom, PanZoom::most) * _drawn /
                      std::pow(PanZoom::step, static_cast<float>(focus_steps)),
                  _home_zoom);
     const glm::vec2 middle =
@@ -642,9 +644,10 @@ void Graph::name_tab(VP::Cook &frame) {
 }
 
 // Every box in the middle of the area, as near as lets them all show with a margin round
-// them, never nearer than zoom 1, so text keeps its size where it can; where even the
-// least zoom cannot hold them, from their left or their top, at the least. Whole pixels
-// from the area's top left, so text stays as sharp as the font drew it.
+// them, never nearer than the font's zoom, so text keeps the size the font drew it at
+// where it can; where even the least zoom cannot hold them, from their left or their top,
+// at the least. Whole pixels from the area's top left, so text stays as sharp as the font
+// drew it.
 void Graph::home() {
   _pan_zoom.home();
   _homed = _area->extent;
@@ -661,9 +664,28 @@ void Graph::home() {
   const glm::vec2 margin(margin_of());
   const glm::vec2 size(high - low);
   const glm::vec2 fits = (room - 2.0f * margin) / size;
-  _pan_zoom.zoom = std::clamp(std::min(fits.x, fits.y), PanZoom::least, 1.0f);
+  _pan_zoom.zoom =
+      std::clamp(std::min(fits.x, fits.y), PanZoom::least * _drawn, _drawn);
   _pan_zoom.pan = glm::round(glm::max((room - size * _pan_zoom.zoom) / 2.0f, margin) -
                              glm::vec2(low) * _pan_zoom.zoom);
+}
+
+// The font's zoom, as zoom in changes it, is the graph's too, as a browser's zoom is the
+// page's: the boxes keep their size on the ground, laid out in the font's cell at zoom 1,
+// and the graph draws as much nearer or farther as the font grew, about the area's
+// middle, or from home again while it was at home, so control with + never changes how
+// a box fits the ground's lines.
+void Graph::follow_font() {
+  const float drawn =
+      static_cast<float>(_font->cell.y) / static_cast<float>(_font->base.y);
+  if (drawn == _drawn)
+    return;
+  const float by = drawn / std::exchange(_drawn, drawn);
+  const glm::vec2 middle = glm::vec2(_area->extent) / 2.0f;
+  _pan_zoom.pan = glm::round(middle - (middle - _pan_zoom.pan) * by);
+  _pan_zoom.zoom *= by;
+  _home_zoom *= by;
+  _homing = _homing || _at_home;
 }
 
 // In the order the events came, so a press is tested where the pointer was then. With
@@ -1105,14 +1127,15 @@ std::size_t Graph::row_under(std::size_t at) const {
 // goes on while the level up is read, which would take it up a level each step.
 void Graph::turn(VP::Cook &frame, float steps, glm::vec2 about) {
   const float farthest = _home_zoom * leave_share;
-  _pan_zoom.wheel(steps, about - glm::vec2(_area->offset), farthest);
+  _pan_zoom.wheel(
+      steps, about - glm::vec2(_area->offset), farthest, PanZoom::most * _drawn);
   _at_home = false;
   if (steps < 0.0f && _pan_zoom.zoom <= farthest) {
     if (_left.empty())
       leave(frame);
     return;
   }
-  if (steps <= 0.0f || _pan_zoom.zoom < std::min(enter_zoom, PanZoom::most))
+  if (steps <= 0.0f || _pan_zoom.zoom < std::min(enter_zoom, PanZoom::most) * _drawn)
     return;
   if (const std::size_t at = hit(about); at != no_box && _boxes.boxes[at].role)
     enter(frame, at);
@@ -1621,7 +1644,8 @@ void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
 // What of the row shows, a Label a piece: inside the area, and not under a box over it,
 // which glyphs cuts its characters at, so a row half out of view, or half under a box,
 // shows the rest; each piece holds only the characters it shows. Its cells are the
-// font's at the graph's zoom.
+// font's at zoom 1 at the graph's zoom, which holds the font's, so the glyphs the font
+// drew at its zoom show at their size from home.
 void Graph::write_row(glm::vec2 at,
                       std::string_view row,
                       std::uint32_t role,
@@ -1651,7 +1675,8 @@ void Graph::write_row(glm::vec2 at,
     written.add({.offset = offset,
                  .extent = glm::uvec2(glm::max(glm::ivec2(high) - offset, glm::ivec2(0))),
                  .role = role,
-                 .scale = _pan_zoom.zoom,
+                 .scale = _pan_zoom.zoom * static_cast<float>(cell.x) /
+                          static_cast<float>(_font->cell.x),
                  .cut = glm::uvec2(glm::max(glm::ivec2(low) - offset, glm::ivec2(0)))},
                 row.substr(first, last - first));
   }

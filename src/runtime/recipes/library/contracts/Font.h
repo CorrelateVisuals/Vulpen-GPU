@@ -13,9 +13,10 @@ inline constexpr char first_printable = ' ';
 inline constexpr char last_printable = '~';
 
 // contracts/Font.glsl's Font, member for member, as C++ writes it; the loader holds it
-// to the shader's (RA03). std430 aligns it as its uvec2, so a list of them steps 32 bytes.
+// to the shader's (RA03). std430 aligns it as its uvec2, so a list of them steps 40 bytes.
 struct alignas(8) Font {
   glm::uvec2 cell{};
+  glm::uvec2 base{};
   glm::uvec2 atlas{};
   std::uint32_t columns = 0;
   std::uint32_t first = 0;
@@ -23,6 +24,7 @@ struct alignas(8) Font {
 
   static constexpr auto members() {
     return std::array{VP_MEMBER(Font, cell),
+                      VP_MEMBER(Font, base),
                       VP_MEMBER(Font, atlas),
                       VP_MEMBER(Font, columns),
                       VP_MEMBER(Font, first),

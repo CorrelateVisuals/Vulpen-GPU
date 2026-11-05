@@ -152,6 +152,7 @@ private:
   void show_folder(VP::CommandPort &commands,
                    const std::filesystem::path &folder) const;
   void home();
+  void follow_font();
   void follow(VP::Cook &frame, bool room, const VP::Event &event);
   void press(VP::Cook &frame, std::uint32_t presses);
   // A right press opens the menu of what lies under the pointer, as menu.ini names a kind
@@ -304,6 +305,7 @@ private:
   bool _refused = false; // its .ini holds a mistake, which no save writes over
   PanZoom _pan_zoom;
   float _home_zoom = 1.0f; // as near as home is, a quarter of which zooming out goes up
+  float _drawn = 1.0f;     // the font's zoom, its cell over its cell at zoom 1, in _pan_zoom
   glm::uvec2 _homed{};     // the area's size home was worked out for
   // Until the frame home is worked out in, which needs the boxes laid out in the area.
   bool _homing = false;
