@@ -162,22 +162,28 @@ add_dependencies(images statistics)
 
 # GLSL to SPIR-V at <out>/<name>.spv, as Shader loads it; the arguments after out are the
 # compiler's include flags. Every shader is GLSL 4.60 that may #include, so the build gives
-# each its version and the include extension, and a shader starts with what it does; a
-# line of an error still counts from the shader's first. A driver may take invalid SPIR-V
-# without a word, or crash on it, so <name>.spv.valid, which a target depends on, exists
-# only once spirv-val passed, and the build fails while any shader does not (RV02).
+# each its version and the include extension, and a shader starts with what it does:
+# glsl.cmake writes them before it into <out>/<name>.glsl, which glslang compiles with the
+# shader's own folder first among the includes, and an error still names the shader and
+# counts its lines from its first. A driver may take invalid SPIR-V without a word, or
+# crash on it, so <name>.spv.valid, which a target depends on, exists only once spirv-val
+# passed, and the build fails while any shader does not (RV02).
 find_program(GLSLANG glslangValidator REQUIRED)
 find_program(SPIRV_VAL spirv-val REQUIRED)
 set(glsl_version 460)
 set(glsl_preamble "#extension GL_GOOGLE_include_directive : require")
+set(glsl_script ${PROJECT_SOURCE_DIR}/src/runtime/cmake/glsl.cmake)
 function(vulpen_spirv shader out)
   get_filename_component(name ${shader} NAME)
+  get_filename_component(folder ${shader} DIRECTORY)
+  add_custom_command(OUTPUT ${out}/${name}.glsl
+    COMMAND ${CMAKE_COMMAND} -DSHADER=${shader} -DOUTPUT=${out}/${name}.glsl
+            -DVERSION=${glsl_version} -DPREAMBLE=${glsl_preamble} -P ${glsl_script}
+    DEPENDS ${shader} ${glsl_script} VERBATIM)
   add_custom_command(OUTPUT ${out}/${name}.spv
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${out}
-    COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet --glsl-version ${glsl_version}
-            --preamble-text ${glsl_preamble} ${ARGN}
-            --depfile ${out}/${name}.d -o ${out}/${name}.spv ${shader}
-    DEPENDS ${shader} DEPFILE ${out}/${name}.d VERBATIM)
+    COMMAND ${GLSLANG} --target-env vulkan1.2 --quiet -I${folder} ${ARGN}
+            --depfile ${out}/${name}.d -o ${out}/${name}.spv ${out}/${name}.glsl
+    DEPENDS ${out}/${name}.glsl DEPFILE ${out}/${name}.d VERBATIM)
   add_custom_command(OUTPUT ${out}/${name}.spv.valid
     COMMAND ${SPIRV_VAL} --target-env vulkan1.2 ${out}/${name}.spv
     COMMAND ${CMAKE_COMMAND} -E touch ${out}/${name}.spv.valid
