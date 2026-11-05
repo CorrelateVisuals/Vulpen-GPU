@@ -42,14 +42,16 @@ std::pair<std::string_view, std::string_view> split_port(std::string_view inside
 // its room from the deck whose holds param names its view, at that deck's port named for
 // the view, at the ports its rooms param names, each a node inside the pane and a port,
 // joined by commas, and the keys part's typed, which its host connects to its typed, at
-// those its keys param names; a view no deck holds joins the holds of the deck holding
-// the view presented before it, or else of the first deck, as view load hosts one, and a
-// view closed leaves them. It connects a view's window to its pane, at the ports its
-// pictures param names, while its deck shows it, and the window of the view presented
-// also to the ports its to param names, as the image filling the window in perform mode,
-// through the connection shared/Presented.h names: one connection a window, as a port
-// joins one; the window of a view no deck shows nor presented draws nowhere. The view
-// presented is the current view's project, or the one holding the current view.
+// those its keys param names; a view hosted anew, or presented anew, that no deck holds
+// joins the holds of the deck holding the view presented before it, or else of the first
+// deck, as view load hosts one, and a view closed leaves them, so one a deck let go of,
+// as its tab's close mark does, stays hosted with no pane until it is presented again. It
+// connects a view's window to its pane, at the ports its pictures param names, while its
+// deck shows it, and the window of the view presented also to the ports its to param
+// names, as the image filling the window in perform mode, through the connection
+// shared/Presented.h names: one connection a window, as a port joins one; the window of a
+// view no deck shows nor presented draws nowhere. The view presented is the current
+// view's project, or the one holding the current view.
 class Panes final : public VP::Operator {
   // A pane as the view holds it: its node, the view and the deck its room comes from, and
   // the connection bringing it.
@@ -98,6 +100,7 @@ class Panes final : public VP::Operator {
     _started = true;
     if (now != _selected) {
       _previous = std::exchange(_selected, std::string(now));
+      _joining.push_back(_selected);
       _dirty = true;
     }
     auto hosted = projects(top, _view);
@@ -108,14 +111,24 @@ class Panes final : public VP::Operator {
       for (const std::string &was : _hosted)
         if (std::ranges::find(names, was) == names.end())
           _closed.push_back(was);
+      for (const std::string &name : names)
+        if (std::ranges::find(_hosted, name) == _hosted.end())
+          _joining.push_back(name);
       _hosted = std::move(names);
+      _dirty = true;
+    }
+    // Any edit of its view, as a deck letting go of a view, which takes its pane.
+    if (const VP::View *const own = frame.view(_view); own != _seen) {
+      _seen = own;
       _dirty = true;
     }
     if (!std::exchange(_dirty, false))
       return;
     VP::CommandPort &commands = frame.commands();
+    present_next(commands, *frame.view(_view));
     hold(commands, *frame.view(_view));
     _closed.clear();
+    _joining.clear();
     place(commands, *frame.view(_view));
     connect(commands, *frame.view(_view));
   }
@@ -124,9 +137,26 @@ class Panes final : public VP::Operator {
     return std::ranges::find(_hosted, view) != _hosted.end();
   }
 
-  // Each deck lets go of the views closed since, and a view hosted that no deck holds
-  // joins the deck holding the view presented before it, or else the first deck. Whether
-  // it sent a line.
+  // The view presented keeps a tab: one a deck let go of, as its close mark does, hands
+  // the presenting on to the first view a deck holds, so the one let go of draws nowhere
+  // from the frame that presents the other; with none held, it joins a deck again.
+  void present_next(VP::CommandPort &commands, const VP::View &own) {
+    if (_selected.empty() || !hosts(_selected) || !deck_of(own, _selected).empty() ||
+        std::ranges::find(_joining, _selected) != _joining.end())
+      return;
+    for (const VP::Node &node : own.nodes)
+      if (node.recipe == deck_recipe)
+        for (const std::string &view : split_names(param_value(node, holds_param)))
+          if (hosts(view)) {
+            commands.send(std::format("view switch {}", view));
+            return;
+          }
+    _joining.push_back(_selected);
+  }
+
+  // Each deck lets go of the views closed since, and a view hosted or presented since
+  // that no deck holds joins the deck holding the view presented before it, or else the
+  // first deck. Whether it sent a line.
   bool hold(VP::CommandPort &commands, const VP::View &own) {
     struct Held {
       std::string deck;
@@ -152,7 +182,7 @@ class Panes final : public VP::Operator {
     Held *const before = holding(_previous);
     Held &active = before ? *before : decks.front();
     for (const std::string &view : _hosted)
-      if (!holding(view)) {
+      if (!holding(view) && std::ranges::find(_joining, view) != _joining.end()) {
         active.views.push_back(view);
         active.changed = true;
       }
@@ -386,6 +416,8 @@ class Panes final : public VP::Operator {
   std::vector<std::string> _pictures; // and its view's window
   std::vector<std::string> _hosted;   // the views hosted, as the frame before found them
   std::vector<std::string> _closed;   // those closed since the frame before
+  std::vector<std::string> _joining;  // those hosted or presented since, which may join
+  const VP::View *_seen = nullptr;    // its view, as the frame before found it
   std::string _selected;              // the view presented, or about to be
   std::string _previous;              // the one before it
   bool _started = false; // after the first frame, which may present the one hosted last

@@ -30,15 +30,16 @@ constexpr std::string_view empty_tab = "perform";
 // showing that view, as the panes part connects it, and the one shown gets the room, the
 // others none. A tab a view it holds that is hosted, in the order its holds param names
 // them, whose press presents the view, and so shows it here, the one presented labeled in
-// the string role's green, as perform mode shows that one, its close mark closing the
-// view; with none, a tab of its own, named perform, which does nothing pressed. Its shown
-// param follows the view presented as that comes to one it holds, so a save keeps the one
-// it shows and the docking part finds it. The focus on the pane it hides, while its host
-// connects the keys part's typed to its typed, goes to the pane it shows, the node of it
-// listed where the other's was, so keys go to the view seen. Showing none, it takes the
-// focus itself at a press in its room, as an empty editor does, so the panel holding it
-// is framed as the one in focus, and escape lets go of it; the first view it shows then
-// takes it, at the pane's first node.
+// the string role's green, as perform mode shows that one, its close mark letting go of
+// the view, which stays hosted and, shown by no deck, draws nowhere until it is presented
+// again; with none, a tab of its own, named perform, which does nothing pressed. Its
+// shown param follows the view presented as that comes to one it holds, so a save keeps
+// the one it shows and the docking part finds it. The focus on the pane it hides, while
+// its host connects the keys part's typed to its typed, goes to the pane it shows, the
+// node of it listed where the other's was, so keys go to the view seen. Showing none, it
+// takes the focus itself at a press in its room, as an empty editor does, so the panel
+// holding it is framed as the one in focus, and escape lets go of it; the first view it
+// shows then takes it, at the pane's first node.
 class Deck final : public VP::Operator {
   // A port to a pane: the view it is named for, the Rect it hands, and the nodes it
   // reaches, in the order the connection lists them.
@@ -134,11 +135,23 @@ class Deck final : public VP::Operator {
             {.label = view,
              .command = std::format("view switch {}", view),
              .current = view == _shows,
-             .close = std::format("view close {}", view),
+             .close = let_go(view),
              .role = view == _presented ? std::optional(VP_VIEW::role("string"))
                                         : std::nullopt});
     if (_tabs->empty())
       _tabs->push_back({.label = std::string(empty_tab), .current = true});
+  }
+
+  // The line a tab's close mark sends: the deck holds the view no more.
+  std::string let_go(std::string_view view) const {
+    std::vector<std::string> rest = _holds;
+    std::erase_if(rest, [&](const std::string &held) { return held == view; });
+    return rest.empty() ? std::format("{}: param unset {} {}", _view, _name, holds_param)
+                        : std::format("{}: param set {} {} {}",
+                                      _view,
+                                      _name,
+                                      holds_param,
+                                      joined_names(rest));
   }
 
   // The focus on the pane it hid goes to the node of the pane it shows listed where the
