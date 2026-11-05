@@ -106,7 +106,8 @@ bool nameable(std::string_view name) {
   return name.find_first_of(" \t\r") == std::string_view::npos;
 }
 
-// Whether a menu kind is a level's ground, which the graph's ground() names, as no box is.
+// Whether a menu kind is a level's ground, which the graph's ground() names, as no box
+// is.
 bool background(std::string_view kind) {
   return kind == "ground" || kind == "inside" || kind == "level";
 }
@@ -797,7 +798,8 @@ void Graph::context(VP::Cook &frame) {
     names.push_back(std::move(name));
   }
   // A background's menu ends with what the terminal does for the whole project, muted.
-  std::string line = std::format("menu {}{} for", kind, background(kind) ? " project" : "");
+  std::string line =
+      std::format("menu {}{} for", kind, background(kind) ? " project" : "");
   for (const std::string &name : names)
     line.append(" ").append(name);
   frame.commands().send(line);
@@ -997,8 +999,8 @@ void Graph::remember() {
 
 // What was arranged before the last change, or with again the change taken back last,
 // laid out and saved at once, as the change was; or, when a line a person ran came after
-// it, undo or redo of that line, as typed, so a node the graph's Delete key took comes
-// back as a box moved does.
+// it, undo or redo of that line, run in the terminal through its type as a key's line is,
+// so a node the graph's Delete key took comes back as a box moved does.
 void Graph::undo(VP::Cook &frame, bool again) {
   History &history = _histories[_ini];
   std::vector<Placing> &from = again ? history.redone : history.undone;
@@ -1007,7 +1009,7 @@ void Graph::undo(VP::Cook &frame, bool again) {
   const bool line = again ? from.empty() || from.back().lines > lines
                           : lines > 0 && (from.empty() || from.back().lines < lines);
   if (line) {
-    frame.commands().send_typed(again ? "redo" : "undo", {});
+    frame.commands().send(again ? "type redo" : "type undo");
     return;
   }
   if (from.empty() || _grab)
@@ -1352,10 +1354,10 @@ void Graph::arrange_anew(VP::FilePort &files) {
 
 // Each box selected goes as a right press on it offers: remove, or for a view it hosts
 // view close, pressed in the menus for every box of a kind at once, which hand each line
-// to the terminal, so it shows the line and its answer and undo takes it back, as the
-// menu's own press (V06); a node with files in its folder is refused, naming remove force.
-// A node inside another selected goes with that one, and what no menu removes, as what lies
-// outside, stays.
+// to the terminal's type, so it shows the line and its answer and undo takes it back, as
+// the menu's own press (V06); a node with files in its folder is refused, naming remove
+// force. A node inside another selected goes with that one, and what no menu removes, as
+// what lies outside, stays.
 void Graph::erase(VP::Cook &frame) {
   std::vector<std::pair<std::string, std::string>> lines; // a kind's, by the kind
   for (const std::string &name : _selection) {
@@ -1369,7 +1371,8 @@ void Graph::erase(VP::Cook &frame) {
         menu_of(frame, static_cast<std::size_t>(box - _boxes.boxes.begin()), false);
     if (kind.empty() || background(kind) || !nameable(named))
       continue;
-    auto line = std::ranges::find(lines, kind, &std::pair<std::string, std::string>::first);
+    auto line =
+        std::ranges::find(lines, kind, &std::pair<std::string, std::string>::first);
     if (line == lines.end())
       line = lines.insert(lines.end(),
                           {kind, std::format("menu press {} {} for", kind,

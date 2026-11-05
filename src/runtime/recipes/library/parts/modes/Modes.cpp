@@ -157,18 +157,22 @@ class Modes final : public VP::Operator {
         _known.push_back(child.name);
     }
     _started = true;
+    // A person's escape runs its line in the terminal, as a key's chord does, so the
+    // terminal shows it and what it answers, as quit's refusal while work would be lost.
     bool leave = false;
     for (const VP::Event &event : _typed->to(""))
       if (event.kind == VP::Event::Kind::key && event.down && event.name == escape) {
         leave = leave || _perform;
         if (!_perform)
-          frame.commands().send("quit");
+          frame.commands().send("type quit");
       }
     const auto erred = [](const VP::Logged &line) {
       return line.level == VP::Level::error;
     };
-    if (_perform && (leave || (presented.empty() && none) ||
-                     std::ranges::any_of(frame.commands().log(), erred)))
+    if (_perform && leave)
+      frame.commands().send("type mode edit");
+    else if (_perform && ((presented.empty() && none) ||
+                          std::ranges::any_of(frame.commands().log(), erred)))
       frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;
     *_shown = _perform ? *_area : VP_VIEW::Rect{};

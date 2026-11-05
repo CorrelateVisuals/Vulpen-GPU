@@ -153,11 +153,8 @@ param  = moves=yes
 recipe = panel
 
 # The menus of menu.ini, which a right press in the graph opens there, for what it is on,
-# their words handed to the menu's columns; a line a press ends goes to the terminal,
-# which runs it or, for a word the person adds, begins it, its panel shown. Listed before
-# the terminal, which reads what it hands, so the terminal and its panel go where they are
-# listed, under what the docking part draws over the panels, as a node waits for what it
-# reads.
+# their words handed to the menu's columns; a line a press ends goes to the terminal's
+# type, which runs it or, for a word the person adds, begins it, its panel shown.
 [node "ide.menus"]
 recipe = menus
 param  = line=ide.terminal.command-line
@@ -339,11 +336,6 @@ to   = ide.terminal.command-line.area
 from = ide.graph.graph.place
 to   = ide.terminal.command-line.place
 to   = ide.menus.place
-
-# The lines a menu's press ends, which the terminal runs as typed, or begins.
-[connection "handed"]
-from = ide.menus.handed
-to   = ide.terminal.command-line.handed
 
 # Each column's words, and where the menus opened, which the first column drops below.
 [connection "menu-at"]

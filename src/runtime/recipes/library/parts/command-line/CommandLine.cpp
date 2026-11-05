@@ -2,7 +2,6 @@
 // the rows above it are one part's job, and a part's class stays in one file's unnamed
 // namespace, so two copies of the part in one binary never clash.
 #include "contracts/Font.h"
-#include "contracts/Handed.h"
 #include "contracts/Item.h"
 #include "contracts/Label.h"
 #include "contracts/Palette.h"
@@ -55,6 +54,9 @@ constexpr std::string_view find_command = "find";
 // whose values Tab lists: the log levels (V09).
 constexpr char word_equals = '=';
 constexpr std::string_view log_word = "log";
+// How a line type brings goes in: run as if typed and sent, or begun for the person to
+// finish, alone or with what may come next listed.
+enum class Way : std::uint8_t { run, begin, list };
 // What parts a typed path into folders: Windows takes \ beside /.
 constexpr std::string_view separators =
     std::filesystem::path::preferred_separator == '/' ? "/" : "/\\";
@@ -421,21 +423,24 @@ struct Mark {
 // or control with a, selects in it, which control with c copies, with x cuts, and what is
 // typed or pasted replaces. Only the one on the terminal registers help, complete and
 // clear, as a command has one owner, and a terminal in a window sends them as it sends
-// any line, taking what clear answers as a terminal takes it; on the terminal, the end of
-// the input ends the run while no window is open, as one a launcher gives no input still
-// shows its window. In a window, control+f makes its line a search, the line typed set
-// aside: the words, which enter and control+f find again in the rows above, older first,
-// selecting the match and scrolling to it, until escape gives the line back. As a find
-// bar, on=find, it is a search alone, over a host whose control+f opens it: a row at the
-// top of its area, whose words enter and control+f send to the command its finds param
-// names, its words joined by commas, as the graph's select,find, or to find, which the
-// editors' owner answers, and which escape closes, the focus back to the host, and a
-// press on which takes the focus back from the host; the rest of its area goes to the
-// host. A line that names no view goes to the current view, which view switch moves, so
-// it needs no name and every log line still has one. The prompt shows that view's folder,
-// as a shell shows the one it is in, where a line's relative paths count from, and the
-// log keeps to that view. A line one word short of the node its usage wants acts on the
-// nodes the graph selects, a line each, as Tab with no word begun offers them.
+// any line, taking what clear answers as a terminal takes it; one in a window registers
+// type, the one way a key or a menu in the window runs a line a person could type, so
+// each shows here with what it answers, as if typed (V06), or is begun here for the
+// person to finish; on the terminal, the end of the input ends the run while no window is
+// open, as one a launcher gives no input still shows its window. In a window, control+f
+// makes its line a search, the line typed set aside: the words, which enter and control+f
+// find again in the rows above, older first, selecting the match and scrolling to it,
+// until escape gives the line back. As a find bar, on=find, it is a search alone, over a
+// host whose control+f opens it: a row at the top of its area, whose words enter and
+// control+f send to the command its finds param names, its words joined by commas, as the
+// graph's select,find, or to find, which the editors' owner answers, and which escape
+// closes, the focus back to the host, and a press on which takes the focus back from the
+// host; the rest of its area goes to the host. A line that names no view goes to the
+// current view, which view switch moves, so it needs no name and every log line still has
+// one. The prompt shows that view's folder, as a shell shows the one it is in, where a
+// line's relative paths count from, and the log keeps to that view. A line one word short
+// of the node its usage wants acts on the nodes the graph selects, a line each, as Tab
+// with no word begun offers them.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string on = node.param<std::string>("on");
@@ -470,11 +475,20 @@ class CommandLine final : public VP::Operator {
     }
     _title = node.param<std::string>("title");
     _tabs = &node.output<VP_VIEW::Items>("tabs");
-    // A graph's place, which the prompt shows, and the lines a menu hands it, when a
-    // connection brings them; the lines handed before it bound are not taken again.
+    _type = node.command("type <value>...",
+                         "runs a line here as if typed and sent: the rows show it and "
+                         "what it answers, the history keeps it, and undo takes it back "
+                         "as one step; how a key or a menu in the window runs a line, so "
+                         "each shows here");
+    _begin = node.command("type begin <value>...",
+                          "types a line here for a person to finish, running nothing; a "
+                          "last word \"\" ends it with a blank, as before a word not "
+                          "begun");
+    _list = node.command("type list <value>...",
+                         "types a line here as type begin does, and lists the words that "
+                         "may come next, as Tab lists them");
+    // A graph's place, which the prompt shows, when a connection brings it.
     _place = reached(node, "place") ? &node.input<VP_VIEW::Place>("place") : nullptr;
-    _handed = reached(node, "handed") ? &node.input<VP_VIEW::Handed>("handed") : nullptr;
-    _taken = _handed ? _handed->count : 0;
     _followed = false;
     name_tab();
   }
@@ -1111,29 +1125,38 @@ class CommandLine final : public VP::Operator {
     }
   }
 
-  // The lines a menu handed since it last looked, with room or not, as no key is pressed:
-  // each run as if typed and sent, so the rows and the history show it as a person's, the
-  // line being typed kept as it was; or begun in place of it, the caret at its end, for
-  // the person to finish, and for a list, what may come there listed, as Tab lists it.
+  // The lines type brought since the frame before, with room or not, as no key is
+  // pressed: each run as if typed and sent, so the rows and the history show it as a
+  // person's, the line being typed kept as it was; or begun in place of it, the caret at
+  // its end, for the person to finish, and for a list, what may come there listed, as Tab
+  // lists it. A line one runs may bring more, which wait for the next frame.
   void take(VP::Cook &frame) {
-    if (!_handed || _handed->count == _taken)
+    if (_brought.empty())
       return;
-    _taken = _handed->count;
-    for (const VP_VIEW::Handed::Line &handed : _handed->lines) {
-      if (handed.way != VP_VIEW::Handed::Way::run) {
-        _line = handed.text;
+    for (Brought &brought : std::exchange(_brought, {})) {
+      if (brought.way != Way::run) {
+        _line = std::move(brought.text);
         _caret = _line.size();
         _from.reset();
-        if (handed.way == VP_VIEW::Handed::Way::list)
+        if (brought.way == Way::list)
           complete_word(frame);
         continue;
       }
-      const std::string typed = std::exchange(_line, handed.text);
+      const std::string typed = std::exchange(_line, std::move(brought.text));
       const std::size_t caret = _caret;
       submit(frame);
       _line = typed;
       _caret = caret;
     }
+  }
+
+  // A line type brings, its words joined by single blanks, a last "" an empty word, so
+  // a line begun before a word not begun ends with its blank.
+  void bring(VP::Call &call, Way way) {
+    std::string text;
+    for (const std::string_view word : call.arguments())
+      text.append(text.empty() ? "" : " ").append(word == no_word ? "" : word);
+    _brought.push_back({.text = std::move(text), .way = way});
   }
 
   // Up steps back through the lines sent, down forward, past the newest to a new line.
@@ -1590,6 +1613,12 @@ class CommandLine final : public VP::Operator {
       complete(call);
     else if (call.is(_clear))
       call.reply(clear_screen);
+    else if (call.is(_type))
+      bring(call, Way::run);
+    else if (call.is(_begin))
+      bring(call, Way::begin);
+    else if (call.is(_list))
+      bring(call, Way::list);
   }
 
   // Its rows dropped as the oldest are, so a selection made before selects nothing.
@@ -1687,14 +1716,22 @@ class CommandLine final : public VP::Operator {
       call.reply(word);
   }
 
+  // A line type brought, which the next frame runs or begins.
+  struct Brought {
+    std::string text;
+    Way way = Way::run;
+  };
+
   VP::Command _help;
   VP::Command _complete;
   VP::Command _clear;
+  VP::Command _type;
+  VP::Command _begin;
+  VP::Command _list;
+  std::vector<Brought> _brought; // since the frame before, in the order they came
   std::string _view;   // the current view, as last found; empty for the host
   std::string _folder; // that view's, or the graph's place, as the prompt shows it
   const VP_VIEW::Place *_place = nullptr; // a connection's; none for none
-  const VP_VIEW::Handed *_handed = nullptr; // a connection's; none for none
-  std::uint64_t _taken = 0;                 // the handed batches it took
   std::string _placed;                    // its folder, as the prompt last showed it
   bool _followed = false; // until the first frame finds the current view
   std::vector<std::string> _kept; // the views the log keeps to, as it was told

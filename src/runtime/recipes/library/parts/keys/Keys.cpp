@@ -20,6 +20,9 @@ namespace {
 
 constexpr std::string_view keymap_file = "keymap.ini";
 constexpr std::string_view typed_port = "typed";
+// The terminal's command a chord's line runs through, so the terminal shows it and what
+// it answers, as a line a person typed there (V06).
+constexpr std::string_view type_command = "type";
 // The keys a chord holds while it presses its last, as the input port names them; a bit
 // each, in this order, in what a chord holds.
 constexpr std::array<std::string_view, 4> modifiers{"shift", "control", "alt", "super"};
@@ -97,6 +100,12 @@ std::vector<Chord> chords_of(std::string_view keymap,
             std::format("{} is given twice", trim(text.substr(0, equals))));
       if (!registered(chord.command, usages))
         throw std::runtime_error(std::format("no command takes {}", chord.command));
+      if (!registered(type_command, usages))
+        throw std::runtime_error(
+            std::format("{} runs in a terminal, through its {}, which no terminal in a "
+                        "window registered",
+                        chord.command,
+                        type_command));
       chords.push_back(std::move(chord));
     } catch (const std::runtime_error &mistake) {
       throw std::runtime_error(
@@ -106,8 +115,10 @@ std::vector<Chord> chords_of(std::string_view keymap,
   return chords;
 }
 
-// One owner for where a key goes: a keymap chord becomes the line it sends, and any other
-// key, and text, goes to the node in focus, so a key does nothing a typed command cannot.
+// One owner for where a key goes: a keymap chord runs the line it binds in the terminal,
+// through its type, as if typed there, so the terminal shows it and what it answers; any
+// other key, and text, goes to the node in focus, so a key does nothing a typed command
+// cannot.
 // Its focus param names the node that has the focus at first, and the focus command moves
 // it, or with no node leaves no node in focus, when the keys go to a node that reads
 // those no node in focus takes. The keymap is read again once it changes; a mistake in it
@@ -182,7 +193,7 @@ class Keys final : public VP::Operator {
     if (chord && !_typed->events.empty())
       return false;
     if (chord)
-      frame.commands().send(chord->command);
+      frame.commands().send(std::format("{} {}", type_command, chord->command));
     else
       _typed->events.push_back(event);
     refocus = chord || (event.kind == VP::Event::Kind::key && event.down &&
