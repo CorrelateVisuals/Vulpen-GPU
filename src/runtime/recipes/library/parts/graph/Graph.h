@@ -185,7 +185,7 @@ private:
   void find(VP::Call &call);
   void cd(VP::Call &call);
   void place(const VP::View *edited, const VP::View *flat);
-  void erase(VP::Cook &frame, const VP::View &view);
+  void erase(VP::Cook &frame);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
   void write(VP::Cook &frame, glm::uvec2 cell);

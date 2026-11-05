@@ -106,6 +106,11 @@ bool nameable(std::string_view name) {
   return name.find_first_of(" \t\r") == std::string_view::npos;
 }
 
+// Whether a menu kind is a level's ground, which the graph's ground() names, as no box is.
+bool background(std::string_view kind) {
+  return kind == "ground" || kind == "inside" || kind == "level";
+}
+
 // The view hosting the one named, found from the view vulpen started with down the views
 // each hosts, by the names lines address them with; none for that one, or one no view
 // hosts.
@@ -423,9 +428,8 @@ void Graph::command(VP::Call &call) {
 // out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
-  const VP::View *const view = frame.view(_shown);
-  if ((key == "delete" || key == "backspace") && chosen && view) {
-    erase(frame, *view);
+  if ((key == "delete" || key == "backspace") && chosen) {
+    erase(frame);
   } else if (const glm::ivec2 way = arrow_of(key); way != glm::ivec2(0) && chosen) {
     nudge(frame, way);
   } else if (key == undo_key && _control) {
@@ -793,8 +797,7 @@ void Graph::context(VP::Cook &frame) {
     names.push_back(std::move(name));
   }
   // A background's menu ends with what the terminal does for the whole project, muted.
-  const bool background = kind == "ground" || kind == "inside" || kind == "level";
-  std::string line = std::format("menu {}{} for", kind, background ? " project" : "");
+  std::string line = std::format("menu {}{} for", kind, background(kind) ? " project" : "");
   for (const std::string &name : names)
     line.append(" ").append(name);
   frame.commands().send(line);
@@ -1347,45 +1350,35 @@ void Graph::arrange_anew(VP::FilePort &files) {
   keep(files);
 }
 
-// The nodes and the views selected go, a line each, as the menus' remove of a node's
-// folder takes the node with the nodes inside it, the part it has in connections and its
-// folder, refusing one that holds files without force, and view close stops hosting a
-// view; a node with no folder goes by node remove keep, and a node inside another
-// selected with that one. Their boxes leave the .ini, a node's files' with it. Files,
-// folders and the nodes a recipe brings stay, and stay selected: no line removes them
-// here. What it reads of the view is read first, since each line replaces the view.
-void Graph::erase(VP::Cook &frame, const VP::View &view) {
-  const auto removed = [&](const std::string &name) {
-    const auto &children = view.children;
-    return std::ranges::find(view.nodes, name, &VP::Node::name) != view.nodes.end() ||
-           std::ranges::find(children, name, &VP::Child::name) != children.end();
-  };
-  std::vector<std::string> lines;
+// Each box selected goes as a right press on it offers: remove, or for a view it hosts
+// view close, pressed in the menus for every box of a kind at once, which hand each line
+// to the terminal, so it shows the line and its answer and undo takes it back, as the
+// menu's own press (V06); a node with files in its folder is refused, naming remove force.
+// A node inside another selected goes with that one, and what no menu removes, as what lies
+// outside, stays.
+void Graph::erase(VP::Cook &frame) {
+  std::vector<std::pair<std::string, std::string>> lines; // a kind's, by the kind
   for (const std::string &name : _selection) {
-    if (!removed(name) || std::ranges::any_of(_selection, [&](const std::string &other) {
-          return removed(other) && name != other && VP::within(name, other);
+    const auto box = std::ranges::find(_boxes.boxes, name, &Box::name);
+    if (box == _boxes.boxes.end() ||
+        std::ranges::any_of(_selection, [&](const std::string &other) {
+          return name != other && VP::within(name, other);
         }))
       continue;
-    const bool hosted =
-        std::ranges::find(view.children, name, &VP::Child::name) != view.children.end();
-    const std::filesystem::path folder = view.file.parent_path() / VP::path_of(name);
-    if (hosted)
-      lines.push_back(std::format("{}: view close {}", _shown, name));
-    else if (folder_named(frame.files(), folder))
-      lines.push_back(std::format("{}: remove {}/", _shown, folder.generic_string()));
-    else
-      lines.push_back(std::format("{}: node remove keep {}", _shown, name));
-    for (auto *kept : {&_arranged.places, &_arranged.sizes})
-      std::erase_if(*kept, [&](const auto &box) {
-        return VP::within(box.first, name) || box.first.starts_with(name + '/');
-      });
+    const auto [kind, named] =
+        menu_of(frame, static_cast<std::size_t>(box - _boxes.boxes.begin()), false);
+    if (kind.empty() || background(kind) || !nameable(named))
+      continue;
+    auto line = std::ranges::find(lines, kind, &std::pair<std::string, std::string>::first);
+    if (line == lines.end())
+      line = lines.insert(lines.end(),
+                          {kind, std::format("menu press {} {} for", kind,
+                                             kind == "view" ? "view close" : "remove")});
+    line->second.append(" ").append(named);
   }
-  std::erase_if(_selection, removed);
-  // As typed, so each is a line undo takes back, and its project is written at once.
-  for (const std::string &line : lines)
-    frame.commands().send_typed(line, {});
+  for (const auto &[kind, line] : lines)
+    frame.commands().send(line);
   _grab.reset();
-  keep(frame.files());
 }
 
 // A save the disk refuses is named in the log, and the graph goes on.

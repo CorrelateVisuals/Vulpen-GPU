@@ -177,7 +177,9 @@ struct Entry {
 // runs once for each. A part that knows what was pressed opens the menu for it with menu
 // <kind> [<section>...] for <name>..., as the graph and a tab do; while it shows it holds the
 // pointer, so nothing under it takes a press, and the focus, so escape shuts it; a press
-// anywhere but on a word shuts it too, giving the focus back. A change takes effect the
+// anywhere but on a word shuts it too, giving the focus back. A key presses a whole line
+// with no menu showing, menu press <kind> <word>... for <name>..., as the graph's Delete
+// presses remove, so the key runs what the menu would, shown in the terminal as a press is. A change takes effect the
 // next frame, as the focus does, so a press on a word reaches its hit before the words
 // go. The file is read again once it changes; a mistake in it stops the node, naming the
 // line (A02).
@@ -188,8 +190,9 @@ class Menus final : public VP::Operator {
         "opens the lines menu.ini gives a kind of thing, a word a column, and those of "
         "the sections after it, muted; with for and names, {} names each; point and a "
         "section's words open the words after them, and press hands the line they end to "
-        "the terminal, run, or begun up to the word it wants; with none, shuts the "
-        "menus");
+        "the terminal, run, or begun up to the word it wants; press, a section, a line's "
+        "words, for and names runs that line for each, with no menu showing, as a key "
+        "does; with none, shuts the menus");
     _name = node.name();
     _view = node.view_name();
     _line = node.param<std::string>("line");
@@ -515,6 +518,28 @@ class Menus final : public VP::Operator {
     _begun = true;
   }
 
+  // A section's line that names what it is for and wants no word more, by its words, run
+  // for each name, as a press on it in a menu opened for them runs it.
+  void press_for(VP::Call &call,
+                 std::span<const std::string_view> words,
+                 std::vector<std::string> names) {
+    const auto line = std::ranges::find_if(_lines, [&](const Line &line) {
+      return !words.empty() && line.section == words.front() &&
+             std::ranges::equal(line.columns(), words.subspan(1)) && line.names_subject() &&
+             std::ranges::none_of(line.words, [](const std::string &word) {
+               return word.find('<') != std::string::npos;
+             });
+    });
+    if (line == _lines.end() || names.empty())
+      throw std::runtime_error(std::format(
+          "menu press takes a section, the words of one of its lines that names what it is "
+          "for and wants no word more, for and names, as menu press file remove for "
+          "./notes.txt; {} gives {}",
+          menu_file, sections()));
+    _subjects = std::move(names);
+    hand(call, *line, std::nullopt);
+  }
+
   void command(VP::Call &call) override {
     if (!call.is(_menu))
       return;
@@ -524,6 +549,9 @@ class Menus final : public VP::Operator {
       _shutting = true;
       return;
     }
+    if (const auto named_for = std::ranges::find(words, for_word);
+        words.front() == press_word && named_for != words.end())
+      return press_for(call, {words.begin() + 1, named_for}, {named_for + 1, words.end()});
     if (words.front() == point_word || words.front() == press_word) {
       if (words.size() < 3 || !_shown)
         throw std::runtime_error(std::format(
