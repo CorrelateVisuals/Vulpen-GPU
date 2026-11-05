@@ -1167,12 +1167,17 @@ void Graph::into_folder(Port &port, const std::filesystem::path &folder) {
 // shown next shows the box left in focus, unless the caller lets go of it. Once a line
 // left a node's inside, the boxes show it still until the next frame builds them, so a
 // wheel turning on leaves it once, as its inside param, which it keeps as the line set it,
-// differs from the inside they show.
+// differs from the inside they show. The top is the one the last reading found, which
+// comes frames after the folder asked: a press before it, as , pressed fast, finds none
+// yet or another repository's, and goes no further up, so it never leaves the repository.
 template <class Port> void Graph::leave(Port &port) {
   if (!_built_flat)
     return;
   if (const std::filesystem::path folder(_relations->asked); !folder.empty()) {
-    if (folder != std::filesystem::path(_relations->top) && folder != folder.parent_path()) {
+    const std::filesystem::path below =
+        folder.lexically_relative(std::filesystem::path(_relations->top));
+    if (!_relations->top.empty() && !below.empty() && below != "." &&
+        *below.begin() != "..") {
       _left = folder.lexically_normal().generic_string();
       show_folder(port.commands(), folder.parent_path());
     }
