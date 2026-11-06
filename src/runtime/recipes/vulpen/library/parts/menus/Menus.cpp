@@ -36,10 +36,13 @@ constexpr std::size_t listed_most = 16;
 constexpr std::string_view no_word = "\"\"";
 // The ports port's kind for a value a param sets, which no line connects.
 constexpr std::string_view value_kind = "value";
-// What a start of C++, and of a compute shader, ends with, as the files part names them.
+// What a start of C++, and of each shader, ends with, as the files part names them.
 constexpr std::string_view cpp_start = ".cpp";
 constexpr std::string_view compute_start = ".comp";
-constexpr std::array<std::string_view, 3> shader_ends{".comp", ".vert", ".frag"};
+constexpr std::string_view vertex_start = ".vert";
+constexpr std::string_view fragment_start = ".frag";
+constexpr std::array<std::string_view, 3> shader_ends{compute_start, vertex_start,
+                                                       fragment_start};
 
 // What a press or a line opens: the section of the kind of thing pressed, and those whose
 // lines follow it, muted, as a background's lines for the whole project; where its first
@@ -332,7 +335,8 @@ class Menus final : public VP::Operator {
 
   // What the menus find for a placeholder but <link>: the connections joining what was
   // pressed, the values of a node pressed a param may set, the files in its folder, or
-  // the files new starts that it lacks, as Name.cpp beside its shaders.
+  // the files new starts that it lacks, as Name.cpp beside its shaders, or a lone
+  // shader's other half.
   std::vector<std::string> found(const Look &look, const Line &line) const {
     std::vector<std::string> words;
     if (line.kind == joined_kind && look.view) {
@@ -369,6 +373,10 @@ class Menus final : public VP::Operator {
       words.push_back(stem + std::string(cpp_start));
     if (holds(cpp_start) && std::ranges::none_of(shader_ends, holds))
       words.push_back(stem + std::string(compute_start));
+    // A draw takes both halves: a lone one's other.
+    if (holds(vertex_start) != holds(fragment_start))
+      words.push_back(
+          stem + std::string(holds(vertex_start) ? fragment_start : vertex_start));
     return words;
   }
 
