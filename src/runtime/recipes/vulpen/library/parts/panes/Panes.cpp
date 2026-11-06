@@ -1,6 +1,8 @@
+#include "contracts/Item.h"
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Params.h"
 #include "shared/Presented.h"
 
 #include <algorithm>
@@ -22,6 +24,9 @@ constexpr std::string_view typed_port = "typed"; // the keys part's, which panes
 constexpr std::string_view window_prefix = "window-";
 constexpr std::string_view pane_suffix = "-pane";
 constexpr std::string_view room_suffix = "-room";
+// Its param, and its pane's picture's, that hands a view's pane the pointer to work in it
+// as perform mode would, its button named for it, as a param's is.
+constexpr std::string_view interact_param = "interact";
 
 // The last name of a node inside others, as a connection named for it takes it.
 std::string_view short_name(std::string_view node) {
@@ -51,7 +56,10 @@ std::pair<std::string_view, std::string_view> split_port(std::string_view inside
 // names, as the image filling the window in perform mode, through the connection
 // shared/Presented.h names: one connection a window, as a port joins one; the window of a
 // view no deck shows nor presented draws nowhere. The view presented is the current
-// view's project, or the one holding the current view.
+// view's project, or the one holding the current view. With interact = yes, each pane's
+// picture takes it too, so the view it shows takes the pointer's presses there, as in
+// perform mode, in place of the drag and the wheel moving the picture, as an inspect
+// does; it hands on buttons, for a bar, whose press turns that on or off.
 class Panes final : public VP::Operator {
   // A pane as the view holds it: its node, the view and the deck its room comes from, and
   // the connection bringing it.
@@ -82,6 +90,21 @@ class Panes final : public VP::Operator {
           });
         }))
       node.input<VP_VIEW::Typed>(typed_port);
+    const std::string interact =
+        node.sets(interact_param) ? node.param<std::string>(interact_param) : "no";
+    check_word(interact_param, interact, {"yes", "no"});
+    _interact = interact == "yes";
+    // The param is its own, so a change rebinds the node: the button is written here.
+    node.output<VP_VIEW::Items>("buttons") = {
+        {.label = std::string(interact_param),
+         .command = std::format("{}: param {} {} {}{}",
+                                _view,
+                                _interact ? "unset" : "set",
+                                _name,
+                                interact_param,
+                                _interact ? "" : " yes"),
+         .current = _interact,
+         .toggles = true}};
     _dirty = true; // a rebuild may have moved a view to another deck
   }
 
@@ -131,6 +154,30 @@ class Panes final : public VP::Operator {
     _joining.clear();
     place(commands, *frame.view(_view));
     connect(commands, *frame.view(_view));
+    interact(commands, *frame.view(_view));
+  }
+
+  // Each pane's picture as its interact param says, which a pane added takes as it comes;
+  // the param of the picture inside the pane, which the pane keeps, as a dotted key.
+  void interact(VP::CommandPort &commands, const VP::View &own) const {
+    const std::string key = picture_interact();
+    const std::string_view picture = split_port(_pictures.front()).first;
+    for (const Pane &pane : panes_in(own))
+      if (const auto node = std::ranges::find(own.nodes, pane.node, &VP::Node::name);
+          node != own.nodes.end() && (param_value(*node, key) == "yes") != _interact)
+        commands.send(std::format("{}: param {} {}.{} {}{}",
+                                  _view,
+                                  _interact ? "set" : "unset",
+                                  pane.node,
+                                  picture,
+                                  interact_param,
+                                  _interact ? " yes" : ""));
+  }
+
+  // The interact param of a pane's picture, as the pane's own param sets it, as
+  // image.interact.
+  std::string picture_interact() const {
+    return std::format("{}.{}", split_port(_pictures.front()).first, interact_param);
   }
 
   bool hosts(std::string_view view) const {
@@ -288,7 +335,10 @@ class Panes final : public VP::Operator {
     }
     for (std::size_t at = 0; at < adding.size(); ++at) {
       const std::string &node = taken[at];
-      commands.send(std::format("{}: node add {} recipe={}", _view, node, _pane));
+      const std::string interacts =
+          _interact ? std::format(" param={}=yes", picture_interact()) : std::string();
+      commands.send(
+          std::format("{}: node add {} recipe={}{}", _view, node, _pane, interacts));
       commands.send(std::format("{}: node move {} {}", _view, node, _name));
       std::vector<VP::Endpoint> rooms;
       for (const std::string &room : _rooms) {
@@ -422,6 +472,7 @@ class Panes final : public VP::Operator {
   std::string _previous;              // the one before it
   bool _started = false; // after the first frame, which may present the one hosted last
   bool _dirty = true;    // the panes, their rooms and the windows follow what is
+  bool _interact = false; // each pane's picture hands its view the pointer
 };
 
 } // namespace

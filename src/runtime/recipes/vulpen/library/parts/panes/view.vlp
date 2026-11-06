@@ -4,7 +4,9 @@
 # reaches, its keys param those the keys part's typed reaches, which its host connects to
 # its typed, and its pictures param those the view's window reaches, each a node inside
 # the pane and a port, joined by commas. The window of the view presented reaches the
-# ports its to param names too, as the image filling the window in perform mode.
+# ports its to param names too, as the image filling the window in perform mode. With
+# interact = yes, each pane's picture hands its view the pointer, as perform mode does; its
+# buttons, for a bar, hold the one that turns that on or off.
 [manifest]
 version = 1
 

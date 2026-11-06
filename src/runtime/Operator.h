@@ -585,6 +585,12 @@ public:
   // view runs its nodes; none for a view of no such name. Read it while the node cooks;
   // a rebuild replaces it. Last, as above.
   virtual std::span<const NodePort> ports(std::string_view view) const = 0;
+  // Hands the pointer's presses and the wheel to the nodes of the view named, by the name
+  // a line addresses it with, as a GUI showing that view's window hands them to it while
+  // a person works in it there: as hold_pointer keeps them, for those nodes too. A hand
+  // wins over a hold in the same frame, as the GUI showing the view is the one nearest
+  // the pointer. Last, as above.
+  virtual void hand_pointer(std::string_view view) = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the

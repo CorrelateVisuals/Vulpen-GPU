@@ -176,6 +176,18 @@ class Modes final : public VP::Operator {
       frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;
     *_shown = _perform ? *_area : VP_VIEW::Rect{};
+    hold(frame, presented, _perform);
+  }
+
+  // The pointer's presses go where the mode gives the window: in edit mode to the GUI's
+  // own parts, so a project showing in a pane takes none while a person works beside
+  // it, unless the pane hands them on, as its interact param asks; in perform mode to
+  // the view presented, which fills the window.
+  static void hold(VP::Cook &frame, std::string_view presented, bool perform) {
+    if (!perform)
+      frame.hold_pointer();
+    else if (!presented.empty())
+      frame.hand_pointer(presented);
   }
 
   void write_buttons() {

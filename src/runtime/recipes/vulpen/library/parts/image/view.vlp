@@ -6,6 +6,8 @@
 # a press in its area gives it the focus, so the host also connects the keys part's typed
 # to its typed: h then brings it home, letterboxed again. A still part connected to its
 # held and still holds the frame it shows, which shows in place of the picture while held.
+# With interact = yes too, the view whose window it shows takes the presses and the wheel
+# in its area, while it has the focus, in place of the drag and the wheel moving it.
 [manifest]
 version = 1
 
@@ -13,3 +15,4 @@ version = 1
 vertex_count   = 6
 instance_count = place
 param          = moves=no
+param          = interact=no

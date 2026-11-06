@@ -375,6 +375,9 @@ private:
   std::span<const NodePort> ports(std::string_view view) const override {
     return _schedule._wiring.commands.ports(view);
   }
+  void hand_pointer(std::string_view view) override {
+    _schedule._wiring.ports.hand_pointer(view, _schedule._name, _bound.node->name);
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }

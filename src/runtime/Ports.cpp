@@ -348,6 +348,7 @@ void Ports::frame() {
       _pointer = event.at;
   std::swap(_held, _holding);
   _holding.holds = false;
+  _holding.handed.clear();
   _unheld.clear();
   if (_held.holds)
     std::ranges::copy_if(_events, std::back_inserter(_unheld), [](const Event &event) {
@@ -356,18 +357,29 @@ void Ports::frame() {
 }
 
 InputPort &Ports::input(std::string_view view, std::string_view node) {
-  if (!_held.holds || (view == _held.view && node.starts_with(_held.inside)))
+  if (!_held.holds || (view == _held.view && node.starts_with(_held.inside)) ||
+      (!_held.handed.empty() && view == _held.handed))
     return *this;
   return *_unheld_input;
 }
 
 // The node's own name up to its last dot, so the nodes beside it inside the one it is in
-// keep the pointer with it, as a menu's list of items does.
+// keep the pointer with it, as a menu's list of items does. A hand this frame stays.
 void Ports::hold_pointer(std::string_view view, std::string_view node) {
+  if (!_holding.handed.empty())
+    return;
   const std::size_t dot = node.rfind('.');
   _holding.view.assign(view);
   _holding.inside.assign(node.substr(0, dot == std::string_view::npos ? 0 : dot + 1));
   _holding.holds = true;
+}
+
+void Ports::hand_pointer(std::string_view to,
+                         std::string_view view,
+                         std::string_view node) {
+  _holding.handed.clear();
+  hold_pointer(view, node);
+  _holding.handed.assign(to);
 }
 
 void Ports::add(Event event) {

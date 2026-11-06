@@ -14,8 +14,9 @@
 #   Terminal   panel + terminal
 #   Graph      panel + find-bar + graph-editor
 #   Perform    panel + switch + switch-tabs + deck + panes + image + image-file
-#                                     a project's window by its tab, a frame of each held
-#                                     still, or a preview; a panel more for each split
+#              + bar + list + hit     a project's window by its tab, a frame of each held
+#                                     still, or a preview; a panel more for each split;
+#                                     a button a setting along its bottom
 #   Menubar    panel + join           a button a panel and the run's, along the top
 #   Menu       menus + menu           the menus of menu.ini, at a right press in the graph
 #   Tooltip    tooltip
@@ -147,6 +148,27 @@ param  = switch=ide.perform
 [node "ide.preview"]
 recipe = image
 param  = moves=yes
+
+# Along the bottom of the Perform panel's room, a button a setting of what it shows, as
+# the graph panel's: interact, the panes part's, whose project in a pane takes the
+# pointer's presses there, as perform mode gives it the window, in place of the drag and
+# the wheel moving its picture.
+[node "ide.perform-bar"]
+recipe = bar
+param  = edge=bottom
+
+[node "ide.perform-buttons"]
+recipe = list
+param  = axis=x
+
+[node "ide.perform-button-rects"]
+recipe = rects
+
+[node "ide.perform-button-glyphs"]
+recipe = glyphs
+
+[node "ide.perform-hit"]
+recipe = hit
 
 # A tab a project, whose press presents it.
 [node "ide.perform-panel"]
@@ -292,7 +314,43 @@ to   = ide.perform-panel.bar.area
 
 [connection "perform-area"]
 from = ide.perform-panel.bar.rest
+to   = ide.perform-bar.area
+
+# What the row of buttons leaves the projects and the preview.
+[connection "perform-rest"]
+from = ide.perform-bar.rest
 to   = ide.perform.area
+
+[connection "perform-strip"]
+from = ide.perform-bar.strip
+to   = ide.perform-buttons.place
+
+# A button a setting of the panes, lit while it is on, which its press turns.
+[connection "perform-buttons"]
+from = ide.panes.buttons
+to   = ide.perform-buttons.items
+to   = ide.perform-hit.items
+
+[connection "perform-button-rects"]
+from = ide.perform-buttons.rects
+to   = ide.perform-button-rects.rects
+
+[connection "perform-button-labels"]
+from = ide.perform-buttons.labels
+to   = ide.perform-button-glyphs.labels
+
+[connection "perform-button-characters"]
+from = ide.perform-buttons.characters
+to   = ide.perform-button-glyphs.characters
+
+# Where each button shows, so a press on one sends its line.
+[connection "perform-button-shown"]
+from = ide.perform-buttons.shown
+to   = ide.perform-hit.rects
+
+[connection "perform-button-marks"]
+from = ide.perform-buttons.marks
+to   = ide.perform-hit.marks
 
 # The first half's room goes to the tabs too, by which they find the switch.
 [connection "perform-shown"]
@@ -405,6 +463,8 @@ to   = ide.graph.tip.rects.palette
 to   = ide.graph.tip.glyphs.palette
 to   = ide.perform-panel.rects.palette
 to   = ide.perform-panel.glyphs.palette
+to   = ide.perform-button-rects.palette
+to   = ide.perform-button-glyphs.palette
 to   = ide.terminal-panel.rects.palette
 to   = ide.terminal-panel.glyphs.palette
 to   = ide.terminal.rects.palette
@@ -431,6 +491,7 @@ to   = ide.graph.glyphs.font
 to   = ide.graph.button-glyphs.font
 to   = ide.graph.tip.glyphs.font
 to   = ide.perform-panel.glyphs.font
+to   = ide.perform-button-glyphs.font
 to   = ide.terminal-panel.glyphs.font
 to   = ide.terminal.glyphs.font
 to   = ide.menubar.glyphs.font
@@ -450,6 +511,7 @@ to   = ide.graph.glyphs.atlas
 to   = ide.graph.button-glyphs.atlas
 to   = ide.graph.tip.glyphs.atlas
 to   = ide.perform-panel.glyphs.atlas
+to   = ide.perform-button-glyphs.atlas
 to   = ide.terminal-panel.glyphs.atlas
 to   = ide.terminal.glyphs.atlas
 to   = ide.menubar.glyphs.atlas
@@ -473,6 +535,8 @@ to   = ide.graph.buttons.font
 to   = ide.graph.tip.list.font
 to   = ide.perform-panel.bar.font
 to   = ide.perform-panel.tabs.font
+to   = ide.perform-bar.font
+to   = ide.perform-buttons.font
 to   = ide.terminal-panel.bar.font
 to   = ide.terminal-panel.tabs.font
 to   = ide.terminal.command-line.font

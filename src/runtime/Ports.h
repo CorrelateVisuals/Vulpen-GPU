@@ -42,6 +42,9 @@ public:
   // the one it is in held the pointer the frame before (Cook::hold_pointer).
   InputPort &input(std::string_view view, std::string_view node);
   void hold_pointer(std::string_view view, std::string_view node);
+  // As hold_pointer, the nodes of the view named to taking the presses too (Cook::
+  // hand_pointer).
+  void hand_pointer(std::string_view to, std::string_view view, std::string_view node);
   // An event for the next frame, from the window or the input command; the pointer's
   // moves in a row keep only the last.
   void add(Event event);
@@ -73,10 +76,12 @@ private:
   // What a node outside a hold reads of the input, in Ports.cpp.
   class Unheld;
   // The nodes a hold keeps the pointer for: those of a view whose names start with
-  // inside. Swapped a frame, so their names never allocate again (CPP10).
+  // inside, and every node of the view a hand names, as handed. Swapped a frame, so
+  // their names never allocate again (CPP10).
   struct Holder {
     std::string view;
     std::string inside;
+    std::string handed;
     bool holds = false;
   };
 

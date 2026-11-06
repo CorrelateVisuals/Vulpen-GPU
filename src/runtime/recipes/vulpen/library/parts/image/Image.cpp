@@ -33,7 +33,12 @@ constexpr float nearest = 10.0f * PanZoom::most;
 // the focus, and while it has it, h brings it home, letterboxed again. What another
 // writer brings to its picture, as another view presented, shows at home too. While a
 // still connected to it holds a frame, it shows that frame, held, in place of the
-// picture, moved and zoomed as the picture was, so it is looked at where it was.
+// picture, moved and zoomed as the picture was, so it is looked at where it was. With
+// param interact = yes too, the view whose window it shows takes the presses and the
+// wheel in its area instead, as perform mode gives that view the window: while the image
+// has the focus, which a press there gives it, it hands that view the pointer, and a drag
+// begun there goes on to its letting go wherever the pointer goes; it neither moves nor
+// zooms, and h still brings it home.
 class Image final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _area = &node.input<VP_VIEW::Rect>("area");
@@ -43,6 +48,9 @@ class Image final : public VP::Operator {
     const std::string moves = node.param<std::string>("moves");
     check_word("moves", moves, {"yes", "no"});
     _moves = moves == "yes";
+    const std::string interact = node.param<std::string>("interact");
+    check_word("interact", interact, {"yes", "no"});
+    _interact = interact == "yes";
     // Only an image that moves takes keys, so one that stays still needs no connection
     // for them.
     if (_moves)
@@ -69,7 +77,10 @@ class Image final : public VP::Operator {
     if (_moves) {
       follow(frame.view());
       keys(frame);
-      move(frame);
+      if (_interact)
+        hand(frame);
+      else
+        move(frame);
     }
     frame.set(_pan, _view.pan);
     frame.set(_zoom, _view.zoom);
@@ -131,6 +142,25 @@ class Image final : public VP::Operator {
     }
   }
 
+  // A press in its area gives it the focus; once it has it, the pointer goes to the view
+  // its picture is the window of, from the frame after, while it is over the area or a
+  // press made there is not let go, which the image sees as the view does.
+  void hand(VP::Cook &frame) {
+    const bool focused = _typed->focus == _name;
+    for (const VP::Event &event : frame.input().events()) {
+      const bool inside = VP_VIEW::contains(*_area, _pointer);
+      if (event.kind == VP::Event::Kind::pointer) {
+        _pointer = event.at;
+      } else if (event.kind == VP::Event::Kind::button) {
+        if (event.down && inside && !focused)
+          frame.commands().send(std::format("focus {}", _name));
+        _dragging = event.down ? _dragging || (inside && focused) : false;
+      }
+    }
+    if (_from.view() && focused && (_dragging || VP_VIEW::contains(*_area, _pointer)))
+      frame.hand_pointer(_from.node);
+  }
+
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Typed *_typed = nullptr; // with moves = yes
   const VP_VIEW::Still *_still = nullptr; // while a still is connected to it
@@ -143,7 +173,8 @@ class Image final : public VP::Operator {
   VP::Endpoint _from;     // what reached its picture last
   glm::vec2 _pointer{};   // as the events so far left it
   bool _moves = false;    // whether a drag and the wheel move it
-  bool _dragging = false; // from a press in its area until it is let go
+  bool _interact = false; // whether they go to the view it shows instead
+  bool _dragging = false; // from a press in its area until it is let go, handed or not
   // Where a middle press in its area was, which a drag sideways zooms about until it is
   // let go.
   std::optional<glm::vec2> _zooming;
