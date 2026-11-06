@@ -345,17 +345,29 @@ class List final : public VP::Operator {
         rects[2 + tabs] = grown(_tip_row, margin, VP_VIEW::role("panel"));
       }
     } else {
+      // An Item with no label is a rule across its row, as a menu's lines that join what
+      // was pressed stand apart from those run once for each.
       const bool marked = _current->extent.x != 0;
+      const auto rules = static_cast<std::uint32_t>(std::ranges::count_if(
+          std::span(*_items).first(_shown->size()),
+          [](const VP_VIEW::Item &item) { return item.label.empty(); }));
       const std::span<VP_VIEW::Rect> rects =
-          frame.write(_rects, frame_and_fill + (marked ? 1 : 0));
+          frame.write(_rects, frame_and_fill + (marked ? 1 : 0) + rules);
       rects[0] = grown(place, margin + frame_width, VP_VIEW::role("border"));
       rects[1] = grown(place, margin, VP_VIEW::role("panel"));
       rects[1].extent.x += _joined != 0 ? frame_width : 0;
       rects[1].offset.x -= _joined > 0 ? frame_width : 0;
+      std::size_t next = frame_and_fill;
       if (marked)
-        rects[2] = {.offset = _current->offset,
-                    .extent = _current->extent,
-                    .role = VP_VIEW::role("border")};
+        rects[next++] = {.offset = _current->offset,
+                         .extent = _current->extent,
+                         .role = VP_VIEW::role("border")};
+      for (std::size_t at = 0; at < _shown->size(); ++at)
+        if (const VP_VIEW::Rect &row = (*_shown)[at]; (*_items)[at].label.empty())
+          rects[next++] = {
+              .offset = row.offset + glm::ivec2(0, row.extent.y / 2),
+              .extent = {row.extent.x, static_cast<std::uint32_t>(frame_width)},
+              .role = VP_VIEW::role("border")};
     }
   }
 

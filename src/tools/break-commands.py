@@ -53,6 +53,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CLI = Path("src/runtime/recipes/vulpen/cli/view.vlp")
 IDE = Path("src/runtime/recipes/vulpen/ide/view.vlp")
 MENUS = Path("src/runtime/recipes/vulpen/library/parts/menus/menu.ini")
+RECIPES = Path("src/runtime/recipes")
 KEYMAP = Path("src/runtime/recipes/vulpen/library/parts/keys/keymap.ini")
 GPU_CHOICE = Path("src/runtime/recipes/vulpen/cli/.vulpen/gpu.ini")
 PARTS = ("sweep", "tab", "walk", "gui", "seen")
@@ -850,8 +851,11 @@ def try_line(copy: Copy, vulpen: Vulpen, state: State, usage: Usage, variant: st
 
 
 def damage(copy: Copy, state: State, usage: Usage, lines: list[str]) -> bool:
-    """Files outside the projects that a line changed, which none of the lines named."""
+    """Files outside the projects that a line changed, which none of the lines named; a
+    recipe make writes the recipe it names into the recipes' folder, as its help says."""
     named = [Path(word) for line in lines for word in line.split() if "/" in word]
+    if any(line.startswith("recipe make ") for line in lines):
+        named.append(RECIPES)
     changed = [path for path in copy.changed() if not path.startswith("projects/") and
                not any((copy.tree / path).is_relative_to((copy.tree / name).resolve())
                        for name in named)]
@@ -1046,9 +1050,10 @@ def menu_lines(tree: Path) -> dict[str, list[str]]:
 
 
 # What a right press puts for {} and {/} on each kind of thing in bf-one, with the lines
-# that make it first, and a word for each placeholder a line begins for the person; a path
-# whole from the copy's top, {tree}, as the terminal they go to counts a path typed from
-# the folder its prompt shows.
+# that make it first, and a word for each placeholder a line begins for the person or a
+# column lists; a path whole from the copy's top, {tree}, as the terminal they go to counts
+# a path typed from the folder its prompt shows. Two nodes pressed are face and corners,
+# {1} and {2}; a port is face.top, {node} its node.
 PRESSED = {
     "ground": ("{tree}/projects/bf-one", "{tree}/projects/bf-one", []),
     "inside": ("corners", "{tree}/projects/bf-one/corners", ["cd corners"]),
@@ -1066,7 +1071,26 @@ PRESSED = {
     "tab": ("{tree}/projects/bf-one/face/Face.frag", "{tree}/projects/bf-one/face",
             ["open {tree}/projects/bf-one/face/Face.frag"]),
     "project": ("", "", []),
+    "port": ("face.top", "{tree}/projects/bf-one/face", []),
+    "joined": ("face.top", "{tree}/projects/bf-one/face", []),
+    "manifest": ("{tree}/projects/bf-one/view.vlp", "{tree}/projects/bf-one", []),
+    "project-folder": ("{tree}/projects/bf-three", "{tree}/projects/bf-three", []),
+    "pair": ("face", "{tree}/projects/bf-one/face", []),
+    "nodes": ("face", "{tree}/projects/bf-one/face", []),
+    "folders": ("{tree}/projects/bf-one/face", "{tree}/projects/bf-one", []),
 }
+# What a column lists for each placeholder the menus find themselves, in bf-one: a line
+# joining two ports, whose end is joined already, so it is refused naming why; a
+# connection; a value of face and one it takes; a file of face's folder, and one new
+# starts there; a node.
+FOUND = {"connect <link>": "connect link corners.top.corner face.top",
+         "<joined>": "top", "<key>": "frames_per_turn", "<value>": "300",
+         "<path>": "Face.frag", "<start>": "Face.cpp", "<node>": "corners",
+         "{1}": "face", "{2}": "corners", "{node}": "face", "{view}": "bf-one"}
+# The kinds whose {} or {/} is a folder, which a rename or a copy moves to a folder's
+# name, as a node's is, not a file's.
+FOLDERS = {"node", "dropped", "folder", "stray", "project-folder", "pair", "nodes",
+           "folders"}
 
 
 def gui(copy: Copy) -> None:
@@ -1081,9 +1105,13 @@ def gui(copy: Copy) -> None:
         name, folder = name.replace("{tree}", tree), folder.replace("{tree}", tree)
         before = [made.replace("{tree}", tree) for made in before]
         for line in lines:
-            sent = (line.replace("{/}", folder).replace("{}", name)
+            sent = line
+            for found, word in FOUND.items():
+                sent = sent.replace(found, word)
+            sent = (sent.replace("{/}", folder).replace("{}", name)
                     .replace("<name>", copy.name()).replace("<recipe>", "snapshot")
-                    .replace("<file>", f"{tree}/projects/bf-one/{copy.name()}.txt")
+                    .replace("<file>", f"{tree}/projects/bf-one/{copy.name()}"
+                             + ("" if section in FOLDERS else ".txt"))
                     .replace("<project>", "bf-three").replace("<view>", "bf-two"))
             usage = usage_of(f"menu [{section}] {line}")
             try:

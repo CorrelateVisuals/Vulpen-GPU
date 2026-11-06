@@ -316,13 +316,14 @@ std::vector<std::string> recipes_for(VP::Call &call, std::string_view begun) {
     return names;
   if (slash != std::string_view::npos)
     names.clear();
-  for (const auto &[group, name] : listed)
+  for (const auto &[group, name] : listed) {
     if (name.empty())
       continue;
-    else if (slash == std::string_view::npos)
+    if (slash == std::string_view::npos)
       add(name);
     else if (group == begun.substr(0, slash))
       add(std::format("{}/{}", group, name));
+  }
   return names;
 }
 
@@ -342,7 +343,8 @@ std::vector<std::string> node_words(std::string_view begun) {
 }
 
 // What a placeholder stands for: the view's nodes, ports or connections, the views
-// hosted, the params of the node named just before a key, the words a node takes, the
+// hosted, the params of the node named just before a key and the values its files
+// declare, the words a node takes, the
 // recipes of the library, the folders cd goes into, the paths a word begun may become,
 // or, for a word naming no folder, the projects or the files the view holds. Any other
 // answers as itself.
@@ -362,10 +364,16 @@ std::vector<std::string> names(std::string_view word,
       names.push_back(connection.name);
   } else if (kind == "<key>" && typed.size() > 1) {
     const std::vector<VP::Node> &nodes = call.view().nodes;
-    const auto node = std::ranges::find(nodes, typed[typed.size() - 2], &VP::Node::name);
+    const std::string_view named = typed[typed.size() - 2];
+    const auto node = std::ranges::find(nodes, named, &VP::Node::name);
     if (node != nodes.end())
       for (const VP::Param &param : node->params)
         names.push_back(param.key);
+    // And the values its files declare that no param sets yet, as the bind found them.
+    for (const VP::NodePort &port : call.ports())
+      if (port.kind == "value" && port.node == named &&
+          std::ranges::find(names, port.name) == names.end())
+        names.emplace_back(port.name);
   } else if (kind == "<view>") {
     hosted(call, {}, names);
   } else if (kind == "<recipe>") {

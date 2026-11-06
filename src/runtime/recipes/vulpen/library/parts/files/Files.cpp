@@ -1,5 +1,6 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Words.h"
 
 #include <algorithm>
 #include <array>
@@ -58,23 +59,6 @@ bool listed(VP::FilePort &files, const std::filesystem::path &path, std::string_
 
 bool there(VP::FilePort &files, const std::filesystem::path &path) {
   return listed(files, path, "") || listed(files, path, "/");
-}
-
-// The C++ class a name gives: command-line gives CommandLine.
-std::string class_of(std::string_view name) {
-  std::string type;
-  bool upper = true;
-  for (const char letter : name) {
-    if (letter == '-') {
-      upper = true;
-      continue;
-    }
-    type.push_back(upper && letter >= 'a' && letter <= 'z'
-                       ? static_cast<char>(letter - 'a' + 'A')
-                       : letter);
-    upper = false;
-  }
-  return type;
 }
 
 bool word_letter(char letter) {

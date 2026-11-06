@@ -84,6 +84,57 @@ std::vector<std::string> readers_alike(std::span<const Bound> bounds,
   return found;
 }
 
+// A varying as its ends must share it, its location and its type, which is what a reader
+// alike holds, whatever each end names it.
+std::string varying_type(const Varying &varying) {
+  return std::format("{} at {}", varying.type, varying.location);
+}
+
+// An image written, an object or a varying, loose, and the loose ports of other nodes
+// holding it the other way round: an image reaches a Texture, whatever its format, and an
+// object one of its type, as a connection checks them.
+void join_alike(std::vector<NodePort> &ports) {
+  const auto takes = [](const NodePort &from, const NodePort &to) {
+    if (from.kind != to.kind || from.node == to.node || to.joined || to.writes)
+      return false;
+    if (from.kind == "image")
+      return to.holds == texture_type;
+    return from.kind != "buffer" && !from.holds.empty() && from.holds == to.holds;
+  };
+  for (NodePort &port : ports) {
+    if (port.joined || port.kind == "buffer")
+      continue;
+    for (const NodePort &other : ports)
+      if (port.writes ? takes(port, other)
+                      : other.writes && !other.joined && takes(other, port))
+        port.alike.push_back(std::format("{}.{}", other.node, other.name));
+  }
+}
+
+// After the ports, of a kind of their own, so a part listing ports leaves them out by it:
+// each value a param may set, joined while the node sets it.
+void list_values(std::span<const Bound> bounds, std::vector<NodePort> &ports) {
+  for (const Bound &bound : bounds) {
+    const auto add = [&](std::string_view name, std::string_view holds) {
+      if (std::ranges::none_of(ports, [&](const NodePort &port) {
+            return port.node == bound.node->name && port.kind == "value" &&
+                   port.name == name;
+          }))
+        ports.push_back(NodePort{.node = bound.node->name,
+                                 .name = name,
+                                 .kind = "value",
+                                 .holds = std::string(holds),
+                                 .joined = bound.param(name) != nullptr});
+    };
+    for (const Field &field : bound.fields)
+      if (!field.buffer() && !field.texture() && !field.image() &&
+          !bound.set_by_operator.contains(field.name))
+        add(field.name, field.type);
+    for (const std::string &read : bound.read_by_operator)
+      add(read, "");
+  }
+}
+
 // The line that joins a writer to readers, its connection named for the writer's port,
 // or while a connection of the view holds that name, for its node's and the port's.
 std::string joining(const View &view,
@@ -639,7 +690,9 @@ void Schedule::check_inputs(const Connection &connection) {
 // Each node's ports as its bind found them, for parts to read as they read costs (V05):
 // its pass block's buffers and images, a buffer or an image its C++ fills at a port no
 // shader holds, a draw's color, its C++ objects, and a split draw's varyings; a loose
-// buffer with the loose ports of other nodes that would join it, as its error names them.
+// one with the loose ports of other nodes that would join it, as a buffer's error names
+// them. Then each value a param may set: one of its pass block that its C++ does not set,
+// and one its C++ reads, joined while the node sets it.
 void Schedule::list_ports() {
   const auto loose = [&](const Bound &bound, std::string_view port) {
     return !connection_of(bound.node->name, port);
@@ -676,17 +729,22 @@ void Schedule::list_ports() {
         add(filled.port, "image", true, filled.format ? filled.format->name : "");
     if (!bound.output.empty())
       add(bound.output, "image", true, bound.drawn ? bound.drawn->name : "");
-    for (const std::string &output : bound.outputs)
-      add(output, "object", true, "");
-    for (const std::string &input : bound.inputs)
-      add(input, "object", false, "");
+    for (const std::string &output : bound.outputs) {
+      const Held *const held = this->held(buffer_name(bound.node->name, output));
+      add(output, "object", true, held ? held->type : "");
+    }
+    for (std::size_t at = 0; at < bound.inputs.size(); ++at)
+      add(bound.inputs[at], "object", false, bound.input_types[at]);
     if (bound.loaded() && is_vertex(*bound.node))
       for (const Varying &varying : bound.stage(vertex_stage).outputs())
-        add(varying.name, "varying", true, varying.type);
+        add(varying.name, "varying", true, varying_type(varying));
     if (bound.loaded() && is_fragment(*bound.node))
       for (const Varying &varying : bound.stage(fragment_stage).inputs())
-        add(varying.name, "varying", false, varying.type);
+        add(varying.name, "varying", false, varying_type(varying));
   }
+  join_alike(_ports);
+  list_values(_bound, _ports);
 }
+
 
 } // namespace VP

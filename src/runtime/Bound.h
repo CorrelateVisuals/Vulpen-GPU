@@ -266,6 +266,8 @@ struct Bound {
   std::vector<File> files;       // opened while it bound
   std::vector<std::string> outputs; // its ports that carry C++ objects to C++ nodes
   std::vector<std::string> inputs;  // and that read them
+  // Each input's type, as typeid names it, so a loose one finds the outputs alike.
+  std::vector<std::string> input_types;
   // An object for each input nothing gives it, so its reference holds while it is in
   // error; made by its module, so it goes with it.
   std::vector<Object> stand_ins;

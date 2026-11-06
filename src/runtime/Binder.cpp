@@ -276,6 +276,7 @@ private:
     if (!cpp_port(port, "input"))
       return stand_in(kind);
     _bound.inputs.emplace_back(port);
+    _bound.input_types.emplace_back(kind.type);
     const Connection *const connection = _schedule.connection_of(_bound.node->name, port);
     const Held *const held = connection ? _schedule.held(connection->name) : nullptr;
     const Bound *const writer = connection ? _schedule.find(connection->from.node) : nullptr;

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -62,6 +63,24 @@ inline std::size_t word_after(std::string_view row, std::size_t column) {
     while (column < row.size() && run_of(row[column]) == run)
       ++column;
   return column;
+}
+
+// The C++ class a name gives: command-line gives CommandLine, as a file new starts names
+// its class by its stem, so the parts that name one name it alike (RV09).
+inline std::string class_of(std::string_view name) {
+  std::string type;
+  bool upper = true;
+  for (const char letter : name) {
+    if (letter == '-') {
+      upper = true;
+      continue;
+    }
+    type.push_back(upper && letter >= 'a' && letter <= 'z'
+                       ? static_cast<char>(letter - 'a' + 'A')
+                       : letter);
+    upper = false;
+  }
+  return type;
 }
 
 } // namespace

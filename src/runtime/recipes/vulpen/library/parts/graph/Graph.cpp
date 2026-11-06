@@ -112,6 +112,24 @@ bool background(std::string_view kind) {
   return kind == "ground" || kind == "inside" || kind == "level";
 }
 
+// The kinds of a menu.ini section a node is, which several boxes selected share: one a
+// person made, and one a drop copied.
+bool node_kind(std::string_view kind) {
+  return kind == "node" || kind == "dropped";
+}
+
+// The kind of what several boxes selected are, whose lines join them or run once for
+// each: two nodes a pair, more nodes several, and folders; one box keeps its own.
+std::string_view kind_of_several(std::string_view kind, std::size_t count) {
+  if (count == 2 && node_kind(kind))
+    return "pair";
+  if (count > 2 && node_kind(kind))
+    return "nodes";
+  if (count > 1 && kind == "folder")
+    return "folders";
+  return kind;
+}
+
 // The view hosting the one named, found from the view vulpen started with down the views
 // each hosts, by the names lines address them with; none for that one, or one no view
 // hosts.
@@ -310,10 +328,13 @@ void Graph::cook(VP::Cook &frame) {
   _hosted.clear();
   for (std::size_t child = 0; edited && !folder && child < edited->children.size(); ++child)
     _hosted.push_back(frame.view(edited->children[child].name));
+  const std::span<const VP::NodePort> ports =
+      folder ? std::span<const VP::NodePort>() : frame.ports(shown);
   if (edited != _built_edited || flat != _built_flat || _inside != _built_inside ||
       _relations->folder != _built_folder || _relations->changes != _built_changes ||
-      _hosted != _built_hosted)
-    build(frame.files(), edited, flat);
+      _hosted != _built_hosted || ports.data() != _built_ports.data() ||
+      ports.size() != _built_ports.size())
+    build(frame.files(), edited, flat, ports);
   if (!std::exchange(_tab_named, true))
     name_tab(frame);
   const glm::uvec2 cell = _font->base;
@@ -551,7 +572,10 @@ void Graph::arrange(VP::Cook &frame, const std::filesystem::path &beside) {
 // widen it or order its columns anew. A folder always shows its own inside, as the
 // relations part reads a folder a level at a time; the paths past it are named from the
 // folder holding it, and a view's from its folder.
-void Graph::build(VP::FilePort &files, const VP::View *edited, const VP::View *flat) {
+void Graph::build(VP::FilePort &files,
+                  const VP::View *edited,
+                  const VP::View *flat,
+                  std::span<const VP::NodePort> ports) {
   const std::string &folder = _relations->folder;
   if (_inside != _built_inside || folder != _built_folder || _at_home)
     _homing = true;
@@ -561,6 +585,7 @@ void Graph::build(VP::FilePort &files, const VP::View *edited, const VP::View *f
   _built_folder = folder;
   _built_changes = _relations->changes;
   _built_hosted = _hosted;
+  _built_ports = ports;
   _heating.stale();
   _boxes = {};
   _hovered_curves.clear();
@@ -575,7 +600,8 @@ void Graph::build(VP::FilePort &files, const VP::View *edited, const VP::View *f
                       _base,
                       !folder.empty(),
                       folder.empty() ? strays_of(files, *edited, _inside)
-                                     : std::vector<std::string>());
+                                     : std::vector<std::string>(),
+                      ports);
   }
   draw_order(_boxes, _raised, _order);
   _tab_named = false;
@@ -791,8 +817,14 @@ void Graph::context(VP::Cook &frame) {
             box != _boxes.boxes.end())
           if (auto [other, named] = menu_of(
                   frame, static_cast<std::size_t>(box - _boxes.boxes.begin()), false);
-              other == kind && std::ranges::find(names, named) == names.end())
+              (other == kind || (node_kind(other) && node_kind(kind))) &&
+              std::ranges::find(names, named) == names.end())
             names.push_back(std::move(named));
+    // In the order they were selected, so a pair's first is the one selected first.
+    std::ranges::stable_sort(names, {}, [&](const std::string &name) {
+      return std::ranges::find(_selection, name) - _selection.begin();
+    });
+    kind = kind_of_several(kind, names.size());
   } else if (!_hovered_curves.empty() && _built_flat) {
     const End &end = _boxes.ends[_hovered_curves.front().second];
     if (end.layer == VP_VIEW::Layer::flow && end.wire < _built_flat->connections.size()) {
@@ -826,33 +858,67 @@ void Graph::context(VP::Cook &frame) {
 }
 
 // What kind of thing a box is, as menu.ini names it, and its name as a line takes it; with
-// by_row, the row under the pointer, when it names a file or a folder.
+// by_row, the row under the pointer: one naming a file or a folder, a port of a node, by
+// the side the pointer is on, loose or joined, as node.port, or a node inside, by its
+// name. A view's manifest at its top is one, as is a folder that holds a project.
 std::pair<std::string, std::string>
 Graph::menu_of(VP::Cook &frame, std::size_t at, bool by_row) const {
   const Box &box = _boxes.boxes[at];
   const std::size_t row = by_row ? row_under(at) : title_row;
-  if (row != title_row && row < box.rows && !rows_in(_boxes, at)[row].opens.empty()) {
-    const std::filesystem::path &opens = rows_in(_boxes, at)[row].opens;
-    return {folder_named(frame.files(), opens) ? "folder" : "file", typed_path(opens)};
+  if (row != title_row && row < box.rows) {
+    const BoxRow &under = rows_in(_boxes, at)[row];
+    if (!under.opens.empty())
+      return path_kind(frame, under.opens);
+    if (!under.node.empty())
+      return node_menu(frame, under.node);
+    if (row < box.ports && box.role == VP_VIEW::role("node")) {
+      const Placed &placed = _layout.placed()[at];
+      const float middle = on_screen(glm::vec2(placed.at)).x +
+                           static_cast<float>(placed.extent.x) * _pan_zoom.zoom / 2.0f;
+      const bool right =
+          under.text.empty() || (!under.written.empty() && _pointer.x >= middle);
+      const bool joined = (right ? under.written_layers : under.read_layers) != 0;
+      return {joined ? "joined" : "port",
+              std::format("{}.{}", box.name, right ? under.written : under.text)};
+    }
   }
   if (box.view)
     return {"view", box.name};
   if (box.stray)
     return {"stray", box.name};
-  if (box.role == VP_VIEW::role("node")) {
-    const VP::View *const view = frame.view(_shown);
-    const auto node = view ? std::ranges::find(view->nodes, box.name, &VP::Node::name)
-                           : std::vector<VP::Node>::const_iterator();
-    const bool dropped = view && node != view->nodes.end() &&
-                         node->recipe.find('@') != std::string::npos;
-    return {dropped ? "dropped" : "node", box.name};
-  }
+  if (box.role == VP_VIEW::role("node"))
+    return node_menu(frame, box.name);
   if (!box.opens.empty())
-    return {folder_named(frame.files(), box.opens) ? "folder" : "file",
-            typed_path(box.opens)};
+    return path_kind(frame, box.opens);
   if (box.role == VP_VIEW::role("folder") || box.role == VP_VIEW::role("hidden"))
-    return {"folder", typed_path(folder_of(at))};
+    return path_kind(frame, folder_of(at));
   return ground(frame);
+}
+
+// A node, one a person made or one a drop copied, which a sync brings up to its recipe.
+std::pair<std::string, std::string> Graph::node_menu(VP::Cook &frame,
+                                                     std::string_view name) const {
+  const VP::View *const view = frame.view(_shown);
+  const auto node = view ? std::ranges::find(view->nodes, name, &VP::Node::name)
+                         : std::vector<VP::Node>::const_iterator();
+  const bool dropped =
+      view && node != view->nodes.end() && node->recipe.find('@') != std::string::npos;
+  return {dropped ? "dropped" : "node", std::string(name)};
+}
+
+// A file, the manifest of the view shown, a folder, or a folder holding a project, which
+// view load hosts.
+std::pair<std::string, std::string>
+Graph::path_kind(VP::Cook &frame, const std::filesystem::path &path) const {
+  const VP::View *const view = _relations->folder.empty() ? frame.view(_shown) : nullptr;
+  if (view && path.lexically_normal() == view->file.lexically_normal())
+    return {"manifest", typed_path(path)};
+  if (!folder_named(frame.files(), path))
+    return {"file", typed_path(path)};
+  const std::vector<std::string> names = frame.files().list(path.string());
+  const bool project =
+      std::ranges::find(names, std::string(manifest_name)) != names.end();
+  return {project ? "project-folder" : "folder", typed_path(path)};
 }
 
 // The level shown: a folder's, by its path, a node's inside, by the node's name, or a

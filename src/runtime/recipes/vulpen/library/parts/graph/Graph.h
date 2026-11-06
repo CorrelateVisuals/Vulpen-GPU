@@ -146,7 +146,10 @@ private:
   void key(VP::Cook &frame, std::string_view key);
   void show(std::string_view name);
   void arrange(VP::Cook &frame, const std::filesystem::path &beside);
-  void build(VP::FilePort &files, const VP::View *edited, const VP::View *flat);
+  void build(VP::FilePort &files,
+             const VP::View *edited,
+             const VP::View *flat,
+             std::span<const VP::NodePort> ports);
   void name_tab(VP::Cook &frame);
   void show_view(VP::CommandPort &commands) const;
   void show_folder(VP::CommandPort &commands,
@@ -159,6 +162,10 @@ private:
   // of thing, with the names its lines take; the ground's, its level's, for none.
   void context(VP::Cook &frame);
   std::pair<std::string, std::string> menu_of(VP::Cook &frame, std::size_t at, bool by_row) const;
+  std::pair<std::string, std::string> node_menu(VP::Cook &frame,
+                                                std::string_view name) const;
+  std::pair<std::string, std::string> path_kind(VP::Cook &frame,
+                                                const std::filesystem::path &path) const;
   std::pair<std::string, std::string> ground(VP::Cook &frame) const;
   void go_in(VP::Cook &frame);
   void focus(std::string_view left);
@@ -281,6 +288,9 @@ private:
   std::string _built_inside;
   std::string _built_folder;
   std::uint64_t _built_changes = 0;
+  // The ports of the view shown as the boxes were built from, which each rebuild of its
+  // schedule replaces, its loose ones that a line could connect each a row.
+  std::span<const VP::NodePort> _built_ports;
   Layout _layout;
   glm::uvec2 _laid_cell{};
   bool _laid = false;

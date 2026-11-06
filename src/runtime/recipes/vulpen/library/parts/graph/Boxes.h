@@ -2,6 +2,7 @@
 
 #include "contracts/Palette.h"
 #include "contracts/Relation.h"
+#include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "Arranged.h"
 
@@ -55,6 +56,7 @@ struct BoxRow {
   std::string written; // the port written
   std::uint32_t role = VP_VIEW::role("text");
   std::filesystem::path opens; // what a press on it opens; empty for none
+  std::string node;            // a node inside's, by its name in the view; empty for none
   // The layers of the curves that land on the port read and on the port written, a bit
   // each, by VP_VIEW::Layer, so a port whose curves are all hidden shows no mark.
   std::uint32_t read_layers = 0;
@@ -279,6 +281,29 @@ void connect(Boxes &boxes, Building &building, const VP::View &flat) {
   }
 }
 
+// The loose ports of the nodes a box shows that a line could connect, as another node's
+// loose port holds what they hold the other way round, after the box's connected ones, so
+// a right press on one offers that line; a node inside a box shows its own from that box,
+// named from it, as its connections do.
+void loose_ports(Boxes &boxes,
+                 Building &building,
+                 const VP::View &flat,
+                 std::span<const VP::NodePort> ports) {
+  for (const VP::NodePort &port : ports) {
+    if (port.joined || port.alike.empty())
+      continue;
+    const auto [box, name] = shown(
+        boxes,
+        building,
+        flat,
+        VP::Endpoint{.node = std::string(port.node), .port = std::string(port.name)});
+    if (box < boxes.boxes.size() && boxes.boxes[box].role == VP_VIEW::role("node")) {
+      Ports &listed = building.ports[box];
+      port_row(port.writes ? listed.written : listed.read, name);
+    }
+  }
+}
+
 // The folder holding a path, as the generic paths a relation names and the folders of the
 // nodes hold them, cut at its last /, the root's own; empty for a name with none. On the
 // text, as a reading's every relation asks for each folder holding what it names.
@@ -431,7 +456,8 @@ void list_rows(Boxes &boxes,
         const std::string held = flat.nodes[inner].name.substr(node_of.name.size() + 1);
         boxes.rows.push_back(
             {.text = building.folders ? held + '/' : std::format("node {}", held),
-             .role = VP_VIEW::role("muted")});
+             .role = VP_VIEW::role("muted"),
+             .node = building.folders ? std::string() : flat.nodes[inner].name});
       }
     for (const std::string &file : node_of.files)
       boxes.rows.push_back({.text = file, .opens = node_of.folder / file});
@@ -583,7 +609,8 @@ Boxes boxes_of(const VP::View &edited,
                std::span<const VP::View *const> hosted,
                const std::filesystem::path &base,
                bool folders,
-               std::span<const std::string> strays) {
+               std::span<const std::string> strays,
+               std::span<const VP::NodePort> ports) {
   Boxes boxes;
   Building building{.folders = folders,
                     .parents = parents_of(flat, folders ? '/' : '.'),
@@ -644,6 +671,7 @@ Boxes boxes_of(const VP::View &edited,
   }
   building.ports.resize(boxes.boxes.size());
   connect(boxes, building, flat);
+  loose_ports(boxes, building, flat, ports);
   relate(boxes, building, relations, flat.connections.size());
   for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
     const auto child = static_cast<std::size_t>(

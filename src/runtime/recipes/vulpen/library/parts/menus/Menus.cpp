@@ -1,3 +1,5 @@
+#include "Lines.h"
+
 #include "contracts/Item.h"
 #include "contracts/Palette.h"
 #include "contracts/Place.h"
@@ -5,7 +7,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
-#include "shared/Ini.h"
+#include "shared/Words.h"
 
 #include <algorithm>
 #include <array>
@@ -22,131 +24,22 @@
 
 namespace {
 
-constexpr std::string_view menu_file = "menu.ini";
-// Where the name of what a menu opened for goes in a line; first, with a colon, it names
-// the view the line addresses, as a typed line does. {/} is the folder of what was
-// pressed, so a line makes something inside a node or beside a file.
-constexpr std::string_view subject = "{}";
-constexpr std::string_view address_mark = "{}:";
-constexpr std::string_view folder_mark = "{/}";
 // How a path from the prompt's folder starts when it names a file there or the folder.
 constexpr std::string_view here = "./";
-// The words before what a menu opens for, and before the words the pointer came onto or
-// pressed, as the hit part sends them.
-constexpr std::string_view for_word = "for";
-constexpr std::string_view point_word = "point";
-constexpr std::string_view press_word = "press";
 // The terminal's command a pressed line goes through.
 constexpr std::string_view type_word = "type";
-// The columns the menu component lays out, a word each.
-constexpr std::size_t column_count = 3;
-// Placeholders that stand for a few known words, which a column lists as the terminal's
-// complete answers them; the person types any other, as a new name.
-constexpr std::array<std::string_view, 4> listed{"<recipe>", "<node>", "<view>",
-                                                 "<connection>"};
 // The most words such a column lists; for more, it shows the placeholder, whose press
 // lists them in the terminal, as Tab does, which scrolls as a menu does not.
 constexpr std::size_t listed_most = 16;
-// Between words, and between the lines an answer holds, a word each.
-constexpr std::string_view blanks = " \t\r\n";
 // What complete takes for a word not begun yet, and type for an empty one, which keeps
 // the blank a line begun ends with.
 constexpr std::string_view no_word = "\"\"";
-
-std::vector<std::string> words_of(std::string_view text) {
-  std::vector<std::string> words;
-  for (std::size_t at = text.find_first_not_of(blanks); at != std::string_view::npos;) {
-    const std::size_t end = std::min(text.find_first_of(blanks, at), text.size());
-    words.emplace_back(text.substr(at, end - at));
-    at = text.find_first_not_of(blanks, end);
-  }
-  return words;
-}
-
-std::string joined(std::span<const std::string> words) {
-  std::string text;
-  for (const std::string &word : words)
-    text.append(text.empty() ? "" : " ").append(word);
-  return text;
-}
-
-// A menu.ini line: the section it is under, a kind of thing pressed, its words as typed,
-// and how many of them are a column each, those past {}: before the first that holds {}
-// or a placeholder.
-struct Line {
-  std::string section;
-  std::vector<std::string> words;
-  std::size_t first = 0; // 1 past {}:
-  std::size_t path = 0;
-
-  std::span<const std::string> columns() const {
-    return std::span(words).subspan(first, path);
-  }
-  // The word after the columns, as <recipe>; empty for none.
-  std::string_view next() const {
-    return first + path < words.size() ? std::string_view(words[first + path])
-                                       : std::string_view();
-  }
-  bool lists() const {
-    return std::ranges::find(listed, next()) != listed.end();
-  }
-  bool names_subject() const {
-    return std::ranges::any_of(words, [](const std::string &word) {
-      return word.find('{') != std::string::npos;
-    });
-  }
-};
-
-// A line a command registered now takes, past its {}:, and no more words a column than
-// the menu shows, counting the one a placeholder it lists takes (A02).
-Line line_of(std::string_view text, std::string section, std::span<const VP::Usage> usages) {
-  Line line{.section = std::move(section), .words = words_of(text)};
-  line.first = line.words.front() == address_mark ? 1 : 0;
-  const std::span<const std::string> sent = std::span(line.words).subspan(line.first);
-  if (sent.empty() || !registered(joined(sent), usages))
-    throw std::runtime_error(std::format("no command takes {}", text));
-  while (line.first + line.path < line.words.size() &&
-         line.words[line.first + line.path].find_first_of("{<") == std::string::npos)
-    ++line.path;
-  if (line.path + (line.lists() ? 1 : 0) > column_count)
-    throw std::runtime_error(
-        std::format("{} takes more columns than the menu's {}", text, column_count));
-  return line;
-}
-
-// Each line under its section, in the order they come, so a menu shows them so.
-std::vector<Line> lines_of(std::string_view text, std::span<const VP::Usage> usages) {
-  std::vector<Line> lines;
-  std::string section;
-  for (const Row &row : rows_of(text)) {
-    try {
-      if (row.text.starts_with('[')) {
-        section = row.text.ends_with(']')
-                      ? std::string(trim(row.text.substr(1, row.text.size() - 2)))
-                      : std::string();
-        if (section.empty())
-          throw std::runtime_error("a section is a kind of thing pressed in brackets, as "
-                                   "[node]");
-        if (section == point_word || section == press_word || section == for_word)
-          throw std::runtime_error(
-              std::format("[{}] is a word the menu command takes itself", section));
-        continue;
-      }
-      if (section.empty())
-        throw std::runtime_error("a line comes under a section, as [node]");
-      Line line = line_of(row.text, section, usages);
-      if (std::ranges::any_of(lines, [&](const Line &given) {
-            return given.section == line.section && given.words == line.words;
-          }))
-        throw std::runtime_error(std::format("[{}] gives {} twice", section, row.text));
-      lines.push_back(std::move(line));
-    } catch (const std::runtime_error &mistake) {
-      throw std::runtime_error(
-          std::format("{}:{}: {}", menu_file, row.line, mistake.what()));
-    }
-  }
-  return lines;
-}
+// The ports port's kind for a value a param sets, which no line connects.
+constexpr std::string_view value_kind = "value";
+// What a start of C++, and of a compute shader, ends with, as the files part names them.
+constexpr std::string_view cpp_start = ".cpp";
+constexpr std::string_view compute_start = ".comp";
+constexpr std::array<std::string_view, 3> shader_ends{".comp", ".vert", ".frag"};
 
 // What a press or a line opens: the section of the kind of thing pressed, and those whose
 // lines follow it, muted, as a background's lines for the whole project; where its first
@@ -159,10 +52,13 @@ struct Opening {
 };
 
 // A word a column shows: a word of the lines, or one of the few a placeholder stands for,
-// as a recipe's name.
+// as a recipe's name, one with words after it, as a node's loose port; and whether a line
+// joining several pressed gives it, which comes before those run once for each.
 struct Entry {
   std::string word;
   bool value = false;
+  bool opens = false;
+  bool joins = false;
 };
 
 // A line a press hands the terminal, as its type takes it, and whether it is only begun,
@@ -172,18 +68,37 @@ struct Handing {
   bool begun = false;
 };
 
+// A line joining two loose ports alike, as a column shows it: for one node its port and
+// the other end, else the connection's name alone, and the line that makes it, its
+// writer first.
+struct Link {
+  std::string first;
+  std::string second;
+  std::string line;
+};
+
+// What a column's words are found from, for the view lines go to, as the frame or the
+// line sent reads it.
+struct Look {
+  const VP::View *view = nullptr;
+  std::span<const VP::NodePort> ports;
+  VP::FilePort &files;
+};
+
 // The menus menu.ini gives, by the kind of thing a right press is on, each a line as the
 // terminal takes it (V06), so a menu teaches the line it sends: its words a column each,
 // the first column holding the first words, and the pointer on a word opening beside it
 // the words that may follow it, as Tab lists them, and in place of a placeholder that
 // stands for a few known words, as <recipe>, what the terminal's complete answers, or,
-// past listed_most of them, the placeholder itself. The lines of the sections named after
-// the first follow it, muted, as a background's for the whole project. A press on the
-// word that ends a line hands the line to the terminal's type, as a key's line goes too:
-// run there, as if typed, so the terminal shows it and its answer, or, when it wants a
-// word, as <name>, begun up to it, the terminal's panel shown and the focus on it, for
-// the person to finish, what may come there listed for a placeholder pressed; with
-// several things pressed, a line runs once for each. A part that knows what was pressed
+// past listed_most of them, the placeholder itself; or, for what the menus find, what the
+// view's ports, connections and files give, as <link>. The lines of the sections named
+// after the first follow it, muted, as a background's for the whole project. A press on
+// the word that ends a line hands the line to the terminal's type, as a key's line goes
+// too: run there, as if typed, so the terminal shows it and its answer, or, when it wants
+// a word, as <name>, begun up to it, the terminal's panel shown and the focus on it, for
+// the person to finish, what may come there listed for a placeholder pressed. With
+// several things pressed, a line joining them runs once, and under a rule after those, a
+// line that wants no word typed runs once for each. A part that knows what was pressed
 // opens the menu for it with menu <kind> [<section>...] for <name>..., as the graph and a
 // tab do; while it shows it holds the pointer, so nothing under it takes a press, and the
 // focus, so escape shuts it; a press anywhere but on a word shuts it too, giving the
@@ -234,8 +149,11 @@ class Menus final : public VP::Operator {
     _shutting = false;
     follow(frame, opening);
     *_at = _shown ? VP_VIEW::Rect{.offset = _corner, .extent = {1, 0}} : VP_VIEW::Rect{};
-    if (!_written)
-      write(frame.commands());
+    if (!_written) {
+      const std::string current(frame.commands().current());
+      write(frame.commands(),
+            Look{frame.view(current), frame.ports(current), frame.files()});
+    }
   }
 
   // As it changed, or for a line before the first frame, as a script's, once every
@@ -294,9 +212,9 @@ class Menus final : public VP::Operator {
   }
 
   // The kind's lines, then those of the sections after it; with several things pressed,
-  // of the kind's only those that name what was pressed and want no word more, as they
-  // run once for each. Opened for nothing, a line that addresses what was pressed has
-  // nothing to address.
+  // of the kind's only those that join them, and those that name what was pressed and
+  // want no word typed, as they run once for each, a value listed chosen once for all.
+  // Opened for nothing, a line that addresses what was pressed has nothing to address.
   bool offered(const Line &line, std::string_view group) const {
     if (line.section != group)
       return false;
@@ -304,40 +222,77 @@ class Menus final : public VP::Operator {
       return line.first == 0;
     if (group != _sections.front() || _subjects.size() < 2)
       return true;
-    return line.names_subject() &&
-           std::ranges::none_of(line.words, [](const std::string &word) {
-             return word.find('<') != std::string::npos;
-           });
+    return line.joins() || (line.names_subject() && !line.wants() &&
+                            (!line.lists() || one_of(completed_kinds, line.kind)));
   }
 
   // The words a column shows in a group after the words before it: the next words of the
   // lines whose columns start with them, each once, and where such a line's columns end
-  // at a placeholder a column lists, what complete answers.
+  // at a placeholder a column lists, what it stands for.
   std::vector<Entry> entries(VP::CommandPort &commands,
+                             const Look &look,
                              std::string_view group,
                              std::span<const std::string> before) const {
     std::vector<Entry> found;
-    const auto add = [&](std::string word, bool value) {
-      if (std::ranges::find(found, word, &Entry::word) == found.end())
-        found.push_back({std::move(word), value});
+    const auto add = [&](Entry entry) {
+      if (std::ranges::find(found, entry.word, &Entry::word) == found.end())
+        found.push_back(std::move(entry));
     };
     for (const Line &line : _lines) {
-      const std::span<const std::string> columns = line.columns();
-      if (!offered(line, group) || columns.size() < before.size() ||
-          !std::ranges::equal(columns.first(before.size()), before))
+      if (!offered(line, group) || (one_of(found_kinds, line.kind) &&
+                                    values(commands, look, line, {}).empty()))
         continue;
+      const std::span<const std::string> columns = line.columns();
       if (columns.size() > before.size()) {
-        add(columns[before.size()], false);
-      } else if (line.lists()) {
-        std::vector<std::string> values = completed(commands, line);
-        if (values.size() > listed_most)
-          add(std::string(line.next()), true);
-        else
-          for (std::string &value : values)
-            add(std::move(value), true);
+        if (std::ranges::equal(columns.first(before.size()), before))
+          add({.word = columns[before.size()], .joins = line.joins()});
+      } else if (line.lists() &&
+                 std::ranges::equal(columns, before.first(columns.size()))) {
+        for (Entry &entry : values(commands, look, line, before.subspan(columns.size())))
+          add(std::move(entry));
       }
     }
     return found;
+  }
+
+  // What a line's listed placeholder stands for, past the words chosen after its columns:
+  // what the terminal's complete answers, as Tab lists it, or past listed_most of them
+  // the placeholder; or what the menus find for what was pressed.
+  std::vector<Entry> values(VP::CommandPort &commands,
+                            const Look &look,
+                            const Line &line,
+                            std::span<const std::string> chosen) const {
+    std::vector<Entry> entries;
+    if (one_of(completed_kinds, line.kind)) {
+      if (!chosen.empty())
+        return entries;
+      std::vector<std::string> words = completed(commands, line);
+      if (words.size() > listed_most)
+        return {{.word = line.kind, .value = true}};
+      for (std::string &word : words)
+        entries.push_back(
+            {.word = std::move(word), .value = true, .joins = line.joins()});
+      return entries;
+    }
+    if (line.kind == link_kind) {
+      const bool two = two_columns(look);
+      for (const Link &link : _links)
+        if (chosen.empty() || (two && chosen.size() == 1 && link.first == chosen[0]))
+          entries.push_back({.word = chosen.empty() ? link.first : link.second,
+                             .value = true,
+                             .opens = chosen.empty() && two,
+                             .joins = true});
+      std::ranges::sort(entries, {}, &Entry::word);
+      const auto [kept, end] = std::ranges::unique(entries, {}, &Entry::word);
+      entries.erase(kept, end);
+      return entries;
+    }
+    if (!chosen.empty())
+      return entries;
+    for (std::string &word : found(look, line))
+      entries.push_back(
+          {.word = std::move(word), .value = true, .joins = line.joins()});
+    return entries;
   }
 
   // What the terminal's complete answers for the word after a line's columns, as Tab
@@ -359,21 +314,149 @@ class Menus final : public VP::Operator {
     return values;
   }
 
+  // The node a name pressed is: a node's own, or for a port, as node.port, its node.
+  static std::string node_of(const Look &look, std::string_view named) {
+    const bool node = std::ranges::any_of(look.ports, [&](const VP::NodePort &port) {
+      return port.node == named;
+    });
+    const std::size_t dot = named.rfind('.');
+    return node || dot == std::string_view::npos ? std::string(named)
+                                                 : std::string(named.substr(0, dot));
+  }
+
+  // Whether a link shows as a node's port and the other end, a column each: for one node
+  // pressed, not a port of it.
+  bool two_columns(const Look &look) const {
+    return _subjects.size() == 1 && node_of(look, _subjects.front()) == _subjects.front();
+  }
+
+  // What the menus find for a placeholder but <link>: the connections joining what was
+  // pressed, the values of a node pressed a param may set, the files in its folder, or
+  // the files new starts that it lacks, as Name.cpp beside its shaders.
+  std::vector<std::string> found(const Look &look, const Line &line) const {
+    std::vector<std::string> words;
+    if (line.kind == joined_kind && look.view) {
+      for (const VP::Connection &connection : look.view->connections)
+        if (std::ranges::all_of(_subjects, [&](const std::string &named) {
+              return joins(connection, named);
+            }))
+          words.push_back(connection.name);
+      return words;
+    }
+    if (_subjects.size() != 1)
+      return words;
+    const std::string &named = _subjects.front();
+    if (line.kind == key_kind) {
+      for (const VP::NodePort &port : look.ports)
+        if (port.kind == value_kind && port.node == named)
+          words.emplace_back(port.name);
+      return words;
+    }
+    const std::string folder = absolute_folder(look, node_of(look, named));
+    std::vector<std::string> files;
+    for (std::string &name : folder.empty() ? std::vector<std::string>()
+                                            : look.files.list(folder))
+      if (!name.ends_with('/') && !name.starts_with('.'))
+        files.push_back(std::move(name));
+    if (line.kind == path_kind)
+      return files;
+    const auto holds = [&](std::string_view end) {
+      return std::ranges::any_of(
+          files, [&](const std::string &file) { return file.ends_with(end); });
+    };
+    const std::string stem = class_of(named.substr(named.rfind('.') + 1));
+    if (!holds(cpp_start))
+      words.push_back(stem + std::string(cpp_start));
+    if (holds(cpp_start) && std::ranges::none_of(shader_ends, holds))
+      words.push_back(stem + std::string(compute_start));
+    return words;
+  }
+
+  // Whether a connection's ends hold what was pressed: a node's, or a port's, node.port.
+  static bool joins(const VP::Connection &connection, std::string_view named) {
+    const auto at = [&](const VP::Endpoint &end) {
+      return end.node == named || end.text() == named;
+    };
+    return at(connection.from) || std::ranges::any_of(connection.to, at);
+  }
+
+  // The lines a <link> stands for, for what was pressed: one node's loose ports and the
+  // ports alike to each, a port's alike, or those joining two or more nodes pressed; each
+  // connection named for its writer's port, or while one of the view holds that name, for
+  // the writer's node and the port, as a bind's error names it.
+  std::vector<Link> links_of(const Look &look) const {
+    std::vector<Link> links;
+    if (_subjects.empty())
+      return links;
+    const bool two = two_columns(look);
+    const bool port = _subjects.size() == 1 && !two;
+    const auto pressed = [&](std::string_view node) {
+      return std::ranges::find(_subjects, node) != _subjects.end();
+    };
+    for (const VP::NodePort &own : look.ports) {
+      if (own.joined || own.kind == value_kind)
+        continue;
+      const std::string name = std::format("{}.{}", own.node, own.name);
+      for (const std::string &other : own.alike) {
+        const std::string other_node = other.substr(0, other.rfind('.'));
+        if (port ? name != _subjects.front()
+                 : !pressed(own.node) || (!two && !pressed(other_node)))
+          continue;
+        const std::string &writer = own.writes ? name : other;
+        const std::string &reader = own.writes ? other : name;
+        const std::string line = joining(look, writer, reader);
+        const std::string label = line.substr(line.find(' ') + 1,
+                                              line.find(' ', line.find(' ') + 1) -
+                                                  line.find(' ') - 1);
+        if (std::ranges::none_of(
+                links, [&](const Link &link) { return link.line == line; }))
+          links.push_back({.first = two ? std::string(own.name) : port ? other : label,
+                           .second = two ? other : std::string(),
+                           .line = line});
+      }
+    }
+    return links;
+  }
+
+  // As a bind's error names the line joining a writer to its reader.
+  static std::string
+  joining(const Look &look, std::string_view writer, std::string_view reader) {
+    const std::size_t dot = writer.rfind('.');
+    const std::size_t before =
+        dot == 0 ? std::string_view::npos : writer.rfind('.', dot - 1);
+    const std::size_t node = before == std::string_view::npos ? 0 : before + 1;
+    std::string name(writer.substr(dot + 1));
+    const auto taken = [&](const VP::Connection &connection) {
+      return connection.name == name;
+    };
+    if (look.view && std::ranges::any_of(look.view->connections, taken))
+      name = std::format("{}-{}", writer.substr(node, dot - node), name);
+    return std::format("connect {} {} {}", name, writer, reader);
+  }
+
   // Only as they change, so a frame allocates nothing for them (CPP10): the first column
-  // each section's first words, the muted ones after, and each column after it the words
-  // after the path's.
-  void write(VP::CommandPort &commands) {
+  // each section's first words, those of lines joining several pressed first, then a
+  // rule, then those run once for each, the muted ones after, and each column after it
+  // the words after the path's.
+  void write(VP::CommandPort &commands, const Look &look) {
     _written = true;
     for (VP_VIEW::Items *const column : _columns)
       column->clear();
     if (!_shown)
       return;
-    for (const std::string &group : _sections)
-      for (const Entry &entry : entries(commands, group, {}))
+    _links = links_of(look);
+    for (const std::string &group : _sections) {
+      bool joining = false;
+      for (const Entry &entry : entries(commands, look, group, {})) {
+        if (joining && !entry.joins && _subjects.size() > 1)
+          _columns[0]->push_back({});
+        joining = entry.joins && _subjects.size() > 1;
         _columns[0]->push_back(item(group, {}, entry));
+      }
+    }
     for (std::size_t depth = 1; depth <= _path.size() && depth < column_count; ++depth) {
       const std::span<const std::string> before = std::span(_path).first(depth);
-      for (const Entry &entry : entries(commands, _group, before))
+      for (const Entry &entry : entries(commands, look, _group, before))
         _columns[depth]->push_back(item(_group, before, entry));
     }
   }
@@ -392,43 +475,54 @@ class Menus final : public VP::Operator {
             .command = std::format("menu {} {}", press_word, words),
             .current = on_path,
             .role = muted ? std::optional(VP_VIEW::role("muted")) : std::nullopt,
-            .hover = entry.value ? std::string()
-                                 : std::format("menu {} {}", point_word, words)};
+            .hover = entry.value && !entry.opens
+                         ? std::string()
+                         : std::format("menu {} {}", point_word, words)};
   }
 
   // A line made from menu.ini's: a value chosen in place of the placeholder that lists it,
-  // {} naming what was pressed, a path as the terminal takes it, and {/} its folder.
-  // Whole, it is run; else it is begun up to the first word it still wants, as <name>, or
-  // {} for nothing pressed, past the part of that word before it, as docs/ before <name>;
-  // and for the placeholder chosen in place of a list too long, what may come there
-  // listed. A path begun so loses its ./, as the person goes on typing a path the
-  // terminal counts from its prompt's folder anyway: new <name>, new face/<name>. As the
-  // terminal's type takes it, which a line begun ends with "" for the blank it ends with,
-  // as a line's words lose it.
+  // after what comes before it in its word, {} naming what was pressed, a path as the
+  // terminal takes it, {/} its folder, {1} and {2} the first and second pressed, {node}
+  // a port's node, and {view} the view lines go to. Whole, it is run; else it is begun up
+  // to the first word it still wants, as <name>, or {} for nothing pressed, past the part
+  // of that word before it, as docs/ before <name>; for the placeholder chosen in place
+  // of a list too long, or a value that is a folder, going on into it as Tab does, what
+  // may come there listed. A path begun so loses its ./, as the person goes on typing a
+  // path the terminal counts from its prompt's folder anyway: new <name>, new
+  // face/<name>. As the terminal's type takes it, which a line begun ends with "" for the
+  // blank it ends with, as a line's words lose it.
   Handing handed(VP::Call &call,
                  const Line &line,
                  const std::optional<std::string> &value,
                  std::string_view named) const {
     std::vector<std::string> words = line.words;
     if (value)
-      words[line.first + line.path] = *value;
+      words[line.listed] = line.prefix + *value;
     const std::string folder = named.empty() ? std::string() : folder_of(call, named);
-    const std::string pressed =
-        named.find('/') == std::string_view::npos
-            ? std::string(named)
-            : typed(std::filesystem::absolute(std::filesystem::path(named))
-                        .lexically_normal());
+    const auto pressed = [&](std::string_view name) {
+      return name.find('/') == std::string_view::npos
+                 ? std::string(name)
+                 : typed(std::filesystem::absolute(std::filesystem::path(name))
+                             .lexically_normal());
+    };
+    const std::string one = _subjects.empty() ? std::string() : pressed(_subjects[0]);
+    const std::string two = _subjects.size() < 2 ? std::string() : pressed(_subjects[1]);
+    const std::string node =
+        named.empty() ? std::string() : std::string(named.substr(0, named.rfind('.')));
     std::string text;
-    for (std::string word : words) {
-      replace(word, subject, pressed);
+    for (std::size_t at = 0; at < words.size(); ++at) {
+      std::string word = words[at];
+      replace(word, subject, pressed(named));
       replace(word, folder_mark, folder);
+      replace(word, first_mark, one);
+      replace(word, second_mark, two);
+      replace(word, node_mark, node);
+      replace(word, view_mark, call.commands().current());
       if (word.find('<') != std::string::npos && word.starts_with(here))
         word.erase(0, here.size());
       const std::size_t wanted = std::min(word.find('<'), word.find('{'));
       text.append(text.empty() ? "" : " ").append(word.substr(0, wanted));
-      // A value that is a folder, as a group of recipes, goes on into it, as Tab does:
-      // the line begun up to it, what it holds listed.
-      if (value && word == *value && value->ends_with('/'))
+      if (value && at == line.listed && value->ends_with('/'))
         return {.line = std::format("{} list {}", type_word, text), .begun = true};
       if (wanted != std::string::npos)
         return {.line = std::format("{} {} {}{}",
@@ -462,11 +556,23 @@ class Menus final : public VP::Operator {
     return (bare ? "." / shown : shown).generic_string();
   }
 
+  // The folder of a node of the view lines go to, its name's path in the view's folder
+  // (RV08), whole; none for a name no node of it has.
+  static std::string absolute_folder(const Look &look, std::string_view named) {
+    if (!look.view || look.view->file.empty() ||
+        std::ranges::none_of(look.view->nodes,
+                             [&](const VP::Node &node) { return node.name == named; }))
+      return {};
+    return std::filesystem::absolute(look.view->file.parent_path() / VP::path_of(named))
+        .lexically_normal()
+        .string();
+  }
+
   // The folder of what was pressed, as a line takes it: a path, which holds a /, as the
   // graph names one from where vulpen started, ./ at the top, is a folder's own or names
   // the folder holding it; a name is a node's of the view lines go to, its name's path in
-  // the view's folder (RV08), a hosted view's, or a folder there no node names yet. None
-  // for none of them.
+  // the view's folder (RV08), a port's node's, a hosted view's, or a folder there no
+  // node names yet. None for none of them.
   std::string folder_of(VP::Call &call, std::string_view named) const {
     if (named.find('/') != std::string_view::npos) {
       const std::filesystem::path path =
@@ -484,6 +590,12 @@ class Menus final : public VP::Operator {
              : std::filesystem::path();
     if (view && std::ranges::find(view->nodes, named, &VP::Node::name) != view->nodes.end())
       return typed(own);
+    // A port, as node.port, its node's.
+    if (const std::size_t dot = named.rfind('.');
+        view && dot != std::string_view::npos &&
+        std::ranges::find(view->nodes, named.substr(0, dot), &VP::Node::name) !=
+            view->nodes.end())
+      return folder_of(call, named.substr(0, dot));
     if (const VP::View *const hosted = call.view(named))
       return typed(std::filesystem::absolute(hosted->file.parent_path()));
     if (view) {
@@ -494,17 +606,26 @@ class Menus final : public VP::Operator {
     return {};
   }
 
-  // The words pressed end a line, or a value a column lists ends it; any other press opens
-  // the words after them, as the pointer coming onto them does, and keeps the menus shown,
-  // though the press reached them as any press does, which shuts them.
+  // The words pressed end a line, or a value a column lists ends it, as the second of a
+  // node's link does; any other press opens the words after them, as the pointer coming
+  // onto them does, and keeps the menus shown, though the press reached them as any press
+  // does, which shuts them.
   void press(VP::Call &call, std::string group, std::vector<std::string> words) {
     for (const Line &line : _lines) {
       const std::span<const std::string> columns = line.columns();
       if (!offered(line, group) || columns.size() > words.size() ||
           !std::ranges::equal(columns, std::span(words).first(columns.size())))
         continue;
-      const bool ends = columns.size() == words.size() && !line.lists();
-      const bool valued = line.lists() && words.size() == columns.size() + 1;
+      const std::size_t past = words.size() - columns.size();
+      if (line.kind == link_kind && past > 0)
+        if (const auto link = std::ranges::find_if(_links, [&](const Link &link) {
+              return link.first == words[columns.size()] &&
+                     (past == 1 ? link.second.empty() : link.second == words.back());
+            });
+            link != _links.end())
+          return hand_link(call, *link);
+      const bool ends = past == 0 && !line.lists();
+      const bool valued = line.lists() && line.kind != link_kind && past == 1;
       if (ends || valued)
         return hand(call, line, valued ? std::optional(words.back()) : std::nullopt);
     }
@@ -514,8 +635,14 @@ class Menus final : public VP::Operator {
     _written = false;
   }
 
-  // Run once for each thing pressed, or begun, the terminal's panel shown and the focus
-  // given to it, which the menus then keep there.
+  void hand_link(VP::Call &call, const Link &link) {
+    _shutting = true;
+    call.commands().send(std::format("{} {}", type_word, link.line));
+  }
+
+  // Run once for what was pressed, a line joining several, or once for each, or begun,
+  // the terminal's panel shown and the focus given to it, which the menus then keep
+  // there.
   void hand(VP::Call &call, const Line &line, const std::optional<std::string> &value) {
     _shutting = true;
     bool begun = false;
@@ -526,6 +653,8 @@ class Menus final : public VP::Operator {
     };
     if (_subjects.empty() || !line.names_subject())
       send({});
+    else if (line.joins())
+      send(_subjects.front());
     else
       for (const std::string &named : _subjects)
         send(named);
@@ -545,10 +674,7 @@ class Menus final : public VP::Operator {
     const auto line = std::ranges::find_if(_lines, [&](const Line &line) {
       return !words.empty() && line.section == words.front() &&
              std::ranges::equal(line.columns(), words.subspan(1)) &&
-             line.names_subject() &&
-             std::ranges::none_of(line.words, [](const std::string &word) {
-               return word.find('<') != std::string::npos;
-             });
+             line.names_subject() && !line.lists() && !line.wants();
     });
     if (line == _lines.end() || names.empty())
       throw std::runtime_error(std::format(
@@ -631,6 +757,7 @@ class Menus final : public VP::Operator {
   glm::ivec2 _corner{};              // where it was opened
   std::vector<std::string> _sections; // the kind it opened for, then those muted
   std::vector<std::string> _subjects; // the names {} stands for
+  std::vector<Link> _links;          // what a <link> stands for, as the columns show it
   std::string _group;                // the section the words chosen are of
   std::vector<std::string> _path;    // the words chosen, a column each
   std::optional<Opening> _next;      // what a line opened, for the next frame
