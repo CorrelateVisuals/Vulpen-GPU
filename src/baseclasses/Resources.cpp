@@ -5,6 +5,7 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#include <algorithm>
 #include <array>
 #include <format>
 #include <stdexcept>
@@ -43,6 +44,29 @@ void allocated(VkResult result, const char *call, std::string_view asked, VkDevi
     throw std::runtime_error(std::format(
         "{} is more than the GPU can give, with {} free", asked, gigabytes(free)));
   check(result, call);
+}
+
+// A side past what the GPU makes is refused, naming both, rather than made against the
+// spec, which one driver takes and another does not (A02, RVK00); a draw renders
+// through a framebuffer, whose sides may be shorter still.
+void fits(VkPhysicalDevice device, VkExtent2D extent, Fill fill) {
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(device, &properties);
+  const VkPhysicalDeviceLimits &limits = properties.limits;
+  const bool drawn = fill == Fill::draw;
+  const std::uint32_t widest = drawn ? std::min(limits.maxImageDimension2D,
+                                                limits.maxFramebufferWidth)
+                                     : limits.maxImageDimension2D;
+  const std::uint32_t tallest = drawn ? std::min(limits.maxImageDimension2D,
+                                                 limits.maxFramebufferHeight)
+                                      : limits.maxImageDimension2D;
+  if (extent.width > widest || extent.height > tallest)
+    throw std::runtime_error(
+        std::format("an image of {} by {} pixels is past the {} by {} this GPU makes",
+                    extent.width,
+                    extent.height,
+                    widest,
+                    tallest));
 }
 
 VmaAllocationCreateFlags placement(Memory memory) {
@@ -213,6 +237,7 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
 
 // A stored image is zeroed by a transfer once made.
 Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
+  fits(_physical_device, extent, fill);
   const VkImageUsageFlags filled =
       fill == Fill::draw    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
       : fill == Fill::store ? VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT

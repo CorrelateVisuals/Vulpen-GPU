@@ -525,11 +525,16 @@ const Image &Schedule::image_for(const Bound &writer,
     if (image.extent().width == extent.width && image.extent().height == extent.height &&
         image.format() == format.format)
       return image;
-    std::erase_if(_copies, [&](const Copy &copy) { return copy.to == image.handle(); });
+  }
+  // Made before the old one goes, so an image refused leaves the old one and the slot its
+  // readers hold as they were, never a slot freed under them.
+  Sampled sampled(_wiring.pipelines, _wiring.resources.image(extent, format.format));
+  if (picture != _images.end()) {
+    const VkImage old = picture->sampled.image().handle();
+    std::erase_if(_copies, [&](const Copy &copy) { return copy.to == old; });
     _images.erase(picture);
   }
-  const Picture &made = _images.emplace_back(
-      name, Sampled(_wiring.pipelines, _wiring.resources.image(extent, format.format)));
+  const Picture &made = _images.emplace_back(name, std::move(sampled));
   point_readers(name, made.sampled.slot());
   log(Level::info,
       Tag::mem,
