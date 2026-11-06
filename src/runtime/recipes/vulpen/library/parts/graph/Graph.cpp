@@ -1449,7 +1449,7 @@ void Graph::arrange_anew(VP::FilePort &files) {
 // to the terminal's type, so it shows the line and its answer and undo takes it back, as
 // the menu's own press (V06); a node with files in its folder is refused, naming remove
 // force. A node inside another selected goes with that one, and what no menu removes, as
-// what lies outside, stays.
+// what lies outside and the view's own manifest, stays.
 void Graph::erase(VP::Cook &frame) {
   std::vector<std::pair<std::string, std::string>> lines; // a kind's, by the kind
   for (const std::string &name : _selection) {
@@ -1461,7 +1461,7 @@ void Graph::erase(VP::Cook &frame) {
       continue;
     const auto [kind, named] =
         menu_of(frame, static_cast<std::size_t>(box - _boxes.boxes.begin()), false);
-    if (kind.empty() || background(kind) || !nameable(named))
+    if (kind.empty() || background(kind) || kind == "manifest" || !nameable(named))
       continue;
     auto line =
         std::ranges::find(lines, kind, &std::pair<std::string, std::string>::first);
