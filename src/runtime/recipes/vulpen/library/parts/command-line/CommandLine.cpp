@@ -843,8 +843,11 @@ class CommandLine final : public VP::Operator {
                                             const std::string &asked) {
     if (std::ranges::find(usages, "selected", &VP::Usage::usage) == usages.end())
       return {};
+    // Named, as the lines are views of it: a range-for keeps alive only what lines_of
+    // returns, not the answer it was given.
+    const std::string answer = frame.commands().send(asked);
     std::vector<std::string> names;
-    for (const std::string_view name : lines_of(frame.commands().send(asked)))
+    for (const std::string_view name : lines_of(answer))
       names.emplace_back(name);
     return names;
   }
