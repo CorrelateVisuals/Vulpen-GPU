@@ -99,9 +99,11 @@ bool Modules::built(const std::string &module, const std::filesystem::path &fold
          std::filesystem::exists(folder / module_file, unread);
 }
 
+// Its entry goes too, so a module no node loads again is not named rewritten by every
+// later swap, as its file stays newer than the time the entry kept.
 void Modules::unload(const std::string &module) {
   _operators.erase(module);
-  std::ranges::find(_loaded, module, &Loaded::module)->library.reset();
+  std::erase_if(_loaded, [&](const Loaded &loaded) { return loaded.module == module; });
 }
 
 void Modules::add(std::string_view name, Make make) {
