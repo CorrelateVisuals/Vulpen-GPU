@@ -71,13 +71,13 @@ from pathlib import Path
 from harness import display, problems, run
 
 RUNTIME = Path(__file__).resolve().parents[2] / "runtime"
-CLI = RUNTIME / "recipes" / "cli" / "view.vlp"
-IDE = RUNTIME / "recipes" / "ide" / "view.vlp"
+CLI = RUNTIME / "recipes" / "vulpen" / "cli" / "view.vlp"
+IDE = RUNTIME / "recipes" / "vulpen" / "ide" / "view.vlp"
 # The ide's font is the library's part, so it keeps its zoom in the library's folder;
 # its docking part keeps the panels as they were left beside the ide's manifest, which
 # each run starts without, so every run starts from the manifest's.
-ZOOMED = RUNTIME / "recipes/library/parts/font/.vulpen/font.ini"
-LAID = RUNTIME / "recipes/ide/.vulpen/layout.log"
+ZOOMED = RUNTIME / "recipes/vulpen/library/parts/font/.vulpen/font.ini"
+LAID = RUNTIME / "recipes/vulpen/ide/.vulpen/layout.log"
 TRIANGLE = RUNTIME.parents[1] / "projects" / "triangles" / "triangle"
 PRESENT = [f"view load {TRIANGLE}"]  # presented as it comes
 PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode toggle

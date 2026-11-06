@@ -7,4 +7,4 @@
 version = 1
 
 [node "relations"]
-param = docs=../../../../../../docs/architecture
+param = docs=../../../../../../../docs/architecture

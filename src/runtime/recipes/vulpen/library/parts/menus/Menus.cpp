@@ -426,6 +426,10 @@ class Menus final : public VP::Operator {
         word.erase(0, here.size());
       const std::size_t wanted = std::min(word.find('<'), word.find('{'));
       text.append(text.empty() ? "" : " ").append(word.substr(0, wanted));
+      // A value that is a folder, as a group of recipes, goes on into it, as Tab does:
+      // the line begun up to it, what it holds listed.
+      if (value && word == *value && value->ends_with('/'))
+        return {.line = std::format("{} list {}", type_word, text), .begun = true};
       if (wanted != std::string::npos)
         return {.line = std::format("{} {} {}{}",
                                     type_word,

@@ -290,6 +290,42 @@ std::vector<std::string> listed_names(VP::Call &call, std::string_view listing) 
   return names;
 }
 
+// What a <recipe> may be, as recipe list lists them by their paths from the recipes'
+// folder, the first folder of each its group: with no word begun the groups, each a
+// folder, as custom/, so a menu shows them a word each and Tab goes into one, as into a
+// folder; in a group, as vulpen/, its recipes as the group and the name; else the groups
+// and the recipes by name, which recipe drop takes alike.
+std::vector<std::string> recipes_for(VP::Call &call, std::string_view begun) {
+  std::vector<std::string> names;
+  const std::size_t slash = begun.find('/');
+  const auto add = [&](std::string name) {
+    if (std::ranges::find(names, name) == names.end())
+      names.push_back(std::move(name));
+  };
+  std::vector<std::pair<std::string, std::string>> listed; // a group, a name
+  try {
+    const std::string answer = call.commands().send("recipe list");
+    for (const std::string_view line : lines_of(answer))
+      if (const std::size_t first = line.find('/'); first != std::string_view::npos)
+        listed.emplace_back(line.substr(0, first), line.substr(line.rfind('/') + 1));
+  } catch (const std::runtime_error &) {
+  }
+  for (const auto &[group, name] : listed)
+    add(group + '/');
+  if (begun.empty())
+    return names;
+  if (slash != std::string_view::npos)
+    names.clear();
+  for (const auto &[group, name] : listed)
+    if (name.empty())
+      continue;
+    else if (slash == std::string_view::npos)
+      add(name);
+    else if (group == begun.substr(0, slash))
+      add(std::format("{}/{}", group, name));
+  return names;
+}
+
 // The words a node takes, each up to its =, so Tab shows what node add and node set give;
 // past log=, the levels it takes (V09).
 std::vector<std::string> node_words(std::string_view begun) {
@@ -333,7 +369,7 @@ std::vector<std::string> names(std::string_view word,
   } else if (kind == "<view>") {
     hosted(call, {}, names);
   } else if (kind == "<recipe>") {
-    names = listed_names(call, "recipe list");
+    names = recipes_for(call, begun);
   } else if (kind == "<folder>") {
     names = folders(call, begun);
   } else if (kind == "<port>") {

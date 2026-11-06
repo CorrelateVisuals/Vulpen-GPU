@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 IMAGES = ROOT / "docs" / "images"
 NAME = "Vulpen"  # the copy's folder, as the repository's .vulpen/graph.ini names its top
 # The theme the ide's palette reads, in the copy; a run's own theme goes over it.
-THEME = Path("src/runtime/recipes/library/parts/palette/theme.ini")
+THEME = Path("src/runtime/recipes/vulpen/library/parts/palette/theme.ini")
 TIMEOUT_S = 120     # for a line, a picture, or the run's end
 POLL_S = 0.01
 FRAMES_A_LINE = 3   # at least, from one line of a scene to the next
@@ -39,7 +39,7 @@ SETTLE_FRAMES = 300
 ERROR = "{!!!}"
 # Before the first frame, from the folder holding the copy, so the ide draws into the
 # snapshot's picture from its first and never opens a window.
-SETUP = f"""view add ide {NAME}/src/runtime/recipes/ide/view.vlp
+SETUP = f"""view add ide {NAME}/src/runtime/recipes/vulpen/ide/view.vlp
 node add cli.snapshot recipe=snapshot param=wait={SETTLE_FRAMES}
 connect snapshot ide: cli.snapshot.picture
 """
@@ -163,10 +163,10 @@ DIVE = {
     "level-0": [*zoom(4), *panels("maximize", "graph"), *graph("./")],
     "level-1": graph("src/"),
     "level-2": graph("src/runtime/"),
-    "level-3": graph("src/runtime/recipes/"),
-    "level-4": graph("src/runtime/recipes/library/"),
-    "level-5": graph("src/runtime/recipes/library/parts/"),
-    "level-6": graph("src/runtime/recipes/library/parts/graph/"),
+    "level-3": graph("src/runtime/recipes/vulpen/"),
+    "level-4": graph("src/runtime/recipes/vulpen/library/"),
+    "level-5": graph("src/runtime/recipes/vulpen/library/parts/"),
+    "level-6": graph("src/runtime/recipes/vulpen/library/parts/graph/"),
     "level-7": INSIDE_IDE,
 }
 README = Pictures(IMAGES, (Run(HERO, size="2400x860"), Run(TILES, size="1200x1200"),
@@ -202,7 +202,7 @@ def take(binary: Path, run: Run, into: Path) -> dict[str, Path]:
            if key not in ("DISPLAY", "WAYLAND_DISPLAY")}
     files = (into / f"{count}" for count in itertools.count())
     with said.open("w") as out:
-        vulpen = subprocess.Popen([binary, "src/runtime/recipes/cli/view.vlp", "--size",
+        vulpen = subprocess.Popen([binary, "src/runtime/recipes/vulpen/cli/view.vlp", "--size",
                                    run.size, "--fps", "0", "--source", into / "setup.txt"],
                                   cwd=tree, env=env, text=True, stdin=subprocess.PIPE,
                                   stdout=out, stderr=subprocess.STDOUT)

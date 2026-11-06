@@ -10,7 +10,7 @@ preset=debug
 if [[ ${1:-} == --release ]]; then preset=release; shift; fi
 # Absolute, so the paths vulpen logs read whole, never through ./ (as run.ps1's).
 root=$(cd "$(dirname "$0")" && pwd)
-recipes=$root/src/runtime/recipes
+recipes=$root/src/runtime/recipes/vulpen
 projects=$root/projects
 # An app's flag and a project's are the script's own and stand for views, so vulpen knows
 # no app or project by name (V05): --cli for the cli's view.vlp, which vulpen starts

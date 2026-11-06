@@ -109,21 +109,25 @@ function(vulpen_list_views)
   file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${views_file} CONTENT "${listed}\n")
 endfunction()
 
-# The recipes build as one view named library, which runtime/Manifest.cpp names the same:
-# each recipe of the library's kinds (RV06) is a node's folder, and so is each app beside
-# the library, so an app runs from the library's recipes as they are (V11). The library's
-# parts/shared/ is the code parts share, which no node is (RV09).
+# The recipes build as one view named library, which runtime/Manifest.cpp names the same,
+# a folder of them a group: vulpen/, whose library holds a recipe of each kind (RV06) in a
+# node's folder, as each app beside the library is one, so an app runs from the library's
+# recipes as they are (V11), and every other group, as custom/, a folder a recipe. The
+# library's parts/shared/ is the code parts share, and a group's contracts/ and shared/
+# what its recipes share, which no node is (RV05, RV09).
 function(vulpen_recipes folder)
   vulpen_name(library ${folder})
   add_custom_target(vulpen_view_library)
   add_dependencies(vulpen_view_library gates)
   add_dependencies(vulpen_modules vulpen_view_library)
   add_dependencies(vulpen vulpen_view_library)
-  file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${folder}/library/parts/*
-       ${folder}/library/components/* ${folder}/*)
+  set(vulpen ${folder}/vulpen)
+  file(GLOB recipes LIST_DIRECTORIES true CONFIGURE_DEPENDS ${vulpen}/library/parts/*
+       ${vulpen}/library/components/* ${folder}/*/*)
   foreach(recipe IN LISTS recipes)
-    if(IS_DIRECTORY ${recipe} AND NOT recipe STREQUAL "${folder}/library"
-       AND NOT recipe STREQUAL "${folder}/library/parts/shared")
+    get_filename_component(name ${recipe} NAME)
+    if(IS_DIRECTORY ${recipe} AND NOT name MATCHES "^\\." AND NOT name STREQUAL "contracts"
+       AND NOT name STREQUAL "shared" AND NOT recipe STREQUAL "${vulpen}/library")
       vulpen_node(library ${recipe} ${folder})
       vulpen_nodes(library ${recipe} ${folder})
     endif()
@@ -155,11 +159,17 @@ function(vulpen_node view folder root)
   file(RELATIVE_PATH relative ${root} ${folder})
   string(MAKE_C_IDENTIFIER "${view}_${relative}" target)
   set(out ${CMAKE_BINARY_DIR}/views/${view}/${relative})
-  # Where contracts/ and shared/ resolve from: the top of the view, or of the library, which
-  # keeps shared/ in parts/, beside the parts that include it (RV05, RV09).
+  # Where contracts/ and shared/ resolve from: the top of the view, or of vulpen's library,
+  # which keeps shared/ in parts/, beside the parts that include it, after the top of the
+  # group a recipe of another group is in, which keeps both (RV05, RV09).
   set(includes ${PROJECT_SOURCE_DIR}/src ${root})
   if(view STREQUAL "library")
-    set(includes ${PROJECT_SOURCE_DIR}/src ${root}/library ${root}/library/parts)
+    string(REGEX REPLACE "/.*" "" group "${relative}")
+    set(includes ${PROJECT_SOURCE_DIR}/src)
+    if(NOT group STREQUAL "vulpen")
+      list(APPEND includes ${root}/${group})
+    endif()
+    list(APPEND includes ${root}/vulpen/library ${root}/vulpen/library/parts)
   endif()
   list(TRANSFORM includes PREPEND -I OUTPUT_VARIABLE include_flags)
 

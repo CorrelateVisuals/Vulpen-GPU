@@ -96,7 +96,8 @@ def split(fragment: str, *varyings: str) -> str:
 INNER = '[view "inner"]\n'  # a hosted view, empty while its folder holds no view.vlp
 PASSES = 1025  # one past what a pool of pass blocks in Pipelines.cpp holds
 FIXTURE = Path(__file__).resolve().parent / "mistakes"
-PARTS = Path(__file__).resolve().parents[2] / "runtime" / "recipes" / "library" / "parts"
+PARTS = (Path(__file__).resolve().parents[2] / "runtime" / "recipes" / "vulpen" / "library"
+         / "parts")
 # The library's parts that put text and an image on screen: the image first, in the
 # window's Rect, then rects and glyphs, so the sign and its text draw over it.
 TEXT = ("palette", "font", "viewport", "image", "rects", "glyphs")
@@ -228,21 +229,22 @@ CASES = {
 WINDOWED = {"draw-writes", "draw-counts"}
 
 # Recipes of manifests only, for the recipe cases: each runs as the view at its path from
-# the recipes' folder, a part in the library or an app beside it.
+# the recipes' folder, a part in vulpen's library, an app beside it, or a recipe of
+# another group, which uses vulpen's as an app does.
 LIBRARY = {
-    "library/parts/loop": '[node "loop"]\n\n[node "loop.again"]\nrecipe = loop\n',
-    "library/parts/part": '[node "part"]\n',
-    "missing": '[node "missing"]\n\n[node "missing.x"]\nrecipe = nothing\n',
-    "param": '[node "param"]\n\n[node "param.x"]\nrecipe = part\nparam = nothing.amount=1\n',
-    "port": ('[node "port"]\n\n[node "port.x"]\nrecipe = part\n\n'
-             + connection("values", "port.x.nothing.values", "port.x.values")),
+    "vulpen/library/parts/loop": '[node "loop"]\n\n[node "loop.again"]\nrecipe = loop\n',
+    "vulpen/library/parts/part": '[node "part"]\n',
+    "vulpen/missing": '[node "missing"]\n\n[node "missing.x"]\nrecipe = nothing\n',
+    "vulpen/param": '[node "param"]\n\n[node "param.x"]\nrecipe = part\nparam = nothing.amount=1\n',
+    "custom/port": ('[node "port"]\n\n[node "port.x"]\nrecipe = part\n\n'
+                    + connection("values", "port.x.nothing.values", "port.x.values")),
 }
 RECIPE_CASES = {
-    "missing": ("missing/view.vlp:6: node missing.x: ",
-                "/recipes/library/parts/nothing/view.vlp: cannot be read"),
-    "library/parts/loop": "the recipes it uses form a cycle through loop (RV06)",
-    "param": "it sets param nothing.amount, but recipe part has no node part.nothing",
-    "port": "connection values joins port.x.nothing, which is no node",
+    "vulpen/missing": ("missing/view.vlp:6: node missing.x: ",
+                       "/recipes/vulpen/library/parts/nothing/view.vlp: cannot be read"),
+    "vulpen/library/parts/loop": "the recipes it uses form a cycle through loop (RV06)",
+    "vulpen/param": "it sets param nothing.amount, but recipe part has no node part.nothing",
+    "custom/port": "connection values joins port.x.nothing, which is no node",
 }
 
 
@@ -415,7 +417,7 @@ def windowed(vulpen: str, folder: Path, name: str, parts: tuple[str, ...], nodes
                        ((PARTS / part / "view.vlp").read_text(encoding="utf-8")
                         for part in parts))
     view = view_in(folder, name, HEAD + nodes + sections + connections)
-    built = mirror(vulpen).parent / "library" / "library" / "parts"
+    built = mirror(vulpen).parent / "library" / "vulpen" / "library" / "parts"
     links = [mirror(vulpen) / part for part in parts]
     try:
         for part, link in zip(parts, links):
@@ -574,12 +576,12 @@ def cli_copy(folder: Path) -> Path:
     """A copy of the CLI and the parts it uses, in folder/recipes, which runs as the
     library does, since the build tree mirrors it by the same names; returns that
     folder."""
-    root = Path(__file__).resolve().parents[2] / "runtime" / "recipes"
+    root = Path(__file__).resolve().parents[2] / "runtime" / "recipes" / "vulpen"
     recipes = folder / "recipes"
     for part in ("command-line", "inspect", "library", "projects", "files", "editor"):
         shutil.copytree(root / "library" / "parts" / part,
-                        recipes / "library" / "parts" / part)
-    shutil.copytree(root / "cli", recipes / "cli")
+                        recipes / "vulpen" / "library" / "parts" / part)
+    shutil.copytree(root / "cli", recipes / "vulpen" / "cli")
     return recipes
 
 
@@ -589,7 +591,7 @@ def drops(vulpen: str, folder: Path) -> str | None:
     build serves it; its node runs nothing and fails only on its param, which it never
     reads."""
     recipes = cli_copy(folder / "drops")
-    library = recipes / "library"
+    library = recipes / "vulpen" / "library"
     notes = library / "parts" / "notes"
     notes.mkdir()
     (notes / "view.vlp").write_text(
@@ -601,7 +603,7 @@ def drops(vulpen: str, folder: Path) -> str | None:
 
     def cli(*lines: str) -> str:
         typed = "\n".join([f"view load {project}", *lines, "view save"]) + "\n"
-        _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed)
+        _, output = run(vulpen, [recipes / "vulpen" / "cli" / "view.vlp"], typed=typed)
         return output
 
     steps = [
@@ -646,11 +648,11 @@ def projects(vulpen: str, folder: Path) -> str | None:
     belongs to, or None. The CLI's projects are in a folder of the test's own."""
     recipes = cli_copy(folder / "projects")
     home = folder / "projects" / "home"
-    part = recipes / "library" / "parts" / "projects" / "view.vlp"
+    part = recipes / "vulpen" / "library" / "parts" / "projects" / "view.vlp"
     part.write_text(re.sub(r"folder=\S+", f"folder={home.as_posix()}",
                            part.read_text(encoding="utf-8")), encoding="utf-8")
     typed = "view new first\nnode add group\nview save as second\nview rename third\n"
-    _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed)
+    _, output = run(vulpen, [recipes / "vulpen" / "cli" / "view.vlp"], typed=typed)
     first, third = home / "first" / "view.vlp", home / "third" / "view.vlp"
     if (problems(output) or "{!!!}" in output or not first.is_file()
             or "group" in first.read_text(encoding="utf-8") or (home / "second").exists()
@@ -677,18 +679,19 @@ def files(vulpen: str, folder: Path) -> str | None:
     (loose / "inner" / "a.txt").write_text("a", encoding="utf-8")
     refused = [f"remove {loose}", f"remove {project / 'keep'}",
                f"rename {project / 'keep'} {loose / 'moved'}",
-               f"new {recipes / 'cli' / 'own'}/"]
+               f"new {recipes / 'vulpen' / 'cli' / 'own'}/"]
     typed = "\n".join([f"view load {project}", *refused,
                        f"new {project / 'keep' / 'c.txt'}",
                        f"new {project / 'made' / 'b.txt'}", "new typed.txt",
                        f"rename {loose / 'inner' / 'a.txt'} {loose / 'new' / 'a.txt'}",
                        f"rename {project / 'keep'} {project / 'held'}", "view save"])
-    _, output = run(vulpen, [recipes / "cli" / "view.vlp"], typed=typed + "\n")
+    _, output = run(vulpen, [recipes / "vulpen" / "cli" / "view.vlp"], typed=typed + "\n")
     if (problems(output) or output.count("{!!!}") != len(refused)
             or not (project / "held" / "kept.txt").is_file()
             or not (project / "held" / "c.txt").is_file() or (loose / "moved").exists()
             or '[node "held"]' not in (project / "view.vlp").read_text(encoding="utf-8")
-            or (recipes / "cli" / "own").exists() or not (project / "made" / "b.txt").is_file()
+            or (recipes / "vulpen" / "cli" / "own").exists()
+            or not (project / "made" / "b.txt").is_file()
             or '[node "made"]' not in (project / "view.vlp").read_text(encoding="utf-8")
             or not (loose / "new" / "a.txt").is_file()
             or not (project / "typed.txt").is_file()):

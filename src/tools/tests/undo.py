@@ -18,7 +18,7 @@ from pathlib import Path
 
 from harness import ROOT, problems, run
 
-CLI = ROOT / "src" / "runtime" / "recipes" / "cli" / "view.vlp"
+CLI = ROOT / "src" / "runtime" / "recipes" / "vulpen" / "cli" / "view.vlp"
 SEED = "the text undo must bring back\n"
 SCRIPT = """\
 view new {project}

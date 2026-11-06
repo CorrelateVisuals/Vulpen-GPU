@@ -6,13 +6,14 @@ The map is the one page a person reads to steer the engine's structure: a new en
 file or include edge lands only once someone writes it there, and the graph stays
 acyclic, so code never includes from code that builds on it.
 
-Node code, any file of the library (src/runtime/recipes/library/) or of a view, under a
-folder that holds a view.vlp, as each project in projects/ is, is not engine and has no
-row: a new node's file builds with no edit to the map. Each of its includes must be a
-file in its own folder, a contract from the contracts/ folder at the top of the library
-or of its view, shared code from the shared/ folder in the library's parts/ or at the
-top of its view, or an engine file the map's node table lists. Engine code never
-includes node code.
+Node code, any file of the recipes (src/runtime/recipes/: vulpen's library and each other
+group, as custom/) or of a view, under a folder that holds a view.vlp, as each project in
+projects/ is, is not engine and has no row: a new node's file builds with no edit to the
+map. Each of its includes must be a file in its own folder, a contract from the
+contracts/ folder at the top of vulpen's library, of its group or of its view, shared
+code from the shared/ folder in the library's parts/ or at the top of its group or its
+view, or an engine file the map's node table lists. Engine code never includes node
+code.
 
 With --view FOLDER it checks the node code of that view alone, as the view's own build
 runs it, so a project's mistake stops that project's build, and a file under projects/
@@ -34,7 +35,8 @@ VENDORED = SOURCE / "external-libraries"  # not our code, so not our structure
 SUFFIXES = {".h", ".hpp", ".cpp", ".glsl", ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]', re.MULTILINE)
 CODE_SPAN = re.compile(r"`([^`]+)`")
-LIBRARY = SOURCE / "runtime" / "recipes" / "library"  # the recipes, and what they share
+RECIPES = SOURCE / "runtime" / "recipes"  # a folder a group of recipes
+LIBRARY = RECIPES / "vulpen" / "library"  # vulpen's recipes, and what they share
 MANIFEST = "view.vlp"  # a folder holding one is a view's
 # The only files more than one node includes, at the top of the library or of a view, but
 # the library keeps shared/ in parts/ (RV05, RV09); a node includes their GLSL or C++
@@ -61,20 +63,29 @@ def ours(file: Path) -> bool:
 
 
 def node_root(file: Path) -> Path | None:
-    """Where the contracts/ of a node's file is: the library's folder for a file in the
-    library, else the nearest folder above the file that holds a view.vlp; None for
-    engine code."""
+    """Where the contracts/ of a node's file is: the library's folder for a file in
+    vulpen's library, the group's for one in another group of recipes, else the nearest
+    folder above the file that holds a view.vlp; None for engine code."""
     if LIBRARY in file.parents:
         return LIBRARY
+    if RECIPES in file.parents:
+        return RECIPES / file.relative_to(RECIPES).parts[0]
     return next((folder for folder in file.parents
                  if ours(folder) and (folder / MANIFEST).is_file()), None)
 
 
 def shared_root(file: Path) -> Path | None:
     """Where the shared/ of a node's file is: in the library's parts/, else at the top of
-    its view; None for engine code."""
+    its group or its view; None for engine code."""
     root = node_root(file)
     return LIBRARY / "parts" if root == LIBRARY else root
+
+
+def grouped(file: Path) -> bool:
+    """Whether a node's file is a recipe of a group other than vulpen's, which builds with
+    the library and may include its contracts and shared code too."""
+    root = node_root(file)
+    return root is not None and RECIPES in root.parents and root != LIBRARY
 
 
 def resolve(file: Path, quote: str, name: str) -> str | None:
@@ -87,7 +98,8 @@ def resolve(file: Path, quote: str, name: str) -> str | None:
     # The compiler's search order, so "Log.h" and "baseclasses/Log.h" map alike and no
     # spelling hides a cycle. Node code finds its contracts and shared code as the build
     # does, so a dropped copy includes the view's copy of them (V03).
-    for base in (file.parent, node_root(file), shared_root(file), SOURCE):
+    library = (LIBRARY, LIBRARY / "parts") if grouped(file) else ()
+    for base in (file.parent, node_root(file), shared_root(file), *library, SOURCE):
         if base is not None:
             candidate = (base / name).resolve()
             if candidate.is_file() and ours(candidate):
@@ -177,7 +189,10 @@ def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
             elif not (target.parent == path_of(file).parent
                       or (target.suffix in HEADER_SUFFIXES
                           and target.parent in (root / CONTRACTS,
-                                                shared_root(path_of(file)) / SHARED))
+                                                shared_root(path_of(file)) / SHARED,
+                                                *((LIBRARY / CONTRACTS,
+                                                   LIBRARY / "parts" / SHARED)
+                                                  if grouped(path_of(file)) else ())))
                       # The table lists engine files; since the library is under runtime/,
                       # its patterns would else reach another recipe's code too (RV00).
                       or (not node_root(target)

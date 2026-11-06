@@ -413,9 +413,13 @@ void give(Graphed &graph,
 // quit force ends a run that would lose work.
 class Files final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    // A part's folder is <recipes>/library/parts/<name>; the apps are beside the library.
-    _library = std::filesystem::path(node.folder()).parent_path().parent_path();
-    _recipes = _library.parent_path();
+    // A part's folder is <recipes>/vulpen/library/parts/<name>; the apps are beside the
+    // library, and the other groups of recipes beside vulpen's.
+    _recipes = std::filesystem::path(node.folder())
+                   .parent_path()
+                   .parent_path()
+                   .parent_path()
+                   .parent_path();
     for (std::size_t start = 0; start < starts.size(); ++start)
       _starts[start] =
           node.file(std::format("start/{}{}.in", start_name, starts[start].extension));
@@ -618,14 +622,14 @@ class Files final : public VP::Operator {
   }
 
   // Whether a folder is what a drop copies: a node's, as the nearest manifest at or above
-  // it names it, or a recipe's own in the library.
+  // it names it, or a recipe's own, in any group of them.
   bool drops(VP::FilePort &files, const std::filesystem::path &folder) const {
     std::filesystem::path at = folder;
     for (; !listed(files, at / manifest, ""); at = at.parent_path())
       if (at == at.parent_path())
         return false;
     if (at == folder) {
-      const std::filesystem::path inside = folder.lexically_relative(_library);
+      const std::filesystem::path inside = folder.lexically_relative(_recipes);
       return !inside.empty() && *inside.begin() != "..";
     }
     const std::optional<std::string> node = node_of(folder.lexically_relative(at));
@@ -746,8 +750,7 @@ class Files final : public VP::Operator {
       files.remove(folder.string());
   }
 
-  std::filesystem::path _library;
-  std::filesystem::path _recipes; // the library's folder and the apps' beside it
+  std::filesystem::path _recipes; // the recipes' folder: vulpen's, its apps, the groups
   // The start files, by starts, which the file port watches, so new writes them as they
   // are now.
   std::array<VP::File, starts.size()> _starts;

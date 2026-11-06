@@ -48,7 +48,7 @@ SETTLE_ROUNDS = 240    # at most, before the build counts as never idle
 QUIT_S = 3             # for quit to end the run, before quit force
 TAIL_LINES = 20        # of what vulpen said last, when it ends or hangs
 ERROR = "{!!!}"
-SETUP = f"""view add ide {ROOT}/src/runtime/recipes/ide/view.vlp
+SETUP = f"""view add ide {ROOT}/src/runtime/recipes/vulpen/ide/view.vlp
 node add cli.snapshot recipe=snapshot
 connect snapshot ide: cli.snapshot.picture
 """
@@ -762,8 +762,8 @@ class Run:
                if key not in ("DISPLAY", "WAYLAND_DISPLAY")}
         self.out = said.open("w")
         self.vulpen = subprocess.Popen(
-            [binary, "src/runtime/recipes/cli/view.vlp", "--fps", "0", "--size", "1280x720",
-             "--log", "debug", "--source", scratch / "setup.txt"],
+            [binary, "src/runtime/recipes/vulpen/cli/view.vlp", "--fps", "0", "--size",
+             "1280x720", "--log", "debug", "--source", scratch / "setup.txt"],
             cwd=ROOT, env=env, text=True, stdin=subprocess.PIPE, stdout=self.out,
             stderr=subprocess.STDOUT)
 

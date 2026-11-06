@@ -36,10 +36,13 @@ namespace {
 
 constexpr std::uint32_t manifest_version = 1;
 constexpr std::string_view blanks = " \t\r";
-// The recipes' folder holds the library, whose folders hold its recipes by kind (RV06),
-// and beside it the apps, which use those recipes as they are (V11). All of it builds as
-// one view, which src/runtime/cmake/nodes.cmake names the same.
+// The recipes' folder holds a folder a group of recipes: vulpen/, vulpen's own, whose
+// library holds its recipes by kind (RV06) and beside it the apps, which use those
+// recipes as they are (V11), and custom/, a person's own, as any other group, a folder a
+// recipe. All of it builds as one view, which src/runtime/cmake/nodes.cmake names the
+// same.
 constexpr std::string_view recipes_folder = "recipes";
+constexpr std::string_view vulpen_group = "vulpen";
 constexpr std::string_view library_folder = "library";
 constexpr std::array<std::string_view, 2> recipe_kinds{"parts", "components"};
 constexpr std::string_view library_view = "library";
@@ -51,19 +54,27 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
-// A recipe of the library run as a view is in <recipes>/library/<kind>/<name>/view.vlp,
-// and an app in <recipes>/<name>/view.vlp, beside the library; both build from <recipes>.
+// A recipes' folder: one named so, which holds vulpen's library.
+bool recipes_at(const std::filesystem::path &folder) {
+  return folder.filename() == recipes_folder &&
+         std::filesystem::is_directory(folder / vulpen_group / library_folder);
+}
+
+// A recipe of vulpen's library run as a view is in
+// <recipes>/vulpen/library/<kind>/<name>/view.vlp, an app in <recipes>/vulpen/<name>/,
+// beside the library, and a recipe of another group in <recipes>/<group>/<name>/; all
+// build from <recipes>.
 std::optional<std::filesystem::path> library_of(const std::filesystem::path &file) {
-  const std::filesystem::path above = file.parent_path().parent_path();
-  if (above.filename() == recipes_folder &&
-      std::filesystem::is_directory(above / library_folder))
-    return above;
-  const std::filesystem::path library = above.parent_path();
+  const std::filesystem::path group = file.parent_path().parent_path();
+  if (recipes_at(group.parent_path()) && file.parent_path().filename() != library_folder)
+    return group.parent_path();
+  const std::filesystem::path library = group.parent_path();
   if (library.filename() != library_folder ||
-      library.parent_path().filename() != recipes_folder ||
-      std::ranges::find(recipe_kinds, above.filename().string()) == recipe_kinds.end())
+      library.parent_path().filename() != vulpen_group ||
+      !recipes_at(library.parent_path().parent_path()) ||
+      std::ranges::find(recipe_kinds, group.filename().string()) == recipe_kinds.end())
     return std::nullopt;
-  return library.parent_path();
+  return library.parent_path().parent_path();
 }
 
 // The build tree mirrors a view by this name: its folder's, or the library's.
@@ -79,13 +90,26 @@ std::filesystem::path base_of(const View &view) {
   return library_of(view.file) ? folder.parent_path() : folder;
 }
 
-// The library's recipe of that name, in the first kind that holds it.
+// The recipe of that name: in the first kind of vulpen's library that holds it, else in
+// the first other group that does, by name; else where vulpen's parts would hold it, so
+// its manifest's read names a path.
 std::filesystem::path recipe_folder(const std::filesystem::path &recipes,
                                     const std::string &recipe) {
-  const std::filesystem::path library = recipes / library_folder;
+  const std::filesystem::path library = recipes / vulpen_group / library_folder;
   for (const std::string_view kind : recipe_kinds)
     if (std::filesystem::is_directory(library / kind / recipe))
       return library / kind / recipe;
+  std::vector<std::filesystem::path> groups;
+  std::error_code missing;
+  for (const std::filesystem::directory_entry &entry :
+       std::filesystem::directory_iterator(recipes, missing))
+    if (const std::string name = entry.path().filename().string();
+        entry.is_directory(missing) && name != vulpen_group && !name.starts_with('.'))
+      groups.push_back(entry.path());
+  std::ranges::sort(groups);
+  for (const std::filesystem::path &group : groups)
+    if (std::filesystem::is_regular_file(group / recipe / manifest_file, missing))
+      return group / recipe;
   return library / recipe_kinds.front() / recipe;
 }
 

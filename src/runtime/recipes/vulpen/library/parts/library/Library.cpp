@@ -18,9 +18,17 @@
 namespace {
 
 // What a drop copies besides the nodes' files: the contracts and the shared code they
-// include, at the same path from the view's top (RV05, RV09). The library keeps its
-// shared code in parts/, beside the parts that include it, and lists it as no recipe.
+// include, at the same path from the view's top (RV05, RV09). Vulpen's library keeps its
+// shared code in parts/, beside the parts that include it, and lists it as no recipe; a
+// group of a person's recipes keeps both at its top, as a view does.
 constexpr std::string_view parts = "parts";
+constexpr std::string_view components = "components";
+// The recipes' folder holds a folder a group of recipes: vulpen's own, in its library by
+// kind (RV06), beside its apps, and a person's, as custom/, where a recipe made goes
+// unless a path names another group, a folder a recipe.
+constexpr std::string_view vulpen_group = "vulpen";
+constexpr std::string_view custom_group = "custom";
+constexpr std::string_view library_folder = "library";
 constexpr std::string_view include_start = "#include \"";
 // Between a drop's recipe and the fingerprint of what it copied: probe@3f2a9c1e.
 constexpr char fingerprint_mark = '@';
@@ -46,6 +54,13 @@ bool holds(VP::FilePort &files,
 bool shared_code(std::string_view kind, std::string_view folder) {
   return kind.substr(0, kind.size() - 1) == parts && folder == VP::shared_folder;
 }
+
+// A recipe: its folder, the group it is in and its name, which is its folder's.
+struct Found {
+  std::filesystem::path folder;
+  std::string group;
+  std::string name;
+};
 
 // A path as an answer names it, from where vulpen started, as the prompt names a folder.
 std::string shown(const std::filesystem::path &path) {
@@ -239,24 +254,32 @@ std::vector<VP::Param> kept_params(const VP::Node &fresh, const VP::Node &mine) 
 // the first edit on (V03).
 class Library final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    // A part's folder is <recipes>/library/<kind>/<name>.
+    // A part's folder is <recipes>/vulpen/library/<kind>/<name>.
     _library = std::filesystem::path(node.folder()).parent_path().parent_path();
-    _list = node.command("recipe list", "lists the library's recipes, by kind");
+    _recipes = _library.parent_path().parent_path();
+    _list = node.command("recipe list",
+                         "lists the recipes, each by its path from the recipes' folder: "
+                         "vulpen's library's by kind, then each other group's, as "
+                         "custom's");
     _drop = node.command("recipe drop <recipe> <name>",
-                         "copies a library recipe into the view as a node of that name, "
+                         "copies a recipe, by its name, or its group, a slash and its "
+                         "name, as custom/arcball, into the view as a node of that name, "
                          "with the nodes inside it and the contracts and shared code "
                          "they include, or by a path a node's folder from any view, with "
                          "its words, as copy brings one");
     _sync = node.command("recipe sync <node>",
-                         "brings a dropped recipe up to the library's, while what it "
-                         "copied is unchanged; its params and connections stay");
+                         "brings a dropped recipe up to its recipe as it is now, while "
+                         "what it copied is unchanged; its params and connections stay");
     _make = node.command("recipe make <node> <name>",
-                         "makes the node a recipe of the library by that name, the node "
-                         "becoming a drop of it: a part of its files and words, with the "
-                         "contracts and shared code they include, for a node with none "
-                         "inside it; else a component of the recipes the nodes inside it "
-                         "were dropped from, unchanged since, their params and "
-                         "connections as the view gives them");
+                         "makes the node a recipe by that name, in custom/, or by a "
+                         "group, a slash and the name, in that group, vulpen's "
+                         "library's by its kind, the node becoming a drop of it: a part "
+                         "of its files and words, with the contracts and shared code "
+                         "they include, for a node with none inside it; else a "
+                         "component of the recipes the nodes inside it were dropped "
+                         "from, unchanged since, their params and connections as the "
+                         "view gives them; made again from a drop of it, it is saved "
+                         "where it is");
   }
 
   void command(VP::Call &call) override {
@@ -270,40 +293,119 @@ class Library final : public VP::Operator {
       make(call);
   }
 
-  // A recipe is a folder in a kind's folder, but the shared code's; the contracts' folder
-  // holds only files.
+  // A group with none yet by its folder, as custom/ before a recipe is made, so the
+  // terminal still offers it.
   void list(VP::Call &call) const {
-    for (const std::string &kind : folders(call.files(), _library))
-      for (std::string recipe : folders(call.files(), _library / kind)) {
-        recipe.pop_back();
-        if (!shared_code(kind, recipe))
-          call.reply(kind + recipe);
-      }
+    for (const std::string &group : groups(call.files())) {
+      const std::vector<Found> recipes = recipes_in(call.files(), group);
+      if (recipes.empty())
+        call.reply(group + '/');
+      for (const Found &recipe : recipes)
+        call.reply(from_recipes(recipe.folder));
+    }
   }
 
-  // Where a recipe of the library is, by its name.
-  std::filesystem::path find(VP::FilePort &files, std::string_view recipe) const {
-    const std::string folder = std::string(recipe) + '/';
-    for (const std::string &kind : folders(files, _library))
-      if (!shared_code(kind, recipe) && holds(files, _library / kind, folder))
-        return _library / kind / recipe;
-    throw std::runtime_error(
-        std::format("no recipe {} in the library; recipe list lists them", recipe));
+  // A path from the recipes' folder, as list names a recipe and make takes one.
+  std::string from_recipes(const std::filesystem::path &path) const {
+    return path.lexically_normal().lexically_relative(_recipes.lexically_normal())
+        .generic_string();
+  }
+
+  // Vulpen's first, then each other folder of the recipes' by name.
+  std::vector<std::string> groups(VP::FilePort &files) const {
+    std::vector<std::string> found{std::string(vulpen_group)};
+    for (std::string group : folders(files, _recipes)) {
+      group.pop_back();
+      if (group != vulpen_group && !group.starts_with('.'))
+        found.push_back(std::move(group));
+    }
+    return found;
+  }
+
+  // Vulpen's, a folder in a kind's folder of its library, but the shared code's, as the
+  // contracts' folder holds only files; another group's, each of its folders that holds a
+  // manifest, but its contracts' and its shared code's.
+  std::vector<Found> recipes_in(VP::FilePort &files, std::string_view group) const {
+    std::vector<Found> found;
+    const auto add = [&](const std::filesystem::path &in, std::string recipe) {
+      recipe.pop_back();
+      found.push_back({in / recipe, std::string(group), recipe});
+    };
+    if (group == vulpen_group) {
+      for (const std::string &kind : folders(files, _library))
+        for (std::string recipe : folders(files, _library / kind))
+          if (!shared_code(kind, recipe.substr(0, recipe.size() - 1)))
+            add(_library / kind.substr(0, kind.size() - 1), std::move(recipe));
+      return found;
+    }
+    const std::filesystem::path top = _recipes / group;
+    for (std::string recipe : folders(files, top))
+      if (recipe != std::format("{}/", VP::contracts_folder) &&
+          recipe != std::format("{}/", VP::shared_folder) &&
+          holds(files, top / recipe, VP::manifest_file))
+        add(top, std::move(recipe));
+    return found;
+  }
+
+  // Where a recipe is, by its name, or its group, a slash and its name, as list names
+  // none twice but a person may copy one by hand into two groups, which then needs its
+  // group named.
+  Found find(VP::FilePort &files, std::string_view word) const {
+    const std::size_t slash = word.find('/');
+    const std::string_view name =
+        slash == std::string_view::npos ? word : word.substr(slash + 1);
+    std::vector<Found> found;
+    for (const std::string &group : groups(files))
+      if (slash == std::string_view::npos || group == word.substr(0, slash))
+        for (Found &recipe : recipes_in(files, group))
+          if (recipe.name == name)
+            found.push_back(std::move(recipe));
+    if (found.empty())
+      throw std::runtime_error(
+          std::format("no recipe {}; recipe list lists them", word));
+    if (found.size() > 1)
+      throw std::runtime_error(std::format("{} is a recipe of {} and of {}: {}/{} or "
+                                           "{}/{} names one",
+                                           name,
+                                           found[0].group,
+                                           found[1].group,
+                                           found[0].group,
+                                           name,
+                                           found[1].group,
+                                           name));
+    return std::move(found.front());
+  }
+
+  // Whether a word names a recipe by its group, a slash and its name, rather than a
+  // path, as a group is a folder of the recipes'.
+  bool grouped(VP::FilePort &files, std::string_view word) const {
+    const std::size_t slash = word.find('/');
+    if (slash == std::string_view::npos || slash != word.rfind('/') ||
+        !VP::is_name(word.substr(slash + 1)))
+      return false;
+    const std::vector<std::string> named = groups(files);
+    return std::ranges::find(named, word.substr(0, slash)) != named.end();
+  }
+
+  // Where the contracts and the shared code a group's recipes include are: vulpen's
+  // library, or the group's own top, as a view's.
+  std::filesystem::path top_of(std::string_view group) const {
+    return group == vulpen_group ? _library : _recipes / group;
   }
 
   // The folder of the view a command addresses, where its nodes' folders are (RV08). The
-  // library's recipes and the apps beside it use recipes as they are (V11), so a view of
-  // theirs is never one.
+  // recipes and vulpen's apps use recipes as they are (V11), so a view of theirs is never
+  // one.
   std::filesystem::path view_folder(VP::Call &call) const {
     const std::filesystem::path folder = call.view().file.parent_path();
-    if (inside(folder, _library.parent_path()))
+    if (inside(folder, _recipes))
       throw std::runtime_error(std::format(
           "{} is {}, which holds no nodes of yours; view new <name> starts a project to "
           "make them in",
-          folder.lexically_normal()
-              .lexically_relative(_library.parent_path().lexically_normal())
-              .generic_string(),
-          inside(folder, _library) ? "a recipe of the library" : "an app, vulpen's own"));
+          from_recipes(folder),
+          inside(folder, _library) || !inside(folder, _library.parent_path())
+              ? "a recipe"
+              : "an app, vulpen's own"));
     return folder;
   }
 
@@ -333,9 +435,9 @@ class Library final : public VP::Operator {
 
   // A recipe as a drop copies it: its own node, named like its folder, and the nodes
   // inside it, with each recipe they use unfolded, as a view would run it (V11).
-  Copy recipe(VP::FilePort &files, const std::string &recipe) const {
-    const VP::View graph =
-        files.manifest((find(files, recipe) / VP::manifest_file).string());
+  Copy recipe(VP::FilePort &files, const Found &found) const {
+    const std::string &recipe = found.name;
+    const VP::View graph = files.manifest((found.folder / VP::manifest_file).string());
     if (std::ranges::find(graph.nodes, recipe, &VP::Node::name) == graph.nodes.end())
       throw std::runtime_error(
           std::format("recipe {} has no node {}: a recipe is one node "
@@ -373,8 +475,8 @@ class Library final : public VP::Operator {
 
   // Each node's files into the folder its name names in the view, saved whole (RA04),
   // and each contract and shared file they include that the view lacks, from the top
-  // they came from, the library's or a view's, with what those include in turn (RV05,
-  // RV09). One the view has stays as it is.
+  // they came from, vulpen's library, a group's or a view's, with what those include in
+  // turn (RV05, RV09). One the view has stays as it is.
   void write(VP::FilePort &files,
              const Copy &copy,
              const std::filesystem::path &view,
@@ -392,12 +494,21 @@ class Library final : public VP::Operator {
       const std::filesystem::path file = included[next];
       if (holds(files, view / file.parent_path(), file.filename().string()))
         continue;
-      const bool shared = top == _library && *file.begin() == VP::shared_folder;
-      const std::filesystem::path from = shared ? _library / parts / file : top / file;
-      const std::string text = files.read(from.string());
+      const std::string text = files.read(included_from(files, top, file).string());
       includes_of(text, file.parent_path(), included);
       files.save((view / file).string(), text);
     }
+  }
+
+  // Where a contract or shared code a copy includes is read from: the top it came from,
+  // or vulpen's library, whose contracts a group's recipe or a view may include too.
+  std::filesystem::path included_from(VP::FilePort &files,
+                                      const std::filesystem::path &top,
+                                      const std::filesystem::path &file) const {
+    const std::filesystem::path own = top / file;
+    if (top != _library && holds(files, own.parent_path(), own.filename().string()))
+      return own;
+    return in_library(file);
   }
 
   // The edits that add a copy's nodes under root, its own node naming the recipe it came
@@ -418,12 +529,12 @@ class Library final : public VP::Operator {
   }
 
   // What a drop copies, the recipe its own node names, the top its contracts and shared
-  // code come from, and the words the answer names it by: a recipe of the library by its
-  // name or its own folder, its node keeping the recipe and the fingerprint of what it
-  // copied, so a sync can tell a copy left as it was from one someone made their own; or
-  // a node of a view by its folder, as the nearest manifest at or above it names it, with
-  // its words as the view gives them while vulpen hosts it, else as the manifest does,
-  // and the recipe it names itself, if any.
+  // code come from, and the words the answer names it by: a recipe by its name, its group
+  // and its name, or its own folder, its node keeping the recipe and the fingerprint of
+  // what it copied, so a sync can tell a copy left as it was from one someone made their
+  // own; or a node of a view by its folder, as the nearest manifest at or above it names
+  // it, with its words as the view gives them while vulpen hosts it, else as the manifest
+  // does, and the recipe it names itself, if any.
   struct Source {
     Copy copy;
     std::string recipe;
@@ -433,13 +544,14 @@ class Library final : public VP::Operator {
 
   Source source_of(VP::Call &call, std::string_view word) const {
     VP::FilePort &files = call.files();
-    if (word.find('/') == std::string_view::npos) {
-      Copy copy = recipe(files, std::string(word));
+    if (word.find('/') == std::string_view::npos || grouped(files, word)) {
+      const Found found = find(files, word);
+      Copy copy = recipe(files, found);
       std::string print = fingerprint(files, copy);
       return {std::move(copy),
-              std::format("{}{}{}", word, fingerprint_mark, print),
-              _library,
-              std::string(word)};
+              std::format("{}{}{}", found.name, fingerprint_mark, print),
+              top_of(found.group),
+              std::format("{}/{}", found.group, found.name)};
     }
     std::filesystem::path folder =
         std::filesystem::path(call.resolved(word)).lexically_normal();
@@ -451,7 +563,7 @@ class Library final : public VP::Operator {
         throw std::runtime_error(std::format(
             "{} is in no view: a drop copies a node's folder, or a recipe's", word));
     if (at == folder) {
-      if (!inside(folder, _library))
+      if (!inside(folder, _recipes))
         throw std::runtime_error(std::format(
             "{} is a view's own folder: a drop copies a node's, or a recipe's", word));
       return source_of(call, folder.filename().string());
@@ -548,13 +660,15 @@ class Library final : public VP::Operator {
     return names;
   }
 
-  // The files the copy holds that the library's version does not, gone, and the
-  // library's written over the copy's. Deepest first, so a folder left empty goes too.
+  // The files the copy holds that the recipe's version does not, gone, and the recipe's
+  // written over the copy's, from the top its group keeps its contracts in. Deepest
+  // first, so a folder left empty goes too.
   void rewrite(VP::FilePort &files,
                const Copy &mine,
                const Copy &fresh,
                const std::filesystem::path &view,
-               std::string_view root) const {
+               std::string_view root,
+               const std::filesystem::path &top) const {
     std::vector<const Inner *> old;
     for (const Inner &inner : mine.nodes)
       old.push_back(&inner);
@@ -565,7 +679,7 @@ class Library final : public VP::Operator {
         if (!now || std::ranges::find(now->node.files, file) == now->node.files.end())
           files.remove((inner->node.folder / file).string());
     }
-    write(files, fresh, view, root, _library);
+    write(files, fresh, view, root, top);
   }
 
   // The recipe a dropped node came from, and the fingerprint of what it copied.
@@ -582,11 +696,10 @@ class Library final : public VP::Operator {
     return {node->recipe.substr(0, mark), node->recipe.substr(mark + 1)};
   }
 
-  // A drop brought up to the library's version of its recipe, while what it copied is as
-  // it was. Its params keep the values the view set, and its connections to the rest of
-  // the view stay; a param the library let go goes too, and the answer names it. A
-  // change made inside the copy is the view's own, which a sync would lose, so it
-  // refuses.
+  // A drop brought up to its recipe as it is now, while what it copied is as it was. Its
+  // params keep the values the view set, and its connections to the rest of the view
+  // stay; a param the recipe let go goes too, and the answer names it. A change made
+  // inside the copy is the view's own, which a sync would lose, so it refuses.
   void sync(VP::Call &call) const {
     const std::string root(call.arguments().front());
     const VP::View view = call.view();
@@ -597,28 +710,31 @@ class Library final : public VP::Operator {
     if (fingerprint(files, mine) != print)
       throw std::runtime_error(
           std::format("node {} changed since it was dropped from {}, and a sync would "
-                      "lose that; drop {} beside it to take the library's, and make the "
+                      "lose that; drop {} beside it to take the recipe's, and make the "
                       "change there again",
                       root,
                       from,
                       from));
-    const Copy fresh = recipe(files, from);
+    const Found found = find(files, from);
+    const Copy fresh = recipe(files, found);
     const std::string now = fingerprint(files, fresh);
     if (now == print)
-      return call.reply(std::format("node {} is as the library's {} is", root, from));
+      return call.reply(std::format(
+          "node {} is as recipe {}/{} is", root, found.group, found.name));
     check_outside(view, root, fresh, from);
     const std::vector<std::string> lines =
         edits(root, mine, fresh, from + fingerprint_mark + now);
     const std::string gone = let_go(root, mine, fresh);
-    rewrite(files, mine, fresh, folder, root);
+    rewrite(files, mine, fresh, folder, root, top_of(found.group));
     for (const std::string &line : lines)
       call.commands().send(line);
-    call.reply(std::format("synced node {} with the library's {}: {} is now {}{}{}",
+    call.reply(std::format("synced node {} with recipe {}/{}: {} is now {}{}{}",
                            root,
-                           from,
+                           found.group,
+                           found.name,
                            print,
                            now,
-                           gone.empty() ? "" : "; the library let go of ",
+                           gone.empty() ? "" : "; the recipe let go of ",
                            gone));
   }
 
@@ -661,56 +777,102 @@ class Library final : public VP::Operator {
   // from, and one inside it with code of its own is refused, naming the line that makes
   // it a recipe first. Everything is checked before a file is written, and the node
   // then names the recipe and the fingerprint of what it holds, as a drop of it would,
-  // so recipe sync brings it the library's later changes.
+  // so recipe sync brings its later changes to the other drops of it. A name another
+  // recipe has is refused, unless the node is a drop of that one: it is saved again
+  // where it is, as a person makes a recipe they dropped their own.
   void make(VP::Call &call) const {
     const std::string root(call.arguments()[0]);
-    const std::string name(call.arguments()[1]);
     VP::FilePort &files = call.files();
     const std::filesystem::path view = view_folder(call);
-    if (!VP::is_name(name))
-      throw std::runtime_error(std::format(
-          "{} is no recipe's name: letters, digits, _ and -, named for its job (RV07)",
-          name));
-    for (const std::string &kind : folders(files, _library))
-      if (holds(files, _library / kind, name + '/'))
-        throw std::runtime_error(std::format(
-            "the library holds {}{} already: recipe drop {} <name> uses it", kind, name, name));
     const VP::View &graph = call.view();
-    if (std::ranges::find(graph.nodes, root, &VP::Node::name) == graph.nodes.end())
+    const auto node = std::ranges::find(graph.nodes, root, &VP::Node::name);
+    if (node == graph.nodes.end())
       throw std::runtime_error(std::format("no node is named {}", root));
     const Copy copy = copy_in(files, graph, view, root);
     const bool part = copy.nodes.size() == 1;
-    const std::filesystem::path folder = _library / (part ? "parts" : "components") / name;
+    const Found target = target_of(files, call.arguments()[1], part, *node);
+    const bool again = holds(files, target.folder, VP::manifest_file);
     // Read before the node set below, which replaces the view.
-    const std::string made = std::format("made recipe {}{}{} of node {}, which is a drop "
-                                         "of it now",
-                                         part ? "parts/" : "components/",
-                                         name,
-                                         part ? "" : ", using " + uses_named(graph, root),
-                                         root);
+    const std::string made =
+        std::format("{} recipe {} of node {}{}, which is a drop of it now",
+                    again ? "saved" : "made",
+                    from_recipes(target.folder),
+                    root,
+                    part ? "" : ", using " + uses_named(graph, root));
     if (part)
-      make_part(files, copy, folder, view, name);
+      make_part(files, copy, target, view);
     else
-      make_component(files, graph, copy, folder, root, name);
-    const std::string print = fingerprint(files, recipe(files, name));
-    call.commands().send(
-        std::format("node set {} recipe={}{}{}", root, name, fingerprint_mark, print));
+      make_component(files, graph, copy, target.folder, root, target.name);
+    const std::string print = fingerprint(files, recipe(files, target));
+    call.commands().send(std::format(
+        "node set {} recipe={}{}{}", root, target.name, fingerprint_mark, print));
     call.reply(made);
   }
 
-  // Where a contract or shared code goes in the library, as a drop finds it (RV05, RV09).
+  // Where a recipe made goes: a name, in custom/; a group, a slash and a name, in that
+  // group, vulpen's in its library's kind for what it is (RV06), as a path to that kind
+  // from the recipes' folder does too. A name a recipe has already, wherever it is, only
+  // for a drop of that recipe, which is saved again where it is.
+  Found target_of(VP::FilePort &files,
+                  std::string_view word,
+                  bool part,
+                  const VP::Node &node) const {
+    const std::string kind(part ? parts : components);
+    const std::string library = std::format("{}/{}/", vulpen_group, library_folder);
+    const bool in_kind = word.starts_with(library);
+    if (in_kind && !word.substr(library.size()).starts_with(kind + '/'))
+      throw std::runtime_error(std::format("{} goes in {}{}/, as a {} (RV06)",
+                                           word,
+                                           library,
+                                           kind,
+                                           kind.substr(0, kind.size() - 1)));
+    const std::string_view rest =
+        in_kind ? word.substr(library.size() + kind.size() + 1) : word;
+    const std::size_t slash = rest.find('/');
+    const std::string group(in_kind                ? vulpen_group
+                            : slash == rest.npos ? custom_group
+                                                 : rest.substr(0, slash));
+    const std::string name(in_kind || slash == rest.npos ? rest : rest.substr(slash + 1));
+    if (!VP::is_name(group) || !VP::is_name(name))
+      throw std::runtime_error(std::format(
+          "{} is no recipe's name: letters, digits, _ and -, named for its job (RV07), "
+          "which goes in custom/, or a group, a slash and such a name, as vulpen/<name> "
+          "for vulpen's library",
+          word));
+    if (group != vulpen_group &&
+        (name == VP::contracts_folder || name == VP::shared_folder))
+      throw std::runtime_error(std::format(
+          "{}/ is where {} keeps what its recipes share (RV05, RV09)", name, group));
+    for (const std::string &other : groups(files))
+      for (Found &found : recipes_in(files, other))
+        if (found.name == name) {
+          if (node.recipe.substr(0, node.recipe.find(fingerprint_mark)) != name)
+            throw std::runtime_error(std::format(
+                "recipe {} is there already: recipe drop {} <name> uses it, and a "
+                "drop of it is made a recipe again where it is",
+                from_recipes(found.folder),
+                name));
+          return std::move(found);
+        }
+    return {group == vulpen_group ? _library / kind / name : _recipes / group / name,
+            group,
+            name};
+  }
+
+  // Where a contract or shared code goes in vulpen's library, as a drop finds it (RV05,
+  // RV09); a group's go at its top, as a view's.
   std::filesystem::path in_library(const std::filesystem::path &file) const {
     return *file.begin() == VP::shared_folder ? _library / parts / file : _library / file;
   }
 
-  // The node's files, and the contracts and shared code they include that the library
-  // lacks; one the library holds otherwise is refused, as the library's other recipes
-  // read it (V11).
+  // The node's files, and the contracts and shared code they include that neither the
+  // recipe's group nor vulpen's library holds, which go to the group's; one either holds
+  // otherwise is refused, as their other recipes read it (V11). A recipe made again
+  // loses the files the node no longer holds.
   void make_part(VP::FilePort &files,
                  const Copy &copy,
-                 const std::filesystem::path &folder,
-                 const std::filesystem::path &view,
-                 std::string_view name) const {
+                 const Found &target,
+                 const std::filesystem::path &view) const {
     const VP::Node &node = copy.nodes.front().node;
     std::vector<std::filesystem::path> included;
     for (const std::string &file : node.files)
@@ -719,29 +881,41 @@ class Library final : public VP::Operator {
       includes_of(files.read((view / included[next]).string()),
                   included[next].parent_path(),
                   included);
+    const std::filesystem::path top = top_of(target.group);
     std::vector<std::filesystem::path> brought;
     for (const std::filesystem::path &file : included) {
-      const std::filesystem::path there = in_library(file);
-      if (!holds(files, there.parent_path(), there.filename().string()))
+      bool held = false;
+      for (const std::filesystem::path &there :
+           {top == _library ? in_library(file) : top / file, in_library(file)})
+        if (holds(files, there.parent_path(), there.filename().string())) {
+          if (files.read(there.string()) != files.read((view / file).string()))
+            throw std::runtime_error(std::format(
+                "{} differs from {}, which recipes include: name it apart",
+                shown(view / file),
+                shown(there)));
+          held = true;
+        }
+      if (!held)
         brought.push_back(file);
-      else if (files.read(there.string()) != files.read((view / file).string()))
-        throw std::runtime_error(std::format(
-            "{} differs from the library's {}, which its recipes include: name it apart",
-            shown(view / file),
-            shown(there)));
     }
+    for (const std::string &file : files.list(target.folder.string()))
+      if (!file.ends_with('/') && file != VP::manifest_file &&
+          std::ranges::find(node.files, file) == node.files.end())
+        files.remove((target.folder / file).string());
     for (const std::string &file : node.files)
-      files.save((folder / file).string(), files.read((node.folder / file).string()));
+      files.save((target.folder / file).string(),
+                 files.read((node.folder / file).string()));
     for (const std::filesystem::path &file : brought)
-      files.save(in_library(file).string(), files.read((view / file).string()));
+      files.save((top == _library ? in_library(file) : top / file).string(),
+                 files.read((view / file).string()));
     VP::Node own = node;
-    own.name = name;
+    own.name = target.name;
     own.recipe.clear();
     own.log.clear();
     own.files.clear();
     own.where.clear();
-    files.save(VP::View{.name = std::string(name), .nodes = {std::move(own)}},
-               (folder / VP::manifest_file).string());
+    files.save(VP::View{.name = target.name, .nodes = {std::move(own)}},
+               (target.folder / VP::manifest_file).string());
   }
 
   // The nodes a drop brought inside the node, each the one a drop named, and so in a
@@ -829,7 +1003,7 @@ class Library final : public VP::Operator {
                                         const VP::View &graph,
                                         const VP::Node &use,
                                         const std::string &from) const {
-    const Copy fresh = recipe(files, from);
+    const Copy fresh = recipe(files, find(files, from));
     std::vector<VP::Param> params;
     for (const VP::Node &node : graph.nodes) {
       const std::optional<std::string> inner = inner_name(use.name, node.name);
@@ -845,7 +1019,8 @@ class Library final : public VP::Operator {
     return params;
   }
 
-  std::filesystem::path _library;
+  std::filesystem::path _library; // vulpen's
+  std::filesystem::path _recipes; // the recipes' folder, which holds each group's
   VP::Command _list;
   VP::Command _drop;
   VP::Command _sync;

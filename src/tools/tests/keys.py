@@ -18,7 +18,8 @@ from pathlib import Path
 
 from harness import environment, problems
 
-CLI = Path(__file__).resolve().parents[2] / "runtime" / "recipes" / "cli" / "view.vlp"
+CLI = (Path(__file__).resolve().parents[2] / "runtime" / "recipes" / "vulpen" / "cli"
+       / "view.vlp")
 HELP = b"lists every command"  # what help answers, once a line runs it
 # Each with how many times help has answered once it ran: Tab, up, then left.
 TYPED = [(b"hel\t\r", 1), (b"\x1b[A\r", 2), (b"lp\x1b[D\x1b[Dhe\r", 3)]

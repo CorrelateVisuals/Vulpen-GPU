@@ -7,7 +7,7 @@ $default = '--ide' # what runs when no view is named; --cli runs the cli alone
 $preset = 'debug'
 $rest = @($args)
 if ($rest.Count -gt 0 -and $rest[0] -eq '--release') { $preset = 'release'; $rest = @($rest | Select-Object -Skip 1) }
-$recipes = Join-Path $PSScriptRoot 'src\runtime\recipes'
+$recipes = Join-Path $PSScriptRoot 'src\runtime\recipes\vulpen'
 $projects = Join-Path $PSScriptRoot 'projects'
 $options = '--log', '--log-file', '--frames', '--fps', '--first-frame', '--source', '--size', '--restart'
 # An app's flag and a project's are the script's own and stand for views, so vulpen knows

@@ -50,11 +50,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "tests"))
 from harness import PROBLEM  # noqa: E402 (the tests' folder is no package)
 
 ROOT = Path(__file__).resolve().parents[2]
-CLI = Path("src/runtime/recipes/cli/view.vlp")
-IDE = Path("src/runtime/recipes/ide/view.vlp")
-MENUS = Path("src/runtime/recipes/library/parts/menus/menu.ini")
-KEYMAP = Path("src/runtime/recipes/library/parts/keys/keymap.ini")
-GPU_CHOICE = Path("src/runtime/recipes/cli/.vulpen/gpu.ini")
+CLI = Path("src/runtime/recipes/vulpen/cli/view.vlp")
+IDE = Path("src/runtime/recipes/vulpen/ide/view.vlp")
+MENUS = Path("src/runtime/recipes/vulpen/library/parts/menus/menu.ini")
+KEYMAP = Path("src/runtime/recipes/vulpen/library/parts/keys/keymap.ini")
+GPU_CHOICE = Path("src/runtime/recipes/vulpen/cli/.vulpen/gpu.ini")
 PARTS = ("sweep", "tab", "walk", "gui", "seen")
 SIZE = "1280x720"
 # The ide's window taken as an image, from the start or the frame it comes back, as no
@@ -529,7 +529,7 @@ def copy_tree(to: Path) -> None:
         if source.is_file() and not name.startswith("projects/bf"):
             (to / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, to / name)
-    editor = to / "src/runtime/recipes/library/parts/editor/view.vlp"
+    editor = to / "src/runtime/recipes/vulpen/library/parts/editor/view.vlp"
     editor.write_text(editor.read_text().replace("program=code", "program=true"))
     git = ["git", "-c", "user.name=break-commands", "-c", "user.email=break@localhost"]
     for command in (["init", "-q"], ["add", "-A"], ["commit", "-qm", "copy"]):
@@ -669,7 +669,7 @@ NASTY = {
              "{tree}/projects/{home}/" + LONG],
     "view": ["nobody", "library", "cli", LONG, ":"],
     "project": ["ide", "cli", "Bad", "nobody", "{tree}/../decoy",
-                "{tree}/src/runtime/recipes/ide/", "{tree}/projects/{home}/view.vlp",
+                "{tree}/src/runtime/recipes/vulpen/ide/", "{tree}/projects/{home}/view.vlp",
                 LONG],
     "path": ["nobody.txt", "Point.comp", "{tree}/../decoy/binary.bin",
              "{tree}/../decoy/folder/", LONG],
