@@ -1,0 +1,11 @@
+# The arcball part: one node whose operator is Arcball, a camera a person turns and pans
+# with the pointer, writing at camera what ray-cubes' rays read; home is where its params
+# put it. Arcball.md says how to plug it into ray-cubes or a triangle project.
+[manifest]
+version = 1
+
+[node "arcball"]
+param = target=0,0,0
+param = eye=0,0,-2
+param = up=0,-1,0
+param = lens=2
