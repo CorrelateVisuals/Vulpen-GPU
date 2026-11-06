@@ -674,6 +674,11 @@ NASTY = {
                 LONG],
     "path": ["nobody.txt", "Point.comp", "{tree}/../decoy/binary.bin",
              "{tree}/../decoy/folder/", LONG],
+    # Only what cd refuses: a folder it goes into would move the graph for every line
+    # after it in the state.
+    "folder": ["nobody", "{leaf}.", ":", "{}", "{tree}/projects/{home}/nothing/",
+               "{tree}/projects/{home}/view.vlp", "{tree}/../decoy/binary.bin",
+               "{tree}/projects/{home}/" + LONG, LONG],
     "recipe": ["nothing", "../parts", "library", "projects", LONG],
 }
 SLOT = re.compile(r"\{([a-z0-9]+)\}")
@@ -730,7 +735,7 @@ class Words:
 PICKS = {"name": "{fresh}", "node": "{leaf}", "port": "{reader}", "value": "1",
          "connection": "{connection}", "key": "{key}", "word=value": "log=info",
          "file": "{scrap}", "view": "{view}", "project": "{project}", "path": "{file}",
-         "recipe": "snapshot"}
+         "folder": "{group}", "recipe": "snapshot"}
 
 
 def default_line(usage: Usage) -> str:
