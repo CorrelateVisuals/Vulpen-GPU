@@ -175,7 +175,7 @@ def examples(scratch: Path) -> list[Example]:
     # triangle: its files started by new, swapped for the example's, the words set.
     e = Example("triangle")
     e.steps = [
-        no("view new", "does not fit the usage"),
+        no("view new my triangle", "does not fit the usage"),
         ok(f"view new {e.copy}"),
         no(f"view new {e.copy}", e.copy),
         no(f"new {at(e.copy, 'tri.angle')}/", "a node's name holds"),
