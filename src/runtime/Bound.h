@@ -12,6 +12,7 @@
 #include <cstring>
 #include <filesystem>
 #include <format>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -239,7 +240,9 @@ struct Bound {
   std::optional<PassBlock> block;
   std::unique_ptr<Operator> op;
   std::set<std::string, std::less<>> set_by_operator;
-  std::set<std::string, std::less<>> read_by_operator;
+  // By name, the GLSL type its C++ reads the param as; empty for a word, or a param it
+  // only asks whether the node sets.
+  std::map<std::string, std::string, std::less<>> read_by_operator;
   std::vector<std::string> readbacks;           // ports, by Readback<T>::index
   std::vector<const Buffer *> readback_buffers; // the same, once the buffers exist
   // A buffer its C++ writes, by Upload<T>::index: its port, the elements C++ asked room

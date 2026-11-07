@@ -399,8 +399,7 @@ public:
       return T(text);
     } else {
       T value{};
-      if (!parse_param(text, value))
-        param_invalid(name, glsl_type<T>);
+      param_read_as(name, glsl_type<T>, parse_param(text, value));
       return value;
     }
   }
@@ -450,7 +449,8 @@ private:
   upload_index(std::string_view name, const Element &element, std::uint32_t count) = 0;
   virtual std::uint32_t texture_index(std::string_view port, std::string_view pixel) = 0;
   virtual std::string_view param_text(std::string_view name) = 0;
-  virtual void param_invalid(std::string_view name, std::string_view type) = 0;
+  // The type a param is read as, which a line setting it is checked against as it runs.
+  virtual void param_read_as(std::string_view name, std::string_view type, bool valid) = 0;
   virtual void *output_object(std::string_view port, const Kind &kind) = 0;
   virtual const void *input_object(std::string_view port, const Kind &kind) = 0;
 

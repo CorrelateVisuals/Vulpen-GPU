@@ -216,12 +216,12 @@ private:
   }
 
   bool sets(std::string_view name) override {
-    _bound.read_by_operator.emplace(name);
+    _bound.read_by_operator.try_emplace(std::string(name));
     return _bound.param(name) != nullptr;
   }
 
   std::string_view param_text(std::string_view name) override {
-    _bound.read_by_operator.emplace(name);
+    _bound.read_by_operator.try_emplace(std::string(name));
     if (const Param *const param = _bound.param(name))
       return param->value;
     _bound.errors.push_back(
@@ -229,8 +229,9 @@ private:
     return {};
   }
 
-  void param_invalid(std::string_view name, std::string_view type) override {
-    if (const Param *const param = _bound.param(name))
+  void param_read_as(std::string_view name, std::string_view type, bool valid) override {
+    _bound.read_by_operator.insert_or_assign(std::string(name), std::string(type));
+    if (const Param *const param = _bound.param(name); param && !valid)
       _bound.errors.push_back(
           std::format("param {} = {} is not a {}", name, param->value, type));
   }

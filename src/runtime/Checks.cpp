@@ -130,8 +130,8 @@ void list_values(std::span<const Bound> bounds, std::vector<NodePort> &ports) {
       if (!field.buffer() && !field.texture() && !field.image() &&
           !bound.set_by_operator.contains(field.name))
         add(field.name, field.type);
-    for (const std::string &read : bound.read_by_operator)
-      add(read, "");
+    for (const auto &[read, type] : bound.read_by_operator)
+      add(read, type);
   }
 }
 
