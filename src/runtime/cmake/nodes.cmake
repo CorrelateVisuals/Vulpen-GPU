@@ -132,6 +132,29 @@ function(vulpen_recipes folder)
       vulpen_nodes(library ${recipe} ${folder})
     endif()
   endforeach()
+  vulpen_starts(${vulpen}/library/parts/files/start)
+endfunction()
+
+# The start files new copies a node's first files from, each built once as it is, as one
+# scratch node's of the library in the build tree, the header through a file including it,
+# so a start that stops building fails the build, not the first person who runs new (A02).
+# Only as a module, so no start links into a release binary.
+function(vulpen_starts folder)
+  if(NOT VULPEN_LIVE)
+    return()
+  endif()
+  set(starts ${CMAKE_BINARY_DIR}/starts)
+  file(GLOB files CONFIGURE_DEPENDS ${folder}/*.in)
+  set(headers "")
+  foreach(file IN LISTS files)
+    get_filename_component(name ${file} NAME_WLE)
+    configure_file(${file} ${starts}/start/${name} COPYONLY)
+    if(name MATCHES "\\.h$")
+      string(APPEND headers "#include \"${name}\"\n")
+    endif()
+  endforeach()
+  file(CONFIGURE OUTPUT ${starts}/start/Included.cpp CONTENT "${headers}")
+  vulpen_node(library ${starts}/start ${starts})
 endfunction()
 
 # The nodes inside a folder: each folder of it, and the nodes inside those. A folder with
