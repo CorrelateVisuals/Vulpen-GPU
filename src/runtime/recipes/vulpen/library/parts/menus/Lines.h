@@ -24,8 +24,9 @@ constexpr std::string_view menu_file = "menu.ini";
 // Where the name of what a menu opened for goes in a line; first, with a colon, it names
 // the view the line addresses, as a typed line does. {/} is the folder of what was
 // pressed, so a line makes something inside a node or beside a file; {1} and {2} name the
-// first and the second of two pressed, {node} a port's node, as node.port names it, and
-// {view} the view lines go to.
+// first and the second of two pressed, {node} a port's node, as node.port names it,
+// {view} the view lines go to, and {image} a port pressed that is an image its node
+// writes, so a line naming it shows on such a port alone.
 constexpr std::string_view subject = "{}";
 constexpr std::string_view address_mark = "{}:";
 constexpr std::string_view folder_mark = "{/}";
@@ -33,8 +34,9 @@ constexpr std::string_view first_mark = "{1}";
 constexpr std::string_view second_mark = "{2}";
 constexpr std::string_view node_mark = "{node}";
 constexpr std::string_view view_mark = "{view}";
-constexpr std::array<std::string_view, 6> marks{
-    subject, folder_mark, first_mark, second_mark, node_mark, view_mark};
+constexpr std::string_view image_mark = "{image}";
+constexpr std::array<std::string_view, 7> marks{
+    subject, folder_mark, first_mark, second_mark, node_mark, view_mark, image_mark};
 // The words before what a menu opens for, and before the words the pointer came onto or
 // pressed, as the hit part sends them.
 constexpr std::string_view for_word = "for";
@@ -110,6 +112,11 @@ struct Line {
   }
   bool lists() const {
     return listed != 0;
+  }
+  bool names_image() const {
+    return std::ranges::any_of(words, [](const std::string &word) {
+      return word.find(image_mark) != std::string::npos;
+    });
   }
   bool names_subject() const {
     return std::ranges::any_of(words, [](const std::string &word) {

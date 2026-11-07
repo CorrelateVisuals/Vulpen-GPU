@@ -1113,6 +1113,10 @@ def gui(copy: Copy) -> None:
         name, folder = name.replace("{tree}", tree), folder.replace("{tree}", tree)
         before = [made.replace("{tree}", tree) for made in before]
         for line in lines:
+            # A line naming {image} shows on an image a node writes alone, and bf-one's
+            # ports pressed are buffers, so no menu offers it there.
+            if "{image}" in line:
+                continue
             sent = line
             for found, word in FOUND.items():
                 sent = sent.replace(found, word)

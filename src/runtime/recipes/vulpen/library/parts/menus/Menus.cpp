@@ -36,6 +36,7 @@ constexpr std::size_t listed_most = 16;
 constexpr std::string_view no_word = "\"\"";
 // The ports port's kind for a value a param sets, which no line connects.
 constexpr std::string_view value_kind = "value";
+constexpr std::string_view image_kind = "image";
 // What a start of C++, and of each shader, ends with, as the files part names them.
 constexpr std::string_view cpp_start = ".cpp";
 constexpr std::string_view compute_start = ".comp";
@@ -181,6 +182,14 @@ class Menus final : public VP::Operator {
     _shown = true;
     _sections = std::move(opening.sections);
     _subjects = std::move(opening.subjects);
+    // An image of its own, as view show takes: a draw into the window has none, so its
+    // port names no format.
+    _image = false;
+    if (_subjects.size() == 1)
+      for (const VP::NodePort &port : frame.ports(frame.commands().current()))
+        _image =
+            _image || (port.kind == image_kind && port.writes && !port.holds.empty() &&
+                       _subjects.front() == std::format("{}.{}", port.node, port.name));
     _group.clear();
     _path.clear();
     _written = false;
@@ -219,7 +228,7 @@ class Menus final : public VP::Operator {
   // want no word typed, as they run once for each, a value listed chosen once for all.
   // Opened for nothing, a line that addresses what was pressed has nothing to address.
   bool offered(const Line &line, std::string_view group) const {
-    if (line.section != group)
+    if (line.section != group || (line.names_image() && !_image))
       return false;
     if (_subjects.empty())
       return line.first == 0;
@@ -526,6 +535,7 @@ class Menus final : public VP::Operator {
       replace(word, second_mark, two);
       replace(word, node_mark, node);
       replace(word, view_mark, call.commands().current());
+      replace(word, image_mark, named);
       if (word.find('<') != std::string::npos && word.starts_with(here))
         word.erase(0, here.size());
       const std::size_t wanted = std::min(word.find('<'), word.find('{'));
@@ -765,6 +775,7 @@ class Menus final : public VP::Operator {
   glm::ivec2 _corner{};              // where it was opened
   std::vector<std::string> _sections; // the kind it opened for, then those muted
   std::vector<std::string> _subjects; // the names {} stands for
+  bool _image = false; // the one pressed is an image its node writes, which {image} names
   std::vector<Link> _links;          // what a <link> stands for, as the columns show it
   std::string _group;                // the section the words chosen are of
   std::vector<std::string> _path;    // the words chosen, a column each
