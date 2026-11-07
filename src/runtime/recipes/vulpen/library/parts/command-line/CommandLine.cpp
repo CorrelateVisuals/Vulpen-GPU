@@ -492,8 +492,9 @@ class CommandLine final : public VP::Operator {
     _window = on != "terminal";
     _finder = on == "find";
     if (!_window) {
-      _help = node.command(
-          "help", "lists every command, under the words it shares, and what each does");
+      _help = node.command("help [<value>...]",
+                           "lists every command, under the words it shares, and what "
+                           "each does; given words, as view, the commands they start");
       _complete = node.command(
           "complete <value>...",
           "lists the words that may come next, the last word given being the start of "
@@ -1681,9 +1682,22 @@ class CommandLine final : public VP::Operator {
   // starts with once, their usages under it without it, indented, and so again for a
   // second word, as input key; a command named as its group, as quit beside quit force,
   // is the group's row. In the order of their words, so a group reads in one place, and
-  // what each does in one column.
+  // what each does in one column. Words given keep the commands they start, as help view.
   static void help(VP::Call &call) {
     std::vector<VP::Usage> usages = call.commands().usages();
+    const std::span<const std::string_view> given = call.arguments();
+    std::erase_if(usages, [&](const VP::Usage &usage) {
+      const std::vector<std::string_view> its = words_of(usage.usage);
+      return its.size() < given.size() ||
+             !std::ranges::equal(given, std::span(its).first(given.size()));
+    });
+    if (usages.empty()) {
+      std::string named;
+      for (const std::string_view word : given)
+        named.append(named.empty() ? "" : " ").append(word);
+      throw std::runtime_error(
+          std::format("no command starts with {}; help alone lists them all", named));
+    }
     std::ranges::sort(usages, {}, &VP::Usage::usage);
     std::map<std::string_view, std::size_t> begun; // usages a head starts, by its words
     for (const VP::Usage &usage : usages)
