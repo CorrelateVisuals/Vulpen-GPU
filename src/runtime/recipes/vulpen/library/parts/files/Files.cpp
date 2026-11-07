@@ -718,6 +718,7 @@ class Files final : public VP::Operator {
                 call.files(), left->view->file.parent_path(), from, to))
           also += std::format(
               ", and the includes of {} file{}", sources, sources == 1 ? "" : "s");
+      also += follow_recipe(call, from, to);
     }
     call.reply(std::format("{} {} to {}{}{}",
                            copy ? "copied" : "renamed",
@@ -725,6 +726,59 @@ class Files final : public VP::Operator {
                            shown(to),
                            edit(call, graphs),
                            also));
+  }
+
+  // A recipe's folder renamed renames the recipe (RV06): its own manifest names its node,
+  // and the nodes inside it, anew, as a node's folder is its name (RV08), and the drops of
+  // it in the views hosted name it anew, recipe=<name>@<fingerprint>, so recipe sync still
+  // finds it; a view not hosted is its own (V03) and names it as it did.
+  std::string follow_recipe(VP::Call &call,
+                            const std::filesystem::path &from,
+                            const std::filesystem::path &to) const {
+    const std::filesystem::path inside = from.lexically_relative(_recipes);
+    const std::vector<std::filesystem::path> parts(inside.begin(), inside.end());
+    const bool grouped = parts.size() == 2 && parts[0] != "vulpen";
+    const bool library = parts.size() == 4 && parts[0] == "vulpen" &&
+                         parts[1] == "library" &&
+                         (parts[2] == "parts" || parts[2] == "components");
+    const std::filesystem::path manifest = to / VP::manifest_file;
+    if ((!grouped && !library) || !listed(call.files(), manifest, ""))
+      return {};
+    const std::string old_name = from.filename().string();
+    const std::string new_name = to.filename().string();
+    const auto rename = [&](std::string &name) {
+      if (VP::within(name, old_name))
+        name = new_name + name.substr(old_name.size());
+    };
+    VP::View view = call.files().manifest(manifest.string());
+    for (VP::Node &node : view.nodes)
+      rename(node.name);
+    for (VP::Connection &connection : view.connections) {
+      rename(connection.from.node);
+      for (VP::Endpoint &end : connection.to)
+        rename(end.node);
+    }
+    call.files().save(view, manifest.string());
+    // Each line first: a line sent replaces the view it changes, which the loop reads.
+    std::vector<std::string> lines;
+    for (const Hosted &hosted : hosted_views(call))
+      for (const VP::Node &node : hosted.view->nodes)
+        if (const std::size_t mark = node.recipe.find('@');
+            mark != std::string::npos && node.recipe.substr(0, mark) == old_name)
+          lines.push_back(std::format("{}: node set {} recipe={}{}",
+                                      hosted.name,
+                                      node.name,
+                                      new_name,
+                                      node.recipe.substr(mark)));
+    for (const std::string &line : lines)
+      call.commands().send(line);
+    return std::format(", and recipe {} to {}{}",
+                       old_name,
+                       new_name,
+                       lines.empty() ? ""
+                                     : std::format(", the recipe word of {} drop{}",
+                                                   lines.size(),
+                                                   lines.size() == 1 ? "" : "s"));
   }
 
   // A node's folder renamed renames the node, the nodes inside it and the connections
