@@ -6,9 +6,11 @@
 #
 # Headless runs take the driver VULPEN_TEST_DRIVER names: lavapipe where it is installed,
 # so a machine without a GPU runs them (V07), and the Mesa build pinned beside the repo
-# when it is there, so a driver update never moves the goldens (C01).
+# when it is there, so a driver update never moves the goldens (C01); else the system's,
+# which Debian and Ubuntu name by the machine's architecture.
 enable_testing()
-find_file(VULPEN_TEST_DRIVER lvp_icd.json
+find_file(VULPEN_TEST_DRIVER
+  NAMES lvp_icd.json lvp_icd.${CMAKE_SYSTEM_PROCESSOR}.json
   PATHS ${PROJECT_SOURCE_DIR}/../vulpen-lavapipe/usr/share/vulkan/icd.d
         /usr/share/vulkan/icd.d
   NO_DEFAULT_PATH DOC "The Vulkan driver manifest headless tests run on")
@@ -101,6 +103,17 @@ endif()
 if(VULPEN_SANITIZERS MATCHES thread)
   vulpen_test(swaps ${python} ${tests}/soak.py ${vulpen_file} --swaps 6 --races-only)
   set_tests_properties(swaps PROPERTIES TIMEOUT 600)
+endif()
+# Every example made again from the terminal, mistakes and all, as a person types it,
+# the live build compiling each node as it comes; on this machine's own GPU, as lavapipe
+# would take a mistaken count from the machine's memory, and skipped while another vulpen
+# of this tree runs, as both would build into out/ and write the .vulpen/ folders.
+if(VULPEN_LIVE AND NOT VULPEN_SANITIZERS)
+  add_test(NAME recreate-examples
+           COMMAND ${python} ${PROJECT_SOURCE_DIR}/src/tools/recreate-examples.py
+                   ${vulpen_file})
+  set_tests_properties(recreate-examples PROPERTIES
+    LABELS nightly TIMEOUT 1800 SKIP_REGULAR_EXPRESSION "another vulpen of this tree runs")
 endif()
 # Sanitizers hold freed memory back, so a soak under them would read as growth.
 if(NOT VULPEN_SANITIZERS)

@@ -149,6 +149,8 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 
 `--log error|warn|info|debug` sets how much a run says; each run keeps its log in `docs/logs/`, the newest 20.
 
+The tests run headless on lavapipe, Mesa's Vulkan on the CPU, so a machine without a GPU runs them too and the `wave` golden reads the same everywhere. On Ubuntu and Debian, `sudo apt install mesa-vulkan-drivers` installs it, and CMake finds it as it configures; any other build of it is named with `cmake --preset debug -DVULPEN_TEST_DRIVER=<path>/lvp_icd.json`. Without lavapipe, they run on the machine's own GPU, and the golden compares within its tolerance rather than bit for bit.
+
 ## Documentation
 
 [Principles](docs/architecture/principles.md) and [requirements](docs/architecture/requirements.md) decide every design; the [include map](docs/architecture/include-map.md) is the engine on one page. [Statistics](docs/statistics) keep the line counts, start-up times and soak results.
