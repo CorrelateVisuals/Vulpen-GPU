@@ -1,5 +1,6 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Words.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -61,15 +62,17 @@ class Projects final : public VP::Operator {
                   .lexically_normal();
     _apps = (std::filesystem::path(node.folder()) / node.param<std::string>("apps"))
                 .lexically_normal();
-    _new = node.command("view new <project>",
+    _new = node.command("view new [<project>]",
                         "hosts a new, empty view, a project's by name or a folder's by "
-                        "path, and saves its view.vlp");
+                        "path, with none project1 on, the first free, and saves its "
+                        "view.vlp");
     _load = node.command("view load <project>",
                          "hosts the view of a project by name, or of a folder by path; "
                          "an app's name, as ide, hosts the app beside the projects again");
-    _save_as = node.command("view save as <name>",
-                            "copies the view, its edits too, into a new project and "
-                            "works on the copy; the view's own files stay as last saved");
+    _save_as = node.command("view save as [<name>]",
+                            "copies the view, its edits too, into a new project, with no "
+                            "name the view's numbered on, as wave2, and works on the "
+                            "copy; the view's own files stay as last saved");
     _rename = node.command("view rename <name>",
                            "saves the view, renames its folder where it is, and hosts it "
                            "under the new name");
@@ -86,6 +89,8 @@ class Projects final : public VP::Operator {
     if (call.is(_load) && VP::is_name(word) && found(call, word).empty() &&
         holds_view(call, _apps / word))
       host_app(call, _apps / word);
+    else if (call.is(_new) && word.empty())
+      host(call, _folder / free_project(call, "project", 1), true);
     else if (call.is(_new) || call.is(_load))
       host(call, folder_of(call, word), call.is(_new));
     else if (call.is(_save_as))
@@ -174,6 +179,19 @@ class Projects final : public VP::Operator {
 
   // The build holds one view of each name, so a new project's name is one no project has,
   // in a group or not.
+  // A project's name when the line gives none: the stem numbered on from the first, the
+  // first no hosted view, project or folder in the projects' folder has, as project1 or
+  // wave2.
+  std::string free_project(VP::Call &call, std::string_view base, std::size_t first) const {
+    const std::vector<std::string> listed = call.files().list(_folder.string());
+    for (std::size_t number = first;; ++number) {
+      std::string name = std::format("{}{}", base, number);
+      if (!call.view(name) && found(call, name).empty() &&
+          std::ranges::find(listed, name + '/') == listed.end())
+        return name;
+    }
+  }
+
   void check_unused(VP::Call &call, std::string_view name) const {
     if (const std::filesystem::path there = found(call, name); !there.empty())
       throw std::runtime_error(std::format(
@@ -218,7 +236,10 @@ class Projects final : public VP::Operator {
   void save_as(VP::Call &call) const {
     const std::string hosted = hosted_name(call);
     check_project(call, hosted);
-    const std::string name(call.arguments().front());
+    const auto [stem, first] = numbered(hosted);
+    const std::string name = call.arguments().empty()
+                                 ? free_project(call, stem, first)
+                                 : std::string(call.arguments().front());
     check_name(name);
     check_free(call, name);
     check_unused(call, name);

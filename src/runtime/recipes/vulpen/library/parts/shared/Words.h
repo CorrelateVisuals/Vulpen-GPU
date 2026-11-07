@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <charconv>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -81,6 +82,19 @@ inline std::string class_of(std::string_view name) {
     upper = false;
   }
   return type;
+}
+
+// The stem a copy's name is numbered from and the first number after it: the name's
+// trailing digits counted on, as a copy of wave2 is wave3, else 2, as one of wave is
+// wave2.
+inline std::pair<std::string_view, std::size_t> numbered(std::string_view name) {
+  const std::size_t stem = name.find_last_not_of("0123456789") + 1;
+  std::size_t number = 0;
+  if (stem == 0 || stem == name.size() ||
+      std::from_chars(name.data() + stem, name.data() + name.size(), number).ec !=
+          std::errc{})
+    return {name, 2};
+  return {name.substr(0, stem), number + 1};
 }
 
 } // namespace
