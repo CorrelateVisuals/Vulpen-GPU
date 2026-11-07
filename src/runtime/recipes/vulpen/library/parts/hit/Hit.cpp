@@ -1,6 +1,7 @@
 #include "contracts/Item.h"
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
+#include "shared/Ini.h"
 
 #include <glm/geometric.hpp>
 
@@ -15,6 +16,9 @@
 namespace {
 
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
+// The command a terminal in a window runs a line with, as typed, as a key or a menu
+// runs one.
+constexpr std::string_view type_command = "type";
 
 // Finds the Rect under the pointer, and a press there sends the command of the Item
 // shown in it: rects[i] is where items[i] shows, as a list hands them on; a press on its
@@ -92,7 +96,15 @@ class Hit final : public VP::Operator {
     const bool marked =
         *at < _marks->size() && VP_VIEW::contains((*_marks)[*at], _pointer);
     if (const std::string command = marked ? item.close : item.command; !command.empty())
-      frame.commands().send(command);
+      typed(frame.commands(), command);
+  }
+
+  // A press runs its line in the terminal, as a key's chord and a menu's line do, so the
+  // terminal shows it and what it answers, and undo takes it back as one step; with no
+  // terminal in a window to type it, as it is.
+  static void typed(VP::CommandPort &commands, const std::string &line) {
+    const bool terminal = registered(type_command, commands.usages());
+    commands.send(terminal ? std::format("{} {}", type_command, line) : line);
   }
 
   // Once as the pointer comes onto an Item, so resting on it sends nothing more.
