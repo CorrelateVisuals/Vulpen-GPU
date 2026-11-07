@@ -19,6 +19,8 @@ namespace {
 
 constexpr std::string_view blanks = " \t\r";
 
+// The node words' kind, which a line starting with a word=value is refused naming.
+constexpr std::string_view word_value{"word=value"};
 // What an argument is, as the placeholder in a usage names it, and where completing it
 // looks. A usage names only these, so a command declares its completion with its usage
 // (RV04).
@@ -27,7 +29,7 @@ constexpr std::array kinds{
     std::string_view{"node"},       // the view's nodes
     std::string_view{"port"},       // node.port: the view's nodes, then their ports
     std::string_view{"connection"}, // the view's connections
-    std::string_view{"word=value"}, // the node words, then each word's values
+    word_value,                     // the node words, then each word's values
     std::string_view{"key"},        // the node's params
     std::string_view{"value"},      // any word: nothing to complete
     std::string_view{"file"},       // the folders and files where the path resolves
@@ -60,6 +62,44 @@ std::string joined(const Names &names, std::string_view between = ", ") {
   for (const std::string_view name : names)
     text.append(text.empty() ? "" : between).append(name);
   return text;
+}
+
+// Why a line's words name no command, which lists the commands they could have meant: a
+// word=value, as a line going on from node set, those taking one; the words a group of
+// commands starts with, as view alone, that group's; any other word, every command.
+std::string unknown(std::span<const std::string_view> words,
+                    std::span<const Usage> usages) {
+  std::vector<std::string_view> meant;
+  const auto starting = [&](std::size_t given) {
+    for (const Usage &usage : usages)
+      if (const std::vector<std::string_view> its = words_of(usage.usage);
+          its.size() > given && std::ranges::equal(words.first(given),
+                                                   std::span(its).first(given)))
+        meant.push_back(usage.usage);
+  };
+  if (words.front().find('=') != std::string_view::npos) {
+    const std::string kind = std::format("<{}>", word_value);
+    for (const Usage &usage : usages)
+      if (usage.usage.find(kind) != std::string_view::npos)
+        meant.push_back(usage.usage);
+    return std::format("unknown command {}: a word=value follows a command that takes "
+                       "one, as {}",
+                       words.front(),
+                       joined(meant));
+  }
+  for (std::size_t given = words.size(); given > 0; --given) {
+    starting(given);
+    if (meant.empty())
+      continue;
+    std::ranges::sort(meant);
+    return std::format("unknown command {}; the commands {} starts are {}",
+                       joined(words, " "),
+                       joined(words.first(given), " "),
+                       joined(meant));
+  }
+  return std::format("unknown command {}; the commands are {}",
+                     words.front(),
+                     joined(std::views::transform(usages, &Usage::usage)));
 }
 
 // A lowercase letter, then lowercase letters, digits and -, as a new node's name is, so a
@@ -346,10 +386,14 @@ Commands::Commands(const Log &log, FilePort &files, ProcessPort &processes)
                       "view save left them",
                       *this)),
       _source(add("source <file>",
-                  "runs a file's commands, one a line, and stops at the first that fails",
+                  "runs a file's commands, one a line, and stops at the first that "
+                  "fails; its lines go to the view vulpen started with, but those "
+                  "naming another, as `<view>: <command>`",
                   *this)),
       _log_save(add("log save <file>",
-                    "writes the session's edits to a file, which source replays",
+                    "writes the session's edits to a file, which source replays; a log "
+                    "holds lines, not the files they made, so it replays where its "
+                    "projects' files are",
                     *this)),
       _switch(add("view switch [<view>]",
                   "makes a hosted view the current one, where the lines typed go and "
@@ -419,10 +463,7 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
                                words.back().data() + words.back().size());
   const Spec *const spec = match(words);
   if (!spec)
-    throw std::runtime_error(
-        std::format("unknown command {}; the commands are {}",
-                    words.front(),
-                    joined(std::views::transform(_specs, &Spec::usage))));
+    throw std::runtime_error(unknown(words, usages()));
   std::vector<std::string_view> arguments(words.begin() + spec->name.size(), words.end());
   const std::size_t expected = spec->placeholders.size();
   const std::size_t least = spec->optional ? expected - 1 : expected;
@@ -726,6 +767,10 @@ void Commands::command(Call &call) {
                    : std::format("lines go to {} now", _current));
   } else if (call.is(_log_save)) {
     const std::string_view file = call.arguments().front();
+    std::error_code unread;
+    if (std::filesystem::is_directory(file, unread))
+      throw std::runtime_error(
+          std::format("{} is a folder; log save writes a file", file));
     Files::save(file, _session.text(std::filesystem::path(file).parent_path()));
     _log.write(Level::info, Tag::run, std::format("log save: {}", file));
   }
