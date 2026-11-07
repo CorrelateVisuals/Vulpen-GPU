@@ -22,6 +22,9 @@ namespace {
 
 constexpr std::string_view blanks = " \t\r";
 
+// The frames after a person's line in which the parts' lines answer it: the panes part
+// answers at its next cook, the docking part at the one after.
+constexpr std::uint64_t answer_frames = 3;
 // The node words' kind, which a line starting with a word=value is refused naming.
 constexpr std::string_view word_value{"word=value"};
 // What an argument is, as the placeholder in a usage names it, and where completing it
@@ -258,17 +261,22 @@ private:
 } // namespace
 
 void CommandLog::open() {
+  _joined.reset();
   if (_groups.empty() || !_groups.back().empty()) {
     _groups.emplace_back();
     _taken.push_back(false);
   }
 }
 
+void CommandLog::join(std::size_t group) {
+  _joined = group;
+}
+
 void CommandLog::keep(std::vector<std::string> words,
                       std::vector<std::size_t> files,
                       std::string_view view,
                       Primitive primitive) {
-  _groups.back().push_back(
+  _groups[_joined.value_or(_groups.size() - 1)].push_back(
       {std::move(words), std::move(files), std::string(view), primitive});
   ++_size;
 }
@@ -287,7 +295,7 @@ std::size_t CommandLog::size() const {
 }
 
 std::size_t CommandLog::group() const {
-  return _groups.size() - 1;
+  return _joined.value_or(_groups.size() - 1);
 }
 
 void CommandLog::take_back(std::size_t group, bool taken) {
@@ -462,7 +470,7 @@ void Commands::remove(Command command) {
 std::string Commands::run(std::string_view line, std::string_view typed_at) {
   // A line from outside the port opens a group and addresses the view it names; a line
   // a command sends joins the group, and the view, of the line that runs the command.
-  if (_depth == 0)
+  if (_depth == 0 && !std::exchange(_joining, false))
     _session.open();
   std::vector<std::string_view> words = words_of(line);
   const std::string address = view_named(words);
@@ -508,7 +516,7 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
            arguments,
            std::move(from));
   spec->handler->command(call);
-  if (primitive != Primitive::no && !_replaying)
+  if (primitive != Primitive::no && !_replaying && !_discarding)
     _session.keep(std::move(kept), std::move(files), _changed, primitive);
   return std::move(call).answer();
 }
@@ -585,6 +593,7 @@ void Commands::switch_to(std::string_view name) {
 }
 
 void Commands::frame() {
+  ++_frames;
   _logged_count = _log.take(_logged);
   std::swap(_holds, _held);
   _holds.count = 0;
@@ -629,7 +638,20 @@ std::string Commands::answer(std::string_view line, std::string_view folder, boo
   const bool steps = typed && _depth == 0 && _views;
   if (steps)
     _views->begin_step(line);
+  // A part's line of the frame a person's line ran, or of the few after it, as a part
+  // answers at its next cook and another answers that, is part of what that line did.
+  const bool answers =
+      !typed && _depth == 0 && _frames - _answered_frame <= answer_frames;
+  _joining = answers && !_answers_undo && _answered;
+  if (_joining)
+    _session.join(*_answered);
+  const Restore discarding(_discarding, _discarding || (answers && _answers_undo));
   const auto end_step = [&] {
+    if (steps && _session.size() > from) {
+      _answered = _session.group();
+      _answered_frame = _frames;
+      _answers_undo = false;
+    }
     if (steps)
       _views->end_step(_session.size() > from ? std::optional(_session.group())
                                               : std::nullopt);
@@ -653,8 +675,14 @@ std::size_t Commands::done() const {
   return _views ? _views->done() : 0;
 }
 
+// A line taken back hides the answers that joined it, and a redo brings them back, so
+// the log replays to what runs (V08); the parts' answers to the undo or the redo itself
+// are kept nowhere.
 void Commands::take_back(std::size_t group, bool taken) {
   _session.take_back(group, taken);
+  _answered.reset();
+  _answered_frame = _frames;
+  _answers_undo = true;
 }
 
 void Commands::write_since(std::size_t from) {
@@ -663,7 +691,7 @@ void Commands::write_since(std::size_t from) {
       _views->write(view);
 }
 
-void Commands::source(const std::filesystem::path &file) {
+void Commands::source(const std::filesystem::path &file, bool past_refusals) {
   // A name the system cannot even look up, as one too long for it, is unreadable too.
   std::error_code unread;
   const std::filesystem::path path =
@@ -683,8 +711,17 @@ void Commands::source(const std::filesystem::path &file) {
   const Restore depth(_depth, std::size_t{0});
   const Restore addressed(_addressed, std::string());
   std::size_t number = 0;
+  std::vector<std::string> refused; // the views whose lines past_refusals passes over
   for (std::string line; !_quitting && std::getline(in, line);) {
     _sourcing.back().line = ++number;
+    // The view the line names, as written, which a refusal may be that it is none.
+    const std::vector<std::string_view> words = words_of(line);
+    const std::string address = !words.empty() && words.front().ends_with(':')
+                                    ? std::string(words.front().substr(
+                                          0, words.front().size() - 1))
+                                    : std::string();
+    if (std::ranges::find(refused, address) != refused.end())
+      continue;
     // A logic_error is a bug in vulpen, not a mistake in the file, so it keeps its own
     // message, and ends the run.
     try {
@@ -697,6 +734,18 @@ void Commands::source(const std::filesystem::path &file) {
       std::string_view message = failure.what();
       if (const std::string here = where() + ": "; message.starts_with(here))
         message.remove_prefix(here.size());
+      if (past_refusals) {
+        refused.push_back(address);
+        _log.write(Level::error,
+                   Tag::run,
+                   std::format("{}:{}: {}; the lines after it of {} are passed over",
+                               path.string(),
+                               number,
+                               message,
+                               address.empty() ? "the view vulpen started with"
+                                               : address));
+        continue;
+      }
       _sourcing.pop_back();
       throw std::runtime_error(std::format("{}:{}: {}", path.string(), number, message));
     }

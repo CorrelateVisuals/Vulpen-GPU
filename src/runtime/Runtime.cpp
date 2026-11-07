@@ -386,7 +386,7 @@ int Runtime::run() {
     // replayed so far, rather than ending the run the session goes on in.
     if (!_options.restart.empty())
       try {
-        _commands.source(_options.restart);
+        _commands.source(_options.restart, true);
         _log.write(Level::info,
                    Tag::run,
                    std::format("restarted: replayed {}", _options.restart.string()));

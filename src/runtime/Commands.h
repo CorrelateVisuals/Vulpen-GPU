@@ -82,6 +82,9 @@ public:
   // A line from outside the port, typed or read from a file: the primitives it runs
   // join one group.
   void open();
+  // A line a part sends in answer to a group's line joins that group in place of one of
+  // its own, until the next open, so what hides the line hides its answers too.
+  void join(std::size_t group);
   // files: which of the words are files, as absolute paths; view: the name of the view
   // the primitive changed.
   void keep(std::vector<std::string> words,
@@ -119,6 +122,7 @@ private:
 
   std::vector<std::vector<Kept>> _groups;
   std::vector<bool> _taken; // by _groups: undo took it back
+  std::optional<std::size_t> _joined; // the group a part's answer joins, while it runs
   std::size_t _size = 0;
 };
 
@@ -176,7 +180,7 @@ public:
   // after a replay steps back one command at a time, and prints what each answers.
   // Throws naming the file and line of the first that fails, and runs none after it, so
   // a script never goes on from a state it did not expect.
-  void source(const std::filesystem::path &file);
+  void source(const std::filesystem::path &file, bool past_refusals = false);
   // Lines the log kept already, run again, as the edits a manifest read again does not
   // hold are replayed over it: the log keeps none of them twice, so a replay of the log
   // runs each once (V08). A line that fails is passed over; returns each, with why.
@@ -254,6 +258,16 @@ private:
   std::string _addressed;
   std::string _changed; // by the primitive running
   std::size_t _depth = 0; // the lines running, each sent by the one before it
+  // The group of the last line a person ran that kept edits, and the frame it ran: the
+  // parts' lines of that frame and the few after answer it, and join its group. After an
+  // undo or a redo, none: its answers are kept nowhere, as the views it put back hold
+  // what they do, which the parts work out again from them.
+  std::optional<std::size_t> _answered;
+  std::uint64_t _answered_frame = 0;
+  std::uint64_t _frames = 0;
+  bool _answers_undo = false; // the frames since are an undo's or a redo's
+  bool _joining = false;      // the line about to run joins _answered's group
+  bool _discarding = false;   // the line running keeps nothing
   bool _replaying = false; // what runs, the log kept already
   const Command _quit;
   const Command _quit_force;
