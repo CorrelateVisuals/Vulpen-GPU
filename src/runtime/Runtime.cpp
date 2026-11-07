@@ -282,6 +282,7 @@ private:
   void loop();
   void watch();
   void swap(std::span<const std::string> failed);
+  void open_window(const std::string &title);
   Relaunch restarted(std::uint64_t ran);
   void prepare();
   void gather();
@@ -302,6 +303,7 @@ private:
   std::unique_ptr<Restart> _restart;
   std::optional<Desktop> _desktop; // from the first window on, outliving each
   std::optional<Window> _window;   // outlives the engine, which draws into it
+  bool _windowless = false;        // the window could not open: no frame tries again
   std::optional<Engine> _engine;
   Modules _modules; // outlives the schedules, whose operators run its code
   Recipes _recipes; // outlives the views and the file port, which unfold from it
@@ -442,7 +444,7 @@ bool Runtime::start() {
                          shows ? "a node draws into the window, so it opens one"
                                : "no node draws into the window, so it runs headless"));
   if (shows)
-    _window.emplace(_desktop.emplace(), title(view), window_size);
+    open_window(title(view));
   _ports.attach(_window ? &*_window : nullptr);
   // The kind of GPU a person chose for the launches of this view.
   const std::filesystem::path choice = view.file.parent_path() / ".vulpen" / "gpu.ini";
@@ -626,7 +628,7 @@ void Runtime::swap(std::span<const std::string> failed) {
 // the level a run prints by default, as a window gone with the run going on is never
 // silent.
 void Runtime::prepare() {
-  if (_views->shows() != _window.has_value()) {
+  if (_views->shows() != _window.has_value() && !_windowless) {
     _log.write(_window ? Level::warn : Level::info,
                Tag::run,
                _window ? "no node draws into the window, so it closes"
@@ -636,11 +638,8 @@ void Runtime::prepare() {
       _ports.attach(nullptr);
       _window.reset();
     } else {
-      if (!_desktop)
-        _desktop.emplace();
-      _window.emplace(*_desktop, title(_views->view()), window_size);
-      _engine->open(*_window);
-      _ports.attach(&*_window);
+      open_window(title(_views->view()));
+      _ports.attach(_window ? &*_window : nullptr);
     }
     _wiring->render_pass = _engine->render_pass();
   }
@@ -653,6 +652,27 @@ void Runtime::prepare() {
       rebuilt);
   if (rebuilt || pulled)
     gather();
+}
+
+// A window that cannot open, as with no display, ends no run (V07): the draws into it go
+// nowhere, which the log says once, as no later frame tries again. At the start the
+// engine is not made yet, and takes the window as it is made.
+void Runtime::open_window(const std::string &title) {
+  try {
+    if (!_desktop)
+      _desktop.emplace();
+    _window.emplace(*_desktop, title, window_size);
+    if (_engine)
+      _engine->open(*_window);
+  } catch (const std::runtime_error &failure) {
+    _window.reset();
+    _windowless = true;
+    _log.write(Level::error,
+               Tag::run,
+               std::format("the window cannot open, so the draws into it go nowhere and "
+                           "the run goes on: {}",
+                           failure.what()));
+  }
 }
 
 void Runtime::gather() {
