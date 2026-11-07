@@ -184,6 +184,13 @@ class Projects final : public VP::Operator {
 
   void host(VP::Call &call, const std::filesystem::path &folder, bool fresh) const {
     const std::string name = folder.filename().string();
+    // As a press on its tab does: the view is the folder's, hosted already.
+    if (const VP::View *const hosted = call.view(name);
+        hosted && !fresh &&
+        hosted->file.lexically_normal() == (folder / manifest).lexically_normal()) {
+      call.commands().send(std::format("view switch {}", name));
+      return call.reply(std::format("{} is loaded already; lines go to it now", name));
+    }
     check_free(call, name);
     const bool exists = holds_view(call, folder);
     if (fresh && exists)
