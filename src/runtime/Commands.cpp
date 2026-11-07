@@ -200,6 +200,11 @@ public:
   std::string answer() && {
     return std::move(_reply);
   }
+  // The name the line left out, by its place among the arguments, as the command chose
+  // it; none for none.
+  const std::optional<std::pair<std::size_t, std::string>> &left_out() const {
+    return _left_out;
+  }
 
 private:
   bool is(Command command) const override {
@@ -241,6 +246,9 @@ private:
   std::string resolved(std::string_view path) const override {
     return resolved_from(_from, path).string();
   }
+  void keep_name(std::size_t at, std::string_view name) override {
+    _left_out.emplace(at, std::string(name));
+  }
   static const View &found(const View *view) {
     if (!view)
       throw std::runtime_error("no view to read yet");
@@ -256,6 +264,7 @@ private:
   const std::span<const std::string_view> _arguments;
   const std::filesystem::path _from;
   std::string _reply;
+  std::optional<std::pair<std::size_t, std::string>> _left_out;
 };
 
 } // namespace
@@ -521,6 +530,12 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
            arguments,
            std::move(from));
   spec->handler->command(call);
+  if (const auto &left = call.left_out()) {
+    const std::size_t at = kept.size() - arguments.size() + left->first;
+    kept.insert(kept.begin() + static_cast<std::ptrdiff_t>(at), left->second);
+    for (std::size_t &file : files)
+      file += file >= at ? 1 : 0;
+  }
   if (primitive != Primitive::no && !_replaying && !_discarding)
     _session.keep(std::move(kept), std::move(files), _changed, primitive);
   return std::move(call).answer();

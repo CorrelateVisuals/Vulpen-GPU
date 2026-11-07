@@ -636,6 +636,9 @@ public:
   // Each node's ports of the view the command addresses, as Cook::ports reads a view's.
   // Last, as above.
   virtual std::span<const NodePort> ports() const = 0;
+  // A name the line left out, as the command chose it, which the log keeps at that place
+  // among its arguments, so a replay does what the line did (V08). Last, as above.
+  virtual void keep_name(std::size_t at, std::string_view name) = 0;
 
 protected:
   ~Call() = default;

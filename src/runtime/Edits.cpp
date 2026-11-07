@@ -619,19 +619,34 @@ constexpr std::array edits{
          "`<name>: <command>` addresses it",
          view_add,
          view_added},
-    Edit{"view close <view>",
-         "stops hosting a view, letting go of the connections that take its window; its "
-         "files stay, unless a project's differ from its last view save, which refuses",
+    Edit{"view close [<view>]",
+         "stops hosting a view, with none the current one, letting go of the connections "
+         "that take its window; its files stay, unless a project's differ from its last "
+         "view save, which refuses",
          view_close,
          view_closed},
-    Edit{"view close force <view>",
+    Edit{"view close force [<view>]",
          "stops hosting a view as view close does, a project's files put back first as "
          "its last view save, or its load, left them",
          view_close,
          view_put_back},
 };
 
-constexpr std::string_view close_force = "view close force <view>";
+constexpr std::string_view close_force = "view close force [<view>]";
+
+// The view a view close names, or with none the current one, which the log then keeps
+// by name (V08); the view vulpen started with is no view a view hosts.
+std::vector<std::string_view> closing(Call &call, std::string_view current) {
+  std::vector<std::string_view> arguments(call.arguments().begin(), call.arguments().end());
+  if (!arguments.empty())
+    return arguments;
+  if (current.empty())
+    throw std::runtime_error("lines go to the view vulpen started with, which runs until "
+                             "the end; quit ends it, and view close <view> closes a view "
+                             "it hosts");
+  call.keep_name(0, current);
+  return {current};
+}
 
 // One manifest is hosted once: two views of it would each save over what the other
 // changed, and the second's save was refused as changed on disk. The same name hosting it
@@ -822,11 +837,14 @@ void Edits::connect(View &view,
 // wherever the line goes, as from inside the view it closes.
 void Edits::command(Call &call) {
   std::string address(_port.addressed());
+  const std::string current(_port.current());
+  std::vector<std::string_view> arguments(call.arguments().begin(), call.arguments().end());
   for (std::size_t index = 0; index < edits.size(); ++index)
-    if (call.is(_commands[index]) && edits[index].change == view_close)
-      if (const std::optional<std::string> host =
-              _views.host_of(call.arguments().front()))
+    if (call.is(_commands[index]) && edits[index].change == view_close) {
+      arguments = closing(call, current);
+      if (const std::optional<std::string> host = _views.host_of(arguments.front()))
         address = *host;
+    }
   const View *const found = _views.find(address);
   if (!found)
     throw std::runtime_error(std::format("no view is named {}", address));
@@ -836,23 +854,22 @@ void Edits::command(Call &call) {
     for (const Child &child : _views.find(*host)->children)
       if (child.name != address)
         beside.push_back(child.name);
-  const std::string current(_port.current());
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index]) && edits[index].change == view_add)
-      host_once(_views, call.arguments());
+      host_once(_views, arguments);
   View edited = *found;
   std::string said;
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index])) {
       if (edits[index].change == node_remove)
-        keep_terminal(_port, address, call.arguments().front());
-      edits[index].change(edited, call.arguments(), {_port.where(), beside});
+        keep_terminal(_port, address, arguments.front());
+      edits[index].change(edited, arguments, {_port.where(), beside});
       const bool param = edits[index].change == param_set;
       if (param || edits[index].change == connect_ports)
-        _views.check(address, named_by(param, edited, call.arguments()));
+        _views.check(address, named_by(param, edited, arguments));
       if (edits[index].change == view_close)
-        let_go(call.arguments().front(), edits[index].usage == close_force);
-      said = edits[index].said(*found, edited, call.arguments());
+        let_go(arguments.front(), edits[index].usage == close_force);
+      said = edits[index].said(*found, edited, arguments);
     }
   _views.replace(address, std::move(edited));
   // Closing the view lines go to moves them on, which the answer names, as view switch
