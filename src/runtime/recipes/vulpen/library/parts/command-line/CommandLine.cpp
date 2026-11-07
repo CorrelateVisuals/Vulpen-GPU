@@ -54,6 +54,7 @@ constexpr std::string_view find_command = "find";
 // whose values Tab lists: the log levels (V09).
 constexpr char word_equals = '=';
 constexpr std::string_view log_word = "log";
+constexpr std::string_view param_word = "param"; // whose values Tab lists: the params
 // How a line type brings goes in: run as if typed and sent, or begun for the person to
 // finish, alone or with what may come next listed.
 enum class Way : std::uint8_t { run, begin, list };
@@ -329,12 +330,23 @@ std::vector<std::string> recipes_for(VP::Call &call, std::string_view begun) {
 
 // The words a node takes, each up to its =, so Tab shows what node add and node set give;
 // past log=, the levels it takes (V09).
-std::vector<std::string> node_words(std::string_view begun) {
+std::vector<std::string> node_words(VP::Call &call,
+                                    std::span<const std::string_view> typed,
+                                    std::string_view begun) {
   std::vector<std::string> names;
   const std::string log = std::format("{}{}", log_word, word_equals);
   if (begun.starts_with(log)) {
     for (const std::string_view level : VP::level_names)
       names.push_back(log + std::string(level));
+    return names;
+  }
+  // The params of the node a word typed names, as its files declare them and the bind
+  // found them, each with its =, as param set's <key> lists them.
+  if (const std::string param = std::format("{}{}", param_word, word_equals);
+      begun.starts_with(param)) {
+    for (const VP::NodePort &port : call.ports())
+      if (port.kind == "value" && std::ranges::find(typed, port.node) != typed.end())
+        names.push_back(std::format("{}{}{}", param, port.name, word_equals));
     return names;
   }
   for (const std::string_view word : VP::node_words)
@@ -355,7 +367,7 @@ std::vector<std::string> names(std::string_view word,
   const std::string_view kind = kind_of(word).name;
   std::vector<std::string> names;
   if (kind == "<word=value>") {
-    names = node_words(begun);
+    names = node_words(call, typed, begun);
   } else if (kind == "<node>") {
     for (const VP::Node &node : call.view().nodes)
       names.push_back(node.name);
