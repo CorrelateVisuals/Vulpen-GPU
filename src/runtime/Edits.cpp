@@ -632,6 +632,27 @@ constexpr std::array edits{
 };
 
 constexpr std::string_view close_force = "view close force <view>";
+
+// One manifest is hosted once: two views of it would each save over what the other
+// changed, and the second's save was refused as changed on disk. The same name hosting it
+// already is refused by name, as a second view of any file of that name is.
+void host_once(ViewLookup &views, Arguments arguments) {
+  std::error_code unread;
+  const std::filesystem::path file =
+      std::filesystem::weakly_canonical(std::filesystem::path(arguments[1]), unread);
+  for (const std::string &name : views.names()) {
+    const View *const view = views.find(name);
+    if (!view || name == arguments[0] ||
+        std::filesystem::weakly_canonical(view->file, unread) != file)
+      continue;
+    throw std::runtime_error(
+        std::format("{} is hosted already, as {}, and two views of one manifest would "
+                    "save over each other; view switch {} goes to it",
+                    file.string(),
+                    name.empty() ? "the view vulpen started with" : name,
+                    name));
+  }
+}
 // The files a refusal names at most, the rest counted.
 constexpr std::size_t named_most = 6;
 
@@ -780,6 +801,9 @@ void Edits::command(Call &call) {
       if (child.name != address)
         beside.push_back(child.name);
   const std::string current(_port.current());
+  for (std::size_t index = 0; index < edits.size(); ++index)
+    if (call.is(_commands[index]) && edits[index].change == view_add)
+      host_once(_views, call.arguments());
   View edited = *found;
   std::string said;
   for (std::size_t index = 0; index < edits.size(); ++index)
