@@ -17,7 +17,8 @@
 // of the one file that builds the part, as the class does: what the docking part keeps
 // of the panels as a person left them, between runs, in a file beside the view's
 // manifest, as the graph keeps where its boxes are: the edits that make the manifest's
-// panels the panels as they are, and the params of the nodes that seat them.
+// panels the panels as they are, the params of the nodes that seat them, the projects
+// each Perform panel holds, and the files each editor holds.
 namespace {
 
 constexpr std::string_view kept_folder = ".vulpen"; // which no build or scan reads
@@ -25,12 +26,19 @@ constexpr std::string_view kept_file = "layout.log";
 constexpr std::string_view kept_head =
     "# The panels as a person left them, which panel restore replays as the view\n"
     "# starts as its manifest has it: the edits that make the manifest's panels these,\n"
-    "# and their nodes' params. Deleting the file shows the manifest's own.\n";
+    "# their nodes' params, and the files of each editor, a file a frame. Deleting the\n"
+    "# file shows the manifest's own.\n";
 // The recipes of the nodes the panels are made of, which the file keeps: the docks
 // seating them, the panels, the stacks holding several contents, the editors, the decks.
 constexpr std::array<std::string_view, 5> laid_recipes{"dock", "panel", "stack",
                                                        "text-area", "deck"};
 constexpr std::string_view strip_params = "bar."; // a panel's strip's, which no file keeps
+// An editor, the param that names the file its text shows, as open sets it and as an
+// image file's names the file it previews, and that param as the editor holds it, which
+// the file keeps with the editor's other files, as lines of their own.
+constexpr std::string_view editor_recipe = "text-area";
+constexpr std::string_view file_param = "file";
+constexpr std::string_view editor_file = "text.file";
 // The line naming what the manifest wrote as the file was kept, a comment to a replay.
 constexpr std::string_view written_line = "# written ";
 
@@ -39,10 +47,24 @@ bool laid(const VP::Node &node) {
 }
 
 // A param of a panel's node the file keeps, one of a node inside it, as split.ratio; but
-// its strip's, which shows at every start, so the menubar a person hid comes back.
-bool kept_param(const VP::Param &param) {
-  return param.key.find('.') != std::string::npos && !param.key.starts_with(strip_params);
+// its strip's, which shows at every start, so the menubar a person hid comes back, and an
+// editor's file, kept with its other files; and a deck's own, the projects it holds and
+// the one it shows, so a Perform panel comes back with its tabs as they come back.
+bool kept_param(const VP::Node &node, const VP::Param &param) {
+  if (node.recipe == deck_recipe)
+    return param.key == holds_param || param.key == shown_param;
+  return param.key.find('.') != std::string::npos &&
+         !param.key.starts_with(strip_params) &&
+         !(node.recipe == editor_recipe && param.key == editor_file);
 }
+
+// The files an editor holds, by its text node, in the order its tabs show them and the
+// one it shows last, again if need be, so a replay opens them in their order and shows
+// that one.
+struct Held {
+  std::string text;
+  std::vector<std::string> files;
+};
 
 const VP::Node *node_in(const VP::View &view, std::string_view name) {
   const auto found = std::ranges::find(view.nodes, name, &VP::Node::name);
@@ -136,14 +158,17 @@ std::string_view kept_for(std::string_view text) {
 // in an order a replay takes: the panels' nodes gone removed, the connections their nodes
 // are part of let go of or made otherwise, their nodes added, every node moved to the
 // order it draws in, those connections made, and the params of the manifest's own panels'
-// nodes changed. So a panel added and gone again leaves no line, and the file is as long
-// as the panels' changes, not as their history. The manifest's view comes unfolded, as
-// the file port reads it, so of it only what the manifest writes counts, not what a
-// recipe its nodes use brings, and a param it sets is read where it went, on the node
-// inside; the view now comes as edited. A connection's ends on nodes neither the
-// manifest writes nor a panel is made of, as the panes another part adds as projects
-// come, which that part adds again, the file leaves out.
-std::vector<std::string> edits_from(const VP::View &written, const VP::View &now) {
+// nodes changed, and last each editor's files, a line a file, as open sets them. So a
+// panel added and gone again leaves no line, and the file is as long as the panels'
+// changes, not as their history. The manifest's view comes unfolded, as the file port
+// reads it, so of it only what the manifest writes counts, not what a recipe its nodes
+// use brings, and a param it sets is read where it went, on the node inside; the view
+// now comes as edited. A connection's ends on nodes neither the manifest writes nor a
+// panel is made of, as the panes another part adds as projects come, which that part
+// adds again, the file leaves out.
+std::vector<std::string> edits_from(const VP::View &written,
+                                    const VP::View &now,
+                                    std::span<const Held> held = {}) {
   const auto brought = [&](std::string_view name) { return ::brought(written, name); };
   std::vector<std::string_view> panels; // the panels' nodes, the manifest's or now's
   for (const VP::View *view : {&written, &now})
@@ -210,7 +235,7 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
     if (laid(node) && !node_in(written, node.name)) {
       std::string line = std::format("node add {} recipe={}", node.name, node.recipe);
       for (const VP::Param &param : node.params)
-        if (kept_param(param))
+        if (kept_param(node, param))
           line += std::format(" param={}={}", param.key, param.value);
       lines.push_back(std::move(line));
       order.push_back(node.name);
@@ -225,13 +250,20 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
         line += ' ' + to.text();
       lines.push_back(std::move(line));
     }
-  // A param of a panel's node, as split.ratio, the manifest set on the node inside it.
+  // A param of a panel's node, as split.ratio, the manifest set on the node inside it, or
+  // a deck's own.
   for (const VP::Node &node : now.nodes) {
     if (!laid(node) || !node_in(written, node.name))
       continue;
     for (const VP::Param &param : node.params) {
-      if (!kept_param(param))
+      if (!kept_param(node, param))
         continue;
+      if (node.recipe == deck_recipe) {
+        if (param_value(*node_in(written, node.name), param.key) != param.value)
+          lines.push_back(
+              std::format("param set {} {} {}", node.name, param.key, param.value));
+        continue;
+      }
       const std::size_t dot = param.key.rfind('.');
       const std::string inside =
           std::format("{}.{}", node.name, std::string_view(param.key).substr(0, dot));
@@ -243,15 +275,20 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
         lines.push_back(std::format("param set {} {} {}", inside, key, param.value));
     }
   }
+  for (const Held &editor : held)
+    for (const std::string &file : editor.files)
+      lines.push_back(std::format("param set {} {} {}", editor.text, file_param, file));
   return lines;
 }
 
 // The file's text: what the manifest wrote, then the edits that make its panels the
-// panels now.
-std::string kept_text(const VP::View &written, const VP::View &now) {
+// panels now, and the editors' files.
+std::string kept_text(const VP::View &written,
+                      const VP::View &now,
+                      std::span<const Held> held) {
   std::string text(kept_head);
   text.append(written_line).append(fingerprint_of(written)).append(1, '\n');
-  for (const std::string &line : edits_from(written, now))
+  for (const std::string &line : edits_from(written, now, held))
     text.append(line).append(1, '\n');
   return text;
 }

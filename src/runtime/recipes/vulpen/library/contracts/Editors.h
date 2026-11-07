@@ -57,6 +57,10 @@ public:
                       std::size_t row,
                       std::size_t column,
                       std::size_t length) = 0;
+  // The file it holds at a place among its tabs, counted from the left, of the count it
+  // holds, so the docking part keeps each editor's files between runs. Last, so a part
+  // built before it reaches the others where it found them.
+  virtual std::string_view file(std::size_t index) const = 0;
 
 protected:
   ~Editor() = default;

@@ -134,6 +134,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
               std::size_t row,
               std::size_t column,
               std::size_t length) override;
+  std::string_view file(std::size_t index) const override;
   void jump(VP::Call &call);
   std::vector<Source> sources(VP::FilePort &files,
                               Listed &listed,

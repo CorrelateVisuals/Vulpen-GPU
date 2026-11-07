@@ -74,10 +74,12 @@ RUNTIME = Path(__file__).resolve().parents[2] / "runtime"
 CLI = RUNTIME / "recipes" / "vulpen" / "cli" / "view.vlp"
 IDE = RUNTIME / "recipes" / "vulpen" / "ide" / "view.vlp"
 # The ide's font is the library's part, so it keeps its zoom in the library's folder;
-# its docking part keeps the panels as they were left beside the ide's manifest, which
-# each run starts without, so every run starts from the manifest's.
+# its docking part keeps the panels as they were left beside the ide's manifest, and its
+# panes part the projects hosted beside it, which each run starts without, so every run
+# starts from the manifest's.
 ZOOMED = RUNTIME / "recipes/vulpen/library/parts/font/.vulpen/font.ini"
 LAID = RUNTIME / "recipes/vulpen/ide/.vulpen/layout.log"
+HOSTED = RUNTIME / "recipes/vulpen/ide/.vulpen/projects.log"
 TRIANGLE = RUNTIME.parents[1] / "projects" / "triangles" / "triangle"
 PRESENT = [f"view load {TRIANGLE}"]  # presented as it comes
 PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode toggle
@@ -369,6 +371,7 @@ def drive(folder: Path, name: str, lines: list[str], frames: int = FRAMES,
     script = folder / f"{name}.txt"
     script.write_text("\n".join(lines) + "\n", encoding="utf-8")
     LAID.unlink(missing_ok=True)
+    HOSTED.unlink(missing_ok=True)
     code, output = run(sys.argv[1], [CLI, IDE, "--frames", frames, "--fps", 0, "--log",
                                      "info", "--source", script], headless=False, typed=typed)
     if code != 0 or problems(output) or STOPPED.search(output):
@@ -383,7 +386,8 @@ def main() -> None:
     if not display():
         print("skipped: no display to open a window on")
         return
-    kept = {path: path.read_bytes() if path.exists() else None for path in (ZOOMED, LAID)}
+    kept = {path: path.read_bytes() if path.exists() else None
+            for path in (ZOOMED, LAID, HOSTED)}
     ZOOMED.unlink(missing_ok=True)
     try:
         test()

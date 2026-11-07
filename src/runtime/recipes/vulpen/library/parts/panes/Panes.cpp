@@ -6,6 +6,7 @@
 #include "shared/Presented.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <format>
 #include <optional>
 #include <ranges>
@@ -27,6 +28,17 @@ constexpr std::string_view room_suffix = "-room";
 // Its param, and its pane's picture's, that hands a view's pane the pointer to work in it
 // as perform mode would, its button named for it, as a param's is.
 constexpr std::string_view interact_param = "interact";
+// Where it keeps the projects hosted beside its GUI between runs, as the docking part
+// keeps the panels: a file of lines beside the GUI's manifest, which no build or scan
+// reads.
+constexpr std::string_view kept_folder = ".vulpen";
+constexpr std::string_view kept_file = "projects.log";
+constexpr std::string_view kept_head =
+    "# The projects hosted beside this view as it last ran, which it hosts again as it\n"
+    "# starts with none, the one presented last presented again. Deleting the file\n"
+    "# starts it with none.\n";
+constexpr std::string_view adding = ": view add ";
+constexpr std::string_view switching = "view switch ";
 
 // The last name of a node inside others, as a connection named for it takes it.
 std::string_view short_name(std::string_view node) {
@@ -59,7 +71,11 @@ std::pair<std::string_view, std::string_view> split_port(std::string_view inside
 // view's project, or the one holding the current view. With interact = yes, each pane's
 // picture takes it too, so the view it shows takes the pointer's presses there, as in
 // perform mode, in place of the drag and the wheel moving the picture, as an inspect
-// does; it hands on buttons, for a bar, whose press turns that on or off.
+// does; it hands on buttons, for a bar, whose press turns that on or off. It keeps the
+// views hosted beside its GUI and the one presented in .vulpen/projects.log beside the
+// GUI's manifest, saved as they change, and, as the GUI starts with none hosted, hosts
+// them again, so a run started anew shows the projects the last one left, each in the
+// deck the docking part kept it in.
 class Panes final : public VP::Operator {
   // A pane as the view holds it: its node, the view and the deck its room comes from, and
   // the connection bringing it.
@@ -73,6 +89,7 @@ class Panes final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _name = node.name();
     _view = node.view_name();
+    _kept = (node.view().file.parent_path() / kept_folder / kept_file).string();
     _parent = _name.substr(0, std::min(_name.rfind('.'), _name.size()));
     _to = node.sets("to") ? node.param<std::string>("to") : std::string();
     std::ranges::replace(_to, ',', ' ');
@@ -112,6 +129,11 @@ class Panes final : public VP::Operator {
   // lines so far left it, so a project's window is taken the frame it comes, and never
   // draws into the window, which a run with none has not.
   void cook(VP::Cook &frame) override {
+    const bool first = !std::exchange(_cooked, true);
+    // The rest the frame after, so the docking part brings back the decks holding them
+    // first, from the view as the run started.
+    if (first && restore(frame))
+      return;
     const VP::View &top = *frame.view("");
     const std::string_view now =
         wanted([&](std::string_view name) { return frame.view(name); },
@@ -140,6 +162,17 @@ class Panes final : public VP::Operator {
       _hosted = std::move(names);
       _dirty = true;
     }
+    // The frame after the first, once the docking part brought back the decks: a view a
+    // deck holds that no line hosted again, as one whose folder went, it lets go of, so
+    // a deck the docking part added that holds none goes.
+    if (!first && !std::exchange(_let_go, true))
+      for (const VP::Node &node : frame.view(_view)->nodes)
+        if (node.recipe == deck_recipe)
+          for (const std::string &view : split_names(param_value(node, holds_param)))
+            if (!hosts(view)) {
+              _closed.push_back(view);
+              _dirty = true;
+            }
     // Any edit of its view, as a deck letting go of a view, which takes its pane.
     if (const VP::View *const own = frame.view(_view); own != _seen) {
       _seen = own;
@@ -147,6 +180,7 @@ class Panes final : public VP::Operator {
     }
     if (!std::exchange(_dirty, false))
       return;
+    keep(frame, top);
     VP::CommandPort &commands = frame.commands();
     present_next(commands, *frame.view(_view));
     hold(commands, *frame.view(_view));
@@ -155,6 +189,73 @@ class Panes final : public VP::Operator {
     place(commands, *frame.view(_view));
     connect(commands, *frame.view(_view));
     interact(commands, *frame.view(_view));
+  }
+
+  // At the first frame, with no view hosted beside its GUI, as a run starts, the lines
+  // the file keeps: each view hosted again, by its name and file, as view load hosts one,
+  // and the one presented then presented again. One whose file is gone is named and left
+  // out. A replay, as a restart's, hosts the views before the first frame, so then it
+  // hosts none, and the file keeps what the replay made. With no file, none is saved
+  // until a view is hosted. Whether it hosted one.
+  bool restore(VP::Cook &frame) {
+    VP::FilePort &files = frame.files();
+    if (!there(files, _kept)) {
+      _saved = kept_head;
+      return false;
+    }
+    _saved = files.read(_kept);
+    if (!projects(*frame.view(""), _view).empty())
+      return false;
+    std::string_view text = _saved;
+    std::string presented;
+    while (!text.empty()) {
+      const std::string_view line = text.substr(0, text.find('\n'));
+      text.remove_prefix(std::min(line.size() + 1, text.size()));
+      if (line.starts_with(switching))
+        presented = line.substr(switching.size());
+      else if (line.starts_with(adding))
+        host_again(frame, line);
+    }
+    if (!presented.empty() && frame.view(presented))
+      frame.commands().send(std::format("{}{}", switching, presented));
+    return !projects(*frame.view(""), _view).empty();
+  }
+
+  // A view as the file keeps it, `: view add <name> <file>`, hosted again while its file
+  // is there.
+  void host_again(VP::Cook &frame, std::string_view line) const {
+    const std::string_view rest = line.substr(adding.size());
+    const std::size_t blank = std::min(rest.find(' '), rest.size());
+    const std::string_view file = rest.substr(std::min(blank + 1, rest.size()));
+    if (there(frame.files(), file))
+      frame.commands().send(line);
+    else
+      frame.log(VP::Level::info,
+                std::format("{} is gone since {} kept it, so {} starts without {}",
+                            file,
+                            _kept,
+                            _view,
+                            rest.substr(0, blank)));
+  }
+
+  // The views hosted beside its GUI and the one presented, saved as they change, as
+  // lines its restore takes.
+  void keep(VP::Cook &frame, const VP::View &top) {
+    std::string text(kept_head);
+    for (const VP::Child &child : projects(top, _view))
+      text += std::format("{}{} {}\n", adding, child.name, child.file.string());
+    if (!_selected.empty())
+      text += std::format("{}{}\n", switching, _selected);
+    if (text == _saved)
+      return;
+    frame.files().save(_kept, text);
+    _saved = std::move(text);
+  }
+
+  static bool there(VP::FilePort &files, std::string_view file) {
+    const std::filesystem::path path(file);
+    const std::vector<std::string> names = files.list(path.parent_path().string());
+    return std::ranges::find(names, path.filename().string()) != names.end();
   }
 
   // Each pane's picture as its interact param says, which a pane added takes as it comes;
@@ -471,6 +572,10 @@ class Panes final : public VP::Operator {
   std::string _selected;              // the view presented, or about to be
   std::string _previous;              // the one before it
   bool _started = false; // after the first frame, which may present the one hosted last
+  bool _cooked = false;  // once, so the first frame hosts the views kept
+  bool _let_go = false;  // of the views the decks held that came not back
+  std::string _kept;     // the file keeping the views hosted beside its GUI
+  std::string _saved;    // as saved last
   bool _dirty = true;    // the panes, their rooms and the windows follow what is
   bool _interact = false; // each pane's picture hands its view the pointer
 };

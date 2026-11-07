@@ -13,7 +13,9 @@ expected to run, or to be refused naming why. A finding is a line that does othe
 problem that stays once a copy is built, a warning, a live build that fails on files
 still there, a validation message or a sanitizer report (RVK00, A03), or vulpen ending or
 hanging. The copies go before the run and, without --keep, after it; what the run
-rewrites in .vulpen/ folders as panels move and the graph zooms is put back. What vulpen
+rewrites in .vulpen/ folders as panels move and the graph zooms is put back, and the
+panels and projects a person's ide kept, which the run starts without, as the manifests
+have them, come back after it too. What vulpen
 said is kept, in recreate-examples.log beside the binary unless --said names a file.
 
 It refuses to run while another vulpen of this tree runs, as both would build into out/
@@ -48,6 +50,10 @@ SETTLE_ROUNDS = 240    # at most, before the build counts as never idle
 QUIT_S = 3             # for quit to end the run, before quit force
 TAIL_LINES = 20        # of what vulpen said last, when it ends or hangs
 ERROR = "{!!!}"
+# What the ide keeps of a person's session beside its manifest: its panels, and the
+# projects hosted beside it, which it would host again as the run starts.
+SESSION = [ROOT / "src/runtime/recipes/vulpen/ide/.vulpen" / name
+           for name in ("layout.log", "projects.log")]
 SETUP = f"""view add ide {ROOT}/src/runtime/recipes/vulpen/ide/view.vlp
 node add cli.snapshot recipe=snapshot
 connect snapshot ide: cli.snapshot.picture
@@ -1006,6 +1012,8 @@ def main() -> None:
         for name in [example.copy for example in chosen] + others:
             forget(binary, name)
         before = kept()
+        for path in SESSION:
+            path.unlink(missing_ok=True)
         try:
             run = Run(binary, said, Path(scratch))
             run.frames(FRAMES_A_LINE)

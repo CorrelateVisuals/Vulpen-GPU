@@ -870,6 +870,10 @@ std::string_view Text::shown() const {
   return _documents.empty() ? std::string_view() : _documents[_shown].path;
 }
 
+std::string_view Text::file(std::size_t index) const {
+  return _documents[index].path;
+}
+
 bool Text::changed() const {
   return !_documents.empty() && _documents[_shown].changed;
 }
