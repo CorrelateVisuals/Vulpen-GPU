@@ -282,6 +282,8 @@ struct Bound {
   // How many of its errors only wait for such a node, as a reader of what it writes: when
   // all of them, it says so quietly too.
   std::size_t waits = 0;
+  // A dispatch's threads, as its word gives them or the buffer at its port counts them.
+  std::uint32_t invocations = 0;
   // Its operator's bind ended in a throw, so what it would have asked for after is unknown.
   bool cut_short = false;
   // Its operator read the view as it bound, so the ports it asked for may follow the
@@ -344,5 +346,11 @@ struct Picture {
   std::string name; // the writer's node.port
   Sampled sampled;
 };
+
+// A buffer holds one element per invocation of its writer: a dispatch's threads, or a
+// draw's vertices.
+inline std::uint32_t invocations_of(const Bound &bound) {
+  return is_draw(*bound.node) ? bound.node->vertex_count : bound.invocations;
+}
 
 } // namespace VP

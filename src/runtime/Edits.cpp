@@ -118,6 +118,20 @@ void set_count(std::uint32_t &slot,
     throw std::runtime_error(std::format("{} is at least 1; leave it out {}", key, none));
 }
 
+// A dispatch's threads: a number of at least 1, or the port of a buffer its shaders read,
+// whose length, as the node writing it gives it, counts them.
+void set_invocations(Node &node, std::string_view value) {
+  if (!node.invocations_port.empty() || node.invocations != 0)
+    throw std::runtime_error("invocations is set twice");
+  if (value.front() >= '0' && value.front() <= '9')
+    return set_count(node.invocations, "invocations", value, "on a node with no .comp");
+  if (!is_name(value))
+    throw std::runtime_error(std::format(
+        "invocations {}: a number, or the port of a buffer whose length counts them",
+        value));
+  node.invocations_port = value;
+}
+
 // A draw's instances: a number of at least 1, or the port of a buffer its shaders read,
 // whose used length counts them each frame.
 void set_instances(std::string &slot, std::string_view value) {
@@ -182,7 +196,7 @@ void add_image(Node &node, std::string_view value) {
 // What no single word can show.
 void check_whole(const Node &node) {
   if (node.uses()) {
-    if (!node.operator_name.empty() || node.invocations != 0 || node.vertex_count != 0 ||
+    if (!node.operator_name.empty() || node.counts_invocations() || node.vertex_count != 0 ||
         !node.instance_count.empty() || !node.images.empty())
       throw std::runtime_error(
           std::format("node {} uses recipe {} as it is, whose node gives it those words: "
@@ -198,12 +212,12 @@ void check_whole(const Node &node) {
           "node {} uses none",
           param.key,
           node.name));
-  if (node.invocations != 0 && node.vertex_count != 0)
+  if (node.counts_invocations() && node.vertex_count != 0)
     throw std::runtime_error(
         std::format("node {} counts invocations and vertex_count: a dispatch counts its "
                     "invocations, and a draw its vertex_count",
                     node.name));
-  if (node.invocations != 0 && !node.instance_count.empty())
+  if (node.counts_invocations() && !node.instance_count.empty())
     throw std::runtime_error(
         "instance_count counts a draw's instances; a dispatch has none");
 }
@@ -323,6 +337,8 @@ std::pair<std::string_view, std::string_view> key_and_value(std::string_view wor
 // Before node set gives a word again: param and image words replace them all, and a
 // word given empty stays clear.
 void clear(Node &node, std::string_view key) {
+  if (key == "invocations")
+    node.invocations_port.clear();
   if (key == "recipe")
     node.recipe.clear();
   else if (key == "operator")
@@ -795,7 +811,7 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
           std::format("log = {} is not error, warn, info or debug", value));
     set_once(node.log, key, value);
   } else if (key == "invocations") {
-    set_count(node.invocations, key, value, "on a node with no .comp");
+    set_invocations(node, value);
   } else if (key == "vertex_count") {
     set_count(node.vertex_count, key, value, "on a node with no .vert");
   } else if (key == "instance_count") {

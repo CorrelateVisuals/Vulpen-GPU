@@ -448,6 +448,7 @@ Bound Schedule::bind(const Node &node,
         "is not built yet: the live build builds it, and says why if it cannot");
     return bound;
   }
+  bound.invocations = counted(bound);
   load_shaders(bound, folder, old);
   // So an edit makes blocks only for the nodes it changed.
   if (old && old->block && old->block_size == bound.block_size)
@@ -583,6 +584,31 @@ void Schedule::check(const View &view) const {
                                            writes ? "writes" : "reads",
                                            names(ports)));
     }
+}
+
+// A dispatch's threads, as its word gives them, or as the buffer at the port it names
+// holds elements: as many as the node writing it gives it, which binds before its
+// readers, so a count shared along a chain is written once and no reader counts past the
+// buffer's end (GLSL02).
+std::uint32_t Schedule::counted(Bound &bound) const {
+  const Node &node = *bound.node;
+  if (node.invocations_port.empty())
+    return node.invocations;
+  for (const Connection &connection : _view.connections)
+    if (const auto writer = _places.find(connection.from.node);
+        writer != _places.end() && !connection.from.view() &&
+        std::ranges::any_of(connection.to, [&](const Endpoint &to) {
+          return to.node == node.name && to.port == node.invocations_port;
+        })) {
+      const Bound &from = _bound[writer->second];
+      const Bound::Written *const upload = from.upload(connection.from.port);
+      return std::max(invocations_of(from), upload ? upload->count : 0);
+    }
+  bound.errors.push_back(
+      std::format("invocations = {}: no connection brings a buffer there from a node, "
+                  "whose length would count them",
+                  node.invocations_port));
+  return 0;
 }
 
 // Each node's cook is timed, a node in error none; while the view rests, no node cooks.

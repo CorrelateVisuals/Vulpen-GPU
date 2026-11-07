@@ -35,12 +35,6 @@ std::vector<std::string> shaders_of(const Node &node) {
   return shaders;
 }
 
-// A buffer holds one element per invocation of its writer: a dispatch's threads, or a
-// draw's vertices.
-std::uint32_t invocations_of(const Node &node) {
-  return is_draw(node) ? node.vertex_count : node.invocations;
-}
-
 // By Access and by Memory, in the words a log line uses.
 constexpr std::array access_words{
     std::string_view{"readonly "}, std::string_view{"writeonly "}, std::string_view{}};
@@ -334,7 +328,7 @@ void Schedule::make_buffers(Schedule *replaced) {
                             : read_back.contains(name) ? Memory::readback
                                                        : Memory::device;
       const std::uint32_t elements =
-          std::max(invocations_of(*bound.node), upload ? upload->count : 0);
+          std::max(invocations_of(bound), upload ? upload->count : 0);
       make_buffer(bound, name, elements, field.stride, memory, replaced);
     }
   // C++ fills these for a connection to take to another node's shader, with the room it
@@ -656,7 +650,7 @@ void Schedule::make_passes() {
               .pipeline = bound.pipeline->handle(),
               .block = bound.block ? bound.block->set() : VK_NULL_HANDLE,
               .groups = draw ? 0
-                             : bound.node->invocations /
+                             : bound.invocations /
                                    bound.shaders.front().workgroup_size()[0],
               .vertex_count = draw ? bound.node->vertex_count : 0,
               .instance_count = instance_number(*bound.node).value_or(0),

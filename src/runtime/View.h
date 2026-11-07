@@ -105,6 +105,9 @@ struct Node {
   // the extension.
   std::vector<std::string> files;
   std::uint32_t invocations = 0;  // a dispatch's threads
+  // In place of a number: the port of a buffer it reads, whose length counts them, so a
+  // count shared along a chain is written once.
+  std::string invocations_port;
   std::uint32_t vertex_count = 0; // a draw's vertices per instance
   // A draw's instances: a number, or the port of the buffer whose used length counts
   // them each frame; empty when not given, which runs one.
@@ -126,6 +129,9 @@ struct Node {
   // fingerprint.
   bool uses() const {
     return !recipe.empty() && recipe.find('@') == std::string::npos;
+  }
+  bool counts_invocations() const {
+    return invocations != 0 || !invocations_port.empty();
   }
   // The param it sets of that key; null for none.
   const Param *param(std::string_view key) const {
@@ -186,6 +192,8 @@ inline std::vector<Word> words_of(const Node &node) {
     words.push_back({"operator", node.operator_name});
   if (node.invocations != 0)
     words.push_back({"invocations", std::to_string(node.invocations)});
+  else if (!node.invocations_port.empty())
+    words.push_back({"invocations", node.invocations_port});
   if (node.vertex_count != 0)
     words.push_back({"vertex_count", std::to_string(node.vertex_count)});
   if (!node.instance_count.empty())

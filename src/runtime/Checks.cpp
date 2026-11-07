@@ -168,7 +168,7 @@ bool Schedule::check_counts(Bound &bound) const {
                                count_stage(shaders, fragment_stage) == 1);
   const std::size_t before = bound.errors.size();
   if (shaders.empty()) {
-    if (node.invocations != 0 || node.vertex_count != 0 || !node.instance_count.empty())
+    if (node.counts_invocations() || node.vertex_count != 0 || !node.instance_count.empty())
       bound.errors.emplace_back("it counts invocations or vertices, but its folder holds "
                                 "no shader to run them");
   } else if (!dispatch && !draw && !fragment) {
@@ -176,13 +176,15 @@ bool Schedule::check_counts(Bound &bound) const {
                                        "one .comp, or one .vert and one .frag, or one "
                                        "of these two, its varyings joining the other",
                                        joined(shaders)));
-  } else if (dispatch && (node.vertex_count != 0 || node.invocations == 0)) {
+  } else if (dispatch && (node.vertex_count != 0 || !node.counts_invocations())) {
     bound.errors.emplace_back(
         "it runs a .comp, so it counts its invocations, and no vertex_count");
-  } else if (draw && (node.invocations != 0 || node.vertex_count == 0)) {
+  } else if (dispatch && bound.invocations == 0) {
+    return false; // its port counted none, as counted said, and it makes no buffers
+  } else if (draw && (node.counts_invocations() || node.vertex_count == 0)) {
     bound.errors.emplace_back(
         "it draws, so it counts its vertex_count, and no invocations");
-  } else if (fragment && (node.invocations != 0 || node.vertex_count != 0 ||
+  } else if (fragment && (node.counts_invocations() || node.vertex_count != 0 ||
                           !node.instance_count.empty())) {
     bound.errors.emplace_back(
         "a fragment node counts nothing: the vertex node it draws with counts");
@@ -216,18 +218,18 @@ void Schedule::check_stages(Bound &bound) const {
   if (size[1] != 1 || size[2] != 1)
     bound.errors.push_back("only one-dimensional workgroups run yet: local_size_y and "
                            "local_size_z must be 1");
-  else if (node.invocations % size[0] != 0)
+  else if (bound.invocations % size[0] != 0)
     bound.errors.push_back(
         std::format("invocations = {} is not a multiple of local_size_x = {}",
-                    node.invocations,
+                    bound.invocations,
                     size[0]));
   else if (const std::uint32_t most = _wiring.resources.max_compute_work_group_count();
-           node.invocations / size[0] > most)
+           bound.invocations / size[0] > most)
     bound.errors.push_back(
         std::format("invocations = {} makes {} workgroups of local_size_x = {}, more than "
                     "this GPU dispatches at once, {}",
-                    node.invocations,
-                    node.invocations / size[0],
+                    bound.invocations,
+                    bound.invocations / size[0],
                     size[0],
                     most));
 }

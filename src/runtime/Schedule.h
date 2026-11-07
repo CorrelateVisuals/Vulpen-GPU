@@ -171,6 +171,7 @@ private:
   Bound bind(const Node &node, const std::filesystem::path &folder, Schedule *replaced);
   void load_shaders(Bound &bound, const std::filesystem::path &folder, Bound *old);
   bool check_counts(Bound &bound) const;
+  std::uint32_t counted(Bound &bound) const;
   void read_shaders(Bound &bound) const;
   void fit_pipeline(Bound &bound, Bound *old, bool unchanged);
   VkRenderPass target_of(Bound &bound) const;
