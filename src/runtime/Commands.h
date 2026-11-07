@@ -281,6 +281,7 @@ private:
   const Command _quit_force;
   const Command _source;
   const Command _log_save;
+  const Command _log_save_force;
   const Command _switch;
   bool _quitting = false;
   std::string _current;               // the view view switch moved to

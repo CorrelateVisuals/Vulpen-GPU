@@ -405,8 +405,13 @@ Commands::Commands(const Log &log, FilePort &files, ProcessPort &processes)
       _log_save(add("log save <file>",
                     "writes the session's edits to a file, which source replays; a log "
                     "holds lines, not the files they made, so it replays where its "
-                    "projects' files are",
+                    "projects' files are; refused over a file there whose name does not "
+                    "end in .log",
                     *this)),
+      _log_save_force(add("log save force <file>",
+                          "writes the session's edits to a file as log save does, over "
+                          "any file there",
+                          *this)),
       _switch(add("view switch [<view>]",
                   "makes a hosted view the current one, where the lines typed go and "
                   "which every face shows; with none, the view vulpen started with",
@@ -844,12 +849,19 @@ void Commands::command(Call &call) {
     call.reply(_current.empty()
                    ? std::string("lines go to the view vulpen started with now")
                    : std::format("lines go to {} now", _current));
-  } else if (call.is(_log_save)) {
+  } else if (call.is(_log_save) || call.is(_log_save_force)) {
     const std::string_view file = call.arguments().front();
     std::error_code unread;
     if (std::filesystem::is_directory(file, unread))
       throw std::runtime_error(
           std::format("{} is a folder; log save writes a file", file));
+    // A slip of the name would write over any file, a binary as soon as a log.
+    if (call.is(_log_save) && std::filesystem::exists(file, unread) &&
+        std::filesystem::path(file).extension() != ".log")
+      throw std::runtime_error(
+          std::format("{} is there and its name does not end in .log, so log save leaves "
+                      "it; log save force writes over it",
+                      file));
     Files::save(file, _session.text(std::filesystem::path(file).parent_path()));
     _log.write(Level::info, Tag::run, std::format("log save: {}", file));
   }
