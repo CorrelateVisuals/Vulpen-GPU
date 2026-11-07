@@ -68,7 +68,10 @@ SETTLE_S = 0.4         # between looks at whether the live build is idle
 SETTLE_ROUNDS = 150
 QUIT_S = 5
 TAIL_LINES = 12
-QUIET = ("help zz-", "{mem}", "{nod}", "{gpu}", "{dbg}")
+# A frame's mark: help given a word no command starts with, which it refuses so.
+MARK = "help zz-"
+MARKED = "no command starts with zz-"
+QUIET = (MARK, MARKED, "{mem}", "{nod}", "{gpu}", "{dbg}")
 ERROR = "{!!!}"
 WARNING = "{ ! }"
 # A line of the log, by its tag, after the time or the blanks in its place; anything else
@@ -290,13 +293,13 @@ class Vulpen:
         said = []
         for _ in range(count):
             self.marks += 1
-            mark = f"help zz-{self.marks} does not fit"
-            self.write(f"help zz-{self.marks}\n")
+            mark = f"{MARKED}{self.marks};"
+            self.write(f"{MARK}{self.marks}\n")
             deadline = time.monotonic() + timeout
             while True:
                 lines = self.new()
                 done = any(mark in line for line in lines)
-                said += [line for line in lines if "help zz-" not in line]
+                said += [line for line in lines if MARK not in line and MARKED not in line]
                 if done:
                     break
                 if not self.alive() or time.monotonic() > deadline:
