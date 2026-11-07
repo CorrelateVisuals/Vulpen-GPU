@@ -282,9 +282,20 @@ struct Bound {
   // How many of its errors only wait for such a node, as a reader of what it writes: when
   // all of them, it says so quietly too.
   std::size_t waits = 0;
+  // Its operator's bind ended in a throw, so what it would have asked for after is unknown.
+  bool cut_short = false;
+  // Its operator read the view as it bound, so the ports it asked for may follow the
+  // connections, as a deck's rooms do, and only its next bind knows them.
+  bool asked_view = false;
 
   bool loaded() const {
     return !shaders.empty();
+  }
+  // Whether its bind found every port and param it has: its operator's bind, if it runs
+  // one, and its shaders, if it names any, ran through.
+  bool whole() const {
+    return !unbuilt && (!runs_operator(*node) || (op && !cut_short)) &&
+           (shaders_named.empty() || loaded());
   }
   // Its shader of the stage, as reflection read it, which it must hold.
   const Shader &stage(std::string_view stage) const {

@@ -850,6 +850,11 @@ std::span<const NodePort> Views::ports(std::string_view name) {
   return found && found->schedule ? found->schedule->ports() : std::span<const NodePort>();
 }
 
+void Views::check(std::string_view name, const View &view) {
+  if (const Hosted *const found = hosted(name); found && found->schedule)
+    found->schedule->check(view);
+}
+
 // An edit that leaves the view unable to unfold, or naming a view that cannot be hosted,
 // is refused, and changes nothing.
 void Views::replace(std::string_view name, View view) {

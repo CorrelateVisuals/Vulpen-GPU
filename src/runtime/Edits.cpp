@@ -671,6 +671,24 @@ void keep_terminal(const Commands &port, std::string_view view, std::string_view
                     node_of(readers.front())));
 }
 
+// The param a param set line sets, or the connection a connect line makes, alone: what
+// the running bind checks as the line runs (ViewLookup::check). Neither line changes
+// what a node is, so its ports and params are as that bind found them; anything else
+// of the view is its next bind's.
+View named_by(bool param, const View &edited, Arguments arguments) {
+  View line;
+  if (param) {
+    Node &node = line.nodes.emplace_back();
+    node.name = arguments[0];
+    node.params.push_back({std::string(arguments[1]), std::string(arguments[2])});
+  } else if (const auto made =
+                 std::ranges::find(edited.connections, arguments[0], &Connection::name);
+             made != edited.connections.end()) {
+    line.connections.push_back(*made);
+  }
+  return line;
+}
+
 // The files a refusal names at most, the rest counted.
 constexpr std::size_t named_most = 6;
 
@@ -829,6 +847,9 @@ void Edits::command(Call &call) {
       if (edits[index].change == node_remove)
         keep_terminal(_port, address, call.arguments().front());
       edits[index].change(edited, call.arguments(), {_port.where(), beside});
+      const bool param = edits[index].change == param_set;
+      if (param || edits[index].change == connect_ports)
+        _views.check(address, named_by(param, edited, call.arguments()));
       if (edits[index].change == view_close)
         let_go(call.arguments().front(), edits[index].usage == close_force);
       said = edits[index].said(*found, edited, call.arguments());

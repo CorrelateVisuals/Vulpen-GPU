@@ -106,6 +106,7 @@ private:
   const View *unfolded(std::string_view name) override;
   std::span<const Cost> costs(std::string_view name) override;
   std::span<const NodePort> ports(std::string_view name) override;
+  void check(std::string_view name, const View &view) override;
   void write(std::string_view name) override;
   std::vector<std::string> names() override;
   std::vector<std::string> unkept(std::string_view name) override;

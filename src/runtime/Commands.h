@@ -47,6 +47,10 @@ public:
   // The name of the view whose manifest names the hosted view, empty for the one vulpen
   // started with; none when no view of that name is hosted.
   virtual std::optional<std::string> host_of(std::string_view name) = 0;
+  // Throws naming what the running schedule's next bind would refuse of the params and
+  // connections of a view, as a line names them (Schedule::check); nothing before the
+  // view runs.
+  virtual void check(std::string_view name, const View &view) = 0;
   // Around a line a person runs, which undo takes back as one step: begun before the
   // line runs, and ended after it, with the group of the session log its primitives
   // joined, none for none.

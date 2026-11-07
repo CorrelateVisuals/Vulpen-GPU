@@ -129,6 +129,10 @@ public:
   std::span<const Cost> costs() const;
   // Each node's ports, in graph order, as it bound them.
   std::span<const NodePort> ports() const;
+  // Throws naming what its next bind would refuse of the params and connections of a
+  // view, at nodes it bound whole: a param the node reads none of, or not as the value's
+  // type, and a connection's end naming no port of the node, or one it only reads (A02).
+  void check(const View &view) const;
   // How long each of the frame's passes took on the GPU, in milliseconds, by its place
   // among them, NaN for one not timed: read once the frame's fence passed, before
   // anything rebuilds, so the passes are the ones this schedule's work and draws gave.

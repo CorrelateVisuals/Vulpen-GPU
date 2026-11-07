@@ -117,6 +117,7 @@ public:
     return _schedule._wiring.engine;
   }
   const View &view() const override {
+    _bound.asked_view = true;
     return _schedule._view;
   }
 
@@ -482,6 +483,7 @@ Bound Schedule::bind(const Node &node,
       bound.op->bind(binder);
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
+      bound.cut_short = true;
     }
   }
   check_fields(bound);
@@ -509,6 +511,78 @@ void Schedule::drop_operators(const std::vector<std::string> &modules) {
         std::format("{} swapped; connection {} starts empty", held.module, held.name));
     return true;
   });
+}
+
+// Against the ports and params the bind found, so a line is refused as it runs. A node
+// not bound whole, as one just added, one whose operator or shaders did not load, or one
+// waiting for its build, has not listed them all, and its next bind checks it instead; a
+// param of a node inside it, as `command-line.host`, that node's; and a connection's end
+// at a node whose operator read the view as it bound, as it may ask for that port once a
+// connection names it. A buffer its shader only reads, its C++ may fill, and so write.
+void Schedule::check(const View &view) const {
+  const auto bound = [&](std::string_view node) -> const Bound * {
+    const auto found = std::ranges::find_if(
+        _bound, [&](const Bound &each) { return each.node->name == node; });
+    return found != _bound.end() && found->whole() ? &*found : nullptr;
+  };
+  const auto listed = [&](std::string_view node, bool values) {
+    std::vector<const NodePort *> ports;
+    for (const NodePort &port : _ports)
+      if (port.node == node && (port.kind == "value") == values)
+        ports.push_back(&port);
+    return ports;
+  };
+  const auto names = [](const std::vector<const NodePort *> &ports) {
+    std::string text;
+    for (const NodePort *const port : ports)
+      text.append(text.empty() ? "" : ", ").append(port->name);
+    return text.empty() ? std::string("none") : text;
+  };
+  for (const Node &node : view.nodes) {
+    if (!bound(node.name))
+      continue;
+    const std::vector<const NodePort *> values = listed(node.name, true);
+    for (const Param &param : node.params) {
+      if (param.key.find('.') != std::string::npos)
+        continue;
+      const auto value = std::ranges::find_if(
+          values, [&](const NodePort *port) { return port->name == param.key; });
+      if (value == values.end())
+        throw std::runtime_error(std::format("param {}: node {} reads no param of that "
+                                             "name; the params it reads are {}",
+                                             param.key,
+                                             node.name,
+                                             names(values)));
+      if (!(*value)->holds.empty() && !write_value(param.value, (*value)->holds, nullptr))
+        throw std::runtime_error(std::format(
+            "param {} = {} is not a {}", param.key, param.value, (*value)->holds));
+    }
+  }
+  for (const Connection &connection : view.connections)
+    for (std::size_t at = 0; at <= connection.to.size(); ++at) {
+      const bool writes = at == 0;
+      const Endpoint &end = writes ? connection.from : connection.to[at - 1];
+      const Bound *const node = end.view() ? nullptr : bound(end.node);
+      if (!node || node->asked_view)
+        continue;
+      std::vector<const NodePort *> ports = listed(end.node, false);
+      const auto port = std::ranges::find_if(
+          ports, [&](const NodePort *each) { return each->name == end.port; });
+      if (port != ports.end() &&
+          (!writes || (*port)->writes || node->uploads_to(end.port)))
+        continue;
+      const std::string_view why = port == ports.end()
+                                       ? "names no port of its node"
+                                       : "is a port its node reads, not one it writes";
+      std::erase_if(ports, [&](const NodePort *each) { return each->writes != writes; });
+      throw std::runtime_error(std::format("connection {}: {} {}; the ports {} {} are {}",
+                                           connection.name,
+                                           end.text(),
+                                           why,
+                                           end.node,
+                                           writes ? "writes" : "reads",
+                                           names(ports)));
+    }
 }
 
 // Each node's cook is timed, a node in error none; while the view rests, no node cooks.
