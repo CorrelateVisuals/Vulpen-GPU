@@ -568,7 +568,7 @@ def copy_tree(to: Path) -> None:
 VALID = {
     "clear": "clear",
     "complete <value>...": 'complete node ""',
-    "connect <name> <port> <port>...":
+    "connect [<name>] <port> <port>...":
         "disconnect {connection} ;; connect {fresh} {writer} {reader}",
     "disconnect <connection>": "disconnect {connection}",
     "copy [<file>...]": "copy {scrap} {newfile}",
@@ -588,7 +588,7 @@ VALID = {
     "input wheel <value> <value>": "input wheel 0 1",
     "log save <file>": "log save {tree}/../decoy/{fresh}.log",
     "ls": "ls",
-    "node add <name> [<word=value>...]": "node add {fresh} log=info",
+    "node add [<name>] [<word=value>...]": "node add {fresh} log=info",
     "node move <node> <node>": "node move {leaf} {group}",
     "new <file>...": "new {tree}/projects/{home}/{fresh}/ "
                      "{tree}/projects/{home}/{fresh}/Shape.vert "
@@ -609,9 +609,9 @@ VALID = {
     "recipe list": "recipe list",
     "recipe sync <node>": "recipe drop snapshot {fresh} ;; recipe sync {same}",
     "source <file>": "source {tree}/../decoy/script.txt",
-    "view add <name> <file>": "view add {fresh} {tree}/../decoy/{same}/view.vlp",
-    "view close <view>": "view close {view}",
-    "view close force <view>": "view close force {view}",
+    "view add [<name>] <file>": "view add {fresh} {tree}/../decoy/{same}/view.vlp",
+    "view close [<view>]": "view close {view}",
+    "view close force [<view>]": "view close force {view}",
     "view list": "view list",
     "view list projects": "view list projects",
     "view load <project>": "view load {project}",
@@ -862,9 +862,10 @@ def try_line(copy: Copy, vulpen: Vulpen, state: State, usage: Usage, variant: st
 
 def damage(copy: Copy, state: State, usage: Usage, lines: list[str]) -> bool:
     """Files outside the projects that a line changed, which none of the lines named; a
-    recipe make writes the recipe it names into the recipes' folder, as its help says."""
+    recipe make writes the recipe it names into the recipes' folder, and a view save force
+    an app's view.vlp there, as their help says."""
     named = [Path(word) for line in lines for word in line.split() if "/" in word]
-    if any(line.startswith("recipe make ") for line in lines):
+    if any(line.startswith(("recipe make ", "view save force")) for line in lines):
         named.append(RECIPES)
     changed = [path for path in copy.changed() if not path.startswith("projects/") and
                not any((copy.tree / path).is_relative_to((copy.tree / name).resolve())
