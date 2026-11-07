@@ -688,6 +688,7 @@ class Files final : public VP::Operator {
     check_kept(call, left, path, false);
     if (!listed(files, path, "/")) {
       files.remove(path.string());
+      keep_folder(files, left, path);
       return call.reply(std::format("removed {}", shown(path)));
     }
     const std::optional<std::string> node = node_at(left);
@@ -707,11 +708,25 @@ class Files final : public VP::Operator {
           .then.push_back(std::format("node remove keep {}", *node));
     const std::string saved = edit(call, graphs);
     remove_all(files, path);
+    keep_folder(files, left, path);
     call.reply(std::format("removed {}/{}{}{}",
                            shown(path),
                            held == 0 ? "" : " and " + some,
                            node ? std::format(", node {}", *node) : "",
                            saved));
+  }
+
+  // The port takes a folder the last of what it held leaves empty, but a node's folder
+  // stays while the node does (RV08), as remove ./file.txt of its last file took it, and
+  // the node was left with none.
+  static void keep_folder(VP::FilePort &files,
+                          const std::optional<Held> &left,
+                          const std::filesystem::path &path) {
+    if (!left || left->inside.empty())
+      return;
+    const Held holding{left->name, left->view, left->inside.parent_path()};
+    if (!there(files, path.parent_path()) && node_at(holding))
+      files.make(path.parent_path().string());
   }
 
   // The files a folder holds, and those the folders in it hold.
