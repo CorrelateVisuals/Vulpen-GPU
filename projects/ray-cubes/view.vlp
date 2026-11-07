@@ -32,7 +32,7 @@ param       = radius=5
 param       = frames_per_turn=1800
 
 # A cube an invocation, columns a row: 64 cubes, 8 rows of 8. spin moves each of grid's
-# cubes, so it runs as many invocations.
+# cubes, so it runs as many invocations as rest brings.
 [node "grid"]
 invocations = 64
 param       = columns=8
@@ -40,7 +40,7 @@ param       = spacing=1.6
 param       = side=0.8
 
 [node "spin"]
-invocations = 64
+invocations = rest
 param       = speed=1
 
 [node "floor"]
@@ -51,15 +51,16 @@ param       = tiles=20
 param       = mirror=0.15
 
 # Grid's cubes and the floor: one more invocation than spin's, the last taking the floor;
-# place as many, a cube each, the count every trace and shadow tests.
+# place as many as scene brings, a cube each, the count every trace and shadow tests.
 [node "join"]
 invocations = 65
 
 [node "place"]
-invocations = 65
+invocations = scene
 
-# A ray a pixel: size.x * size.y = 2073600 invocations, as every node after it but tone,
-# which fills the frame, and meter, which reads 8 spots.
+# A ray a pixel: size.x * size.y = 2073600 invocations, the count written once: every
+# node after it but tone, which fills the frame, and meter, which reads 8 spots, runs as
+# many as the buffer it names holds, a pixel each.
 [node "rays"]
 invocations = 2073600
 param       = size=1920,1080
@@ -69,62 +70,62 @@ param       = size=1920,1080
 [node "bounce1"]
 
 [node "bounce1.trace"]
-invocations = 2073600
+invocations = rays
 
 [node "bounce1.shadow"]
-invocations = 2073600
+invocations = hits
 
 [node "bounce1.shade"]
-invocations = 2073600
+invocations = hits
 param       = ambient=0.1
 param       = shine=0.6
 param       = sharpness=48
 
 [node "bounce1.reflect"]
-invocations = 2073600
+invocations = hits
 param       = tint=0.6
 
 [node "bounce2"]
 
 [node "bounce2.trace"]
-invocations = 2073600
+invocations = rays
 
 [node "bounce2.shadow"]
-invocations = 2073600
+invocations = hits
 
 [node "bounce2.shade"]
-invocations = 2073600
+invocations = hits
 param       = ambient=0.1
 param       = shine=0.6
 param       = sharpness=48
 
 [node "bounce2.reflect"]
-invocations = 2073600
+invocations = hits
 param       = tint=0.6
 
 [node "bounce3"]
 
 [node "bounce3.trace"]
-invocations = 2073600
+invocations = rays
 
 [node "bounce3.shadow"]
-invocations = 2073600
+invocations = hits
 
 [node "bounce3.shade"]
-invocations = 2073600
+invocations = hits
 param       = ambient=0.1
 param       = shine=0.6
 param       = sharpness=48
 
 [node "bounce3.reflect"]
-invocations = 2073600
+invocations = hits
 param       = tint=0.6
 
 [node "sky"]
-invocations = 2073600
+invocations = rays
 
 [node "smooth"]
-invocations = 2073600
+invocations = before
 param       = size=1920,1080
 
 [node "tone"]
