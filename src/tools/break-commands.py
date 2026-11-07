@@ -473,8 +473,10 @@ class Copy:
         """The copy as built: its files as committed, the projects and the decoy as they
         were made, nothing a run keeps in .vulpen/, so the next state starts alike."""
         subprocess.run(["git", "checkout", "-q", "--", "."], cwd=self.tree, check=True)
-        subprocess.run(["git", "clean", "-fdxq", "-e", "/out", "-e", "/projects/bf-*"],
-                       cwd=self.tree, check=True)
+        # Not a save's temp file: a vulpen still running renames it away mid-clean, and
+        # git stops at the name it listed.
+        subprocess.run(["git", "clean", "-fdxq", "-e", "/out", "-e", "/projects/bf-*",
+                        "-e", "*.tmp"], cwd=self.tree, check=True)
         for folder in (self.tree / "projects").glob("bf*"):
             if folder.name not in SANDBOX or held(folder) != held(self.pristine /
                                                                   folder.name):
