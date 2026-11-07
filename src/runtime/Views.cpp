@@ -368,8 +368,9 @@ Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recip
                              *this,
                              Primitive::save);
   _list = commands.add("view list",
-                       "lists the views this view hosts, with their files, in the order "
-                       "hosted",
+                       "lists every view vulpen hosts, with its file, by the name a line "
+                       "addresses it with, : the view vulpen started with, and marks the "
+                       "current one, where lines go",
                        *this);
   _show = commands.add("view show [<port>]",
                        "shows an image of the view, by node.port, in its window's place "
@@ -907,8 +908,15 @@ void Views::command(Call &call) {
   } else if (call.is(_show)) {
     show_image(call);
   } else if (call.is(_list)) {
-    for (const Child &child : call.view().children)
-      call.reply(std::format("{} {}", child.name, child.file.string()));
+    for (const std::unique_ptr<Hosted> &hosted : _hosted)
+      if (!hosted->removed)
+        call.reply(std::format(
+            "{} {}{}",
+            hosted->name.empty() ? std::string(":") : hosted->name,
+            hosted->current()
+                .file.lexically_proximate(std::filesystem::current_path())
+                .generic_string(),
+            hosted->name == _port.current() ? ", current" : ""));
   } else if (call.is(_clear)) {
     Hosted *const found = hosted(_port.addressed());
     const std::string_view port = call.arguments().front();

@@ -877,7 +877,7 @@ def damage(copy: Copy, state: State, usage: Usage, lines: list[str]) -> bool:
 
 def hosted(vulpen: Vulpen) -> list[str]:
     return [line.split()[0] for line in vulpen.answer(": view list")
-            if line.strip() and not line.startswith(ERROR)]
+            if line.strip() and not line.startswith(ERROR) and line.split()[0] != ":"]
 
 
 def put_back(copy: Copy, vulpen: Vulpen, state: State) -> Vulpen:
