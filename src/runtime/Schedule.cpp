@@ -131,13 +131,14 @@ Schedule::Schedule(const Wiring &wiring,
                    std::string_view name,
                    const View &view,
                    Into into,
-                   Schedule *replaced)
+                   Schedule *replaced,
+                   bool project)
     : _wiring(wiring), _name(name), _view(view), _joined(joined_of(view)),
       _window(into == Into::image
                   ? wiring.pipelines.render_pass(pixel_format(window_format)->format)
               : into == Into::window ? wiring.render_pass
                                      : VK_NULL_HANDLE),
-      _into(into) {
+      _into(into), _project(project) {
   const std::vector<const Node *> nodes = order(view);
   // Every node registers its commands again as it binds, so no command stays behind
   // with a node that went, and none blocks a node that takes its name.

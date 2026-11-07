@@ -145,11 +145,14 @@ public:
   Commands &operator=(const Commands &) = delete;
 
   // usage: the command's words as a person types them. Throws naming the mistake, so a
-  // command without its usage and help never registers (A02).
+  // command without its usage and help never registers (A02). view: the view whose node
+  // registers it, by its name, which may hold a command another view holds too, as two
+  // projects' nodes of one name; none for the engine's own, which every view shares.
   Command add(std::string_view usage,
               std::string_view help,
               CommandHandler &handler,
-              Primitive primitive = Primitive::no);
+              Primitive primitive = Primitive::no,
+              std::optional<std::string_view> view = std::nullopt);
   // Before the command's handler goes, so no run reaches it after.
   void remove(Command command);
   // A line from outside the port, in a group of its own; returns what its command
@@ -230,7 +233,8 @@ private:
   std::string answer(std::string_view line, std::string_view folder, bool typed);
   void quit(bool force);
   void write_since(std::size_t from);
-  const Spec *match(std::span<const std::string_view> words) const;
+  const Spec *match(std::span<const std::string_view> words,
+                    std::string_view address) const;
   std::string view_named(std::vector<std::string_view> &words) const;
   std::vector<std::string> resolve(const Spec &spec,
                                    std::vector<std::string_view> &arguments,

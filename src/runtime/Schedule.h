@@ -77,11 +77,15 @@ public:
   // unchanged shape and the images dispatches store into, contents included. The view
   // must outlive it. name: the view's, as a line addresses it, empty for the one vulpen
   // started with, which each line about one of its nodes keeps.
+  // project: the view is a project, whose nodes' commands are its own, a line from it
+  // reaching them first, so two projects' nodes of one name both register theirs; an
+  // app's, as the cli's and the ide's, every view shares.
   Schedule(const Wiring &wiring,
            std::string_view name,
            const View &view,
            Into into,
-           Schedule *replaced = nullptr);
+           Schedule *replaced = nullptr,
+           bool project = false);
   ~Schedule();
   Schedule(const Schedule &) = delete;
   Schedule &operator=(const Schedule &) = delete;
@@ -222,6 +226,7 @@ private:
   // or while they draw nowhere.
   const VkRenderPass _window;
   const Into _into;
+  const bool _project;
   // What connections between C++ nodes carry, which outlives the operators that hold
   // references to it.
   std::vector<Held> _objects;

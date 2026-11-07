@@ -82,7 +82,13 @@ public:
 
   Command command(std::string_view usage, std::string_view help) override {
     try {
-      return _bound.commands.emplace_back(_commands.add(usage, help, *_bound.op));
+      return _bound.commands.emplace_back(_commands.add(
+          usage,
+          help,
+          *_bound.op,
+          Primitive::no,
+          _schedule._project ? std::optional<std::string_view>(_schedule._name)
+                             : std::nullopt));
     } catch (const std::runtime_error &failure) {
       _bound.errors.emplace_back(failure.what());
       return {};

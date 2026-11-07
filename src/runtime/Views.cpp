@@ -442,8 +442,12 @@ bool Views::rebuild() {
               : std::format("child {}: draws again", hosted.name));
     if (hosted.edited) {
       const bool added = !hosted.schedule;
-      hosted.schedule = std::make_unique<Schedule>(
-          _wiring, hosted.name, *hosted.edited_flat, into, hosted.schedule.get());
+      hosted.schedule = std::make_unique<Schedule>(_wiring,
+                                                   hosted.name,
+                                                   *hosted.edited_flat,
+                                                   into,
+                                                   hosted.schedule.get(),
+                                                   project(*hosted.edited));
       hosted.view = std::move(hosted.edited);
       hosted.flat = std::move(hosted.edited_flat);
       if (added)
@@ -455,8 +459,12 @@ bool Views::rebuild() {
       changed = true;
     } else if (into != hosted.into) {
       // The same view, its draws' pipelines made again for what they draw into now.
-      hosted.schedule = std::make_unique<Schedule>(
-          _wiring, hosted.name, *hosted.flat, into, hosted.schedule.get());
+      hosted.schedule = std::make_unique<Schedule>(_wiring,
+                                                   hosted.name,
+                                                   *hosted.flat,
+                                                   into,
+                                                   hosted.schedule.get(),
+                                                   project(*hosted.view));
       changed = true;
     }
     hosted.into = into;

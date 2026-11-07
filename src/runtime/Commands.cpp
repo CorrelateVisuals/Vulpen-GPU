@@ -345,6 +345,7 @@ struct Commands::Spec {
   Command command;
   CommandHandler *handler = nullptr;
   Primitive primitive = Primitive::no;
+  std::optional<std::string> view; // whose node registered it; none for the engine's
 
   // A <project> that names no folder names a project, which its command finds, so only a
   // path resolves, and the log names it from its own folder; a <path> or a <folder> so
@@ -408,7 +409,8 @@ Commands::~Commands() = default;
 Command Commands::add(std::string_view usage,
                       std::string_view help,
                       CommandHandler &handler,
-                      Primitive primitive) {
+                      Primitive primitive,
+                      std::optional<std::string_view> view) {
   std::vector<std::string_view> words = words_of(usage);
   if (words.empty() || help.empty())
     throw std::runtime_error(
@@ -429,7 +431,10 @@ Command Commands::add(std::string_view usage,
         usage,
         joined(kinds)));
   const std::span<const std::string_view> name(words.begin(), arguments);
-  if (const Spec *const twin = match(name); twin && twin->name.size() == name.size())
+  if (std::ranges::any_of(_specs, [&](const Spec &spec) {
+        return std::ranges::equal(spec.name, name) &&
+               (!spec.view || !view || *spec.view == *view);
+      }))
     throw std::runtime_error(std::format("command `{}` registers twice", usage));
   std::vector<std::string_view> placeholders;
   for (auto word = arguments; word != words.end(); ++word)
@@ -444,7 +449,8 @@ Command Commands::add(std::string_view usage,
                     .help = std::string(help),
                     .command = command,
                     .handler = &handler,
-                    .primitive = primitive});
+                    .primitive = primitive,
+                    .view = view ? std::optional<std::string>(*view) : std::nullopt});
   return command;
 }
 
@@ -464,7 +470,7 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
     return {};
   const std::string_view typed(words.front().data(),
                                words.back().data() + words.back().size());
-  const Spec *const spec = match(words);
+  const Spec *const spec = match(words, address);
   if (!spec)
     throw std::runtime_error(unknown(words, usages()));
   std::vector<std::string_view> arguments(words.begin() + spec->name.size(), words.end());
@@ -534,10 +540,14 @@ std::vector<std::string> Commands::resolve(const Spec &spec,
   return paths;
 }
 
+// Each once, though two views' nodes of one name hold it.
 std::vector<Usage> Commands::usages() const {
   std::vector<Usage> usages;
   for (const Spec &spec : _specs)
-    usages.push_back({spec.usage, spec.help});
+    if (std::ranges::none_of(usages, [&](const Usage &usage) {
+          return usage.usage == spec.usage;
+        }))
+      usages.push_back({spec.usage, spec.help});
   return usages;
 }
 
@@ -810,14 +820,38 @@ void Commands::quit(bool force) {
 
 // The longest name the line starts with, so a name may begin another (`view`,
 // `view save`).
-const Commands::Spec *Commands::match(std::span<const std::string_view> words) const {
-  const Spec *found = nullptr;
+// The longest a line's words start with: of those, the one of the view the line
+// addresses, else the only one; several views' with none of them addressed are refused,
+// naming the views, as a line runs one view's.
+const Commands::Spec *Commands::match(std::span<const std::string_view> words,
+                                      std::string_view address) const {
+  std::vector<const Spec *> found;
   for (const Spec &spec : _specs)
     if (spec.name.size() <= words.size() &&
-        std::ranges::equal(spec.name, words.first(spec.name.size())) &&
-        (!found || spec.name.size() > found->name.size()))
-      found = &spec;
-  return found;
+        std::ranges::equal(spec.name, words.first(spec.name.size()))) {
+      if (!found.empty() && spec.name.size() > found.front()->name.size())
+        found.clear();
+      if (found.empty() || spec.name.size() == found.front()->name.size())
+        found.push_back(&spec);
+    }
+  if (found.size() < 2)
+    return found.empty() ? nullptr : found.front();
+  const auto own = std::ranges::find_if(found, [&](const Spec *spec) {
+    return spec->view && *spec->view == address;
+  });
+  if (own != found.end())
+    return *own;
+  // Both string_views, as a std::string the two would make dies with the line.
+  std::vector<std::string_view> views;
+  for (const Spec *const spec : found)
+    views.push_back(spec->view->empty() ? std::string_view("the view vulpen started with")
+                                        : std::string_view(*spec->view));
+  throw std::runtime_error(std::format("{} is a command of {}: a line names its view, as "
+                                       "`{}: {}`",
+                                       joined(found.front()->name, " "),
+                                       joined(views),
+                                       *found.front()->view,
+                                       found.front()->usage));
 }
 
 // A relative path names a file beside the one running (RP02), so a script and the files
