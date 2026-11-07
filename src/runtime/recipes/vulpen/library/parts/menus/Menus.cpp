@@ -37,13 +37,6 @@ constexpr std::string_view no_word = "\"\"";
 // The ports port's kind for a value a param sets, which no line connects.
 constexpr std::string_view value_kind = "value";
 constexpr std::string_view image_kind = "image";
-// What a start of C++, and of each shader, ends with, as the files part names them.
-constexpr std::string_view cpp_start = ".cpp";
-constexpr std::string_view compute_start = ".comp";
-constexpr std::string_view vertex_start = ".vert";
-constexpr std::string_view fragment_start = ".frag";
-constexpr std::array<std::string_view, 3> shader_ends{compute_start, vertex_start,
-                                                       fragment_start};
 
 // What a press or a line opens: the section of the kind of thing pressed, and those whose
 // lines follow it, muted, as a background's lines for the whole project; where its first
@@ -371,22 +364,7 @@ class Menus final : public VP::Operator {
                                             : look.files.list(folder))
       if (!name.ends_with('/') && !name.starts_with('.'))
         files.push_back(std::move(name));
-    if (line.kind == path_kind)
-      return files;
-    const auto holds = [&](std::string_view end) {
-      return std::ranges::any_of(
-          files, [&](const std::string &file) { return file.ends_with(end); });
-    };
-    const std::string stem = class_of(named.substr(named.rfind('.') + 1));
-    if (!holds(cpp_start))
-      words.push_back(stem + std::string(cpp_start));
-    if (holds(cpp_start) && std::ranges::none_of(shader_ends, holds))
-      words.push_back(stem + std::string(compute_start));
-    // A draw takes both halves: a lone one's other.
-    if (holds(vertex_start) != holds(fragment_start))
-      words.push_back(
-          stem + std::string(holds(vertex_start) ? fragment_start : vertex_start));
-    return words;
+    return line.kind == path_kind ? files : lacking(named, files);
   }
 
   // Whether a connection's ends hold what was pressed: a node's, or a port's, node.port.

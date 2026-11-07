@@ -407,12 +407,14 @@ class Files final : public VP::Operator {
     for (std::size_t start = 0; start < starts.size(); ++start)
       _starts[start] =
           node.file(std::format("start/{}{}.in", start_name, starts[start].extension));
-    _new = node.command("new <file>...",
+    _new = node.command("new [<file>...]",
                         "makes files and folders, and the folders they are in: a path "
                         "ending in / or with no extension a folder, else a file, a "
                         "shader's or C++'s with the least code that builds and runs; "
                         "in a view a folder is a node, which it adds, a draw's with its "
-                        "vertex_count and a dispatch's with its invocations");
+                        "vertex_count and a dispatch's with its invocations; with none, "
+                        "what the folder typed at's menu offers: in a node's, the file "
+                        "it lacks first, in a view's, a node node1/ on, the first free");
     _rename = node.command("rename <file> <file>",
                            "renames a file or a folder, or moves it, into folders made "
                            "for it, in a view nodes; a node's folder renames the node, "
@@ -420,13 +422,14 @@ class Files final : public VP::Operator {
                            "another node's folder inside that node; a view's folder "
                            "moves with view rename");
     _copy = node.command("copy [<file>...]",
-                         "copies a file to the second path, or a folder with all it "
-                         "holds, whole or not at all; in a view each folder it brings is "
-                         "a node, which it adds, and a node's folder or a recipe's comes "
-                         "as recipe drop brings one: with its words, the nodes inside it, "
-                         "their connections and the contracts and shared code they "
-                         "include; with none, what the part in focus has selected, as "
-                         "control with c does");
+                         "copies a file to the second path, or with only the file "
+                         "beside it, as Name2.cpp, numbered on while taken, or a folder "
+                         "with all it holds, whole or not at all; in a view each folder "
+                         "it brings is a node, which it adds, and a node's folder or a "
+                         "recipe's comes as recipe drop brings one: with its words, the "
+                         "nodes inside it, their connections and the contracts and shared "
+                         "code they include; with none, what the part in focus has "
+                         "selected, as control with c does");
     _remove = node.command("remove <file>",
                            "deletes a file or an empty folder; a node's folder takes the "
                            "node with it, the nodes inside it and their connections; "
@@ -438,10 +441,14 @@ class Files final : public VP::Operator {
 
   void command(VP::Call &call) override {
     const std::span<const std::string_view> words = call.arguments();
-    if (call.is(_new))
+    if (call.is(_new) && words.empty())
+      make_offered(call);
+    else if (call.is(_new))
       make(call);
     else if (call.is(_copy) && words.empty())
       copy_selected(call);
+    else if (call.is(_copy) && words.size() == 1)
+      move(call, bare(words[0]), beside(call.files(), bare(words[0])), true);
     else if (call.is(_copy) && words.size() != 2)
       throw std::runtime_error(std::format("copy takes a file and the path of its copy, or "
                                            "nothing for what the part in focus has "
@@ -452,6 +459,59 @@ class Files final : public VP::Operator {
       move(call, bare(words[0]), bare(words[1]), call.is(_copy));
     else if (call.is(_remove) || call.is(_remove_force))
       remove(call, bare(words[0]), call.is(_remove_force));
+  }
+
+  // What new with no path makes, as the menu of the folder typed at offers it, by the
+  // line it sends, so the log keeps the path (V08): a node's folder, the file it lacks
+  // first; a view's, a node node1/ on, the first its graph and folder do not hold.
+  static void make_offered(VP::Call &call) {
+    const std::filesystem::path folder = bare(call.resolved("."));
+    const std::optional<Held> held = held_by(call, folder);
+    if (!held)
+      throw std::runtime_error(std::format(
+          "{} is no view's folder, where new makes nodes; new <path> makes one there",
+          shown(folder)));
+    const auto node = std::ranges::find_if(held->view->nodes, [&](const VP::Node &each) {
+      return VP::path_of(each.name) == held->inside;
+    });
+    std::string path;
+    if (node != held->view->nodes.end()) {
+      std::vector<std::string> files;
+      for (std::string &name : call.files().list(folder.string()))
+        if (!name.ends_with('/') && !name.starts_with('.'))
+          files.push_back(std::move(name));
+      const std::vector<std::string> offered = lacking(node->name, files);
+      if (offered.empty())
+        throw std::runtime_error(std::format(
+            "node {} lacks no file new starts; new <path> makes one", node->name));
+      path = (folder / offered.front()).string();
+    } else if (held->inside.empty()) {
+      for (std::size_t number = 1; path.empty(); ++number)
+        if (const std::string name = std::format("node{}", number);
+            !there(call.files(), folder / name) &&
+            std::ranges::find(held->view->nodes, name, &VP::Node::name) ==
+                held->view->nodes.end())
+          path = (folder / name).string() + '/';
+    } else {
+      throw std::runtime_error(std::format(
+          "{} is no node's folder, nor a view's top; new <path> makes one there",
+          shown(folder)));
+    }
+    call.reply(call.commands().send(std::format("new {}", path)));
+  }
+
+  // A copy's path beside the file or folder, as Name2.cpp or spin2, Name3.cpp beside
+  // Name2.cpp, numbered on while taken.
+  static std::filesystem::path beside(VP::FilePort &files,
+                                      const std::filesystem::path &from) {
+    const std::string name = from.stem().string();
+    const auto [stem, first] = numbered(name);
+    for (std::size_t number = first;; ++number)
+      if (std::filesystem::path to =
+              from.parent_path() /
+              std::format("{}{}{}", stem, number, from.extension().string());
+          !there(files, to))
+        return to;
   }
 
   // The keys that copy, as the window sends them, so the part in focus copies what it has

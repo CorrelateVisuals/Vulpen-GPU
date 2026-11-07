@@ -1,11 +1,14 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cstddef>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -95,6 +98,28 @@ inline std::pair<std::string_view, std::size_t> numbered(std::string_view name) 
           std::errc{})
     return {name, 2};
   return {name.substr(0, stem), number + 1};
+}
+
+// The files new starts that a node's folder holding these lacks, each named for the
+// node's last name, as class_of gives it: its C++, a compute shader beside C++ alone, or
+// a lone half's other, as Name.frag beside a lone Name.vert; what its menu offers and
+// new with no path makes, so both name them alike (RV09).
+inline std::vector<std::string> lacking(std::string_view node,
+                                        std::span<const std::string> files) {
+  const auto holds = [&](std::string_view end) {
+    return std::ranges::any_of(files,
+                               [&](const std::string &file) { return file.ends_with(end); });
+  };
+  constexpr std::array<std::string_view, 3> shaders{".comp", ".vert", ".frag"};
+  const std::string stem = class_of(node.substr(node.rfind('.') + 1));
+  std::vector<std::string> words;
+  if (!holds(".cpp"))
+    words.push_back(stem + ".cpp");
+  if (holds(".cpp") && std::ranges::none_of(shaders, holds))
+    words.push_back(stem + ".comp");
+  if (holds(".vert") != holds(".frag"))
+    words.push_back(stem + (holds(".vert") ? ".frag" : ".vert"));
+  return words;
 }
 
 } // namespace
