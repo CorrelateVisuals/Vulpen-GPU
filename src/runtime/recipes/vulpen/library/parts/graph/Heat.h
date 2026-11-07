@@ -13,16 +13,19 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 // Only Graph.cpp includes this header, so what it holds stays in the unnamed namespace of
 // the one file that builds the part, as the class does: what the heat param names, what
-// each box costs, the fill its cost gives it and the tip that tells it, and the buttons
-// that turn the heat on and off.
+// each box costs and why a node in it is left out, the fill its cost gives it, the border
+// its state gives it, the tip that tells both, and the buttons that turn the heat on and
+// off.
 namespace {
 
 // What the boxes show the cost of, as the heat param names it: the GPU's or the CPU's,
@@ -96,7 +99,8 @@ public:
     _stale = true;
   }
 
-  // While the heat shows: what each box holds costs. The names of a folder's boxes are
+  // What each box holds costs, and why a node it holds is left out, shown or not, as a
+  // box's border shows that. The names of a folder's boxes are
   // their paths from the folder holding top, the repository's; with none, the boxes are a
   // view's.
   void weigh(VP::Cook &frame,
@@ -105,8 +109,6 @@ public:
              std::string_view top) {
     weights.assign(boxes.boxes.size(), {});
     most = 0.0f;
-    if (heat.on == Heat::On::none)
-      return;
     walk(frame);
     const auto same = [](const Walked &walked, std::span<const VP::Cost> from) {
       return walked.costs.data() == from.data() && walked.costs.size() == from.size();
@@ -240,14 +242,57 @@ Fill fill_of(const Weight &weight, Heat heat, float most) {
           .blend = along - static_cast<float>(step)};
 }
 
-// A box's cost, as its tip tells it: its name, then its milliseconds a frame on the CPU
-// and on the GPU, smoothed and as the last frame took them. Nothing for a box that costs
+// The border of a box holding a node left out, in the error role, or the warning role
+// while it only waits for the live build, which builds it in a moment; none for a box
+// whose nodes run, so its own role shows.
+std::optional<std::uint32_t> state_role(const Weight &weight) {
+  if (weight.problem.empty())
+    return {};
+  return weight.waits ? VP_VIEW::role("warning") : VP_VIEW::role("error");
+}
+
+// Whether a box's tip has anything to tell of it: a node it holds runs or is left out.
+bool told(const Weight &weight) {
+  return weight.cooks || weight.runs || !weight.problem.empty();
+}
+
+// Text cut at its blanks into rows of the tip, none past width columns, so it shows whole
+// where the tip would cut one row; a word wider than that a row of its own.
+void tell_wrapped(VP_VIEW::Items &tip,
+                  std::string_view text,
+                  std::size_t width,
+                  std::optional<std::uint32_t> role) {
+  std::string row;
+  for (std::size_t at = 0; at < text.size();) {
+    const std::size_t end = std::min(text.find(' ', at), text.size());
+    const std::string_view word = text.substr(at, end - at);
+    if (!row.empty() && row.size() + 1 + word.size() > width)
+      tip.push_back({.label = std::exchange(row, {}), .role = role});
+    row.append(row.empty() ? "" : " ").append(word);
+    at = end + 1;
+  }
+  if (!row.empty())
+    tip.push_back({.label = std::move(row), .role = role});
+}
+
+// A box's state and cost, as its tip tells it: its name; why a node it holds is left out,
+// building while it only waits for the live build, else failed, as its bind's first error
+// names it, in rows of at most width columns; then its milliseconds a frame on the CPU
+// and on the GPU, smoothed and as the last frame took them. Nothing for a box that tells
 // nothing.
-void tell_cost(VP_VIEW::Items &tip, std::string_view title, const Weight &weight) {
+void tell_cost(VP_VIEW::Items &tip,
+               std::string_view title,
+               const Weight &weight,
+               std::size_t width) {
   tip.clear();
-  if (!weight.cooks && !weight.runs)
+  if (!told(weight))
     return;
   tip.push_back({.label = std::string(title)});
+  if (!weight.problem.empty())
+    tell_wrapped(tip,
+                 std::format("{}: {}", weight.waits ? "building" : "failed", weight.problem),
+                 width,
+                 state_role(weight));
   if (weight.cooks)
     tip.push_back({.label = std::format("cpu {:.3f} ms a frame, {:.3f} the last frame",
                                         weight.cpu,

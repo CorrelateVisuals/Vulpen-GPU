@@ -566,6 +566,7 @@ void Runtime::watch() {
                              _live->said()));
       [[fallthrough]];
     case Live::Build::succeeded:
+      _modules.builds_ended(_live->built(), _live->failed());
       // Each module would refuse to load, and every node with C++ would drop out.
       if (!Modules::builds_loadable()) {
         _log.write(Level::warn,

@@ -86,6 +86,18 @@ std::vector<std::string> Modules::rewritten() const {
   return modules;
 }
 
+void Modules::builds_ended(std::span<const std::string> built,
+                           std::span<const std::string> failed) {
+  std::erase_if(_failed, [&](const std::string &view) {
+    return std::ranges::find(built, view) != built.end();
+  });
+  _failed.insert(_failed.end(), failed.begin(), failed.end());
+}
+
+bool Modules::build_failed(std::string_view view) const {
+  return std::ranges::find(_failed, view) != _failed.end();
+}
+
 bool Modules::builds_loadable() {
   const std::string stamp =
       Files::text(Files::executable().parent_path() / VP_MODULE_STAMP_FILE);

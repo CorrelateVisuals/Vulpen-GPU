@@ -677,11 +677,16 @@ void Schedule::make_passes() {
 }
 
 // A node keeps what it cost through a rebuild, as an edit changes nothing it does, so
-// its smoothed times go on from where they were.
+// its smoothed times go on from where they were; and says why it is left out, as its
+// errors are all made by now, and whether it only waits, as the log says them below.
 void Schedule::cost_from(const Schedule *replaced) {
   _costs.reserve(_bound.size());
   for (const Bound &bound : _bound)
-    _costs.push_back({.node = bound.node->name});
+    _costs.push_back(
+        {.node = bound.node->name,
+         .problem = bound.errors.empty() ? std::string_view() : bound.errors.front(),
+         .waits = !bound.errors.empty() &&
+                  (bound.unbuilt || bound.waits == bound.errors.size())});
   for (const std::size_t at : _passed)
     _costs[at].runs = true;
   if (!replaced)

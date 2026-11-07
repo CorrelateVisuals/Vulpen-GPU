@@ -1574,8 +1574,12 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
   const Box &shown = _boxes.boxes[at];
   const bool chosen = selected(shown.name);
   const float width = static_cast<float>(chosen ? selected_width : border_width);
+  const std::vector<Weight> &weights = _heating.weights;
+  const std::optional<std::uint32_t> state =
+      at < weights.size() ? state_role(weights[at]) : std::nullopt;
   const std::uint32_t edge =
-      chosen ? VP_VIEW::role("accent") : shown.role.value_or(VP_VIEW::role("border"));
+      chosen ? VP_VIEW::role("accent")
+             : state.value_or(shown.role.value_or(VP_VIEW::role("border")));
   const Placed &placed = _layout.placed()[at];
   const bool holds = placed.frames;
   const glm::vec2 from = on_screen(glm::vec2(placed.at));
@@ -1590,7 +1594,6 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
       rects[written++] = shows;
   };
   add(between(from, {to.x, below}, edge));
-  const std::vector<Weight> &weights = _heating.weights;
   const Fill fill =
       at < weights.size() ? fill_of(weights[at], _heating.heat, _heating.most) : Fill{};
   VP_VIEW::Rect inside =
@@ -1921,9 +1924,13 @@ void Graph::write_tip() {
                   static_cast<std::int32_t>(_area->extent.x) / cell.x - tip_margin, 1)));
   else if (std::string whole = cut_under(); !whole.empty())
     _tip->push_back({.label = std::move(whole)});
-  else if (_heating.heat.on != Heat::On::none && _hovered.box < _heating.weights.size() &&
-           !_hovered.corner)
-    tell_cost(*_tip, _boxes.boxes[_hovered.box].title, _heating.weights[_hovered.box]);
+  else if (_hovered.box < _heating.weights.size() && !_hovered.corner &&
+           told(_heating.weights[_hovered.box]) && cell.x > 0)
+    tell_cost(*_tip,
+              _boxes.boxes[_hovered.box].title,
+              _heating.weights[_hovered.box],
+              static_cast<std::size_t>(std::max(
+                  static_cast<std::int32_t>(_area->extent.x) / cell.x - tip_margin, 1)));
   else if (_hovered_curves.size() == 1 && _built_flat)
     tell(*_tip,
          _boxes,

@@ -441,8 +441,9 @@ Bound Schedule::bind(const Node &node,
     bound.log = *level_named(word);
   Bound *const old = replaced ? replaced->find(node.name) : nullptr;
   // Its every error would be what the build has not made yet, and the view vulpen started
-  // with fails loud on any, as ever.
-  if (waits_for_build(_name) && unbuilt(node, module_of(_view, node), folder, _wiring.modules)) {
+  // with fails loud on any, as ever, as does a view whose last build failed.
+  if (waits_for_build(_name) && !_wiring.modules.build_failed(_name) &&
+      unbuilt(node, module_of(_view, node), folder, _wiring.modules)) {
     bound.unbuilt = true;
     bound.errors.emplace_back(
         "is not built yet: the live build builds it, and says why if it cannot");

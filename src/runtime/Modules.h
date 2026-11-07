@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -55,6 +56,13 @@ public:
   // Whether the build tree builds modules this vulpen loads: the stamp the build writes
   // beside vulpen from the engine headers is its own (live code rule 6).
   static bool builds_loadable();
+  // A live build for these views ended, failed on those, so a node of a view it failed
+  // on that it made none of the code of is in error, naming the code missing, where it
+  // waited while a build could still make it (A02). A view no build was for keeps what
+  // its last build ended as.
+  void builds_ended(std::span<const std::string> built,
+                    std::span<const std::string> failed);
+  bool build_failed(std::string_view view) const;
   // The next make() loads the rebuilt module. The caller has destroyed the module's
   // operators first: their code is in it.
   void unload(const std::string &module);
@@ -77,6 +85,7 @@ private:
   std::vector<Loaded> _loaded;
   std::map<std::string, Registered, std::less<>> _operators;
   std::string _entering;
+  std::vector<std::string> _failed; // the views whose last live build failed
 };
 
 } // namespace VP
