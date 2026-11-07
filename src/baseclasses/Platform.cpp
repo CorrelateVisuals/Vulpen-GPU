@@ -1,3 +1,6 @@
+// The platform: every call to the OS and to GLFW (RA01). It runs past 800 lines (CPP12),
+// as the files, the terminal, processes, the window and its input, and how a module
+// loads differ by system, and each system's branch reads best beside the other's.
 #include "baseclasses/Platform.h"
 
 #include <GLFW/glfw3.h>

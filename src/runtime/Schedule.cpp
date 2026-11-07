@@ -1,3 +1,6 @@
+// A view's GPU work, built from its graph. It runs past 800 lines (CPP12): the order of
+// its nodes, the buffers and images their connections carry and the passes and
+// barriers between them are worked out together, from one view, by one owner (A01).
 #include "runtime/Schedule.h"
 
 #include "baseclasses/Passes.h"

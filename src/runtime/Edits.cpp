@@ -1,3 +1,6 @@
+// The graph's edits. It runs past 800 lines (CPP12): each edit, the checks of the words
+// and names it takes and the answer it gives sit in one table, so every edit reads,
+// refuses and answers alike, as one usage and help each (RV04).
 #include "runtime/Edits.h"
 
 #include "runtime/Commands.h"

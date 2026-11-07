@@ -1,3 +1,7 @@
+// The text part's operator. It runs past 800 lines (CPP12): typing, the caret and the
+// selection, undo, scrolling and the files an editor holds all change the documents one
+// class holds, in one file's unnamed namespace, so two copies of the part never clash;
+// one model of editing a line, shared with the terminal's, would shrink it.
 #include "Text.h"
 
 #include "contracts/Palette.h"

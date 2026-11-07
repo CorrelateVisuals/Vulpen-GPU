@@ -1,3 +1,6 @@
+// The command port. It runs past 800 lines (CPP12): matching a line to a usage, its
+// paths, the refusals, the log a session keeps and the port's own commands share the
+// specs it holds, which one owner holds (A01).
 #include "runtime/Commands.h"
 
 #include "baseclasses/Platform.h"
