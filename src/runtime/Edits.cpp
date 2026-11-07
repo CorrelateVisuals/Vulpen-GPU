@@ -409,11 +409,23 @@ void node_set(View &view, Arguments arguments, const Around &around) {
 }
 
 // A connection's errors name the connection, so it leaves the nodes' lines alone.
+// A connection named again, from the port it is from, takes the readers given beside its
+// own, so a reader joins one without the line naming the others; from another port, it
+// is refused as two connections of one name. Checked whole, as a new one is.
 void connect_ports(View &view, Arguments arguments, const Around &around) {
   Connection connection{.name = std::string(arguments[0]),
                         .from = Edits::endpoint(arguments[1])};
+  if (const auto had = std::ranges::find(view.connections, connection.name, &Connection::name);
+      had != view.connections.end() && had->from.text() == connection.from.text()) {
+    connection.to = had->to;
+    view.connections.erase(had);
+  }
   for (const std::string_view to : arguments.subspan(2))
-    connection.to.push_back(Edits::endpoint(to));
+    if (Endpoint end = Edits::endpoint(to);
+        std::ranges::none_of(connection.to, [&](const Endpoint &given) {
+          return given.text() == end.text();
+        }))
+      connection.to.push_back(std::move(end));
   Edits::connect(view, std::move(connection), around.beside);
 }
 
@@ -531,11 +543,20 @@ std::string node_was_set(const View &, const View &after, Arguments arguments) {
                      named_words(after, arguments.front(), arguments.subspan(1)));
 }
 
-std::string connected(const View &, const View &, Arguments arguments) {
-  return std::format("connected {} to {} as {}",
+// A connection named again says all it reads into now, as the line named some.
+std::string connected(const View &before, const View &after, Arguments arguments) {
+  const auto named = [&](const View &view) {
+    return std::ranges::find(view.connections, arguments[0], &Connection::name);
+  };
+  if (named(before) == before.connections.end())
+    return std::format("connected {} to {} as {}",
+                       arguments[1],
+                       listed(arguments.subspan(2)),
+                       arguments[0]);
+  return std::format("connection {} from {} reads into {} now",
+                     arguments[0],
                      arguments[1],
-                     listed(arguments.subspan(2)),
-                     arguments[0]);
+                     listed(named(after)->to | std::views::transform(&Endpoint::text)));
 }
 
 std::string disconnected(const View &before, const View &, Arguments arguments) {
@@ -605,7 +626,8 @@ constexpr std::array edits{
          node_was_set},
     Edit{"connect [<name>] <port> <port>...",
          "joins the port that writes a buffer to the ports that read it; with no name, "
-         "named for the writer's port, numbered on while taken",
+         "named for the writer's port, numbered on while taken; a connection named "
+         "again, from the port it is from, takes the readers given beside its own",
          connect_ports,
          connected},
     Edit{"disconnect <connection>", "removes a connection", disconnect, disconnected},
@@ -724,7 +746,10 @@ std::string chosen_name(Change change, const View &view, Arguments arguments,
     const Endpoint from = Edits::endpoint(arguments[1]);
     base = from.view() ? from.node : from.port;
     for (const Connection &connection : view.connections)
-      taken.emplace_back(connection.name);
+      if (connection.name == base && connection.from.text() == from.text())
+        return base; // joined, as named again
+      else
+        taken.emplace_back(connection.name);
   } else {
     base = std::filesystem::path(arguments[1]).parent_path().filename().string();
     taken.assign(hosted.begin(), hosted.end());
@@ -883,6 +908,17 @@ void Edits::command(Call &call) {
   const View *const found = _views.find(address);
   if (!found)
     throw std::runtime_error(std::format("no view is named {}", address));
+  // Ports alone past two, as connect lamp.light a.light b.light, the grammar takes as
+  // named for the first, as a drop names its connections with dots: a first word the
+  // running view lists as a port its node writes is that port, and the name left out.
+  for (std::size_t index = 0; index < edits.size(); ++index)
+    if (call.is(_commands[index]) && edits[index].change == connect_ports &&
+        arguments.size() > 2 && !arguments.front().empty() &&
+        std::ranges::any_of(_views.ports(address), [&](const NodePort &port) {
+          return port.writes && port.kind != "value" &&
+                 std::format("{}.{}", port.node, port.name) == arguments.front();
+        }))
+      arguments.insert(arguments.begin(), std::string_view());
   std::string chosen; // a name the line left out, an empty word to it
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index]) && !arguments.empty() && arguments.front().empty()) {
