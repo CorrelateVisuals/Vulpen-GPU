@@ -182,6 +182,7 @@ private:
   // Registered once the views the host names are hosted, so a constructor that throws
   // leaves no command to a handler that is gone.
   Command _save;
+  Command _save_force;
   Command _list;
   Command _show;
   Command _clear;

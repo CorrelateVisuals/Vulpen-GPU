@@ -358,9 +358,15 @@ Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recip
   _save = commands.add("view save",
                        "writes the view over its manifest, keeping the comments in it, "
                        "and keeps a project's files as they are, which view close force "
-                       "and quit force put back; a line typed writes the manifest anyway",
+                       "and quit force put back; a line typed writes the manifest anyway; "
+                       "refused for an app's view, which every run of the app starts from",
                        *this,
                        Primitive::save);
+  _save_force = commands.add("view save force",
+                             "writes the view over its manifest as view save does, an "
+                             "app's too, as when a person changes the app itself",
+                             *this,
+                             Primitive::save);
   _list = commands.add("view list",
                        "lists the views this view hosts, with their files, in the order "
                        "hosted",
@@ -874,10 +880,18 @@ std::optional<std::string> Views::host_of(std::string_view name) {
 void Views::command(Call &call) {
   if (call.is(_undo) || call.is(_redo)) {
     undo(call, call.is(_redo));
-  } else if (call.is(_save)) {
+  } else if (call.is(_save) || call.is(_save_force)) {
     Hosted *const found = hosted(_port.addressed());
     if (!found)
       throw std::runtime_error("no view to save");
+    // An app's view holds the session it runs, as the ide the panes of the projects open,
+    // which every later run of the app would start with.
+    if (call.is(_save) && !project(found->current()))
+      throw std::runtime_error(std::format(
+          "{} is an app's view, which every run of the app starts from, so view save "
+          "leaves it; view save force writes it",
+          found->current().file.lexically_proximate(std::filesystem::current_path())
+              .generic_string()));
     save(*found);
     call.reply(std::format("saved {}{}",
                            found->current()
