@@ -686,9 +686,10 @@ class Files final : public VP::Operator {
       throw std::runtime_error(std::format("{} is not there", shown(path)));
     const std::optional<Held> left = held_by(call, path);
     check_kept(call, left, path, false);
+    const std::optional<std::filesystem::path> above = node_folder_above(left, path);
     if (!listed(files, path, "/")) {
       files.remove(path.string());
-      keep_folder(files, left, path);
+      keep(files, above);
       return call.reply(std::format("removed {}", shown(path)));
     }
     const std::optional<std::string> node = node_at(left);
@@ -708,7 +709,7 @@ class Files final : public VP::Operator {
           .then.push_back(std::format("node remove keep {}", *node));
     const std::string saved = edit(call, graphs);
     remove_all(files, path);
-    keep_folder(files, left, path);
+    keep(files, above);
     call.reply(std::format("removed {}/{}{}{}",
                            shown(path),
                            held == 0 ? "" : " and " + some,
@@ -716,17 +717,22 @@ class Files final : public VP::Operator {
                            saved));
   }
 
-  // The port takes a folder the last of what it held leaves empty, but a node's folder
-  // stays while the node does (RV08), as remove ./file.txt of its last file took it, and
-  // the node was left with none.
-  static void keep_folder(VP::FilePort &files,
-                          const std::optional<Held> &left,
-                          const std::filesystem::path &path) {
-    if (!left || left->inside.empty())
-      return;
-    const Held holding{left->name, left->view, left->inside.parent_path()};
-    if (!there(files, path.parent_path()) && node_at(holding))
-      files.make(path.parent_path().string());
+  // The folder a path is in when it is a node's, which stays while the node does (RV08),
+  // though the port takes a folder the last of what it held leaves empty, as remove
+  // ./file.txt of its last file took it, the node left with none. Asked before the
+  // remove's edit, which may replace the view held.
+  static std::optional<std::filesystem::path>
+  node_folder_above(const std::optional<Held> &left, const std::filesystem::path &path) {
+    if (!left || left->inside.empty() ||
+        !node_at(Held{left->name, left->view, left->inside.parent_path()}))
+      return std::nullopt;
+    return path.parent_path();
+  }
+
+  static void keep(VP::FilePort &files,
+                   const std::optional<std::filesystem::path> &folder) {
+    if (folder && !there(files, *folder))
+      files.make(folder->string());
   }
 
   // The files a folder holds, and those the folders in it hold.
