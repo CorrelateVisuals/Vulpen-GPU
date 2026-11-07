@@ -717,7 +717,9 @@ void Schedule::list_ports() {
           port.alike = port.writes ? readers_alike(_bound, bound, field, false, loose)
                                    : writers_alike(_bound, bound, field, loose);
       } else if (field.texture() || field.image()) {
-        add(field.name, "image", field.image() && writes(field.access), field.type);
+        // An Image is what the dispatch stores into, as make_targets has it: its field
+        // holds the image's handle, which the block only reads.
+        add(field.name, "image", field.image(), field.type);
       }
     for (const Bound::Written &filled : bound.uploads)
       if (!bound.field(filled.port) && filled.count != 0)
