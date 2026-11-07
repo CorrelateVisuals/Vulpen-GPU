@@ -179,12 +179,13 @@ STATES = [
 @dataclass
 class Usage:
     """A command as the port names it: its words, then the kind of each placeholder;
-    the last may take one or more, or be left out."""
+    the last may take one or more, and those last in brackets, optional, may be left out,
+    as node add [<name>] [<word=value>...] runs with neither."""
     text: str
     words: list[str]
     kinds: list[str]
     more: bool = False
-    optional: bool = False
+    optional: int = 0  # how many placeholders may be left out
 
     @property
     def least(self) -> int:
@@ -192,14 +193,16 @@ class Usage:
 
 
 def usage_of(text: str) -> Usage:
-    words, kinds, more, optional = [], [], False, False
+    words, kinds, more, optional = [], [], False, 0
     for word in text.split():
-        if word.startswith("[") and word.endswith("]"):
-            optional, word = True, word[1:-1]
+        bracketed = word.startswith("[") and word.endswith("]")
+        if bracketed:
+            word = word[1:-1]
         if word.endswith("..."):
             more, word = True, word[:-3]
         if word.startswith("<") and word.endswith(">"):
             kinds.append(word[1:-1])
+            optional += bracketed
         else:
             words.append(word)
     return Usage(text, words, kinds, more, optional)
@@ -1093,11 +1096,13 @@ PRESSED = {
 # What a column lists for each placeholder the menus find themselves, in bf-one: a line
 # joining two ports, whose end is joined already, so it is refused naming why; a
 # connection; a value of face and one it takes; a file of face's folder, and one new
-# starts there; a node.
+# starts there; a node. Of a thing pressed whose node reads other params, as the snapshot
+# dropped, the param its column lists, as a line naming one it reads none of is refused.
 FOUND = {"connect <link>": "connect link corners.top.corner face.top",
          "<joined>": "top", "<key>": "frames_per_turn", "<value>": "300",
          "<path>": "Face.frag", "<start>": "Face.cpp", "<node>": "corners",
          "{1}": "face", "{2}": "corners", "{node}": "face", "{view}": "bf-one"}
+FOUND_ON = {"dropped": {"<key>": "wait", "<value>": "3"}}
 # The kinds whose {} or {/} is a folder, which a rename or a copy moves to a folder's
 # name, as a node's is, not a file's.
 FOLDERS = {"node", "dropped", "folder", "stray", "project-folder", "pair", "nodes",
@@ -1121,7 +1126,7 @@ def gui(copy: Copy) -> None:
             if "{image}" in line:
                 continue
             sent = line
-            for found, word in FOUND.items():
+            for found, word in (FOUND | FOUND_ON.get(section, {})).items():
                 sent = sent.replace(found, word)
             sent = (sent.replace("{/}", folder).replace("{}", name)
                     .replace("<name>", copy.name()).replace("<recipe>", "snapshot")
