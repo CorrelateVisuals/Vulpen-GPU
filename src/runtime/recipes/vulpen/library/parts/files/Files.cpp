@@ -167,6 +167,102 @@ bool named(const VP::View &view, std::string_view node) {
   return std::ranges::find(view.nodes, node, &VP::Node::name) != view.nodes.end();
 }
 
+// The sources below a folder, at any depth but the hidden folders', that may include a
+// header or a GLSL file: C++'s and the shaders'.
+void sources_below(VP::FilePort &files,
+                   const std::filesystem::path &folder,
+                   std::vector<std::filesystem::path> &found) {
+  constexpr std::array<std::string_view, 7> sources{
+      ".cpp", ".h", ".hpp", ".comp", ".vert", ".frag", ".glsl"};
+  for (const std::string &name : files.list(folder.string()))
+    if (name.starts_with('.'))
+      continue;
+    else if (name.ends_with('/'))
+      sources_below(files, folder / bare(name), found);
+    else if (std::ranges::find(sources, std::filesystem::path(name).extension().string()) !=
+             sources.end())
+      found.push_back(folder / name);
+}
+
+// A header or a GLSL file renamed in a view keeps its includers building, as a contract
+// or shared code is included by many (RV05, RV09): each #include "..." of the view's
+// sources that named it, from the including file's folder or from the view's top, names
+// the new path the same way. How many sources changed.
+std::size_t follow_includes(VP::FilePort &files,
+                            const std::filesystem::path &top,
+                            const std::filesystem::path &from,
+                            const std::filesystem::path &to) {
+  constexpr std::string_view include = "#include \"";
+  std::vector<std::filesystem::path> sources;
+  sources_below(files, top, sources);
+  std::size_t changed = 0;
+  for (const std::filesystem::path &source : sources) {
+    std::string text = files.read(source.string());
+    bool named = false;
+    for (std::size_t at = text.find(include); at != std::string::npos;
+         at = text.find(include, at + 1)) {
+      const std::size_t open = at + include.size();
+      const std::size_t close = text.find('"', open);
+      if (close == std::string::npos)
+        break;
+      const std::filesystem::path written(text.substr(open, close - open));
+      for (const std::filesystem::path &base : {source.parent_path(), top})
+        if ((base / written).lexically_normal() == from) {
+          text.replace(open, close - open, to.lexically_relative(base).generic_string());
+          named = true;
+          break;
+        }
+    }
+    if (named) {
+      files.save(source.string(), text);
+      ++changed;
+    }
+  }
+  return changed;
+}
+
+// A C++ file named for its class, as new starts one, Clock.cpp holding class Clock,
+// renamed renames the class in it, each whole word, its registration too, so the file
+// still names its class; whether it did. Not a header: its includers name its type too.
+bool follow_class(VP::FilePort &files,
+                  const std::filesystem::path &from,
+                  const std::filesystem::path &to) {
+  const std::string old_name = from.stem().string();
+  const std::string new_name = to.stem().string();
+  const auto identifier = [](std::string_view name) {
+    return !name.empty() && !(name.front() >= '0' && name.front() <= '9') &&
+           std::ranges::all_of(name, word_letter);
+  };
+  if (to.extension() != ".cpp" || old_name == new_name ||
+      !identifier(old_name) || !identifier(new_name))
+    return false;
+  std::string text = files.read(to.string());
+  const auto whole = [&](std::size_t at, std::size_t size) {
+    return (at == 0 || !word_letter(text[at - 1])) &&
+           (at + size == text.size() || !word_letter(text[at + size]));
+  };
+  const auto declares = [&](std::string_view kind) {
+    const std::string declared = std::format("{} {}", kind, old_name);
+    for (std::size_t at = text.find(declared); at != std::string::npos;
+         at = text.find(declared, at + 1))
+      if (whole(at, declared.size()))
+        return true;
+    return false;
+  };
+  if (!declares("class") && !declares("struct"))
+    return false;
+  for (std::size_t at = text.find(old_name); at != std::string::npos;
+       at = text.find(old_name, at))
+    if (whole(at, old_name.size())) {
+      text.replace(at, old_name.size(), new_name);
+      at += new_name.size();
+    } else {
+      at += old_name.size();
+    }
+  files.save(to.string(), text);
+  return true;
+}
+
 // Each folder a folder holds, at any depth, as the path at holds it once brought there,
 // parents first.
 template <class Add>
@@ -609,15 +705,26 @@ class Files final : public VP::Operator {
     std::vector<Graphed> graphs;
     for (std::string &node : adopted(call, held, listed(call.files(), from, "/"), from))
       graphed(graphs, held->name).adds.push_back({std::move(node), {}});
-    if (copy)
+    std::string also; // what a rename renamed in the files besides
+    if (copy) {
       call.files().copy(from.string(), to.string());
-    else
+    } else {
       call.files().rename(from.string(), to.string());
-    call.reply(std::format("{} {} to {}{}",
+      if (follow_class(call.files(), from, to))
+        also = std::format(
+            ", and its class {} to {}", from.stem().string(), to.stem().string());
+      if (const std::optional<Held> left = held_by(call, from))
+        if (const std::size_t sources = follow_includes(
+                call.files(), left->view->file.parent_path(), from, to))
+          also += std::format(
+              ", and the includes of {} file{}", sources, sources == 1 ? "" : "s");
+    }
+    call.reply(std::format("{} {} to {}{}{}",
                            copy ? "copied" : "renamed",
                            shown(from),
                            shown(to),
-                           edit(call, graphs)));
+                           edit(call, graphs),
+                           also));
   }
 
   // A node's folder renamed renames the node, the nodes inside it and the connections
