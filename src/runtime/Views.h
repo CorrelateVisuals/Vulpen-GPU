@@ -16,6 +16,7 @@ namespace VP {
 
 class Log;
 class Schedule;
+class Undo;
 struct Child;
 struct Offscreen;
 struct Pass;
@@ -97,10 +98,6 @@ public:
 
 private:
   struct Hosted;
-  // A line a person ran, which undo takes back and redo runs again, in Views.cpp.
-  struct Step;
-  // The file port lines reach files through, which keeps each change of a step.
-  class Recorded;
 
   const View *find(std::string_view name) override;
   const View *unfolded(std::string_view name) override;
@@ -162,13 +159,6 @@ private:
   void write(Hosted &hosted);
   void reload(Hosted &hosted);
   void reread(Hosted &hosted);
-  void undo(Call &call, bool again);
-  void check(const Step &step, bool again) const;
-  void take_files_back(const Step &step);
-  void bring_files_again(const Step &step);
-  void remove_tree(const std::filesystem::path &path);
-  void restore_views(const Step &step, bool again);
-  bool kept_by_view(const Step &step, const std::filesystem::path &file, bool again) const;
 
   const Wiring &_wiring;
   Commands &_port; // which says the view a command addresses, and the current view
@@ -176,10 +166,7 @@ private:
   std::vector<std::unique_ptr<Hosted>> _hosted; // the host first
   std::vector<Schedule *> _schedules;           // by _hosted, once built
   const Hosted *_owner = nullptr; // the window's, as the last rebuild chose it
-  std::unique_ptr<Recorded> _recorded; // over the command port's files
-  std::unique_ptr<Step> _step;         // the line a person runs now; null for none
-  std::vector<Step> _done;             // the steps undo takes back, the newest last
-  std::vector<Step> _undone;           // those it took back, which redo runs again
+  std::unique_ptr<Undo> _steps; // the lines undo takes back, and the port they reach files by
   // Registered once the views the host names are hosted, so a constructor that throws
   // leaves no command to a handler that is gone.
   Command _save;

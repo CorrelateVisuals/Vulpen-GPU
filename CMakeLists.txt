@@ -78,6 +78,7 @@ add_library(runtime OBJECT
   src/runtime/Ports.cpp
   src/runtime/Runtime.cpp
   src/runtime/Schedule.cpp
+  src/runtime/Undo.cpp
   src/runtime/Views.cpp)
 target_compile_options(runtime PRIVATE "${warnings}")
 target_include_directories(runtime SYSTEM PRIVATE src/external-libraries)
