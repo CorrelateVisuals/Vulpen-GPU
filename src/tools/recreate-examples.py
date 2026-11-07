@@ -257,7 +257,8 @@ def examples(scratch: Path) -> list[Example]:
     every.append(e)
 
     # triangle-compute: two nodes by new, a connection to a misspelled port, which the line
-    # takes and the bind refuses, so it is let go of and made again.
+    # takes and the bind refuses; made again by its name, it joins the misspelled reader,
+    # so it is let go of and made again.
     e = Example("triangle-compute")
     e.steps = [
         ok(f"view new {e.copy}"),
@@ -266,7 +267,7 @@ def examples(scratch: Path) -> list[Example]:
         ok("node set raster invocations=65536 param=frames_per_turn=600",
            "node set screen vertex_count=3 instance_count= param="),
         ok("connect canvas raster.canvas screen.pictur"),
-        no("connect canvas raster.canvas screen.picture", "two connections are named canvas"),
+        ok("connect canvas raster.canvas screen.picture"),
         ok("disconnect canvas"),
         ok("connect canvas raster.canvas screen.picture"),
         no("image clear screen.picture", "no image a node's C++ fills"),
