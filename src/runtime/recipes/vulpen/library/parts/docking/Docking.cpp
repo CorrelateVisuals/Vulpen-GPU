@@ -531,9 +531,12 @@ class Docking final : public VP::Operator {
     _saved = files.read(_kept);
     if (!read || !as_written(frame.view(), _written))
       return;
-    if (kept_for(_saved) == fingerprint_of(_written))
-      frame.commands().send(std::format("{}: panel restore", _view));
-    else
+    if (kept_for(_saved) == fingerprint_of(_written)) {
+      const std::string said =
+          frame.commands().send(std::format("{}: panel restore", _view));
+      if (!said.empty())
+        frame.log(VP::Level::info, said);
+    } else
       frame.log(VP::Level::warn, stale());
   }
 
@@ -609,7 +612,13 @@ class Docking final : public VP::Operator {
                                            _manifest));
     const std::vector<std::string> lines = kept_lines(text);
     std::optional<std::string> stopped;
+    std::vector<std::string> gone;
     for (const std::string &line : lines) {
+      if (const std::optional<std::filesystem::path> file = shown_file(line);
+          file && !there(call.files(), *file)) {
+        gone.push_back(file->string());
+        continue;
+      }
       try {
         call.commands().send(std::format("{}: {}", _view, line));
       } catch (const std::runtime_error &refused) {
@@ -637,6 +646,36 @@ class Docking final : public VP::Operator {
     order_docks(call);
     if (stopped)
       throw std::runtime_error(*stopped);
+    if (!gone.empty())
+      _laid_out.reset(); // so the next frame keeps the panels anew, without them
+    for (const std::string &file : gone)
+      call.reply(std::format("{} is gone since {} kept the panels, so its editor starts "
+                             "without it",
+                             file,
+                             _kept));
+  }
+
+  // The file a kept line has an editor show, `param set <node> file <path>`, when its
+  // path is whole, as open names it: one deleted since, as with its project, the
+  // restore leaves out, so a run starts without it rather than naming it each start.
+  static std::optional<std::filesystem::path> shown_file(std::string_view line) {
+    constexpr std::string_view set = "param set ";
+    if (!line.starts_with(set))
+      return {};
+    line.remove_prefix(set.size());
+    const std::size_t key = line.find(' ');
+    if (key == std::string_view::npos)
+      return {};
+    const std::string_view rest = line.substr(key + 1);
+    if (!rest.starts_with(file_param) || rest.substr(file_param.size(), 1) != " ")
+      return {};
+    const std::filesystem::path path(rest.substr(file_param.size() + 1));
+    return path.is_absolute() ? std::optional(path) : std::nullopt;
+  }
+
+  static bool there(VP::FilePort &files, const std::filesystem::path &path) {
+    const std::vector<std::string> names = files.list(path.parent_path().string());
+    return std::ranges::find(names, path.filename().string()) != names.end();
   }
 
   // The bar its area is the rest of, when that bar parts its strip from the rest by a
