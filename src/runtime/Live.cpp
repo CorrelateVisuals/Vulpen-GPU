@@ -302,7 +302,6 @@ struct Restart::State {
   Commands &commands;
   const Log &log;
   Builder builder;
-  Command command;
   bool asked = false;
   bool building = false;
 };
@@ -328,21 +327,25 @@ std::string refusal(const std::vector<std::string_view> &held) {
 
 Restart::Restart(Commands &commands, const Log &log, const std::filesystem::path &build)
     : _state(std::make_unique<State>(commands, log, build)) {
-  _state->command = commands.add("quit restart",
-                                 "builds vulpen and ends the run for the new vulpen, "
-                                 "which replays the edits the views' files do not hold, "
-                                 "keeps the current view and counts on from this frame; "
-                                 "refused while a node holds work, as quit is, and a "
-                                 "build that fails ends nothing",
-                                 *this);
+  // Never removed: the runtime keeps this past the port, as the run's end waits for a
+  // build it runs.
+  commands.add("quit restart",
+               "builds vulpen and ends the run for the new vulpen, "
+               "which replays the edits the views' files do not hold, "
+               "keeps the current view and counts on from this frame; "
+               "refused while a node holds work, as quit is, and a "
+               "build that fails ends nothing",
+               *this);
 }
 
-Restart::~Restart() {
-  _state->commands.remove(_state->command);
-}
+Restart::~Restart() = default;
 
 bool Restart::asked() const {
   return _state->asked;
+}
+
+bool Restart::building() const {
+  return _state->builder.running();
 }
 
 bool Restart::ready(const Live *live) {

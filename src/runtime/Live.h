@@ -74,6 +74,8 @@ public:
   Restart &operator=(const Restart &) = delete;
 
   bool asked() const;
+  // Whether its build runs, which the run's end waits for.
+  bool building() const;
   // Between frames: whether the run ends now, for the new vulpen. A build that fails, or
   // a node holding work by the time it is built, leaves the run as it is, saying why.
   bool ready(const Live *live);

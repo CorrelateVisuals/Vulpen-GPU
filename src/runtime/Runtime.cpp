@@ -295,6 +295,11 @@ private:
   // Node code's std::cout and std::cerr, into the log, from the first bind to the last.
   Printed _printed{_log};
   std::filesystem::path _mirror; // the build tree's views, where the schedules look
+  // A build the run's end meets goes on to its end, as one cut short leaves the build
+  // tree half written, so these two go after the window and the GPU, and the process
+  // ends once the build does.
+  std::unique_ptr<Live> _live;
+  std::unique_ptr<Restart> _restart;
   std::optional<Desktop> _desktop; // from the first window on, outliving each
   std::optional<Window> _window;   // outlives the engine, which draws into it
   std::optional<Engine> _engine;
@@ -307,8 +312,6 @@ private:
   std::optional<Views> _views;
   std::optional<Edits> _edits; // goes before the views it changes
   std::optional<Preference> _preference; // goes before the engine it names
-  std::unique_ptr<Live> _live;
-  std::unique_ptr<Restart> _restart;
   std::optional<Relaunch> _relaunch;
   // Every view's, in the order a frame runs them; the passes are gathered only when a
   // schedule changed, so a frame allocates nothing for them (CPP10).
@@ -539,6 +542,12 @@ void Runtime::loop() {
   _log.write(Level::info,
              Tag::run,
              std::format("ran {} frames in {:.2f} s", frames, ran.count()));
+  // A run that ended with its terminal still held is never silent.
+  if ((_live && _live->building()) || _restart->building())
+    _log.write(Level::warn,
+               Tag::mod,
+               "a build runs: the window and the GPU go now, and vulpen ends once the "
+               "build does");
 }
 
 void Runtime::watch() {
