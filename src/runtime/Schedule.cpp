@@ -739,9 +739,17 @@ std::vector<Copy> Schedule::take_copies() {
   return std::exchange(_copies, {});
 }
 
+void Schedule::rest(bool rests) {
+  _resting = rests;
+}
+
+bool Schedule::resting() const {
+  return _resting;
+}
+
 void Schedule::work(std::vector<Pass> &passes) {
   _landed.assign(_passes.size(), no_pass);
-  for (std::size_t at = 0; at < _passes.size(); ++at)
+  for (std::size_t at = 0; at < _passes.size() && !_resting; ++at)
     if (_passes[at].bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS ||
         _passes[at].offscreen) {
       _landed[at] = passes.size();
@@ -753,7 +761,7 @@ bool Schedule::draws(std::vector<Pass> &passes, const Offscreen *into) {
   if (_landed.size() != _passes.size())
     _landed.assign(_passes.size(), no_pass);
   const std::size_t before = passes.size();
-  for (std::size_t at = 0; at < _passes.size(); ++at)
+  for (std::size_t at = 0; at < _passes.size() && !_resting; ++at)
     if (_passes[at].bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS &&
         !_passes[at].offscreen) {
       _landed[at] = passes.size();

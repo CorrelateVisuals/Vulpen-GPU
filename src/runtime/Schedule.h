@@ -92,6 +92,10 @@ public:
   // resolution: the window's size, or without one --size's, zero without either; the
   // images draws render into take it too.
   void cook(std::uint64_t frame, VkExtent2D resolution);
+  // Whether the view rests, as nothing shows it (Views::pull): none of its nodes cooks,
+  // and it hands on no work and no draws, so the passes are gathered again as it changes.
+  void rest(bool rests);
+  bool resting() const;
   // Its view closed in the middle of a frame, as by a line a node's cook runs: its nodes
   // cook no more and their commands go at once, as each reads its own view, gone now,
   // until the rebuild before the next frame drops the schedule.
@@ -227,6 +231,7 @@ private:
   std::vector<Cost> _costs;         // by _bound
   std::vector<NodePort> _ports;     // by _bound, each node's in turn
   bool _retired = false;
+  bool _resting = false;
 };
 
 } // namespace VP

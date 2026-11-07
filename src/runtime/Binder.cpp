@@ -378,6 +378,9 @@ private:
   void hand_pointer(std::string_view view) override {
     _schedule._wiring.ports.hand_pointer(view, _schedule._name, _bound.node->name);
   }
+  void unread(std::string_view port) override {
+    _schedule._wiring.ports.unread(_schedule._name, _bound.node->name, port);
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }
@@ -500,8 +503,10 @@ void Schedule::drop_operators(const std::vector<std::string> &modules) {
   });
 }
 
-// Each node's cook is timed, a node in error none.
+// Each node's cook is timed, a node in error none; while the view rests, no node cooks.
 void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
+  if (_resting)
+    return;
   size_targets(resolution);
   for (const auto &entry : _buffers)
     if (entry.second.memory() == Memory::readback)

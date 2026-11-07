@@ -183,6 +183,7 @@ struct Views::Hosted {
   Kept kept;
   // It has taken the window of a view beside it, so it keeps the window until it closes.
   bool presented = false;
+  bool resting = false; // nothing showed it the frame before (pull)
   bool removed = false; // its schedule goes before the next frame
 
   const View &current() const {
@@ -482,7 +483,8 @@ void Views::gather(const Hosted &hosted,
          taker(*other) == &hosted))
       gather(*other, passes, gathered);
   // A view that draws nowhere still runs its work: its C++ cooks and its dispatches run.
-  if (!hosted.schedule)
+  // One resting runs none, and its window keeps what it drew last, never cleared.
+  if (!hosted.schedule || hosted.resting)
     return;
   hosted.schedule->work(passes);
   // The view taking its window made the image as it made the connection that takes it.
@@ -518,6 +520,49 @@ const Views::Hosted *Views::taker(const Hosted &hosted) const {
         }))
       return other.get();
   return nullptr;
+}
+
+bool Views::pull(const Unread &unread) {
+  bool changed = false;
+  for (const std::unique_ptr<Hosted> &hosted : _hosted) {
+    if (hosted->removed || !hosted->schedule)
+      continue;
+    const bool rests = this->rests(*hosted, unread);
+    if (rests != hosted->resting)
+      _wiring.log.write(Level::info,
+                        Tag::run,
+                        rests ? std::format("{} rests, as nothing shows it", hosted->name)
+                              : std::format("{} wakes, shown again", hosted->name));
+    hosted->resting = rests;
+    if (hosted->schedule->resting() != rests) {
+      hosted->schedule->rest(rests);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+// In the order hosted, so the view hosting it has rested already this frame.
+bool Views::rests(const Hosted &hosted, const Unread &unread) const {
+  if (hosted.name.empty())
+    return false;
+  if (const Hosted *const host = this->hosted(hosted.parent); host && host->resting)
+    return true;
+  const auto presenting = [&](const std::unique_ptr<Hosted> &other) {
+    return other.get() != &hosted && !other->removed && other->parent == hosted.parent &&
+           presents(*other);
+  };
+  if (std::ranges::none_of(_hosted, presenting))
+    return false;
+  for (const std::unique_ptr<Hosted> &other : _hosted)
+    if (!other->removed && other.get() != &hosted && !other->resting)
+      for (const Connection &connection : other->next().connections)
+        if (connection.from.view() && connection.from.node == hosted.name &&
+            std::ranges::any_of(connection.to, [&](const Endpoint &to) {
+              return !unread(other->name, to.node, to.port);
+            }))
+          return false;
+  return true;
 }
 
 bool Views::presents(const Hosted &hosted) const {

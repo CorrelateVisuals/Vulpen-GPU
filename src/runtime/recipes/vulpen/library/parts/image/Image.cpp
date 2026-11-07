@@ -69,8 +69,12 @@ class Image final : public VP::Operator {
                  : nullptr;
   }
 
+  // With no room it shows nothing, so it says it reads no picture, and a view whose
+  // window no reader shows rests.
   void cook(VP::Cook &frame) override {
     const bool room = _area->extent.x != 0 && _area->extent.y != 0;
+    if (!room)
+      frame.unread(picture);
     const std::span<VP_VIEW::Rect> place = frame.write(_place, room ? 1 : 0);
     if (room)
       place.front() = *_area;

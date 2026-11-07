@@ -630,7 +630,13 @@ void Runtime::prepare() {
     }
     _wiring->render_pass = _engine->render_pass();
   }
-  if (_views->rebuild())
+  // Before the ports go on to this frame, which forgets what the frame before read.
+  const bool rebuilt = _views->rebuild();
+  const bool pulled = _views->pull(
+      [&](std::string_view view, std::string_view node, std::string_view port) {
+        return _ports.was_unread(view, node, port);
+      });
+  if (rebuilt || pulled)
     gather();
 }
 

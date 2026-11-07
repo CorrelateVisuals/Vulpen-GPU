@@ -335,6 +335,7 @@ Ports::~Ports() {
 
 void Ports::frame() {
   ++_frames;
+  _unread_count = 0;
   _moved.erase(_moved.begin(), _moved.begin() + static_cast<std::ptrdiff_t>(_moved_before));
   _moved_before = _moved.size();
   _lines.clear();
@@ -380,6 +381,25 @@ void Ports::hand_pointer(std::string_view to,
   _holding.handed.clear();
   hold_pointer(view, node);
   _holding.handed.assign(to);
+}
+
+void Ports::unread(std::string_view view, std::string_view node, std::string_view port) {
+  if (_unread_count == _unread.size())
+    _unread.emplace_back();
+  Unread &input = _unread[_unread_count++];
+  input.view.assign(view);
+  input.node.assign(node);
+  input.port.assign(port);
+}
+
+bool Ports::was_unread(std::string_view view,
+                       std::string_view node,
+                       std::string_view port) const {
+  return std::ranges::any_of(std::span(_unread).first(_unread_count),
+                             [&](const Unread &input) {
+                               return input.view == view && input.node == node &&
+                                      input.port == port;
+                             });
 }
 
 void Ports::add(Event event) {

@@ -594,6 +594,10 @@ public:
   // wins over a hold in the same frame, as the GUI showing the view is the one nearest
   // the pointer. Last, as above.
   virtual void hand_pointer(std::string_view view) = 0;
+  // Says the node reads nothing at that input this frame, as an image given no room
+  // shows nothing: a hosted view no reader read the frame before rests while a view
+  // beside it presents views, none of it cooking, dispatching or drawing. Last, as above.
+  virtual void unread(std::string_view port) = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the

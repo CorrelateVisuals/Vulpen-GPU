@@ -45,6 +45,13 @@ public:
   // As hold_pointer, the nodes of the view named to taking the presses too (Cook::
   // hand_pointer).
   void hand_pointer(std::string_view to, std::string_view view, std::string_view node);
+  // A node of a view reads nothing at an input this frame (Cook::unread). Until the next
+  // frame, whether a node said so as the frame before cooked, which decides the views
+  // that rest.
+  void unread(std::string_view view, std::string_view node, std::string_view port);
+  bool was_unread(std::string_view view,
+                  std::string_view node,
+                  std::string_view port) const;
   // An event for the next frame, from the window or the input command; the pointer's
   // moves in a row keep only the last.
   void add(Event event);
@@ -134,6 +141,15 @@ private:
   bool _keyed = false;               // whether this frame read keys
   std::vector<Event> _events;  // this frame's
   std::vector<Event> _pending; // the next frame's
+  // The inputs read nothing at as the frame cooks: the first count are this frame's and
+  // the rest are written over next, so a frame allocates nothing once they grew (CPP10).
+  struct Unread {
+    std::string view;
+    std::string node;
+    std::string port;
+  };
+  std::vector<Unread> _unread;
+  std::size_t _unread_count = 0;
   Holder _holding;             // asked for this frame
   Holder _held;                // asked for the frame before, which this frame keeps
   std::vector<Event> _unheld;  // while it does, this frame's but presses and the wheel

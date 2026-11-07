@@ -3,6 +3,7 @@
 #include "runtime/Commands.h"
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -58,6 +59,19 @@ public:
   // draws in one render pass; and the draws into the window last, the host's first, so a
   // hosted view draws over a host that draws nothing there itself.
   void gather(std::vector<Pass> &passes) const;
+  // Whether a node of a view said it read nothing at an input as the frame before
+  // cooked (Cook::unread), by the view's name, the node's and the port's.
+  using Unread = std::function<bool(std::string_view view,
+                                    std::string_view node,
+                                    std::string_view port)>;
+  // Before a frame, after rebuild: which views rest, none of their nodes cooking,
+  // dispatching or drawing, their windows keeping what they drew last. A view rests while
+  // a view beside it presents views, as the ide presents the projects, and no connection
+  // taking its window was read the frame before, as a project no deck shows, or one
+  // whose every picture had no room, in a hidden panel; or while the view hosting it
+  // rests. One with no such view beside it, as a project the cli alone hosts, never rests
+  // (V07). True when a view began or ended resting, so the passes are gathered again.
+  bool pull(const Unread &unread);
   // The folders the live scan watches, each view's, by the name the build tree mirrors
   // the view by, which names its target.
   std::vector<std::pair<std::string, std::filesystem::path>> roots() const;
@@ -104,6 +118,7 @@ private:
   const Hosted *taker(const Hosted &hosted) const;
   // Whether the view takes the window of a view beside it, as a GUI presents a project.
   bool presents(const Hosted &hosted) const;
+  bool rests(const Hosted &hosted, const Unread &unread) const;
   // Whether the view draws into its window, or a view it hosts does there.
   bool draws(const Hosted &hosted) const;
   // Of the views the view vulpen started with hosts, the one the window shows while that

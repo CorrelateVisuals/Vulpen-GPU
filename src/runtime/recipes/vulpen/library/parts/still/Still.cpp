@@ -51,7 +51,11 @@ class Still final : public VP::Operator {
     if (asked)
       _held_of = holds ? std::nullopt : std::optional(_from);
     _still->holds = _held_of && same(*_held_of, _from);
-    frame.set(_shoot, static_cast<std::uint32_t>(asked && !holds));
+    // Its shader copies the picture only the frame it shoots, so it reads none else.
+    const bool shoots = asked && !holds;
+    if (!shoots)
+      frame.unread(picture);
+    frame.set(_shoot, static_cast<std::uint32_t>(shoots));
   }
 
   std::string host_of(VP::Bind &node) const {
