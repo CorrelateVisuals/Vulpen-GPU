@@ -3,6 +3,7 @@
 #include "baseclasses/Log.h"
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
+#include "runtime/Text.h"
 
 #include <algorithm>
 #include <atomic>
@@ -40,15 +41,10 @@ std::filesystem::file_time_type written(const std::filesystem::path &file) {
 // A file's lines that hold anything, as paths, without the \r a Windows build ends each
 // with: one kept would name no view the build has, and the live build would build none.
 std::vector<std::filesystem::path> lines_of(const std::filesystem::path &file) {
-  std::vector<std::filesystem::path> lines;
   const std::string text = Files::text(file);
-  for (std::size_t at = 0; at < text.size();) {
-    const std::size_t end = std::min(text.find('\n', at), text.size());
-    const std::size_t stop = end > at && text[end - 1] == '\r' ? end - 1 : end;
-    if (stop > at)
-      lines.emplace_back(text.substr(at, stop - at));
-    at = end + 1;
-  }
+  std::vector<std::filesystem::path> lines;
+  for (const std::string_view line : lines_in(text))
+    lines.emplace_back(line);
   return lines;
 }
 

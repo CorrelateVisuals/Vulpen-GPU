@@ -1,6 +1,7 @@
 #include "runtime/Schedule.h"
 
 #include "runtime/Bound.h"
+#include "runtime/Text.h"
 
 #include <algorithm>
 #include <format>
@@ -175,7 +176,7 @@ bool Schedule::check_counts(Bound &bound) const {
     bound.errors.push_back(std::format("its folder holds the shaders {}, but a node runs "
                                        "one .comp, or one .vert and one .frag, or one "
                                        "of these two, its varyings joining the other",
-                                       joined(shaders)));
+                                       joined(shaders, " and ")));
   } else if (dispatch && (node.vertex_count != 0 || !node.counts_invocations())) {
     bound.errors.emplace_back(
         "it runs a .comp, so it counts its invocations, and no vertex_count");
@@ -592,7 +593,7 @@ void Schedule::check_connections() {
             writers.size() == 1
                 ? std::string()
                 : std::format(", or from {}, which write it alike",
-                              joined({writers.begin() + 1, writers.end()}))));
+                              joined(std::span(writers).subspan(1), " and "))));
       else if (connection && uploaded && connection->from.node != bound.node->name)
         bound.errors.push_back(
             std::format("{} is written both by the operator and through connection {}",

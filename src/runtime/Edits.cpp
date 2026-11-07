@@ -4,6 +4,7 @@
 #include "runtime/Edits.h"
 
 #include "runtime/Commands.h"
+#include "runtime/Text.h"
 #include "runtime/View.h"
 
 #include <algorithm>
@@ -34,15 +35,6 @@ struct Around {
   std::string_view where;
   std::span<const std::string> beside;
 };
-
-constexpr std::string_view blanks = " \t\r";
-
-std::string_view trim(std::string_view text) {
-  const std::size_t first = text.find_first_not_of(blanks);
-  if (first == std::string_view::npos)
-    return {};
-  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
-}
 
 void check_name(std::string_view what, std::string_view name) {
   if (!is_name(name))

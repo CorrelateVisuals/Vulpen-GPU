@@ -2,6 +2,7 @@
 
 #include "baseclasses/Pipelines.h"
 #include "runtime/Operator.h"
+#include "runtime/Text.h"
 #include "runtime/View.h"
 
 #include <algorithm>
@@ -101,13 +102,7 @@ inline bool is_fragment(const Node &node) {
 inline std::optional<std::uint32_t> instance_number(const Node &node) {
   if (node.instance_count.empty())
     return 1;
-  std::uint32_t count = 0;
-  const std::string &text = node.instance_count;
-  const auto [end, error] =
-      std::from_chars(text.data(), text.data() + text.size(), count);
-  if (error != std::errc{} || end != text.data() + text.size())
-    return std::nullopt;
-  return count;
+  return number_in<std::uint32_t>(node.instance_count);
 }
 
 // The formats an image may take (V04), by Vulkan's names (VK04), each with the pixel C++
@@ -210,13 +205,6 @@ inline void smooth(float &smoothed, float &last, bool &known, float took) {
   last = took;
   smoothed = known ? smoothed + (took - smoothed) * smoothing : took;
   known = true;
-}
-
-inline std::string joined(const std::vector<std::string> &names) {
-  std::string text;
-  for (const std::string &name : names)
-    text += (text.empty() ? "" : " and ") + name;
-  return text;
 }
 
 struct Bound {

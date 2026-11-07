@@ -32,25 +32,26 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/examples/triangle/main.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Passes.h` `baseclasses/Pipelines.h` `baseclasses/Platform.h` `baseclasses/Shader.h` `commit.h` |
 | `main.cpp` | `commit.h` `runtime/Runtime.h` |
 | `runtime/Binder.cpp` | `baseclasses/Platform.h` `runtime/Bound.h` `runtime/Commands.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Schedule.h` |
-| `runtime/Bound.h` | `baseclasses/Pipelines.h` `runtime/Operator.h` `runtime/View.h` |
-| `runtime/Checks.cpp` | `runtime/Bound.h` `runtime/Schedule.h` |
-| `runtime/Commands.cpp` | `baseclasses/Platform.h` `runtime/Commands.h` |
+| `runtime/Bound.h` | `baseclasses/Pipelines.h` `runtime/Operator.h` `runtime/Text.h` `runtime/View.h` |
+| `runtime/Checks.cpp` | `runtime/Bound.h` `runtime/Schedule.h` `runtime/Text.h` |
+| `runtime/Commands.cpp` | `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Text.h` |
 | `runtime/Commands.h` | `runtime/Operator.h` |
-| `runtime/Edits.cpp` | `runtime/Commands.h` `runtime/Edits.h` `runtime/View.h` |
+| `runtime/Edits.cpp` | `runtime/Commands.h` `runtime/Edits.h` `runtime/Text.h` `runtime/View.h` |
 | `runtime/Edits.h` | `runtime/Operator.h` |
-| `runtime/Live.cpp` | `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Live.h` |
+| `runtime/Live.cpp` | `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Live.h` `runtime/Text.h` |
 | `runtime/Live.h` | `runtime/Operator.h` |
-| `runtime/Manifest.cpp` | `baseclasses/Platform.h` `runtime/Edits.h` `runtime/Manifest.h` `runtime/View.h` |
+| `runtime/Manifest.cpp` | `baseclasses/Platform.h` `runtime/Edits.h` `runtime/Manifest.h` `runtime/Text.h` `runtime/View.h` |
 | `runtime/Manifest.h` | — |
 | `runtime/Modules.cpp` | `baseclasses/Platform.h` `linked-modules.h` `runtime/Modules.h` |
 | `runtime/Modules.h` | `runtime/Operator.h` |
 | `runtime/Operator.h` | `<glm/ext/vector_uint2_sized.hpp>` `<glm/ext/vector_uint4_sized.hpp>` `<glm/vec2.hpp>` `<glm/vec3.hpp>` `<glm/vec4.hpp>` `baseclasses/Log.h` |
-| `runtime/Ports.cpp` | `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Ports.h` `runtime/View.h` |
+| `runtime/Ports.cpp` | `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Ports.h` `runtime/Text.h` `runtime/View.h` |
 | `runtime/Ports.h` | `runtime/Operator.h` |
-| `runtime/Runtime.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Edits.h` `runtime/Live.h` `runtime/Manifest.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Runtime.h` `runtime/Schedule.h` `runtime/View.h` `runtime/Views.h` |
+| `runtime/Runtime.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Edits.h` `runtime/Live.h` `runtime/Manifest.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Runtime.h` `runtime/Schedule.h` `runtime/Text.h` `runtime/View.h` `runtime/Views.h` |
 | `runtime/Runtime.h` | — |
-| `runtime/Schedule.cpp` | `baseclasses/Passes.h` `runtime/Bound.h` `runtime/Schedule.h` |
+| `runtime/Schedule.cpp` | `baseclasses/Passes.h` `runtime/Bound.h` `runtime/Schedule.h` `runtime/Text.h` |
 | `runtime/Schedule.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Resources.h` |
+| `runtime/Text.h` | — |
 | `runtime/Undo.cpp` | `runtime/Commands.h` `runtime/Undo.h` `runtime/View.h` |
 | `runtime/Undo.h` | — |
 | `runtime/View.h` | — |

@@ -4,6 +4,7 @@
 #include "runtime/Commands.h"
 
 #include "baseclasses/Platform.h"
+#include "runtime/Text.h"
 
 #include <algorithm>
 #include <array>
@@ -59,15 +60,6 @@ std::vector<std::string_view> words_of(std::string_view line) {
     at = line.find_first_not_of(blanks, end);
   }
   return words;
-}
-
-// Names one after another, as an error lists them, or words as the log keeps them.
-template <class Names>
-std::string joined(const Names &names, std::string_view between = ", ") {
-  std::string text;
-  for (const std::string_view name : names)
-    text.append(text.empty() ? "" : between).append(name);
-  return text;
 }
 
 // Why a line's words name no command, which lists the commands they could have meant: a

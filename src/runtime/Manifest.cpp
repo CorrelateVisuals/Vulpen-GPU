@@ -2,6 +2,7 @@
 
 #include "baseclasses/Platform.h"
 #include "runtime/Edits.h"
+#include "runtime/Text.h"
 #include "runtime/View.h"
 
 #include <algorithm>
@@ -35,7 +36,6 @@ struct Recipes::Kept {
 namespace {
 
 constexpr std::uint32_t manifest_version = 1;
-constexpr std::string_view blanks = " \t\r";
 // The recipes' folder holds a folder a group of recipes: vulpen/, vulpen's own, whose
 // library holds its recipes by kind (RV06) and beside it the apps, which use those
 // recipes as they are (V11), and custom/, a person's own, as any other group, a folder a
@@ -46,13 +46,6 @@ constexpr std::string_view vulpen_group = "vulpen";
 constexpr std::string_view library_folder = "library";
 constexpr std::array<std::string_view, 2> recipe_kinds{"parts", "components"};
 constexpr std::string_view library_view = "library";
-
-std::string_view trim(std::string_view text) {
-  const std::size_t first = text.find_first_not_of(blanks);
-  if (first == std::string_view::npos)
-    return {};
-  return text.substr(first, text.find_last_not_of(blanks) - first + 1);
-}
 
 // A recipes' folder: one named so, which holds vulpen's library.
 bool recipes_at(const std::filesystem::path &folder) {
@@ -363,12 +356,10 @@ void Reader::add_node() {
 }
 
 std::uint32_t Reader::number(std::string_view text) const {
-  std::uint32_t value = 0;
-  const auto [end, error] =
-      std::from_chars(text.data(), text.data() + text.size(), value);
-  if (error != std::errc{} || end != text.data() + text.size())
+  const std::optional<std::uint32_t> value = number_in<std::uint32_t>(text);
+  if (!value)
     fail(std::format("{} is not a whole number", text));
-  return value;
+  return *value;
 }
 
 // The comment lines since the last line with words belong to this line, and so does

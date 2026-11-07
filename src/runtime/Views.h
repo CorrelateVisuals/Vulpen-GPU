@@ -166,7 +166,7 @@ private:
   std::vector<std::unique_ptr<Hosted>> _hosted; // the host first
   std::vector<Schedule *> _schedules;           // by _hosted, once built
   const Hosted *_owner = nullptr; // the window's, as the last rebuild chose it
-  std::unique_ptr<Undo> _steps; // the lines undo takes back, and the port they reach files by
+  std::unique_ptr<Undo> _steps; // the lines undo takes back, and their file port
   // Registered once the views the host names are hosted, so a constructor that throws
   // leaves no command to a handler that is gone.
   Command _save;

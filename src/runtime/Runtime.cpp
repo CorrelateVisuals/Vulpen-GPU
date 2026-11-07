@@ -10,6 +10,7 @@
 #include "runtime/Modules.h"
 #include "runtime/Ports.h"
 #include "runtime/Schedule.h"
+#include "runtime/Text.h"
 #include "runtime/View.h"
 #include "runtime/Views.h"
 
@@ -61,26 +62,17 @@ VkExtent2D size_of(std::string_view flag, std::string_view text) {
 }
 
 template <class T> T number(std::string_view flag, std::string_view text) {
-  T value{};
-  const auto [end, error] =
-      std::from_chars(text.data(), text.data() + text.size(), value);
-  if (error != std::errc{} || end != text.data() + text.size())
+  const std::optional<T> value = number_in<T>(text);
+  if (!value)
     throw std::runtime_error(
         std::format("{} {} is not a whole number\n{}", flag, text, usage));
-  return value;
+  return *value;
 }
 
 
 // A window's title names the view it shows.
 std::string title(const View &view) {
   return std::format("{} - vulpen", view.name);
-}
-
-std::string joined(const std::vector<std::string> &names) {
-  std::string text;
-  for (const std::string &name : names)
-    text += (text.empty() ? "" : ", ") + name;
-  return text;
 }
 
 // The window hands its input to the port as the input command does (V07); neither goes
@@ -161,21 +153,12 @@ public:
   // The kind a file's prefer line names, empty for none; a kind no GPU is stops the run,
   // naming the file (A02).
   static std::string read(const std::filesystem::path &file) {
-    const auto trimmed = [](std::string_view text) {
-      const std::size_t first = text.find_first_not_of(" \t\r");
-      return first == std::string_view::npos
-                 ? std::string_view()
-                 : text.substr(first, text.find_last_not_of(" \t\r") - first + 1);
-    };
     const std::string text = Files::text(file);
-    for (std::size_t at = 0; at < text.size();) {
-      const std::size_t end = std::min(text.find('\n', at), text.size());
-      const std::string_view line = std::string_view(text).substr(at, end - at);
-      at = end + 1;
+    for (const std::string_view line : lines_in(text)) {
       const std::size_t equals = line.find('=');
-      if (equals == std::string_view::npos || trimmed(line.substr(0, equals)) != key)
+      if (equals == std::string_view::npos || trim(line.substr(0, equals)) != key)
         continue;
-      const std::string_view kind = trimmed(line.substr(equals + 1));
+      const std::string_view kind = trim(line.substr(equals + 1));
       if (kind != integrated && kind != discrete)
         throw std::runtime_error(std::format(
             "{}: {} = {} is no kind of GPU: {} or {}", file.string(), key, kind,

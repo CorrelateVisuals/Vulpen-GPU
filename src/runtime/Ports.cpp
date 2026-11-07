@@ -4,6 +4,7 @@
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
 #include "runtime/Manifest.h"
+#include "runtime/Text.h"
 #include "runtime/View.h"
 
 #include <algorithm>
@@ -35,12 +36,10 @@ std::filesystem::path absolute(std::string_view path) {
 }
 
 float number(std::string_view word) {
-  float value = 0;
-  const auto [end, error] =
-      std::from_chars(word.data(), word.data() + word.size(), value);
-  if (error != std::errc{} || end != word.data() + word.size())
+  const std::optional<float> value = number_in<float>(word);
+  if (!value)
     throw std::runtime_error(std::format("{} is not a number", word));
-  return value;
+  return *value;
 }
 
 std::string checked_key(std::string_view name) {
@@ -61,10 +60,8 @@ std::string checked_button(std::string_view name) {
 }
 
 std::uint32_t presses_of(std::string_view word) {
-  std::uint32_t presses = 0;
-  const auto [end, error] =
-      std::from_chars(word.data(), word.data() + word.size(), presses);
-  if (error != std::errc{} || end != word.data() + word.size() || presses == 0)
+  const std::uint32_t presses = number_in<std::uint32_t>(word).value_or(0);
+  if (presses == 0)
     throw std::runtime_error(std::format(
         "{} is no count of presses: 1 for one, 2 for a double click's second", word));
   return presses;

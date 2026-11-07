@@ -5,6 +5,7 @@
 
 #include "baseclasses/Passes.h"
 #include "runtime/Bound.h"
+#include "runtime/Text.h"
 
 #include <algorithm>
 #include <cmath>
@@ -291,7 +292,7 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
 
 // A draw's pipeline fits the render pass it records in.
 void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
-  std::string from = joined(bound.shaders_named);
+  std::string from = joined(bound.shaders_named, " and ");
   if (!is_draw(*bound.node)) {
     bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
   } else {

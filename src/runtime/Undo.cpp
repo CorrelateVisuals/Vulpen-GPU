@@ -133,7 +133,8 @@ private:
         if (there || folder == folder.parent_path())
           break;
       }
-    return &step->changes.emplace_back(Step::Change{.kind = kind, .path = path, .to = to});
+    return &step->changes.emplace_back(
+        Step::Change{.kind = kind, .path = path, .to = to});
   }
 
   // A file's text, none for no file or a folder; one past kept_most is noted, so undo
@@ -159,14 +160,16 @@ Undo::Undo(FilePort &files, ViewLookup &views, Commands &port)
 Undo::~Undo() = default;
 
 void Undo::begin(std::string_view line) {
-  _step = std::make_unique<Step>(Step{.line = std::string(line), .hosted = _views.names()});
+  _step = std::make_unique<Step>(
+      Step{.line = std::string(line), .hosted = _views.names()});
 }
 
 void Undo::note(std::string_view name, bool project, const View &before) {
   if (_step && std::ranges::none_of(_step->views, [&](const Step::Viewed &viewed) {
         return viewed.name == name;
       }))
-    _step->views.push_back({.name = std::string(name), .project = project, .before = before});
+    _step->views.push_back(
+        {.name = std::string(name), .project = project, .before = before});
 }
 
 // What the line changed, as it left it. An app's view counts only while the line changed
