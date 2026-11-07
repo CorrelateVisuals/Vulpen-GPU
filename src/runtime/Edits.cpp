@@ -572,18 +572,20 @@ std::string view_put_back(const View &, const View &, Arguments arguments) {
                      arguments.front());
 }
 
+using Change = void (*)(View &view, Arguments arguments, const Around &around);
+
 struct Edit {
   std::string_view usage;
   std::string_view help;
-  void (*change)(View &view, Arguments arguments, const Around &around);
+  Change change;
   std::string (*said)(const View &before, const View &after, Arguments arguments);
 };
 
 // Each edit's usage and help (RV04), and what it changes.
 constexpr std::array edits{
-    Edit{"node add <name> [<word=value>...]",
+    Edit{"node add [<name>] [<word=value>...]",
          "adds a node, given the manifest's node words; its files are what its folder "
-         "holds",
+         "holds; with no name, node1 on, the first free",
          node_add,
          node_added},
     Edit{"node remove keep <node>",
@@ -601,8 +603,9 @@ constexpr std::array edits{
          "words replace them all",
          node_set,
          node_was_set},
-    Edit{"connect <name> <port> <port>...",
-         "joins the port that writes a buffer to the ports that read it",
+    Edit{"connect [<name>] <port> <port>...",
+         "joins the port that writes a buffer to the ports that read it; with no name, "
+         "named for the writer's port, numbered on while taken",
          connect_ports,
          connected},
     Edit{"disconnect <connection>", "removes a connection", disconnect, disconnected},
@@ -614,9 +617,10 @@ constexpr std::array edits{
          "removes a param of a node",
          param_unset,
          param_was_unset},
-    Edit{"view add <name> <file>",
+    Edit{"view add [<name>] <file>",
          "hosts the view a view.vlp holds, or an empty one that view save writes; a line "
-         "`<name>: <command>` addresses it",
+         "`<name>: <command>` addresses it; with no name, named for its folder, numbered "
+         "on while taken",
          view_add,
          view_added},
     Edit{"view close [<view>]",
@@ -702,6 +706,37 @@ View named_by(bool param, const View &edited, Arguments arguments) {
     line.connections.push_back(*made);
   }
   return line;
+}
+
+// The name a line left out, as its edit chooses it, which the log keeps (V08): a node's
+// node1 on, the first free; a connection's its writer's port, or the view whose window
+// it takes; a view's its folder; each numbered on while taken, as arcball2.
+std::string chosen_name(Change change, const View &view, Arguments arguments,
+                        ViewLookup &views) {
+  const std::vector<std::string> hosted = views.names();
+  std::vector<std::string_view> taken;
+  std::string base;
+  if (change == node_add) {
+    base = "node";
+    for (const Node &node : view.nodes)
+      taken.emplace_back(node.name);
+  } else if (change == connect_ports) {
+    const Endpoint from = Edits::endpoint(arguments[1]);
+    base = from.view() ? from.node : from.port;
+    for (const Connection &connection : view.connections)
+      taken.emplace_back(connection.name);
+  } else {
+    base = std::filesystem::path(arguments[1]).parent_path().filename().string();
+    taken.assign(hosted.begin(), hosted.end());
+  }
+  const auto free = [&](std::string_view name) {
+    return std::ranges::find(taken, name) == taken.end();
+  };
+  if (change != node_add && free(base))
+    return base;
+  for (std::size_t number = change == node_add ? 1 : 2;; ++number)
+    if (std::string name = std::format("{}{}", base, number); free(name))
+      return name;
 }
 
 // The files a refusal names at most, the rest counted.
@@ -848,6 +883,13 @@ void Edits::command(Call &call) {
   const View *const found = _views.find(address);
   if (!found)
     throw std::runtime_error(std::format("no view is named {}", address));
+  std::string chosen; // a name the line left out, an empty word to it
+  for (std::size_t index = 0; index < edits.size(); ++index)
+    if (call.is(_commands[index]) && !arguments.empty() && arguments.front().empty()) {
+      chosen = chosen_name(edits[index].change, *found, arguments, _views);
+      arguments.front() = chosen;
+      call.keep_name(0, chosen);
+    }
   _port.changes(address);
   std::vector<std::string> beside;
   if (const std::optional<std::string> host = _views.host_of(address))

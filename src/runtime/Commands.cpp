@@ -357,6 +357,7 @@ struct Commands::Spec {
   std::vector<std::string_view> placeholders;
   bool more = false;
   bool optional = false; // whether the last placeholder may be left out
+  bool leaves_name = false; // whether its first placeholder, [<name>], may be
   std::string usage;
   std::string help;
   Command command;
@@ -374,6 +375,22 @@ struct Commands::Spec {
     return kind == "file" ||
            ((kind == "project" || kind == "path" || kind == "folder") &&
             std::filesystem::path(word).has_parent_path());
+  }
+
+  // Whether a line left its name out: the first word given is already of the next kind,
+  // a word=value by its =, a file by its / or ., which no name holds; its command chooses
+  // one (Call::keep_name). A connection's name may be dotted, as a drop's inside its node,
+  // so a port is told by its place: a window's ends in :, and a line of only ports is one
+  // word short of its name.
+  bool left_out(std::span<const std::string_view> arguments) const {
+    if (!leaves_name || arguments.empty())
+      return leaves_name;
+    const std::string_view word = arguments.front();
+    if (placeholders[1] == word_value)
+      return word.find('=') != std::string_view::npos;
+    if (placeholders[1] == "port")
+      return word.ends_with(':') || arguments.size() + 1 == placeholders.size();
+    return word.find_first_of("/\\.") != std::string_view::npos;
   }
 
   // What a refusal adds for the words past the usage's last placeholder: which they
@@ -445,6 +462,12 @@ Command Commands::add(std::string_view usage,
   if (more)
     words.back().remove_suffix(one_or_more.size());
   const auto arguments = std::ranges::find_if_not(words, command_word);
+  // [<name>] first, before other placeholders: a name a line may leave out.
+  const bool leaves_name = arguments != words.end() && std::next(arguments) != words.end() &&
+                           *arguments == std::format("{}<name>{}", optional_open,
+                                                     optional_close);
+  if (leaves_name)
+    *arguments = arguments->substr(1, arguments->size() - 2);
   if (arguments == words.begin() || ((more || optional) && arguments == words.end()) ||
       !std::all_of(arguments, words.end(), placeholder))
     throw std::runtime_error(std::format(
@@ -467,6 +490,7 @@ Command Commands::add(std::string_view usage,
                     .placeholders = std::move(placeholders),
                     .more = more,
                     .optional = optional,
+                    .leaves_name = leaves_name,
                     .usage = std::string(usage),
                     .help = std::string(help),
                     .command = command,
@@ -496,6 +520,10 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
   if (!spec)
     throw std::runtime_error(unknown(words, usages()));
   std::vector<std::string_view> arguments(words.begin() + spec->name.size(), words.end());
+  // A name left out is an empty word to the command, which chooses one.
+  const bool unnamed = spec->left_out(arguments);
+  if (unnamed)
+    arguments.insert(arguments.begin(), std::string_view());
   const std::size_t expected = spec->placeholders.size();
   const std::size_t least = spec->optional ? expected - 1 : expected;
   if (arguments.size() < least || (arguments.size() > expected && !spec->more))
@@ -513,7 +541,7 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
   if (!address.empty())
     kept.insert(kept.begin(), address + ':');
   std::vector<std::size_t> files;
-  for (std::size_t index = 0; index < arguments.size(); ++index) {
+  for (std::size_t index = unnamed ? 1 : 0; index < arguments.size(); ++index) {
     if (spec->names_file(index, arguments[index]))
       files.push_back(kept.size());
     kept.emplace_back(arguments[index]);
@@ -531,7 +559,7 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
            std::move(from));
   spec->handler->command(call);
   if (const auto &left = call.left_out()) {
-    const std::size_t at = kept.size() - arguments.size() + left->first;
+    const std::size_t at = kept.size() - (arguments.size() - (unnamed ? 1 : 0)) + left->first;
     kept.insert(kept.begin() + static_cast<std::ptrdiff_t>(at), left->second);
     for (std::size_t &file : files)
       file += file >= at ? 1 : 0;
