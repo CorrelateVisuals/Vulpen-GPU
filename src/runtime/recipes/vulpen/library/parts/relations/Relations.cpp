@@ -488,15 +488,22 @@ VP::View tree_of(VP::FilePort &files,
 }
 
 // The folder going up from the one shown stops at: the nearest holding .git, the top of
-// its repository; outside one, the one shown.
-std::string top_of(VP::FilePort &files, const std::filesystem::path &shown) {
+// its repository; outside one, the top before while the one shown is inside it, so cd ..
+// goes back up to the first folder gone into, else the one shown.
+std::string top_of(VP::FilePort &files,
+                   const std::filesystem::path &shown,
+                   const std::filesystem::path &before) {
   for (std::filesystem::path folder = shown;; folder = folder.parent_path()) {
     const std::vector<std::string> names = names_in(files, folder.string());
     if (std::ranges::find(names, ".git/") != names.end() ||
         std::ranges::find(names, ".git") != names.end())
       return folder.string();
-    if (folder == folder.parent_path())
-      return shown.string();
+    if (folder != folder.parent_path())
+      continue;
+    const std::filesystem::path below = shown.lexically_relative(before);
+    return !before.empty() && !below.empty() && *below.begin() != ".."
+               ? before.string()
+               : shown.string();
   }
 }
 
@@ -586,7 +593,7 @@ void Relations::start(VP::FilePort &files, const VP::View *view) {
   _reading = true;
   _frames = 0;
   _listed.clear();
-  _top = _folder.empty() ? std::string() : top_of(files, _folder);
+  _top = _folder.empty() ? std::string() : top_of(files, _folder, _top);
   _tree = _folder.empty()
               ? VP::View{}
               : tree_of(files, _folder, std::filesystem::path(_top).parent_path());

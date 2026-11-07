@@ -1379,7 +1379,16 @@ void Graph::cd(VP::Call &call) {
   }
   const std::string_view to = call.arguments().front();
   const std::string &folder = _relations->asked;
-  if (to == "..") {
+  // A folder shown at the top goes no further up, so the line says why, and where else.
+  if (const std::filesystem::path top(_relations->top);
+      to == ".." && !folder.empty() && !top.empty() &&
+      std::filesystem::path(folder).lexically_relative(top).lexically_normal() == ".") {
+    call.reply(std::format("{} is as far up as cd .. goes: its repository's top, or "
+                           "outside one the first folder gone into; cd <path> goes "
+                           "anywhere",
+                           top.lexically_proximate(std::filesystem::current_path())
+                               .generic_string()));
+  } else if (to == "..") {
     leave(call);
     _left.clear();
   } else if (to == "/" && !folder.empty()) {
@@ -1394,6 +1403,19 @@ void Graph::cd(VP::Call &call) {
             .lexically_normal();
     if (path.filename().empty())
       path = path.parent_path();
+    // A node's folder is the node (RV08): into it, its ports and wires shown, as cd
+    // <name> goes, while the view shows.
+    if (folder.empty() && call.view(_shown) == &call.view())
+      for (const VP::Node &node : call.unfolded().nodes)
+        if (!node.folder.empty() && node.folder.lexically_normal() == path) {
+          const auto box = std::ranges::find(_boxes.boxes, node.name, &Box::name);
+          if (box == _boxes.boxes.end())
+            call.commands().send(
+                std::format("{}: param set {} inside {}", _view, _name, node.name));
+          else if (!enter(call, static_cast<std::size_t>(box - _boxes.boxes.begin())))
+            throw std::runtime_error(std::format("{} holds nothing to go into", to));
+          return;
+        }
     // A root, as / or C:\, which no folder lists, is one while it lists anything.
     const bool root = path == path.parent_path();
     const std::vector<std::string> names = call.files().list(path.parent_path().string());
