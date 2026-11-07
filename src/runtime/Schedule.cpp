@@ -607,8 +607,11 @@ void Schedule::size_targets(VkExtent2D size) {
             Tag::mem,
             std::format("{} draws its window into {}", rendered->name, pixels));
     }
+    const auto instead = _instead.find(rendered->name);
     point_readers(rendered->name,
-                  rendered->drawn ? rendered->drawn->sampled().slot() : 0);
+                  instead != _instead.end() ? instead->second
+                  : rendered->drawn         ? rendered->drawn->sampled().slot()
+                                            : 0);
   }
   for (Stored &stored : _stored)
     size_stored(stored, size);
@@ -750,8 +753,9 @@ bool Schedule::resting() const {
 void Schedule::work(std::vector<Pass> &passes) {
   _landed.assign(_passes.size(), no_pass);
   for (std::size_t at = 0; at < _passes.size() && !_resting; ++at)
-    if (_passes[at].bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS ||
-        _passes[at].offscreen) {
+    if ((_pulled.empty() || _pulled[_passed[at]]) &&
+        (_passes[at].bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS ||
+         _passes[at].offscreen)) {
       _landed[at] = passes.size();
       passes.push_back(_passes[at]);
     }
@@ -762,7 +766,8 @@ bool Schedule::draws(std::vector<Pass> &passes, const Offscreen *into) {
     _landed.assign(_passes.size(), no_pass);
   const std::size_t before = passes.size();
   for (std::size_t at = 0; at < _passes.size() && !_resting; ++at)
-    if (_passes[at].bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS &&
+    if ((_pulled.empty() || _pulled[_passed[at]]) &&
+        _passes[at].bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS &&
         !_passes[at].offscreen) {
       _landed[at] = passes.size();
       passes.push_back(_passes[at]);
@@ -799,6 +804,90 @@ const Offscreen *Schedule::window_of(std::string_view view) const {
     if (!rendered->writer && rendered->name == name)
       return &rendered->offscreen;
   return nullptr;
+}
+
+// The nodes the image's writer needs, and the nodes they need, as far back as the
+// connections go: a draw split in two counts both its nodes, and a node already counted
+// stops the walk, as a feedback loop would go round.
+bool Schedule::pull(std::string_view image) {
+  if (image == _pulled_for)
+    return false;
+  _pulled_for.assign(image);
+  _pulled.clear();
+  if (image.empty())
+    return true;
+  _pulled.assign(_bound.size(), false);
+  std::vector<std::string_view> wanted{image.substr(0, image.rfind('.'))};
+  while (!wanted.empty()) {
+    const std::string_view node = wanted.back();
+    wanted.pop_back();
+    for (std::size_t at = 0; at < _bound.size(); ++at) {
+      const Bound &bound = _bound[at];
+      const bool colors = bound.fragment && bound.fragment->node->name == node;
+      if (_pulled[at] || (bound.node->name != node && !colors))
+        continue;
+      _pulled[at] = true;
+      if (bound.fragment)
+        wanted.push_back(bound.fragment->node->name);
+      for (const Connection &connection : _view.connections)
+        if (!connection.from.view() &&
+            std::ranges::any_of(connection.to, [&](const Endpoint &to) {
+              return to.node == bound.node->name;
+            }))
+          wanted.push_back(connection.from.node);
+    }
+  }
+  return true;
+}
+
+std::size_t Schedule::running() const {
+  return _pulled.empty() ? _bound.size()
+                         : static_cast<std::size_t>(std::ranges::count(_pulled, true));
+}
+
+std::optional<std::uint32_t> Schedule::image_slot(std::string_view image) const {
+  for (const std::unique_ptr<Rendered> &rendered : _rendered)
+    if (rendered->writer && rendered->name == image)
+      return rendered->drawn ? rendered->drawn->sampled().slot() : 0;
+  for (const Stored &stored : _stored)
+    if (stored.name == image)
+      return stored.image ? stored.image->slot() : 0;
+  for (const Picture &picture : _images)
+    if (picture.name == image)
+      return picture.sampled.slot();
+  for (const Bound &bound : _bound)
+    if (std::ranges::any_of(bound.textures, [&](const Bound::Filled &filled) {
+          return filled.name == image;
+        }))
+      return 0;
+  return std::nullopt;
+}
+
+std::vector<std::string> Schedule::images() const {
+  std::vector<std::string> names;
+  for (const std::unique_ptr<Rendered> &rendered : _rendered)
+    if (rendered->writer)
+      names.push_back(rendered->name);
+  for (const Stored &stored : _stored)
+    names.push_back(stored.name);
+  for (const Bound &bound : _bound)
+    for (const Bound::Filled &filled : bound.textures)
+      names.push_back(filled.name);
+  return names;
+}
+
+void Schedule::show_instead(const std::string &window,
+                            std::optional<std::uint32_t> slot) {
+  if (slot)
+    _instead.insert_or_assign(window, *slot);
+  else
+    _instead.erase(window);
+  for (const std::unique_ptr<Rendered> &rendered : _rendered)
+    if (!rendered->writer && rendered->name == window)
+      point_readers(window,
+                    slot             ? *slot
+                    : rendered->drawn ? rendered->drawn->sampled().slot()
+                                      : 0);
 }
 
 // A node's own log level covers every line about it (V09).

@@ -635,7 +635,8 @@ void Runtime::prepare() {
   const bool pulled = _views->pull(
       [&](std::string_view view, std::string_view node, std::string_view port) {
         return _ports.was_unread(view, node, port);
-      });
+      },
+      rebuilt);
   if (rebuilt || pulled)
     gather();
 }

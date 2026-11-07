@@ -184,6 +184,10 @@ struct Views::Hosted {
   // It has taken the window of a view beside it, so it keeps the window until it closes.
   bool presented = false;
   bool resting = false; // nothing showed it the frame before (pull)
+  // The image of its own it shows in its window's place (view show), empty for none, and
+  // its slot as the views taking its window last took it.
+  std::string shows;
+  std::optional<std::uint32_t> shown_slot;
   bool removed = false; // its schedule goes before the next frame
 
   const View &current() const {
@@ -361,6 +365,11 @@ Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recip
                        "lists the views this view hosts, with their files, in the order "
                        "hosted",
                        *this);
+  _show = commands.add("view show [<port>]",
+                       "shows an image of the view, by node.port, in its window's place "
+                       "to the views taking its window, the view running only what "
+                       "that image needs; with none, its window again",
+                       *this);
   _clear = commands.add("image clear <port>",
                         "drops the pixels of an image a node's C++ fills, named by that "
                         "port or one that samples it, until the node fills it again",
@@ -522,7 +531,7 @@ const Views::Hosted *Views::taker(const Hosted &hosted) const {
   return nullptr;
 }
 
-bool Views::pull(const Unread &unread) {
+bool Views::pull(const Unread &unread, bool rebuilt) {
   bool changed = false;
   for (const std::unique_ptr<Hosted> &hosted : _hosted) {
     if (hosted->removed || !hosted->schedule)
@@ -538,8 +547,76 @@ bool Views::pull(const Unread &unread) {
       hosted->schedule->rest(rests);
       changed = true;
     }
+    changed = show(*hosted, rebuilt) || changed;
   }
   return changed;
+}
+
+// Of the view the line addresses, which a view taking its window shows: a project, not
+// the view vulpen started with, whose window nothing takes.
+void Views::show_image(Call &call) {
+  Hosted *const found = hosted(_port.addressed());
+  if (!found || found->name.empty() || !found->schedule)
+    throw std::runtime_error("view show shows an image of a hosted view in its window's "
+                             "place: a line names the view, as `<view>: view show "
+                             "<node.port>`, or goes to it while it is current");
+  if (call.arguments().empty()) {
+    found->shows.clear();
+    return call.reply(std::format("{} shows its window again", found->name));
+  }
+  const std::string_view image = call.arguments().front();
+  if (!found->schedule->image_slot(image)) {
+    std::string names;
+    for (const std::string &name : found->schedule->images())
+      names.append(names.empty() ? "" : ", ").append(name);
+    throw std::runtime_error(
+        std::format("{} has no image {}; {}",
+                    found->name,
+                    image,
+                    names.empty() ? "it has none"
+                                  : std::format("its images are {}", names)));
+  }
+  found->shows = image;
+  call.reply(std::format("{} shows {} in its window's place, running only what it needs",
+                         found->name,
+                         image));
+}
+
+// An image an edit took away, as its node's removal, gives the window back, named once.
+bool Views::show(Hosted &hosted, bool rebuilt) {
+  std::optional<std::uint32_t> slot;
+  if (!hosted.shows.empty() && !(slot = hosted.schedule->image_slot(hosted.shows))) {
+    _wiring.log.write(Level::warn,
+                      Tag::run,
+                      std::format("{} shows its window again, as it has no image {} now",
+                                  hosted.name,
+                                  hosted.shows));
+    hosted.shows.clear();
+  }
+  const bool pulled = hosted.schedule->pull(hosted.shows);
+  if (pulled)
+    _wiring.log.write(Level::info,
+                      Tag::run,
+                      hosted.shows.empty()
+                          ? std::format("{} runs all its nodes again", hosted.name)
+                          : std::format("{} runs {} of its {} nodes, those {} needs",
+                                        hosted.name,
+                                        hosted.schedule->running(),
+                                        hosted.schedule->costs().size(),
+                                        hosted.shows));
+  // A rebuilt view taking the window samples the window, so only an image needs handing
+  // to it again.
+  if (slot == hosted.shown_slot && !(rebuilt && slot))
+    return pulled;
+  hosted.shown_slot = slot;
+  const std::string window = Endpoint{hosted.name, {}}.text();
+  for (const std::unique_ptr<Hosted> &other : _hosted)
+    if (!other->removed && other.get() != &hosted && other->schedule &&
+        std::ranges::any_of(other->next().connections, [&](const Connection &c) {
+          return c.from.view() && c.from.node == hosted.name;
+        }))
+      other->schedule->show_instead(window, slot);
+  return pulled;
 }
 
 // In the order hosted, so the view hosting it has rested already this frame.
@@ -799,6 +876,8 @@ void Views::command(Call &call) {
                                .generic_string(),
                            project(found->current()) ? ", the project kept as it is now"
                                                      : ""));
+  } else if (call.is(_show)) {
+    show_image(call);
   } else if (call.is(_list)) {
     for (const Child &child : call.view().children)
       call.reply(std::format("{} {}", child.name, child.file.string()));

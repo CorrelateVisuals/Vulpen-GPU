@@ -70,8 +70,11 @@ public:
   // taking its window was read the frame before, as a project no deck shows, or one
   // whose every picture had no room, in a hidden panel; or while the view hosting it
   // rests. One with no such view beside it, as a project the cli alone hosts, never rests
-  // (V07). True when a view began or ended resting, so the passes are gathered again.
-  bool pull(const Unread &unread);
+  // (V07). A view that shows an image in its window's place (view show) runs only what
+  // that image needs, and the views taking its window sample it there; rebuilt: the
+  // schedules are new, so each takes that again. True when what runs changed, so the
+  // passes are gathered again.
+  bool pull(const Unread &unread, bool rebuilt);
   // The folders the live scan watches, each view's, by the name the build tree mirrors
   // the view by, which names its target.
   std::vector<std::pair<std::string, std::filesystem::path>> roots() const;
@@ -119,6 +122,8 @@ private:
   // Whether the view takes the window of a view beside it, as a GUI presents a project.
   bool presents(const Hosted &hosted) const;
   bool rests(const Hosted &hosted, const Unread &unread) const;
+  bool show(Hosted &hosted, bool rebuilt);
+  void show_image(Call &call);
   // Whether the view draws into its window, or a view it hosts does there.
   bool draws(const Hosted &hosted) const;
   // Of the views the view vulpen started with hosts, the one the window shows while that
@@ -176,6 +181,7 @@ private:
   // leaves no command to a handler that is gone.
   Command _save;
   Command _list;
+  Command _show;
   Command _clear;
   Command _undo;
   Command _redo;

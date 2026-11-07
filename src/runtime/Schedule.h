@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <memory>
 #include <span>
 #include <string>
@@ -131,6 +132,20 @@ public:
   // The image the draws into the window of a view this one hosts render into, while a
   // connection takes it; null while none does.
   const Offscreen *window_of(std::string_view view) const;
+  // Which of its nodes run: those the image named, node.port, needs, walking back along
+  // the connections, as its view shows that image in its window's place (view show);
+  // every node for none. Whether that changed, so the passes are gathered again.
+  bool pull(std::string_view image);
+  // How many of its nodes run, as pull left them.
+  std::size_t running() const;
+  // The slot of an image of its nodes, by node.port: one a draw renders into, a dispatch
+  // stores into or C++ fills; 0 while it has none yet, and none for no such image.
+  std::optional<std::uint32_t> image_slot(std::string_view image) const;
+  // Its images by node.port, which a refusal names.
+  std::vector<std::string> images() const;
+  // The readers of the window of a view it takes, by `<view>:`, sample the image at the
+  // slot instead, as that view shows an image in its window's place; none, their own.
+  void show_instead(const std::string &window, std::optional<std::uint32_t> slot);
 
 private:
   // Binder and Cooker are in runtime/Binder.cpp, so this header includes none of what
@@ -232,6 +247,10 @@ private:
   std::vector<NodePort> _ports;     // by _bound, each node's in turn
   bool _retired = false;
   bool _resting = false;
+  std::vector<bool> _pulled; // by _bound, those that run; empty while every node does
+  std::string _pulled_for;   // the image they are what is needed of
+  // The windows whose readers sample another image, by `<view>:`, and its slot.
+  std::map<std::string, std::uint32_t, std::less<>> _instead;
 };
 
 } // namespace VP

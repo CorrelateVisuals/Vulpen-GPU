@@ -519,6 +519,8 @@ void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
       cost.cooks = false;
       continue;
     }
+    if (!_pulled.empty() && !_pulled[at])
+      continue;
     Cooker cooker(*this, bound, frame, {resolution.width, resolution.height});
     const auto started = std::chrono::steady_clock::now();
     try {
