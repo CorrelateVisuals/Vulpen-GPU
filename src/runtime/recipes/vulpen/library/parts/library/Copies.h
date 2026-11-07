@@ -34,6 +34,9 @@ constexpr std::string_view vulpen_group = "vulpen";
 constexpr std::string_view custom_group = "custom";
 constexpr std::string_view library_folder = "library";
 constexpr std::string_view include_start = "#include \"";
+// A contract's two languages, each the other's twin (RV05).
+constexpr std::string_view cpp_contract = ".h";
+constexpr std::string_view glsl_contract = ".glsl";
 // Between a drop's recipe and the fingerprint of what it copied: probe@3f2a9c1e.
 constexpr char fingerprint_mark = '@';
 constexpr int half_bits = 32; // a fingerprint shows the hash folded to 32 bits

@@ -280,7 +280,9 @@ class Library final : public VP::Operator {
   // Each node's files into the folder its name names in the view, saved whole (RA04),
   // and each contract and shared file they include that the view lacks, from the top
   // they came from, vulpen's library, a group's or a view's, with what those include in
-  // turn (RV05, RV09). One the view has stays as it is.
+  // turn (RV05, RV09), and a contract's twin in the other language where the top holds
+  // one, so the shaders of a node whose C++ reads Camera.h find Camera.glsl too. One the
+  // view has stays as it is.
   void write(VP::FilePort &files,
              const Copy &copy,
              const std::filesystem::path &view,
@@ -296,12 +298,31 @@ class Library final : public VP::Operator {
       }
     for (std::size_t next = 0; next < included.size(); ++next) {
       const std::filesystem::path file = included[next];
+      if (const std::filesystem::path twin = twin_of(file);
+          !twin.empty() && std::ranges::find(included, twin) == included.end()) {
+        const std::filesystem::path from = included_from(files, top, twin);
+        if (holds(files, from.parent_path(), from.filename().string()))
+          included.push_back(twin);
+      }
       if (holds(files, view / file.parent_path(), file.filename().string()))
         continue;
       const std::string text = files.read(included_from(files, top, file).string());
       includes_of(text, file.parent_path(), included);
       files.save((view / file).string(), text);
     }
+  }
+
+  // A contract's twin, the same contract in the other language, C++'s header for a GLSL
+  // struct or the other way round (RV05); none for any other file.
+  static std::filesystem::path twin_of(const std::filesystem::path &file) {
+    if (*file.begin() != VP::contracts_folder)
+      return {};
+    const std::filesystem::path extension = file.extension();
+    if (extension == cpp_contract)
+      return std::filesystem::path(file).replace_extension(glsl_contract);
+    if (extension == glsl_contract)
+      return std::filesystem::path(file).replace_extension(cpp_contract);
+    return {};
   }
 
   // Where a contract or shared code a copy includes is read from: the top it came from,
