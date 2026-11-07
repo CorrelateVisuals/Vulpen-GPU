@@ -81,6 +81,31 @@ std::optional<std::pair<std::string, glm::ivec2>> numbered(std::string_view key,
 // a comment. Throws naming the first line that is none, a pan or a zoom an older graph
 // kept as no longer kept, since the graph starts at home, and a color an older graph
 // kept, as the theme now colors every box (A02).
+// The places and sizes kept under a name, and under the names of the boxes inside it and
+// of its files, as probe.inner, probe/Probe.cpp and probe outside left, under the new
+// name; whether any was.
+bool renamed(Arranged &arranged, std::string_view from, std::string_view to) {
+  bool any = false;
+  for (auto *const kept : {&arranged.places, &arranged.sizes}) {
+    std::vector<std::pair<std::string, glm::ivec2>> moved;
+    for (auto at = kept->begin(); at != kept->end();) {
+      const std::string_view key = at->first;
+      if (!key.starts_with(from) || (key.size() > from.size() &&
+                                     std::string_view("./ ").find(key[from.size()]) ==
+                                         std::string_view::npos)) {
+        ++at;
+        continue;
+      }
+      moved.emplace_back(std::format("{}{}", to, key.substr(from.size())), at->second);
+      at = kept->erase(at);
+    }
+    any = any || !moved.empty();
+    for (auto &[key, value] : moved)
+      kept->insert_or_assign(std::move(key), value);
+  }
+  return any;
+}
+
 Arranged arranged_of(std::string_view text) {
   Arranged arranged;
   for (const Row &row : rows_of(text)) {

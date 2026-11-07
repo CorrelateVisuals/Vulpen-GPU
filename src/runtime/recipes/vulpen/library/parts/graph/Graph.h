@@ -196,6 +196,7 @@ private:
   void erase(VP::Cook &frame);
   void save(VP::Cook &frame);
   void keep(VP::FilePort &files);
+  void follow(VP::FilePort &files);
   void write(VP::Cook &frame, glm::uvec2 cell);
   void write_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written, std::size_t at) const;
   void write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const;

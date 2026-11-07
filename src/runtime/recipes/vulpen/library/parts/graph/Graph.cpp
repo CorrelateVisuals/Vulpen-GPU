@@ -314,6 +314,7 @@ void Graph::cook(VP::Cook &frame) {
             folder ? std::filesystem::path(_relations->top) : view->file.parent_path());
   else
     arrange(frame, {});
+  follow(frame.files());
   if (_typed->focus != _name)
     _control = false; // let go while another part had the focus, which never came here
   for (const VP::Event &event : _typed->to(_name))
@@ -1513,6 +1514,34 @@ void Graph::keep(VP::FilePort &files) {
   if (_ini.empty() || _refused)
     return;
   files.save(_ini, text_of(_arranged));
+}
+
+// A rename of the frame before, of a node's folder or of a file in one, renames its box
+// and the boxes inside it (RV08), so where a person put them stays theirs, and the file
+// keeps that: a node by its name, a file as node/file, the view's own as /file.
+void Graph::follow(VP::FilePort &files) {
+  if (_ini.empty() || _refused || files.moved().empty())
+    return;
+  const std::filesystem::path top = std::filesystem::path(_ini).parent_path().parent_path();
+  const auto key = [](const std::filesystem::path &path, bool file) {
+    std::string name;
+    for (const std::filesystem::path &part : file ? path.parent_path() : path)
+      name.append(name.empty() ? "" : ".").append(part.string());
+    return file ? std::format("{}/{}", name, path.filename().string()) : name;
+  };
+  bool any = false;
+  for (const VP::Moved &moved : files.moved()) {
+    const std::filesystem::path from =
+        std::filesystem::path(moved.from).lexically_relative(top);
+    const std::filesystem::path to = std::filesystem::path(moved.to).lexically_relative(top);
+    if (moved.to.empty() || from.empty() || to.empty() || *from.begin() == ".." ||
+        *to.begin() == "..")
+      continue;
+    for (const bool file : {false, true})
+      any = renamed(_arranged, key(from, file), key(to, file)) || any;
+  }
+  if (any)
+    keep(files);
 }
 
 // The ground under the whole area, in the role of its lines, which the graph's shaders
