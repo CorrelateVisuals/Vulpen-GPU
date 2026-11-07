@@ -30,17 +30,19 @@ class Library final : public VP::Operator {
                          "lists the recipes, each by its path from the recipes' folder: "
                          "vulpen's library's by kind, then each other group's, as "
                          "custom's");
-    _drop = node.command("recipe drop <recipe> <name>",
+    _drop = node.command("recipe drop <recipe> [<name>]",
                          "copies a recipe, by its name, or its group, a slash and its "
                          "name, as custom/arcball, into the view as a node of that name, "
+                         "with none the recipe's, numbered on while the view has it, "
                          "with the nodes inside it and the contracts and shared code "
                          "they include, or by a path a node's folder from any view, with "
                          "its words, as copy brings one");
     _sync = node.command("recipe sync <node>",
                          "brings a dropped recipe up to its recipe as it is now, while "
                          "what it copied is unchanged; its params and connections stay");
-    _make = node.command("recipe make <node> <name>",
-                         "makes the node a recipe by that name, in custom/, or by a "
+    _make = node.command("recipe make <node> [<name>]",
+                         "makes the node a recipe by that name, with none the node's, "
+                         "numbered on while another recipe has it, in custom/, or by a "
                          "group, a slash and the name, in that group, vulpen's "
                          "library's by its kind, the node becoming a drop of it: a part "
                          "of its files and words, with the contracts and shared code "
@@ -180,6 +182,39 @@ class Library final : public VP::Operator {
 
   // A new node's name: free in the view, inside a node the view has when it holds a dot,
   // and naming a folder that is not there yet, since the node's folder is its own.
+  // A drop's name when the line gives none: the recipe's, as its word or its path ends,
+  // numbered on while the view has a node or a folder of it, as arcball2.
+  static std::string free_node(VP::Call &call,
+                               const std::filesystem::path &view,
+                               std::string_view recipe) {
+    const std::filesystem::path word(recipe);
+    const std::string base =
+        (word.filename().empty() ? word.parent_path() : word).filename().string();
+    const VP::View &graph = call.view();
+    for (std::size_t number = 1;; ++number) {
+      std::string name = number == 1 ? base : std::format("{}{}", base, number);
+      if (std::ranges::find(graph.nodes, name, &VP::Node::name) == graph.nodes.end() &&
+          !holds(call.files(), view, name + '/'))
+        return name;
+    }
+  }
+
+  // A recipe's name when the line gives none: the node's, its last name, numbered on while
+  // a recipe other than the one it was dropped from has it, as that one it is saved again.
+  std::string free_recipe(VP::FilePort &files, const VP::Node &node) const {
+    std::vector<std::string> taken;
+    for (const std::string &group : groups(files))
+      for (const Found &found : recipes_in(files, group))
+        taken.push_back(found.name);
+    const std::string base = node.name.substr(node.name.rfind('.') + 1);
+    const std::string own = node.recipe.substr(0, node.recipe.find(fingerprint_mark));
+    for (std::size_t number = 1;; ++number) {
+      std::string name = number == 1 ? base : std::format("{}{}", base, number);
+      if (name == own || std::ranges::find(taken, name) == taken.end())
+        return name;
+    }
+  }
+
   static void check_new(VP::Call &call,
                         const std::filesystem::path &view,
                         std::string_view name) {
@@ -367,9 +402,11 @@ class Library final : public VP::Operator {
   // nodes inside it (V03). Its edits are known before a file is written, so one that
   // cannot be sent leaves the view as it was.
   void drop(VP::Call &call) const {
-    const std::string name(call.arguments()[1]);
     VP::FilePort &files = call.files();
     const std::filesystem::path view = view_folder(call);
+    const std::string name = call.arguments().size() > 1
+                                 ? std::string(call.arguments()[1])
+                                 : free_node(call, view, call.arguments()[0]);
     check_new(call, view, name);
     const Source source = source_of(call, call.arguments()[0]);
     const std::vector<std::string> lines = adds(source.copy, name, source.recipe);
@@ -515,7 +552,10 @@ class Library final : public VP::Operator {
       throw std::runtime_error(std::format("no node is named {}", root));
     const Copy copy = copy_in(files, graph, view, root);
     const bool part = copy.nodes.size() == 1;
-    const Found target = target_of(files, call.arguments()[1], part, *node);
+    const std::string named = call.arguments().size() > 1
+                                  ? std::string(call.arguments()[1])
+                                  : free_recipe(files, *node);
+    const Found target = target_of(files, named, part, *node);
     const bool again = holds(files, target.folder, VP::manifest_file);
     // Read before the node set below, which replaces the view.
     const std::string made =
