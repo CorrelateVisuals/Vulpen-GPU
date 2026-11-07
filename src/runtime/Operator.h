@@ -9,6 +9,7 @@
 #include <glm/vec4.hpp>
 
 #include <charconv>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -70,11 +71,13 @@ template <> inline constexpr std::string_view pixel_type<glm::vec4> = "vec4";
 
 // A param's text as T: a number, or a glm vector's components joined by commas, as
 // `0.25,0.5,1`, so a param stays one word, as param set takes it. The engine reads a
-// param a shader's field takes so too, as the field's type. False when the text is none.
+// param a shader's field takes so too, as the field's type. False when the text is none,
+// and for nan and inf, which no two GPUs need clamp or compare alike (GLSL02).
 template <class T> bool parse_param(std::string_view text, T &value) {
   const auto number = [](std::string_view part, auto &into) {
     const auto [end, error] = std::from_chars(part.data(), part.data() + part.size(), into);
-    return error == std::errc{} && end == part.data() + part.size();
+    return error == std::errc{} && end == part.data() + part.size() &&
+           std::isfinite(into);
   };
   if constexpr (requires { T::length(); }) {
     for (glm::length_t index = 0; index < T::length(); ++index) {
