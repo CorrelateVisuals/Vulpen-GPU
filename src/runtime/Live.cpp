@@ -191,6 +191,7 @@ struct Live::Scan {
   std::filesystem::file_time_type engine_said; // the newest engine file's, once said
   std::filesystem::path engine_change;
   std::vector<std::string> failed; // the views the last build failed on
+  std::vector<std::string> built;  // the views the last build was for
   std::chrono::steady_clock::time_point next_scan{};
 };
 
@@ -229,6 +230,7 @@ Live::Build Live::poll() {
     scan.next_scan = now + scan_interval;
     scan.notice_engine();
     std::vector<std::string> targets;
+    std::vector<std::string> built;
     bool fresh = false;
     for (Scan::View &view : scan.views) {
       const auto seen = newest(view.folder);
@@ -236,6 +238,7 @@ Live::Build Live::poll() {
         fresh = fresh || view.built_from == std::filesystem::file_time_type::min();
         view.built_from = seen;
         targets.push_back(std::format("{}{}", view_target, view.name));
+        built.push_back(view.name);
       }
       view.pending = seen;
     }
@@ -245,6 +248,7 @@ Live::Build Live::poll() {
         fresh && std::ranges::find(targets, library) == targets.end())
       targets.insert(targets.begin(), library);
     if (!targets.empty()) {
+      scan.built = std::move(built);
       scan.builder.start(std::move(targets));
       build = Build::started;
     }
@@ -254,6 +258,10 @@ Live::Build Live::poll() {
 
 const std::vector<std::string> &Live::failed() const {
   return _scan->failed;
+}
+
+const std::vector<std::string> &Live::built() const {
+  return _scan->built;
 }
 
 std::vector<std::string> Live::targets() const {

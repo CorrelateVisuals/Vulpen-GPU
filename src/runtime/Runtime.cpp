@@ -601,9 +601,14 @@ void Runtime::swap(std::span<const std::string> failed) {
   prepare();
   for (Schedule *const schedule : _views->schedules())
     schedule->drop_operators(rewritten);
-  for (const std::string &module : rewritten)
+  // A module another build rewrote, as run.sh's, leaves its nodes without their C++
+  // until its view rebuilds too.
+  std::vector<std::string> views = _live->built();
+  for (const std::string &module : rewritten) {
     _modules.unload(module);
-  _views->reload();
+    views.push_back(module.substr(0, module.find('/')));
+  }
+  _views->reload(views);
   // Rebuilt now, not at the next frame, so the line below follows what the swap did and
   // any error it met.
   prepare();

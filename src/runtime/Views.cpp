@@ -732,9 +732,10 @@ std::vector<std::pair<std::string, std::filesystem::path>> Views::roots() const 
 }
 
 // By index: a manifest read again may host more views, which come after.
-void Views::reload() {
+void Views::reload(std::span<const std::string> views) {
   for (std::size_t index = 0; index < _hosted.size(); ++index)
-    if (!_hosted[index]->removed)
+    if (!_hosted[index]->removed &&
+        std::ranges::find(views, _hosted[index]->current().name) != views.end())
       reload(*_hosted[index]);
 }
 

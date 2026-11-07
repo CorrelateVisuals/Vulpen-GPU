@@ -83,11 +83,13 @@ public:
   // the folder, as the log names it. Replayed on the same manifests, they rebuild the
   // views as they are (V08), as a restart does.
   std::string unsaved(const std::filesystem::path &folder) const;
-  // After a live build: the next frame's schedules take what it rebuilt, and each node
-  // the files its folder holds. A manifest is read again only when it changed since it
-  // was read, and the edits since its file last held the view are replayed over it, so
-  // they stay; a running graph stays when its manifest does not load.
-  void reload();
+  // After a live build: the next frame's schedules of the views of those names, as the
+  // build tree mirrors them, take what it rebuilt, and each node the files its folder
+  // holds; the others stay as they run, as a rebuild of the ide costs a frame. A manifest
+  // is read again only when it changed since it was read, and the edits since its file
+  // last held the view are replayed over it, so they stay; a running graph stays when its
+  // manifest does not load.
+  void reload(std::span<const std::string> views);
   // After a line made, removed or moved files: each node lists the files its folder holds
   // now, and a view whose lists changed rebuilds at the next frame, so what the graph,
   // Tab and ls name is there, in a release build too, which has no live build to reload.

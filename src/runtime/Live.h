@@ -43,6 +43,9 @@ public:
   Build poll();
   // The views the last build failed on, by name; the others built.
   const std::vector<std::string> &failed() const;
+  // The views the last build was for, by name, as their files changed: the library's
+  // not when it built only to read a new view's folder.
+  const std::vector<std::string> &built() const;
   // The targets of the views it watches, as nodes.cmake names them.
   std::vector<std::string> targets() const;
   // An engine file written since this vulpen was built and since the last call said one,
