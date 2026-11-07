@@ -361,6 +361,7 @@ private:
     return _schedule._wiring.ports.input(_schedule._name, _bound.node->name);
   }
   TerminalPort &terminal() override {
+    _schedule._wiring.commands.reads_terminal(_schedule._name, _bound.node->name);
     return _schedule._wiring.ports;
   }
   FilePort &files() override {

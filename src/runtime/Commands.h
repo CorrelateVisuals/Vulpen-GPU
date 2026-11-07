@@ -204,6 +204,12 @@ public:
   // This frame's holds, then those of the frame before, `node: what` a line, each once:
   // the work the end of the run would lose.
   std::vector<std::string_view> holding() const;
+  // A node of a view read the terminal this frame (Cook::terminal), which node remove
+  // keeps while no other did: with none, the terminal takes no line again, quit neither.
+  void reads_terminal(std::string_view view, std::string_view node);
+  // The nodes that read the terminal this frame, then the frame before, `view:node` a
+  // line, each once.
+  std::vector<std::string_view> terminal_readers() const;
   // The session's log, which says how far a view's file holds it, and what a restart
   // replays.
   const CommandLog &session() const;
@@ -226,14 +232,16 @@ private:
     std::filesystem::path file;
     std::size_t line = 0;
   };
-  // A frame's holds, `node: what` a line. The first count are the frame's, and the rest
-  // are written over next, so a hold each frame allocates nothing once they grew (CPP10).
+  // A frame's holds, `node: what` a line, or readers of the terminal. The first count are
+  // the frame's, and the rest are written over next, so a hold each frame allocates
+  // nothing once they grew (CPP10).
   struct Holds {
     std::vector<std::string> lines;
     std::size_t count = 0;
   };
 
   void command(Call &call) override;
+  static std::vector<std::string_view> each_once(const Holds &now, const Holds &before);
   std::string answer(std::string_view line, std::string_view folder, bool typed);
   void quit(bool force);
   void write_since(std::size_t from);
@@ -279,6 +287,8 @@ private:
   std::vector<std::string> _holding; // the views that held it then, its host first
   Holds _holds; // this frame's
   Holds _held;  // the frame before's
+  Holds _reading; // the terminal's readers, this frame's
+  Holds _read;    // the frame before's
   std::vector<Logged> _logged; // the first _logged_count are this frame's
   std::size_t _logged_count = 0;
 };

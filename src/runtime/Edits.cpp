@@ -653,6 +653,24 @@ void host_once(ViewLookup &views, Arguments arguments) {
                     name));
   }
 }
+
+// A node remove never takes away every node that reads the terminal: with none, the
+// terminal takes no line again, quit neither, and a run with no window ends only by a
+// kill.
+void keep_terminal(const Commands &port, std::string_view view, std::string_view node) {
+  const std::vector<std::string_view> readers = port.terminal_readers();
+  const auto node_of = [](std::string_view reader) {
+    return reader.substr(reader.find(':') + 1);
+  };
+  if (!readers.empty() && std::ranges::all_of(readers, [&](std::string_view reader) {
+        return reader.substr(0, reader.find(':')) == view && within(node_of(reader), node);
+      }))
+    throw std::runtime_error(
+        std::format("{} reads the terminal, as no other node does, so it stays: without "
+                    "it the terminal takes no line, quit neither",
+                    node_of(readers.front())));
+}
+
 // The files a refusal names at most, the rest counted.
 constexpr std::size_t named_most = 6;
 
@@ -808,6 +826,8 @@ void Edits::command(Call &call) {
   std::string said;
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index])) {
+      if (edits[index].change == node_remove)
+        keep_terminal(_port, address, call.arguments().front());
       edits[index].change(edited, call.arguments(), {_port.where(), beside});
       if (edits[index].change == view_close)
         let_go(call.arguments().front(), edits[index].usage == close_force);

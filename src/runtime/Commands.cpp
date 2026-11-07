@@ -597,6 +597,8 @@ void Commands::frame() {
   _logged_count = _log.take(_logged);
   std::swap(_holds, _held);
   _holds.count = 0;
+  std::swap(_reading, _read);
+  _reading.count = 0;
 }
 
 void Commands::hold(std::string_view node, std::string_view what) {
@@ -608,12 +610,27 @@ void Commands::hold(std::string_view node, std::string_view what) {
 // This frame's holds, then those of the frame before it has not repeated yet, as a
 // node's that cooks after the line quitting; each once.
 std::vector<std::string_view> Commands::holding() const {
-  std::vector<std::string_view> held;
-  for (const Holds *const holds : {&_holds, &_held})
-    for (const std::string &line : std::span(holds->lines).first(holds->count))
-      if (std::ranges::find(held, line) == held.end())
-        held.emplace_back(line);
-  return held;
+  return each_once(_holds, _held);
+}
+
+void Commands::reads_terminal(std::string_view view, std::string_view node) {
+  if (_reading.count == _reading.lines.size())
+    _reading.lines.emplace_back();
+  _reading.lines[_reading.count++].assign(view).append(":").append(node);
+}
+
+// The frame before's too, as a line runs before the reader cooks in its frame.
+std::vector<std::string_view> Commands::terminal_readers() const {
+  return each_once(_reading, _read);
+}
+
+std::vector<std::string_view> Commands::each_once(const Holds &now, const Holds &before) {
+  std::vector<std::string_view> lines;
+  for (const Holds *const frame : {&now, &before})
+    for (const std::string &line : std::span(frame->lines).first(frame->count))
+      if (std::ranges::find(lines, line) == lines.end())
+        lines.emplace_back(line);
+  return lines;
 }
 
 std::string Commands::send(std::string_view line) {
