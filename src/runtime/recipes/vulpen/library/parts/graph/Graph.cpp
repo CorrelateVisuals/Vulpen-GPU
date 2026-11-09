@@ -959,8 +959,8 @@ void Graph::grab_corner(VP::Cook &frame, const Under &under) {
 
 // Once the pointer moved a few pixels, so a press that wobbles is still a press. The
 // first drag places every box of the view where it shows, so a box moved moves no other,
-// and a node added later takes its column's place. While shift is held, the boxes move
-// left and right or up and down alone.
+// and a node added later shows under the boxes placed. While shift is held, the boxes
+// move left and right or up and down alone.
 void Graph::drag(glm::vec2 to) {
   Grab &grab = *_grab;
   const std::span<const Placed> placed = _layout.placed();

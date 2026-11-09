@@ -462,19 +462,39 @@ private:
 
   // Each box at its column's left, or where a person placed it. Inside a box, a place
   // stays inside it, as a drag keeps it, though an .ini written before the box held it
-  // may say otherwise.
+  // may say otherwise. Beside boxes placed, those the graph alone puts, as a view loaded
+  // or a node added since, keep their columns but start a line under the boxes placed,
+  // at their left, not where the level starts with none placed, which the boxes placed
+  // may lie far from; what lies outside keeps its side.
   void place(const Boxes &boxes,
              std::size_t level,
              const std::vector<std::size_t> &inner,
              const Arranged &arranged) {
+    constexpr std::int32_t far = std::numeric_limits<std::int32_t>::max();
+    glm::ivec2 placed_from(far, -far); // the boxes placed: their left, and their bottom
+    glm::ivec2 alone_from(far);        // the boxes the graph alone puts: their top left
     for (const std::size_t box : inner) {
       Placed &placed = _placed[box];
       placed.offset.x = _lefts[placed.column];
-      if (const auto found = arranged.places.find(boxes.boxes[box].name);
-          found != arranged.places.end())
+      const auto found = arranged.places.find(boxes.boxes[box].name);
+      if (found != arranged.places.end())
         placed.offset =
             level == no_box ? found->second : glm::max(found->second, glm::ivec2(0));
+      if (!boxes.boxes[box].role)
+        continue;
+      const glm::ivec2 end = placed.offset + glm::ivec2(placed.extent);
+      if (found == arranged.places.end())
+        alone_from = glm::min(alone_from, placed.offset);
+      else
+        placed_from = {std::min(placed_from.x, placed.offset.x),
+                       std::max(placed_from.y, end.y)};
     }
+    if (placed_from.x == far || alone_from.x == far)
+      return;
+    const glm::ivec2 by = placed_from + glm::ivec2(0, line_spacing) - alone_from;
+    for (const std::size_t box : inner)
+      if (boxes.boxes[box].role && !arranged.places.contains(boxes.boxes[box].name))
+        _placed[box].offset += by;
   }
 
   // Each column as wide as its widest box, and its boxes one under the other, a line of
