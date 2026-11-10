@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Write C++ and GLSL side by side. Wire them as a graph. Change them while they run.</b><br />
-  A Vulkan engine for real-time visuals and GPU compute, whose programs are nodes and connections.
+  A Vulkan engine for real-time visuals and GPU compute, whose programs are nodes and connections. Running on Linux and Windows.
 </p>
 
 <p align="center">
@@ -13,7 +13,10 @@
   <img src="docs/images/logos/cmake.svg" alt="CMake" height="34" align="middle" />
   &nbsp;&nbsp;&nbsp;
   <img src="docs/images/logos/GLSL_Logo_(Unofficial).svg" alt="GLSL" height="34" align="middle" />
+  
 </p>
+
+
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
@@ -25,9 +28,6 @@
   <a href="#license">License</a>
 </p>
 
-<p align="center"><sub>
-  Running on Linux and Windows.
-</sub></p>
 
 ![The Vulpen ide: a node's C++ on the left, the camera of the ray-cubes example, and on the right the project's graph and the mirror cubes it ray traces](docs/images/hero.png)
 
