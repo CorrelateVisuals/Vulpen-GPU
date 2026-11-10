@@ -1,0 +1,36 @@
+// What the draw makes of each triangle the stage before hands on: the triangle and its
+// mirror, upside down about its middle, a star of six points, each corner keeping its
+// color.
+//
+// Each way data reaches here is commented out: uncomment what you use and delete the
+// rest; a pass block field nothing fills is refused. A node's shaders share one pass
+// block: declare it in the shader that reads it, or for all in a file they #include.
+// #include "baseclasses/GpuLayout.glsl" // the pass block's types, and frame.time
+// layout(set = 1, binding = 0) uniform Pass {
+//   float spread; // from you, no C++: node set <node> param=spread=0.25
+// } pass;
+layout(triangles) in;
+layout(triangle_strip, max_vertices = 6) out;
+
+// From the .vert, or the .tese, one a corner, at the location and type it writes.
+layout(location = 0) in vec3 colors[];
+
+// To the .frag, which reads it at the same location and type.
+layout(location = 0) out vec3 color;
+
+void main() {
+  const float middle =
+      (gl_in[0].gl_Position.y + gl_in[1].gl_Position.y + gl_in[2].gl_Position.y) / 3.0;
+  for (int copy = 0; copy < 2; ++copy) {
+    for (int corner = 0; corner < 3; ++corner) {
+      gl_Position = gl_in[corner].gl_Position;
+      if (copy == 1)
+        gl_Position.y = 2.0 * middle - gl_Position.y;
+      // gl_Position.x += copy == 0 ? -pass.spread : pass.spread;
+      // gl_Position.xy *= 1.0 + 0.25 * sin(frame.time); // in and out, as time goes
+      color = colors[corner];
+      EmitVertex();
+    }
+    EndPrimitive();
+  }
+}

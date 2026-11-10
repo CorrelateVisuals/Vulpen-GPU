@@ -1,0 +1,28 @@
+// Where each point the .tesc cut the triangle into goes: among the patch's three corners,
+// as near each as gl_TessCoord says, waving with frame.time; its color is that nearness,
+// red, green and blue, so the triangle keeps its colors as its edges wave.
+//
+// Each way data reaches here is commented out: uncomment what you use and delete the
+// rest; a pass block field nothing fills is refused. A node's shaders share one pass
+// block: declare it in the shader that reads it, or for all in a file they #include.
+#include "baseclasses/GpuLayout.glsl" // the pass block's types, and frame.time
+// layout(set = 1, binding = 0) uniform Pass {
+//   float height; // from you, no C++: node set <node> param=height=0.1
+// } pass;
+layout(triangles, equal_spacing, ccw) in;
+
+// From the .tesc, one a corner, at the location and type it writes.
+// layout(location = 0) in vec3 colors[];
+
+// To the .frag, or a .geom, which reads it at the same location and type.
+layout(location = 0) out vec3 color;
+
+void main() {
+  const vec3 near = gl_TessCoord; // to each corner, together 1
+  gl_Position = near.x * gl_in[0].gl_Position + near.y * gl_in[1].gl_Position +
+                near.z * gl_in[2].gl_Position;
+  gl_Position.y += 0.05 * sin(12.0 * gl_Position.x + 3.0 * frame.time);
+  // gl_Position.y += pass.height * sin(12.0 * gl_Position.x);
+  color = near;
+  // color = near.x * colors[0] + near.y * colors[1] + near.z * colors[2];
+}

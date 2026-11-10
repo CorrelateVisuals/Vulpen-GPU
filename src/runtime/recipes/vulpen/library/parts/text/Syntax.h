@@ -46,7 +46,8 @@ constexpr std::string_view python_types =
 constexpr std::string_view shell_keywords =
     " case declare do done elif else esac exit export fi for function if in local"
     " readonly return select shift then until unset while ";
-constexpr std::string_view coded = " .cpp .h .hpp .cc .c .glsl .vert .frag .comp ";
+constexpr std::string_view coded =
+    " .cpp .h .hpp .cc .c .glsl .vert .tesc .tese .geom .frag .comp ";
 constexpr std::string_view keyed = " .vlp .ini ";
 constexpr std::string_view cmake_file = "CMakeLists.txt";
 constexpr std::string_view exponents = "eEpP"; // a sign after one goes on a number

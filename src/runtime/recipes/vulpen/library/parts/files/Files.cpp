@@ -31,11 +31,17 @@ struct Start {
   std::string_view extension;
   std::string_view word; // as node set takes it; empty for none
 };
-constexpr std::array<Start, 5> starts{{{".vert", "vertex_count=3"},
+constexpr std::array<Start, 8> starts{{{".vert", "vertex_count=3"},
+                                       {".tesc", ""},
+                                       {".tese", ""},
+                                       {".geom", ""},
                                        {".frag", ""},
                                        {".comp", "invocations=64"},
                                        {".cpp", ""},
                                        {".h", ""}}};
+// The tessellation stages, which Vulkan runs only together, so new making one where the
+// other is not makes both.
+constexpr std::array<std::string_view, 2> tessellation{".tesc", ".tese"};
 constexpr std::string_view start_name = "Name";
 
 // A path as the prompt shows a folder, from where vulpen started, so an answer names it
@@ -172,8 +178,9 @@ bool named(const VP::View &view, std::string_view node) {
 void sources_below(VP::FilePort &files,
                    const std::filesystem::path &folder,
                    std::vector<std::filesystem::path> &found) {
-  constexpr std::array<std::string_view, 7> sources{
-      ".cpp", ".h", ".hpp", ".comp", ".vert", ".frag", ".glsl"};
+  constexpr std::array<std::string_view, 10> sources{
+      ".cpp", ".h", ".hpp", ".comp", ".vert", ".tesc", ".tese", ".geom", ".frag",
+      ".glsl"};
   for (const std::string &name : files.list(folder.string()))
     if (name.starts_with('.'))
       continue;
@@ -624,18 +631,19 @@ class Files final : public VP::Operator {
 
   // Each path, all checked before one is made, so a line refused makes nothing: a folder
   // for one ending in / or with no extension, as a node's name has none, else a file, as
-  // its start has it. In a view each folder made is a node the line adds, a node a start
-  // needs a word of gets it where it has none, and each view is saved once.
+  // its start has it, a tessellation stage with the other where that is not there. In a
+  // view each folder made is a node the line adds, a node a start needs a word of gets it
+  // where it has none, and each view is saved once.
   void make(VP::Call &call) const {
     std::vector<std::pair<std::filesystem::path, std::optional<std::string>>> made;
     std::vector<Graphed> graphs;
-    for (const std::string_view word : call.arguments()) {
-      const std::filesystem::path path = bare(word);
-      const bool folder =
-          std::filesystem::path(word).filename().empty() || !path.has_extension();
-      const bool twice =
-          std::ranges::any_of(made, [&](const auto &one) { return one.first == path; });
-      if (twice || there(call.files(), path))
+    const auto taken = [&](const std::filesystem::path &path) {
+      return there(call.files(), path) || std::ranges::any_of(made, [&](const auto &one) {
+               return one.first == path;
+             });
+    };
+    const auto add = [&](const std::filesystem::path &path, bool folder) {
+      if (taken(path))
         throw std::runtime_error(std::format("{} is there already", shown(path)));
       const std::optional<Held> held = held_by(call, path);
       Graphed *const graph = held ? &graphed(graphs, held->name) : nullptr;
@@ -645,6 +653,19 @@ class Files final : public VP::Operator {
       made.emplace_back(path,
                         folder ? std::nullopt
                                : std::optional(started(call.files(), path, held, graph)));
+    };
+    for (const std::string_view word : call.arguments()) {
+      const std::filesystem::path path = bare(word);
+      add(path, std::filesystem::path(word).filename().empty() || !path.has_extension());
+    }
+    for (std::size_t at = 0, given = made.size(); at < given; ++at) {
+      std::filesystem::path other = made[at].first;
+      const auto stage = std::ranges::find(tessellation, other.extension().string());
+      if (stage == tessellation.end())
+        continue;
+      other.replace_extension(tessellation[stage == tessellation.begin() ? 1 : 0]);
+      if (!taken(other))
+        add(other, false);
     }
     std::string names;
     for (const auto &[path, text] : made) {

@@ -101,16 +101,18 @@ inline std::pair<std::string_view, std::size_t> numbered(std::string_view name) 
 }
 
 // The files new starts that a node's folder holding these lacks, each named for the
-// node's last name, as class_of gives it: its C++, a compute shader beside C++ alone, or
-// a lone half's other, as Name.frag beside a lone Name.vert; what its menu offers and
-// new with no path makes, so both name them alike (RV09).
+// node's last name, as class_of gives it: its C++, a compute shader beside C++ alone, a
+// lone half's other, as Name.frag beside a lone Name.vert, and between a draw's .vert
+// and .frag, a geometry stage and the tessellation stages, which new makes together;
+// what its menu offers and new with no path makes, so both name them alike (RV09).
 inline std::vector<std::string> lacking(std::string_view node,
                                         std::span<const std::string> files) {
   const auto holds = [&](std::string_view end) {
     return std::ranges::any_of(files,
                                [&](const std::string &file) { return file.ends_with(end); });
   };
-  constexpr std::array<std::string_view, 3> shaders{".comp", ".vert", ".frag"};
+  constexpr std::array<std::string_view, 6> shaders{
+      ".comp", ".vert", ".tesc", ".tese", ".geom", ".frag"};
   const std::string stem = class_of(node.substr(node.rfind('.') + 1));
   std::vector<std::string> words;
   if (!holds(".cpp"))
@@ -119,6 +121,12 @@ inline std::vector<std::string> lacking(std::string_view node,
     words.push_back(stem + ".comp");
   if (holds(".vert") != holds(".frag"))
     words.push_back(stem + (holds(".vert") ? ".frag" : ".vert"));
+  if (holds(".tesc") != holds(".tese"))
+    words.push_back(stem + (holds(".tesc") ? ".tese" : ".tesc"));
+  if (holds(".vert") && holds(".frag") && !holds(".geom"))
+    words.push_back(stem + ".geom");
+  if (holds(".vert") && holds(".frag") && !holds(".tesc") && !holds(".tese"))
+    words.push_back(stem + ".tesc");
   return words;
 }
 

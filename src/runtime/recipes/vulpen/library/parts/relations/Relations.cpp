@@ -54,8 +54,19 @@ constexpr std::string_view blanks = " \t\r";
 enum class Language : std::uint8_t { none, code, python, cmake, markdown, shell, manifest };
 
 Language language_of(const std::filesystem::path &file) {
-  static constexpr auto code = std::to_array<std::string_view>(
-      {".h", ".hpp", ".c", ".cpp", ".cc", ".inl", ".glsl", ".vert", ".frag", ".comp"});
+  static constexpr auto code = std::to_array<std::string_view>({".h",
+                                                                ".hpp",
+                                                                ".c",
+                                                                ".cpp",
+                                                                ".cc",
+                                                                ".inl",
+                                                                ".glsl",
+                                                                ".vert",
+                                                                ".tesc",
+                                                                ".tese",
+                                                                ".geom",
+                                                                ".frag",
+                                                                ".comp"});
   const std::string extension = file.extension().string();
   if (file.filename() == "CMakeLists.txt" || extension == ".cmake")
     return Language::cmake;
