@@ -10,7 +10,7 @@
 //                    // node's image: connect <name> <its node>.<its out> <node>.picture
 // } pass;
 
-// From the .vert, each at the location and type it writes.
+// From the .vert, or a .tese or .geom after it, each at the location and type it writes.
 layout(location = 0) in vec3 color;
 // layout(location = 1) in vec2 uv;
 
