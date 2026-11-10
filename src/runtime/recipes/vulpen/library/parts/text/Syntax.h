@@ -207,13 +207,22 @@ std::size_t closed_at(std::string_view row, std::size_t from, Open &open) {
   return end + close.size();
 }
 
-// Where a comment runs to the row's end: // in code; # in a manifest or an .ini; # in
-// Python, CMake and shell where it starts a word, so a#b stays one.
+// What starts a comment that runs to the row's end: // in code, # in the others; none in
+// a file of no syntax.
+std::string_view line_comment(Syntax syntax) {
+  if (syntax == Syntax::plain)
+    return {};
+  return syntax == Syntax::code ? "//" : "#";
+}
+
+// Where a comment runs to the row's end: in code and in a manifest or an .ini where its
+// mark is; in Python, CMake and shell where it starts a word, so a#b stays one.
 bool comment_at(std::string_view row, std::size_t at, Syntax syntax) {
-  if (syntax == Syntax::code)
-    return row.substr(at).starts_with("//");
-  return row[at] == '#' && (syntax == Syntax::keyed || at == 0 ||
-                            (!letter(row[at - 1]) && !digit(row[at - 1])));
+  const std::string_view mark = line_comment(syntax);
+  if (mark.empty() || !row.substr(at).starts_with(mark))
+    return false;
+  return syntax == Syntax::code || syntax == Syntax::keyed || at == 0 ||
+         (!letter(row[at - 1]) && !digit(row[at - 1]));
 }
 
 // Hands each run of the row in one role to each, as from, to and the role, in order and

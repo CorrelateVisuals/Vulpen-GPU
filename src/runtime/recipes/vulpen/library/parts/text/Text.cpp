@@ -34,6 +34,7 @@ constexpr std::size_t indent = 2; // Tab types spaces to a multiple of this colu
 constexpr std::size_t undo_room = 1000;
 constexpr std::string_view undo_key = "z";
 constexpr std::string_view select_all_key = "a"; // with control, the whole file
+constexpr std::string_view comment_key = "/";    // with control, the rows a comment
 // The tab of an editor holding no file, so it still shows as open, empty, and a strip that
 // stacks it with other contents has a tab to show it again by.
 constexpr std::string_view empty_tab = "editor";
@@ -294,6 +295,60 @@ bool changed_by(Document &document, std::string_view key, bool control) {
     erase(document, caret, after(document, caret));
   else
     return false;
+  return true;
+}
+
+// Where a row's text starts, past its indent; its end for a blank row.
+std::size_t text_start(std::string_view row) {
+  return std::min(row.find_first_not_of(' '), row.size());
+}
+
+// A spot on a row an edit put text in at a column, or took text out from there, goes with
+// the text after it.
+void shift(Spot &spot,
+           std::size_t row,
+           std::size_t at,
+           std::size_t put,
+           std::size_t taken) {
+  if (spot.row == row && spot.column >= at)
+    spot.column = spot.column - std::min(spot.column - at, taken) + put;
+}
+
+// Control with /: the rows of the selection, or the caret's alone, but a last row the
+// selection only reaches the start of, made comments by the mark the file's syntax starts
+// one with, at the least indent of those holding text, a blank after it; or, when each of
+// those is a comment already, its mark taken out, and a blank after it. A blank row stays
+// as it is, and so does a selection's start where a mark goes in, so the selection takes
+// it in. False when nothing changes: no row holds text, or the file is of no syntax,
+// which has no such mark.
+bool commented(Document &document) {
+  const std::string_view mark = line_comment(document.syntax);
+  const auto [from, to] = selection(document);
+  const std::size_t last = to.row > from.row && to.column == 0 ? to.row - 1 : to.row;
+  std::size_t indent = std::string::npos;
+  bool comments = true;
+  for (const std::string_view row :
+       std::span(document.lines).subspan(from.row, last - from.row + 1))
+    if (text_start(row) < row.size()) {
+      indent = std::min(indent, text_start(row));
+      comments = comments && row.substr(text_start(row)).starts_with(mark);
+    }
+  if (mark.empty() || indent == std::string::npos)
+    return false;
+  for (std::size_t row = from.row; row <= last; ++row) {
+    std::string &line = document.lines[row];
+    if (text_start(line) == line.size())
+      continue;
+    const std::size_t at = comments ? text_start(line) : indent;
+    const bool blank = line.compare(at + mark.size(), 1, " ") == 0;
+    const std::size_t taken = comments ? mark.size() + (blank ? 1 : 0) : 0;
+    const std::string put = comments ? std::string() : std::string(mark) + ' ';
+    line.replace(at, taken, put);
+    for (Spot *const spot : {&document.caret, &document.anchor})
+      if (from == to || *spot != from || at != from.column)
+        shift(*spot, row, at, put.size(), taken);
+  }
+  document.changed = document.restyle = true;
   return true;
 }
 
@@ -576,8 +631,8 @@ bool Text::escape(VP::Cook &frame, const VP::Event &event, const Grid &grid) {
 
 // Typed text goes in at the caret, and a key moves the caret, selecting while shift is
 // held, changes the text, or with control copies, cuts or pastes, selects the whole file,
-// or takes the last edit back, with shift too makes it again; any other does nothing
-// here. With no room it takes none.
+// makes the rows comments or takes that back, or takes the last edit back, with shift too
+// makes it again; any other does nothing here. With no room it takes none.
 void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) {
   if (event.kind == VP::Event::Kind::key && event.name == "shift")
     _shift = event.down;
@@ -607,6 +662,7 @@ void Text::edit(VP::InputPort &input, const VP::Event &event, const Grid &grid) 
       document.anchor = *to;
   } else if (Change change = before_edit(document);
              (_control && clip(input, document, event.name)) ||
+             (_control && event.name == comment_key && commented(document)) ||
              changed_by(document, event.name, _control)) {
     keep(document, std::move(change), rows, {});
   } else {
