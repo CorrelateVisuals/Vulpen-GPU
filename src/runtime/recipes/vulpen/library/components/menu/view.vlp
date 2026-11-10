@@ -6,7 +6,8 @@
 # it drops over, so it draws over it; and connects the menus part's at to menu.first's
 # place, its first, second and third to each column's list and hit's items, the font's
 # metrics to each column's list, the theme to the rects and the glyphs, and the font and
-# its atlas to the glyphs.
+# its atlas to the glyphs. Its hits send a word's press as it is, so it reaches the menus
+# in the frame the press shuts them, and the terminal shows only the line it ends.
 [manifest]
 version = 1
 
@@ -18,6 +19,7 @@ param  = drop=below
 
 [node "menu.first-hit"]
 recipe = hit
+param  = typed=no
 
 [node "menu.first-rects"]
 recipe = rects
@@ -31,6 +33,7 @@ param  = drop=right
 
 [node "menu.second-hit"]
 recipe = hit
+param  = typed=no
 
 [node "menu.second-rects"]
 recipe = rects
@@ -44,6 +47,7 @@ param  = drop=right
 
 [node "menu.third-hit"]
 recipe = hit
+param  = typed=no
 
 [node "menu.third-rects"]
 recipe = rects

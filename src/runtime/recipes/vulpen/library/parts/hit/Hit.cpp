@@ -2,6 +2,7 @@
 #include "contracts/Rect.h"
 #include "runtime/Operator.h"
 #include "shared/Ini.h"
+#include "shared/Params.h"
 
 #include <glm/geometric.hpp>
 
@@ -28,9 +29,14 @@ constexpr std::string_view type_command = "type";
 // other's last word after it, as a tab moves among its strip's; a right press on one
 // sends its menu, as a tab's opens what to do with it. Connecting it makes
 // anything laid out as Rects pressable, so no drawing part reads the pointer, and what is
-// drawn is what is pressed.
+// drawn is what is pressed. With typed=no a press sends its command as it is, as a
+// menu's word does: the menus hand the line it ends to the terminal themselves, and its
+// press must reach them in the frame the press shuts them.
 class Hit final : public VP::Operator {
   void bind(VP::Bind &node) override {
+    const std::string typed = node.param<std::string>("typed");
+    check_word("typed", typed, {"yes", "no"});
+    _typed = typed != "no";
     _items = &node.input<VP_VIEW::Items>("items");
     _rects = &node.input<VP_VIEW::Rects>("rects");
     _marks = &node.input<VP_VIEW::Rects>("marks");
@@ -96,14 +102,14 @@ class Hit final : public VP::Operator {
     const bool marked =
         *at < _marks->size() && VP_VIEW::contains((*_marks)[*at], _pointer);
     if (const std::string command = marked ? item.close : item.command; !command.empty())
-      typed(frame.commands(), command);
+      send(frame.commands(), command);
   }
 
   // A press runs its line in the terminal, as a key's chord and a menu's line do, so the
   // terminal shows it and what it answers, and undo takes it back as one step; with no
-  // terminal in a window to type it, as it is.
-  static void typed(VP::CommandPort &commands, const std::string &line) {
-    const bool terminal = registered(type_command, commands.usages());
+  // terminal in a window to type it, or typed=no, as it is.
+  void send(VP::CommandPort &commands, const std::string &line) const {
+    const bool terminal = _typed && registered(type_command, commands.usages());
     commands.send(terminal ? std::format("{} {}", type_command, line) : line);
   }
 
@@ -120,6 +126,7 @@ class Hit final : public VP::Operator {
   const VP_VIEW::Items *_items = nullptr;
   const VP_VIEW::Rects *_rects = nullptr;
   const VP_VIEW::Rects *_marks = nullptr;
+  bool _typed = true; // a press goes through the terminal's type
   glm::vec2 _pointer{}; // as the events so far left it
   std::optional<std::size_t> _hovered; // the Item the pointer is on, as last seen
   std::optional<std::size_t> _pressed; // the Item a press is on, until it is let go

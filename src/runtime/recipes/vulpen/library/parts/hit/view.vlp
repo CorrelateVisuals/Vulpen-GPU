@@ -1,7 +1,9 @@
 # The hit part: one node whose operator is Hit; a press on one of the Rects it reads sends
 # the command of the Item shown there, or on the Item's close mark, which marks places,
-# its close command; the pointer coming onto an Item not current sends its hover.
+# its close command; the pointer coming onto an Item not current sends its hover. A press
+# runs its line through the terminal's type; with typed=no it sends it as it is.
 [manifest]
 version = 1
 
 [node "hit"]
+param = typed=yes
