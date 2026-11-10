@@ -297,10 +297,13 @@ void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
     bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
   } else {
     const Bound &colors = bound.fragment ? *bound.fragment : bound;
-    bound.pipeline.emplace(_wiring.pipelines,
-                           bound.stage(vertex_stage),
-                           colors.stage(fragment_stage),
-                           render_pass);
+    std::vector<ShaderStage> stages;
+    for (const DrawStage &stage : draw_stages)
+      if (const Bound &holder = stage.extension == fragment_stage ? colors : bound;
+          holds_stage(*holder.node, stage.extension))
+        stages.push_back(
+            {.stage = stage.stage, .shader = &holder.stage(stage.extension)});
+    bound.pipeline.emplace(_wiring.pipelines, stages, render_pass);
     if (bound.fragment)
       from += std::format(" and {}'s {}",
                           colors.node->name,

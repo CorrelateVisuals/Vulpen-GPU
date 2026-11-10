@@ -35,6 +35,51 @@ std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
       shaders, [&](const std::string &shader) { return shader.ends_with(stage); });
 }
 
+// A varying as the stage before it and the stage after it match it: one a corner, an
+// array's element, where a stage takes a patch's or a primitive's corners, as the
+// tessellation and geometry stages' inputs and the tessellation control stage's outputs.
+std::string_view per_corner(const Varying &varying, std::string_view stage, bool input) {
+  constexpr std::string_view array = "[]";
+  const bool arrayed = stage == tessellation_control_stage ||
+                       (input && (stage == tessellation_evaluation_stage ||
+                                  stage == geometry_stage));
+  const std::string_view type = varying.type;
+  return arrayed && type.ends_with(array) ? type.substr(0, type.size() - array.size())
+                                          : type;
+}
+
+// A stage of a node's own draw reads only what the stage before it writes, at the same
+// location with the same type, as check_varyings asks of a draw over two nodes, so none
+// reads what nothing wrote (GLSL02).
+void reads(const Shader &writer,
+           std::string_view written,
+           const Shader &reader,
+           std::string_view reading) {
+  const std::vector<Varying> &outputs = writer.outputs();
+  for (const Varying &input : reader.inputs()) {
+    const auto output = std::ranges::find(outputs, input.location, &Varying::location);
+    if (output == outputs.end())
+      throw std::runtime_error(std::format("{}: its {} reads a {} at location {}, which "
+                                           "its {} writes nothing to",
+                                           input.name,
+                                           reading,
+                                           input.type,
+                                           input.location,
+                                           written));
+    if (per_corner(*output, written, false) != per_corner(input, reading, true))
+      throw std::runtime_error(std::format("{}: its {} reads a {} at location {}, but "
+                                           "its {} writes {} there as a {}; a varying's "
+                                           "ends share both",
+                                           input.name,
+                                           reading,
+                                           input.type,
+                                           input.location,
+                                           written,
+                                           output->name,
+                                           output->type));
+  }
+}
+
 // Whether a field a shader reads holds what a writer writes, as a connection between them
 // is checked: a shader's buffer alike by stride and type, what C++ fills member for
 // member.
@@ -161,12 +206,18 @@ std::string joining(const View &view,
 bool Schedule::check_counts(Bound &bound) const {
   const Node &node = *bound.node;
   const std::vector<std::string> &shaders = bound.shaders_named;
-  const bool dispatch = shaders.size() == 1 && count_stage(shaders, compute_stage) == 1;
-  const bool fragment = shaders.size() == 1 && count_stage(shaders, fragment_stage) == 1;
-  const bool vertex = shaders.size() == 1 && count_stage(shaders, vertex_stage) == 1;
-  const bool draw = vertex || (shaders.size() == 2 &&
-                               count_stage(shaders, vertex_stage) == 1 &&
-                               count_stage(shaders, fragment_stage) == 1);
+  const auto count = [&](std::string_view stage) { return count_stage(shaders, stage); };
+  const bool dispatch = shaders.size() == 1 && count(compute_stage) == 1;
+  const bool fragment = shaders.size() == 1 && count(fragment_stage) == 1;
+  const bool vertex = shaders.size() == 1 && count(vertex_stage) == 1;
+  // Between its .vert and its .frag, a draw may run a .geom, and a .tesc with a .tese,
+  // which Vulkan runs only together.
+  const bool between = count(geometry_stage) <= 1 &&
+                       count(tessellation_control_stage) <= 1 &&
+                       count(tessellation_control_stage) ==
+                           count(tessellation_evaluation_stage);
+  const bool draw = vertex || (count(vertex_stage) == 1 && count(fragment_stage) == 1 &&
+                               count(compute_stage) == 0 && between);
   const std::size_t before = bound.errors.size();
   if (shaders.empty()) {
     if (node.counts_invocations() || node.vertex_count != 0 || !node.instance_count.empty())
@@ -174,8 +225,10 @@ bool Schedule::check_counts(Bound &bound) const {
                                 "no shader to run them");
   } else if (!dispatch && !draw && !fragment) {
     bound.errors.push_back(std::format("its folder holds the shaders {}, but a node runs "
-                                       "one .comp, or one .vert and one .frag, or one "
-                                       "of these two, its varyings joining the other",
+                                       "one .comp; or a .vert and a .frag, with a .geom "
+                                       "or a .tesc and a .tese between them, or both; or "
+                                       "a lone .vert or .frag, its varyings joining the "
+                                       "other's node",
                                        joined(shaders, " and ")));
   } else if (dispatch && (node.vertex_count != 0 || !node.counts_invocations())) {
     bound.errors.emplace_back(
@@ -237,35 +290,28 @@ void Schedule::check_stages(Bound &bound) const {
 
 // Before the pipeline is made, which each of these would make wrongly: a fragment node's
 // shader reads the pass block of the vertex node it draws with, so it declares none; a
-// node's own .frag reads only what its .vert writes, at the same location with the same
-// type, as check_varyings asks of a draw over two nodes, so none reads what nothing wrote
-// (GLSL02); a draw stores into no image, as a store from a draw needs features past the
-// Vulkan floor (RVK01); and a dispatch stores into one only where this GPU indexes
-// images[].
+// node's own draw runs a geometry or a tessellation stage only where this GPU has its
+// feature (RVK01), and each stage reads only what the stage before it writes (reads); a
+// draw stores into no image, as a store from a draw needs features past the Vulkan floor
+// (RVK01); and a dispatch stores into one only where this GPU indexes images[].
 void Schedule::check_shaders(const Bound &bound) const {
   if (is_fragment(*bound.node) && !bound.fields.empty())
     throw std::runtime_error(
         "a fragment node declares no pass block yet: the vertex node it draws with holds "
         "the draw's, and hands on what the fragment shader needs as varyings");
   if (is_draw(*bound.node) && !is_vertex(*bound.node)) {
-    const std::vector<Varying> &outputs = bound.stage(vertex_stage).outputs();
-    for (const Varying &input : bound.stage(fragment_stage).inputs()) {
-      const auto output = std::ranges::find(outputs, input.location, &Varying::location);
-      if (output == outputs.end())
-        throw std::runtime_error(std::format(
-            "{}: its .frag reads a {} at location {}, which its .vert writes nothing to",
-            input.name,
-            input.type,
-            input.location));
-      if (output->type != input.type)
-        throw std::runtime_error(std::format("{}: its .frag reads a {} at location {}, "
-                                             "but its .vert writes {} there as a {}; a "
-                                             "varying's ends share both",
-                                             input.name,
-                                             input.type,
-                                             input.location,
-                                             output->name,
-                                             output->type));
+    std::string_view writer;
+    for (const DrawStage &stage : draw_stages) {
+      if (!holds_stage(*bound.node, stage.extension))
+        continue;
+      if (!_wiring.resources.runs(stage.stage))
+        throw std::runtime_error(std::format("its {} runs only on a GPU with the feature "
+                                             "{}, which this one lacks",
+                                             stage.extension,
+                                             stage.feature));
+      if (!writer.empty())
+        reads(bound.stage(writer), writer, bound.stage(stage.extension), stage.extension);
+      writer = stage.extension;
     }
   }
   const auto image = std::ranges::find_if(bound.fields, &Field::image);

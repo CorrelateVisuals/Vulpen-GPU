@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <deque>
 #include <format>
 #include <stdexcept>
 #include <utility>
@@ -19,6 +20,8 @@ enum FrameMember : std::size_t { resolution, cursor, time, frame_index };
 constexpr std::array<std::pair<std::string_view, std::string_view>, 4> frame_members{
     {{"resolution", "uvec2"}, {"cursor", "vec2"}, {"time", "float"}, {"index", "uint"}}};
 constexpr float line_width = 1.0f; // the only width without the wideLines feature
+// A tessellated draw's patch: a triangle's corners, three vertices of its vertex_count.
+constexpr std::uint32_t patch_points = 3;
 constexpr std::uint32_t textures_binding = 0;
 constexpr std::uint32_t samplers_binding = 1;
 constexpr std::uint32_t images_binding = 2;
@@ -361,32 +364,34 @@ Pipeline::Pipeline(const Pipelines &pipelines, const Shader &compute)
 }
 
 // The vertex shader pulls its vertices from buffers by address (RV02), so the pipeline
-// takes no vertex input; the viewport follows the window, so it is set per frame.
+// takes no vertex input; the viewport follows the window, so it is set per frame. With
+// tessellation stages it draws patches of a triangle's corners, as it draws triangles
+// without them. A deque, as a shader module does not move.
 Pipeline::Pipeline(const Pipelines &pipelines,
-                   const Shader &vertex,
-                   const Shader &fragment,
+                   std::span<const ShaderStage> stages,
                    VkRenderPass render_pass)
     : _device(pipelines._device) {
-  pipelines.take_frame(vertex);
-  pipelines.take_frame(fragment);
-  const ShaderModule vertex_module(_device, vertex);
-  const ShaderModule fragment_module(_device, fragment);
-  const std::array stages{
-      VkPipelineShaderStageCreateInfo{
-          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-          .stage = VK_SHADER_STAGE_VERTEX_BIT,
-          .module = vertex_module.handle(),
-          .pName = "main"},
-      VkPipelineShaderStageCreateInfo{
-          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-          .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-          .module = fragment_module.handle(),
-          .pName = "main"}};
+  std::deque<ShaderModule> modules;
+  std::vector<VkPipelineShaderStageCreateInfo> infos;
+  bool tessellates = false;
+  for (const ShaderStage &stage : stages) {
+    pipelines.take_frame(*stage.shader);
+    infos.push_back({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                     .stage = stage.stage,
+                     .module = modules.emplace_back(_device, *stage.shader).handle(),
+                     .pName = "main"});
+    tessellates =
+        tessellates || stage.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+  }
   const VkPipelineVertexInputStateCreateInfo input{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
   const VkPipelineInputAssemblyStateCreateInfo assembly{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-      .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST};
+      .topology = tessellates ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+                              : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST};
+  const VkPipelineTessellationStateCreateInfo tessellation{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+      .patchControlPoints = patch_points};
   const VkPipelineViewportStateCreateInfo viewport{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
       .viewportCount = 1,
@@ -421,10 +426,11 @@ Pipeline::Pipeline(const Pipelines &pipelines,
       .pDynamicStates = dynamic.data()};
   const VkGraphicsPipelineCreateInfo info{
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-      .stageCount = static_cast<std::uint32_t>(stages.size()),
-      .pStages = stages.data(),
+      .stageCount = static_cast<std::uint32_t>(infos.size()),
+      .pStages = infos.data(),
       .pVertexInputState = &input,
       .pInputAssemblyState = &assembly,
+      .pTessellationState = tessellates ? &tessellation : nullptr,
       .pViewportState = &viewport,
       .pRasterizationState = &rasterization,
       .pMultisampleState = &multisample,

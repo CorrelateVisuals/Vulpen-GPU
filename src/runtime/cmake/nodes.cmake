@@ -202,7 +202,8 @@ function(vulpen_node view folder root)
     set(gates vulpen_view_${view}_gates)
   endif()
 
-  file(GLOB shaders CONFIGURE_DEPENDS ${folder}/*.comp ${folder}/*.vert ${folder}/*.frag)
+  file(GLOB shaders CONFIGURE_DEPENDS ${folder}/*.comp ${folder}/*.vert ${folder}/*.tesc
+       ${folder}/*.tese ${folder}/*.geom ${folder}/*.frag)
   set(spirv "")
   foreach(shader IN LISTS shaders)
     vulpen_spirv(${shader} ${out} ${include_flags})

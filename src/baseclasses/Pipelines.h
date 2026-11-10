@@ -87,13 +87,19 @@ private:
   mutable std::vector<std::pair<VkFormat, VkRenderPass>> _render_passes;
 };
 
-// A dispatch's pipeline, or a draw's for a render pass.
+// A shader of a draw, and the stage Vulkan runs it as.
+struct ShaderStage {
+  VkShaderStageFlagBits stage = VK_SHADER_STAGE_VERTEX_BIT;
+  const Shader *shader = nullptr;
+};
+
+// A dispatch's pipeline, or a draw's for a render pass, its stages in the order its data
+// goes through them, the vertex shader first and the fragment shader last.
 class Pipeline {
 public:
   Pipeline(const Pipelines &pipelines, const Shader &compute);
   Pipeline(const Pipelines &pipelines,
-           const Shader &vertex,
-           const Shader &fragment,
+           std::span<const ShaderStage> stages,
            VkRenderPass render_pass);
   Pipeline(Pipeline &&other) noexcept;
   Pipeline &operator=(Pipeline &&other) noexcept;

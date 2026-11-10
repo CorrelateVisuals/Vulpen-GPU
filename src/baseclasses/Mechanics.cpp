@@ -218,10 +218,14 @@ VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
                                       .queueCount = 1,
                                       .pQueuePriorities = &queue_priority};
   // What set 0's arrays of images need (RV02), all of which descriptor indexing brings
-  // but indexing images[], which a GPU without it leaves to no node (Resources::samples).
+  // but indexing images[], which a GPU without it leaves to no node (Resources::samples);
+  // and a draw's geometry and tessellation stages, which a GPU without them refuses
+  // (Resources::runs).
   VkPhysicalDeviceFeatures supported{};
   vkGetPhysicalDeviceFeatures(physical_device, &supported);
   const VkPhysicalDeviceFeatures features{
+      .geometryShader = supported.geometryShader,
+      .tessellationShader = supported.tessellationShader,
       .shaderSampledImageArrayDynamicIndexing = VK_TRUE,
       .shaderStorageImageArrayDynamicIndexing =
           supported.shaderStorageImageArrayDynamicIndexing};

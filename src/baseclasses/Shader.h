@@ -45,7 +45,8 @@ struct Field {
 };
 
 // What a stage hands the next, a varying, or what a fragment shader writes, a color: by
-// name, at the location the stages match it by, of a type as GLSL names it.
+// name, at the location the stages match it by, of a type as GLSL names it, an array's
+// as its element's and [], as a tessellation or a geometry stage takes one a corner.
 struct Varying {
   std::string name;
   std::uint32_t location = 0;

@@ -97,6 +97,25 @@ inline bool is_fragment(const Node &node) {
   return !is_draw(node) && holds_stage(node, fragment_stage);
 }
 
+// A draw's stages in the order its data goes through them, each with the stage Vulkan
+// runs it as and the device feature past the floor it needs, by Vulkan's name (VK04),
+// which a GPU may lack (RVK01); none for none.
+struct DrawStage {
+  std::string_view extension;
+  VkShaderStageFlagBits stage = VK_SHADER_STAGE_VERTEX_BIT;
+  std::string_view feature;
+};
+inline constexpr std::array<DrawStage, 5> draw_stages{
+    {{vertex_stage, VK_SHADER_STAGE_VERTEX_BIT, {}},
+     {tessellation_control_stage,
+      VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+      "tessellationShader"},
+     {tessellation_evaluation_stage,
+      VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+      "tessellationShader"},
+     {geometry_stage, VK_SHADER_STAGE_GEOMETRY_BIT, "geometryShader"},
+     {fragment_stage, VK_SHADER_STAGE_FRAGMENT_BIT, {}}}};
+
 // A draw's instances when its node gives them as a number, one when it gives none;
 // nothing when the used length of a port's buffer counts them.
 inline std::optional<std::uint32_t> instance_number(const Node &node) {

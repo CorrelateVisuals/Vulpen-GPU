@@ -95,6 +95,9 @@ public:
   bool samples(VkFormat format, Fill fill = Fill::copy) const;
   // The most workgroups a dispatch runs along x on this GPU.
   std::uint32_t max_compute_work_group_count() const;
+  // Whether a draw may run a shader of the stage: a geometry or a tessellation stage
+  // needs a feature past the Vulkan floor, which the device enables where the GPU has it.
+  bool runs(VkShaderStageFlagBits stage) const;
 
 private:
   const VkPhysicalDevice _physical_device;

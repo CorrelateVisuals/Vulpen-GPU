@@ -309,4 +309,15 @@ std::uint32_t Resources::max_compute_work_group_count() const {
   return properties.limits.maxComputeWorkGroupCount[0];
 }
 
+bool Resources::runs(VkShaderStageFlagBits stage) const {
+  VkPhysicalDeviceFeatures features{};
+  vkGetPhysicalDeviceFeatures(_physical_device, &features);
+  if (stage == VK_SHADER_STAGE_GEOMETRY_BIT)
+    return features.geometryShader == VK_TRUE;
+  if (stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT ||
+      stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+    return features.tessellationShader == VK_TRUE;
+  return true;
+}
+
 } // namespace VP

@@ -35,10 +35,11 @@ void draw(const VP::Log &log) {
   VP::Engine engine(log, &window);
   // The build puts the shaders beside the binary, so they are found from it (RP02).
   const std::filesystem::path folder = VP::Files::executable().parent_path();
-  const VP::Pipeline pipeline(engine.pipelines(),
-                              VP::Shader(folder / "Triangle.vert.spv"),
-                              VP::Shader(folder / "Triangle.frag.spv"),
-                              engine.render_pass());
+  const VP::Shader vertex(folder / "Triangle.vert.spv");
+  const VP::Shader fragment(folder / "Triangle.frag.spv");
+  const std::array stages{VP::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, &vertex},
+                          VP::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, &fragment}};
+  const VP::Pipeline pipeline(engine.pipelines(), stages, engine.render_pass());
   const std::array passes{VP::Pass{.bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS,
                                    .pipeline = pipeline.handle(),
                                    .vertex_count = corners}};

@@ -101,8 +101,8 @@ struct Node {
   std::string recipe;
   std::string operator_name;
   // The files in its folder, sorted: the folder decides, so a file put there is one of
-  // them. Its .vert and .frag make it a draw and its .comp a dispatch, as glslang reads
-  // the extension.
+  // them. Its .vert and .frag make it a draw, with a .geom and a .tesc and .tese between
+  // them if it holds them, and its .comp a dispatch, as glslang reads the extension.
   std::vector<std::string> files;
   std::uint32_t invocations = 0;  // a dispatch's threads
   // In place of a number: the port of a buffer it reads, whose length counts them, so a
@@ -141,13 +141,19 @@ struct Node {
 };
 
 // The build compiles each shader as the stage its extension names, as glslang does, so
-// the loader reads the stage from the same place. Every stage glslang names counts, so a
-// node holding one Vulpen does not run yet is told so.
+// the loader reads the stage from the same place.
 inline constexpr std::string_view compute_stage = ".comp";
 inline constexpr std::string_view vertex_stage = ".vert";
+inline constexpr std::string_view tessellation_control_stage = ".tesc";
+inline constexpr std::string_view tessellation_evaluation_stage = ".tese";
+inline constexpr std::string_view geometry_stage = ".geom";
 inline constexpr std::string_view fragment_stage = ".frag";
-inline constexpr std::array<std::string_view, 6> stages{
-    compute_stage, vertex_stage, fragment_stage, ".geom", ".tesc", ".tese"};
+inline constexpr std::array<std::string_view, 6> stages{compute_stage,
+                                                        vertex_stage,
+                                                        tessellation_control_stage,
+                                                        tessellation_evaluation_stage,
+                                                        geometry_stage,
+                                                        fragment_stage};
 
 inline bool holds_stage(const Node &node, std::string_view stage) {
   return std::ranges::any_of(

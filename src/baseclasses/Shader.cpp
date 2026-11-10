@@ -24,6 +24,7 @@ constexpr std::uint32_t op_execution_mode = 16;
 constexpr std::uint32_t op_type_int = 21;
 constexpr std::uint32_t op_type_float = 22;
 constexpr std::uint32_t op_type_vector = 23;
+constexpr std::uint32_t op_type_array = 28;
 constexpr std::uint32_t op_type_runtime_array = 29;
 constexpr std::uint32_t op_type_struct = 30;
 constexpr std::uint32_t op_type_pointer = 32;
@@ -151,6 +152,7 @@ void read(Module &module, std::uint32_t opcode, std::span<const std::uint32_t> o
     case spirv::op_type_int:
     case spirv::op_type_float:
     case spirv::op_type_vector:
+    case spirv::op_type_array:
     case spirv::op_type_runtime_array:
     case spirv::op_type_struct:
     case spirv::op_type_pointer: {
@@ -318,6 +320,16 @@ std::pair<std::vector<Field>, std::uint32_t> frame_block(const Module &module) {
   return {std::move(fields), end};
 }
 
+// A varying's type as GLSL names it, an array's with [] after its element's, as a
+// tessellation or a geometry stage takes a varying one a corner.
+std::string varying_name(const Module &module, std::uint32_t type_id) {
+  const auto found = module.types.find(type_id);
+  if (found == module.types.end() || found->second[0] != spirv::op_type_array)
+    return glsl_name(module, type_id);
+  const std::string element = varying_name(module, found->second.at(1));
+  return element.empty() ? element : element + "[]";
+}
+
 // What the shader writes out of its stage or reads in, by name; a built-in, or a block
 // GLSL leaves unnamed, is none.
 std::vector<Varying>
@@ -333,7 +345,7 @@ varyings_of(const Module &module,
     varyings.push_back(
         {.name = name->second,
          .location = location == module.locations.end() ? 0 : location->second,
-         .type = glsl_name(module, module.types.at(pointer).at(2))});
+         .type = varying_name(module, module.types.at(pointer).at(2))});
   }
   return varyings;
 }
