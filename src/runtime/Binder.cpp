@@ -50,24 +50,20 @@ bool waits_for_build([[maybe_unused]] std::string_view view) {
   }
 }
 
-// Whether the build has made none of a node's code yet, neither its shaders' SPIR-V nor
-// its module, as for a node of a project loaded before it was ever built.
+// Whether the build has yet to make some of a node's code, its module or a shader's
+// SPIR-V: all of it for a node of a project loaded before it was ever built, or a file
+// new beside what it built, as a .geom new beside a draw's .vert and .frag.
 bool unbuilt(const Node &node,
              const std::string &module,
              const std::filesystem::path &folder,
              const Modules &modules) {
-  bool code = runs_operator(node);
-  if (code && modules.built(module, folder))
-    return false;
-  for (const std::string &file : node.files) {
-    if (std::ranges::none_of(stages, [&](auto stage) { return file.ends_with(stage); }))
-      continue;
+  if (runs_operator(node) && !modules.built(module, folder))
+    return true;
+  return std::ranges::any_of(node.files, [&](const std::string &file) {
     std::error_code unread;
-    if (std::filesystem::exists(spirv_of(folder, file), unread))
-      return false;
-    code = true;
-  }
-  return code;
+    return std::ranges::any_of(stages, [&](auto stage) { return file.ends_with(stage); }) &&
+           !std::filesystem::exists(spirv_of(folder, file), unread);
+  });
 }
 
 } // namespace

@@ -263,9 +263,10 @@ struct Bound {
   // error; made by its module, so it goes with it.
   std::vector<Object> stand_ins;
   std::vector<std::string> errors;
-  // A hosted view's node of which a live run's build made nothing yet, as one of a project
-  // loaded before it was ever built: left out as by an error, but only waiting, so it says
-  // so quietly, as the build that makes it says why if it cannot (A02).
+  // A hosted view's node of which a live run's build has yet to make some code, as all of
+  // one of a project loaded before it was ever built, or a shader new beside those built:
+  // left out as by an error, but only waiting, so it says so quietly, as the build that
+  // makes it says why if it cannot (A02).
   bool unbuilt = false;
   // How many of its errors only wait for such a node, as a reader of what it writes: when
   // all of them, it says so quietly too.
