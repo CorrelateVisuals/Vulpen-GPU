@@ -26,7 +26,7 @@
 </p>
 
 <p align="center"><sub>
-  Early: commands and manifest words still change between versions. Tested on Linux and Windows; macOS is untested.
+  Running on Linux and Windows.
 </sub></p>
 
 ![The Vulpen ide: a node's C++ on the left, the camera of the ray-cubes example, and on the right the project's graph and the mirror cubes it ray traces](docs/images/hero.png)
