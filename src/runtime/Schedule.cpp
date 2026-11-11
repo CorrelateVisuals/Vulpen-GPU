@@ -149,6 +149,7 @@ Schedule::Schedule(const Wiring &wiring,
   check_connections();
   check_images();
   list_ports();
+  check_samples();
   make_buffers(replaced);
   if (replaced)
     keep_images(*replaced);
@@ -158,23 +159,24 @@ Schedule::Schedule(const Wiring &wiring,
     keep_stored(*replaced);
   make_passes();
   cost_from(replaced);
-  // Each error names the line that last added or changed the node, if a file holds it,
-  // else the view's file, in its folder as the lines are. A node left out answers no
-  // command either.
+  // Each error and warning names the line that last added or changed the node, if a file
+  // holds it, else the view's file, in its folder as the lines are. A node left out
+  // answers no command either.
   const std::string file =
       (view.file.parent_path().filename() / view.file.filename()).generic_string();
   for (Bound &bound : _bound) {
     if (!bound.errors.empty())
       drop_commands(bound);
+    const std::string named = std::format(
+        "{} node {}", bound.node->where.empty() ? file : bound.node->where, bound.node->name);
     // A node only waiting for the build says so quietly: the build says why if it fails.
     const bool waiting = bound.unbuilt || bound.waits == bound.errors.size();
     for (const std::string &error : bound.errors)
-      _wiring.log.write(waiting ? Level::info : Level::error,
-                        Tag::nod,
-                        std::format("{} node {}: {}",
-                                    bound.node->where.empty() ? file : bound.node->where,
-                                    bound.node->name,
-                                    error));
+      _wiring.log.write(
+          waiting ? Level::info : Level::error, Tag::nod, std::format("{}: {}", named, error));
+    if (bound.errors.empty())
+      for (const std::string &warning : bound.warnings)
+        _wiring.log.write(Level::warn, Tag::nod, std::format("{}: {}", named, warning));
   }
 }
 

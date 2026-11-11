@@ -734,6 +734,9 @@ class Finding:
 # manifest or a sourced file's line, and the node; a line's refusal names neither.
 BOUND = re.compile(r"\{!!!\} \S+ node \S+: ")
 WARNING = "{ ! }"
+# A node's warning as it binds, as a Texture nothing fills yet, says what a copy half made
+# lacks, as its errors do: judged once the copy is whole and loads again.
+BOUND_WARNING = re.compile(r"\{ ! \} \S+ node \S+: ")
 STARTED = "a file changed; building"
 # A live build builds each view vulpen hosts by itself, naming those that failed.
 FAILED = re.compile(r"live: the build of .+ failed")
@@ -808,7 +811,7 @@ class Run:
                 self.building = False
             if FAILED.search(line):
                 self.failed(lines[at + 1:])
-            elif WARNING in line:
+            elif WARNING in line and not BOUND_WARNING.search(line):
                 self.problems.append(("a warning", [line.strip()]))
             elif PROBLEM.search(line):
                 self.problems.append(("a validation message or sanitizer report",
@@ -879,11 +882,12 @@ def refusals(lines: list[str]) -> list[str]:
 
 
 def bound(lines: list[str], view: str) -> list[str]:
-    """The problems a view's nodes met as they bound, each once."""
+    """The problems a view's nodes met as they bound, errors and warnings, each once."""
     found = []
     for line in lines:
-        if ERROR in line and f"{view}/view.vlp" in line:
-            problem = line[line.index(ERROR):].strip()
+        mark = ERROR if ERROR in line else WARNING if WARNING in line else None
+        if mark and f"{view}/view.vlp" in line:
+            problem = line[line.index(mark):].strip()
             if problem not in found:
                 found.append(problem)
     return found

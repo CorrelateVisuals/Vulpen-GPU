@@ -282,6 +282,9 @@ struct Bound {
   // error; made by its module, so it goes with it.
   std::vector<Object> stand_ins;
   std::vector<std::string> errors;
+  // What it runs with but likely not as meant, as a Texture nothing fills: said only while
+  // it has no error, which would say more.
+  std::vector<std::string> warnings;
   // A hosted view's node of which a live run's build has yet to make some code, as all of
   // one of a project loaded before it was ever built, or a shader new beside those built:
   // left out as by an error, but only waiting, so it says so quietly, as the build that

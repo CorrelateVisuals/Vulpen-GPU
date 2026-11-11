@@ -668,9 +668,8 @@ void Schedule::check_connections() {
 }
 
 // Every image a node's C++ fills is sampled, by its own shaders or through a connection;
-// else its C++ would fill it for nothing. A Texture nothing reaches samples nothing, as
-// it does before its image is filled or drawn: it may wait for a command to connect it,
-// as the ide's waits for the view it presents.
+// else its C++ would fill it for nothing. A Texture nothing reaches is no error, as
+// check_samples has it.
 void Schedule::check_images() {
   for (Bound &bound : _bound) {
     if (bound.unbuilt)
@@ -794,6 +793,35 @@ void Schedule::list_ports() {
   }
   join_alike(_ports);
   list_values(_bound, _ports);
+}
+
+// A Texture nothing fills, by a connection or its C++, samples black, as it does before
+// its image is filled or drawn. A node whose C++ follows the view may wait for a command
+// to connect it, as the ide's images wait for the view they present; any other says so,
+// with the line that joins it where another node writes an image, but runs on, so the
+// rest of its picture shows between a shader's save and that line (A02).
+void Schedule::check_samples() {
+  for (Bound &bound : _bound) {
+    if (!bound.whole() || bound.asked_view)
+      continue;
+    for (const Field &field : bound.fields) {
+      if (!field.texture() || bound.fills(field.name) ||
+          connection_of(bound.node->name, field.name))
+        continue;
+      const auto port = std::ranges::find_if(_ports, [&](const NodePort &port) {
+        return port.node == bound.node->name && port.name == field.name;
+      });
+      const std::string reader = std::format("{}.{}", bound.node->name, field.name);
+      bound.warnings.push_back(
+          port == _ports.end() || port->alike.empty()
+              ? std::format("{} samples no image, so it reads black: connect it to an "
+                            "image another node writes, or fill it from the operator",
+                            field.name)
+              : std::format("{} samples no image, so it reads black: {}",
+                            field.name,
+                            joining(_view, port->alike.front(), std::span(&reader, 1))));
+    }
+  }
 }
 
 

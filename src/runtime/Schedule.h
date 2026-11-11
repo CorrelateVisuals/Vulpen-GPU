@@ -188,6 +188,7 @@ private:
   void check_inputs(const Connection &connection);
   void check_images();
   void list_ports();
+  void check_samples();
   void keep_images(Schedule &replaced);
   void keep_stored(Schedule &replaced);
   void make_buffers(Schedule *replaced);
