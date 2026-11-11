@@ -70,7 +70,8 @@ bool unbuilt(const Node &node,
 // or reads, the line's own mistake: a port its shaders declare nothing for yet, in the
 // type the other end takes, a Texture for an image and an Image a dispatch stores into;
 // or a reader named first, as the writer goes first, the line that names the two the
-// other way round. Empty where neither is known, as for a draw, which writes no Image.
+// other way round. Empty where neither is known, as for a draw, which writes no Image,
+// or for a node with ports that way already, whose list names the one likely meant.
 std::string end_fix(std::span<const NodePort> ports,
                     const View &view,
                     const Connection &connection,
@@ -86,8 +87,11 @@ std::string end_fix(std::span<const NodePort> ports,
   const Endpoint *const other =
       !writes ? &connection.from : connection.to.empty() ? nullptr : &connection.to.front();
   const NodePort *const port = port_of(end);
-  if (!port && (writes ? holds_stage(*node.node, compute_stage)
-                       : !node.shaders_named.empty())) {
+  const bool none_that_way = std::ranges::none_of(ports, [&](const NodePort &each) {
+    return each.node == end.node && each.kind != "value" && each.writes == writes;
+  });
+  if (!port && none_that_way &&
+      (writes ? holds_stage(*node.node, compute_stage) : !node.shaders_named.empty())) {
     const NodePort *const known = other && !other->view() ? port_of(*other) : nullptr;
     return other && (other->view() || (known && known->kind == "image"))
                ? std::format("{} has no port {} yet: declare {} {}; in its pass block",
