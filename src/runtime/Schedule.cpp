@@ -684,15 +684,21 @@ void Schedule::make_passes() {
 
 // A node keeps what it cost through a rebuild, as an edit changes nothing it does, so
 // its smoothed times go on from where they were; and says why it is left out, as its
-// errors are all made by now, and whether it only waits, as the log says them below.
+// errors are all made by now, and whether it only waits, as the log says them below, or
+// with none its first warning.
 void Schedule::cost_from(const Schedule *replaced) {
   _costs.reserve(_bound.size());
-  for (const Bound &bound : _bound)
+  for (const Bound &bound : _bound) {
+    const bool warns = bound.errors.empty() && !bound.warnings.empty();
     _costs.push_back(
         {.node = bound.node->name,
-         .problem = bound.errors.empty() ? std::string_view() : bound.errors.front(),
+         .problem = !bound.errors.empty() ? std::string_view(bound.errors.front())
+                    : warns               ? std::string_view(bound.warnings.front())
+                                          : std::string_view(),
          .waits = !bound.errors.empty() &&
-                  (bound.unbuilt || bound.waits == bound.errors.size())});
+                  (bound.unbuilt || bound.waits == bound.errors.size()),
+         .warns = warns});
+  }
   for (const std::size_t at : _passed)
     _costs[at].runs = true;
   if (!replaced)

@@ -479,10 +479,12 @@ struct Cost {
   // Why it is left out, neither cooking nor running: the first error its bind met, as
   // the log names it, so a GUI shows it on the node where a person looks (A02); empty
   // while none keeps it out. Waits: that it only waits for the live build to make its
-  // code, which says why if it cannot. Last, so a module built before them reaches the
-  // others where it found them.
+  // code, which says why if it cannot. Warns: that the problem is its first warning
+  // instead, as it runs but likely not as meant, or draws nothing yet. Last, so a module
+  // built before them reaches the others where it found them.
   std::string_view problem;
   bool waits = false;
+  bool warns = false;
 };
 
 // A port of a node, as its files declare it and its bind found it, where a connection

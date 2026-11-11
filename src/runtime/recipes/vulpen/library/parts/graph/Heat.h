@@ -243,12 +243,12 @@ Fill fill_of(const Weight &weight, Heat heat, float most) {
 }
 
 // The border of a box holding a node left out, in the error role, or the warning role
-// while it only waits for the live build, which builds it in a moment; none for a box
-// whose nodes run, so its own role shows.
+// while it only waits for the live build, which builds it in a moment, or warns; none
+// for a box whose nodes run as meant, so its own role shows.
 std::optional<std::uint32_t> state_role(const Weight &weight) {
   if (weight.problem.empty())
     return {};
-  return weight.waits ? VP_VIEW::role("warning") : VP_VIEW::role("error");
+  return weight.waits || weight.warns ? VP_VIEW::role("warning") : VP_VIEW::role("error");
 }
 
 // Whether a box's tip has anything to tell of it: a node it holds runs or is left out.
@@ -277,7 +277,8 @@ void tell_wrapped(VP_VIEW::Items &tip,
 
 // A box's state and cost, as its tip tells it: its name; why a node it holds is left out,
 // building while it only waits for the live build, else failed, as its bind's first error
-// names it, in rows of at most width columns; then its milliseconds a frame on the CPU
+// names it, or its first warning; in rows of at most width columns; then its
+// milliseconds a frame on the CPU
 // and on the GPU, smoothed and as the last frame took them. Nothing for a box that tells
 // nothing.
 void tell_cost(VP_VIEW::Items &tip,
@@ -290,7 +291,11 @@ void tell_cost(VP_VIEW::Items &tip,
   tip.push_back({.label = std::string(title)});
   if (!weight.problem.empty())
     tell_wrapped(tip,
-                 std::format("{}: {}", weight.waits ? "building" : "failed", weight.problem),
+                 std::format("{}: {}",
+                             weight.waits   ? "building"
+                             : weight.warns ? "warning"
+                                            : "failed",
+                             weight.problem),
                  width,
                  state_role(weight));
   if (weight.cooks)
