@@ -35,6 +35,22 @@ std::filesystem::path absolute(std::string_view path) {
   return path;
 }
 
+// A path as a line gives it, a folder's ending in a /, as the file or folder it names.
+std::filesystem::path normal(const std::filesystem::path &path) {
+  const std::filesystem::path normal = path.lexically_normal();
+  return normal.has_filename() ? normal : normal.parent_path();
+}
+
+// The folder of the view a path is in: its own, holding its view.vlp, or the nearest
+// above; none outside every view.
+std::filesystem::path view_of(const std::filesystem::path &path) {
+  std::error_code none;
+  for (std::filesystem::path view = path; view.has_relative_path(); view = view.parent_path())
+    if (std::filesystem::exists(view / manifest_file, none))
+      return view;
+  return {};
+}
+
 float number(std::string_view word) {
   const std::optional<float> value = number_in<float>(word);
   if (!value)
@@ -220,10 +236,26 @@ void Ports::save(std::string_view file, std::string_view text) {
   Files::save(absolute(file), text);
 }
 
+// A folder's files go one by one, its last taking it, as a delete is undone a file at a
+// time, so what goes of a view is known only after: the whole view once its manifest went,
+// as nothing then builds it, else the highest folder the remove left gone.
 void Ports::remove(std::string_view file) {
+  const std::filesystem::path path = normal(absolute(file));
+  const std::filesystem::path view = view_of(path);
+  std::error_code none;
+  const bool folder = std::filesystem::is_directory(path, none);
   Files::remove(absolute(file));
   _moved.push_back({absolute(file).lexically_normal().string(), {}});
   listing_changed(absolute(file));
+  if (view.empty())
+    return;
+  std::filesystem::path gone = path == view / manifest_file ? view : std::filesystem::path();
+  for (std::filesystem::path at = folder ? path : path.parent_path();
+       gone != view && at != view.parent_path() && !std::filesystem::exists(at, none);
+       at = at.parent_path())
+    gone = at;
+  if (!gone.empty())
+    unbuild(view, gone);
 }
 
 std::vector<std::string> Ports::list(std::string_view folder) {
@@ -248,11 +280,17 @@ void Ports::copy(std::string_view from, std::string_view to) {
 }
 
 void Ports::rename(std::string_view from, std::string_view to) {
+  const std::filesystem::path path = normal(absolute(from));
+  const std::filesystem::path view = view_of(path);
+  std::error_code none;
+  const bool folder = std::filesystem::is_directory(path, none);
   Files::rename(absolute(from), absolute(to));
   _moved.push_back({absolute(from).lexically_normal().string(),
                     absolute(to).lexically_normal().string()});
   listing_changed(absolute(from));
   listing_changed(absolute(to));
+  if (folder && !view.empty())
+    unbuild(view, path);
 }
 
 void Ports::make(std::string_view folder) {
@@ -319,8 +357,33 @@ private:
   Ports &_ports;
 };
 
-Ports::Ports(const Log &log, Recipes &recipes)
-    : _log(log), _recipes(recipes), _unheld_input(std::make_unique<Unheld>(*this)) {}
+Ports::Ports(const Log &log, Recipes &recipes, std::filesystem::path mirror)
+    : _log(log), _recipes(recipes), _mirror(std::move(mirror)),
+      _unheld_input(std::make_unique<Unheld>(*this)) {}
+
+// What the build made of a folder of a view, at views/<view>/<the folder inside it> in
+// the mirror, as a view is named for its folder (V03) and a node's folder is its path
+// there (RV08), goes with the folder: one made again by that name then builds anew, rather
+// than binding the old one's code, whose problems are not its own (A02). The mirror's
+// folders stay, as the build made them as it configured and writes into them.
+void Ports::unbuild(const std::filesystem::path &view,
+                    const std::filesystem::path &folder) const {
+  const std::filesystem::path built =
+      (_mirror / view.filename() / folder.lexically_relative(view)).lexically_normal();
+  std::error_code none;
+  if (!std::filesystem::is_directory(built, none))
+    return;
+  try {
+    Files::clear(built);
+  } catch (const std::exception &failure) {
+    _log.write(Level::warn,
+               Tag::mod,
+               std::format("what the build made of {} stays: {}; a folder made again by "
+                           "its name binds it until built",
+                           folder.string(),
+                           failure.what()));
+  }
+}
 
 Ports::~Ports() {
   if (!_raw)

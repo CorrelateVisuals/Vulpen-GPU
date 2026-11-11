@@ -29,8 +29,9 @@ class Ports final : public InputPort,
                     public CommandHandler {
 public:
   // log: what clears the line typed at the terminal before it prints. recipes: what a
-  // manifest read here unfolds its recipes from, borrowed (A01).
-  Ports(const Log &log, Recipes &recipes);
+  // manifest read here unfolds its recipes from, borrowed (A01). mirror: the build tree's
+  // views, where what the build made of a folder a remove or rename takes goes with it.
+  Ports(const Log &log, Recipes &recipes, std::filesystem::path mirror);
   // The line typed goes first, so what prints after the run starts on a clean row.
   ~Ports();
   Ports(const Ports &) = delete;
@@ -96,6 +97,7 @@ private:
   void refresh(Open &open);
   // Marks a change a node's folder may hold, unless the path is hidden.
   void listing_changed(const std::filesystem::path &path);
+  void unbuild(const std::filesystem::path &view, const std::filesystem::path &folder) const;
   std::string_view text(File file) override;
   void save(File file, std::string_view text) override;
   std::string read(std::string_view file) override;
@@ -131,6 +133,7 @@ private:
   std::uint64_t _frames = 0;
   const Log &_log;
   Recipes &_recipes;
+  const std::filesystem::path _mirror;
   std::vector<std::string> _lines; // this frame's
   std::string _partial;            // a line still being typed
   bool _read = false;              // whether this frame read standard input

@@ -278,7 +278,8 @@ private:
   const Log _log;
   // Node code's std::cout and std::cerr, into the log, from the first bind to the last.
   Printed _printed{_log};
-  std::filesystem::path _mirror; // the build tree's views, where the schedules look
+  // The build tree's views, where the schedules look.
+  const std::filesystem::path _mirror = _executable.parent_path() / "views";
   // A build the run's end meets goes on to its end, as one cut short leaves the build
   // tree half written, so these two go after the window and the GPU, and the process
   // ends once the build does.
@@ -290,7 +291,7 @@ private:
   std::optional<Engine> _engine;
   Modules _modules; // outlives the schedules, whose operators run its code
   Recipes _recipes; // outlives the views and the file port, which unfold from it
-  Ports _ports{_log, _recipes};
+  Ports _ports{_log, _recipes, _mirror};
   Feed _feed{_ports};
   Commands _commands;
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
@@ -413,7 +414,6 @@ void Runtime::host() {
 // False when a node is in error.
 bool Runtime::start() {
   const std::filesystem::path build = _executable.parent_path();
-  _mirror = build / "views";
   View view = Views::read(_log, _options.manifest);
   const std::filesystem::path folder = Manifest::root(view);
   // Only a view that draws into the window opens one; every other view runs headless

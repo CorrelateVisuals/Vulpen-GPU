@@ -751,6 +751,21 @@ void Files::remove(const std::filesystem::path &file) {
     std::filesystem::remove(file.parent_path(), failed);
 }
 
+// Listed first, as a folder walked while its files go may skip some.
+void Files::clear(const std::filesystem::path &folder) {
+  std::error_code failed;
+  std::vector<std::filesystem::path> files;
+  for (auto entry = std::filesystem::recursive_directory_iterator(folder, failed);
+       entry != std::filesystem::recursive_directory_iterator();
+       entry.increment(failed))
+    if (entry->is_regular_file(failed))
+      files.push_back(entry->path());
+  for (const std::filesystem::path &file : files)
+    if (!std::filesystem::remove(file, failed) && failed)
+      throw std::runtime_error(
+          std::format("{}: cannot be deleted: {}", file.string(), failed.message()));
+}
+
 // A temp a killed copy left goes first, so it never blocks the next. A copy inside what
 // it copies would copy itself without end.
 void Files::copy(const std::filesystem::path &from, const std::filesystem::path &to) {

@@ -28,6 +28,9 @@ public:
   static void save(const std::filesystem::path &file, std::string_view text);
   // Deletes a file, and its folder once nothing is left in it. Throws naming the file.
   static void remove(const std::filesystem::path &file);
+  // Deletes every file a folder holds, at any depth, keeping the folders, as a build
+  // writes into the folders it made. Throws naming a file it cannot delete.
+  static void clear(const std::filesystem::path &folder);
   // Copies a file, or a folder with all it holds, to a path where nothing is yet: into a
   // temp beside it first, then renamed there, as save does, so a killed run leaves the
   // whole copy or none of it (RA04). Throws naming the path.
