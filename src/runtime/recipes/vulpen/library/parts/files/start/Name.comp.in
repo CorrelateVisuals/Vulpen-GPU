@@ -18,5 +18,11 @@ void main() {
   // pass.results.at[i] = pass.speed * float(i) + sin(pass.phase);
   // pass.results.at[i] = pass.values.at[i];
   // pass.results.at[i] = sample_linear(pass.picture, vec2(0.5)).r;
-  // store(pass.canvas, ivec2(i % 64u, i / 64u), vec4(1.0));
+  // const ivec2 size = image_size(pass.canvas); // the frame's, every pixel of it, each
+  // const uint invocations = gl_NumWorkGroups.x * gl_WorkGroupSize.x; // a share of them
+  // for (uint pixel = i; pixel < uint(size.x * size.y); pixel += invocations) {
+  //   const ivec2 at = ivec2(pixel % uint(size.x), pixel / uint(size.x));
+  //   const vec2 uv = vec2(at) / vec2(size); // 0 to 1, across and down
+  //   store(pass.canvas, at, vec4(uv, 0.5 + 0.5 * sin(frame.time), 1.0));
+  // }
 }
