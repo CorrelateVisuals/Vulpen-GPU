@@ -475,7 +475,9 @@ void Schedule::check_varyings(const Bound &vertex,
 
 // Every param is read by someone, and every value in the pass block is set by someone.
 // Without its operator or its shaders, or with its operator's bind cut short, a node
-// cannot say what they would have read or set; what kept them is its error.
+// cannot say what they would have read or set; what kept them is its error. A value
+// nothing sets reads 0, as the block starts zeroed, so the node runs on and says the
+// line that sets it, as a field is declared a save before its param is set (A02).
 void Schedule::check_fields(Bound &bound) const {
   if (!bound.whole())
     return;
@@ -495,11 +497,14 @@ void Schedule::check_fields(Bound &bound) const {
   for (const Field &field : bound.fields)
     if (!field.buffer() && !field.texture() && !field.image() &&
         !bound.param(field.name) && !bound.set_by_operator.contains(field.name))
-      bound.errors.push_back(std::format("{} in the pass block: nothing sets it; give "
-                                         "the node a param {} or set it from "
-                                         "the operator",
-                                         field.name,
-                                         field.name));
+      bound.warnings.push_back(
+          std::format("{} in the pass block: nothing sets it, so it reads 0: param set "
+                      "{} {} <{}>{}",
+                      field.name,
+                      bound.node->name,
+                      field.name,
+                      field.type,
+                      runs_operator(*bound.node) ? ", or set it from the operator" : ""));
 }
 
 void Schedule::check_connections() {
