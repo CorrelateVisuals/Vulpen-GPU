@@ -591,10 +591,11 @@ void Schedule::check(const View &view) const {
           values, [&](const NodePort *port) { return port->name == param.key; });
       if (value == values.end())
         throw std::runtime_error(std::format("param {}: node {} reads no param of that "
-                                             "name; the params it reads are {}",
+                                             "name; the params it reads are {}{}",
                                              param.key,
                                              node.name,
-                                             names(values)));
+                                             names(values),
+                                             as_word(node.name, param)));
       if (!(*value)->holds.empty() && !write_value(param.value, (*value)->holds, nullptr))
         throw std::runtime_error(std::format(
             "param {} = {} is not a {}", param.key, param.value, (*value)->holds));

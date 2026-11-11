@@ -376,6 +376,18 @@ inline std::string joining(const View &view,
   return line;
 }
 
+// A param named as a node word, as param set shape vertex_count 6 sets: the line that
+// gives the word it likely meant; empty for any other.
+inline std::string as_word(std::string_view node, const Param &param) {
+  if (std::ranges::find(node_words, param.key) == node_words.end())
+    return {};
+  return std::format("; {} is a node word: node set {} {}={}",
+                     param.key,
+                     node,
+                     param.key,
+                     param.value);
+}
+
 // A buffer holds one element per invocation of its writer: a dispatch's threads, or a
 // draw's vertices.
 inline std::uint32_t invocations_of(const Bound &bound) {

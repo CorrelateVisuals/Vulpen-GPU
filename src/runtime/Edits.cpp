@@ -319,6 +319,19 @@ bool reaches(const View &view, std::string_view writer, std::string_view reader)
   return false;
 }
 
+// Words typed with blanks around an =, as vertex_count = 6, are refused naming the word
+// they meant.
+void check_spaced(Arguments words) {
+  for (std::size_t at = 0; at + 1 < words.size(); ++at)
+    if (words[at].find('=') == std::string_view::npos && words[at + 1].starts_with('='))
+      throw std::runtime_error(std::format(
+          "{} is not word=value: {}={}",
+          words[at],
+          words[at],
+          words[at + 1] == "=" && at + 2 < words.size() ? words[at + 2]
+                                                         : words[at + 1].substr(1)));
+}
+
 // A word=value argument, split at its first =.
 std::pair<std::string_view, std::string_view> key_and_value(std::string_view word) {
   const std::size_t equals = word.find('=');
@@ -356,6 +369,7 @@ void clear(Node &node, std::string_view key) {
 
 void node_add(View &view, Arguments arguments, const Around &around) {
   Node node{.name = std::string(arguments.front()), .where = std::string(around.where)};
+  check_spaced(arguments.subspan(1));
   for (const std::string_view word : arguments.subspan(1)) {
     const auto [key, value] = key_and_value(word);
     Edits::word(node, key, value);
@@ -408,6 +422,7 @@ void node_set(View &view, Arguments arguments, const Around &around) {
   Node changed = node;
   changed.where = around.where;
   const Arguments words = arguments.subspan(1);
+  check_spaced(words);
   for (const std::string_view word : words)
     clear(changed, key_and_value(word).first);
   for (const std::string_view word : words)

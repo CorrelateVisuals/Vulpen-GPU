@@ -210,6 +210,17 @@ bool there(const std::filesystem::path &path) {
   return std::filesystem::exists(path, unread);
 }
 
+// A line as a refusal names it: one a hosted view was sent, as first: new x, by its words
+// and then the view, so its view's name never reads as the time it ran.
+std::string line_of(std::string_view line, const std::vector<std::string> &hosted) {
+  constexpr std::string_view mark = ": ";
+  const std::size_t colon = line.find(mark);
+  if (colon == std::string_view::npos ||
+      std::ranges::find(hosted, line.substr(0, colon)) == hosted.end())
+    return std::string(line);
+  return std::format("{} (in {})", line.substr(colon + mark.size()), line.substr(0, colon));
+}
+
 } // namespace
 
 // The files first, so a view the line closed comes back with its manifest there, then the
@@ -269,10 +280,10 @@ void Undo::check(const Step &step, bool again) {
     const bool as_found =
         change.before ? holds(change.path, *change.before) : there(change.path) != saved;
     if (again ? !as_found : !as_left)
-      throw std::runtime_error(std::format("{} changed since {}, which {} would lose; "
-                                           "nothing changed",
+      throw std::runtime_error(std::format("{} changed since the line {}, which {} would "
+                                           "lose; nothing changed",
                                            change.path.string(),
-                                           step.line,
+                                           line_of(step.line, step.hosted),
                                            again ? "redo" : "undo"));
   };
   if (again)

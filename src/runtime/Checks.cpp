@@ -506,7 +506,8 @@ void Schedule::check_fields(Bound &bound) const {
         bound.errors.push_back(std::format(
             "param {} = {} is not a {}", param.key, param.value, field->type));
     } else if (!bound.read_by_operator.contains(param.key)) {
-      bound.errors.push_back(std::format("param {}: nothing reads it", param.key));
+      bound.errors.push_back(std::format(
+          "param {}: nothing reads it{}", param.key, as_word(bound.node->name, param)));
     }
   }
   for (const Field &field : bound.fields)
