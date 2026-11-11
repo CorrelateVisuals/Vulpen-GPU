@@ -39,6 +39,10 @@ constexpr std::array<Start, 8> starts{{{".vert", "vertex_count=3"},
                                        {".comp", "invocations=64"},
                                        {".cpp", ""},
                                        {".h", ""}}};
+// The files only a node runs, its shaders and its C++, which a view's top holds for no
+// node, as a node is a folder (RV08).
+constexpr std::array<std::string_view, 7> run_by_nodes{
+    ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp", ".cpp"};
 // The tessellation stages, which Vulkan runs only together, so new making one where the
 // other is not makes both.
 constexpr std::array<std::string_view, 2> tessellation{".tesc", ".tese"};
@@ -646,6 +650,17 @@ class Files final : public VP::Operator {
       if (taken(path))
         throw std::runtime_error(std::format("{} is there already", shown(path)));
       const std::optional<Held> held = held_by(call, path);
+      if (const std::string name = path.filename().string();
+          !folder && held && held->inside.empty() &&
+          std::ranges::find(run_by_nodes, path.extension().string()) !=
+              run_by_nodes.end())
+        throw std::runtime_error(std::format(
+            "{} at the top of view {} runs in no node, as a node is a folder: new {} "
+            "makes node {} and writes it there",
+            shown(path),
+            held->name.empty() ? held->view->name : held->name,
+            shown(path.parent_path() / path.stem() / name),
+            path.stem().string()));
       Graphed *const graph = held ? &graphed(graphs, held->name) : nullptr;
       for (std::string &node : adopted(call, held, folder, std::nullopt))
         if (std::ranges::find(graph->adds, node, &Words::node) == graph->adds.end())
