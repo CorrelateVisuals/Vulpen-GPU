@@ -66,6 +66,50 @@ bool unbuilt(const Node &node,
   });
 }
 
+// What makes a connection's end a port of its node where the end names none it writes,
+// or reads, the line's own mistake: a port its shaders declare nothing for yet, in the
+// type the other end takes, a Texture for an image and an Image a dispatch stores into;
+// or a reader named first, as the writer goes first, the line that names the two the
+// other way round. Empty where neither is known, as for a draw, which writes no Image.
+std::string end_fix(std::span<const NodePort> ports,
+                    const View &view,
+                    const Connection &connection,
+                    const Endpoint &end,
+                    const Bound &node) {
+  const auto port_of = [&](const Endpoint &at) -> const NodePort * {
+    const auto found = std::ranges::find_if(ports, [&](const NodePort &port) {
+      return port.kind != "value" && port.node == at.node && port.name == at.port;
+    });
+    return found == ports.end() ? nullptr : &*found;
+  };
+  const bool writes = &end == &connection.from;
+  const Endpoint *const other =
+      !writes ? &connection.from : connection.to.empty() ? nullptr : &connection.to.front();
+  const NodePort *const port = port_of(end);
+  if (!port && (writes ? holds_stage(*node.node, compute_stage)
+                       : !node.shaders_named.empty())) {
+    const NodePort *const known = other && !other->view() ? port_of(*other) : nullptr;
+    return other && (other->view() || (known && known->kind == "image"))
+               ? std::format("{} has no port {} yet: declare {} {}; in its pass block",
+                             end.node,
+                             end.port,
+                             writes ? image_type : texture_type,
+                             end.port)
+               : std::format("{} has no port {} yet: declare it in its pass block",
+                             end.node,
+                             end.port);
+  }
+  const std::string reader = end.text();
+  if (port && writes && other && connection.to.size() == 1 &&
+      std::ranges::find(port->alike, other->text()) != port->alike.end())
+    return std::format("connection {}: {} is a port its node reads, not one it writes: "
+                       "the writer goes first, {}",
+                       connection.name,
+                       reader,
+                       joining(view, other->text(), std::span(&reader, 1)));
+  return {};
+}
+
 } // namespace
 
 // Resolves an operator's names against its node while it binds. A name that does not
@@ -569,6 +613,9 @@ void Schedule::check(const View &view) const {
       if (port != ports.end() &&
           (!writes || (*port)->writes || node->uploads_to(end.port)))
         continue;
+      if (const std::string fix = end_fix(_ports, view, connection, end, *node);
+          !fix.empty())
+        throw std::runtime_error(fix);
       const std::string_view why = port == ports.end()
                                        ? "names no port of its node"
                                        : "is a port its node reads, not one it writes";

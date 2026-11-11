@@ -17,6 +17,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -357,6 +358,23 @@ struct Picture {
   std::string name; // the writer's node.port
   Sampled sampled;
 };
+
+// The line that joins a writer to readers, its connection named for the writer's port,
+// or while a connection of the view holds that name, for its node's and the port's.
+inline std::string joining(const View &view,
+                           std::string_view writer,
+                           std::span<const std::string> readers) {
+  const std::size_t dot = writer.rfind('.');
+  const std::size_t before = writer.rfind('.', dot - 1);
+  const std::size_t node = before == std::string_view::npos ? 0 : before + 1;
+  std::string name(writer.substr(dot + 1));
+  if (std::ranges::find(view.connections, name, &Connection::name) != view.connections.end())
+    name = std::format("{}-{}", writer.substr(node, dot - node), name);
+  std::string line = std::format("connect {} {}", name, writer);
+  for (const std::string &reader : readers)
+    line.append(" ").append(reader);
+  return line;
+}
 
 // A buffer holds one element per invocation of its writer: a dispatch's threads, or a
 // draw's vertices.

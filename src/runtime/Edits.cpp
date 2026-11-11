@@ -18,6 +18,7 @@
 #include <optional>
 #include <ranges>
 #include <set>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -772,6 +773,30 @@ std::string chosen_name(Change change, const View &view, Arguments arguments,
       return name;
 }
 
+// A connect word with no dot, as a node's name alone or an arrow, names no port: refused
+// with one of that node's that the running view lists, one it writes for the first word,
+// else one it reads, and as a view's window only where a view of that name is hosted.
+void check_ends(Arguments arguments,
+                std::span<const NodePort> ports,
+                const std::vector<std::string> &hosted) {
+  for (std::size_t at = 1; at < arguments.size(); ++at) {
+    const std::string_view word = arguments[at];
+    if (word.find('.') != std::string_view::npos || word.ends_with(':'))
+      continue;
+    const NodePort *named = nullptr;
+    for (const NodePort &port : ports)
+      if (port.node == word && port.kind != "value" &&
+          (!named || (port.writes == (at == 1) && named->writes != (at == 1))))
+        named = &port;
+    std::string refusal = std::format("{} is not node.port", word);
+    if (named)
+      refusal += std::format(", as {}.{}", named->node, named->name);
+    if (std::ranges::find(hosted, word) != hosted.end())
+      refusal += std::format(", or {}: for its view's window", word);
+    throw std::runtime_error(refusal);
+  }
+}
+
 // The files a refusal names at most, the rest counted.
 constexpr std::size_t named_most = 6;
 
@@ -927,6 +952,9 @@ void Edits::command(Call &call) {
                  std::format("{}.{}", port.node, port.name) == arguments.front();
         }))
       arguments.insert(arguments.begin(), std::string_view());
+  for (std::size_t index = 0; index < edits.size(); ++index)
+    if (call.is(_commands[index]) && edits[index].change == connect_ports)
+      check_ends(arguments, _views.ports(address), _views.names());
   std::string chosen; // a name the line left out, an empty word to it
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index]) && !arguments.empty() && arguments.front().empty()) {
