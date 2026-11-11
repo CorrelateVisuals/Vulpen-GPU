@@ -54,6 +54,9 @@ public:
   bool building() const;
   // What the last build said, or why it could not run.
   std::string said() const;
+  // Of that, each file's first error, the file named from its view's folder; all of it
+  // when it names no error in a file of a view.
+  std::string errors() const;
   // Since the last build started.
   std::chrono::duration<double> took() const;
   // A view hosted or no longer hosted brings its folder or takes it along.

@@ -546,7 +546,8 @@ void Runtime::watch() {
                  Tag::mod,
                  std::format("live: the build of {} failed, so its running code stays\n{}",
                              joined(_live->failed()),
-                             _live->said()));
+                             _live->errors()));
+      _log.write(Level::debug, Tag::mod, "live: the whole build said\n" + _live->said());
       [[fallthrough]];
     case Live::Build::succeeded:
       _modules.builds_ended(_live->built(), _live->failed());

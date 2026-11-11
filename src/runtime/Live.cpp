@@ -48,6 +48,55 @@ std::vector<std::filesystem::path> lines_of(const std::filesystem::path &file) {
   return lines;
 }
 
+// glslang's mark before each error, and what it puts where an error names no token.
+constexpr std::string_view glslang_error = "ERROR: ";
+constexpr std::string_view no_token = "'' : ";
+
+// The folder a line names a file in, the deepest, as a view may host one inside it;
+// npos for none.
+std::size_t folder_in(std::string_view line,
+                      const std::vector<std::string> &folders,
+                      std::string_view &folder) {
+  std::size_t found = std::string_view::npos;
+  for (const std::string &each : folders)
+    if (const std::size_t at = line.find(each);
+        at != std::string_view::npos && each.size() > folder.size()) {
+      found = at;
+      folder = each;
+    }
+  return found;
+}
+
+// What a failed build said, as a person reads it: each file's first error, its file named
+// from its view's folder, as the line before names the view. make's lines, and the
+// errors that follow from a file's first, tell a person nothing more, so they show only at
+// --log debug (C09). All of it when no line is an error in a view's file, as when the
+// build could not start.
+std::string first_errors(std::string_view said, const std::vector<std::string> &folders) {
+  std::vector<std::string> files;
+  std::string errors;
+  for (std::string_view line : lines_in(said)) {
+    if (line.starts_with(glslang_error))
+      line.remove_prefix(glslang_error.size());
+    else if (line.find("error") == std::string_view::npos)
+      continue;
+    std::string_view folder;
+    const std::size_t at = folder_in(line, folders, folder);
+    if (at == std::string_view::npos)
+      continue;
+    const std::string_view named = line.substr(at + folder.size());
+    const std::string file(named.substr(0, named.find_first_of(":(")));
+    if (std::ranges::find(files, file) != files.end())
+      continue;
+    files.push_back(file);
+    std::string text = std::string(line.substr(0, at)).append(named);
+    if (const std::size_t token = text.find(no_token); token != std::string::npos)
+      text.erase(token, text.find_first_not_of(' ', token + no_token.size()) - token);
+    errors.append(errors.empty() ? "" : "\n").append(text);
+  }
+  return errors.empty() ? std::string(said) : errors;
+}
+
 // A build of the tree off the frame thread, which takes the tree's build.lock first, and
 // builds its targets one at a time, so one that fails holds back no other; what each
 // said goes to one file, in turn.
@@ -277,6 +326,20 @@ bool Live::building() const {
 
 std::string Live::said() const {
   return _scan->builder.said();
+}
+
+// The folders as the compilers name the files in them, from the root, ending in a
+// separator, so a folder's name is never taken for the start of a longer one's.
+std::string Live::errors() const {
+  std::vector<std::string> folders;
+  for (const Scan::View &view : _scan->views) {
+    std::error_code unread;
+    const std::filesystem::path real = std::filesystem::weakly_canonical(view.folder, unread);
+    folders.push_back(((unread ? std::filesystem::absolute(view.folder) : real) / "")
+                          .lexically_normal()
+                          .string());
+  }
+  return first_errors(said(), folders);
 }
 
 std::chrono::duration<double> Live::took() const {
