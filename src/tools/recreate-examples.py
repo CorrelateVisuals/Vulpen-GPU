@@ -555,8 +555,8 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"node set bounce1.trace {words['bounce1.trace']} param="),
         ok(copied("bounce1.shadow"), f"node set bounce1.shadow {words['bounce1.shadow']}"),
         ok(copied("bounce1.shade")),
-        settled("node set bounce1.shade invocations=2073600 param=ambient=0.1",
-                refused="shine"),
+        # shine and sharpness left out, which warn and read 0 once the node has no error
+        settled("node set bounce1.shade invocations=2073600 param=ambient=0.1"),
         ok(f"node set bounce1.shade {words['bounce1.shade']}"),
         ok(copied("bounce1.reflect"), f"node set bounce1.reflect {words['bounce1.reflect']}"),
         *later_bounce("bounce2"),

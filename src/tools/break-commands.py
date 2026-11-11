@@ -101,6 +101,9 @@ NOTHING = re.compile(r"no node|no view is named|is no node|unknown|holds no|no c
 # A warning a line asked for: the GPU the next launch takes, and the modes part's answer to
 # perform mode with nothing presented, a frame on (Q4 of the first report: keep).
 EXPECTED_WARNINGS = re.compile(r"the next launch prefers|nothing is presented to perform")
+# A node's warning as it binds, as a Texture a disconnect left unfilled or a value a param
+# unset left unset: what the line made of the node, as its errors are.
+BOUND_WARNING = re.compile(r"\{ ! \} \S+ node \S+: ")
 # A byte a terminal obeys rather than shows, as an escape sequence: never in what it says.
 CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 # Memory left on the machine below which, or held by vulpen above which, the run is
@@ -324,7 +327,8 @@ class Vulpen:
                 self.building = False
             if FAILED.search(line):
                 failed(said[at + 1:], self.problems)
-            elif WARNING in line and not EXPECTED_WARNINGS.search(line):
+            elif (WARNING in line and not EXPECTED_WARNINGS.search(line) and
+                  not BOUND_WARNING.search(line)):
                 self.problems.append(("a warning", [line.strip()]))
             elif PROBLEM.search(line):
                 self.problems.append(("a validation message or sanitizer report",
