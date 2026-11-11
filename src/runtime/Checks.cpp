@@ -329,10 +329,34 @@ void Schedule::check_shaders(const Bound &bound) const {
                     image->name));
 }
 
+namespace {
+
+// What a lone .vert or .frag lacks to draw, which a node no connection joins to another
+// warns of, as a save later may bring it: the line that writes the other stage beside
+// it, from the view's folder, as a person's prompt in the project types it, or what to
+// connect.
+std::string draws_nothing(const Bound &bound, bool vertex) {
+  const std::string other =
+      (bound.node->module / std::filesystem::path(bound.shaders_named.front()).stem())
+          .generic_string()
+          .append(vertex ? fragment_stage : vertex_stage);
+  return std::format("draws nothing yet, as its folder holds no {}: new {} writes one, "
+                     "or connect {}",
+                     vertex ? fragment_stage : vertex_stage,
+                     other,
+                     vertex ? "its outputs to the inputs of a node whose folder holds a "
+                              "lone .frag"
+                            : "the outputs of a node whose folder holds a lone .vert to "
+                              "its inputs");
+}
+
+} // namespace
+
 // A vertex node draws with the fragment node its varyings reach, once both are bound, as
 // one draw: its own pass, of its pass block and counts, and the fragment node's color. It
 // keeps its pipeline while the build left both shaders alone and it fits what it draws
-// into. A fragment node no vertex node draws with is refused, as it would draw nothing.
+// into. A fragment node no vertex node draws with draws nothing: refused where a
+// connection reaches it, as the vertex node says why, else warned of, as either alone is.
 void Schedule::pair_draws(Schedule *replaced) {
   for (Bound &bound : _bound) {
     if (!is_vertex(*bound.node) || !bound.loaded())
@@ -363,6 +387,11 @@ void Schedule::pair_draws(Schedule *replaced) {
     }
     return nullptr;
   };
+  const auto reached = [&](std::string_view node) {
+    return std::ranges::any_of(_view.connections, [&](const Connection &connection) {
+      return std::ranges::find(connection.to, node, &Endpoint::node) != connection.to.end();
+    });
+  };
   for (Bound &bound : _bound)
     if (is_fragment(*bound.node) && bound.loaded() && bound.errors.empty() &&
         std::ranges::none_of(_bound, [&](const Bound &vertex) {
@@ -372,9 +401,11 @@ void Schedule::pair_draws(Schedule *replaced) {
         waits(bound,
               std::format("waits for the vertex node {}, which the live build builds",
                           vertex->node->name));
-      else
+      else if (reached(bound.node->name))
         bound.errors.emplace_back("no vertex node draws with it: a fragment node draws "
                                   "with the vertex node whose varyings reach its inputs");
+      else
+        bound.warnings.push_back(draws_nothing(bound, false));
     }
 }
 
@@ -401,13 +432,14 @@ Bound *Schedule::fragment_of(Bound &vertex) {
       fragment = reader;
     }
   }
-  if (!fragment || !is_fragment(*fragment->node)) {
-    vertex.errors.push_back(
-        fragment ? std::format("its varyings reach {}, whose folder holds no lone .frag "
-                               "to draw with",
-                               fragment->node->name)
-                 : "its varyings reach no fragment node: connect its outputs to the "
-                   "inputs of a node whose folder holds a lone .frag");
+  if (!fragment) {
+    vertex.warnings.push_back(draws_nothing(vertex, true));
+    return nullptr;
+  }
+  if (!is_fragment(*fragment->node)) {
+    vertex.errors.push_back(std::format("its varyings reach {}, whose folder holds no "
+                                        "lone .frag to draw with",
+                                        fragment->node->name));
     return nullptr;
   }
   if (std::ranges::any_of(_bound, [&](const Bound &other) {

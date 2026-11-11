@@ -17,8 +17,8 @@ sit elsewhere, given no room, or that nothing reads, a draw's image taken to no 
 or given a format there is not, a draw that stores into an image, an image a dispatch
 stores into given another format than images[] declares or taken to no Texture, a draw
 whose .frag reads what its .vert writes nothing to, a draw split over two nodes whose
-varyings meet at other locations or types, leave an input unreached or reach no fragment
-node, or whose fragment node declares a pass block or no vertex node draws with, and a
+varyings meet at other locations or types or leave an input unreached, or whose
+fragment node declares a pass block, and a
 view's window taken from a view the view does not host, taken to a view, or taken to no
 Texture.
 
@@ -221,10 +221,6 @@ CASES = {
     "varying-unreached": (split("ink", "uv"), "shade: no connection brings it from brush"),
     "fragment-block": (split("blot", "uv", "shade"),
                        "node blot: a fragment node declares no pass block yet"),
-    "vertex-alone": (HEAD + BRUSH, "node brush: its varyings reach no fragment node"),
-    "fragment-alone": (HEAD + '[node "ink"]\n' + LOOK
-                       + connection("inked", "ink.color", "look.painted"),
-                       "node ink: no vertex node draws with it"),
 }
 WINDOWED = {"draw-writes", "draw-counts"}
 
