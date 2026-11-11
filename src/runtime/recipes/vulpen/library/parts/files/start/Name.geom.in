@@ -5,7 +5,7 @@
 // Each way data reaches here is commented out: uncomment what you use and delete the
 // rest; a pass block field nothing fills is refused. A node's shaders share one pass
 // block: declare it in the shader that reads it, or for all in a file they #include.
-// #include "baseclasses/GpuLayout.glsl" // the pass block's types, and frame.time
+#include "baseclasses/GpuLayout.glsl" // the pass block's types, and frame.time
 // layout(set = 1, binding = 0) uniform Pass {
 //   float spread; // from you, no C++: node set <node> param=spread=0.25
 // } pass;

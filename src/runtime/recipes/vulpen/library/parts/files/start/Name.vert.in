@@ -4,7 +4,7 @@
 // Each way data reaches here is commented out: uncomment what you use and delete the
 // rest; a pass block field nothing fills is refused. A node's shaders share one pass
 // block: declare it in the shader that reads it, or for both in a file both #include.
-// #include "baseclasses/GpuLayout.glsl" // the pass block's types, and frame.time
+#include "baseclasses/GpuLayout.glsl" // the pass block's types, and frame.time
 // VP_READS(Vec4sIn, vec4);
 // layout(set = 1, binding = 0) uniform Pass {
 //   float scale;    // from you, no C++: node set <node> param=scale=0.5

@@ -3,7 +3,7 @@
 // Each way data reaches here is commented out: uncomment what you use and delete the
 // rest; a pass block field nothing fills is refused. A node's shaders share one pass
 // block: declare it in the shader that reads it, or for both in a file both #include.
-// #include "baseclasses/GpuLayout.glsl" // the pass block's types, sample_linear
+#include "baseclasses/GpuLayout.glsl" // the pass block's types, sample_linear
 // layout(set = 1, binding = 0) uniform Pass {
 //   float tint;      // from you, no C++: node set <node> param=tint=0.5
 //   Texture picture; // from C++: node.texture<glm::u8vec4>("picture"), or from another

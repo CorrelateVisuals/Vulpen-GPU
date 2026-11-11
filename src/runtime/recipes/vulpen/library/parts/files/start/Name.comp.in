@@ -2,7 +2,7 @@
 //
 // Each way data reaches here and leaves is commented out: uncomment what you use and
 // delete the rest; a pass block field nothing fills is refused.
-// #include "baseclasses/GpuLayout.glsl" // the pass block's types, sample_linear, store
+#include "baseclasses/GpuLayout.glsl" // the pass block's types, sample_linear, store
 // layout(set = 1, binding = 0) uniform Pass {
 //   float speed;       // from you, no C++: node set <node> param=speed=0.5
 //   float phase;       // from C++, each frame: node.value<float>("phase")
