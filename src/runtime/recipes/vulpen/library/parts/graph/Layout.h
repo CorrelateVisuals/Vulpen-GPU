@@ -440,7 +440,7 @@ private:
                      const std::vector<std::size_t> &inner,
                      const Arranged &arranged,
                      glm::uvec2 cell) {
-    std::size_t count = wrap(inner, order(level, inner), cell);
+    std::size_t count = wrap(boxes, level, inner, order(level, inner), cell);
     const glm::ivec2 start = level == no_box ? margin_of() : glm::ivec2(0);
     stack(inner, count, start);
     const bool moved = std::ranges::any_of(inner, [&](std::size_t box) {
@@ -590,15 +590,25 @@ private:
   // the boxes no relation orders stack in the first, so a folder of many files reads as a
   // block rather than a tower; the columns after it move right, so every connection and
   // relation still runs left to right. A column may reach as tall as a level as large as
-  // its boxes and the room between them would be at wrap_aspect, or its tallest box.
+  // its boxes and the room between them would be at wrap_aspect, or its tallest box. At
+  // the top, a file nothing orders, as the manifest, stays under the first column, off
+  // the row of nodes, where wrapping it would put it between a writer and its reader.
   // Returns how many columns there are.
-  std::size_t wrap(const std::vector<std::size_t> &inner,
+  std::size_t wrap(const Boxes &boxes,
+                   std::size_t level,
+                   const std::vector<std::size_t> &inner,
                    std::size_t count,
                    glm::uvec2 cell) {
+    const auto kept_under = [&](std::size_t box) {
+      return level == no_box && _placed[box].column == 0 &&
+             !boxes.boxes[box].opens.empty();
+    };
     const auto across = static_cast<float>(column_gap * cell.x);
     float room = 0.0f;
     std::int32_t tallest = 0;
     for (const std::size_t box : inner) {
+      if (kept_under(box))
+        continue;
       const Placed &placed = _placed[box];
       const auto tall = static_cast<std::int32_t>(placed.extent.y) + line_spacing;
       room += (static_cast<float>(placed.extent.x) + across) * static_cast<float>(tall);
@@ -614,6 +624,10 @@ private:
       for (const std::size_t box : inner) {
         if (_placed[box].column != column)
           continue;
+        if (kept_under(box)) {
+          _wrapped[box] = 0;
+          continue;
+        }
         const auto tall = static_cast<std::int32_t>(_placed[box].extent.y) + line_spacing;
         if (down > 0 && down + tall > reach) {
           ++beside;

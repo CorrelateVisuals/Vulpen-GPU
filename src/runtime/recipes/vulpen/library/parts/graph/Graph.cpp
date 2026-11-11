@@ -25,9 +25,11 @@ namespace {
 
 // A box is its border, then its fill, and one holding boxes is that over its rows, then
 // its sides and its bottom round the boxes inside it, which show through; then a mark a
-// port, where its curves land.
+// port, where its curves land: a square where it writes, an arrowhead of arrow_steps
+// rects into the box where it reads, so a curve shows which way it carries.
 constexpr std::uint32_t box_rects = 5;
-constexpr std::uint32_t mark_room = 8; // marks a box, on average
+constexpr std::uint32_t arrow_steps = 3;
+constexpr std::uint32_t mark_room = 12; // rects of marks a box, on average
 constexpr std::uint32_t select_rects = 4; // the select box's edges
 constexpr std::uint32_t corner_rects = 8; // two a corner of the box the pointer is over
 constexpr std::uint32_t rect_room =
@@ -1613,7 +1615,18 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
       if (!(right ? rows[row].written : rows[row].text).empty() &&
           ((right ? rows[row].written_layers : rows[row].read_layers) & _layers) != 0) {
         const glm::vec2 middle = port_of(at, row, right);
-        add(between(middle - half, middle + half, VP_VIEW::role("accent")));
+        if (right) {
+          add(between(middle - half, middle + half, VP_VIEW::role("accent")));
+          continue;
+        }
+        const float step = 2.0f * half / static_cast<float>(arrow_steps);
+        for (std::uint32_t at_step = 0; at_step < arrow_steps; ++at_step) {
+          const float x = middle.x - half + step * static_cast<float>(at_step);
+          const float y = half * static_cast<float>(arrow_steps - at_step) /
+                          static_cast<float>(arrow_steps);
+          add(between(
+              {x, middle.y - y}, {x + step, middle.y + y}, VP_VIEW::role("accent")));
+        }
       }
 }
 
