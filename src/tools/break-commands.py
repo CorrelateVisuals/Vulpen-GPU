@@ -642,6 +642,7 @@ VALID = {
     "mode edit": "mode edit",
     "mode perform": "mode perform ;; mode edit",
     "mode toggle": "mode toggle ;; mode toggle",
+    "panel focus <value>": "panel focus graph",
     "panel hide <node>": "panel hide ide.editor-panel ;; panel show ide.editor-panel",
     "panel maximize <node>": "panel maximize ide.graph-panel ;; panel maximize ide.graph-panel",
     "panel move <node> <node> <value>": "panel move ide.perform-panel ide.graph-panel bottom",

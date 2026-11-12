@@ -307,6 +307,25 @@ std::string_view short_name(std::string_view node) {
   return node.substr(node.rfind('.') + 1);
 }
 
+// What a panel is, as its button names it but for the number a second one of a kind
+// takes: editor of ide.editor2-panel.
+std::string_view kind_of(std::string_view panel) {
+  std::string_view kind = short_name(panel);
+  if (kind.ends_with(panel_suffix))
+    kind.remove_suffix(panel_suffix.size());
+  while (!kind.empty() && kind.back() >= '0' && kind.back() <= '9')
+    kind.remove_suffix(1);
+  return kind;
+}
+
+// Names joined by commas, as a refusal lists them.
+std::string joined(std::span<const std::string> names) {
+  std::string text;
+  for (const std::string &name : names)
+    text.append(text.empty() ? "" : ", ").append(name);
+  return text;
+}
+
 // The half of a panel's place a drop at a side gives the panel dropped, or all of it, as
 // a drop into its middle shares it.
 VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
@@ -384,6 +403,11 @@ class Docking final : public VP::Operator {
     _maximize = node.command("panel maximize <node>",
                              "gives a panel the docks' whole room, the others none, or, "
                              "given it already, the others the room they had");
+    _focus = node.command("panel focus <value>",
+                          "gives the keys to a panel of a kind, as its button names it "
+                          "without a number, terminal, graph, editor or perform, or to "
+                          "the panel named, showing it if it hides; again, to the next of "
+                          "that kind, so a key bound to it goes round them");
     _manifest = node.view().file.string();
     _manifest_file = node.file(_manifest);
     _kept = (node.view().file.parent_path() / kept_folder / kept_file).string();
@@ -1075,6 +1099,62 @@ class Docking final : public VP::Operator {
       restore(call);
     else if (call.is(_maximize))
       maximize(call, std::string(call.arguments().front()));
+    else if (call.is(_focus))
+      focus(call, call.arguments().front());
+  }
+
+  // The next panel of the kind after the one in focus, else its first, which shows if it
+  // hid, and the node in it that reads the keys takes them: the one whose tabs its strip
+  // shows, else the first of the keys part's readers it holds, as a find bar's comes
+  // after the text it finds in. A focus line, so the keys part keeps one owner of where
+  // keys go.
+  void focus(VP::Call &call, std::string_view word) {
+    const VP::View &view = *call.view(_view);
+    std::vector<std::size_t> kind;
+    std::vector<std::string> kinds;
+    for (std::size_t at = 0; at < _seated.size(); ++at) {
+      const std::string named(kind_of(_seated[at].panel));
+      if (_seated[at].panel == word || named == word)
+        kind.push_back(at);
+      if (std::ranges::find(kinds, named) == kinds.end())
+        kinds.push_back(named);
+    }
+    if (kind.empty())
+      throw std::runtime_error(std::format("no panel is a {}; the kinds seated are {}",
+                                           word,
+                                           joined(kinds)));
+    const std::optional<std::size_t> now = focused(view);
+    auto next = now ? std::ranges::find(kind, *now) : kind.end();
+    next = next == kind.end() || ++next == kind.end() ? kind.begin() : next;
+    const Seated &panel = _seated[*next];
+    const std::string reader = reader_of(view, panel.panel);
+    if (reader.empty())
+      throw std::runtime_error(
+          std::format("{} holds nothing that reads the keys", panel.panel));
+    if (panel.area.extent.x == 0 || panel.area.extent.y == 0)
+      show(call, panel.panel);
+    send(call, std::format("focus {}", reader));
+    call.reply(std::format("focused {}, in {}", reader, panel.panel));
+  }
+
+  // What reads the keys in a panel: of the keys part's readers, the one whose tabs its
+  // strip shows, else the first the panel's room reaches; none for none.
+  std::string reader_of(const VP::View &view, std::string_view panel) const {
+    std::vector<std::string> readers;
+    for (const VP::Connection &connection : view.connections)
+      if (std::ranges::any_of(connection.to, [&](const VP::Endpoint &to) {
+            return to.node == _name && to.port == typed_port;
+          }))
+        for (const VP::Endpoint &to : connection.to)
+          if (to.node != _name)
+            readers.push_back(to.node);
+    if (const std::optional<Content> held = content_of(view, panel);
+        held && std::ranges::find(readers, held->tabs.node) != readers.end())
+      return held->tabs.node;
+    for (const std::string &reader : readers)
+      if (holds(view, panel, reader))
+        return reader;
+    return {};
   }
 
   // Every dock above the panel gives its half all of its room, each ratio kept as hide
@@ -1772,6 +1852,7 @@ class Docking final : public VP::Operator {
   VP::Command _move;
   VP::Command _hide;
   VP::Command _show;
+  VP::Command _focus;
   VP::Command _restore;
   VP::Command _maximize;
   // Where the view's manifest is, watched, and the view it writes, as read last, and
