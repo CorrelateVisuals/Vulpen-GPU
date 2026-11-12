@@ -23,11 +23,12 @@
 
 namespace {
 
-// A box is its border, then its fill, and one holding boxes is that over its rows, then
-// its sides and its bottom round the boxes inside it, which show through; then a mark a
-// port, where its curves land: a square where it writes, an arrowhead of arrow_steps
-// rects into the box where it reads, so a curve shows which way it carries.
-constexpr std::uint32_t box_rects = 5;
+// A box is its border, then its fill, then its name's band, and one holding boxes is that
+// over its rows, then its sides and its bottom round the boxes inside it, which show
+// through; then a mark a port, where its curves land: a square where it writes, an
+// arrowhead of arrow_steps rects into the box where it reads, so a curve shows which way
+// it carries.
+constexpr std::uint32_t box_rects = 6;
 constexpr std::uint32_t arrow_steps = 3;
 constexpr std::uint32_t mark_room = 12; // rects of marks a box, on average
 constexpr std::uint32_t select_rects = 4; // the select box's edges
@@ -41,6 +42,9 @@ constexpr std::uint32_t character_room = 32768; // their characters
 // A curve a line and a corner of each reader's way, as many as its levels have.
 constexpr std::uint32_t curve_room = 8192;
 constexpr std::int32_t border_width = 1;        // in pixels
+// The band behind a box's name: the fill blended this far toward what the box is, as its
+// name's color says, so the name reads as a tab apart from the rows it lists.
+constexpr float title_tone = 0.25f;
 constexpr std::int32_t selected_width = 2;      // a selected box's border, in pixels
 constexpr float mark_size = 6.0f;               // a port's mark, in pixels at zoom 1
 // A cubic's handles, of its radius, that keep it on a quarter circle.
@@ -1573,9 +1577,9 @@ void Graph::write(VP::Cook &frame, glm::uvec2 cell) {
 }
 
 // A border and a fill, the border in the role of what the box is, wider and in the
-// accent color while it is selected; one holding boxes is filled over its
-// rows alone, and framed below them, so the boxes inside it and the curves between them
-// show. Each is cut at the area.
+// accent color while it is selected, and over the fill the band of its name, in a tone of
+// that role; one holding boxes is filled over its rows alone, and framed below them, so
+// the boxes inside it and the curves between them show. Each is cut at the area.
 void Graph::write_box(std::span<VP_VIEW::Rect> rects,
                       std::uint32_t &written,
                       std::size_t at) const {
@@ -1609,6 +1613,14 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
   inside.blend_role = fill.blend_role;
   inside.blend = fill.blend;
   add(inside);
+  const float band = from.y + static_cast<float>(pad + static_cast<std::int32_t>(_laid_cell.y)) *
+                                  _pan_zoom.zoom;
+  VP_VIEW::Rect title = between(from + width,
+                                {to.x - width, std::min(band, holds ? below : to.y - width)},
+                                VP_VIEW::role("panel"));
+  title.blend_role = shown.role.value_or(VP_VIEW::role("border"));
+  title.blend = title_tone;
+  add(title);
   if (holds) {
     add(between({from.x, below}, {from.x + width, to.y}, edge));
     add(between({to.x - width, below}, to, edge));
