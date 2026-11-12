@@ -1158,24 +1158,34 @@ void Graph::release(VP::Cook &frame, bool room) {
   }
 }
 
-// A second press on a row that names a file opens it, as a line typed would: a node's
-// file, from its folder in the view or the library, the manifest of the recipe a node
-// uses, that of a view where it is hosted from, a file's own box, or a row of what lies
-// outside naming what a relation reaches, a folder showing in the graph; a box's name and
-// its ports open none. Whether one was opened. A file goes on to the panel its shows param
-// names, which shows again if it was hidden, as a person who opens a file looks at it.
+// A second press on a row's name that names a file opens it, as a line typed would: a
+// node's file, from its folder in the view or the library, the manifest of the recipe a
+// node uses, that of a view where it is hosted from, a file's own box, or a row of what
+// lies outside naming what a relation reaches, a folder showing in the graph; a box's name
+// and its ports open none, nor the rest of a row past its name, which is the box's, as a
+// second press there goes into a node. Whether one was opened. A file goes on to the
+// panel its shows param names, which shows again if it was hidden, as a person who opens
+// a file looks at it.
 bool Graph::open(VP::Cook &frame, std::size_t at) {
   const std::size_t row = row_under(at);
   const std::filesystem::path opened =
       row == title_row ? _boxes.boxes[at].opens
                        : (row < _boxes.boxes[at].rows ? rows_in(_boxes, at)[row].opens
                                                       : std::filesystem::path());
-  if (opened.empty())
+  if (opened.empty() || (row != title_row && !on_text(at, rows_in(_boxes, at)[row].text)))
     return false;
   frame.commands().send(std::format("open {}", opened.generic_string()));
   if (!_shows.empty() && !folder_named(frame.files(), opened))
     frame.commands().send(std::format("{}: panel show {}", _view, _shows));
   return true;
+}
+
+// Whether the pointer is on a row's text: from the box's left edge to its last letter
+// and a cell past it, as wide as the row draws it at zoom 1.
+bool Graph::on_text(std::size_t at, std::string_view text) const {
+  const float from = on_screen(glm::vec2(_layout.placed()[at].at)).x;
+  return (_pointer.x - from) / _pan_zoom.zoom <=
+         static_cast<float>((name_margin + text.size() + 1) * _laid_cell.x);
 }
 
 // The row of a box under the pointer, among its rows; title_row for its name's, more_row
