@@ -282,7 +282,9 @@ void Graph::bind(VP::Bind &node) {
                          "files and folders it shows, in place of those selected; with "
                          "none, none");
   _selected = node.command(
-      "selected", "lists the nodes, views, files and folders the graph has selected");
+      "selected",
+      "lists the nodes, views, files and folders the graph has selected, as a line names "
+      "each: a node or a view by its name, a file or a folder by its path");
   _find = node.command("select find <value>...",
                        "selects the next box the graph shows, after the one selected "
                        "last, whose name or a row holds the words, joined by single "
@@ -452,7 +454,10 @@ void Graph::command(VP::Call &call) {
     _selected_in = shown;
   } else if (call.is(_selected)) {
     for (const std::string &name : _selection)
-      if (boxed(name))
+      if (const auto box = std::ranges::find(_boxes.boxes, name, &Box::name);
+          box != _boxes.boxes.end())
+        call.reply(line_name(static_cast<std::size_t>(box - _boxes.boxes.begin())));
+      else if (boxed(name))
         call.reply(name);
   }
 }
@@ -526,6 +531,19 @@ void Graph::focus(std::string_view left) {
     _pan_zoom.pan = middle - glm::vec2(_area->offset) - centre * _pan_zoom.zoom;
     return;
   }
+}
+
+// A box as a line names it, as its menu's lines do: a node, a view or a folder no node
+// names yet by its name, a file or a folder by its path.
+std::string Graph::line_name(std::size_t at) const {
+  const Box &box = _boxes.boxes[at];
+  if (box.view || box.stray || box.role == VP_VIEW::role("node"))
+    return box.name;
+  if (!box.opens.empty())
+    return typed_path(box.opens);
+  if (box.role == VP_VIEW::role("folder") || box.role == VP_VIEW::role("hidden"))
+    return typed_path(folder_of(at));
+  return box.name;
 }
 
 std::filesystem::path Graph::folder_of(std::size_t box) const {

@@ -3,7 +3,9 @@
 #include "shared/Costs.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <filesystem>
 #include <format>
 #include <optional>
 #include <span>
@@ -24,6 +26,72 @@ constexpr std::size_t no_node = static_cast<std::size_t>(-1);
 // A row ls answers: a folder or a file, indented under the folder it is in, and what
 // the folder is, empty for none.
 using Rows = std::vector<std::pair<std::string, std::string>>;
+
+// A file's lines, as docs/statistics counts them: one holding any code counts as code, one
+// a comment starts as comment, and one of blanks as blank; a file holding a zero byte is
+// no text, and has none.
+struct Lines {
+  std::size_t code = 0;
+  std::size_t comment = 0;
+  std::size_t blank = 0;
+  bool text = true;
+
+  std::size_t all() const {
+    return code + comment + blank;
+  }
+  void add(const Lines &more) {
+    code += more.code;
+    comment += more.comment;
+    blank += more.blank;
+  }
+};
+
+// What starts a comment, by a file's ending: // in C++ and GLSL, # in a manifest, CMake,
+// Python, shell and a settings file; none in any other, as Markdown.
+std::string_view comment_of(const std::filesystem::path &file) {
+  static constexpr auto slashed = std::to_array<std::string_view>(
+      {".cpp", ".h", ".hpp", ".c", ".cc", ".glsl", ".vert", ".frag", ".comp", ".tesc",
+       ".tese", ".geom", ".in"});
+  static constexpr auto hashed =
+      std::to_array<std::string_view>({".vlp", ".py", ".cmake", ".sh", ".ps1", ".ini"});
+  const std::string ending = file.extension().string();
+  if (std::ranges::find(slashed, ending) != slashed.end())
+    return "//";
+  if (std::ranges::find(hashed, ending) != hashed.end() || file.filename() == "CMakeLists.txt")
+    return "#";
+  return {};
+}
+
+Lines lines_of(std::string_view text, std::string_view comment) {
+  Lines lines;
+  if (text.find('\0') != std::string_view::npos) {
+    lines.text = false;
+    return lines;
+  }
+  for (std::size_t at = 0; at < text.size();) {
+    const std::size_t end = std::min(text.find('\n', at), text.size());
+    const std::string_view line = text.substr(at, end - at);
+    const std::size_t first = line.find_first_not_of(" \t\r");
+    if (first == std::string_view::npos)
+      ++lines.blank;
+    else if (!comment.empty() && line.substr(first).starts_with(comment))
+      ++lines.comment;
+    else
+      ++lines.code;
+    at = end + 1;
+  }
+  return lines;
+}
+
+std::string said(const Lines &lines) {
+  return std::format(
+      "{}: {} code, {} comment, {} blank", lines.all(), lines.code, lines.comment, lines.blank);
+}
+
+// A path as every answer names it, from where vulpen started.
+std::string shown(const std::filesystem::path &path) {
+  return path.lexically_proximate(std::filesystem::current_path()).generic_string();
+}
 
 // What the nodes of a view cost, as probe stats prints them: each node's parent, the
 // nodes inside each, the roots last, and what each costs with the nodes inside it.
@@ -119,9 +187,11 @@ class Inspect final : public VP::Operator {
                        "view it hosts; or where the graph in a window is, the folder it "
                        "shows or the inside of the node it shows");
     _info = node.command("info [<node>]",
-                         "shows a node's words and the files it holds, or a hosted view's "
-                         "words, and the connections it writes and reads; with none, each "
-                         "selected one's under its header");
+                         "shows a node's words, its folder and the files it holds with "
+                         "their lines, or a hosted view's words, and the connections it "
+                         "writes and reads; or by its path a file's node and lines, or a "
+                         "folder's node and what it holds; with none, each the graph has "
+                         "selected under its header");
     _stats = node.command("probe stats [<node>]",
                           "prints what each node costs a frame on the CPU and the GPU, "
                           "in milliseconds smoothed over about a second, as a tree, a "
@@ -142,7 +212,8 @@ class Inspect final : public VP::Operator {
   }
 
   // Each as the manifest's section of it would read, header first: a node's, or a view's
-  // the view hosts; a file or a folder selected has none.
+  // the view hosts; and a file or a folder selected, which selected names by its path,
+  // under one of its own.
   static void info_selected(VP::Call &call) {
     const std::vector<VP::Usage> usages = call.commands().usages();
     if (std::ranges::find(usages, "selected", &VP::Usage::usage) == usages.end())
@@ -156,15 +227,20 @@ class Inspect final : public VP::Operator {
       at = end + 1;
       const bool hosted =
           std::ranges::find(view.children, node, &VP::Child::name) != view.children.end();
-      if (!hosted &&
-          std::ranges::find(view.nodes, node, &VP::Node::name) == view.nodes.end())
-        continue;
-      call.reply(std::format("[{} \"{}\"]", hosted ? "view" : "node", node));
-      info(call, view, node);
-      shown = true;
+      const bool named =
+          std::ranges::find(view.nodes, node, &VP::Node::name) != view.nodes.end();
+      if (hosted || named) {
+        call.reply(std::format("[{} \"{}\"]", hosted ? "view" : "node", node));
+        info(call, view, node);
+        shown = true;
+      } else if (node.find('/') != std::string::npos) {
+        // Named from where vulpen started, as the graph names what it sends.
+        shown = info_path(call, view, std::filesystem::absolute(node), true) || shown;
+      }
     }
     if (!shown)
-      throw std::runtime_error("no node is selected; info <node> shows one");
+      throw std::runtime_error("nothing is selected; info <node> shows a node, and info "
+                               "<path> a file or a folder");
   }
 
   // Where the graph is: the folder it shows, its names one a row, a folder's with a /
@@ -259,12 +335,21 @@ class Inspect final : public VP::Operator {
       return;
     }
     const auto node = std::ranges::find(view.nodes, name, &VP::Node::name);
-    if (node == view.nodes.end())
-      return inside(call, view, name);
+    if (node == view.nodes.end()) {
+      if (!inside(call, view, name) &&
+          !info_path(call, view, call.resolved(name), false))
+        throw std::runtime_error(
+            std::format("no node, view, file or folder is named {}", name));
+      return;
+    }
+    // Its folder as the view runs, which a recipe a node uses unfolds into the library's.
+    const std::filesystem::path folder = folder_of(call, name);
     for (const VP::Word &word : VP::words_of(*node))
       call.reply(std::format("{} = {}", word.key, word.value));
+    if (!folder.empty())
+      call.reply(std::format("folder = {}/", shown(folder)));
     for (const std::string &file : node->files)
-      call.reply(std::format("holds {}", file));
+      call.reply(std::format("holds {}, {} lines", file, lines_in(call, folder / file).all()));
     for (const VP::Connection &connection : view.connections) {
       if (connection.from.node == name)
         call.reply(std::format("writes {} as {}", connection.from.port, connection.name));
@@ -275,9 +360,71 @@ class Inspect final : public VP::Operator {
     }
   }
 
+  // A node's folder as the view the line addresses runs it; none for a node it lacks.
+  static std::filesystem::path folder_of(VP::Call &call, std::string_view name) {
+    const VP::View &running = call.unfolded();
+    const auto node = std::ranges::find(running.nodes, name, &VP::Node::name);
+    return node == running.nodes.end() ? std::filesystem::path()
+                                       : node->folder.lexically_normal();
+  }
+
+  // A file's lines, none for one that cannot be read.
+  static Lines lines_in(VP::Call &call, const std::filesystem::path &file) {
+    try {
+      return lines_of(call.files().read(file.string()), comment_of(file));
+    } catch (const std::runtime_error &) {
+      return {.text = false};
+    }
+  }
+
+  // A file or a folder by its path: where it is, the node whose folder it is or is in, and
+  // a file's lines and bytes, or what a folder holds, a name a line, and the lines of the
+  // files among them, which info shows of each; under a header of its own when selected.
+  // Whether there is one.
+  static bool info_path(VP::Call &call,
+                        const VP::View &view,
+                        const std::filesystem::path &absolute,
+                        bool header) {
+    std::filesystem::path path = absolute.lexically_normal();
+    if (path.filename().empty())
+      path = path.parent_path();
+    const std::vector<std::string> names = call.files().list(path.parent_path().string());
+    const std::string name = path.filename().string();
+    const bool folder = std::ranges::find(names, name + '/') != names.end();
+    if (!folder && std::ranges::find(names, name) == names.end())
+      return false;
+    const std::string where = shown(path) + (folder ? "/" : "");
+    if (header)
+      call.reply(std::format("[{} \"{}\"]", folder ? "folder" : "file", where));
+    call.reply(std::format("path = {}", where));
+    const std::filesystem::path holder = folder ? path : path.parent_path();
+    for (const VP::Node &node : view.nodes)
+      if (folder_of(call, node.name) == holder)
+        call.reply(std::format("node = {}", node.name));
+    if (!folder) {
+      const std::string text = call.files().read(path.string());
+      if (const Lines lines = lines_of(text, comment_of(path)); lines.text)
+        call.reply(std::format("lines = {}", said(lines)));
+      call.reply(std::format("bytes = {}", text.size()));
+      return true;
+    }
+    Lines lines;
+    std::size_t files = 0;
+    for (const std::string &held : call.files().list(path.string())) {
+      call.reply(std::format("holds {}", held));
+      if (held.ends_with('/'))
+        continue;
+      lines.add(lines_in(call, path / held));
+      ++files;
+    }
+    call.reply(std::format("lines = {} in its {} file{}", said(lines), files,
+                           files == 1 ? "" : "s"));
+    return true;
+  }
+
   // A node inside a recipe a node uses lives in the recipe's view.vlp; the view holds
-  // only the params that node sets on it.
-  static void inside(VP::Call &call, const VP::View &view, std::string_view name) {
+  // only the params that node sets on it. Whether the name is one.
+  static bool inside(VP::Call &call, const VP::View &view, std::string_view name) {
     for (std::size_t dot = name.find('.'); dot != std::string_view::npos;
          dot = name.find('.', dot + 1)) {
       const auto user =
@@ -291,9 +438,9 @@ class Inspect final : public VP::Operator {
         if (param.key.starts_with(prefix))
           call.reply(
               std::format("param = {}={}", param.key.substr(prefix.size()), param.value));
-      return;
+      return true;
     }
-    throw std::runtime_error(std::format("no node is named {}", name));
+    return false;
   }
 
   // The view as it runs, each node a row under the node it is inside, as ls lists them:

@@ -215,6 +215,7 @@ private:
   std::string cut_under() const;
   std::size_t row_under(std::size_t at) const;
   bool on_text(std::size_t at, std::string_view text) const;
+  std::string line_name(std::size_t at) const;
   // The curves near enough a point on screen, where no box lies; none while a drag goes
   // on.
   void curves_under(glm::vec2 point);
