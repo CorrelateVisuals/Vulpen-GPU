@@ -279,14 +279,23 @@ void Ports::copy(std::string_view from, std::string_view to) {
   listing_changed(absolute(to));
 }
 
+// A move into a hidden folder, past those its old place is in, as remove's into a trash
+// under .vulpen/, takes the path out of sight: what follows moves lets it go, as at a
+// delete, so an editor holding it never writes into the trash.
 void Ports::rename(std::string_view from, std::string_view to) {
   const std::filesystem::path path = normal(absolute(from));
   const std::filesystem::path view = view_of(path);
   std::error_code none;
   const bool folder = std::filesystem::is_directory(path, none);
   Files::rename(absolute(from), absolute(to));
-  _moved.push_back({absolute(from).lexically_normal().string(),
-                    absolute(to).lexically_normal().string()});
+  const std::filesystem::path moved = absolute(to).lexically_normal();
+  const bool hides = std::ranges::any_of(
+      moved.lexically_relative(path.parent_path()),
+      [](const std::filesystem::path &part) {
+        return part != ".." && part.string().starts_with('.');
+      });
+  _moved.push_back(
+      {absolute(from).lexically_normal().string(), hides ? std::string() : moved.string()});
   listing_changed(absolute(from));
   listing_changed(absolute(to));
   if (folder && !view.empty())

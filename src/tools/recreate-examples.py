@@ -414,7 +414,7 @@ def examples(scratch: Path) -> list[Example]:
         ok(f"copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
            "node set face vertex_count=3 param=frames_per_turn=600"),
         ok("node remove keep corners.left"),
-        no(f"remove {at(e.copy, 'corners')}/", "which a delete cannot bring back"),
+        no(f"remove {at(e.copy, 'corners')}/", "where undo brings them back from"),
         ok(f"node add corners.left invocations=1 {words['left']}"),
         ok("node move corners.left face"),
         *(ok(f"connect {corner} corners.{corner}.corner face.{corner}") for corner in words),
