@@ -462,8 +462,9 @@ void Graph::command(VP::Call &call) {
   }
 }
 
-// delete or backspace removes what is selected; an arrow moves it a line of the ground
-// that way; escape lets go of it, and with none of the focus, as the editor and the
+// delete removes what is selected with what it holds, and backspace only what holds
+// nothing, as remove force and remove do, each into the trash undo brings it back from;
+// an arrow moves it a line of the ground that way; escape lets go of it, and with none of the focus, as the editor and the
 // terminal do; control with a selects every box; control with z takes back the last
 // change of where the boxes are, or the line a person ran after it, and with shift too
 // does it again. The home key brings the graph home once the frame has laid the boxes
@@ -471,7 +472,7 @@ void Graph::command(VP::Call &call) {
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
   if ((key == "delete" || key == "backspace") && chosen) {
-    erase(frame);
+    erase(frame, key == "delete");
   } else if (const glm::ivec2 way = arrow_of(key); way != glm::ivec2(0) && chosen) {
     nudge(frame, way);
   } else if (key == undo_key && _control) {
@@ -1513,7 +1514,7 @@ void Graph::arrange_anew(VP::FilePort &files) {
 // the menu's own press (V06); a node with files in its folder is refused, naming remove
 // force. A node inside another selected goes with that one, and what no menu removes, as
 // what lies outside and the view's own manifest, stays.
-void Graph::erase(VP::Cook &frame) {
+void Graph::erase(VP::Cook &frame, bool force) {
   std::vector<std::pair<std::string, std::string>> lines; // a kind's, by the kind
   for (const std::string &name : _selection) {
     const auto box = std::ranges::find(_boxes.boxes, name, &Box::name);
@@ -1530,8 +1531,12 @@ void Graph::erase(VP::Cook &frame) {
         std::ranges::find(lines, kind, &std::pair<std::string, std::string>::first);
     if (line == lines.end())
       line = lines.insert(lines.end(),
-                          {kind, std::format("menu press {} {} for", kind,
-                                             kind == "view" ? "view close" : "remove")});
+                          {kind,
+                           std::format("menu press {} {} for",
+                                       kind,
+                                       kind == "view"                 ? "view close"
+                                       : force && kind != "file" ? "remove force"
+                                                                      : "remove")});
     line->second.append(" ").append(named);
   }
   for (const auto &[kind, line] : lines)

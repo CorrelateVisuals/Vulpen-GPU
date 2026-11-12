@@ -260,8 +260,25 @@ void Undo::take_back(Call &call, bool again) {
 }
 
 // Each path as the step left it, for undo, or found it, for redo, by its last change or
-// its first, so neither writes over a change made since, by a line or another program.
+// its first, so neither writes over a change made since, by a line or another program:
+// a rename, as remove's into the trash, goes back only while its new path is there and
+// its old one free again.
 void Undo::check(const Step &step, bool again) {
+  using Kind = Step::Change::Kind;
+  for (const Step::Change &change : step.changes) {
+    if (change.kind != Kind::rename)
+      continue;
+    const std::filesystem::path &from = again ? change.path : change.to;
+    const std::filesystem::path &to = again ? change.to : change.path;
+    if (!there(from) || there(to))
+      throw std::runtime_error(
+          std::format("{} {} since the line {}, which {} would {}; nothing changed",
+                      there(to) ? to.string() : from.string(),
+                      there(to) ? "is there again" : "is gone",
+                      line_of(step.line, step.hosted),
+                      again ? "redo" : "undo",
+                      there(to) ? "write over" : "need"));
+  }
   std::vector<std::filesystem::path> seen;
   const auto holds = [&](const std::filesystem::path &file, std::string_view text) {
     std::error_code unread;
