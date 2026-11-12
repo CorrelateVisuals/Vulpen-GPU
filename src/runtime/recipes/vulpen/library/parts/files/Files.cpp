@@ -41,7 +41,7 @@ constexpr std::array<Start, 8> starts{{{".vert", "vertex_count=3"},
                                        {".cpp", ""},
                                        {".h", ""}}};
 // The files only a node runs, its shaders and its C++: made at a project's top, they make
-// the top folder its node, named like the view (RV08).
+// the top folder its node, node . (RV08).
 constexpr std::array<std::string_view, 7> run_by_nodes{
     ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp", ".cpp"};
 // The tessellation stages, which Vulkan runs only together, so new making one where the

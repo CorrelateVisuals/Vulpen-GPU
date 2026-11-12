@@ -571,6 +571,10 @@ class Library final : public VP::Operator {
     const auto node = std::ranges::find(graph.nodes, root, &VP::Node::name);
     if (node == graph.nodes.end())
       throw std::runtime_error(std::format("no node is named {}", root));
+    if (VP::is_top(graph, root))
+      throw std::runtime_error(
+          "node . is the view's top folder, which holds the view's own files: new n/ and "
+          "rename its files into n/ make a node recipe make takes");
     const Copy copy = copy_in(files, graph, view, root);
     const bool part = copy.nodes.size() == 1;
     const std::string named = call.arguments().size() > 1
