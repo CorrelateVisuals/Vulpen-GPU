@@ -39,8 +39,8 @@ constexpr std::array<Start, 8> starts{{{".vert", "vertex_count=3"},
                                        {".comp", "invocations=64"},
                                        {".cpp", ""},
                                        {".h", ""}}};
-// The files only a node runs, its shaders and its C++, which a view's top holds for no
-// node, as a node is a folder (RV08).
+// The files only a node runs, its shaders and its C++: made at a project's top, they make
+// the top folder its node, named like the view (RV08).
 constexpr std::array<std::string_view, 7> run_by_nodes{
     ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp", ".cpp"};
 // The tessellation stages, which Vulkan runs only together, so new making one where the
@@ -298,9 +298,10 @@ std::vector<std::string> nodes_for(VP::FilePort &files,
                                    bool folder,
                                    const std::optional<std::filesystem::path> &brought) {
   std::vector<std::string> nodes;
+  const VP::View &view = *held.view;
   const auto add = [&](const std::filesystem::path &inside) {
     const std::optional<std::string> node = node_of(inside);
-    if (!node || named(*held.view, *node) || std::ranges::find(nodes, *node) != nodes.end())
+    if (!node || named(view, *node) || std::ranges::find(nodes, *node) != nodes.end())
       return;
     if (!VP::is_name(inside.filename().string()))
       throw std::runtime_error(std::format(
@@ -320,6 +321,13 @@ std::vector<std::string> nodes_for(VP::FilePort &files,
   }
   if (folder && brought)
     each_below(files, *brought, held.inside, add);
+  const bool runs =
+      std::ranges::find(run_by_nodes, held.inside.extension().string()) !=
+      run_by_nodes.end();
+  // An app's top is its own node already, named like its folder.
+  if (!folder && runs && !held.inside.has_parent_path() &&
+      !named(view, VP::top_node) && VP::is_top(view, VP::top_node))
+    nodes.emplace_back(VP::top_node);
   return nodes;
 }
 
@@ -519,7 +527,9 @@ class Files final : public VP::Operator {
                         "ending in / or with no extension a folder, else a file, a "
                         "shader's or C++'s with the least code that builds and runs; "
                         "in a view a folder is a node, which it adds, a draw's with its "
-                        "vertex_count and a dispatch's with its invocations; with none, "
+                        "vertex_count and a dispatch's with its invocations, and a "
+                        "shader or C++ file at a project's top makes the top node .; "
+                        "with none, "
                         "what the folder typed at's menu offers: in a node's, the file "
                         "it lacks first, in a view's, a node node1/ on, the first free");
     _rename = node.command("rename <file> <file>",
@@ -650,17 +660,6 @@ class Files final : public VP::Operator {
       if (taken(path))
         throw std::runtime_error(std::format("{} is there already", shown(path)));
       const std::optional<Held> held = held_by(call, path);
-      if (const std::string name = path.filename().string();
-          !folder && held && held->inside.empty() &&
-          std::ranges::find(run_by_nodes, path.extension().string()) !=
-              run_by_nodes.end())
-        throw std::runtime_error(std::format(
-            "{} at the top of view {} runs in no node, as a node is a folder: new {} "
-            "makes node {} and writes it there",
-            shown(path),
-            held->name.empty() ? held->view->name : held->name,
-            shown(path.parent_path() / path.stem() / name),
-            path.stem().string()));
       Graphed *const graph = held ? &graphed(graphs, held->name) : nullptr;
       for (std::string &node : adopted(call, held, folder, std::nullopt))
         if (std::ranges::find(graph->adds, node, &Words::node) == graph->adds.end())
@@ -707,8 +706,10 @@ class Files final : public VP::Operator {
     std::string text(files.text(_starts[at]));
     if (text.find(start_name) != std::string::npos)
       text = replaced(std::move(text), start_name, class_named(file));
-    const std::optional<std::string> node =
+    std::optional<std::string> node =
         held ? node_of(held->inside.parent_path()) : std::nullopt;
+    if (node && node->empty() && VP::is_top(*held->view, VP::top_node))
+      node = VP::top_node; // the top folder's
     if (node && !node->empty() && !start->word.empty())
       give(*graph, *held->view, *node, start->word);
     return text;

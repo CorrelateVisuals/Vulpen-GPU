@@ -203,8 +203,13 @@ class Inspect final : public VP::Operator {
     for (const VP::Child &child : view.children)
       rows.emplace_back(child.name + '/',
                         std::format("view, from {}", child.file.string()));
+    // The top node's files lie beside the manifest, its folder the view's own.
     for (const VP::Node &node : view.nodes)
-      if (node.name.find('.') == std::string::npos)
+      if (VP::is_top(view, node.name))
+        for (const std::string &file : node.files)
+          rows.emplace_back(file, std::format("node {}", node.name));
+    for (const VP::Node &node : view.nodes)
+      if (node.name.find('.') == std::string::npos && !VP::is_top(view, node.name))
         list(view, node, 0, rows);
     reply_rows(call, rows);
   }

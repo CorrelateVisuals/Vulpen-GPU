@@ -45,7 +45,6 @@ constexpr std::string_view recipes_folder = "recipes";
 constexpr std::string_view vulpen_group = "vulpen";
 constexpr std::string_view library_folder = "library";
 constexpr std::array<std::string_view, 2> recipe_kinds{"parts", "components"};
-constexpr std::string_view library_view = "library";
 
 // A recipes' folder: one named so, which holds vulpen's library.
 bool recipes_at(const std::filesystem::path &folder) {
@@ -127,6 +126,21 @@ std::vector<std::string> files_in(const std::filesystem::path &folder) {
   }
   std::ranges::sort(files);
   return files;
+}
+
+// A node's folder: its name's path from where the view's node names start, or that
+// folder itself for a project's top node.
+std::filesystem::path folder_of(const View &view,
+                                const std::filesystem::path &base,
+                                std::string_view node) {
+  const std::filesystem::path inside = folder_in(view, node);
+  return inside.empty() ? base : base / inside;
+}
+
+// Whether a node runs a file of that name: a shader's or its C++.
+bool runs(const std::filesystem::path &file) {
+  const std::string ending = file.extension().string();
+  return ending == ".cpp" || std::ranges::find(stages, ending) != stages.end();
 }
 
 // What a person wrote around one line of a manifest, so a save puts it back.
@@ -628,8 +642,11 @@ View flattened(View view, Unfolding &unfolding) {
   const std::filesystem::path base = base_of(view);
   for (Node &node : std::exchange(view.nodes, {})) {
     if (!node.uses()) {
-      node.folder = base / path_of(node.name);
-      node.module = node.folder.lexically_relative(unfolding.root);
+      node.folder = folder_of(view, base, node.name);
+      // The top's module is the view's own, which the build names by the view alone.
+      node.module = node.folder == unfolding.root
+                        ? std::filesystem::path()
+                        : node.folder.lexically_relative(unfolding.root);
       view.nodes.push_back(std::move(node));
       continue;
     }
@@ -663,7 +680,7 @@ void check_copies(const View &view) {
 void check_inside(const View &flat) {
   for (const Node &node : flat.nodes) {
     const std::size_t dot = node.name.rfind('.');
-    if (dot != std::string::npos &&
+    if (dot != std::string::npos && node.name != top_node &&
         std::ranges::find(flat.nodes, node.name.substr(0, dot), &Node::name) ==
             flat.nodes.end())
       throw std::runtime_error(std::format("{}node {} is inside {}, which is no node",
@@ -692,23 +709,22 @@ std::vector<std::string> Manifest::refresh(View &view) {
   for (Node &node : view.nodes) {
     if (node.uses())
       continue;
-    const std::filesystem::path folder = path_of(node.name);
-    std::vector<std::string> files = files_in(base / folder);
+    const std::filesystem::path folder = folder_in(view, node.name);
+    std::vector<std::string> files = files_in(folder_of(view, base, node.name));
     if (node.files.empty()) {
       node.files = std::move(files);
       continue;
     }
+    const std::string shown =
+        folder.empty() ? std::string("the view's folder") : folder.generic_string() + '/';
     for (const std::string &file : files)
       if (std::ranges::find(node.files, file) == node.files.end())
-        notes.push_back(
-            std::format("node {}: {} is in {}/ now, so it is one of its files",
-                        node.name,
-                        file,
-                        folder.generic_string()));
+        notes.push_back(std::format(
+            "node {}: {} is in {} now, so it is one of its files", node.name, file, shown));
     for (const std::string &file : node.files)
       if (std::ranges::find(files, file) == files.end())
-        notes.push_back(std::format(
-            "node {}: {} is no longer in {}/", node.name, file, folder.generic_string()));
+        notes.push_back(
+            std::format("node {}: {} is no longer in {}", node.name, file, shown));
     node.files = std::move(files);
   }
   return notes;
@@ -719,6 +735,15 @@ std::vector<std::string> Manifest::unnamed(const View &view) {
   std::vector<std::string> notes;
   if (!library_of(view.file)) {
     unnamed_below(view, base_of(view), {}, notes);
+    if (std::ranges::find(view.nodes, top_node, &Node::name) == view.nodes.end())
+      for (const std::string &file : files_in(base_of(view)))
+        if (runs(file))
+          notes.push_back(std::format("{} beside {} runs in no node: the top folder is "
+                                      "node {}, which node add {} makes",
+                                      file,
+                                      manifest_file,
+                                      top_node,
+                                      top_node));
     return notes;
   }
   for (const Node &node : view.nodes)

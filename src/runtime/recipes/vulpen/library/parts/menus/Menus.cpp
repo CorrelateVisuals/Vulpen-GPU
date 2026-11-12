@@ -324,9 +324,7 @@ class Menus final : public VP::Operator {
     const bool node = std::ranges::any_of(look.ports, [&](const VP::NodePort &port) {
       return port.node == named;
     });
-    const std::size_t dot = named.rfind('.');
-    return node || dot == std::string_view::npos ? std::string(named)
-                                                 : std::string(named.substr(0, dot));
+    return node ? std::string(named) : std::string(VP::port_node(named));
   }
 
   // Whether a link shows as a node's port and the other end, a column each: for one node
@@ -393,7 +391,7 @@ class Menus final : public VP::Operator {
         continue;
       const std::string name = std::format("{}.{}", own.node, own.name);
       for (const std::string &other : own.alike) {
-        const std::string other_node = other.substr(0, other.rfind('.'));
+        const std::string other_node(VP::port_node(other));
         if (port ? name != _subjects.front()
                  : !pressed(own.node) || (!two && !pressed(other_node)))
           continue;
@@ -503,7 +501,7 @@ class Menus final : public VP::Operator {
     const std::string one = _subjects.empty() ? std::string() : pressed(_subjects[0]);
     const std::string two = _subjects.size() < 2 ? std::string() : pressed(_subjects[1]);
     const std::string node =
-        named.empty() ? std::string() : std::string(named.substr(0, named.rfind('.')));
+        named.empty() ? std::string() : std::string(VP::port_node(named));
     std::string text;
     for (std::size_t at = 0; at < words.size(); ++at) {
       std::string word = words[at];
@@ -559,7 +557,8 @@ class Menus final : public VP::Operator {
         std::ranges::none_of(look.view->nodes,
                              [&](const VP::Node &node) { return node.name == named; }))
       return {};
-    return std::filesystem::absolute(look.view->file.parent_path() / VP::path_of(named))
+    return std::filesystem::absolute(look.view->file.parent_path() /
+                                     VP::folder_in(*look.view, named))
         .lexically_normal()
         .string();
   }
@@ -581,17 +580,17 @@ class Menus final : public VP::Operator {
     }
     const VP::View *const view = call.view(call.commands().current());
     const std::filesystem::path own =
-        view ? std::filesystem::absolute(view->file.parent_path() / VP::path_of(named))
+        view ? std::filesystem::absolute(view->file.parent_path() /
+                                         VP::folder_in(*view, named))
                    .lexically_normal()
              : std::filesystem::path();
     if (view && std::ranges::find(view->nodes, named, &VP::Node::name) != view->nodes.end())
       return typed(own);
     // A port, as node.port, its node's.
-    if (const std::size_t dot = named.rfind('.');
-        view && dot != std::string_view::npos &&
-        std::ranges::find(view->nodes, named.substr(0, dot), &VP::Node::name) !=
-            view->nodes.end())
-      return folder_of(call, named.substr(0, dot));
+    if (const std::string_view node = VP::port_node(named);
+        view && node != named &&
+        std::ranges::find(view->nodes, node, &VP::Node::name) != view->nodes.end())
+      return folder_of(call, node);
     if (const VP::View *const hosted = call.view(named))
       return typed(std::filesystem::absolute(hosted->file.parent_path()));
     if (view) {

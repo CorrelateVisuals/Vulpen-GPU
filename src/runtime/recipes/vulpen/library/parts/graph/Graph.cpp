@@ -160,16 +160,22 @@ std::string typed_path(const std::filesystem::path &path) {
 // The folders of a view's level no node names: at its top, but the folders of what its
 // nodes share, the hidden ones and its hosted views', or in a node's inside; each shows as
 // a box, which a right press makes a node, as every folder in a view is a node's (RV08).
-// At its top too the files beside its manifest, which no node holds, as new leaves
-// one there, each a box a press opens, as the manifest's; in a node's inside every file
-// is the node's. A folder's name ends with /, as the file port lists it. Read as the
-// level is built, as a node remove keep, which leaves the folder, builds it anew.
+// At its top too the files beside its manifest while no node holds them, each a box a
+// press opens, as the manifest's, until the top folder is a node, node ., whose box
+// lists them; in a node's inside every file is the node's, and the top's inside
+// holds no folder, as the nodes in it show beside it. A folder's name ends with /, as the
+// file port lists it. Read as the level is built, as a node remove keep, which leaves the
+// folder, builds it anew.
 std::vector<std::string>
 strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) {
   std::string path(inside);
   std::ranges::replace(path, '.', '/');
   const std::filesystem::path folder = edited.file.parent_path() / path;
   std::vector<std::string> strays;
+  if (!inside.empty() && VP::is_top(edited, inside))
+    return strays;
+  const bool top_node =
+      std::ranges::find(edited.nodes, VP::top_node, &VP::Node::name) != edited.nodes.end();
   std::vector<std::string> names;
   try {
     names = files.list(folder.lexically_normal().string());
@@ -180,7 +186,7 @@ strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) 
     if (name.starts_with('.'))
       continue;
     if (!name.ends_with('/')) {
-      if (inside.empty() && name != VP::manifest_file && !name.ends_with('~'))
+      if (inside.empty() && !top_node && name != VP::manifest_file && !name.ends_with('~'))
         strays.push_back(name);
       continue;
     }

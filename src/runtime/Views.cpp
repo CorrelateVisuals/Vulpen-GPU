@@ -778,7 +778,7 @@ void Views::command(Call &call) {
       throw std::runtime_error("no view runs to clear an image in");
     if (dot == std::string_view::npos)
       throw std::runtime_error(std::format("{} is no port: node.port", port));
-    found->schedule->clear_image(port.substr(0, dot), port.substr(dot + 1));
+    found->schedule->clear_image(port_node(port), port.substr(dot + 1));
   }
 }
 

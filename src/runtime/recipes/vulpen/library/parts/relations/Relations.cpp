@@ -857,8 +857,11 @@ void Relations::relate_stages() {
 // the port, at the line doing so, to the file of each reader's node that reads it, so a
 // project's C++ and shaders show joined where its manifest joins them.
 void Relations::relate_wires() {
+  // A port of the top node, as .color, is the manifest's folder's, a project's top.
   const auto folder_of = [](const Wired &wired, std::string_view end) {
-    return wired.manifest.parent_path() / VP::path_of(end.substr(0, end.rfind('.')));
+    const std::filesystem::path top = wired.manifest.parent_path();
+    const std::string_view node = end.substr(0, end.rfind('.'));
+    return node.empty() || node == VP::top_node ? top : top / VP::path_of(node);
   };
   const auto port_of = [](std::string_view end) {
     return end.substr(end.rfind('.') + 1);

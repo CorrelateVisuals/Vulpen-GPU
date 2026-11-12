@@ -240,6 +240,10 @@ Node &existing(View &view, std::string_view name) {
                     name,
                     user->recipe,
                     user->name));
+  if (name == view.name)
+    throw std::runtime_error(std::format(
+        "no node is named {}: the view's top folder is node ., as {} names its view", name,
+        name));
   throw std::runtime_error(std::format("no node is named {}", name));
 }
 
@@ -857,13 +861,17 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
   }
 }
 
-// The port follows the last dot, so a node inside others keeps its own: ui.panel.rects.
-// A view's name and a colon, as a line addresses the view, names its window.
+// The port follows the last dot, so a node inside others keeps its own: ui.panel.rects,
+// and .color is the top node's. A view's name and a colon, as a line addresses the view,
+// names its window.
 Endpoint Edits::endpoint(std::string_view text) {
   if (text.ends_with(':') && is_name(text.substr(0, text.size() - 1)))
     return {std::string(text.substr(0, text.size() - 1)), {}};
   const std::size_t dot = text.rfind('.');
-  const std::string_view node = text.substr(0, dot);
+  const std::string_view node =
+      dot == 0 || text.substr(0, dot) == top_node ? top_node : text.substr(0, dot);
+  if (node == top_node && is_name(text.substr(dot + 1)))
+    return {std::string(top_node), std::string(text.substr(dot + 1))};
   const std::string_view port =
       dot == std::string_view::npos ? std::string_view{} : text.substr(dot + 1);
   if (!is_path(node) || !is_name(port))
@@ -875,7 +883,11 @@ Endpoint Edits::endpoint(std::string_view text) {
 // A node's folder is its name's path in the view's folder (RV08), beside the folders of
 // the views it hosts and of its contracts and shared code, so none of them shares a name.
 void Edits::add(View &view, Node node) {
-  check_path("node", node.name);
+  if (node.name == top_node && !is_top(view, node.name))
+    throw std::runtime_error("node . is a project's top folder's, and each recipe of the "
+                             "library is named like its folder instead");
+  if (node.name != top_node)
+    check_path("node", node.name);
   if (node.name == contracts_folder || node.name == shared_folder)
     throw std::runtime_error(std::format("{}/ holds what the view's nodes share (RV05, "
                                          "RV09), so no node is named {}",

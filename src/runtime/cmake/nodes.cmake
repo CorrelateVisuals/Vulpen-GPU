@@ -84,6 +84,8 @@ function(vulpen_view folder)
   if(NOT VULPEN_LIVE)
     add_dependencies(vulpen vulpen_view_${view})
   endif()
+  # The top folder is a node too, named like the view, its files those beside view.vlp.
+  vulpen_node(${view} ${folder} ${folder})
   vulpen_nodes(${view} ${folder} ${folder})
 endfunction()
 
@@ -181,7 +183,10 @@ endfunction()
 function(vulpen_node view folder root)
   file(RELATIVE_PATH relative ${root} ${folder})
   string(MAKE_C_IDENTIFIER "${view}_${relative}" target)
-  set(out ${CMAKE_BINARY_DIR}/views/${view}/${relative})
+  set(out ${CMAKE_BINARY_DIR}/views/${view})
+  if(relative)
+    string(APPEND out /${relative})
+  endif()
   # Where contracts/ and shared/ resolve from: the top of the view, or of vulpen's library,
   # which keeps shared/ in parts/, beside the parts that include it, after the top of the
   # group a recipe of another group is in, which keeps both (RV05, RV09).

@@ -829,7 +829,7 @@ bool Schedule::pull(std::string_view image) {
   if (image.empty())
     return true;
   _pulled.assign(_bound.size(), false);
-  std::vector<std::string_view> wanted{image.substr(0, image.rfind('.'))};
+  std::vector<std::string_view> wanted{port_node(image)};
   while (!wanted.empty()) {
     const std::string_view node = wanted.back();
     wanted.pop_back();

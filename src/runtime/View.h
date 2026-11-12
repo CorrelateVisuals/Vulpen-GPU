@@ -74,6 +74,16 @@ inline std::filesystem::path path_of(std::string_view node) {
   return path / node;
 }
 
+// The view the recipes build as, the library's, and each app's beside it, whose own node
+// is named like its folder already, as nodes.cmake names it.
+inline constexpr std::string_view library_view = "library";
+
+// A project's top folder is a node too, named ., the folder itself as a path (RV08): the
+// files beside its manifest are its files, and [node "."] holds its words, so no word is
+// new (V04). The nodes in it are named from the top, as ever, and a port of it is .port.
+// The library's recipes have none: each is named like its folder already.
+inline constexpr std::string_view top_node = ".";
+
 // Whether the node named is the other or inside it, by their names.
 inline bool within(std::string_view node, std::string_view other) {
   return node.starts_with(other) &&
@@ -169,9 +179,9 @@ struct Endpoint {
   bool view() const {
     return port.empty();
   }
-  // As a manifest and a command write it.
+  // As a manifest and a command write it: a port of the top node as .port.
   std::string text() const {
-    return view() ? node + ':' : node + '.' + port;
+    return view() ? node + ':' : (node == top_node ? "" : node) + '.' + port;
   }
 };
 
@@ -230,6 +240,25 @@ struct View {
   std::vector<Node> nodes;
   std::vector<Connection> connections;
 };
+
+// The node of a port as a line names it, node.port: the top's for .port, and the whole
+// for a name with no dot.
+inline std::string_view port_node(std::string_view port) {
+  const std::size_t dot = port.rfind('.');
+  if (dot == std::string_view::npos)
+    return port;
+  return dot == 0 ? top_node : port.substr(0, dot);
+}
+
+// Whether a node is a project's top folder's, top_node.
+inline bool is_top(const View &view, std::string_view node) {
+  return node == top_node && view.name != library_view;
+}
+
+// A node's folder from its view's folder: its name as a path, or none for the top.
+inline std::filesystem::path folder_in(const View &view, std::string_view node) {
+  return is_top(view, node) ? std::filesystem::path() : path_of(node);
+}
 
 // Whether a draw of the view renders into its window, so the view needs one, as the
 // engine opens a window by it and a GUI tells a project with something to show: a draw no
