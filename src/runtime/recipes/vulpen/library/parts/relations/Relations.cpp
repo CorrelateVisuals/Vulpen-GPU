@@ -372,6 +372,45 @@ std::vector<Varying> varyings_of(std::string_view text) {
   return varyings;
 }
 
+// Whether what follows a name in a line assigns to it: past an index and a member, as
+// gl_out[i].gl_Position and gl_Position.y, an = that is no ==, or one after + - * /.
+bool assigns(std::string_view rest) {
+  std::size_t at = rest.find_first_not_of(" \t");
+  if (at != std::string_view::npos && rest[at] == '[') {
+    at = rest.find(']', at);
+    at = at == std::string_view::npos ? at : rest.find_first_not_of(" \t", at + 1);
+  }
+  if (at != std::string_view::npos && rest[at] == '.')
+    at = rest.find_first_not_of(
+        " \tabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_", at + 1);
+  if (at != std::string_view::npos && std::string_view("+-*/").find(rest[at]) !=
+                                          std::string_view::npos)
+    ++at;
+  return at < rest.size() && rest[at] == '=' && (at + 1 == rest.size() || rest[at + 1] != '=');
+}
+
+// What a stage hands the next with no declaration, each at the first line writing it: the
+// built-ins a vertex, tessellation or geometry stage writes out, as gl_Position, which the
+// next reads in as gl_in[].gl_Position, or the rasterizer turns into the pixels a fragment
+// stage runs for, and the tessellation levels, which cut the patch the next stage places.
+std::vector<Varying> builtins_of(std::string_view text) {
+  static constexpr auto written = std::to_array<std::string_view>(
+      {"gl_Position", "gl_PointSize", "gl_ClipDistance", "gl_CullDistance",
+       "gl_TessLevelOuter", "gl_TessLevelInner", "gl_Layer", "gl_ViewportIndex"});
+  std::vector<Varying> builtins;
+  each_line(text, [&](std::string_view line, std::uint32_t number) {
+    line = line.substr(0, line.find("//"));
+    for (const std::string_view name : written)
+      for (std::size_t at = line.find(name);
+           at != std::string_view::npos &&
+           std::ranges::find(builtins, name, &Varying::name) == builtins.end();
+           at = line.find(name, at + 1))
+        if (assigns(line.substr(at + name.size())))
+          builtins.push_back({.name = std::string(name), .line = number, .out = true});
+  });
+  return builtins;
+}
+
 // A call of the Bind a C++ file names a port by: whether data leaves the C++ through it,
 // and whether it reaches the node's shaders' pass block, or a C++ connection.
 struct Binding {
@@ -694,8 +733,11 @@ bool Relations::read_slice(VP::FilePort &files, Listed &listed) {
     return false;
   if (shader(file)) {
     _declared.emplace(file, declared_names(_text));
-    if (draw_stage(file))
-      _varyings.emplace(file, varyings_of(_text));
+    if (draw_stage(file)) {
+      std::vector<Varying> passed = varyings_of(_text);
+      std::ranges::move(builtins_of(_text), std::back_inserter(passed));
+      _varyings.emplace(file, std::move(passed));
+    }
   } else if (!_folder.empty() && language_of(file) == Language::manifest) {
     std::ranges::move(wired_of(_text, file), std::back_inserter(_wired));
   }
@@ -819,8 +861,10 @@ void Relations::relate_seams() {
 
 // A stage reads in what the nearest stage before it in its folder writes out, as its
 // fragment shader reads its vertex shader's color, matched as the stages match them, by
-// location, or by name where either gives none: the engine carries it from the writer,
-// at the line writing it out, to the reader.
+// location, or by name where either gives none, and the built-ins it writes, as
+// gl_Position, which the engine hands on whether the reader names them or not, as a
+// stage left out stops the draw: the engine carries it from the writer, at the line
+// writing it out, to the reader.
 void Relations::relate_stages() {
   for (const auto &[reader, ins] : _varyings) {
     const std::size_t stage = *draw_stage(reader);
@@ -849,6 +893,13 @@ void Relations::relate_stages() {
                           .line = out->line,
                           .said = in.name});
     }
+    for (const Varying &out : *written)
+      if (out.out && out.name.starts_with("gl_"))
+        _found.push_back({.from = writer->generic_string(),
+                          .to = reader.generic_string(),
+                          .layer = VP_VIEW::Layer::engine,
+                          .line = out.line,
+                          .said = out.name});
   }
 }
 
