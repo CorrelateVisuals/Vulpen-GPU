@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 IMAGES = ROOT / "docs" / "images"
-NAME = "Vulpen"  # the copy's folder, as the repository's .vulpen/graph.ini names its top
+NAME = "Vulpen"  # the copy's folder, named as the repository is, which the graph shows
 # The theme the ide's palette reads, in the copy; a run's own theme goes over it.
 THEME = Path("src/runtime/recipes/vulpen/library/parts/palette/theme.ini")
 TIMEOUT_S = 120     # for a line, a picture, or the run's end
