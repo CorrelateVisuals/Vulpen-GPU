@@ -24,6 +24,7 @@ file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${module_stamp_file} CONTENT "${module
 # running vulpen, so its runtime says, once one changes, that a restart runs it.
 set(engine_sources_file engine-sources)
 set(views_file built-views)
+set(read_file read-folders)
 get_target_property(engine_sources vulpen SOURCES)
 get_target_property(runtime_sources runtime SOURCES)
 get_target_property(layer_sources baseclasses SOURCES)
@@ -63,7 +64,8 @@ target_compile_definitions(runtime PRIVATE
   VP_MODULE_STAMP_FILE="${module_stamp_file}"
   VP_ENGINE_SOURCES_FILE="${engine_sources_file}"
   VP_ENGINE_FILE="${engine_file}"
-  VP_VIEWS_FILE="${views_file}")
+  VP_VIEWS_FILE="${views_file}"
+  VP_READ_FILE="${read_file}")
 
 # A view: each folder in it is a node, but its contracts/ and its shared/ (RV05, RV09). One
 # named so no target can be is named, and not built, so it stops no other build.
@@ -74,6 +76,8 @@ function(vulpen_view folder)
     return()
   endif()
   vulpen_name(${view} ${folder})
+  get_filename_component(above ${folder} DIRECTORY)
+  set_property(GLOBAL APPEND PROPERTY vulpen_read ${above})
   add_custom_target(vulpen_view_${view}_gates
     COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py ${CMAKE_BINARY_DIR} --view ${folder}
     VERBATIM)
@@ -104,11 +108,17 @@ endfunction()
 
 # The views the build compiles, a name a line, beside vulpen, so the live build builds
 # a view vulpen hosts only when the build has its target, as one hosted from a folder
-# outside projects/ has none.
+# outside projects/ has none. And the folders a configure reads them from, which a build
+# of any view reads again once one changed, so a live build that failed while one changed
+# under it, as a project renamed twice quickly, builds again rather than failing.
 function(vulpen_list_views)
   get_property(views GLOBAL PROPERTY vulpen_views)
   list(JOIN views "\n" listed)
   file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${views_file} CONTENT "${listed}\n")
+  get_property(read GLOBAL PROPERTY vulpen_read)
+  list(REMOVE_DUPLICATES read)
+  list(JOIN read "\n" listed)
+  file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${read_file} CONTENT "${listed}\n")
 endfunction()
 
 # The recipes build as one view named library, which runtime/Manifest.cpp names the same,
@@ -119,6 +129,7 @@ endfunction()
 # what its recipes share, which no node is (RV05, RV09).
 function(vulpen_recipes folder)
   vulpen_name(library ${folder})
+  set_property(GLOBAL APPEND PROPERTY vulpen_read ${folder})
   add_custom_target(vulpen_view_library)
   add_dependencies(vulpen_view_library gates)
   add_dependencies(vulpen_modules vulpen_view_library)

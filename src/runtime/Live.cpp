@@ -10,6 +10,7 @@
 #include <format>
 #include <iterator>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string_view>
 #include <thread>
@@ -181,12 +182,12 @@ private:
   std::jthread _thread;
 };
 
-// When a file under the folder was last written, the newest. A name that starts with . is
-// no node's and builds nothing, as the loader and the build skip it, so what a part keeps
-// there, as the graph its layout, starts no build.
+// When the folder, or a file or folder in it, was last written, the newest, which a file
+// or folder made, moved or gone there makes now. A name that starts with . is no node's
+// and builds nothing, as the loader and the build skip it, so what a part keeps there, as
+// the graph its layout, starts no build.
 std::filesystem::file_time_type newest(const std::filesystem::path &folder) {
-  // Not file_time_type{}: libstdc++ puts the file clock's epoch in the year 2174.
-  auto newest = std::filesystem::file_time_type::min();
+  auto newest = written(folder);
   std::error_code gone; // a file an editor is replacing may vanish mid-scan
   for (auto entry = std::filesystem::recursive_directory_iterator(folder, gone);
        entry != std::filesystem::recursive_directory_iterator();
@@ -198,6 +199,14 @@ std::filesystem::file_time_type newest(const std::filesystem::path &folder) {
     newest = std::max(newest, entry->last_write_time(gone));
   }
   return newest;
+}
+
+std::filesystem::file_time_type newest(std::span<const std::filesystem::path> folders) {
+  // Not file_time_type{}: libstdc++ puts the file clock's epoch in the year 2174.
+  auto time = std::filesystem::file_time_type::min();
+  for (const std::filesystem::path &folder : folders)
+    time = std::max(time, newest(folder));
+  return time;
 }
 
 } // namespace
@@ -213,6 +222,7 @@ struct Live::Scan {
 
   Scan(const std::vector<Root> &roots, const std::filesystem::path &build)
       : builder(build, build_log),
+        read(lines_of(build / VP_READ_FILE)),
         engine(lines_of(build / VP_ENGINE_SOURCES_FILE)),
         engine_said(written(build / VP_ENGINE_FILE)) {
     for (const auto &[name, folder] : roots) {
@@ -232,6 +242,8 @@ struct Live::Scan {
 
   std::vector<View> views;
   Builder builder;
+  const std::vector<std::filesystem::path> read; // as the build lists them
+  std::filesystem::file_time_type read_from;     // their newest as the last build began
   const std::vector<std::filesystem::path> engine; // as the build lists them
   std::filesystem::file_time_type engine_said; // the newest engine file's, once said
   std::filesystem::path engine_change;
@@ -252,12 +264,14 @@ Live::Build Live::poll() {
   // The end of a build is read before the next starts, which clears what it failed on.
   if (scan.builder.done()) {
     // A view closed or renamed while it built is gone, and so is its failure; one that
-    // failed while files changed under a view, as a line renames them, may have failed
-    // on a file gone mid-build, as the build reads every view's folders, so it builds
-    // again once they settle, and its failure is said once it fails on files that stayed.
-    const bool moved = std::ranges::any_of(scan.views, [](const Scan::View &view) {
-      return newest(view.folder) != view.built_from;
-    });
+    // failed while files changed under a view, or in a folder the build reads views
+    // from, as a line renames them, may have failed on a file gone mid-build, as the
+    // build reads every view's folders, so it builds again once they settle, and its
+    // failure is said once it fails on files that stayed.
+    const bool moved = newest(scan.read) != scan.read_from ||
+                       std::ranges::any_of(scan.views, [](const Scan::View &view) {
+                         return newest(view.folder) != view.built_from;
+                       });
     scan.failed.clear();
     for (const std::string &target : scan.builder.failed()) {
       if (target == engine_target)
@@ -294,6 +308,7 @@ Live::Build Live::poll() {
       targets.insert(targets.begin(), library);
     if (!targets.empty()) {
       scan.built = std::move(built);
+      scan.read_from = newest(scan.read);
       scan.builder.start(std::move(targets));
       build = Build::started;
     }
