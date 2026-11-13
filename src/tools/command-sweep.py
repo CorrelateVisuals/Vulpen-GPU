@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Try to break every command of the cli and the ide (V06), as a person might, and as no
+"""Sweep every command of the cli and the ide, in each state, for what breaks (V06).
+
+Try to break every command of the cli and the ide (V06), as a person might, and as no
 person means to: each usage the command port lists, in each state a person reaches, with
 the words its help names, with none, with one too many, and with words no person means
 in each place; the words Tab offers for each placeholder; seeded walks of random lines,

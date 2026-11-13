@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Check what the wave example prints against its golden (C01, GLSL02): from frame 0, and
+"""Fail when the wave example prints other than its golden, at any frame (C01).
+
+Check what the wave example prints against its golden (C01, GLSL02): from frame 0, and
 from a day, a year and a century of frames in, where time must still be exact (A03).
 Edits that take the graph apart and put it back before the first frame must print the
 golden too: every buffer the rebuilds make starts zeroed, whatever memory it reuses.

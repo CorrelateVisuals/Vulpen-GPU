@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""quit restart carries the session into the new vulpen, which a person would not notice
+"""Fail when quit restart loses an edit, or replays one a save wrote (V08).
+
+quit restart carries the session into the new vulpen, which a person would not notice
 going wrong (V08): an edit lost, or an edit a save already wrote replayed on its file.
 
 A host view hosts a copy of the wave example and edits it; the wave is saved halfway, so

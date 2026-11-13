@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Run the wave example's manifest, mutated, many times over; meant for a sanitizer
+"""Fail when a mutated manifest or command script crashes, hangs or leaks (A03).
+
+Run the wave example's manifest, mutated, many times over; meant for a sanitizer
 build. Each run either works, or ends with exit 1 and an error that names its cause
 (A02). A crash, a hang, a sanitizer report or a validation message fails the test, and so
 does a refusal that only repeats what the standard library threw (A03).

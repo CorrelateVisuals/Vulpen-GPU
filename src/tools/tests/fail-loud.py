@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Every broken view ends the run with exit 1 and an error that names its cause (A02,
+"""Fail when a broken view runs on, or stops without naming its cause (A02).
+
+Every broken view ends the run with exit 1 and an error that names its cause (A02,
 RV03), before anything wrong reaches the GPU: a manifest that says a thing twice, SPIR-V
 cut short, C++ and a shader that disagree on a name or a type, a node whose C++
 registers several operators and which names none, a connection whose ends disagree, a

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""A person types at the terminal the CLI runs at, which takes each key as it comes:
+"""Fail when the cli's terminal mistakes a key, or leaves the terminal changed.
+
+A person types at the terminal the CLI runs at, which takes each key as it comes:
 Tab completes hel to help, up recalls the line sent before, left moves the caret, so
 lp, then he before it, sends help, and control+d on an empty line ends the run, which
 must exit 0. The CLI runs in a pseudo-terminal under a shell, which then prints the

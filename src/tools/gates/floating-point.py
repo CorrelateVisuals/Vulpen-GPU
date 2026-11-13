@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Fail when C++ of ours compiles without -ffp-contract=off, or with a flag that breaks
-IEEE 754 (RC06): the same input must give the same bits in every build and on every
-machine (C01, C10).
+"""Fail when C++ of ours may round differently from build to build (RC06).
+
+It must compile with -ffp-contract=off and no flag that breaks IEEE 754: the same input
+must give the same bits in every build and on every machine (C01, C10).
 
 Reads the compile commands CMake exports into the build folder. A build without them
 (Visual Studio) is not checked: MSVC neither fuses nor relaxes floating point by default.

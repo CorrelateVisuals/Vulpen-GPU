@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""undo takes back the last line a person ran, and redo runs it again: the graph's edits
+"""Fail when undo or redo brings back the graph or a file other than it was.
+
+undo takes back the last line a person ran, and redo runs it again: the graph's edits
 and the files the line made, removed, moved or copied. Gone wrong, a person finds out only
 when the file they wanted back is not there, or a node comes back without its folder.
 

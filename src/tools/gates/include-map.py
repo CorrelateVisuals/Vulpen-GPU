@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Fail when the includes in src/ differ from docs/architecture/include-map.md, or form a
-cycle, or when node code in src/ or projects/ includes what it may not.
+"""Fail when an include strays from docs/architecture/include-map.md.
+
+The includes in src/ must be the map's and form no cycle, and node code in src/ or
+projects/ includes only what it may.
 
 The map is the one page a person reads to steer the engine's structure: a new engine
 file or include edge lands only once someone writes it there, and the graph stays

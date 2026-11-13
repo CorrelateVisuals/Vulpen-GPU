@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Make every example project again, as projects/re-<example>, from the terminal alone, as
+"""Make every example again as a person types it, and fail where a copy differs.
+
+Make every example project again, as projects/re-<example>, from the terminal alone, as
 a person would type it (V06), with mistakes made on purpose and put right; then check
 each copy against its example: its manifest, its files, and that it runs. Then, in a
 project of its own, what a person may not expect to matter: the editor holding a file a

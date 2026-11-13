@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Fail when code built from src/ or projects/ holds a mutable global (C13): every
-writable object in an object file, from its symbol table. Vendored code is ours to build,
-not to change (RA02), so its few globals are listed by name.
+"""Fail when code built from src/ or projects/ holds a mutable global (C13).
+
+Every writable object in an object file counts, from its symbol table. Vendored code is
+ours to build, not to change (RA02), so its few globals are listed by name.
 
 State has an owner and reaches code through parameters. A global also outlives a live
 swap in one module and resets in another, and it is shared by every thread.

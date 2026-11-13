@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""The ide app runs in a window, hosted by the cli as ./run.sh --ide runs it, while typed
+"""Fail when the ide, driven by keys and the pointer in a window, does other than meant.
+
+The ide app runs in a window, hosted by the cli as ./run.sh --ide runs it, while typed
 keys drive its terminal down every path: Tab on a word not begun and on one begun, the
 completions listed, the edits and the arrows, history, a line the command port refuses,
 help, which the cli answers, and control with l, which sends clear from the terminal, so

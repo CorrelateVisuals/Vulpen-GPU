@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Run vulpen for long, or through many live swaps, and fail when what it holds keeps
+"""Fail when what vulpen holds keeps growing over a long run or many swaps (A03).
+
+Run vulpen for long, or through many live swaps, and fail when what it holds keeps
 growing (A03): memory, GPU memory, threads, open files, and the modules it maps.
 
 --minutes runs the wave example headless and unpaced, and the triangle example in a
