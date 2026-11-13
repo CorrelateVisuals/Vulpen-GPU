@@ -86,16 +86,29 @@ inline bool runs_operator(const Node &node) {
              node.files, [](const std::string &file) { return file.ends_with(".cpp"); });
 }
 
-// A node whose folder holds a .vert draws, with its own .frag, or as a vertex node, with
-// the fragment node its varyings reach, whose folder holds a lone .frag.
-inline bool is_draw(const Node &node) {
-  return holds_stage(node, vertex_stage);
+// Whether the only draw stage its folder holds is this one.
+inline bool holds_alone(const Node &node, std::string_view stage) {
+  return std::ranges::all_of(stages, [&](std::string_view each) {
+    return each == compute_stage || holds_stage(node, each) == (each == stage);
+  });
 }
+
+// A node whose folder holds a lone .vert draws as a vertex node, with the fragment node
+// its varyings reach, whose folder holds a lone .frag; one holding every stage its draw
+// needs draws on its own. Draw stages that lack one draw nothing yet, which is no
+// mistake, as the next file made may bring it.
 inline bool is_vertex(const Node &node) {
-  return is_draw(node) && !holds_stage(node, fragment_stage);
+  return holds_alone(node, vertex_stage);
 }
 inline bool is_fragment(const Node &node) {
-  return !is_draw(node) && holds_stage(node, fragment_stage);
+  return holds_alone(node, fragment_stage);
+}
+inline bool is_draw(const Node &node) {
+  return is_vertex(node) ||
+         (holds_stage(node, vertex_stage) && missing_stages(node.files).empty());
+}
+inline bool lacks_stages(const Node &node) {
+  return !is_draw(node) && !is_fragment(node) && !missing_stages(node.files).empty();
 }
 
 // A draw's stages in the order its data goes through them, each with the stage Vulkan

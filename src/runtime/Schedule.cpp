@@ -219,8 +219,10 @@ void Schedule::load_shaders(Bound &bound,
       read_shaders(bound);
     }
     check_shaders(bound);
-    // A vertex node's pipeline waits for its fragment node, which binds after it.
-    if (!is_vertex(*bound.node) && !is_fragment(*bound.node))
+    // A vertex node's pipeline waits for its fragment node, which binds after it, and
+    // draw stages that lack one make none.
+    if (!is_vertex(*bound.node) && !is_fragment(*bound.node) &&
+        !lacks_stages(*bound.node))
       fit_pipeline(bound, old, unchanged);
   } catch (const std::exception &failure) {
     bound.shaders.clear();

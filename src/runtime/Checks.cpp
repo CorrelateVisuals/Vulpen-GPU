@@ -181,38 +181,60 @@ void list_values(std::span<const Bound> bounds, std::vector<NodePort> &ports) {
   }
 }
 
+// The path of a file of this stage beside a node's shaders, named as the first of them,
+// from the view's folder, as a person's prompt in the project types it.
+std::string beside(const Bound &bound, std::string_view stage) {
+  return (bound.node->module / std::filesystem::path(bound.shaders_named.front()).stem())
+      .generic_string()
+      .append(stage);
+}
+
+// What draw stages lack to draw, as missing_stages names it, which their node warns of,
+// as a save later may bring it: the line that writes it beside them.
+std::string lacks(const Bound &bound) {
+  const std::vector<std::string_view> missing = missing_stages(bound.node->files);
+  std::string named;
+  std::string paths;
+  for (const std::string_view &stage : missing) {
+    named.append(named.empty() ? "" : &stage == &missing.back() ? " or " : ", ")
+        .append(stage);
+    paths.append(" ").append(beside(bound, stage));
+  }
+  return std::format("draws nothing yet, as its folder holds no {}: new{} writes {}",
+                     named,
+                     paths,
+                     missing.size() == 1 ? "one" : "them");
+}
+
 } // namespace
 
 // What the node's shaders make it, and whether it counts what that runs: a dispatch
 // its invocations, a draw its vertex_count, as a vertex node does, and a fragment node
-// nothing. False when a mistake leaves nothing to run.
+// nothing. Draw stages that lack one load, so their ports and params show, and run
+// nothing, as their warning says with the line that writes what they lack: a person drops
+// a draw's files one at a time. False when a mistake leaves nothing to run.
 bool Schedule::check_counts(Bound &bound) const {
   const Node &node = *bound.node;
   const std::vector<std::string> &shaders = bound.shaders_named;
   const auto count = [&](std::string_view stage) { return count_stage(shaders, stage); };
   const bool dispatch = shaders.size() == 1 && count(compute_stage) == 1;
-  const bool fragment = shaders.size() == 1 && count(fragment_stage) == 1;
-  const bool vertex = shaders.size() == 1 && count(vertex_stage) == 1;
-  // Between its .vert and its .frag, a draw may run a .geom, and a .tesc with a .tese,
-  // which Vulkan runs only together.
-  const bool between = count(geometry_stage) <= 1 &&
-                       count(tessellation_control_stage) <= 1 &&
-                       count(tessellation_control_stage) ==
-                           count(tessellation_evaluation_stage);
-  const bool draw = vertex || (count(vertex_stage) == 1 && count(fragment_stage) == 1 &&
-                               count(compute_stage) == 0 && between);
+  const bool fragment = is_fragment(node);
+  const bool draw = is_draw(node);
   const std::size_t before = bound.errors.size();
   if (shaders.empty()) {
     if (node.counts_invocations() || node.vertex_count != 0 || !node.instance_count.empty())
       bound.errors.emplace_back("it counts invocations or vertices, but its folder holds "
                                 "no shader to run them");
-  } else if (!dispatch && !draw && !fragment) {
+  } else if ((count(compute_stage) != 0 && !dispatch) ||
+             std::ranges::any_of(stages, [&](std::string_view stage) {
+               return count(stage) > 1;
+             })) {
     bound.errors.push_back(std::format("its folder holds the shaders {}, but a node runs "
-                                       "one .comp; or a .vert and a .frag, with a .geom "
-                                       "or a .tesc and a .tese between them, or both; or "
-                                       "a lone .vert or .frag, its varyings joining the "
-                                       "other's node",
+                                       "a lone .comp, or draw stages, one of each at "
+                                       "most: .vert, .tesc, .tese, .geom and .frag",
                                        joined(shaders, " and ")));
+  } else if (lacks_stages(node)) {
+    bound.warnings.push_back(lacks(bound));
   } else if (dispatch && (node.vertex_count != 0 || !node.counts_invocations())) {
     bound.errors.emplace_back(
         "it runs a .comp, so it counts its invocations, and no vertex_count");
@@ -230,12 +252,12 @@ bool Schedule::check_counts(Bound &bound) const {
 }
 
 // A draw's shaders only read buffers: storing from them needs features beyond the
-// Vulkan floor (RVK01).
+// Vulkan floor (RVK01). So do draw stages that lack one, which will draw.
 void Schedule::check_stages(Bound &bound) const {
   const Node &node = *bound.node;
   if (is_fragment(node))
     return;
-  if (is_draw(node)) {
+  if (!holds_stage(node, compute_stage)) {
     for (const Field &field : bound.fields)
       if (field.buffer() && field.access != Access::read)
         bound.errors.push_back(std::format(
@@ -300,7 +322,7 @@ void Schedule::check_shaders(const Bound &bound) const {
   const auto image = std::ranges::find_if(bound.fields, &Field::image);
   if (image == bound.fields.end())
     return;
-  if (is_draw(*bound.node))
+  if (!holds_stage(*bound.node, compute_stage))
     throw std::runtime_error(
         std::format("{}: a draw's shaders store into no image, as that needs features "
                     "past the Vulkan floor; a dispatch stores into one",
@@ -319,10 +341,7 @@ namespace {
 // it, from the view's folder, as a person's prompt in the project types it, or what to
 // connect.
 std::string draws_nothing(const Bound &bound, bool vertex) {
-  const std::string other =
-      (bound.node->module / std::filesystem::path(bound.shaders_named.front()).stem())
-          .generic_string()
-          .append(vertex ? fragment_stage : vertex_stage);
+  const std::string other = beside(bound, vertex ? fragment_stage : vertex_stage);
   return std::format("draws nothing yet, as its folder holds no {}: new {} writes one, "
                      "or connect {}",
                      vertex ? fragment_stage : vertex_stage,

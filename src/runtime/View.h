@@ -170,6 +170,32 @@ inline bool holds_stage(const Node &node, std::string_view stage) {
       node.files, [&](const std::string &file) { return file.ends_with(stage); });
 }
 
+// The draw stages a folder holding these files lacks to draw, in the order a draw runs
+// them: beside any draw stage, a .vert, a tessellation stage's other half, as Vulkan runs
+// the two only together, and a .frag. Never a .geom or the tessellation pair, which only
+// add to a draw. A lone .vert lacks its .frag and a lone .frag its .vert, which another
+// node's folder may hold instead, as a draw split over two.
+inline std::vector<std::string_view>
+missing_stages(const std::vector<std::string> &files) {
+  const auto holds = [&](std::string_view stage) {
+    return std::ranges::any_of(
+        files, [&](const std::string &file) { return file.ends_with(stage); });
+  };
+  std::vector<std::string_view> missing;
+  if (std::ranges::none_of(stages, [&](std::string_view stage) {
+        return stage != compute_stage && holds(stage);
+      }))
+    return missing;
+  if (!holds(vertex_stage))
+    missing.push_back(vertex_stage);
+  if (holds(tessellation_control_stage) != holds(tessellation_evaluation_stage))
+    missing.push_back(holds(tessellation_control_stage) ? tessellation_evaluation_stage
+                                                        : tessellation_control_stage);
+  if (!holds(fragment_stage))
+    missing.push_back(fragment_stage);
+  return missing;
+}
+
 // A node's port, or with no port a view this view hosts, as `<view>:`: what the view
 // draws into its window, as one image, which only the view that hosts it takes (V03).
 struct Endpoint {
