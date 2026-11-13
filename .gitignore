@@ -32,6 +32,7 @@ __pycache__/
 !**/.vulpen/graph.ini
 
 # Each machine's own: run.sh and run.ps1 keep the newest 20 runs' logs in docs/logs/,
-# whose .gitkeep keeps the folder.
+# whose .gitkeep keeps the folder, and check.py nightly its reports in docs/reports/.
 /docs/logs/*
 !/docs/logs/.gitkeep
+/docs/reports/

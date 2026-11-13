@@ -145,7 +145,9 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 | `./run.sh --release …` | `.\run.ps1 --release …` | the `release` preset, in place of `debug` |
 | `cmake --build --preset debug` | `cmake --build --preset debug` | builds everything the tests run, where `./run.sh` builds vulpen and the projects it opens |
 | `ctest --preset debug` | `ctest --preset debug` | the tests, after that build; also `release` and `gpu-validation` (on a GPU, as lavapipe cannot run it), and on Linux `asan` and `tsan` |
-| `src/tools/tests/nightly.sh` | | every preset, the soak runs and the long fuzz |
+| `python3 src/tools/check.py quick` | `python src\tools\check.py quick` | configure, build and test, as CI does on every push, about a minute; `install-hook` runs it before each `git push` |
+| `python3 src/tools/check.py full` | | quick, every example made again by typing, every command swept in each state, and the `asan` preset, about half an hour |
+| `python3 src/tools/check.py nightly` | | every preset, GPU-assisted validation, the soaks, the long fuzz and the whole command sweep, some hours |
 
 `--log error|warn|info|debug` sets how much a run says; each run keeps its log in `docs/logs/`, the newest 20.
 

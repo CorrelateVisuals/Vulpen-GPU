@@ -1,7 +1,7 @@
-# The tests, all in this folder: the Python that runs vulpen and
-# judges it (harness.py and one script per test), the barrier test's C++, the golden, the
-# sanitizer suppressions and layer settings the presets name, the fixture view mistakes/,
-# and nightly.sh. Included by the top-level CMakeLists.txt once vulpen and every view are
+# The tests, all in this folder: the Python that runs vulpen and judges it (harness.py and
+# one script per test), the barrier test's C++, the golden, the sanitizer suppressions and
+# layer settings the presets name, and the fixture view mistakes/; src/tools/check.py runs
+# them by tier. Included by the top-level CMakeLists.txt once vulpen and every view are
 # defined.
 #
 # Headless runs take the driver VULPEN_TEST_DRIVER names: lavapipe where it is installed,
