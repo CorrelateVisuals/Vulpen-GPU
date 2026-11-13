@@ -184,7 +184,9 @@ function(vulpen_node view folder root)
   file(RELATIVE_PATH relative ${root} ${folder})
   string(MAKE_C_IDENTIFIER "${view}_${relative}" target)
   set(out ${CMAKE_BINARY_DIR}/views/${view})
-  if(relative)
+  # Not if(relative): CMake reads a folder named n, no, off or 0 as false, which built such
+  # a node's files into the top's place, and two of one name there failed every build.
+  if(NOT relative STREQUAL "")
     string(APPEND out /${relative})
   endif()
   # Where contracts/ and shared/ resolve from: the top of the view, or of vulpen's library,
