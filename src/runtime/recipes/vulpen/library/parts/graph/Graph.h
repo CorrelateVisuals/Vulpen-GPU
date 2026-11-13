@@ -317,7 +317,7 @@ private:
   std::string _ini;      // where the view shown keeps what is arranged; empty for none
   bool _refused = false; // its .ini holds a mistake, which no save writes over
   PanZoom _pan_zoom;
-  float _home_zoom = 1.0f; // as near as home is, a quarter of which zooming out goes up
+  float _home_zoom = 1.0f; // as near as home is, leave_share of which zooming out goes up
   float _drawn = 1.0f; // the font's glyphs' zoom, cell over base wide, in _pan_zoom
   glm::uvec2 _homed{};     // the area's size home was worked out for
   // Until the frame home is worked out in, which needs the boxes laid out in the area.

@@ -417,10 +417,11 @@ void relate(Boxes &boxes,
   }
 }
 
-// Each box's rows: its ports, a reader's and a writer's side by side, then the recipe its
-// node uses, whose row opens the recipe's manifest, then the nodes inside it, then its
-// files, each opening itself, listed_room of them showing as its room lets them and a row
-// for the rest, which the layout counts.
+// Each box's rows: its ports, a reader's and a writer's side by side, muted, then the
+// recipe its node uses, whose row opens the recipe's manifest, then the nodes inside it,
+// in the node's color as their boxes' names are, or a folder's, then its files, each
+// opening itself, listed_room of them showing as its room lets them and a row for the
+// rest, which the layout counts.
 // A view's box lists the nodes at its top, then the file it is hosted from; a header and
 // its source's box, which has no ports, its files, from its first row, as their
 // relations end there; and what lies outside, whose rows are all ports, lists them, so
@@ -456,7 +457,7 @@ void list_rows(Boxes &boxes,
         const std::string held = flat.nodes[inner].name.substr(node_of.name.size() + 1);
         boxes.rows.push_back(
             {.text = building.folders ? held + '/' : std::format("node {}", held),
-             .role = VP_VIEW::role("muted"),
+             .role = building.folders ? VP_VIEW::role("folder") : VP_VIEW::role("node"),
              .node = building.folders ? std::string() : flat.nodes[inner].name});
       }
     for (const std::string &file : node_of.files)
@@ -469,7 +470,7 @@ void list_rows(Boxes &boxes,
     if (const std::string &name = hosted->nodes[top].name;
         name.find('.') == std::string::npos)
       boxes.rows.push_back(
-          {.text = std::format("node {}", name), .role = VP_VIEW::role("muted")});
+          {.text = std::format("node {}", name), .role = VP_VIEW::role("node")});
   if (listed.stray)
     boxes.rows.push_back({.text = std::string(stray_row), .role = VP_VIEW::role("muted")});
   listed.list_from = listed.role ? contents - listed.first : 0;

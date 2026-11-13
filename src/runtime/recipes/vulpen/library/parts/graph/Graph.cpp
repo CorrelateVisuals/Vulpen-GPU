@@ -60,9 +60,10 @@ constexpr float corner_width = 2.0f;
 // Zoomed in this near, the graph shows the inside of the box under the pointer, however
 // many boxes home made room for, so a box is gone into as close at
 // every level; zoomed out to this share of as near as home is, as far as the wheel goes
-// here, a level up.
+// here, a level up: a quarter, then 1.3 times as far again, so a few turns past where
+// the boxes grow small do not leave by chance.
 constexpr float enter_zoom = 3.0f;
-constexpr float leave_share = 0.25f;
+constexpr float leave_share = 0.25f / 1.3f;
 // The steps of the wheel a level gone up to stops short of going in again, so a little
 // more zoom goes back where the zooming out began.
 constexpr int focus_steps = 2;
@@ -1230,8 +1231,8 @@ std::size_t Graph::row_under(std::size_t at) const {
 // graph, and a middle drag about where it was pressed, a step each PanZoom::drag_step
 // pixels it goes sideways, right nearer and left farther; the wheel's turn sideways does
 // nothing yet. Zoomed in to three times as near as zoom 1, or as near as it goes, the
-// graph shows the inside of the box under that place; zoomed out to a quarter as near as
-// home, as far as it goes here, a level up, once the level it left last shows: a turn
+// graph shows the inside of the box under that place; zoomed out to leave_share as near
+// as home, as far as it goes here, a level up, once the level it left last shows: a turn
 // goes on while the level up is read, which would take it up a level each step.
 void Graph::turn(VP::Cook &frame, float steps, glm::vec2 about) {
   const float farthest = _home_zoom * leave_share;
