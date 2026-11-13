@@ -1,0 +1,52 @@
+name: GPU report
+description: Vulpen runs on your GPU, or does not. Two minutes, and it helps either way.
+title: "GPU: "
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Vulpen needs Vulkan 1.2 with descriptor indexing and buffer device address. Each
+        report says which GPUs and drivers meet that and run it, so please send one
+        whether it works or not.
+  - type: dropdown
+    id: result
+    attributes:
+      label: Did it run?
+      options:
+        - Yes, the examples run
+        - It starts, but something is wrong
+        - It does not start
+        - It does not build
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and driver
+      description: The line the run's log starts with "runs on", and the driver's version.
+      placeholder: "runs on AMD Radeon RX 6600 (RADV NAVI23): discrete, Vulkan 1.3.278; Mesa 24.0"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Operating system
+      placeholder: Windows 11, Ubuntu 24.04, Arch, Steam Deck
+    validations:
+      required: true
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: What you tried
+      options:
+        - label: "`./run.sh` or `.\\run.ps1`: the ide opens"
+        - label: "`view load ray-cubes` in the ide's terminal"
+        - label: "`python3 src/tools/check.py quick`: the tests pass"
+  - type: textarea
+    id: run
+    attributes:
+      label: The run's log
+      description: >
+        Run with `--log info` (`./run.sh --log info`, or `.\run.ps1 --log info`) and attach
+        the newest `docs/logs/run-*.log`.
+      placeholder: Drag run-<time>.log here.

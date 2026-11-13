@@ -1,0 +1,35 @@
+name: Bug
+description: Something Vulpen did that it should not, or refused that it should do.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what Vulpen did or said instead.
+    validations:
+      required: true
+  - type: textarea
+    id: session
+    attributes:
+      label: The session's log
+      description: >
+        Before quitting, type `log save bug.log` in Vulpen's terminal and attach the file
+        here. It replays to the same graph, so the bug can be seen again.
+      placeholder: Drag bug.log here.
+  - type: textarea
+    id: run
+    attributes:
+      label: The run's log
+      description: >
+        Run again with `--log info` (`./run.sh --log info`, or `.\run.ps1 --log info`) and
+        attach the newest `docs/logs/run-*.log`: it names the commit and the GPU.
+      placeholder: Drag run-<time>.log here.
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: The operating system, and the GPU and its driver.
+      placeholder: Ubuntu 24.04, AMD Radeon RX 6600, Mesa 24.0
+    validations:
+      required: true

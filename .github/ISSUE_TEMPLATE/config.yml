@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and things you made
+    url: https://github.com/CorrelateVisuals/Vulpen-GPU/discussions
+    about: Ask how to do something, or show what you made with Vulpen.
