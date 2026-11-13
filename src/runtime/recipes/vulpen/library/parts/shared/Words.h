@@ -1,10 +1,10 @@
 #pragma once
 
+#include "runtime/View.h"
+
 #include <algorithm>
-#include <array>
 #include <charconv>
 #include <cstddef>
-#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -100,33 +100,23 @@ inline std::pair<std::string_view, std::size_t> numbered(std::string_view name) 
   return {name.substr(0, stem), number + 1};
 }
 
-// The files new starts that a node's folder holding these lacks, each named for the
-// node's last name, as class_of gives it: its C++, a compute shader beside C++ alone, a
-// lone half's other, as Name.frag beside a lone Name.vert, and between a draw's .vert
-// and .frag, a geometry stage and the tessellation stages, which new makes together;
-// what its menu offers and new with no path makes, so both name them alike (RV09).
-inline std::vector<std::string> lacking(std::string_view node,
-                                        std::span<const std::string> files) {
-  const auto holds = [&](std::string_view end) {
-    return std::ranges::any_of(files,
-                               [&](const std::string &file) { return file.ends_with(end); });
-  };
-  constexpr std::array<std::string_view, 6> shaders{
-      ".comp", ".vert", ".tesc", ".tese", ".geom", ".frag"};
-  const std::string stem = class_of(node.substr(node.rfind('.') + 1));
+// The files a folder holding these lacks to draw, the stages VP::missing_stages names,
+// each named as the first of its draw stages, as Name.frag beside a lone Name.vert: what
+// a node's menu offers new to make, and new with no path makes first, so both name them
+// as the warning of a node lacking them does (RV09). Never what only adds to a draw, as a
+// .geom, nor C++ or a .comp: a path typed names those.
+inline std::vector<std::string> lacking(const std::vector<std::string> &files) {
   std::vector<std::string> words;
-  if (!holds(".cpp"))
-    words.push_back(stem + ".cpp");
-  if (holds(".cpp") && std::ranges::none_of(shaders, holds))
-    words.push_back(stem + ".comp");
-  if (holds(".vert") != holds(".frag"))
-    words.push_back(stem + (holds(".vert") ? ".frag" : ".vert"));
-  if (holds(".tesc") != holds(".tese"))
-    words.push_back(stem + (holds(".tesc") ? ".tese" : ".tesc"));
-  if (holds(".vert") && holds(".frag") && !holds(".geom"))
-    words.push_back(stem + ".geom");
-  if (holds(".vert") && holds(".frag") && !holds(".tesc") && !holds(".tese"))
-    words.push_back(stem + ".tesc");
+  const auto first = std::ranges::find_if(files, [](const std::string &file) {
+    return std::ranges::any_of(VP::stages, [&](std::string_view stage) {
+      return stage != VP::compute_stage && file.ends_with(stage);
+    });
+  });
+  if (first == files.end())
+    return words;
+  const std::string stem = first->substr(0, first->rfind('.'));
+  for (const std::string_view stage : VP::missing_stages(files))
+    words.push_back(stem + std::string(stage));
   return words;
 }
 

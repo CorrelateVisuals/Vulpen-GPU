@@ -335,8 +335,8 @@ class Menus final : public VP::Operator {
 
   // What the menus find for a placeholder but <link>: the connections joining what was
   // pressed, the values of a node pressed a param may set, the files in its folder, or
-  // the files new starts that it lacks, as Name.cpp beside its shaders, or a lone
-  // shader's other half.
+  // the draw stages they lack, as a lone shader's other half; the files of a view's top,
+  // root's folder (RV08), by its path.
   std::vector<std::string> found(const Look &look, const Line &line) const {
     std::vector<std::string> words;
     if (line.kind == joined_kind && look.view) {
@@ -356,13 +356,17 @@ class Menus final : public VP::Operator {
           words.emplace_back(port.name);
       return words;
     }
-    const std::string folder = absolute_folder(look, node_of(look, named));
+    // A path as the graph names one, from where vulpen started, as folder_of reads it.
+    const bool path = named == "." || named.find('/') != std::string::npos;
+    const std::string folder =
+        path ? std::filesystem::absolute(named).lexically_normal().string()
+             : absolute_folder(look, node_of(look, named));
     std::vector<std::string> files;
     for (std::string &name : folder.empty() ? std::vector<std::string>()
                                             : look.files.list(folder))
       if (!name.ends_with('/') && !name.starts_with('.'))
         files.push_back(std::move(name));
-    return line.kind == path_kind ? files : lacking(named, files);
+    return line.kind == path_kind ? files : lacking(files);
   }
 
   // Whether a connection's ends hold what was pressed: a node's, or a port's, node.port.

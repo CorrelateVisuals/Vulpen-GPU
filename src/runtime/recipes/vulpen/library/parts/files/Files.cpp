@@ -24,11 +24,13 @@ constexpr std::string_view manifest = "view.vlp";
 // a node's, nor any folder in them.
 constexpr std::array<std::string_view, 2> shared_folders{"contracts", "shared"};
 // What new starts a file with, by its extension: the start file of that extension in the
-// start folder, the least that builds and runs, with each way data goes between the
-// node's files commented out, for the person to uncomment what they use; Name in it
-// becoming the class the file's stem names; and the word its node needs to run it, which
-// the node gets where it has none: the three corners of the start's triangle, and one
-// workgroup of its threads. A file of any other extension starts empty.
+// start folder, the least that builds and runs, a draw stage's handing its color on, so
+// a draw's starts made one at a time in any order draw together, and each other way data
+// goes between the node's files commented out, naming the stages it joins, for the
+// person to uncomment what they use; Name in it becoming the class the file's stem
+// names; and the word its node needs to run it, which the node gets where it has none:
+// the three corners of the start's triangle, and one workgroup of its threads. A file of
+// any other extension starts empty. New makes only the files a line names.
 struct Start {
   std::string_view extension;
   std::string_view word; // as node set takes it; empty for none
@@ -45,9 +47,6 @@ constexpr std::array<Start, 8> starts{{{".vert", "vertex_count=3"},
 // the top folder its node, node root (RV08).
 constexpr std::array<std::string_view, 7> run_by_nodes{
     ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp", ".cpp"};
-// The tessellation stages, which Vulkan runs only together, so new making one where the
-// other is not makes both.
-constexpr std::array<std::string_view, 2> tessellation{".tesc", ".tese"};
 constexpr std::string_view start_name = "Name";
 // Where a remove keeps what it takes, under the .vulpen/ of the view holding it, a folder
 // the time it went, so undo brings it back and a person finds it there; git ignores it.
@@ -564,9 +563,9 @@ class Files final : public VP::Operator {
                         "in a view a folder is a node, which it adds, a draw's with its "
                         "vertex_count and a dispatch's with its invocations, and a "
                         "shader or C++ file at a project's top makes the top node root; "
-                        "with none, "
-                        "what the folder typed at's menu offers: in a node's, the file "
-                        "it lacks first, in a view's, a node node1/ on, the first free");
+                        "with none, what the folder typed at's menu offers: the draw "
+                        "stage its files lack first, as a lone .vert's .frag, else at a "
+                        "view's top a node node1/ on, the first free");
     _rename = node.command("rename <file> <file>",
                            "renames a file or a folder, or moves it, into folders made "
                            "for it, in a view nodes; a node's folder renames the node, "
@@ -629,8 +628,9 @@ class Files final : public VP::Operator {
   }
 
   // What new with no path makes, as the menu of the folder typed at offers it, by the
-  // line it sends, so the log keeps the path (V08): a node's folder, the file it lacks
-  // first; a view's, a node node1/ on, the first its graph and folder do not hold.
+  // line it sends, so the log keeps the path (V08): the draw stage its files lack first,
+  // in a node's folder or at a view's top, root's (RV08); else at the top a node node1/
+  // on, the first its graph and folder do not hold.
   static void make_offered(VP::Call &call) {
     const std::filesystem::path folder = bare(call.resolved("."));
     const std::optional<Held> held = held_by(call, folder);
@@ -641,17 +641,17 @@ class Files final : public VP::Operator {
     const auto node = std::ranges::find_if(held->view->nodes, [&](const VP::Node &each) {
       return VP::path_of(each.name) == held->inside;
     });
-    std::string path;
+    std::vector<std::string> files;
+    for (std::string &name : call.files().list(folder.string()))
+      if (!name.ends_with('/') && !name.starts_with('.'))
+        files.push_back(std::move(name));
+    const std::vector<std::string> offered = lacking(files);
+    std::string path =
+        offered.empty() ? std::string() : (folder / offered.front()).string();
     if (node != held->view->nodes.end()) {
-      std::vector<std::string> files;
-      for (std::string &name : call.files().list(folder.string()))
-        if (!name.ends_with('/') && !name.starts_with('.'))
-          files.push_back(std::move(name));
-      const std::vector<std::string> offered = lacking(node->name, files);
       if (offered.empty())
         throw std::runtime_error(std::format(
-            "node {} lacks no file new starts; new <path> makes one", node->name));
-      path = (folder / offered.front()).string();
+            "node {} lacks no draw stage; new <path> makes a file there", node->name));
     } else if (held->inside.empty()) {
       for (std::size_t number = 1; path.empty(); ++number)
         if (const std::string name = std::format("node{}", number);
@@ -695,9 +695,8 @@ class Files final : public VP::Operator {
 
   // Each path, all checked before one is made, so a line refused makes nothing: a folder
   // for one ending in / or with no extension, as a node's name has none, else a file, as
-  // its start has it, a tessellation stage with the other where that is not there. In a
-  // view each folder made is a node the line adds, a node a start needs a word of gets it
-  // where it has none, and each view is saved once.
+  // its start has it. In a view each folder made is a node the line adds, a node a start
+  // needs a word of gets it where it has none, and each view is saved once.
   void make(VP::Call &call) const {
     std::vector<std::pair<std::filesystem::path, std::optional<std::string>>> made;
     std::vector<Graphed> graphs;
@@ -721,15 +720,6 @@ class Files final : public VP::Operator {
     for (const std::string_view word : call.arguments()) {
       const std::filesystem::path path = bare(word);
       add(path, std::filesystem::path(word).filename().empty() || !path.has_extension());
-    }
-    for (std::size_t at = 0, given = made.size(); at < given; ++at) {
-      std::filesystem::path other = made[at].first;
-      const auto stage = std::ranges::find(tessellation, other.extension().string());
-      if (stage == tessellation.end())
-        continue;
-      other.replace_extension(tessellation[stage == tessellation.begin() ? 1 : 0]);
-      if (!taken(other))
-        add(other, false);
     }
     std::string names;
     for (const auto &[path, text] : made) {

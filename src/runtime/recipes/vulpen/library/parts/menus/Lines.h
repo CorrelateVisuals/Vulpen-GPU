@@ -51,9 +51,9 @@ constexpr std::array<std::string_view, 4> completed_kinds{"<recipe>", "<node>", 
 // And those the menus find themselves, from the view lines go to and its ports, for what
 // was pressed: a line connecting a loose port to one alike, which for one node takes two
 // columns, its port and the other end; a connection joining what was pressed; a value a
-// param may set; a file of what was pressed; and a file new starts with code that changes
-// what a node runs, which it lacks: its C++, beside C++ alone a shader, beside a lone
-// .vert or .frag the other half of its draw, or a stage between a draw's two.
+// param may set; a file of what was pressed; and a draw stage its files lack to draw,
+// which new starts: beside a lone .vert or .frag the other half of its draw, beside a
+// .tesc its .tese, beside any stage without them a .vert and a .frag.
 constexpr std::string_view link_kind = "<link>";
 constexpr std::string_view joined_kind = "<joined>";
 constexpr std::string_view key_kind = "<key>";
