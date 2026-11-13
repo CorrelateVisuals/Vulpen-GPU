@@ -1651,12 +1651,13 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
   add(inside);
   const float band = from.y + static_cast<float>(pad + static_cast<std::int32_t>(_laid_cell.y)) *
                                   _pan_zoom.zoom;
-  VP_VIEW::Rect title = between(from + width,
-                                {to.x - width, std::min(band, holds ? below : to.y - width)},
-                                VP_VIEW::role("panel"));
-  title.blend_role = shown.role.value_or(VP_VIEW::role("border"));
-  title.blend = title_tone;
-  add(title);
+  VP_VIEW::Rect banner =
+      between(from + width,
+              {to.x - width, std::min(band, holds ? below : to.y - width)},
+              VP_VIEW::role("panel"));
+  banner.blend_role = shown.role.value_or(VP_VIEW::role("border"));
+  banner.blend = title_tone;
+  add(banner);
   if (holds) {
     add(between({from.x, below}, {from.x + width, to.y}, edge));
     add(between({to.x - width, below}, to, edge));

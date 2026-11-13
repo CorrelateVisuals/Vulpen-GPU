@@ -27,7 +27,9 @@ find_package(Vulkan REQUIRED)
 # which GCC's -Wextra would flag in every one of them. A contract's alignas pads it to the
 # stride std430 gives it, which MSVC's C4324 would flag in every contract. MSVC's /W4
 # refuses a name that hides another (C4456, C4459), which -Wall leaves out: -Wshadow
-# refuses it on Linux too, so a build that passes here passes on Windows (RP00, RP01).
+# refuses most of them on Linux too (RP00, RP01). GCC misses one kind: a name of a file's
+# unnamed namespace, hidden in a member function defined outside it; CI's Windows job
+# names those.
 set(warnings
     "$<IF:$<BOOL:${MSVC}>,/W4;/wd4324,-Wall;-Wextra;-Wpedantic;-Wshadow;-Wno-missing-field-initializers>")
 # The same input gives the same bits on every machine (C01, C10). GCC fuses a*b+c into
