@@ -68,7 +68,7 @@ cd Vulpen
 .\run.ps1                # builds the debug preset and opens the ide
 ```
 
-In the ide's terminal, type `view load life`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> to <kbd>F4</kbd> put the keys in the terminal, the graph, the editor and the Perform panel; <kbd>F5</kbd> gives the project the whole window.
+In the ide's terminal, type `view load life`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window; <kbd>F2</kbd> to <kbd>F5</kbd> put the keys in the terminal, the graph, the editor and the Perform panel.
 
 > [!NOTE]
 > Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address.
@@ -117,7 +117,7 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 <summary><b>Perform mode, the graph of a whole repository, and the ide inside its own graph</b></summary>
 
 ![The ray-cubes example in perform mode, filling the window](docs/images/perform.png)
-*Perform mode, <kbd>F5</kbd>: the project in the whole window, as it would run on its own.*
+*Perform mode, <kbd>F1</kbd>: the project in the whole window, as it would run on its own.*
 
 ![The repository's top in the graph, its folders and the relations between them](docs/images/graph-repository.png)
 *`open ./` shows any folder in the graph, with what links its files, a layer each: flow, structure, code, build, docs and engine.*
