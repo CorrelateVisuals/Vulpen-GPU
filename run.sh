@@ -80,12 +80,23 @@ mkdir -p -- "$(dirname -- "$log")"
 # the live build builds a project once it is opened or saved. A release vulpen links
 # every project's nodes, so its target builds them all. The full build,
 # cmake --build --preset debug, builds and checks every project, and the statistics.
+# A tree an older or failed build left can fail where a clean one builds (a cache from
+# another folder or CMake, a file since moved), so vulpen's build, failing, runs once more
+# from a clean tree before it fails: the cache and every output dropped, about 20 s, the
+# compilers the tree was first configured with kept, as CC=gcc-14 ./run.sh named them.
+retry="the build failed; building once more from a clean tree"
 build() (
   cd "$root" && mkdir -p "out/build/$preset"
   exec 9>"out/build/$preset/build.lock"
   if command -v flock >/dev/null; then flock 9; fi
-  if [[ $1 == vulpen ]]; then cmake --preset "$preset" || exit; fi
-  cmake --build --preset "$preset" --parallel --target "$1"
+  fresh=()
+  if [[ ${2:-} == clean ]]; then
+    mapfile -t fresh < <(sed -nE 's/^CMAKE_(C|CXX)_COMPILER:[A-Z]*=(.+)/-DCMAKE_\1_COMPILER=\2/p' \
+                           "out/build/$preset/CMakeCache.txt" 2>/dev/null)
+    fresh+=(--fresh)
+  fi
+  if [[ $1 == vulpen ]]; then cmake --preset "$preset" "${fresh[@]}" || exit; fi
+  cmake --build --preset "$preset" --parallel --target "$1" ${2:+--clean-first}
 )
 # Each line kept for a failure, and shown in place cut to the terminal's width, so it
 # never wraps onto a row the next line would leave behind.
@@ -101,12 +112,15 @@ shown() {
 }
 said=
 if $verbose; then
-  (build vulpen) 2>&1 | tee -a "$log"
+  { build vulpen || { echo "$retry"; build vulpen clean; }; } 2>&1 | tee -a "$log"
   for target in "${opened[@]}"; do (build "$target") 2>&1 | tee -a "$log" || true; done
-elif ! build vulpen 2>&1 | shown; then
-  printf '%s' "$said" | tee -a "$log" >&2
-  exit 1
 else
+  if ! build vulpen 2>&1 | shown; then
+    printf '%s' "$said" >>"$log" # the first failure too, as what a clean tree mended
+    echo "$retry" | tee -a "$log" >&2
+    said=
+    build vulpen clean 2>&1 | shown || { printf '%s' "$said" | tee -a "$log" >&2; exit 1; }
+  fi
   for target in "${opened[@]}"; do
     said=
     build "$target" 2>&1 | shown && continue

@@ -90,10 +90,15 @@ Push-Location -LiteralPath $PSScriptRoot
 try {
     # Continue: a native command's stderr is part of what the build said, not a failure.
     $ErrorActionPreference = 'Continue'
-    function Build($target) {
+    # As run.sh's: vulpen's build, failing, runs once more from a clean tree before it
+    # fails, the cache and every output dropped, as a tree an older or failed build left
+    # can fail where a clean one builds; the first failure goes to the log too.
+    function Build($target, $clean) {
         & {
-            if ($target -eq 'vulpen') { cmake --preset $preset }
-            if ($LASTEXITCODE -eq 0) { cmake --build --preset $preset --parallel --target $target }
+            if ($target -eq 'vulpen') { cmake --preset $preset @(if ($clean) { '--fresh' }) }
+            if ($LASTEXITCODE -eq 0) {
+                cmake --build --preset $preset --parallel --target $target @(if ($clean) { '--clean-first' })
+            }
         } 2>&1 | ForEach-Object {
             if ($verbose) { "$_" | Out-Host } elseif ("$_") { Write-Progress -Activity 'build' -Status "$_" }
             "$_"
@@ -102,6 +107,14 @@ try {
     }
     $said = Build 'vulpen'
     $engine = $LASTEXITCODE
+    $first = @()
+    if ($engine -ne 0) {
+        $retry = 'the build failed; building once more from a clean tree'
+        Write-Host $retry
+        $first = @($said) + $retry
+        $said = Build 'vulpen' $true
+        $engine = $LASTEXITCODE
+    }
     if ($engine -ne 0 -and -not $verbose) { $said | Out-Host }
     $failed = @()
     if ($engine -eq 0) {
@@ -114,7 +127,9 @@ try {
     $ErrorActionPreference = 'Stop'
 } finally { Pop-Location; $lock.Dispose() }
 # From the caller's folder, as vulpen names it.
-if ($engine -ne 0 -or $failed -or $verbose) { Add-Content -LiteralPath $log -Value $said -Encoding utf8 }
+if ($engine -ne 0 -or $failed -or $verbose -or $first) {
+    Add-Content -LiteralPath $log -Value (@($first) + @($said)) -Encoding utf8
+}
 if ($engine -ne 0) { exit $engine }
 foreach ($target in $failed) {
     Write-Host "$($target -replace '^vulpen_view_') failed to build, so its nodes say why as vulpen starts; the build said it in $log"
