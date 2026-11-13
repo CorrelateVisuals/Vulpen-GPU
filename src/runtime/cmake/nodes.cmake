@@ -84,7 +84,7 @@ function(vulpen_view folder)
   if(NOT VULPEN_LIVE)
     add_dependencies(vulpen vulpen_view_${view})
   endif()
-  # The top folder is a node too, named like the view, its files those beside view.vlp.
+  # The top folder is a node too, named root, its files those beside view.vlp.
   vulpen_node(${view} ${folder} ${folder})
   vulpen_nodes(${view} ${folder} ${folder})
 endfunction()

@@ -475,7 +475,12 @@ void unnamed_below(const View &view,
           std::ranges::find(view.children, name, &Child::name) != view.children.end())))
       continue;
     const std::string node = top ? name : parent + '.' + name;
-    if (std::ranges::find(view.nodes, node, &Node::name) == view.nodes.end())
+    if (top && is_top(view, node))
+      notes.push_back(std::format(
+          "folder {}/ is no node's, as node {} is the top folder: rename the folder",
+          node,
+          node));
+    else if (std::ranges::find(view.nodes, node, &Node::name) == view.nodes.end())
       notes.push_back(std::format("folder {}/ is no node's, but every folder is a node: "
                                   "give it a section [node \"{}\"], or move it out",
                                   path_of(node).generic_string(),
@@ -680,7 +685,7 @@ void check_copies(const View &view) {
 void check_inside(const View &flat) {
   for (const Node &node : flat.nodes) {
     const std::size_t dot = node.name.rfind('.');
-    if (dot != std::string::npos && node.name != top_node &&
+    if (dot != std::string::npos &&
         std::ranges::find(flat.nodes, node.name.substr(0, dot), &Node::name) ==
             flat.nodes.end())
       throw std::runtime_error(std::format("{}node {} is inside {}, which is no node",

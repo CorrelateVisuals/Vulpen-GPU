@@ -223,6 +223,11 @@ class Library final : public VP::Operator {
                                            "digits, _ and -, joined by dots",
                                            name));
     const VP::View &graph = call.view();
+    if (VP::is_top(graph, name))
+      throw std::runtime_error(std::format(
+          "node {} is the project's top folder, which holds no recipe: name the drop "
+          "otherwise",
+          name));
     if (std::ranges::find(graph.nodes, name, &VP::Node::name) != graph.nodes.end())
       throw std::runtime_error(std::format("the view has a node {} already", name));
     const std::size_t dot = name.rfind('.');
@@ -572,9 +577,10 @@ class Library final : public VP::Operator {
     if (node == graph.nodes.end())
       throw std::runtime_error(std::format("no node is named {}", root));
     if (VP::is_top(graph, root))
-      throw std::runtime_error(
-          "node . is the view's top folder, which holds the view's own files: new n/ and "
-          "rename its files into n/ make a node recipe make takes");
+      throw std::runtime_error(std::format(
+          "node {} is the view's top folder, which holds the view's own files: new n/ "
+          "and rename its files into n/ make a node recipe make takes",
+          root));
     const Copy copy = copy_in(files, graph, view, root);
     const bool part = copy.nodes.size() == 1;
     const std::string named = call.arguments().size() > 1

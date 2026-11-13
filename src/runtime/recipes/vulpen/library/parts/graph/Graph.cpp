@@ -165,7 +165,7 @@ std::string typed_path(const std::filesystem::path &path) {
 // nodes share, the hidden ones and its hosted views', or in a node's inside; each shows as
 // a box, which a right press makes a node, as every folder in a view is a node's (RV08).
 // At its top too the files beside its manifest while no node holds them, each a box a
-// press opens, as the manifest's, until the top folder is a node, node ., whose box
+// press opens, as the manifest's, until the top folder is a node, node root, whose box
 // lists them; in a node's inside every file is the node's, and the top's inside
 // holds no folder, as the nodes in it show beside it. A folder's name ends with /, as the
 // file port lists it. Read as the level is built, as a node remove keep, which leaves the
@@ -196,10 +196,12 @@ strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) 
     }
     const std::string bare = name.substr(0, name.size() - 1);
     const std::string node = inside.empty() ? bare : std::format("{}.{}", inside, bare);
+    // A folder named like the top node is no node's (the load says so), so it shows.
     if ((inside.empty() && (bare == VP::contracts_folder || bare == VP::shared_folder ||
                             std::ranges::find(edited.children, bare, &VP::Child::name) !=
                                 edited.children.end())) ||
-        std::ranges::find(edited.nodes, node, &VP::Node::name) != edited.nodes.end())
+        (std::ranges::find(edited.nodes, node, &VP::Node::name) != edited.nodes.end() &&
+         !(inside.empty() && VP::is_top(edited, node))))
       continue;
     strays.push_back(name);
   }

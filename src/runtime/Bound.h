@@ -365,7 +365,7 @@ inline std::string joining(const View &view,
                            std::string_view writer,
                            std::span<const std::string> readers) {
   const std::size_t dot = writer.rfind('.');
-  const std::size_t before = dot == 0 ? std::string_view::npos : writer.rfind('.', dot - 1);
+  const std::size_t before = writer.rfind('.', dot - 1);
   const std::size_t node = before == std::string_view::npos ? 0 : before + 1;
   std::string name(writer.substr(dot + 1));
   if (std::ranges::find(view.connections, name, &Connection::name) != view.connections.end())

@@ -78,11 +78,11 @@ inline std::filesystem::path path_of(std::string_view node) {
 // is named like its folder already, as nodes.cmake names it.
 inline constexpr std::string_view library_view = "library";
 
-// A project's top folder is a node too, named ., the folder itself as a path (RV08): the
-// files beside its manifest are its files, and [node "."] holds its words, so no word is
-// new (V04). The nodes in it are named from the top, as ever, and a port of it is .port.
-// The library's recipes have none: each is named like its folder already.
-inline constexpr std::string_view top_node = ".";
+// A project's top folder is a node too, named root (RV08): the files beside its manifest
+// are its files, and [node "root"] holds its words, so no word is new (V04). The nodes in
+// it are named from the top, as ever, so no folder there is named root. The library's
+// recipes have none: each is named like its folder already, root as any other name.
+inline constexpr std::string_view top_node = "root";
 
 // Whether the node named is the other or inside it, by their names.
 inline bool within(std::string_view node, std::string_view other) {
@@ -179,9 +179,9 @@ struct Endpoint {
   bool view() const {
     return port.empty();
   }
-  // As a manifest and a command write it: a port of the top node as .port.
+  // As a manifest and a command write it.
   std::string text() const {
-    return view() ? node + ':' : (node == top_node ? "" : node) + '.' + port;
+    return view() ? node + ':' : node + '.' + port;
   }
 };
 
@@ -241,13 +241,9 @@ struct View {
   std::vector<Connection> connections;
 };
 
-// The node of a port as a line names it, node.port: the top's for .port, and the whole
-// for a name with no dot.
+// The node of a port as a line names it, node.port, and the whole for a name with no dot.
 inline std::string_view port_node(std::string_view port) {
-  const std::size_t dot = port.rfind('.');
-  if (dot == std::string_view::npos)
-    return port;
-  return dot == 0 ? top_node : port.substr(0, dot);
+  return port.substr(0, port.rfind('.'));
 }
 
 // Whether a node is a project's top folder's, top_node.

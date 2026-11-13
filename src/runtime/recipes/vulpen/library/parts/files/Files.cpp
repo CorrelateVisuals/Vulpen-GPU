@@ -41,7 +41,7 @@ constexpr std::array<Start, 8> starts{{{".vert", "vertex_count=3"},
                                        {".cpp", ""},
                                        {".h", ""}}};
 // The files only a node runs, its shaders and its C++: made at a project's top, they make
-// the top folder its node, node . (RV08).
+// the top folder its node, node root (RV08).
 constexpr std::array<std::string_view, 7> run_by_nodes{
     ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp", ".cpp"};
 // The tessellation stages, which Vulkan runs only together, so new making one where the
@@ -306,6 +306,13 @@ std::vector<std::string> nodes_for(VP::FilePort &files,
   const VP::View &view = *held.view;
   const auto add = [&](const std::filesystem::path &inside) {
     const std::optional<std::string> node = node_of(inside);
+    if (node == VP::top_node && VP::is_top(view, *node))
+      throw std::runtime_error(std::format(
+          "{}/ at the top of view {} would be a node named {}, which is the top "
+          "folder's: name the folder otherwise",
+          inside.generic_string(),
+          view.name,
+          *node));
     if (!node || named(view, *node) || std::ranges::find(nodes, *node) != nodes.end())
       return;
     if (!VP::is_name(inside.filename().string()))
@@ -533,7 +540,7 @@ class Files final : public VP::Operator {
                         "shader's or C++'s with the least code that builds and runs; "
                         "in a view a folder is a node, which it adds, a draw's with its "
                         "vertex_count and a dispatch's with its invocations, and a "
-                        "shader or C++ file at a project's top makes the top node .; "
+                        "shader or C++ file at a project's top makes the top node root; "
                         "with none, "
                         "what the folder typed at's menu offers: in a node's, the file "
                         "it lacks first, in a view's, a node node1/ on, the first free");
