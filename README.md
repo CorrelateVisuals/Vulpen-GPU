@@ -16,6 +16,11 @@
   
 </p>
 
+<p align="center">
+  <a href="https://github.com/CorrelateVisuals/Vulpen-GPU/actions/workflows/ci.yml"><img src="https://github.com/CorrelateVisuals/Vulpen-GPU/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI: Linux tests on lavapipe, Windows build" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue" alt="License: MPL-2.0" /></a>
+</p>
+
 
 
 <p align="center">
@@ -68,7 +73,7 @@ cd Vulpen
 .\run.ps1                # builds the debug preset and opens the ide
 ```
 
-In the ide's terminal, type `view load life`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window; <kbd>F2</kbd> to <kbd>F5</kbd> put the keys in the terminal, the graph, the editor and the Perform panel.
+In the ide's terminal, type `view load ray-cubes`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window; <kbd>F2</kbd> to <kbd>F5</kbd> put the keys in the terminal, the graph, the editor and the Perform panel.
 
 > [!NOTE]
 > Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address.
@@ -141,6 +146,7 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 | `./run.sh --cli` | `.\run.ps1 --cli` | the command line alone, at the terminal |
 | `./run.sh --triangle` | `.\run.ps1 --triangle` | one project of [`projects/`](projects) alone, in its own window |
 | `./run.sh --life` | `.\run.ps1 --life` | Conway's Game of Life, its cells stepped on the GPU; `engine seed` sows them anew |
+| `./run.sh --ray-cubes` | `.\run.ps1 --ray-cubes` | mirror cubes ray traced in compute shaders, three bounces deep: the project in the pictures above |
 | `./run.sh --wave --log info` | `.\run.ps1 --wave --log info` | headless compute: `wave` fills a buffer and `probe` prints it |
 | `./run.sh --release …` | `.\run.ps1 --release …` | the `release` preset, in place of `debug` |
 | `cmake --build --preset debug` | `cmake --build --preset debug` | builds everything the tests run, where `./run.sh` builds vulpen and the projects it opens |
