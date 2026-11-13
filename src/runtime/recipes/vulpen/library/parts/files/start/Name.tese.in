@@ -1,6 +1,6 @@
 // Where each point the .tesc cut the triangle into goes: among the patch's three corners,
-// as near each as gl_TessCoord says, waving with frame.time; its color is that nearness,
-// red, green and blue, so the triangle keeps its colors as its edges wave.
+// as near each as gl_TessCoord says, waving with frame.time; its color the corners',
+// blended as near, so the triangle keeps the .vert's colors as its edges wave.
 //
 // Each way data reaches here is commented out: uncomment what you use and delete the
 // rest; a pass block field nothing fills is refused. A node's shaders share one pass
@@ -12,10 +12,12 @@
 layout(triangles, equal_spacing, ccw) in;
 
 // From the .tesc, one a corner, at the location and type it writes.
-// layout(location = 0) in vec3 colors[];
+layout(location = 0) in vec3 colors[];
+// layout(location = 1) in vec2 uvs[];
 
 // To the .frag, or a .geom, which reads it at the same location and type.
 layout(location = 0) out vec3 color;
+// layout(location = 1) out vec2 uv;
 
 void main() {
   const vec3 near = gl_TessCoord; // to each corner, together 1
@@ -23,6 +25,6 @@ void main() {
                 near.z * gl_in[2].gl_Position;
   gl_Position.y += 0.05 * sin(12.0 * gl_Position.x + 3.0 * frame.time);
   // gl_Position.y += pass.height * sin(12.0 * gl_Position.x);
-  color = near;
-  // color = near.x * colors[0] + near.y * colors[1] + near.z * colors[2];
+  color = near.x * colors[0] + near.y * colors[1] + near.z * colors[2];
+  // uv = near.x * uvs[0] + near.y * uvs[1] + near.z * uvs[2];
 }
