@@ -6,7 +6,8 @@ a person would type it (V06), with mistakes made on purpose and put right; then 
 each copy against its example: its manifest, its files, and that it runs. Then, in a
 project of its own, what a person may not expect to matter: the editor holding a file a
 line renames, moves or another program changes, a count a digit too long, a folder that
-holds a running view's.
+holds a running view's; and in another, every set of a draw's five stages, a node each:
+the whole draws draw, and the rest warn naming what they lack.
 
 The run is the cli hosting the ide with no window (V07), from the repository's top, so the
 live build compiles each node as it comes, as in a person's run; the lines go to the cli's
@@ -27,6 +28,7 @@ Usage: python3 src/tools/examples-replay.py BINARY [--only NAME,...] [--keep]
                                                      [--said FILE]
 """
 import argparse
+import itertools
 import os
 import re
 import shutil
@@ -34,6 +36,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import zlib
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -52,6 +56,8 @@ SETTLE_ROUNDS = 240    # at most, before the build counts as never idle
 QUIT_S = 3             # for quit to end the run, before quit force
 TAIL_LINES = 20        # of what vulpen said last, when it ends or hangs
 ERROR = "{!!!}"
+# A draw's five stages, by a letter each, in the order the draw runs them.
+STAGES = {"v": ".vert", "c": ".tesc", "e": ".tese", "g": ".geom", "f": ".frag"}
 # What the ide keeps of a person's session beside its manifest: its panels, and the
 # projects hosted beside it, which it would host again as the run starts.
 SESSION = [ROOT / "src/runtime/recipes/vulpen/ide/.vulpen" / name
@@ -102,10 +108,12 @@ def gone(project: str) -> Step:
 
 @dataclass
 class Example:
-    """An example made again, or, not compared, a project only to try lines in."""
+    """An example made again, or, not compared, a project only to try lines in, which
+    its own check may judge in place of the comparison."""
     name: str
     steps: list[Step] = field(default_factory=list)
     compared: bool = True
+    check: "Callable[[Example, Run, list[Finding]], None] | None" = None
 
     @property
     def copy(self) -> str:
@@ -172,6 +180,55 @@ def made(example: str, node: str) -> list[Step]:
     folder, files = node.replace(".", "/"), files_of(example, node)
     return [ok("new " + " ".join(at(COPY + example, folder, name) for name in files)),
             *swapped(example, node, files, files)]
+
+
+def lacking(stages: str) -> list[str]:
+    """What a set of draw stages, by their letters, lacks to draw: a .vert, a tessellation
+    stage's other half and a .frag, as vulpen's missing_stages names them."""
+    missing = [] if "v" in stages else [STAGES["v"]]
+    if ("c" in stages) != ("e" in stages):
+        missing.append(STAGES["e" if "c" in stages else "c"])
+    return missing + ([] if "f" in stages else [STAGES["f"]])
+
+
+def drew(png: Path) -> bool:
+    """Whether a snapshot shows more than black: each row of a PNG holds its filter's byte,
+    then only 0s for an all-black picture, whatever the filters, as each predicts a pixel
+    from those before it."""
+    data = png.read_bytes()
+    width, at, packed = int.from_bytes(data[16:20], "big"), 8, b""
+    while at < len(data):
+        size = int.from_bytes(data[at:at + 4], "big")
+        if data[at + 4:at + 8] == b"IDAT":
+            packed += data[at + 8:at + 8 + size]
+        at += 12 + size
+    rows, row = zlib.decompress(packed), 1 + 3 * width  # 8 bits each of red, green, blue
+    return any(any(rows[start + 1:start + row]) for start in range(0, len(rows), row))
+
+
+def stages_checked(example: Example, run: "Run", findings: list["Finding"],
+                   shots: dict[str, Path]) -> None:
+    """Once the build is idle and the last snapshot saved, every set as it binds: each
+    whole draw drew its picture, and every other set warns naming the files new writes to
+    make it whole, a lone .vert or .frag that too; nothing else, and none refused. Then
+    the project goes."""
+    said = run.send(settled("disconnect stage"))
+    wanted = ["node shot: picture samples no image"]
+    for name in ("".join(letters) for count in range(1, len(STAGES) + 1)
+                 for letters in itertools.combinations(STAGES, count)):
+        if missing := lacking(name):
+            named = " or ".join(filter(None, (", ".join(missing[:-1]), missing[-1])))
+            paths = " ".join(f"{name}/{name.capitalize()}{stage}" for stage in missing)
+            wanted.append(f"node {name}: draws nothing yet, as its folder holds no {named}: "
+                          f"new {paths} writes {'one' if len(missing) == 1 else 'them'}")
+    problems = bound(said, example.copy)
+    findings.extend(Finding(example.name, "a set of stages met what it should not", [met])
+                    for met in problems if not any(want in met for want in wanted))
+    findings.extend(Finding(example.name, "a set of stages did not warn so", [want])
+                    for want in wanted if not any(want in met for met in problems))
+    findings.extend(Finding(example.name, f"{name} drew no picture", [str(shot)])
+                    for name, shot in shots.items() if not shot.exists() or not drew(shot))
+    run.send(gone(example.copy))
 
 
 def examples(scratch: Path) -> list[Example]:
@@ -629,6 +686,27 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
+    # stages: a node for each set of a draw's five stages, its files new's starts, made by
+    # a line a node: each of the four whole draws draws its picture into a
+    # snapshot, and every other set warns naming the files new writes to make it whole
+    # (stages_checked); none is refused.
+    e = Example("stages", compared=False)
+    sets = ["".join(letters) for count in range(1, len(STAGES) + 1)
+            for letters in itertools.combinations(STAGES, count)]
+    shots = {name: scratch / f"stages-{name}.png" for name in sets if not lacking(name)}
+    e.steps = [
+        ok(f"view new {e.copy}"),
+        ok(*("new " + " ".join(at(e.copy, name, name.capitalize() + STAGES[letter])
+                               for letter in name) for name in sets)),
+        ok("recipe drop snapshot shot"),
+        *(settled(*(["disconnect stage"] if number else []),
+                  f"connect stage {name}.pixel shot.picture",
+                  f"param set shot file {shot}")
+          for number, (name, shot) in enumerate(shots.items())),
+    ]
+    e.check = lambda example, run, found: stages_checked(example, run, found, shots)
+    every.append(e)
+
     # surprises: what a person does that the lines before did not see coming. A view hosted
     # from a folder inside another, which holds it, so that folder stays while it runs. The
     # editor holding the manifest as new saves it, which it shows as saved. The editor
@@ -1032,7 +1110,7 @@ def main() -> None:
                     sent += len(step.lines)
                     judge(example.name, step, run.send(step), findings)
                     gathered(example.name, run, findings)
-                check(example, run, findings)
+                (example.check or check)(example, run, findings)
                 gathered(example.name, run, findings)
             at = "end"
             if not arguments.keep:
