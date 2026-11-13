@@ -21,8 +21,6 @@ namespace VP {
 
 namespace {
 
-constexpr std::string_view blanks = " \t\r";
-
 // The frames after a person's line in which the parts' lines answer it: the panes part
 // answers at its next cook, the docking part at the one after.
 constexpr std::uint64_t answer_frames = 3;

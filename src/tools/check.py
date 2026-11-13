@@ -2,7 +2,8 @@
 """Run every check of a tier, so none that guards a change waits on someone recalling it.
 
 quick: configure, build and test the debug preset, as CI does on every push; the build
-runs the gates, the mutable-globals check and the statistics. About a minute.
+runs the gates, the mutable-globals check and the statistics. Then, but on Windows, the
+names hidden as MSVC refuses them and GCC lets pass (hidden-names.py). About a minute.
 full: quick, then every example made again by typing (examples-replay.py), every command
 swept in each state with the menus and keys (command-sweep.py's sweep and gui), and the
 address sanitizer's build and tests. About half an hour; a round runs it before it
@@ -76,6 +77,9 @@ def simulate(log, out: Path) -> bool:
 def steps(tier: str, out: Path) -> list[Step]:
     python = sys.executable
     quick = preset("debug")
+    if sys.platform != "win32":
+        quick.insert(2, Step("hidden names", [python, TOOLS / "hidden-names.py",
+                                              ROOT / "out/build/debug"], "build debug"))
     if tier == "quick":
         return quick
     if tier == "full":
@@ -87,7 +91,7 @@ def steps(tier: str, out: Path) -> list[Step]:
                                   "sweep,gui", "--report", out / "command-sweep.md"]),
                 *preset("asan")]
     presets = ("debug", "release", "asan", "tsan")
-    nightly = [step for name in presets for step in preset(name)]
+    nightly = [*quick, *(step for name in presets[1:] for step in preset(name))]
     nightly += [Step("test gpu-validation", ["ctest", "--preset", "gpu-validation"],
                      "build debug"),
                 Step("test nightly", ["ctest", "--preset", "nightly"], "build debug"),

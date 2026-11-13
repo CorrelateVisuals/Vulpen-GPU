@@ -11,7 +11,7 @@ Thank you for trying Vulpen. Three ways in, from the smallest:
 The README's [quick start](README.md#quick-start) names what to install. Before you push:
 
 ```bash
-python3 src/tools/check.py quick   # configure, build and test, as CI does: about a minute
+python3 src/tools/check.py quick   # configure, build, test, and the names MSVC would refuse
 ```
 
 `python3 src/tools/check.py install-hook` runs it before each `git push`. For a change to the engine (`src/baseclasses/`, `src/runtime/`), also run `check.py full`: every example made again by typing, every command tried in each state, and AddressSanitizer, about half an hour on Linux. The tests run headless on lavapipe, so they need no GPU and no display.
