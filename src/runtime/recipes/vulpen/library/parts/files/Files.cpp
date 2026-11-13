@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -52,6 +53,28 @@ constexpr std::string_view start_name = "Name";
 // the time it went, so undo brings it back and a person finds it there; git ignores it.
 constexpr std::string_view kept_folder = ".vulpen";
 constexpr std::string_view trash_folder = "trash";
+// How long a trash keeps what a remove put there: as a remove fills it more, what went
+// earlier goes for good, so a trash holds at most a month of removes however long vulpen
+// runs (A03), where undo reaches only the last lines of this run.
+constexpr std::chrono::days trash_kept{30};
+// A remove's folder in a trash, named by the time it went, digits where the 0s are, and
+// -2 on for a second remove that second, so its name sorts as its time does.
+constexpr std::string_view stamp_shape = "00000000T000000Z";
+
+std::string stamp(std::chrono::system_clock::time_point time) {
+  return std::format("{:%Y%m%dT%H%M%SZ}", std::chrono::floor<std::chrono::seconds>(time));
+}
+
+// Whether a folder in a trash is a remove's, by its name; a person's own stays.
+bool stamped(std::string_view name) {
+  if (name.size() < stamp_shape.size())
+    return false;
+  for (std::size_t at = 0; at < stamp_shape.size(); ++at)
+    if (stamp_shape[at] == '0' ? name[at] < '0' || name[at] > '9'
+                               : name[at] != stamp_shape[at])
+      return false;
+  return true;
+}
 
 // A path as the prompt shows a folder, from where vulpen started, so an answer names it
 // as the person typed it.
@@ -561,7 +584,8 @@ class Files final : public VP::Operator {
                          "selected, as control with c does");
     _remove = node.command("remove <file>",
                            "moves a file or an empty folder into the trash, .vulpen/trash/ "
-                           "of the view holding it, where undo brings it back from; a "
+                           "of the view holding it, where undo brings it back from and "
+                           "which keeps it 30 days; a "
                            "node's folder takes the node with it, the nodes inside it and "
                            "their connections; a view's goes once view close let it go; "
                            "in the trash, it deletes");
@@ -589,7 +613,19 @@ class Files final : public VP::Operator {
     else if (call.is(_rename) || call.is(_copy))
       move(call, bare(words[0]), bare(words[1]), call.is(_copy));
     else if (call.is(_remove) || call.is(_remove_force))
-      remove(call, bare(words[0]), call.is(_remove_force));
+      remove(call, bare(words[0]), call.is(_remove_force), _filled);
+  }
+
+  // A trash a remove filled loses what it kept past trash_kept here, after the line, as
+  // undo records what a line changes, and would keep a copy of all that goes.
+  void cook(VP::Cook &cook) override {
+    for (const std::filesystem::path &trash : std::exchange(_filled, {}))
+      if (there(cook.files(), trash)) {
+        const std::string oldest = stamp(std::chrono::system_clock::now() - trash_kept);
+        for (const std::string &name : cook.files().list(trash.string()))
+          if (name.ends_with('/') && stamped(name) && name < oldest)
+            remove_all(cook.files(), trash / bare(name));
+      }
   }
 
   // What new with no path makes, as the menu of the folder typed at offers it, by the
@@ -954,14 +990,18 @@ class Files final : public VP::Operator {
   // left whose folder is gone; the view is saved, so its manifest names none either. What
   // goes moves into the trash in one rename, which undo takes back, its files whole however
   // large; what is in the trash already goes for good, as a person empties it so.
-  static void remove(VP::Call &call, const std::filesystem::path &path, bool force) {
+  // filled: where the trash it kept something in goes.
+  static void remove(VP::Call &call,
+                     const std::filesystem::path &path,
+                     bool force,
+                     std::vector<std::filesystem::path> &filled) {
     VP::FilePort &files = call.files();
     if (!there(files, path))
       throw std::runtime_error(std::format("{} is not there", shown(path)));
     const std::optional<Held> left = held_by(call, path);
     check_kept(call, left, path, false);
     const std::optional<std::filesystem::path> above = node_folder_above(left, path);
-    const std::optional<std::filesystem::path> kept = trash_for(call, left, path);
+    const std::optional<Kept> kept = trash_for(call, left, path);
     const bool folder = listed(files, path, "/");
     const std::optional<std::string> node = folder ? node_at(left) : std::nullopt;
     const std::size_t held = folder ? count(files, path) : 0;
@@ -979,9 +1019,10 @@ class Files final : public VP::Operator {
       graphed(graphs, left->name)
           .then.push_back(std::format("node remove keep {}", *node));
     const std::string saved = edit(call, graphs);
-    if (kept)
-      files.rename(path.string(), kept->string());
-    else
+    if (kept) {
+      files.rename(path.string(), kept->path.string());
+      filled.push_back(kept->trash);
+    } else
       remove_all(files, path);
     keep(files, above);
     call.reply(std::format("{} {}{}{}{}{}",
@@ -991,16 +1032,21 @@ class Files final : public VP::Operator {
                            held == 0 ? "" : " and " + some,
                            node ? std::format(", node {}", *node) : "",
                            saved) +
-               (kept ? std::format(", kept in {}", shown(*kept)) : std::string()));
+               (kept ? std::format(", kept in {}", shown(kept->path)) : std::string()));
   }
+
+  struct Kept {
+    std::filesystem::path trash;
+    std::filesystem::path path;
+  };
 
   // Where a remove keeps what it takes: in the trash of the view holding it, or of the
   // nearest folder above it with a .vulpen/, else of the folder holding it, under the time
   // it went, numbered on when that is taken, and its path from there; none for what is in
   // that trash already.
-  static std::optional<std::filesystem::path> trash_for(VP::Call &call,
-                                                        const std::optional<Held> &held,
-                                                        const std::filesystem::path &path) {
+  static std::optional<Kept> trash_for(VP::Call &call,
+                                       const std::optional<Held> &held,
+                                       const std::filesystem::path &path) {
     std::filesystem::path root = path.parent_path();
     if (held)
       root = std::filesystem::absolute(held->view->file.parent_path()).lexically_normal();
@@ -1015,15 +1061,13 @@ class Files final : public VP::Operator {
     if (const std::filesystem::path inside = path.lexically_relative(trash);
         !inside.empty() && *inside.begin() != "..")
       return std::nullopt;
-    const std::string stamp = std::format(
-        "{:%Y%m%dT%H%M%SZ}",
-        std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    const std::string now = stamp(std::chrono::system_clock::now());
     for (std::size_t number = 1;; ++number)
       if (std::filesystem::path kept =
-              trash / (number == 1 ? stamp : std::format("{}-{}", stamp, number)) /
+              trash / (number == 1 ? now : std::format("{}-{}", now, number)) /
               path.lexically_relative(root);
           !there(call.files(), kept))
-        return kept;
+        return Kept{trash, kept};
   }
 
   // The folder a path is in when it is a node's, which stays while the node does (RV08),
@@ -1073,6 +1117,8 @@ class Files final : public VP::Operator {
   VP::Command _copy;
   VP::Command _remove;
   VP::Command _remove_force;
+  // The trashes a remove filled since the last frame, each once or more.
+  std::vector<std::filesystem::path> _filled;
 };
 
 } // namespace

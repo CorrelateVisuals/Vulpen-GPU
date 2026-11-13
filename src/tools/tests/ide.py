@@ -121,9 +121,9 @@ MENUBAR = STRIP + 4
 MARK = (CELL_WIDE * (1 + len("wave/Wave.comp") + 1) + CELL_WIDE // 2,
         MENUBAR + STRIP // 2)
 # A line opens a file's menu at the pointer, its first column past a frame of 4 pixels:
-# open, new, rename, file and remove, whose press removes the file, as the line it ends
-# names it.
-REMOVE_ITEM = (4 + CELL_WIDE * 2, 4 + CELL * 4 + CELL // 2)
+# new, open, info, rename, copy and remove, whose press removes the file, as the line it
+# ends names it.
+REMOVE_ITEM = (4 + CELL_WIDE * 2, 4 + CELL * 5 + CELL // 2)
 # A node left out as its view loads, or whose operator stops, names itself in the log.
 STOPPED = re.compile(r"\{!!!\} (?:\S+ )?node [\w.-]+: ")
 INFO = ['[node "probe"]', '[view "inner"]']  # info's headers for the boxes selected
