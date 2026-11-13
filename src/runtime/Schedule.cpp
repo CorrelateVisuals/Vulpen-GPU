@@ -299,13 +299,13 @@ void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
     bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
   } else {
     const Bound &colors = bound.fragment ? *bound.fragment : bound;
-    std::vector<ShaderStage> stages;
+    std::vector<ShaderStage> shaders;
     for (const DrawStage &stage : draw_stages)
       if (const Bound &holder = stage.extension == fragment_stage ? colors : bound;
           holds_stage(*holder.node, stage.extension))
-        stages.push_back(
+        shaders.push_back(
             {.stage = stage.stage, .shader = &holder.stage(stage.extension)});
-    bound.pipeline.emplace(_wiring.pipelines, stages, render_pass);
+    bound.pipeline.emplace(_wiring.pipelines, shaders, render_pass);
     if (bound.fragment)
       from += std::format(" and {}'s {}",
                           colors.node->name,

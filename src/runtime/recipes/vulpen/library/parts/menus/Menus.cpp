@@ -613,9 +613,9 @@ class Menus final : public VP::Operator {
         continue;
       const std::size_t past = words.size() - columns.size();
       if (line.kind == link_kind && past > 0)
-        if (const auto link = std::ranges::find_if(_links, [&](const Link &link) {
-              return link.first == words[columns.size()] &&
-                     (past == 1 ? link.second.empty() : link.second == words.back());
+        if (const auto link = std::ranges::find_if(_links, [&](const Link &each) {
+              return each.first == words[columns.size()] &&
+                     (past == 1 ? each.second.empty() : each.second == words.back());
             });
             link != _links.end())
           return hand_link(call, *link);
@@ -666,10 +666,10 @@ class Menus final : public VP::Operator {
   void press_for(VP::Call &call,
                  std::span<const std::string_view> words,
                  std::vector<std::string> names) {
-    const auto line = std::ranges::find_if(_lines, [&](const Line &line) {
-      return !words.empty() && line.section == words.front() &&
-             std::ranges::equal(line.columns(), words.subspan(1)) &&
-             line.names_subject() && !line.lists() && !line.wants();
+    const auto line = std::ranges::find_if(_lines, [&](const Line &each) {
+      return !words.empty() && each.section == words.front() &&
+             std::ranges::equal(each.columns(), words.subspan(1)) &&
+             each.names_subject() && !each.lists() && !each.wants();
     });
     if (line == _lines.end() || names.empty())
       throw std::runtime_error(std::format(

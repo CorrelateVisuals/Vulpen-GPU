@@ -25,9 +25,11 @@ endif()
 find_package(Vulkan REQUIRED)
 # CPP11 fills Vulkan structs with designated initializers and leaves the zero fields out,
 # which GCC's -Wextra would flag in every one of them. A contract's alignas pads it to the
-# stride std430 gives it, which MSVC's C4324 would flag in every contract.
+# stride std430 gives it, which MSVC's C4324 would flag in every contract. MSVC's /W4
+# refuses a name that hides another (C4456, C4459), which -Wall leaves out: -Wshadow
+# refuses it on Linux too, so a build that passes here passes on Windows (RP00, RP01).
 set(warnings
-    "$<IF:$<BOOL:${MSVC}>,/W4;/wd4324,-Wall;-Wextra;-Wpedantic;-Wno-missing-field-initializers>")
+    "$<IF:$<BOOL:${MSVC}>,/W4;/wd4324,-Wall;-Wextra;-Wpedantic;-Wshadow;-Wno-missing-field-initializers>")
 # The same input gives the same bits on every machine (C01, C10). GCC fuses a*b+c into
 # one rounding wherever the CPU has FMA, as ARM64 always does, so release would differ
 # from debug and from x86; MSVC does not fuse by default.

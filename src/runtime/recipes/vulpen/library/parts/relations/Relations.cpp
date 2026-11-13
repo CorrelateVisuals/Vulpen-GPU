@@ -882,9 +882,9 @@ void Relations::relate_stages() {
       if (in.out)
         continue;
       const std::vector<Varying> &outs = *written;
-      const auto out = std::ranges::find_if(outs, [&](const Varying &out) {
-        return out.out && (in.location && out.location ? *in.location == *out.location
-                                                       : in.name == out.name);
+      const auto out = std::ranges::find_if(outs, [&](const Varying &each) {
+        return each.out && (in.location && each.location ? *in.location == *each.location
+                                                       : in.name == each.name);
       });
       if (out != outs.end())
         _found.push_back({.from = writer->generic_string(),
@@ -955,9 +955,9 @@ Relations::port_file(const std::filesystem::path &folder,
       return std::pair(*file, declared->line);
   for (const auto &[file, varyings] : in->second.varyings)
     if (const auto varying = std::ranges::find_if(*varyings,
-                                                  [&](const Varying &varying) {
-                                                    return varying.name == port &&
-                                                           varying.out == writes;
+                                                  [&](const Varying &each) {
+                                                    return each.name == port &&
+                                                           each.out == writes;
                                                   });
         varying != varyings->end())
       return std::pair(*file, varying->line);

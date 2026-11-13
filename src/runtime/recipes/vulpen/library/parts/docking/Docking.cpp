@@ -671,12 +671,12 @@ class Docking final : public VP::Operator {
       const std::string_view own = parent_of(head);
       std::vector<std::string> bare;
       for (const VP::Node &node : call.view(_view)->nodes)
-        if (const std::string text = node.name + head.substr(own.size());
+        if (const std::string file = node.name + head.substr(own.size());
             node.recipe == editor_recipe && !node_in(_written, node.name) &&
             std::ranges::none_of(_opening, [&](const std::string &line) {
-              return opening_in(line) == text;
+              return opening_in(line) == file;
             }))
-          bare.push_back(text);
+          bare.push_back(file);
       for (const std::string &name : bare)
         remove_editor(call, name);
     }
@@ -925,8 +925,8 @@ class Docking final : public VP::Operator {
       const auto closing = std::ranges::find_if(_seated, [&](const Seated &seated) {
         return VP_VIEW::contains(close_of(seated, cell), _pointer);
       });
-      const auto seam = std::ranges::find_if(_seams, [&](const Seam &seam) {
-        return VP_VIEW::contains(halves(seam.area, seam.along, seam.ratio).seam, _pointer);
+      const auto seam = std::ranges::find_if(_seams, [&](const Seam &each) {
+        return VP_VIEW::contains(halves(each.area, each.along, each.ratio).seam, _pointer);
       });
       if (event.down && _divider && VP_VIEW::contains(_divider->seam, _pointer)) {
         _dividing = true;

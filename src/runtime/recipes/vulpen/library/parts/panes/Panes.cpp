@@ -395,7 +395,7 @@ class Panes final : public VP::Operator {
     std::vector<std::string> going;
     // A pane, and the deck now holding its view; a view, and the deck holding it.
     std::vector<std::pair<Pane, std::string>> moving;
-    std::vector<std::pair<std::string, std::string>> adding;
+    std::vector<std::pair<std::string, std::string>> added;
     for (const Pane &pane : panes) {
       const std::string deck =
           pane.view.empty() ? std::string() : deck_of(own, pane.view);
@@ -409,9 +409,9 @@ class Panes final : public VP::Operator {
           !deck.empty() && std::ranges::none_of(panes, [&](const Pane &pane) {
             return pane.view == view;
           }))
-        adding.emplace_back(view, deck);
+        added.emplace_back(view, deck);
     std::vector<std::string> taken;
-    for (const auto &[view, deck] : adding)
+    for (const auto &[view, deck] : added)
       taken.push_back(
           free_name(own, std::format("{}.{}{}", _parent, view, pane_suffix), taken));
     const VP::Connection *const keys = keys_of(own);
@@ -434,7 +434,7 @@ class Panes final : public VP::Operator {
                    std::format("{}.{}", deck, pane.view),
                    pane.room.to);
     }
-    for (std::size_t at = 0; at < adding.size(); ++at) {
+    for (std::size_t at = 0; at < added.size(); ++at) {
       const std::string &node = taken[at];
       const std::string interacts =
           _interact ? std::format(" param={}=yes", picture_interact()) : std::string();
@@ -448,7 +448,7 @@ class Panes final : public VP::Operator {
       }
       send_connect(commands,
                    std::format("{}{}", short_name(node), room_suffix),
-                   std::format("{}.{}", adding[at].second, adding[at].first),
+                   std::format("{}.{}", added[at].second, added[at].first),
                    rooms);
       if (grown)
         for (const std::string &key : _keys) {
@@ -456,11 +456,11 @@ class Panes final : public VP::Operator {
           grown->to.push_back({std::format("{}.{}", node, inside), std::string(port)});
         }
     }
-    if (grown && !adding.empty()) {
+    if (grown && !added.empty()) {
       commands.send(std::format("{}: disconnect {}", _view, grown->name));
       send_connect(commands, grown->name, grown->from.text(), grown->to);
     }
-    return !going.empty() || !moving.empty() || !adding.empty();
+    return !going.empty() || !moving.empty() || !added.empty();
   }
 
   // The connection that brings the keys part's typed to it, which each pane joins.

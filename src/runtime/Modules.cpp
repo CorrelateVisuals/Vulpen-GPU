@@ -118,8 +118,8 @@ void Modules::unload(const std::string &module) {
   std::erase_if(_loaded, [&](const Loaded &loaded) { return loaded.module == module; });
 }
 
-void Modules::add(std::string_view name, Make make) {
-  if (!_operators.at(_entering).emplace(std::string(name), make).second)
+void Modules::add(std::string_view name, Make maker) {
+  if (!_operators.at(_entering).emplace(std::string(name), maker).second)
     throw std::runtime_error(
         std::format("the C++ of {} registers {} twice", _entering, name));
 }

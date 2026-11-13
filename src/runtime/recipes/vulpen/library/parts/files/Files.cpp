@@ -828,8 +828,8 @@ class Files final : public VP::Operator {
     const bool library = parts.size() == 4 && parts[0] == "vulpen" &&
                          parts[1] == "library" &&
                          (parts[2] == "parts" || parts[2] == "components");
-    const std::filesystem::path manifest = to / VP::manifest_file;
-    if ((!grouped && !library) || !listed(call.files(), manifest, ""))
+    const std::filesystem::path written = to / VP::manifest_file;
+    if ((!grouped && !library) || !listed(call.files(), written, ""))
       return {};
     const std::string old_name = from.filename().string();
     const std::string new_name = to.filename().string();
@@ -837,7 +837,7 @@ class Files final : public VP::Operator {
       if (VP::within(name, old_name))
         name = new_name + name.substr(old_name.size());
     };
-    VP::View view = call.files().manifest(manifest.string());
+    VP::View view = call.files().manifest(written.string());
     for (VP::Node &node : view.nodes)
       rename(node.name);
     for (VP::Connection &connection : view.connections) {
@@ -845,7 +845,7 @@ class Files final : public VP::Operator {
       for (VP::Endpoint &end : connection.to)
         rename(end.node);
     }
-    call.files().save(view, manifest.string());
+    call.files().save(view, written.string());
     // Each line first: a line sent replaces the view it changes, which the loop reads.
     std::vector<std::string> lines;
     for (const Hosted &hosted : hosted_views(call))

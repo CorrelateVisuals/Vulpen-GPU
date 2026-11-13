@@ -325,21 +325,21 @@ bool commented(Document &document) {
   const std::string_view mark = line_comment(document.syntax);
   const auto [from, to] = selection(document);
   const std::size_t last = to.row > from.row && to.column == 0 ? to.row - 1 : to.row;
-  std::size_t indent = std::string::npos;
+  std::size_t least = std::string::npos;
   bool comments = true;
   for (const std::string_view row :
        std::span(document.lines).subspan(from.row, last - from.row + 1))
     if (text_start(row) < row.size()) {
-      indent = std::min(indent, text_start(row));
+      least = std::min(least, text_start(row));
       comments = comments && row.substr(text_start(row)).starts_with(mark);
     }
-  if (mark.empty() || indent == std::string::npos)
+  if (mark.empty() || least == std::string::npos)
     return false;
   for (std::size_t row = from.row; row <= last; ++row) {
     std::string &line = document.lines[row];
     if (text_start(line) == line.size())
       continue;
-    const std::size_t at = comments ? text_start(line) : indent;
+    const std::size_t at = comments ? text_start(line) : least;
     const bool blank = line.compare(at + mark.size(), 1, " ") == 0;
     const std::size_t taken = comments ? mark.size() + (blank ? 1 : 0) : 0;
     const std::string put = comments ? std::string() : std::string(mark) + ' ';

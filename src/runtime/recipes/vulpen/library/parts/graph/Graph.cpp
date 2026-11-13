@@ -856,8 +856,8 @@ void Graph::context(VP::Cook &frame) {
               std::ranges::find(names, named) == names.end())
             names.push_back(std::move(named));
     // In the order they were selected, so a pair's first is the one selected first.
-    std::ranges::stable_sort(names, {}, [&](const std::string &name) {
-      return std::ranges::find(_selection, name) - _selection.begin();
+    std::ranges::stable_sort(names, {}, [&](const std::string &each) {
+      return std::ranges::find(_selection, each) - _selection.begin();
     });
     kind = kind_of_several(kind, names.size());
   } else if (!_hovered_curves.empty() && _built_flat) {

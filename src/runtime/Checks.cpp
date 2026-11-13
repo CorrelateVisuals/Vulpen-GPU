@@ -829,8 +829,8 @@ void Schedule::check_samples() {
       if (!field.texture() || bound.fills(field.name) ||
           connection_of(bound.node->name, field.name))
         continue;
-      const auto port = std::ranges::find_if(_ports, [&](const NodePort &port) {
-        return port.node == bound.node->name && port.name == field.name;
+      const auto port = std::ranges::find_if(_ports, [&](const NodePort &each) {
+        return each.node == bound.node->name && each.name == field.name;
       });
       const std::string reader = std::format("{}.{}", bound.node->name, field.name);
       bound.warnings.push_back(

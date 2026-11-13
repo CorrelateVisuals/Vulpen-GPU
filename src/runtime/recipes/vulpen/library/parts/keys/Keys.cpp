@@ -208,8 +208,8 @@ class Keys final : public VP::Operator {
       _held = key.down ? _held | *bit : _held & ~*bit;
       return nullptr;
     }
-    const auto chord = std::ranges::find_if(_chords, [&](const Chord &chord) {
-      return chord.held == _held && chord.key == key.name;
+    const auto chord = std::ranges::find_if(_chords, [&](const Chord &each) {
+      return each.held == _held && each.key == key.name;
     });
     return key.down && chord != _chords.end() ? &*chord : nullptr;
   }

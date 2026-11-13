@@ -264,9 +264,9 @@ void Undo::take_back(Call &call, bool again) {
 // a rename, as remove's into the trash, goes back only while its new path is there and
 // its old one free again.
 void Undo::check(const Step &step, bool again) {
-  using Kind = Step::Change::Kind;
+  using ChangeKind = Step::Change::Kind;
   for (const Step::Change &change : step.changes) {
-    if (change.kind != Kind::rename)
+    if (change.kind != ChangeKind::rename)
       continue;
     const std::filesystem::path &from = again ? change.path : change.to;
     const std::filesystem::path &to = again ? change.to : change.path;
@@ -286,13 +286,12 @@ void Undo::check(const Step &step, bool again) {
            static_cast<FilePort &>(*_recorded).read(file.string()) == text;
   };
   const auto look = [&](const Step::Change &change) {
-    using Kind = Step::Change::Kind;
-    if ((change.kind != Kind::save && change.kind != Kind::remove) ||
+    if ((change.kind != ChangeKind::save && change.kind != ChangeKind::remove) ||
         std::ranges::find(seen, change.path) != seen.end() ||
         kept_by_view(step, change.path, again))
       return;
     seen.push_back(change.path);
-    const bool saved = change.kind == Kind::save;
+    const bool saved = change.kind == ChangeKind::save;
     const bool as_left = saved ? holds(change.path, change.after) : !there(change.path);
     const bool as_found =
         change.before ? holds(change.path, *change.before) : there(change.path) != saved;
@@ -313,19 +312,19 @@ void Undo::check(const Step &step, bool again) {
 // back. Then each folder the line made goes once empty, deepest first, and each that was
 // there comes back if a delete took it, as the port takes a folder its last file leaves.
 void Undo::take_files_back(const Step &step) {
-  using Kind = Step::Change::Kind;
+  using ChangeKind = Step::Change::Kind;
   FilePort &files = *_recorded;
   for (const Step::Change &change : step.changes | std::views::reverse) {
     const std::string path = change.path.string();
-    if (change.kind == Kind::save && !kept_by_view(step, change.path, false))
+    if (change.kind == ChangeKind::save && !kept_by_view(step, change.path, false))
       change.before ? files.save(path, *change.before) : files.remove(path);
-    else if (change.kind == Kind::remove)
+    else if (change.kind == ChangeKind::remove)
       change.before ? files.save(path, *change.before) : files.make(path);
-    else if (change.kind == Kind::copy)
+    else if (change.kind == ChangeKind::copy)
       remove_tree(change.to);
-    else if (change.kind == Kind::rename)
+    else if (change.kind == ChangeKind::rename)
       files.rename(change.to.string(), path);
-    else if (change.kind == Kind::make)
+    else if (change.kind == ChangeKind::make)
       remove_tree(change.path);
   }
   std::vector<const Step::Folder *> folders;
@@ -346,19 +345,19 @@ void Undo::take_files_back(const Step &step) {
 }
 
 void Undo::bring_files_again(const Step &step) {
-  using Kind = Step::Change::Kind;
+  using ChangeKind = Step::Change::Kind;
   FilePort &files = *_recorded;
   for (const Step::Change &change : step.changes) {
     const std::string path = change.path.string();
-    if (change.kind == Kind::save && !kept_by_view(step, change.path, true))
+    if (change.kind == ChangeKind::save && !kept_by_view(step, change.path, true))
       files.save(path, change.after);
-    else if (change.kind == Kind::remove && there(change.path))
+    else if (change.kind == ChangeKind::remove && there(change.path))
       files.remove(path);
-    else if (change.kind == Kind::copy)
+    else if (change.kind == ChangeKind::copy)
       files.copy(path, change.to.string());
-    else if (change.kind == Kind::rename)
+    else if (change.kind == ChangeKind::rename)
       files.rename(path, change.to.string());
-    else if (change.kind == Kind::make)
+    else if (change.kind == ChangeKind::make)
       files.make(path);
   }
 }

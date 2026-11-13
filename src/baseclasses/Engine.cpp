@@ -118,8 +118,8 @@ void upload(VkCommandBuffer commands, const Copy &copy) {
 
 // Each part borrows the ones made before it, so they are destroyed in reverse.
 struct Engine::Gpu {
-  Gpu(const Log &log, const Window *window, std::string_view prefer)
-      : log(log), mechanics(log, window, prefer),
+  Gpu(const Log &engine_log, const Window *window, std::string_view prefer)
+      : log(engine_log), mechanics(engine_log, window, prefer),
         resources(mechanics.instance(),
                   mechanics.physical_device(),
                   mechanics.device(),
@@ -132,7 +132,7 @@ struct Engine::Gpu {
                   ? ~std::uint64_t{0}
                   : (std::uint64_t{1} << mechanics.timestamp_bits()) - 1) {
     if (window)
-      swapchain.emplace(log, mechanics, *window);
+      swapchain.emplace(engine_log, mechanics, *window);
   }
   ~Gpu() {
     vkDestroyQueryPool(mechanics.device(), queries, nullptr);

@@ -3,7 +3,8 @@
 # with the same packages the README names and the validation layer, which fails a test
 # at any message (RVK00). gpu-validation stays on a real GPU: its instrumented shaders
 # crash lavapipe. Windows runners have no Vulkan driver at all, so Windows builds
-# everything (RP01) and runs the one test that needs no GPU.
+# everything (RP01) and runs the one test that needs no GPU. A compiler's errors show as
+# annotations on the run's page, which anyone can read without signing in.
 name: ci
 
 on:
@@ -32,6 +33,8 @@ jobs:
             mesa-vulkan-drivers vulkan-validationlayers
           # Ubuntu names lavapipe's manifest by its architecture.
           echo "LAVAPIPE=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -n 1)" >> "$GITHUB_ENV"
+      - name: Compiler messages as annotations
+        run: echo "::add-matcher::.github/compilers.json"
       - name: Configure
         run: cmake --preset debug -DVULPEN_TEST_DRIVER="$LAVAPIPE"
       - name: Build
@@ -67,6 +70,8 @@ jobs:
         run: |
           'VULKAN_SDK=C:\VulkanSDK' >> $env:GITHUB_ENV
           'C:\VulkanSDK\Bin' >> $env:GITHUB_PATH
+      - name: Compiler messages as annotations
+        run: echo "::add-matcher::.github/compilers.json"
       - name: Configure
         run: cmake --preset debug
       - name: Build
