@@ -16,12 +16,12 @@ hanging. The copies go before the run and, without --keep, after it; what the ru
 rewrites in .vulpen/ folders as panels move and the graph zooms is put back, and the
 panels and projects a person's ide kept, which the run starts without, as the manifests
 have them, come back after it too. What vulpen
-said is kept, in recreate-examples.log beside the binary unless --said names a file.
+said is kept, in examples-replay.log beside the binary unless --said names a file.
 
 It refuses to run while another vulpen of this tree runs, as both would build into out/
 and write the .vulpen/ folders.
 
-Usage: python3 src/tools/recreate-examples.py BINARY [--only NAME,...] [--keep]
+Usage: python3 src/tools/examples-replay.py BINARY [--only NAME,...] [--keep]
                                                      [--said FILE]
 """
 import argparse
@@ -1003,7 +1003,7 @@ def main() -> None:
     if others := running():
         sys.exit("another vulpen of this tree runs, which builds into out/ and writes the "
                  ".vulpen/ folders too; quit it first:\n" + "\n".join(others))
-    said = (arguments.said or binary.parent / "recreate-examples.log").resolve()
+    said = (arguments.said or binary.parent / "examples-replay.log").resolve()
     findings: list[Finding] = []
     sent, code, at = 0, None, "start"
     with tempfile.TemporaryDirectory() as scratch:

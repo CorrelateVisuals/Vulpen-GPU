@@ -29,7 +29,7 @@ word sent names a path outside the copy's folder, and no count a GPU could not h
 (no-memory-bombs); vulpen is killed if the machine's memory runs low. It takes the
 machine's own GPU, with no window.
 
-Usage: python3 src/tools/break-commands.py [--only PART,...] [--states NAME,...]
+Usage: python3 src/tools/command-sweep.py [--only PART,...] [--states NAME,...]
            [--seed N] [--walks N] [--steps N] [--tree DIR] [--keep] [--report FILE]
 """
 import argparse
@@ -544,7 +544,7 @@ def copy_tree(to: Path) -> None:
             shutil.copy2(source, to / name)
     editor = to / "src/runtime/recipes/vulpen/library/parts/editor/view.vlp"
     editor.write_text(editor.read_text().replace("program=code", "program=true"))
-    git = ["git", "-c", "user.name=break-commands", "-c", "user.email=break@localhost"]
+    git = ["git", "-c", "user.name=command-sweep", "-c", "user.email=sweep@localhost"]
     for command in (["init", "-q"], ["add", "-A"], ["commit", "-qm", "copy"]):
         subprocess.run(git + command, cwd=to, check=True)
     pristine = to.parent / "pristine"
@@ -1372,7 +1372,7 @@ def write_report(copy: Copy, report: Path, took: float, commit: str) -> None:
     by_what: dict[str, list[Finding]] = {}
     for finding in copy.findings:
         by_what.setdefault(finding.what, []).append(finding)
-    text = [f"# break-commands at {commit}", "",
+    text = [f"# command-sweep at {commit}", "",
             f"{len(copy.tried)} lines tried, {len(copy.findings)} findings, "
             f"in {took / 60:.1f} minutes.", "", "## Findings", ""]
     for what, found in by_what.items():
@@ -1416,7 +1416,7 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=150, help="lines a walk")
     parser.add_argument("--tree", type=Path, help="a copy a run before kept, to reuse")
     parser.add_argument("--keep", action="store_true", help="keep the copy, to reuse")
-    parser.add_argument("--report", type=Path, default=ROOT / "out" / "break-commands.md")
+    parser.add_argument("--report", type=Path, default=ROOT / "out" / "command-sweep.md")
     arguments = parser.parse_args()
     parts = arguments.only.split(",") if arguments.only else list(PARTS)
     states = [state for state in STATES if not arguments.states
@@ -1427,7 +1427,7 @@ def main() -> None:
     if arguments.tree:
         tree = arguments.tree.resolve()
     else:
-        tree = Path(tempfile.mkdtemp(prefix="break-commands-")) / "Vulpen"
+        tree = Path(tempfile.mkdtemp(prefix="command-sweep-")) / "Vulpen"
         print(f"copying and building the tree in {tree}", flush=True)
         copy_tree(tree)
     report = arguments.report.resolve()

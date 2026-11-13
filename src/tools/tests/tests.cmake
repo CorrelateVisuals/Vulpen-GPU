@@ -109,10 +109,10 @@ endif()
 # would take a mistaken count from the machine's memory, and skipped while another vulpen
 # of this tree runs, as both would build into out/ and write the .vulpen/ folders.
 if(VULPEN_LIVE AND NOT VULPEN_SANITIZERS)
-  add_test(NAME recreate-examples
-           COMMAND ${python} ${PROJECT_SOURCE_DIR}/src/tools/recreate-examples.py
+  add_test(NAME examples-replay
+           COMMAND ${python} ${PROJECT_SOURCE_DIR}/src/tools/examples-replay.py
                    ${vulpen_file})
-  set_tests_properties(recreate-examples PROPERTIES
+  set_tests_properties(examples-replay PROPERTIES
     LABELS nightly TIMEOUT 1800 SKIP_REGULAR_EXPRESSION "another vulpen of this tree runs")
 endif()
 # Sanitizers hold freed memory back, so a soak under them would read as growth.
