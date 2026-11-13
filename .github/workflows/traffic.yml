@@ -1,0 +1,41 @@
+# GitHub keeps a repository's traffic for 14 days only. Each Monday this keeps it as CSV
+# files on the traffic branch, apart from the code (.github/traffic.py says which). Reading
+# traffic takes a token with read access to the repository's administration, the secret
+# TRAFFIC_TOKEN; the workflow's own token writes the branch, and its pushes start no other
+# workflow. GitHub runs a schedule from the default branch only.
+name: traffic
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keep:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: source
+          sparse-checkout: .github
+      - name: The traffic branch
+        env:
+          REMOTE: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}
+        run: |
+          git clone --branch traffic --single-branch "$REMOTE" kept ||
+            { git init -b traffic kept && git -C kept remote add origin "$REMOTE"; }
+      - name: Counts
+        env:
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+        run: python3 source/.github/traffic.py kept
+      - name: Keep
+        working-directory: kept
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -q -m "traffic: $(date -u +%F)"
+          git push origin traffic
