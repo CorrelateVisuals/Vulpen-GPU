@@ -100,9 +100,12 @@ NOTHING = re.compile(r"no node|no view is named|is no node|unknown|holds no|no c
                      r"|is no panel")
 
 
-# A warning a line asked for: the GPU the next launch takes, and the modes part's answer to
-# perform mode with nothing presented, a frame on (Q4 of the first report: keep).
-EXPECTED_WARNINGS = re.compile(r"the next launch prefers|nothing is presented to perform")
+# A warning a line asked for: the GPU the next launch takes, or keeps where no GPU of the
+# other kind meets the floor, as where lavapipe is the only one; and the modes part's
+# answer to perform mode with nothing presented, a frame on (Q4 of the first report:
+# keep). Each is a stuck button's answer, which warns rather than refuses.
+EXPECTED_WARNINGS = re.compile(r"the next launch (?:prefers|takes the \S+ GPU still)"
+                               r"|nothing is presented to perform")
 # A node's warning as it binds, as a Texture a disconnect left unfilled or a value a param
 # unset left unset: what the line made of the node, as its errors are.
 BOUND_WARNING = re.compile(r"\{ ! \} \S+ node \S+: ")
@@ -528,12 +531,15 @@ class Copy:
 
 
 def held(folder: Path) -> dict[str, str]:
-    """A folder's files, by path, as their contents' hashes, but what .vulpen/ keeps."""
+    """A folder's files, by path, as their contents' hashes, and its folders, but what
+    .vulpen/ keeps: a folder a line left, empty or holding only what .vulpen/ keeps, as
+    one a project brought into another, is no node's, which the next load names."""
     if not folder.is_dir():
         return {}
-    return {path.relative_to(folder).as_posix(): hashlib.sha1(path.read_bytes()).hexdigest()
+    return {path.relative_to(folder).as_posix():
+            hashlib.sha1(path.read_bytes()).hexdigest() if path.is_file() else "/"
             for path in sorted(folder.rglob("*"))
-            if path.is_file() and ".vulpen" not in path.parts}
+            if (path.is_file() or path.is_dir()) and ".vulpen" not in path.parts}
 
 
 def copy_tree(to: Path) -> None:
