@@ -361,10 +361,10 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
 // as the editors its host connects say, the file it shows moves: into a new editor, or
 // into the editor in the target's middle. It keeps the panels as a person left them in
 // .vulpen/layout.log beside the view's manifest, saved as they change, as the edits that
-// make the manifest's panels these, and as the view
-// starts as its manifest has it, arranges them so again, by panel restore, so they
-// last between runs. A double click on a panel's strip, as on one of its tabs, gives it
-// the docks' whole room, the others none, by panel maximize, and another gives them their
+// make the manifest's panels these, and as the view starts as its manifest has it,
+// arranges them so again, by panel restore, so they last between runs, though not
+// their tabs. A double click on a panel's strip, as on one of its tabs, gives it the
+// docks' whole room, the others none, by panel maximize, and another gives them their
 // room back. At the end of each strip it draws a close
 // mark, whose press hides the panel, as its button does. Where the bar its area is the
 // rest of parts its strip from it by a seam, as the menubar's, it draws that seam as a
@@ -429,8 +429,6 @@ class Docking final : public VP::Operator {
     const glm::uvec2 cell = _font->cell;
     if (!_started)
       start(frame);
-    if (!_opening.empty())
-      open_kept(frame);
     if (const Laid laid{_area->offset, _area->extent, cell}; _laid_out != laid) {
       _laid_out = laid;
       seat_all(frame.view(), cell);
@@ -464,17 +462,15 @@ class Docking final : public VP::Operator {
   // content held a tab and holds none, as its last file closed or its last view closed or
   // left, by panel hide, which takes it: the last tab closed closes the panel; a deck
   // brought back holding none of the projects it held, as they came back not, goes too.
-  // The files an editor holds or shows changed, the kept file keeps them anew. The
-  // manifest's own editor and deck hide so, while each is all its panel holds, the deck
-  // once a preview beside it holds no file either. A file an editor comes to show, opened
-  // rather than left by a close, shows its panel again, as a person who opens a file
-  // looks at it. An editor's files are read each frame, without allocating; a deck's
-  // views and a preview's file change only with an edit, so they are read after a
-  // rebuild.
+  // The manifest's own editor and deck hide so, while each is all its panel holds, the
+  // deck once a preview beside it holds no file either. A file an editor comes to show,
+  // opened rather than left by a close, shows its panel again, as a person who opens a
+  // file looks at it. An editor's files are read each frame, without allocating; a
+  // deck's views and a preview's file change only with an edit, so they are read after
+  // a rebuild.
   void sweep(VP::Cook &frame) {
     if (!_written_read)
       return;
-    bool files = false; // an editor's changed
     if (_editors)
       for (const VP_VIEW::Editor *editor : *_editors) {
         const std::size_t count = editor->count();
@@ -484,18 +480,14 @@ class Docking final : public VP::Operator {
         const bool emptied = seen && count == 0 && had->second.count > 0;
         const bool opened = seen && !shown.empty() && shown != had->second.shown &&
                             count >= had->second.count;
-        if (!seen || had->second.count != count || had->second.shown != shown) {
-          files = files || seen;
+        if (!seen || had->second.count != count || had->second.shown != shown)
           _editors_seen[editor->name()] = {count, std::string(shown)};
-        }
         if (emptied &&
             (editor != _editors->back() || alone(frame.view(), editor->name())))
           hide_holding(frame, editor->name());
         else if (opened)
           frame.commands().send(std::format("{}: panel show {}", _view, editor->name()));
       }
-    if (files)
-      keep(frame);
     if (!std::exchange(_swept, true)) {
       std::vector<std::string> emptied;
       std::vector<std::string> previewed;
@@ -557,7 +549,7 @@ class Docking final : public VP::Operator {
     const std::filesystem::path kept(_kept);
     const std::vector<std::string> names = files.list(kept.parent_path().string());
     if (std::ranges::find(names, kept.filename().string()) == names.end()) {
-      _saved = kept_text(_written, *frame.view(_view), held_files());
+      _saved = kept_text(_written, *frame.view(_view));
       return;
     }
     _saved = files.read(_kept);
@@ -603,12 +595,11 @@ class Docking final : public VP::Operator {
   // The panels as the view holds them now, saved once they changed: a panel moved, hidden
   // or shown, a seam or the menubar's divider dragged, a stack's other half shown, written
   // as the edits that make the manifest's panels these, so the file stays as short as
-  // the panels' changes, however many edits made them; not while a restore still opens
-  // the editors' files, so a run ended then keeps them all.
+  // the panels' changes, however many edits made them.
   void keep(VP::Cook &frame) {
-    if (!_opening.empty() || !read_manifest(frame))
+    if (!read_manifest(frame))
       return;
-    std::string text = kept_text(_written, *frame.view(_view), held_files());
+    std::string text = kept_text(_written, *frame.view(_view));
     if (text == _saved)
       return;
     frame.files().save(_kept, text);
@@ -617,12 +608,12 @@ class Docking final : public VP::Operator {
 
   // The kept file's lines on this view, as a script's run; the first a change refuses
   // stops it, the lines before staying, as a file kept before the manifest changed past
-  // it may hold one, and the next change saves them as they are. The lines naming an
-  // editor's files wait for the frames after, a file a frame for each editor, as a bind
-  // opens the one file its param names; a file gone since is left out, and an editor the
-  // docking part added that is left none goes. The panels it added stay, a Perform panel
-  // holding its projects as the panes part hosts them again, and the docks go in the
-  // order they nest, as a file kept before moves ordered them may list them otherwise.
+  // it may hold one, and the next change saves them as they are. No tab comes back, so a
+  // panel the docking part added goes, as a last tab closed takes it: an editor's at
+  // once, a Perform panel's as the sweep finds its deck holding none. A line naming an
+  // editor's file, as a file kept while tabs came back holds, is left out. The docks go
+  // in the order they nest, as a file kept before moves ordered them may list them
+  // otherwise.
   // Its lines change the panels as the manifest has them, so panels the file keeps as
   // they are need none, and panels moved otherwise are refused before a line changes
   // them. The panels are as the manifest has them when no edit makes them so, as the
@@ -639,25 +630,17 @@ class Docking final : public VP::Operator {
     if (!_written_read || kept_for(text) != fingerprint_of(_written))
       throw std::runtime_error(stale());
     const VP::View &now = *call.view(_view);
-    if (kept_text(_written, now, held_files()) == text)
+    if (kept_text(_written, now) == text)
       return call.reply(std::format("the panels are as {} keeps them already", _kept));
     if (!edits_from(_written, now).empty())
       throw std::runtime_error(std::format("{} changes the panels as {} has them, as a "
                                            "run starts, and they moved since",
                                            _kept,
                                            _manifest));
-    const std::vector<std::string> lines = kept_lines(text);
     std::optional<std::string> stopped;
-    std::vector<std::string> gone;
-    _opening.clear();
-    for (const std::string &line : lines) {
-      if (const std::optional<std::filesystem::path> file = shown_file(line)) {
-        if (!there(call.files(), *file))
-          gone.push_back(file->string());
-        else
-          _opening.push_back(line);
+    for (const std::string &line : kept_lines(text)) {
+      if (shows_file(line))
         continue;
-      }
       try {
         call.commands().send(std::format("{}: {}", _view, line));
       } catch (const std::runtime_error &refused) {
@@ -669,90 +652,28 @@ class Docking final : public VP::Operator {
     if (_editors && !_editors->empty()) {
       const std::string &head = _editors->back()->name();
       const std::string_view own = parent_of(head);
-      std::vector<std::string> bare;
+      std::vector<std::string> added;
       for (const VP::Node &node : call.view(_view)->nodes)
-        if (const std::string file = node.name + head.substr(own.size());
-            node.recipe == editor_recipe && !node_in(_written, node.name) &&
-            std::ranges::none_of(_opening, [&](const std::string &line) {
-              return opening_in(line) == file;
-            }))
-          bare.push_back(file);
-      for (const std::string &name : bare)
+        if (node.recipe == editor_recipe && !node_in(_written, node.name))
+          added.push_back(node.name + head.substr(own.size()));
+      for (const std::string &name : added)
         remove_editor(call, name);
     }
     order_docks(call);
     if (stopped)
       throw std::runtime_error(*stopped);
-    if (!gone.empty())
-      _laid_out.reset(); // so the next frame keeps the panels anew, without them
-    for (const std::string &file : gone)
-      call.reply(std::format("{} is gone since {} kept the panels, so its editor starts "
-                             "without it",
-                             file,
-                             _kept));
   }
 
-  // The file a kept line has an editor show, `param set <node> file <path>`, when its
-  // path is whole, as open names it: one deleted since, as with its project, the
-  // restore leaves out, so a run starts without it rather than naming it each start.
-  // opening_in is the node such a line names, its third word.
-  static std::optional<std::filesystem::path> shown_file(std::string_view line) {
+  // Whether a kept line has an editor show a file, `param set <node> file <path>`.
+  static bool shows_file(std::string_view line) {
     constexpr std::string_view set = "param set ";
     if (!line.starts_with(set))
-      return {};
-    line.remove_prefix(set.size());
-    const std::size_t key = line.find(' ');
-    if (key == std::string_view::npos)
-      return {};
-    const std::string_view rest = line.substr(key + 1);
-    if (!rest.starts_with(file_param) || rest.substr(file_param.size(), 1) != " ")
-      return {};
-    const std::filesystem::path path(rest.substr(file_param.size() + 1));
-    return path.is_absolute() ? std::optional(path) : std::nullopt;
-  }
-
-  static std::string_view opening_in(std::string_view line) {
-    line.remove_prefix(std::min(line.find(' ', line.find(' ') + 1) + 1, line.size()));
-    return line.substr(0, line.find(' '));
-  }
-
-  // The next kept file of each editor, a line a frame for each, as a bind opens the one
-  // file its param names.
-  void open_kept(VP::Cook &frame) {
-    std::vector<std::string> opened; // the nodes a line went to this frame
-    std::vector<std::string> waiting;
-    for (std::string &line : _opening)
-      if (const std::string node(opening_in(line));
-          std::ranges::find(opened, node) == opened.end()) {
-        frame.commands().send(std::format("{}: {}", _view, line));
-        opened.push_back(node);
-      } else {
-        waiting.push_back(std::move(line));
-      }
-    _opening = std::move(waiting);
-  }
-
-  // The files each editor holds, for the kept file: in the order its tabs show them, the
-  // one it shows last, again when it is not, so they open in that order, that one shown.
-  std::vector<Held> held_files() const {
-    std::vector<Held> held;
-    if (!_editors)
-      return held;
-    for (const VP_VIEW::Editor *editor : *_editors) {
-      if (editor->count() == 0)
-        continue;
-      Held &files = held.emplace_back(Held{.text = editor->name()});
-      for (std::size_t index = 0; index < editor->count(); ++index)
-        files.files.emplace_back(editor->file(index));
-      if (files.files.back() != editor->shown())
-        files.files.emplace_back(editor->shown());
-    }
-    return held;
-  }
-
-  static bool there(VP::FilePort &files, const std::filesystem::path &path) {
-    const std::vector<std::string> names = files.list(path.parent_path().string());
-    return std::ranges::find(names, path.filename().string()) != names.end();
+      return false;
+    const std::size_t key = line.find(' ', set.size());
+    const std::string_view rest =
+        key == std::string_view::npos ? std::string_view() : line.substr(key + 1);
+    return rest.starts_with(file_param) &&
+           rest.substr(file_param.size()).starts_with(' ');
   }
 
   // The bar its area is the rest of, when that bar parts its strip from the rest by a
@@ -1866,7 +1787,6 @@ class Docking final : public VP::Operator {
   std::string _kept;
   std::string _saved;
   bool _started = false;
-  std::vector<std::string> _opening; // the kept lines opening files, not sent yet
   VP_VIEW::Items *_buttons = nullptr;
   const VP_VIEW::Editors *_editors = nullptr; // as its host connects them; none for none
   const VP_VIEW::Typed *_typed = nullptr;     // so too
