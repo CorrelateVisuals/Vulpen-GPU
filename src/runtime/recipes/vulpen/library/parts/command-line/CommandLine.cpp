@@ -357,10 +357,11 @@ std::vector<std::string> node_words(VP::Call &call,
 
 // What a placeholder stands for: the view's nodes, ports or connections, the views
 // hosted, the params of the node named just before a key and the values its files
-// declare, the types the shader named just before a type may declare, the words a node
-// takes, the recipes of the library, the folders cd goes into, the paths a word begun
-// may become, or, for a word naming no folder, the projects or the files the view holds.
-// Any other answers as itself.
+// declare, the types the file named just before a type may declare, and for a .cpp the
+// fields of its node's shaders it may fill, named alone, the words a node takes, the
+// recipes of the library, the folders cd goes into, the paths a word begun may become,
+// or, for a word naming no folder, the projects or the files the view holds. Any other
+// answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -388,7 +389,10 @@ std::vector<std::string> names(std::string_view word,
           std::ranges::find(names, port.name) == names.end())
         names.emplace_back(port.name);
   } else if (kind == "<type>" && typed.size() > 1) {
-    names = field_types(call.files(), call.resolved(typed[typed.size() - 2]));
+    const std::filesystem::path file = call.resolved(typed[typed.size() - 2]);
+    names = field_types(call.files(), file);
+    for (std::string &field : free_fields(call.files(), file, call.view()))
+      names.push_back(std::move(field));
   } else if (kind == "<view>") {
     hosted(call, {}, names);
   } else if (kind == "<recipe>") {

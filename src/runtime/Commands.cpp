@@ -36,7 +36,7 @@ constexpr std::array kinds{
     std::string_view{"connection"}, // the view's connections
     word_value,                     // the node words, then each word's values
     std::string_view{"key"},        // the node's params
-    std::string_view{"type"},       // what the shader named before it may declare
+    std::string_view{"type"},       // what the file named before it may declare
     std::string_view{"value"},      // any word: nothing to complete
     std::string_view{"file"},       // the folders and files where the path resolves
     std::string_view{"view"},       // a view hosted, by its name, at any depth

@@ -1,3 +1,4 @@
+#include "Class.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Fields.h"
@@ -28,23 +29,6 @@ constexpr std::string_view contracts = "contracts";
 // and this after it: Vec4sIn of vec4, as GpuLayout's FloatsIn of float.
 constexpr std::string_view reads_suffix = "sIn";
 
-// The rows a shader lacks a type by, as another shader of its node, or a line connecting
-// a buffer, gives them: an include, then the row declaring the buffer.
-using Rows = std::vector<std::string>;
-
-// A path as the prompt shows a folder, from where vulpen started, as the files part names
-// one.
-std::string shown(const std::filesystem::path &path) {
-  return path.lexically_proximate(std::filesystem::current_path()).generic_string();
-}
-
-std::string listed(std::span<const std::string> words) {
-  std::string text;
-  for (const std::string &word : words)
-    text.append(text.empty() ? "" : ", ").append(word);
-  return text;
-}
-
 bool stage_file(const std::filesystem::path &file) {
   return std::ranges::find(VP::stages, file.extension().string()) != VP::stages.end();
 }
@@ -55,63 +39,10 @@ bool struct_type(std::string_view type) {
   return !type.empty() && type.front() >= 'A' && type.front() <= 'Z';
 }
 
-// A name GLSL takes for a field, which a port's is too: a letter or _ first, then
-// letters, digits and _, and no gl_ first, which GLSL keeps for its own.
-bool glsl_name(std::string_view name) {
-  const auto letter = [](char each) {
-    return (each >= 'a' && each <= 'z') || (each >= 'A' && each <= 'Z') || each == '_';
-  };
-  return !name.empty() && letter(name.front()) && !name.starts_with("gl_") &&
-         std::ranges::all_of(name, [&](char each) {
-           return letter(each) || (each >= '0' && each <= '9');
-         });
-}
-
-void check_name(std::string_view name) {
-  if (!glsl_name(name))
-    throw std::runtime_error(
-        std::format("{} is no name a field takes: a letter or _ "
-                    "first, then letters, digits and _, no gl_ first",
-                    name));
-}
-
-// A pass block's field, as its row declares it: `type name;`.
-struct Declared {
-  std::string type;
-  std::string name;
-
-  bool operator==(const Declared &) const = default;
-};
-
-// The field a row's code declares, a comment after it or not; none for any other row.
-std::optional<Declared> field_of(std::string_view code) {
-  code = trim(code.substr(0, code.find("//")));
-  if (!code.ends_with(';'))
-    return std::nullopt;
-  code = trim(code.substr(0, code.size() - 1));
-  const std::size_t blank = code.find_first_of(" \t");
-  if (blank == std::string_view::npos)
-    return std::nullopt;
-  Declared field{std::string(code.substr(0, blank)),
-                 std::string(trim(code.substr(blank)))};
-  if (!glsl_name(field.type) || !glsl_name(field.name))
-    return std::nullopt;
-  return field;
-}
-
-bool opens_block(std::string_view code) {
-  code = trim(code);
-  return code.starts_with("layout(") &&
-         code.find("uniform Pass") != std::string_view::npos;
-}
-
-// A shader's rows, as a line changes them, and where its pass block is among them: its
-// first row and its last, none for a shader with none, and whether it is live or, as a
-// start's, commented out for a person to uncomment.
-struct Source {
-  std::filesystem::path file;
-  std::string read; // as the file held it, which a line refused after it wrote puts back
-  Rows rows;
+// A shader as a line changes its rows, and where its pass block is among them: its first
+// row and its last, none for a shader with none, and whether it is live or, as a start's,
+// commented out for a person to uncomment.
+struct Source : Code {
   std::optional<std::size_t> open;
   std::size_t close = 0;
   bool live = false;
@@ -155,12 +86,6 @@ struct Source {
     if (open && at < close)
       --close;
   }
-  std::string text() const {
-    std::string text;
-    for (std::size_t at = 0; at < rows.size(); ++at)
-      text.append(at == 0 ? "" : "\n").append(rows[at]);
-    return text;
-  }
 };
 
 // Its block, a live one first, as a start's commented out stays once a person wrote one
@@ -181,8 +106,8 @@ void find_block(Source &source) {
 }
 
 Source read_source(VP::FilePort &files, const std::filesystem::path &file) {
-  Source source{.file = file, .read = files.read(file.string())};
-  source.rows = rows_of_text(source.read);
+  Source source;
+  static_cast<Code &>(source) = read_code(files, file);
   find_block(source);
   return source;
 }
@@ -277,7 +202,7 @@ bool give_type(VP::FilePort &files,
                Source &source,
                std::string_view type,
                const Rows &given) {
-  if (std::ranges::find(value_types, type) != value_types.end())
+  if (std::ranges::find(value_types, type, &ValueType::glsl) != value_types.end())
     return true;
   include_layout(source);
   const std::vector<BufferType> buffers = buffers_of(files, source.file, source.text());
@@ -494,23 +419,17 @@ std::string named(std::span<const Source> written, const std::filesystem::path &
   return text;
 }
 
-// Only the files whose rows changed, so a line leaves one alike as it was.
-void save(VP::FilePort &files, std::span<const Source> written) {
-  for (const Source &source : written)
-    if (source.text() != source.read)
-      files.save(source.file.string(), source.text());
-}
-
-// A file that may declare a pass block: a shader there, but a lone .frag, which reads its
-// .vert's (A02).
-void check_shader(VP::FilePort &files, const std::filesystem::path &file) {
-  if (!stage_file(file))
-    throw std::runtime_error(std::format("{} is no shader: a .vert, .tesc, .tese, .geom, "
-                                         ".frag or .comp declares a pass block",
-                                         shown(file)));
+// A file that may declare a field or a port: a shader there, but a lone .frag, which
+// reads its .vert's (A02), or a .cpp there, whose class declares them.
+void check_file(VP::FilePort &files, const std::filesystem::path &file) {
+  if (!stage_file(file) && file.extension() != cpp_extension)
+    throw std::runtime_error(
+        std::format("{} is no shader or .cpp: a .vert, .tesc, .tese, .geom, .frag or "
+                    ".comp declares a pass block, a .cpp a class",
+                    shown(file)));
   if (!listed_file(files, file))
     throw std::runtime_error(std::format("{} is not there", shown(file)));
-  if (lone_fragment(files.list(file.parent_path().string())))
+  if (stage_file(file) && lone_fragment(files.list(file.parent_path().string())))
     throw std::runtime_error(std::format(
         "{} is its folder's only draw stage, which reads the pass block of the .vert it "
         "draws with and declares none: declare it there, or new {} makes its node a draw "
@@ -522,30 +441,34 @@ void check_shader(VP::FilePort &files, const std::filesystem::path &file) {
 
 // A node's param or port added from inside vulpen, by lines a menu sends too (V06): a
 // field written into a shader's pass block, the one source of what the node holds (RA03),
-// which the live build then builds and the bind reads, so param set and connect find it
-// as they find any. A value nothing sets reads 0, and says the line that sets it; a
-// Texture nothing fills samples black, and says the line that connects it.
+// or a line in its C++'s bind() and the member it assigns, which the live build then
+// builds and the bind reads, so param set and connect find it as they find any. A value
+// nothing sets reads 0, and says the line that sets it; a Texture nothing fills samples
+// black, and says the line that connects it.
 class Declare final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _param = node.command("param declare <file> <type> <name>",
-                          "writes a field into a shader's pass block, and into each "
-                          "other shader of its node "
-                          "that declares one, as they share it: a value a param sets, a "
-                          "Texture, an Image or "
-                          "a buffer, as Tab lists them; a start's block and its row of "
-                          "that type uncommented, "
-                          "renamed, else written");
+    _param = node.command(
+        "param declare <file> <type> [<name>]",
+        "writes a field into a shader's pass block, and into each other shader of its "
+        "node that declares one, as they share it: a value a param sets, a Texture, an "
+        "Image or a buffer, as Tab lists them; a start's block and its row of that type "
+        "uncommented, renamed, else written. Into a .cpp, a line in bind() and a member "
+        "of the class its VP_OPERATOR names: a param of a value or a string, an output "
+        "of a type its view's contracts declare, or, named alone, a field of its node's "
+        "shaders nothing fills yet, which its cook fills or reads back; a start's line "
+        "of that way uncommented, renamed, else written");
     _connect = node.command(
         "connect declare <port> <file> <name>",
         "writes the field that reads what a port writes into a shader's pass block, as "
         "param declare does, a Texture for an image and a buffer of its element for a "
-        "buffer, then connects the port to it, as connect does");
+        "buffer, or into a .cpp an input of the contract a C++ output carries, then "
+        "connects the port to it, as connect does");
   }
 
   void command(VP::Call &call) override {
     const std::span<const std::string_view> words = call.arguments();
     if (call.is(_param))
-      param(call, words[0], words[1], words[2]);
+      param(call, words[0], words[1], words.size() > 2 ? words[2] : std::string_view());
     else if (call.is(_connect))
       connect(call, words[0], words[1], words[2]);
   }
@@ -556,7 +479,14 @@ class Declare final : public VP::Operator {
                     std::string_view name) {
     VP::FilePort &files = call.files();
     const std::filesystem::path file(path);
-    check_shader(files, file);
+    check_file(files, file);
+    if (file.extension() == cpp_extension)
+      return cpp_param(call, file, type, name);
+    if (name.empty())
+      throw std::runtime_error(std::format(
+          "a shader's field takes a type and a name: param declare {} {} <name>",
+          shown(file),
+          type));
     const std::vector<std::string> types = field_types(files, file);
     if (std::ranges::find(types, type) == types.end())
       throw std::runtime_error(
@@ -567,59 +497,78 @@ class Declare final : public VP::Operator {
     check_name(name);
     const std::vector<Source> written =
         declaring(files, file, {std::string(type), std::string(name)}, {});
-    save(files, written);
+    for (const Source &source : written)
+      save(files, source);
     call.reply(std::format("declared {} {} in {}", type, name, named(written, file)));
   }
 
-  // Connected as connect does, once the field is written, so a line refused there puts
-  // the files back as they were and changes nothing.
+  // A .cpp's param, an output, or, named alone, a field of its node's shaders: a line in
+  // bind() and a member, which the live build then builds.
+  static void cpp_param(VP::Call &call,
+                        const std::filesystem::path &file,
+                        std::string_view type,
+                        std::string_view name) {
+    VP::FilePort &files = call.files();
+    const Binding binding = name.empty() ? field_binding(files, call.view(), file, type)
+                                         : typed_binding(files, file, type, name);
+    const std::vector<Code> written = declaring_cpp(files, file, binding);
+    for (const Code &code : written)
+      save(files, code);
+    call.reply(std::format("declared {} {} in {}, {}",
+                           binding.said,
+                           binding.name,
+                           named(written),
+                           next_use(binding, node_named(call.view(), file))));
+  }
+
   static void connect(VP::Call &call,
                       std::string_view port,
                       std::string_view path,
                       std::string_view name) {
     VP::FilePort &files = call.files();
     const std::filesystem::path file(path);
-    check_shader(files, file);
+    check_file(files, file);
     check_name(name);
     const VP::View &view = call.view();
-    const std::string reader = std::format("{}.{}", node_holding(view, file), name);
+    const std::string line =
+        joining_line(view, port, std::format("{}.{}", node_holding(view, file), name));
+    if (file.extension() == cpp_extension) {
+      const Binding binding = input_binding(call, file, port, name);
+      const std::vector<Code> written = declaring_cpp(files, file, binding);
+      return connect_written(
+          call,
+          written,
+          line,
+          std::format("declared {} {} in {}", binding.said, name, named(written)));
+    }
     const auto [type, given] = read_as(call, holder(files, file), port);
     const std::vector<Source> written =
         declaring(files, file, {type, std::string(name)}, given);
-    save(files, written);
-    try {
-      std::string connected = call.commands().send(joining_line(view, port, reader));
-      while (connected.ends_with('\n'))
-        connected.pop_back();
-      call.reply(std::format(
-          "declared {} {} in {}; {}", type, name, named(written, file), connected));
-    } catch (const std::runtime_error &) {
-      for (const Source &source : written)
-        if (source.text() != source.read)
-          files.save(source.file.string(), source.read);
-      throw;
-    }
+    connect_written(
+        call,
+        std::vector<Code>(written.begin(), written.end()),
+        line,
+        std::format("declared {} {} in {}", type, name, named(written, file)));
   }
 
-  // The node of the view whose folder holds the file (RV08), root at its top; refused for
-  // a file no node of the view holds, which no connection of it reaches.
-  static std::string node_holding(const VP::View &view,
-                                  const std::filesystem::path &file) {
-    const std::filesystem::path inside = file.parent_path().lexically_relative(
-        std::filesystem::absolute(view.file.parent_path()).lexically_normal());
-    std::string name;
-    for (const std::filesystem::path &part : inside)
-      if (part != ".")
-        name.append(name.empty() ? "" : ".").append(part.string());
-    if (name.empty())
-      name = VP::top_node;
-    if (inside.empty() || *inside.begin() == ".." ||
-        std::ranges::find(view.nodes, name, &VP::Node::name) == view.nodes.end())
-      throw std::runtime_error(
-          std::format("{} is in no node's folder of view {}, which the line goes to",
-                      shown(file),
-                      view.name));
-    return name;
+  // Connected as connect does, once the files are written, so a line refused there puts
+  // them back as they were and changes nothing.
+  static void connect_written(VP::Call &call,
+                              const std::vector<Code> &written,
+                              const std::string &line,
+                              const std::string &declared) {
+    for (const Code &code : written)
+      save(call.files(), code);
+    try {
+      std::string connected = call.commands().send(line);
+      while (connected.ends_with('\n'))
+        connected.pop_back();
+      call.reply(std::format("{}; {}", declared, connected));
+    } catch (const std::runtime_error &) {
+      for (const Code &code : written)
+        put_back(call.files(), code);
+      throw;
+    }
   }
 
   // The type a shader reads a port by, as the bind found what the port writes, and the
@@ -645,7 +594,10 @@ class Declare final : public VP::Operator {
           "{} {}, which no shader reads by its pass block{}",
           port,
           each.kind == "object" ? "carries a C++ object" : "names no element",
-          each.kind == "object" ? ": a .cpp reads it, as node.input names it" : ""));
+          each.kind == "object"
+              ? std::format(": connect declare {} <its .cpp> <name> reads it in C++",
+                            port)
+              : ""));
     }
     throw std::runtime_error(
         std::format("{} is no image or buffer a node of view {} writes; they are {}",
