@@ -612,7 +612,7 @@ VALID = {
     "node set <node> <word=value>...": "node set {leaf} log=info",
     "open [<path>]": "open {file}",
     "param set <node> <key> <value>": "param set {pnode} {key} {value}",
-    "param declare <file> <type> <name>": "param declare {shader} float {fresh}",
+    "param declare <file> <type> [<name>]": "param declare {shader} float {fresh}",
     "connect declare <port> <file> <name>": "connect declare {writer} {shader} {fresh}",
     "param unset <node> <key>": "param unset {pnode} {key}",
     "probe stats [<node>]": "probe stats",
@@ -1112,13 +1112,15 @@ PRESSED = {
 # joining two ports, whose end is joined already, so it is refused naming why; a
 # connection; a value of face and one it takes; a file of face's folder, and one new
 # starts there; a type a shader of face may declare a field of, and an image or a buffer
-# another node writes, which such a field may read; a node. Of a thing pressed whose node
-# reads other params, as the snapshot dropped, the param its column lists, as a line
-# naming one it reads none of is refused.
+# another node writes, which such a field may read; a field a .cpp may fill, which a
+# shader pressed refuses, as its field takes a type and a name; a node. Of a thing
+# pressed whose node reads other params, as the snapshot dropped, the param its column
+# lists, as a line naming one it reads none of is refused.
 FOUND = {"connect <link>": "connect link corners.top.corner face.top",
          "<joined>": "top", "<key>": "frames_per_turn", "<value>": "300",
          "<path>": "Face.frag", "<start>": "Face.cpp", "<type>": "float",
-         "<writer>": "corners.top.corner", "<node>": "corners",
+         "<field>": "frames_per_turn", "<writer>": "corners.top.corner",
+         "<node>": "corners",
          "{1}": "face", "{2}": "corners", "{node}": "face", "{view}": "bf-one"}
 FOUND_ON = {"dropped": {"<key>": "wait", "<value>": "3"}}
 # The kinds whose {} or {/} is a folder, which a rename or a copy moves to a folder's

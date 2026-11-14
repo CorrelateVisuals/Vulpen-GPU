@@ -8,7 +8,8 @@ project of its own, what a person may not expect to matter: the editor holding a
 line renames, moves or another program changes, a count a digit too long, a folder that
 holds a running view's; in another, every set of a draw's five stages, a node each: the
 whole draws draw, and the rest warn naming what they lack; and in another, params and
-ports added by lines, typed and through the menus, which list only what a line may take.
+ports added by lines, typed and through the menus, which list only what a line may take,
+into shaders and into a node's C++.
 
 The run is the cli hosting the ide with no window (V07), from the repository's top, so the
 live build compiles each node as it comes, as in a person's run; the lines go to the cli's
@@ -248,9 +249,24 @@ def fields_of(shader: Path) -> list[tuple[str, str]]:
     return rows
 
 
+# What the lines write into a node's C++, by its file: the rows bind() gets and the
+# members they assign, and a contract's include, each live once.
+CPP_ROWS = {
+    "w/W.cpp": ['#include "contracts/Corner.h"', '_speed = node.param<float>("speed");',
+                '_corner = &node.output<VP_VIEW::Corner>("corner");', "float _speed{};",
+                "VP_VIEW::Corner *_corner = nullptr;"],
+    "r/R.cpp": ['#include "contracts/Corner.h"', '_phase = node.value<float>("phase");',
+                '_results = node.readback<float>("results");',
+                '_corner = &node.input<VP_VIEW::Corner>("corner");',
+                "VP::Value<float> _phase;", "VP::Readback<float> _results;",
+                "const VP_VIEW::Corner *_corner = nullptr;"],
+}
+
+
 def declare_checked(example: Example, run: "Run", findings: list["Finding"]) -> None:
     """Once built, every node binds with nothing to say, as each field a line declared is
-    set or connected; the two shaders of a node hold one pass block, in one order; the
+    set or connected, and each line a node's C++ got builds and binds; the two shaders
+    of a node hold one pass block, in one order; the C++ holds each row once, live; the
     files the menus offered are those made, and the connections those the lines made."""
     said = run.send(settled("param set n tint 0.6"))
     if problems := bound(said, example.copy):
@@ -265,13 +281,20 @@ def declare_checked(example: Example, run: "Run", findings: list["Finding"]) -> 
         if (held := fields_of(folder / name)) != fields:
             findings.append(Finding(example.name, f"{name}'s pass block differs",
                                     [f"wanted {fields}", f"holds {held}"]))
+    for name, wanted_rows in CPP_ROWS.items():
+        rows = [row.strip() for row in (folder / name).read_text().splitlines()]
+        for row in wanted_rows:
+            if rows.count(row) != 1:
+                findings.append(Finding(example.name, f"{name} holds {row!r} "
+                                        f"{rows.count(row)} times, not once", []))
     made = sorted(path.name for path in (folder / "t").iterdir())
     if made != ["T.frag", "T.tesc", "T.tese", "T.vert"] or not (folder / "u/U.vert").exists():
         findings.append(Finding(example.name, "new made other files than the menus offered",
                                 [*made, *(path.name for path in (folder / "u").iterdir())]))
     lines = comparable(folder / "view.vlp")
     for connection in ("from = a.canvas", "to = n.picture", "to = b.seen",
-                       "from = a.results", "to = b.values"):
+                       "from = a.results", "to = b.values", "from = w.corner",
+                       "to = r.corner"):
         if connection not in lines:
             findings.append(Finding(example.name, f"no {connection} saved", lines))
     run.send(gone(example.copy))
@@ -761,11 +784,17 @@ def examples(scratch: Path) -> list[Example]:
     # connect is refused writing nothing; then by the menus, which list a draw no Image
     # and a .comp none of its own ports. Then the stages a lone .tesc lacks, as its node's
     # menu offers them, a press each, never a .geom; and new with no path, typed inside a
-    # lone .frag's node, writing its .vert.
+    # lone .frag's node, writing its .vert. Then into C++: a param, set in the frame its
+    # line runs, and an output of a contract copied in, in a .cpp alone; a value and a
+    # readback of its node's shaders' fields, typed and by the menu, which lists only
+    # those nothing fills; an input of the output, which a connect before names, then
+    # connected; and the lines a .cpp may not take refused.
     e = Example("declare", compared=False)
     vert, frag = at(e.copy, "n", "N.vert"), at(e.copy, "n", "N.frag")
     writer, reader = at(e.copy, "a", "A.comp"), at(e.copy, "b", "B.comp")
     lone = at(e.copy, "lone", "L.frag")
+    alone, beside = at(e.copy, "w", "W.cpp"), at(e.copy, "r", "R.cpp")
+    shaded = at(e.copy, "r", "R.comp")
     enter = ok("input key down enter", "input key up enter")
     e.steps = [
         ok(f"view new {e.copy}"),
@@ -810,6 +839,26 @@ def examples(scratch: Path) -> list[Example]:
         typed("cd u"),
         typed("new"),
         typed("cd .."),
+        ok(f"copy {at('triangle-header', 'contracts', 'Corner.h')} "
+           f"{at(e.copy, 'contracts', 'Corner.h')}"),
+        ok(f"new {alone} {shaded} {beside}"),
+        settled(f"param declare {shaded} float phase",
+                f"param declare {shaded} FloatsOut results"),
+        ok(f"param declare {alone} float speed", "param set w speed 0.5"),
+        ok(f"param declare {alone} Corner corner"),
+        no(f"param declare {alone} float speed", "holds a member _speed already"),
+        no(f"param declare {alone} Image x", "is no type"),
+        no(f"param declare {alone} phase", "is no field of the shaders of w"),
+        no(f"param declare {shaded} float", "takes a type and a name"),
+        ok(f"param declare {beside} phase"),
+        no(f"param declare {beside} phase", "names it already"),
+        settled(f"menu file for {beside}"),
+        no("menu press file param declare phase", "no word the menu lists"),
+        ok("menu press file param declare results"),
+        settled("connect w.corner r.corner",
+                refused="connect declare w.corner r/R.cpp corner declares it"),
+        no(f"connect declare a.canvas {beside} x", "a shader reads, not C++"),
+        ok(f"connect declare w.corner {beside} corner"),
         ok("view save"),
     ]
     e.check = declare_checked
