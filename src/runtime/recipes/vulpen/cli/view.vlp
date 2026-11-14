@@ -26,6 +26,11 @@ recipe = projects
 [node "cli.files"]
 recipe = files
 
+# param declare and connect declare: a param or a port a node's shader holds, written into
+# its pass block.
+[node "cli.declare"]
+recipe = declare
+
 # open starts the person's editor, or, while the ide runs, gives a file to its editor, a
 # folder to its graph, through the relations part the graph shows a folder from, and an
 # image file to its Perform panel, as a preview.

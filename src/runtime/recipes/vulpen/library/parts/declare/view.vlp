@@ -1,0 +1,8 @@
+# The declare part: one node whose operator is Declare, which owns param declare and
+# connect declare, so a person adds a param or a port to a node from inside vulpen, by
+# lines a menu sends too (V06): each writes a field into a shader's pass block, the one
+# source of what a node holds (RA03), and connect declare connects it.
+[manifest]
+version = 1
+
+[node "declare"]

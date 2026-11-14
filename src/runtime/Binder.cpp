@@ -66,12 +66,26 @@ bool unbuilt(const Node &node,
   });
 }
 
+// The shader a line declaring a port of a node writes it into, from the view's folder, as
+// a person's prompt at the project's top types it: a whole draw's .frag, which samples,
+// else its first.
+std::string declaring_shader(const View &view, const Bound &node) {
+  const auto sampling = std::ranges::find_if(node.shaders_named, [](const std::string &file) {
+    return file.ends_with(fragment_stage);
+  });
+  return (folder_in(view, node.node->name) / (sampling != node.shaders_named.end()
+                                                   ? *sampling
+                                                   : node.shaders_named.front()))
+      .generic_string();
+}
+
 // What makes a connection's end a port of its node where the end names none it writes,
-// or reads, the line's own mistake: a port its shaders declare nothing for yet, in the
-// type the other end takes, a Texture for an image and an Image a dispatch stores into;
-// or a reader named first, as the writer goes first, the line that names the two the
-// other way round. Empty where neither is known, as for a draw, which writes no Image,
-// or for a node with ports that way already, whose list names the one likely meant.
+// or reads, the line's own mistake: a port its shaders declare nothing for yet, which the
+// line declaring it in the type the other end takes writes, connect declare for a reader
+// of an image or a buffer, param declare for an Image a dispatch stores into; or a reader
+// named first, as the writer goes first, the line that names the two the other way round.
+// Empty where neither is known, as for a draw, which writes no Image, or for a node with
+// ports that way already, whose list names the one likely meant.
 std::string end_fix(std::span<const NodePort> ports,
                     const View &view,
                     const Connection &connection,
@@ -93,15 +107,31 @@ std::string end_fix(std::span<const NodePort> ports,
   if (!port && none_that_way &&
       (writes ? holds_stage(*node.node, compute_stage) : !node.shaders_named.empty())) {
     const NodePort *const known = other && !other->view() ? port_of(*other) : nullptr;
-    return other && (other->view() || (known && known->kind == "image"))
-               ? std::format("{} has no port {} yet: declare {} {}; in its pass block",
-                             end.node,
-                             end.port,
-                             writes ? image_type : texture_type,
-                             end.port)
-               : std::format("{} has no port {} yet: declare it in its pass block",
-                             end.node,
-                             end.port);
+    const bool image = other && (other->view() || (known && known->kind == "image"));
+    const bool buffer = known && known->kind == "buffer" && known->writes;
+    if (writes && image)
+      return std::format("{} has no port {} yet: param declare {} {} {} declares it",
+                         end.node,
+                         end.port,
+                         declaring_shader(view, node),
+                         image_type,
+                         end.port);
+    if (!writes && (image || buffer) && !is_fragment(*node.node))
+      return std::format("{} has no port {} yet: connect declare {} {} {} declares it "
+                         "and connects them",
+                         end.node,
+                         end.port,
+                         other->text(),
+                         declaring_shader(view, node),
+                         end.port);
+    return image ? std::format("{} has no port {} yet: declare {} {}; in its pass block",
+                               end.node,
+                               end.port,
+                               writes ? image_type : texture_type,
+                               end.port)
+                 : std::format("{} has no port {} yet: declare it in its pass block",
+                               end.node,
+                               end.port);
   }
   const std::string reader = end.text();
   if (port && writes && other && connection.to.size() == 1 &&

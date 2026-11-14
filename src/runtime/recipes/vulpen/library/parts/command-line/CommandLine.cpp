@@ -11,6 +11,7 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Caret.h"
+#include "shared/Fields.h"
 #include "shared/Labels.h"
 #include "shared/Params.h"
 #include "shared/Scroll.h"
@@ -356,10 +357,10 @@ std::vector<std::string> node_words(VP::Call &call,
 
 // What a placeholder stands for: the view's nodes, ports or connections, the views
 // hosted, the params of the node named just before a key and the values its files
-// declare, the words a node takes, the
-// recipes of the library, the folders cd goes into, the paths a word begun may become,
-// or, for a word naming no folder, the projects or the files the view holds. Any other
-// answers as itself.
+// declare, the types the shader named just before a type may declare, the words a node
+// takes, the recipes of the library, the folders cd goes into, the paths a word begun
+// may become, or, for a word naming no folder, the projects or the files the view holds.
+// Any other answers as itself.
 std::vector<std::string> names(std::string_view word,
                                VP::Call &call,
                                std::span<const std::string_view> typed,
@@ -386,6 +387,8 @@ std::vector<std::string> names(std::string_view word,
       if (port.kind == "value" && port.node == named &&
           std::ranges::find(names, port.name) == names.end())
         names.emplace_back(port.name);
+  } else if (kind == "<type>" && typed.size() > 1) {
+    names = field_types(call.files(), call.resolved(typed[typed.size() - 2]));
   } else if (kind == "<view>") {
     hosted(call, {}, names);
   } else if (kind == "<recipe>") {
