@@ -307,6 +307,10 @@ struct Bound {
   // How many of its errors only wait for such a node, as a reader of what it writes: when
   // all of them, it says so quietly too.
   std::size_t waits = 0;
+  // A hosted view's node whose shader was saved since it was built, which the live build
+  // builds and binds again: its errors may be the old shader's, as a field a line just
+  // declared and connected is in none of it, so it says them quietly too.
+  bool rebuilding = false;
   // A dispatch's threads, as its word gives them or the buffer at its port counts them.
   std::uint32_t invocations = 0;
   // Its operator's bind ended in a throw, so what it would have asked for after is unknown.
@@ -317,6 +321,11 @@ struct Bound {
 
   bool loaded() const {
     return !shaders.empty();
+  }
+  // Whether its errors only wait for a build, its own or a writer's, so it says them
+  // quietly, as the build says why if it cannot.
+  bool only_waits() const {
+    return unbuilt || rebuilding || waits == errors.size();
   }
   // Whether its bind found every port and param it has: its operator's bind, if it runs
   // one, and its shaders, if it names any, ran through.
@@ -349,6 +358,21 @@ struct Bound {
     return node->param(key);
   }
 };
+
+// Whether a shader of its own was saved since the build made the SPIR-V it bound, which
+// only a live run's build makes anew: till then its ports and params are the old ones.
+inline bool saved_since_built(const Bound &bound) {
+  if constexpr (!VP_LIVE)
+    return false;
+  for (std::size_t at = 0; at < bound.built.size(); ++at) {
+    std::error_code unread;
+    const std::filesystem::file_time_type saved = std::filesystem::last_write_time(
+        bound.node->folder / bound.shaders_named[at], unread);
+    if (!unread && saved > bound.built[at])
+      return true;
+  }
+  return false;
+}
 
 // The object a connection between C++ nodes carries (native C++). Its writer's module
 // makes and destroys it, so it goes when a swap rewrites that module (rule 2).

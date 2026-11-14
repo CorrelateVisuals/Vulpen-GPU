@@ -495,6 +495,7 @@ Bound Schedule::bind(const Node &node,
   }
   bound.invocations = counted(bound);
   load_shaders(bound, folder, old);
+  bound.rebuilding = waits_for_build(_name) && saved_since_built(bound);
   // So an edit makes blocks only for the nodes it changed.
   if (old && old->block && old->block_size == bound.block_size)
     bound.block = std::move(old->block);
@@ -561,7 +562,8 @@ void Schedule::drop_operators(const std::vector<std::string> &modules) {
 
 // Against the ports and params the bind found, so a line is refused as it runs. A node
 // not bound whole, as one just added, one whose operator or shaders did not load, or one
-// waiting for its build, has not listed them all, and its next bind checks it instead; a
+// waiting for its build, as one whose shader was saved since, by a line declaring a port
+// and connecting it, has not listed them all, and its next bind checks it instead; a
 // param of a node inside it, as `command-line.host`, that node's; and a connection's end
 // at a node whose operator read the view as it bound, as it may ask for that port once a
 // connection names it. A buffer its shader only reads, its C++ may fill, and so write.
@@ -569,7 +571,9 @@ void Schedule::check(const View &view) const {
   const auto bound = [&](std::string_view node) -> const Bound * {
     const auto found = std::ranges::find_if(
         _bound, [&](const Bound &each) { return each.node->name == node; });
-    return found != _bound.end() && found->whole() ? &*found : nullptr;
+    return found != _bound.end() && found->whole() && !saved_since_built(*found)
+               ? &*found
+               : nullptr;
   };
   const auto listed = [&](std::string_view node, bool values) {
     std::vector<const NodePort *> ports;

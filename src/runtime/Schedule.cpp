@@ -170,7 +170,7 @@ Schedule::Schedule(const Wiring &wiring,
     const std::string named = std::format(
         "{} node {}", bound.node->where.empty() ? file : bound.node->where, bound.node->name);
     // A node only waiting for the build says so quietly: the build says why if it fails.
-    const bool waiting = bound.unbuilt || bound.waits == bound.errors.size();
+    const bool waiting = bound.only_waits();
     for (const std::string &error : bound.errors)
       _wiring.log.write(
           waiting ? Level::info : Level::error, Tag::nod, std::format("{}: {}", named, error));
@@ -697,8 +697,7 @@ void Schedule::cost_from(const Schedule *replaced) {
          .problem = !bound.errors.empty() ? std::string_view(bound.errors.front())
                     : warns               ? std::string_view(bound.warnings.front())
                                           : std::string_view(),
-         .waits = !bound.errors.empty() &&
-                  (bound.unbuilt || bound.waits == bound.errors.size()),
+         .waits = !bound.errors.empty() && bound.only_waits(),
          .warns = warns});
   }
   for (const std::size_t at : _passed)
