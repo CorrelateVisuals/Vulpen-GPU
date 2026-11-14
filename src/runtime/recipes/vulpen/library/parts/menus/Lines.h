@@ -54,17 +54,26 @@ constexpr std::array<std::string_view, 4> completed_kinds{"<recipe>", "<node>", 
 // param may set; a file of what was pressed; a draw stage its files lack to draw, which
 // new starts: beside a lone .vert or .frag the other half of its draw, beside a .tesc its
 // .tese, beside any stage without them a .vert and a .frag; the types a shader pressed
-// may declare a pass block field of; and the images and buffers the view's other nodes
-// write, which a shader pressed may read by a field.
+// may declare a pass block field of, or a .cpp a param or an output of; the fields of
+// its node's shaders a .cpp pressed may fill, as nothing does yet; and the images and
+// buffers the view's other nodes write, which a shader pressed may read by a field, or
+// the C++ outputs, which a .cpp pressed may read by an input.
 constexpr std::string_view link_kind = "<link>";
 constexpr std::string_view joined_kind = "<joined>";
 constexpr std::string_view key_kind = "<key>";
 constexpr std::string_view path_kind = "<path>";
 constexpr std::string_view start_kind = "<start>";
 constexpr std::string_view type_kind = "<type>";
+constexpr std::string_view field_kind = "<field>";
 constexpr std::string_view writer_kind = "<writer>";
-constexpr std::array<std::string_view, 7> found_kinds{
-    link_kind, joined_kind, key_kind, path_kind, start_kind, type_kind, writer_kind};
+constexpr std::array<std::string_view, 8> found_kinds{link_kind,
+                                                      joined_kind,
+                                                      key_kind,
+                                                      path_kind,
+                                                      start_kind,
+                                                      type_kind,
+                                                      field_kind,
+                                                      writer_kind};
 // Between words, and between the lines an answer holds, a word each.
 constexpr std::string_view blanks = " \t\r\n";
 

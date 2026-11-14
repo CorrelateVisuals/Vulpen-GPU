@@ -39,6 +39,7 @@ constexpr std::string_view no_word = "\"\"";
 constexpr std::string_view value_kind = "value";
 constexpr std::string_view image_kind = "image";
 constexpr std::string_view buffer_kind = "buffer";
+constexpr std::string_view object_kind = "object";
 
 // What a press or a line opens: the section of the kind of thing pressed, and those whose
 // lines follow it, muted, as a background's lines for the whole project; where its first
@@ -361,7 +362,7 @@ class Menus final : public VP::Operator {
           words.emplace_back(port.name);
       return words;
     }
-    if (line.kind == type_kind || line.kind == writer_kind)
+    if (line.kind == type_kind || line.kind == field_kind || line.kind == writer_kind)
       return declarable(look, line, named);
     // A path as the graph names one, from where vulpen started, as folder_of reads it.
     const bool path = named == "." || named.find('/') != std::string::npos;
@@ -376,9 +377,12 @@ class Menus final : public VP::Operator {
     return line.kind == path_kind ? files : lacking(files);
   }
 
-  // What a shader pressed, by its path, may declare a pass block field of: the types it
-  // may hold, or the images and buffers the view's other nodes write, which a field of
-  // its reads, where a node of the view holds it; none for any other file.
+  // What a file pressed, by its path, may declare: a shader a pass block field of, by the
+  // types it may hold, or of the images and buffers the view's other nodes write, which a
+  // field of its reads; a .cpp a param or an output, by a value, a word or a contract's
+  // type, a field of its node's shaders nothing fills yet, or an input of the C++ outputs
+  // the view's other nodes write. Each but a type where a node of the view holds it; none
+  // for any other file.
   static std::vector<std::string>
   declarable(const Look &look, const Line &line, std::string_view named) {
     if (named.find('/') == std::string_view::npos)
@@ -388,7 +392,11 @@ class Menus final : public VP::Operator {
     std::vector<std::string> types = field_types(look.files, file);
     if (line.kind == type_kind)
       return types;
+    if (line.kind == field_kind)
+      return look.view ? free_fields(look.files, file, *look.view)
+                       : std::vector<std::string>();
     const std::string own = file.parent_path().string();
+    const bool cpp = file.extension() == cpp_extension;
     std::vector<std::string> writers;
     if (types.empty() || !look.view ||
         std::ranges::none_of(look.view->nodes, [&](const VP::Node &node) {
@@ -397,7 +405,9 @@ class Menus final : public VP::Operator {
       return writers;
     for (const VP::NodePort &port : look.ports)
       if (port.writes && absolute_folder(look, port.node) != own &&
-          (port.kind == image_kind || (port.kind == buffer_kind && !port.holds.empty())))
+          (cpp ? port.kind == object_kind
+               : port.kind == image_kind ||
+                     (port.kind == buffer_kind && !port.holds.empty())))
         writers.push_back(std::format("{}.{}", port.node, port.name));
     return writers;
   }
