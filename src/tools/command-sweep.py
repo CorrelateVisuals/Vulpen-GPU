@@ -127,6 +127,7 @@ class Project:
     writer: str            # the port connection writes, and a port it reads
     reader: str
     files: tuple[str, ...]  # the project's own, from its folder
+    shader: str            # one whose pass block may hold a field reading writer
 
 
 SANDBOX = {
@@ -134,14 +135,16 @@ SANDBOX = {
                       ("corners", "corners.top", "corners.right", "corners.left", "face"),
                       "corners.left", "corners", ("face", "frames_per_turn", "300"),
                       "top", "corners.top.corner", "face.top",
-                      ("face/Face.frag", "face/Face.vert", "corners/top/Point.comp")),
+                      ("face/Face.frag", "face/Face.vert", "corners/top/Point.comp"),
+                      "face/Face.vert"),
     "bf-two": Project("life", ("seed-cells", "engine", "cells"), "cells", "engine",
                       ("engine", "frames_per_generation", "4"), "cells", "engine.cells",
                       "cells.cells", ("engine/Engine.cpp", "engine/Engine.comp",
-                                      "cells/Cells.frag")),
+                                      "cells/Cells.frag"), "cells/Cells.vert"),
     "bf-three": Project("wave", ("wave", "probe"), "probe", "wave",
                         ("wave", "speed", "0.03"), "values", "wave.values",
-                        "probe.values", ("wave/Wave.cpp", "probe/Probe.comp")),
+                        "probe.values", ("wave/Wave.cpp", "probe/Probe.comp"),
+                        "probe/Probe.comp"),
 }
 SCRAP = "scrap.txt"    # a file at each project's top, which no node holds
 
@@ -583,7 +586,7 @@ VALID = {
     "copy [<file>...]": "copy {scrap} {newfile}",
     "gpu": "gpu",
     "gpu toggle": "gpu toggle",
-    "help": "help",
+    "help [<value>...]": "help",
     "image clear <port>": "image clear {reader}",
     "info [<node>]": "info {leaf}",
     "input button down <value> [<value>]": "input button down left ;; input button up left",
@@ -599,9 +602,9 @@ VALID = {
     "ls": "ls",
     "node add [<name>] [<word=value>...]": "node add {fresh} log=info",
     "node move <node> <node>": "node move {leaf} {group}",
-    "new <file>...": "new {tree}/projects/{home}/{fresh}/ "
-                     "{tree}/projects/{home}/{fresh}/Shape.vert "
-                     "{tree}/projects/{home}/{same}/Shape.frag",
+    "new [<file>...]": "new {tree}/projects/{home}/{fresh}/ "
+                       "{tree}/projects/{home}/{fresh}/Shape.vert "
+                       "{tree}/projects/{home}/{same}/Shape.frag",
     "remove <file>": "remove {scrap}",
     "remove force <file>": "remove force {tree}/../decoy/folder/",
     "node remove keep <node>": "node remove keep {leaf}",
@@ -609,12 +612,14 @@ VALID = {
     "node set <node> <word=value>...": "node set {leaf} log=info",
     "open [<path>]": "open {file}",
     "param set <node> <key> <value>": "param set {pnode} {key} {value}",
+    "param declare <file> <type> <name>": "param declare {shader} float {fresh}",
+    "connect declare <port> <file> <name>": "connect declare {writer} {shader} {fresh}",
     "param unset <node> <key>": "param unset {pnode} {key}",
     "probe stats [<node>]": "probe stats",
     "quit": "quit",
     "quit force": "quit force",
     "quit restart": "quit restart",
-    "recipe drop <recipe> <name>": "recipe drop snapshot {fresh}",
+    "recipe drop <recipe> [<name>]": "recipe drop snapshot {fresh}",
     "recipe list": "recipe list",
     "recipe sync <node>": "recipe drop snapshot {fresh} ;; recipe sync {same}",
     "source <file>": "source {tree}/../decoy/script.txt",
@@ -624,11 +629,11 @@ VALID = {
     "view list": "view list",
     "view list projects": "view list projects",
     "view load <project>": "view load {project}",
-    "view new <project>": "view new {freshproject}",
+    "view new [<project>]": "view new {freshproject}",
     "view remove <project>": "view remove {project}",
     "view rename <name>": "view rename {freshproject}",
     "view save": "view save",
-    "view save as <name>": "view save as {freshproject}",
+    "view save as [<name>]": "view save as {freshproject}",
     "view switch [<view>]": "view switch {view}",
     "arrange": "arrange",
     "cd [<folder>]": "cd {group}",
@@ -677,6 +682,8 @@ NASTY = {
                    "recipe=snapshot", "operator=X", "file=x", "log=loud", "param=a=b=c",
                    "param==1", "instance_count=nobody", "image=x", LONG],
     "key": ["nokey", "a=b", "invocations", LONG],
+    "type": ["nothing", "Float", "float;", "Texture[]", "{}", "image", "vec5", "Name",
+             LONG],
     "value": ["nan", "inf", "-1", "1e30", "-0", "0x10", "1,2,3,4,5", LONG, "ñ", "{}", "#",
               "=", ":"],
     "file": ["{tree}/projects/{home}/nothing/x.txt", "{tree}/projects/{home}/view.vlp/x",
@@ -698,8 +705,8 @@ NASTY = {
 }
 SLOT = re.compile(r"\{([a-z0-9]+)\}")
 # Kinds whose completion, the command port's own table says, offers words.
-COMPLETED = ("node", "port", "connection", "word=value", "key", "file", "view", "project",
-             "path", "folder", "recipe")
+COMPLETED = ("node", "port", "connection", "word=value", "key", "type", "file", "view",
+             "project", "path", "folder", "recipe")
 
 
 # What a line names where an app's view is current: the cli's own nodes, or the ide's, as
@@ -732,7 +739,7 @@ class Words:
             "scrap": str(home / SCRAP), "file": files[0], "file2": files[1],
             "leaf": project.leaf, "group": project.group, "connection": project.connection,
             "writer": project.writer, "reader": project.reader, "pnode": node,
-            "key": key, "value": value,
+            "key": key, "value": value, "shader": str(home / project.shader),
             "view": self.state.loads[-1] if self.state.loads else "ide",
             "project": next((name for name in SANDBOX if name not in self.state.loads),
                             "bf-three"),
@@ -748,6 +755,7 @@ class Words:
 
 
 PICKS = {"name": "{fresh}", "node": "{leaf}", "port": "{reader}", "value": "1",
+         "type": "float",
          "connection": "{connection}", "key": "{key}", "word=value": "log=info",
          "file": "{scrap}", "view": "{view}", "project": "{project}", "path": "{file}",
          "folder": "{group}", "recipe": "snapshot"}
@@ -1011,8 +1019,8 @@ def tab(copy: Copy, states: list[State]) -> None:
     takes as it is must not be refused as naming nothing."""
     takes = {"info [<node>]", "select [<node>...]", "view switch [<view>]", "open [<path>]",
              "view load <project>", "disconnect <connection>", "param unset <node> <key>",
-             "probe stats [<node>]", "cd [<folder>]", "recipe drop <recipe> <name>",
-             "node set <node> <word=value>...", "view close <view>"}
+             "probe stats [<node>]", "cd [<folder>]", "recipe drop <recipe> [<name>]",
+             "node set <node> <word=value>...", "view close [<view>]"}
     offers: set[tuple[str, int]] = set()
     for state in states:
         print(f"tab: {state.name}", flush=True)
@@ -1103,11 +1111,14 @@ PRESSED = {
 # What a column lists for each placeholder the menus find themselves, in bf-one: a line
 # joining two ports, whose end is joined already, so it is refused naming why; a
 # connection; a value of face and one it takes; a file of face's folder, and one new
-# starts there; a node. Of a thing pressed whose node reads other params, as the snapshot
-# dropped, the param its column lists, as a line naming one it reads none of is refused.
+# starts there; a type a shader of face may declare a field of, and an image or a buffer
+# another node writes, which such a field may read; a node. Of a thing pressed whose node
+# reads other params, as the snapshot dropped, the param its column lists, as a line
+# naming one it reads none of is refused.
 FOUND = {"connect <link>": "connect link corners.top.corner face.top",
          "<joined>": "top", "<key>": "frames_per_turn", "<value>": "300",
-         "<path>": "Face.frag", "<start>": "Face.cpp", "<node>": "corners",
+         "<path>": "Face.frag", "<start>": "Face.cpp", "<type>": "float",
+         "<writer>": "corners.top.corner", "<node>": "corners",
          "{1}": "face", "{2}": "corners", "{node}": "face", "{view}": "bf-one"}
 FOUND_ON = {"dropped": {"<key>": "wait", "<value>": "3"}}
 # The kinds whose {} or {/} is a folder, which a rename or a copy moves to a folder's

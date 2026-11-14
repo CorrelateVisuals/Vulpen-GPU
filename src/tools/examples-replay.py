@@ -6,8 +6,9 @@ a person would type it (V06), with mistakes made on purpose and put right; then 
 each copy against its example: its manifest, its files, and that it runs. Then, in a
 project of its own, what a person may not expect to matter: the editor holding a file a
 line renames, moves or another program changes, a count a digit too long, a folder that
-holds a running view's; and in another, every set of a draw's five stages, a node each:
-the whole draws draw, and the rest warn naming what they lack.
+holds a running view's; in another, every set of a draw's five stages, a node each: the
+whole draws draw, and the rest warn naming what they lack; and in another, params and
+ports added by lines, typed and through the menus, which list only what a line may take.
 
 The run is the cli hosting the ide with no window (V07), from the repository's top, so the
 live build compiles each node as it comes, as in a person's run; the lines go to the cli's
@@ -228,6 +229,51 @@ def stages_checked(example: Example, run: "Run", findings: list["Finding"],
                     for want in wanted if not any(want in met for met in problems))
     findings.extend(Finding(example.name, f"{name} drew no picture", [str(shot)])
                     for name, shot in shots.items() if not shot.exists() or not drew(shot))
+    run.send(gone(example.copy))
+
+
+def fields_of(shader: Path) -> list[tuple[str, str]]:
+    """The fields a shader's live pass block declares, as `type name;` rows, in order."""
+    rows, inside = [], False
+    for line in shader.read_text().splitlines():
+        code = line.strip()
+        if code.startswith("//"):
+            continue
+        if code.startswith("layout(") and "uniform Pass" in code:
+            inside = True
+        elif inside and code.startswith("}"):
+            break
+        elif inside and (field := re.match(r"(\w+)\s+(\w+);", code)):
+            rows.append((field[1], field[2]))
+    return rows
+
+
+def declare_checked(example: Example, run: "Run", findings: list["Finding"]) -> None:
+    """Once built, every node binds with nothing to say, as each field a line declared is
+    set or connected; the two shaders of a node hold one pass block, in one order; the
+    files the menus offered are those made, and the connections those the lines made."""
+    said = run.send(settled("param set n tint 0.6"))
+    if problems := bound(said, example.copy):
+        findings.append(Finding(example.name, "a node met a problem once built", problems))
+    folder = PROJECTS / example.copy
+    wanted = {"n/N.vert": [("float", "tint"), ("float", "scale"), ("Texture", "picture"),
+                           ("vec2", "offset")],
+              "b/B.comp": [("FloatsIn", "values"), ("Texture", "seen")],
+              "a/A.comp": [("FloatsOut", "results"), ("Image", "canvas")]}
+    wanted["n/N.frag"] = wanted["n/N.vert"]
+    for name, fields in wanted.items():
+        if (held := fields_of(folder / name)) != fields:
+            findings.append(Finding(example.name, f"{name}'s pass block differs",
+                                    [f"wanted {fields}", f"holds {held}"]))
+    made = sorted(path.name for path in (folder / "t").iterdir())
+    if made != ["T.frag", "T.tesc", "T.tese", "T.vert"] or not (folder / "u/U.vert").exists():
+        findings.append(Finding(example.name, "new made other files than the menus offered",
+                                [*made, *(path.name for path in (folder / "u").iterdir())]))
+    lines = comparable(folder / "view.vlp")
+    for connection in ("from = a.canvas", "to = n.picture", "to = b.seen",
+                       "from = a.results", "to = b.values"):
+        if connection not in lines:
+            findings.append(Finding(example.name, f"no {connection} saved", lines))
     run.send(gone(example.copy))
 
 
@@ -705,6 +751,68 @@ def examples(scratch: Path) -> list[Example]:
           for number, (name, shot) in enumerate(shots.items())),
     ]
     e.check = lambda example, run, found: stages_checked(example, run, found, shots)
+    every.append(e)
+
+    # declare: a param and a port added to nodes by lines: param declare into a .frag, set
+    # in the same frame, as a script would; into the .vert beside it, which takes the
+    # .frag's fields first, as both hold one pass block; an Image and a buffer a .comp
+    # writes, then connect declare reading each, typed too, as a connect of a port not
+    # declared yet names it; the lines a shader may not take refused, and one whose
+    # connect is refused writing nothing; then by the menus, which list a draw no Image
+    # and a .comp none of its own ports. Then the stages a lone .tesc lacks, as its node's
+    # menu offers them, a press each, never a .geom; and new with no path, typed inside a
+    # lone .frag's node, writing its .vert.
+    e = Example("declare", compared=False)
+    vert, frag = at(e.copy, "n", "N.vert"), at(e.copy, "n", "N.frag")
+    writer, reader = at(e.copy, "a", "A.comp"), at(e.copy, "b", "B.comp")
+    lone = at(e.copy, "lone", "L.frag")
+    enter = ok("input key down enter", "input key up enter")
+    e.steps = [
+        ok(f"view new {e.copy}"),
+        ok(f"new {vert} {frag} {writer} {reader} {lone}"),
+        settled(f"param declare {frag} float tint", "param set n tint 0.5"),
+        ok(f"param declare {vert} float scale", "param set n scale 1"),
+        no(f"param declare {frag} float tint", "holds tint already"),
+        no(f"param declare {frag} Image canvas", "is no type"),
+        no(f"param declare {frag} float gl_x", "no name a field takes"),
+        no(f"param declare {lone} float x", "only draw stage"),
+        no(f"param declare {at(e.copy, 'view.vlp')} float x", "is no shader"),
+        ok(f"remove force {at(e.copy, 'lone')}/"),
+        settled(f"param declare {writer} Image canvas",
+                f"param declare {writer} FloatsOut results"),
+        settled("connect a.canvas n.picture",
+                refused="connect declare a.canvas n/N.frag picture declares it"),
+        ok(f"connect declare a.canvas {frag} picture"),
+        no(f"connect declare n.tint {reader} x", "no image or buffer"),
+        typed(f"connect declare a.results {reader} values"),
+        no(f"connect declare n.pixel {writer} back", "would close a cycle"),
+        settled(f"menu file for {vert}"),
+        no("menu press file param declare Image", "no word the menu lists"),
+        ok("menu point file param declare"),
+        ok("menu press file param declare vec2"),
+        ok("input text offset"),
+        enter,
+        settled(f"menu file for {reader}"),
+        no("menu press file connect declare b.values", "no word the menu lists"),
+        ok("menu press file connect declare a.canvas"),
+        ok("input text seen"),
+        enter,
+        settled("param set n offset 0,0"),
+        ok(f"new {at(e.copy, 't', 'T.tesc')}"),
+        *(step for stage in ("T.vert", "T.tese", "T.frag")
+          for step in (settled("menu node for t"),
+                       no("menu press node new T.geom", "no word the menu lists"),
+                       ok(f"menu press node new {stage}"))),
+        settled("menu node for t"),
+        no("menu press node new T.frag", "it lists none"),
+        ok("menu"),
+        ok(f"new {at(e.copy, 'u', 'U.frag')}"),
+        typed("cd u"),
+        typed("new"),
+        typed("cd .."),
+        ok("view save"),
+    ]
+    e.check = declare_checked
     every.append(e)
 
     # surprises: what a person does that the lines before did not see coming. A view hosted
