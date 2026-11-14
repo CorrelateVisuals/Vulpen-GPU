@@ -498,7 +498,8 @@ struct NodePort {
   std::string_view kind; // buffer, image, object or varying
   bool writes = false;   // else it reads
   std::string holds;     // a buffer's element, as GLSL or C++ names it, an image's or a
-                         // varying's type; empty where nothing names it
+                         // varying's type, an object's as code spells it, in its view's
+                         // namespace (VP_VIEW); empty where nothing names it
   bool joined = false;   // a connection names it, or its node's C++ fills what it reads
   std::vector<std::string> alike;
 };

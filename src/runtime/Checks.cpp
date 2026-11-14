@@ -818,10 +818,8 @@ void Schedule::list_ports() {
         add(filled.port, "image", true, filled.format ? filled.format->name : "");
     if (!bound.output.empty())
       add(bound.output, "image", true, bound.drawn ? bound.drawn->name : "");
-    for (const std::string &output : bound.outputs) {
-      const Held *const held = this->held(buffer_name(bound.node->name, output));
-      add(output, "object", true, held ? held->type : "");
-    }
+    for (std::size_t at = 0; at < bound.outputs.size(); ++at)
+      add(bound.outputs[at], "object", true, bound.output_types[at]);
     for (std::size_t at = 0; at < bound.inputs.size(); ++at)
       add(bound.inputs[at], "object", false, bound.input_types[at]);
     if (bound.loaded() && is_vertex(*bound.node))

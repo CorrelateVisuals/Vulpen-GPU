@@ -260,6 +260,9 @@ struct Bound {
   Bound *fragment = nullptr;
   std::optional<PassBlock> block;
   std::unique_ptr<Operator> op;
+  // When the build made the module its operator came from, in a live run, which a .cpp
+  // of its folder saved since is newer than; none for one linked in.
+  std::optional<std::filesystem::file_time_type> module_built;
   std::set<std::string, std::less<>> set_by_operator;
   // By name, the GLSL type its C++ reads the param as; empty for a word, or a param it
   // only asks whether the node sets.
@@ -290,7 +293,9 @@ struct Bound {
   std::vector<File> files;       // opened while it bound
   std::vector<std::string> outputs; // its ports that carry C++ objects to C++ nodes
   std::vector<std::string> inputs;  // and that read them
-  // Each input's type, as typeid names it, so a loose one finds the outputs alike.
+  // Each one's type, as code spells it, so a loose one finds those alike, and a part
+  // reads what a port carries as a person writes it.
+  std::vector<std::string> output_types;
   std::vector<std::string> input_types;
   // An object for each input nothing gives it, so its reference holds while it is in
   // error; made by its module, so it goes with it.
@@ -307,9 +312,9 @@ struct Bound {
   // How many of its errors only wait for such a node, as a reader of what it writes: when
   // all of them, it says so quietly too.
   std::size_t waits = 0;
-  // A hosted view's node whose shader was saved since it was built, which the live build
-  // builds and binds again: its errors may be the old shader's, as a field a line just
-  // declared and connected is in none of it, so it says them quietly too.
+  // A hosted view's node whose shader or C++ was saved since it was built, which the live
+  // build builds and binds again: its errors may be the old code's, as a field or an
+  // input a line just declared and connected is in none of it, so it says them quietly.
   bool rebuilding = false;
   // A dispatch's threads, as its word gives them or the buffer at its port counts them.
   std::uint32_t invocations = 0;
@@ -359,19 +364,28 @@ struct Bound {
   }
 };
 
-// Whether a shader of its own was saved since the build made the SPIR-V it bound, which
-// only a live run's build makes anew: till then its ports and params are the old ones.
+// Whether a file of its own was saved since the build made the code it bound, a shader
+// since its SPIR-V, or a .cpp since its module, which only a live run's build makes anew:
+// till then its ports and params are the old ones. Not a header alone: one no .cpp
+// includes is in no module, so no build would end the wait, and its node would say its
+// errors quietly for good.
 inline bool saved_since_built(const Bound &bound) {
   if constexpr (!VP_LIVE)
     return false;
-  for (std::size_t at = 0; at < bound.built.size(); ++at) {
+  const auto saved_after = [&](const std::string &file,
+                               std::filesystem::file_time_type built) {
     std::error_code unread;
-    const std::filesystem::file_time_type saved = std::filesystem::last_write_time(
-        bound.node->folder / bound.shaders_named[at], unread);
-    if (!unread && saved > bound.built[at])
+    const std::filesystem::file_time_type saved =
+        std::filesystem::last_write_time(bound.node->folder / file, unread);
+    return !unread && saved > built;
+  };
+  for (std::size_t at = 0; at < bound.built.size(); ++at)
+    if (saved_after(bound.shaders_named[at], bound.built[at]))
       return true;
-  }
-  return false;
+  return bound.module_built &&
+         std::ranges::any_of(bound.node->files, [&](const std::string &file) {
+           return file.ends_with(".cpp") && saved_after(file, *bound.module_built);
+         });
 }
 
 // The object a connection between C++ nodes carries (native C++). Its writer's module

@@ -86,6 +86,12 @@ std::vector<std::string> Modules::rewritten() const {
   return modules;
 }
 
+std::optional<std::filesystem::file_time_type>
+Modules::built_at(const std::string &module) const {
+  const auto found = std::ranges::find(_loaded, module, &Loaded::module);
+  return found == _loaded.end() ? std::nullopt : std::optional(found->built);
+}
+
 void Modules::builds_ended(std::span<const std::string> built,
                            std::span<const std::string> failed) {
   std::erase_if(_failed, [&](const std::string &view) {

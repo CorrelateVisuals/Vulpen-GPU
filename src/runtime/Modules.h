@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -50,6 +51,10 @@ public:
   std::string sole(const std::string &module, const std::filesystem::path &folder);
   // Modules, as "view/folder", that the build rewrote since they loaded.
   std::vector<std::string> rewritten() const;
+  // When the build wrote the module loaded now, which a C++ file of its folder saved
+  // since is newer than; none for one linked in, or not loaded.
+  std::optional<std::filesystem::file_time_type>
+  built_at(const std::string &module) const;
   // Whether the build made the module: linked in, or in the build tree, where a dev build
   // puts it once it first builds the node's folder.
   bool built(const std::string &module, const std::filesystem::path &folder) const;

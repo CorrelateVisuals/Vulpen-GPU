@@ -80,12 +80,13 @@ std::string declaring_shader(const View &view, const Bound &node) {
 }
 
 // What makes a connection's end a port of its node where the end names none it writes,
-// or reads, the line's own mistake: a port its shaders declare nothing for yet, which the
+// or reads, the line's own mistake: a port its code declares nothing for yet, which the
 // line declaring it in the type the other end takes writes, connect declare for a reader
-// of an image or a buffer, param declare for an Image a dispatch stores into; or a reader
-// named first, as the writer goes first, the line that names the two the other way round.
-// Empty where neither is known, as for a draw, which writes no Image, or for a node with
-// ports that way already, whose list names the one likely meant.
+// of an image or a buffer, or in a node's C++ of a C++ object, param declare for an Image
+// a dispatch stores into; or a reader named first, as the writer goes first, the line
+// that names the two the other way round. Empty where neither is known, as for a draw,
+// which writes no Image, or for a node with ports that way already, whose list names the
+// one likely meant.
 std::string end_fix(std::span<const NodePort> ports,
                     const View &view,
                     const Connection &connection,
@@ -104,9 +105,20 @@ std::string end_fix(std::span<const NodePort> ports,
   const bool none_that_way = std::ranges::none_of(ports, [&](const NodePort &each) {
     return each.node == end.node && each.kind != "value" && each.writes == writes;
   });
+  const NodePort *const known = other && !other->view() ? port_of(*other) : nullptr;
+  const auto cpp = std::ranges::find_if(
+      node.node->files, [](const std::string &file) { return file.ends_with(".cpp"); });
+  if (!port && none_that_way && !writes && known && known->kind == "object" &&
+      known->writes && cpp != node.node->files.end())
+    return std::format("{} has no port {} yet: connect declare {} {} {} declares it and "
+                       "connects them",
+                       end.node,
+                       end.port,
+                       other->text(),
+                       (folder_in(view, node.node->name) / *cpp).generic_string(),
+                       end.port);
   if (!port && none_that_way &&
       (writes ? holds_stage(*node.node, compute_stage) : !node.shaders_named.empty())) {
-    const NodePort *const known = other && !other->view() ? port_of(*other) : nullptr;
     const bool image = other && (other->view() || (known && known->kind == "image"));
     const bool buffer = known && known->kind == "buffer" && known->writes;
     if (writes && image)
@@ -325,6 +337,7 @@ private:
       return stand_in(kind);
     }
     _bound.outputs.emplace_back(port);
+    _bound.output_types.push_back(type_name(kind.type));
     const std::string name = _schedule.buffer_name(_bound.node->name, port);
     const std::string module = module_of(_schedule._view, *_bound.node);
     if (const Held *const held = _schedule.held(name)) {
@@ -358,7 +371,7 @@ private:
     if (!cpp_port(port, "input"))
       return stand_in(kind);
     _bound.inputs.emplace_back(port);
-    _bound.input_types.emplace_back(kind.type);
+    _bound.input_types.push_back(type_name(kind.type));
     const Connection *const connection = _schedule.connection_of(_bound.node->name, port);
     const Held *const held = connection ? _schedule.held(connection->name) : nullptr;
     const Bound *const writer = connection ? _schedule.find(connection->from.node) : nullptr;
@@ -525,7 +538,6 @@ Bound Schedule::bind(const Node &node,
   }
   bound.invocations = counted(bound);
   load_shaders(bound, folder, old);
-  bound.rebuilding = waits_for_build(_name) && saved_since_built(bound);
   // So an edit makes blocks only for the nodes it changed.
   if (old && old->block && old->block_size == bound.block_size)
     bound.block = std::move(old->block);
@@ -553,6 +565,9 @@ Bound Schedule::bind(const Node &node,
       bound.errors.emplace_back(failure.what());
     }
   }
+  if (bound.op)
+    bound.module_built = _wiring.modules.built_at(module_of(_view, node));
+  bound.rebuilding = waits_for_build(_name) && saved_since_built(bound);
   if (bound.op) {
     Binder binder(*this, bound, replaced);
     try {
