@@ -60,10 +60,9 @@ TAIL_LINES = 20        # of what vulpen said last, when it ends or hangs
 ERROR = "{!!!}"
 # A draw's five stages, by a letter each, in the order the draw runs them.
 STAGES = {"v": ".vert", "c": ".tesc", "e": ".tese", "g": ".geom", "f": ".frag"}
-# What the ide keeps of a person's session beside its manifest: its panels, and the
-# projects hosted beside it, which it would host again as the run starts.
-SESSION = [ROOT / "src/runtime/recipes/vulpen/ide/.vulpen" / name
-           for name in ("layout.log", "projects.log")]
+# What the ide keeps of a person's session beside its manifest: its panels, which it
+# would arrange so again as the run starts.
+SESSION = [ROOT / "src/runtime/recipes/vulpen/ide/.vulpen/layout.log"]
 SETUP = f"""view add ide {ROOT}/src/runtime/recipes/vulpen/ide/view.vlp
 node add cli.snapshot recipe=snapshot
 connect snapshot ide: cli.snapshot.picture
