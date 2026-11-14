@@ -7,6 +7,7 @@
 #include "contracts/Typed.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "shared/Fields.h"
 #include "shared/Words.h"
 
 #include <algorithm>
@@ -37,6 +38,7 @@ constexpr std::string_view no_word = "\"\"";
 // The ports port's kind for a value a param sets, which no line connects.
 constexpr std::string_view value_kind = "value";
 constexpr std::string_view image_kind = "image";
+constexpr std::string_view buffer_kind = "buffer";
 
 // What a press or a line opens: the section of the kind of thing pressed, and those whose
 // lines follow it, muted, as a background's lines for the whole project; where its first
@@ -93,17 +95,19 @@ struct Look {
 // the word that ends a line hands the line to the terminal's type, as a key's line goes
 // too: run there, as if typed, so the terminal shows it and its answer, or, when it wants
 // a word, as <name>, begun up to it, the terminal's panel shown and the focus on it, for
-// the person to finish, what may come there listed for a placeholder pressed. With
-// several things pressed, a line joining them runs once, and under a rule after those, a
-// line that wants no word typed runs once for each. A part that knows what was pressed
-// opens the menu for it with menu <kind> [<section>...] for <name>..., as the graph and a
-// tab do; while it shows it holds the pointer, so nothing under it takes a press, and the
-// focus, so escape shuts it; a press anywhere but on a word shuts it too, giving the
-// focus back. A key presses a whole line with no menu showing, menu press <kind>
-// <word>... for <name>..., as the graph's Delete presses remove, so the key runs what the
-// menu would, shown in the terminal as a press is. A change takes effect the next frame,
-// as the focus does, so a press on a word reaches its hit before the words go. The file
-// is read again once it changes; a mistake in it stops the node, naming the line (A02).
+// the person to finish, what may come there listed for a placeholder pressed; a word no
+// column listed, which no pointer could press, is refused, naming those listed (A02).
+// With several things pressed, a line joining them runs once, and under a rule after
+// those, a line that wants no word typed runs once for each. A part that knows what was
+// pressed opens the menu for it with menu <kind> [<section>...] for <name>..., as the
+// graph and a tab do; while it shows it holds the pointer, so nothing under it takes a
+// press, and the focus, so escape shuts it; a press anywhere but on a word shuts it too,
+// giving the focus back. A key presses a whole line with no menu showing, menu press
+// <kind> <word>... for <name>..., as the graph's Delete presses remove, so the key runs
+// what the menu would, shown in the terminal as a press is. A change takes effect the
+// next frame, as the focus does, so a press on a word reaches its hit before the words
+// go. The file is read again once it changes; a mistake in it stops the node, naming the
+// line (A02).
 class Menus final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _menu = node.command(
@@ -160,6 +164,7 @@ class Menus final : public VP::Operator {
     if (_read && text == *_read)
       return;
     _lines = lines_of(text, commands.usages());
+    _found.assign(_lines.size(), {});
     _read.emplace(text);
     _written = false;
   }
@@ -243,9 +248,9 @@ class Menus final : public VP::Operator {
       if (std::ranges::find(found, entry.word, &Entry::word) == found.end())
         found.push_back(std::move(entry));
     };
-    for (const Line &line : _lines) {
-      if (!offered(line, group) || (one_of(found_kinds, line.kind) &&
-                                    values(commands, look, line, {}).empty()))
+    for (std::size_t at = 0; at < _lines.size(); ++at) {
+      const Line &line = _lines[at];
+      if (!offered(line, group) || (one_of(found_kinds, line.kind) && _found[at].empty()))
         continue;
       const std::span<const std::string> columns = line.columns();
       if (columns.size() > before.size()) {
@@ -334,9 +339,9 @@ class Menus final : public VP::Operator {
   }
 
   // What the menus find for a placeholder but <link>: the connections joining what was
-  // pressed, the values of a node pressed a param may set, the files in its folder, or
-  // the draw stages they lack, as a lone shader's other half; the files of a view's top,
-  // root's folder (RV08), by its path.
+  // pressed, the values of a node pressed a param may set, what a shader pressed may
+  // declare, the files in its folder, or the draw stages they lack, as a lone shader's
+  // other half; the files of a view's top, root's folder (RV08), by its path.
   std::vector<std::string> found(const Look &look, const Line &line) const {
     std::vector<std::string> words;
     if (line.kind == joined_kind && look.view) {
@@ -356,6 +361,8 @@ class Menus final : public VP::Operator {
           words.emplace_back(port.name);
       return words;
     }
+    if (line.kind == type_kind || line.kind == writer_kind)
+      return declarable(look, line, named);
     // A path as the graph names one, from where vulpen started, as folder_of reads it.
     const bool path = named == "." || named.find('/') != std::string::npos;
     const std::string folder =
@@ -367,6 +374,32 @@ class Menus final : public VP::Operator {
       if (!name.ends_with('/') && !name.starts_with('.'))
         files.push_back(std::move(name));
     return line.kind == path_kind ? files : lacking(files);
+  }
+
+  // What a shader pressed, by its path, may declare a pass block field of: the types it
+  // may hold, or the images and buffers the view's other nodes write, which a field of
+  // its reads, where a node of the view holds it; none for any other file.
+  static std::vector<std::string>
+  declarable(const Look &look, const Line &line, std::string_view named) {
+    if (named.find('/') == std::string_view::npos)
+      return {};
+    const std::filesystem::path file =
+        std::filesystem::absolute(named).lexically_normal();
+    std::vector<std::string> types = field_types(look.files, file);
+    if (line.kind == type_kind)
+      return types;
+    const std::string own = file.parent_path().string();
+    std::vector<std::string> writers;
+    if (types.empty() || !look.view ||
+        std::ranges::none_of(look.view->nodes, [&](const VP::Node &node) {
+          return absolute_folder(look, node.name) == own;
+        }))
+      return writers;
+    for (const VP::NodePort &port : look.ports)
+      if (port.writes && absolute_folder(look, port.node) != own &&
+          (port.kind == image_kind || (port.kind == buffer_kind && !port.holds.empty())))
+        writers.push_back(std::format("{}.{}", port.node, port.name));
+    return writers;
   }
 
   // Whether a connection's ends hold what was pressed: a node's, or a port's, node.port.
@@ -442,6 +475,14 @@ class Menus final : public VP::Operator {
     if (!_shown)
       return;
     _links = links_of(look);
+    _found.assign(_lines.size(), {});
+    for (std::size_t at = 0; at < _lines.size(); ++at)
+      if (one_of(found_kinds, _lines[at].kind) &&
+          std::ranges::any_of(_sections, [&](const std::string &group) {
+            return offered(_lines[at], group);
+          }))
+        for (Entry &entry : values(commands, look, _lines[at], {}))
+          _found[at].push_back(std::move(entry.word));
     for (const std::string &group : _sections) {
       bool joining = false;
       for (const Entry &entry : entries(commands, look, group, {})) {
@@ -610,7 +651,9 @@ class Menus final : public VP::Operator {
   // onto them does, and keeps the menus shown, though the press reached them as any press
   // does, which shuts them.
   void press(VP::Call &call, std::string group, std::vector<std::string> words) {
-    for (const Line &line : _lines) {
+    std::optional<std::string> unlisted; // why a word no column listed is refused
+    for (std::size_t at = 0; at < _lines.size(); ++at) {
+      const Line &line = _lines[at];
       const std::span<const std::string> columns = line.columns();
       if (!offered(line, group) || columns.size() > words.size() ||
           !std::ranges::equal(columns, std::span(words).first(columns.size())))
@@ -625,9 +668,23 @@ class Menus final : public VP::Operator {
           return hand_link(call, *link);
       const bool ends = past == 0 && !line.lists();
       const bool valued = line.lists() && line.kind != link_kind && past == 1;
+      if (valued && one_of(found_kinds, line.kind) &&
+          std::ranges::find(_found[at], words.back()) == _found[at].end()) {
+        std::string listed = _found[at].empty() ? std::string("none") : std::string();
+        for (const std::string &word : _found[at])
+          listed.append(listed.empty() ? "" : ", ").append(word);
+        unlisted = unlisted.value_or(
+            std::format("{} is no word the menu lists after {}; it lists {}",
+                        words.back(),
+                        joined(columns),
+                        listed));
+        continue;
+      }
       if (ends || valued)
         return hand(call, line, valued ? std::optional(words.back()) : std::nullopt);
     }
+    if (unlisted)
+      throw std::runtime_error(*unlisted);
     _group = std::move(group);
     _path = std::move(words);
     _shutting = false;
@@ -758,6 +815,10 @@ class Menus final : public VP::Operator {
   std::vector<std::string> _subjects; // the names {} stands for
   bool _image = false; // the one pressed is an image its node writes, which {image} names
   std::vector<Link> _links;          // what a <link> stands for, as the columns show it
+  // What each line's placeholder the menus find stood for as the columns were written,
+  // by the line's place, so a press of a word no column listed is refused (A02), as a
+  // pointer could not press it.
+  std::vector<std::vector<std::string>> _found;
   std::string _group;                // the section the words chosen are of
   std::vector<std::string> _path;    // the words chosen, a column each
   std::optional<Opening> _next;      // what a line opened, for the next frame
