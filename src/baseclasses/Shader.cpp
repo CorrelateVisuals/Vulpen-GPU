@@ -44,6 +44,8 @@ constexpr std::uint32_t storage_uniform = 2;
 constexpr std::uint32_t storage_output = 3;
 constexpr std::uint32_t storage_push_constant = 9;
 constexpr std::uint32_t storage_physical_storage_buffer = 5349;
+// Its universal limits: the most members a struct holds.
+constexpr std::uint32_t struct_members_most = 16383;
 } // namespace spirv
 
 constexpr std::uint32_t scalar_bytes = 4;
@@ -73,7 +75,14 @@ struct Module {
   std::vector<std::pair<std::uint32_t, std::uint32_t>> outputs, inputs;
   std::array<std::uint32_t, 3> workgroup_size{};
 
+  // An index past what SPIR-V allows comes only from a damaged file, which would ask for
+  // gigabytes, or past index + 1 wrapping to 0, write beyond the list.
   Member &member(std::uint32_t type, std::uint32_t index) {
+    if (index >= spirv::struct_members_most)
+      throw std::runtime_error(
+          std::format("a struct's member {} is past the {} SPIR-V allows",
+                      index,
+                      spirv::struct_members_most));
     std::vector<Member> &list = members[type];
     if (list.size() <= index)
       list.resize(index + 1);
@@ -362,6 +371,18 @@ std::vector<std::uint32_t> read_words(const std::filesystem::path &spirv) {
   return words;
 }
 
+// What reflection refuses names no file, as only a damaged file gets there; the file is
+// named here, as the refusals of its words name it (A02).
+template <class Reflect>
+void naming(const std::filesystem::path &spirv, const Reflect &reflect) {
+  try {
+    reflect();
+  } catch (const std::exception &refused) {
+    throw std::runtime_error(
+        std::format("{} is damaged: {}", spirv.string(), refused.what()));
+  }
+}
+
 } // namespace
 
 Shader::Shader(const std::filesystem::path &spirv) : _words(read_words(spirv)) {
@@ -372,16 +393,20 @@ Shader::Shader(const std::filesystem::path &spirv) : _words(read_words(spirv)) {
     const std::uint32_t count = _words[word] >> spirv::word_count_shift;
     if (count == 0 || word + count > _words.size())
       throw std::runtime_error(std::format("{} is truncated", spirv.string()));
-    read(module,
-         _words[word] & spirv::opcode_mask,
-         std::span<const std::uint32_t>(_words).subspan(word + 1, count - 1));
+    naming(spirv, [&] {
+      read(module,
+           _words[word] & spirv::opcode_mask,
+           std::span<const std::uint32_t>(_words).subspan(word + 1, count - 1));
+    });
     word += count;
   }
-  _workgroup_size = module.workgroup_size;
-  _outputs = varyings_of(module, module.outputs);
-  _inputs = varyings_of(module, module.inputs);
-  std::tie(_fields, _block_size) = pass_block(module);
-  std::tie(_frame, _frame_size) = frame_block(module);
+  naming(spirv, [&] {
+    _workgroup_size = module.workgroup_size;
+    _outputs = varyings_of(module, module.outputs);
+    _inputs = varyings_of(module, module.inputs);
+    std::tie(_fields, _block_size) = pass_block(module);
+    std::tie(_frame, _frame_size) = frame_block(module);
+  });
 }
 
 std::span<const std::uint32_t> Shader::words() const {
