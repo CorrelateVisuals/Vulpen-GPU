@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <type_traits>
 #include <vector>
 
 // The small text helpers the engine's files share, each written once (C02, C06): what
@@ -25,14 +27,19 @@ inline std::string_view trim(std::string_view text) {
   return text.substr(first, text.find_last_not_of(blanks) - first + 1);
 }
 
-// The whole text as a number of the type; none where it holds anything more, or a number
-// the type cannot hold.
+// The whole text as a number of the type; none where it holds anything more, a number
+// the type cannot hold, or nan or inf, which no two GPUs need clamp or compare alike
+// (GLSL02).
 template <class T> std::optional<T> number_in(std::string_view text) {
   T value{};
   const auto [end, error] =
       std::from_chars(text.data(), text.data() + text.size(), value);
   if (error != std::errc{} || end != text.data() + text.size())
     return std::nullopt;
+  if constexpr (std::is_floating_point_v<T>) {
+    if (!std::isfinite(value))
+      return std::nullopt;
+  }
   return value;
 }
 

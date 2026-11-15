@@ -54,7 +54,7 @@ std::filesystem::path view_of(const std::filesystem::path &path) {
 float number(std::string_view word) {
   const std::optional<float> value = number_in<float>(word);
   if (!value)
-    throw std::runtime_error(std::format("{} is not a number", word));
+    throw std::runtime_error(std::format("{} is not a finite number", word));
   return *value;
 }
 
