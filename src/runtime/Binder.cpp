@@ -498,7 +498,8 @@ private:
                                            upload.port,
                                            holds));
     *upload.used = static_cast<std::uint32_t>(count.value_or(holds));
-    return bytes.first(*upload.used * upload.stride);
+    // In 64 bits, as the buffer was sized: a buffer may hold past 4 GiB.
+    return bytes.first(std::size_t{*upload.used} * upload.stride);
   }
   void upload_image(std::uint32_t index,
                     std::span<const std::byte> pixels,
