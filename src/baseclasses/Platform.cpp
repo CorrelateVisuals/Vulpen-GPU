@@ -213,6 +213,10 @@ std::filesystem::path loaded_copy(const std::filesystem::path &file) {
                      file.extension().string());
 }
 
+unsigned long process_id() {
+  return GetCurrentProcessId();
+}
+
 // A scanner, as Defender, opens a file just written, and a reader may hold the file it
 // replaces; either keeps it from being renamed over the other for a moment, so a save
 // tries again a while before it fails.
@@ -540,6 +544,10 @@ namespace {
 // A lock file's: read and write for its owner, read for everyone else.
 constexpr mode_t lock_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
+unsigned long process_id() {
+  return static_cast<unsigned long>(getpid());
+}
+
 // Whoever holds either file, Linux renames one over the other.
 void rename_over(const std::filesystem::path &from,
                  const std::filesystem::path &to,
@@ -715,6 +723,17 @@ void Terminal::draw(std::string_view text, std::size_t caret) {
   std::fflush(stdout);
 }
 
+namespace {
+
+// Hidden, and named for the target and the run, so a save or a copy never takes a
+// person's file for its temp, nor another run's; one a killed run left blocks nothing.
+std::filesystem::path temp_beside(const std::filesystem::path &target) {
+  return target.parent_path() /
+         std::format(".{}.{}.vulpen-tmp", target.filename().string(), process_id());
+}
+
+} // namespace
+
 std::string Files::text(const std::filesystem::path &file) {
   std::ifstream in(file, std::ios::binary);
   return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
@@ -725,8 +744,7 @@ void Files::save(const std::filesystem::path &file, std::string_view text) {
   // A new view's folder exists once its first save writes it.
   if (file.has_parent_path())
     std::filesystem::create_directories(file.parent_path(), failed);
-  std::filesystem::path temp = file;
-  temp += ".tmp";
+  const std::filesystem::path temp = temp_beside(file);
   std::ofstream out(temp, std::ios::binary);
   out.write(text.data(), static_cast<std::streamsize>(text.size()));
   out.close();
@@ -766,8 +784,8 @@ void Files::clear(const std::filesystem::path &folder) {
           std::format("{}: cannot be deleted: {}", file.string(), failed.message()));
 }
 
-// A temp a killed copy left goes first, so it never blocks the next. A copy inside what
-// it copies would copy itself without end.
+// A temp a killed run of the same process id left goes first, so it never blocks the
+// next. A copy inside what it copies would copy itself without end.
 void Files::copy(const std::filesystem::path &from, const std::filesystem::path &to) {
   std::error_code failed;
   if (std::filesystem::exists(to, failed))
@@ -777,8 +795,7 @@ void Files::copy(const std::filesystem::path &from, const std::filesystem::path 
   if (!inside.empty() && *inside.begin() != "..")
     throw std::runtime_error(std::format(
         "{} is inside {}, so it cannot hold a copy of it", to.string(), from.string()));
-  std::filesystem::path temp = to;
-  temp += ".tmp";
+  const std::filesystem::path temp = temp_beside(to);
   std::filesystem::remove_all(temp, failed);
   if (!failed && to.has_parent_path())
     std::filesystem::create_directories(to.parent_path(), failed);
