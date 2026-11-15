@@ -288,12 +288,13 @@ void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes)
       begin(commands, *pass.offscreen);
     for (std::size_t each = 0; each < run.size(); ++each) {
       stamp(commands, at + each, false);
-      if (records && run[each].pipeline)
+      if (records && run[each].pipeline) {
         bind(commands, pipelines, run[each]);
-      if (records && !draw)
-        vkCmdDispatch(commands, run[each].groups, 1, 1);
-      else if (records && instances_of(run[each]) != 0)
-        vkCmdDraw(commands, run[each].vertex_count, instances_of(run[each]), 0, 0);
+        if (!draw)
+          vkCmdDispatch(commands, run[each].groups, 1, 1);
+        else if (instances_of(run[each]) != 0)
+          vkCmdDraw(commands, run[each].vertex_count, instances_of(run[each]), 0, 0);
+      }
       stamp(commands, at + each, true);
     }
     if (records && draw)
@@ -380,7 +381,7 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
     if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || pass.offscreen)
       continue;
     stamp(commands, at, false);
-    if (instances_of(pass) != 0) {
+    if (pass.pipeline && instances_of(pass) != 0) {
       bind(commands, pipelines, pass);
       vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
     }
