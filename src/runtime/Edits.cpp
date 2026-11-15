@@ -729,10 +729,10 @@ void host_once(ViewLookup &views, Arguments arguments) {
       continue;
     throw std::runtime_error(
         std::format("{} is hosted already, as {}, and two views of one manifest would "
-                    "save over each other; view switch {} goes to it",
+                    "save over each other; {} goes to it",
                     file.string(),
                     name.empty() ? "the view vulpen started with" : name,
-                    name));
+                    name.empty() ? "view switch" : "view switch " + name));
   }
 }
 
