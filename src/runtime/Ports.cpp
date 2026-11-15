@@ -560,6 +560,13 @@ std::span<const Event> Ports::keys() {
     at += took;
   }
   _bytes.erase(0, at);
+  // Escape is the byte a sequence starts with too, and a terminal sends a sequence in one
+  // write, so one that waited through a read that brought nothing was the key.
+  if (text->empty() && _bytes.size() == 1 &&
+      static_cast<unsigned char>(_bytes.front()) == escape) {
+    press(_keys, "escape");
+    _bytes.clear();
+  }
   return _keys;
 }
 
