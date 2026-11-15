@@ -734,9 +734,14 @@ std::filesystem::path temp_beside(const std::filesystem::path &target) {
 
 } // namespace
 
+// A folder opens as a file does, and its first read throws.
 std::string Files::text(const std::filesystem::path &file) {
   std::ifstream in(file, std::ios::binary);
-  return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+  try {
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+  } catch (const std::ios_base::failure &) {
+    return {};
+  }
 }
 
 void Files::save(const std::filesystem::path &file, std::string_view text) {
