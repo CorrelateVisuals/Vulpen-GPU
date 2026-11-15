@@ -54,8 +54,9 @@ private:
   class Recorded;
 
   void check(const Step &step, bool again);
+  static void check_made(const Step &step);
   void take_files_back(const Step &step);
-  void bring_files_again(const Step &step);
+  void bring_files_again(Step &step);
   void remove_tree(const std::filesystem::path &path);
   void restore_views(const Step &step, bool again);
   bool kept_by_view(const Step &step, const std::filesystem::path &file, bool again);

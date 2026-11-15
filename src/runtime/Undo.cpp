@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <format>
+#include <map>
 #include <ranges>
 #include <stdexcept>
 #include <string>
@@ -17,6 +18,32 @@ namespace VP {
 // The lines undo takes back at most, so memory stays bounded (A03); a step keeps no file
 // past kept_most either, and undo refuses its line, naming the file.
 constexpr std::size_t undo_room = 100;
+
+namespace {
+
+// What a copy brought: each path with when it was written, none for a folder, so undo
+// tells the copy's own files from one saved into it since.
+using Brought =
+    std::map<std::filesystem::path, std::optional<std::filesystem::file_time_type>>;
+
+Brought brought_by(const std::filesystem::path &copy) {
+  Brought brought;
+  std::error_code unread;
+  const auto add = [&](const std::filesystem::directory_entry &entry) {
+    brought.emplace(entry.path(),
+                    entry.is_directory(unread)
+                        ? std::nullopt
+                        : std::optional(entry.last_write_time(unread)));
+  };
+  add(std::filesystem::directory_entry(copy, unread));
+  for (auto entry = std::filesystem::recursive_directory_iterator(copy, unread);
+       entry != std::filesystem::recursive_directory_iterator();
+       entry.increment(unread))
+    add(*entry);
+  return brought;
+}
+
+} // namespace
 
 // A line a person ran: each view it changed as it was before the line and after, and each
 // change it made to files through the port, in order, with what undo and redo need to
@@ -38,6 +65,7 @@ struct Undo::Step {
     std::filesystem::path to;
     std::optional<std::string> before;
     std::string after;
+    Brought brought; // a copy's
   };
   // A folder above what it changed, as it was before the line: whether it was there, as
   // the file port takes a folder its last file leaves.
@@ -87,8 +115,10 @@ private:
     return _files.list(folder);
   }
   void copy(std::string_view from, std::string_view to) override {
-    noted(Step::Change::Kind::copy, from, to);
+    Step::Change *const change = noted(Step::Change::Kind::copy, from, to);
     _files.copy(from, to);
+    if (change)
+      change->brought = brought_by(to);
   }
   void rename(std::string_view from, std::string_view to) override {
     noted(Step::Change::Kind::rename, from, to);
@@ -221,6 +251,25 @@ std::string line_of(std::string_view line, const std::vector<std::string> &hoste
   return std::format("{} (in {})", line.substr(colon + mark.size()), line.substr(0, colon));
 }
 
+// The file, or the first path in the folder, that own refuses; a hidden one is a
+// part's, as no step changes the parts' files.
+template <class Own>
+std::optional<std::filesystem::path> first_not(const std::filesystem::path &root,
+                                               const Own &own) {
+  std::error_code unread;
+  if (const std::filesystem::directory_entry file(root, unread);
+      file.is_regular_file(unread) && !own(file))
+    return root;
+  for (auto entry = std::filesystem::recursive_directory_iterator(root, unread);
+       entry != std::filesystem::recursive_directory_iterator();
+       entry.increment(unread))
+    if (hidden(entry->path()))
+      entry.disable_recursion_pending();
+    else if (!own(*entry))
+      return entry->path();
+  return std::nullopt;
+}
+
 } // namespace
 
 // The files first, so a view the line closed comes back with its manifest there, then the
@@ -243,6 +292,8 @@ void Undo::take_back(Call &call, bool again) {
         kept_most >> 20,
         again ? "redo" : "undo"));
   check(from.back(), again);
+  if (!again)
+    check_made(from.back());
   Step step = std::move(from.back());
   from.pop_back();
   if (again)
@@ -308,6 +359,46 @@ void Undo::check(const Step &step, bool again) {
     std::ranges::for_each(step.changes | std::views::reverse, look);
 }
 
+// Undo removes a copy or a folder made whole, so what it holds that neither the change
+// nor a later one of the step made, as a file saved there since, is refused.
+void Undo::check_made(const Step &step) {
+  using ChangeKind = Step::Change::Kind;
+  const auto inside = [](const std::filesystem::path &path,
+                         const std::filesystem::path &folder) {
+    const std::filesystem::path relative =
+        path.lexically_normal().lexically_relative(folder.lexically_normal());
+    return !relative.empty() && *relative.begin() != "..";
+  };
+  for (std::size_t made = 0; made < step.changes.size(); ++made) {
+    const Step::Change &change = step.changes[made];
+    if (change.kind != ChangeKind::copy && change.kind != ChangeKind::make)
+      continue;
+    const auto own = [&](const std::filesystem::directory_entry &entry) {
+      std::error_code unread;
+      const auto brought = change.brought.find(entry.path());
+      if (brought != change.brought.end() &&
+          (!brought->second || brought->second == entry.last_write_time(unread)))
+        return true;
+      return std::ranges::any_of(
+          step.changes | std::views::drop(made + 1), [&](const Step::Change &later) {
+            const bool moved =
+                later.kind == ChangeKind::copy || later.kind == ChangeKind::rename;
+            return later.kind != ChangeKind::remove &&
+                   inside(entry.path(), moved ? later.to : later.path);
+          });
+    };
+    const std::filesystem::path &root =
+        change.kind == ChangeKind::copy ? change.to : change.path;
+    if (const std::optional<std::filesystem::path> since = first_not(root, own))
+      throw std::runtime_error(
+          std::format("{} is new or changed since the line {}, and undo would delete it "
+                      "with {}; nothing changed",
+                      since->string(),
+                      line_of(step.line, step.hosted),
+                      root.string()));
+  }
+}
+
 // The last change first. A hosted view's manifest is the view's, written as it comes
 // back. Then each folder the line made goes once empty, deepest first, and each that was
 // there comes back if a delete took it, as the port takes a folder its last file leaves.
@@ -344,21 +435,24 @@ void Undo::take_files_back(const Step &step) {
       files.make(folder->path.string());
 }
 
-void Undo::bring_files_again(const Step &step) {
+// A copy made again brings files written now, which a later undo compares with.
+void Undo::bring_files_again(Step &step) {
   using ChangeKind = Step::Change::Kind;
   FilePort &files = *_recorded;
-  for (const Step::Change &change : step.changes) {
+  for (Step::Change &change : step.changes) {
     const std::string path = change.path.string();
     if (change.kind == ChangeKind::save && !kept_by_view(step, change.path, true))
       files.save(path, change.after);
     else if (change.kind == ChangeKind::remove && there(change.path))
       files.remove(path);
-    else if (change.kind == ChangeKind::copy)
+    else if (change.kind == ChangeKind::copy) {
       files.copy(path, change.to.string());
-    else if (change.kind == ChangeKind::rename)
+      change.brought = brought_by(change.to);
+    } else if (change.kind == ChangeKind::rename) {
       files.rename(path, change.to.string());
-    else if (change.kind == ChangeKind::make)
+    } else if (change.kind == ChangeKind::make) {
       files.make(path);
+    }
   }
 }
 
