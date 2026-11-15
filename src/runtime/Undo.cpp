@@ -83,8 +83,9 @@ struct Undo::Step {
   std::filesystem::path too_large; // a file past kept_most, which undo cannot bring back
 };
 
-// Through to the file port, keeping each change the line of a step makes, but one of a
-// hidden file, as the parts keep in .vulpen/.
+// Through to the file port, keeping each change the line of a step makes, but one the
+// port refused, which never happened, and one of a hidden file, as the parts keep in
+// .vulpen/.
 class Undo::Recorded final : public FilePort {
 public:
   Recorded(FilePort &files, Undo &undo) : _files(files), _undo(undo) {}
@@ -100,35 +101,36 @@ private:
     return _files.read(file);
   }
   void save(std::string_view file, std::string_view text) override {
-    if (Step::Change *const change = noted(Step::Change::Kind::save, file)) {
+    Step::Change *const change = noted(Step::Change::Kind::save, file);
+    if (change) {
       change->before = held(file);
       change->after = text;
     }
-    _files.save(file, text);
+    made(change, [&] { _files.save(file, text); });
   }
   void remove(std::string_view file) override {
-    if (Step::Change *const change = noted(Step::Change::Kind::remove, file))
+    Step::Change *const change = noted(Step::Change::Kind::remove, file);
+    if (change)
       change->before = held(file);
-    _files.remove(file);
+    made(change, [&] { _files.remove(file); });
   }
   std::vector<std::string> list(std::string_view folder) override {
     return _files.list(folder);
   }
   void copy(std::string_view from, std::string_view to) override {
     Step::Change *const change = noted(Step::Change::Kind::copy, from, to);
-    _files.copy(from, to);
+    made(change, [&] { _files.copy(from, to); });
     if (change)
       change->brought = brought_by(to);
   }
   void rename(std::string_view from, std::string_view to) override {
-    noted(Step::Change::Kind::rename, from, to);
-    _files.rename(from, to);
+    made(noted(Step::Change::Kind::rename, from, to), [&] { _files.rename(from, to); });
   }
   void save(const View &view, std::string_view file) override {
     Step::Change *const change = noted(Step::Change::Kind::save, file);
     if (change)
       change->before = held(file);
-    _files.save(view, file);
+    made(change, [&] { _files.save(view, file); });
     if (change)
       change->after = _files.read(file);
   }
@@ -136,8 +138,7 @@ private:
     return _files.manifest(file);
   }
   void make(std::string_view folder) override {
-    noted(Step::Change::Kind::make, folder);
-    _files.make(folder);
+    made(noted(Step::Change::Kind::make, folder), [&] { _files.make(folder); });
   }
   std::span<const Moved> moved() const override {
     return _files.moved();
@@ -165,6 +166,18 @@ private:
       }
     return &step->changes.emplace_back(
         Step::Change{.kind = kind, .path = path, .to = to});
+  }
+
+  // The port's call for the change noted last: one the port refused never happened, so
+  // the step forgets it, and undo has nothing of it to take back.
+  template <class Call> void made(const Step::Change *change, const Call &call) {
+    try {
+      call();
+    } catch (...) {
+      if (change)
+        _undo._step->changes.pop_back();
+      throw;
+    }
   }
 
   // A file's text, none for no file or a folder; one past kept_most is noted, so undo
