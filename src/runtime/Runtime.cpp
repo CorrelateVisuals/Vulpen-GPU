@@ -46,19 +46,20 @@ constexpr const char *restart_file = "restart.log";
 constexpr auto press_interval = std::chrono::milliseconds(500);
 constexpr float press_reach = 6.0f; // pixels, either way
 
-template <class T> T number(std::string_view flag, std::string_view text);
-
-// Width x height, as 1280x720.
+// Width x height, as 1280x720; a refusal names the whole of it.
 VkExtent2D size_of(std::string_view flag, std::string_view text) {
   const std::size_t by = text.find('x');
-  if (by == std::string_view::npos)
+  const std::optional<std::uint32_t> width = number_in<std::uint32_t>(text.substr(0, by));
+  const std::optional<std::uint32_t> height =
+      by == std::string_view::npos ? std::nullopt
+                                   : number_in<std::uint32_t>(text.substr(by + 1));
+  if (!width || !height)
     throw std::runtime_error(
         std::format("{} {} is no size: a width and a height, as 1280x720\n{}",
                     flag,
                     text,
                     usage));
-  return {number<std::uint32_t>(flag, text.substr(0, by)),
-          number<std::uint32_t>(flag, text.substr(by + 1))};
+  return {*width, *height};
 }
 
 template <class T> T number(std::string_view flag, std::string_view text) {
@@ -319,8 +320,11 @@ Runtime::~Runtime() {
     _engine->wait();
 }
 
+// A flag given twice is refused, as its first value would be read and dropped (A02); and
+// a flag's name is known before its value is taken, so a misspelt one is named as such.
 Runtime::Options Runtime::parse(std::span<char *const> arguments) {
   Options options{.fps = default_fps};
+  std::vector<std::string_view> given;
   for (std::size_t index = 1; index < arguments.size(); ++index) {
     const std::string_view argument = arguments[index];
     if (!argument.starts_with("--")) {
@@ -330,30 +334,42 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
         options.hosted.emplace_back(argument);
       continue;
     }
-    if (index + 1 == arguments.size())
-      throw std::runtime_error(std::format("{} needs a value\n{}", argument, usage));
-    const std::string_view value = arguments[++index];
+    if (std::ranges::find(given, argument) != given.end())
+      throw std::runtime_error(std::format("{} is given twice\n{}", argument, usage));
+    given.push_back(argument);
+    const auto value = [&] {
+      if (index + 1 == arguments.size())
+        throw std::runtime_error(std::format("{} needs a value\n{}", argument, usage));
+      return std::string_view(arguments[++index]);
+    };
     if (argument == "--frames") {
-      options.frames = number<std::uint64_t>(argument, value);
+      options.frames = number<std::uint64_t>(argument, value());
     } else if (argument == "--first-frame") {
-      options.first_frame = number<std::uint64_t>(argument, value);
+      options.first_frame = number<std::uint64_t>(argument, value());
     } else if (argument == "--fps") {
-      options.fps = number<std::uint32_t>(argument, value);
+      options.fps = number<std::uint32_t>(argument, value());
     } else if (argument == "--size") {
-      options.size = size_of(argument, value);
+      options.size = size_of(argument, value());
     } else if (argument == "--source") {
-      options.source = value;
+      options.source = value();
     } else if (argument == "--restart") {
-      options.restart = value;
+      options.restart = value();
     } else if (argument == "--log-file") {
-      options.log_file = value;
+      options.log_file = value();
     } else if (argument == "--log") {
-      const std::optional<Level> level = level_named(value);
+      const std::string_view named = value();
+      const std::optional<Level> level = level_named(named);
       if (!level)
-        throw std::runtime_error(std::format("--log {} is no level\n{}", value, usage));
+        throw std::runtime_error(std::format("--log {} is no level\n{}", named, usage));
       options.log = *level;
     } else {
-      throw std::runtime_error(std::format("unknown argument {}\n{}", argument, usage));
+      throw std::runtime_error(std::format(
+          "unknown argument {}{}\n{}",
+          argument,
+          argument.find('=') == std::string_view::npos
+              ? ""
+              : "; a value follows its flag after a blank, as --frames 2",
+          usage));
     }
   }
   return options;
