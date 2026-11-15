@@ -786,14 +786,23 @@ std::filesystem::path Manifest::root(const View &view) {
 Recipes::Recipes() = default;
 Recipes::~Recipes() = default;
 
-// The comments come from the file being replaced, read as a load reads it.
-void Manifest::save(const View &view) {
-  std::error_code missing;
-  if (!std::filesystem::exists(view.file, missing))
-    return Files::save(view.file, text(view, {}));
+// The comments come from the file being replaced, read as a load reads it. One that does
+// not load, as a file a person broke in an editor, has none to give, and the view built
+// in the session is no less worth keeping.
+std::vector<std::string> Manifest::save(const View &view) {
   Reader reader(view.file);
-  reader.read();
+  std::error_code missing;
+  try {
+    if (std::filesystem::exists(view.file, missing))
+      reader.read();
+  } catch (const std::exception &refused) {
+    Files::save(view.file, text(view, {}));
+    return {std::format("the comments of {} are dropped, as it does not load: {}",
+                        view.file.string(),
+                        refused.what())};
+  }
   Files::save(view.file, text(view, reader.notes()));
+  return {};
 }
 
 } // namespace VP

@@ -19,8 +19,9 @@ public:
   static View empty(const std::filesystem::path &file);
   // Writes the view over its file in the words load reads, through Files::save (RA04).
   // A comment a person wrote stays over the line it was written over, or at the end of
-  // the line it ended, while that line's section or word lives on.
-  static void save(const View &view);
+  // the line it ended, while that line's section or word lives on. Returns, for the log,
+  // that a file which no longer loads lost its comments, as the view is saved over it.
+  static std::vector<std::string> save(const View &view);
   // Each node's files as its folder holds them now (RV08), so a file put there is one of
   // them. Returns what changed since the view last listed them, for the log.
   static std::vector<std::string> refresh(View &view);

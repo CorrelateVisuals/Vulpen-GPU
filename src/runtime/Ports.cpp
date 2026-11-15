@@ -322,7 +322,8 @@ void Ports::listing_changed(const std::filesystem::path &path) {
 void Ports::save(const View &view, std::string_view file) {
   View moved = view;
   moved.file = absolute(file);
-  Manifest::save(moved);
+  for (const std::string &dropped : Manifest::save(moved))
+    _log.write(Level::warn, Tag::run, dropped);
 }
 
 void Ports::start(std::string_view program, std::span<const std::string> arguments) {
