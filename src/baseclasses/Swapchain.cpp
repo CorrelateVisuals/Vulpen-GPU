@@ -127,8 +127,10 @@ Swapchain::Swapchain(const Log &log, const Mechanics &mechanics, const Window &w
                   _present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "FIFO"));
 }
 
+// Unchecked, as Mechanics' own: a lost device was said by the frame that lost it, and a
+// throw out of a destructor would end the process before the log's last lines.
 Swapchain::~Swapchain() {
-  check(vkDeviceWaitIdle(_device), "vkDeviceWaitIdle");
+  vkDeviceWaitIdle(_device);
   release();
   vkDestroySwapchainKHR(_device, _swapchain, nullptr);
   vkDestroySemaphore(_device, _acquired, nullptr);

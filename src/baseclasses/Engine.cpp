@@ -181,8 +181,10 @@ std::string_view Engine::takes(std::string_view prefer) const {
   return _gpu->mechanics.takes(prefer);
 }
 
+// Unchecked, as Mechanics' own: a lost device was said by the frame that lost it, and a
+// throw out of a destructor would end the process before the log's last lines.
 Engine::~Engine() {
-  _gpu->mechanics.wait_idle();
+  vkDeviceWaitIdle(_gpu->mechanics.device());
 }
 
 const Resources &Engine::resources() const {
