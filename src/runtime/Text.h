@@ -9,6 +9,7 @@
 #include <string_view>
 #include <system_error>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 // The small text helpers the engine's files share, each written once (C02, C06): what
@@ -43,12 +44,14 @@ template <class T> std::optional<T> number_in(std::string_view text) {
   return value;
 }
 
-// Names one after another, as an error lists them, or words as the log keeps them.
+// Names one after another, as an error lists them, or words as the log keeps them; an
+// empty one too, as a blank line is one of a text's lines.
 template <class Names>
 std::string joined(const Names &names, std::string_view between = ", ") {
   std::string text;
+  bool first = true;
   for (const std::string_view name : names)
-    text.append(text.empty() ? "" : between).append(name);
+    text.append(std::exchange(first, false) ? "" : between).append(name);
   return text;
 }
 
