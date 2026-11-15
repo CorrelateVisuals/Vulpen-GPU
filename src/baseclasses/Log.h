@@ -46,6 +46,8 @@ enum class Tag { run, gpu, swp, nod, mem, mod, out };
 
 // A line as the log printed it after its time, mark first, and the level it was written
 // at, so a node can show the log as the terminal does.
+class Printed;
+
 struct Logged {
   Level level = Level::info;
   std::string text;
@@ -83,7 +85,8 @@ public:
     Level shown = Level::warn;
   };
   // Makes the node the speaker while it lives, and the one before it the speaker again
-  // after, as calls nest.
+  // after, as calls nest. A line printed and not ended goes out as the speaker changes,
+  // about the one who printed it, never about the next (V09).
   class Speaking {
   public:
     Speaking(const Log &log, const Speaker &speaker);
@@ -163,6 +166,10 @@ private:
   mutable std::size_t _count = 0;
   mutable bool _clears_row = false;
   mutable Speaker _speaker; // none, at the process level, outside a node's call
+  // The one holding std::cout and std::cerr while it lives, which the log borrows to end
+  // a speaker's lines as the speaker changes.
+  friend class Printed;
+  mutable const Printed *_printed = nullptr;
 };
 
 // What node code prints to std::cout and std::cerr, a line at a time, as the log's own
@@ -177,8 +184,12 @@ public:
   Printed(const Printed &) = delete;
   Printed &operator=(const Printed &) = delete;
 
+  // A line not ended, printed as if it were, as the log's speaker changes.
+  void end_lines() const;
+
 private:
   class Lines; // a stream buffer, in Log.cpp
+  const Log &_log;
   std::unique_ptr<Lines> _out;
   std::unique_ptr<Lines> _err;
 };

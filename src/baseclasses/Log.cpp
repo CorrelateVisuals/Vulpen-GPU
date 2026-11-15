@@ -95,10 +95,15 @@ void Log::write(Level level, Tag tag, std::string_view text) const {
     print(level, tag, {}, {}, text);
 }
 
-Log::Speaking::Speaking(const Log &log, const Speaker &speaker)
-    : _log(log), _before(std::exchange(log._speaker, speaker)) {}
+Log::Speaking::Speaking(const Log &log, const Speaker &speaker) : _log(log) {
+  if (log._printed)
+    log._printed->end_lines();
+  _before = std::exchange(log._speaker, speaker);
+}
 
 Log::Speaking::~Speaking() {
+  if (_log._printed)
+    _log._printed->end_lines();
   _log._speaker = _before;
 }
 
@@ -118,12 +123,16 @@ public:
   Lines(const Log &log, std::ostream &stream, bool error)
       : _log(log), _stream(stream), _error(error), _before(stream.rdbuf(this)) {}
   ~Lines() override {
-    if (!_line.empty())
-      _log.printed(_line, _error);
+    end();
     _stream.rdbuf(_before);
   }
   Lines(const Lines &) = delete;
   Lines &operator=(const Lines &) = delete;
+
+  void end() {
+    if (!_line.empty())
+      take('\n');
+  }
 
 protected:
   int_type overflow(int_type character) override {
@@ -155,10 +164,20 @@ private:
 };
 
 Printed::Printed(const Log &log)
-    : _out(std::make_unique<Lines>(log, std::cout, false)),
-      _err(std::make_unique<Lines>(log, std::cerr, true)) {}
+    : _log(log),
+      _out(std::make_unique<Lines>(log, std::cout, false)),
+      _err(std::make_unique<Lines>(log, std::cerr, true)) {
+  log._printed = this;
+}
 
-Printed::~Printed() = default;
+Printed::~Printed() {
+  _log._printed = nullptr;
+}
+
+void Printed::end_lines() const {
+  _out->end();
+  _err->end();
+}
 
 void Log::write(Level level,
                 Level shown,
