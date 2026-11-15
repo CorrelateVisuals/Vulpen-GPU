@@ -315,9 +315,16 @@ Runtime::Runtime(std::span<char *const> arguments, std::string_view build)
   _ports.listen(_commands);
 }
 
+// The views' buffers go before the engine, so the last frame must be done with them
+// first. A lost device is said again rather than thrown: a throw out of a destructor
+// would end the process before the log's last lines.
 Runtime::~Runtime() {
   if (_engine)
-    _engine->wait();
+    try {
+      _engine->wait();
+    } catch (const std::exception &failure) {
+      _log.write(Level::error, Tag::run, failure.what());
+    }
 }
 
 // A flag given twice is refused, as its first value would be read and dropped (A02); and
@@ -402,13 +409,13 @@ int Runtime::run() {
                                failure.what()));
       }
     loop();
+    // The last frame's passes may still read the buffers a rebuild would destroy.
+    _engine->wait();
+    prepare();
   } catch (const std::exception &failure) {
     _log.write(Level::error, Tag::run, failure.what());
     return 1;
   }
-  // The last frame's passes may still read the buffers a rebuild would destroy.
-  _engine->wait();
-  prepare();
   return ok() ? 0 : 1;
 }
 
