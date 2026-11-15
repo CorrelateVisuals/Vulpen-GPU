@@ -441,22 +441,33 @@ void node_set(View &view, Arguments arguments, const Around &around) {
 // A connection's errors name the connection, so it leaves the nodes' lines alone.
 // A connection named again, from the port it is from, takes the readers given beside its
 // own, so a reader joins one without the line naming the others; from another port, it
-// is refused as two connections of one name. Checked whole, as a new one is.
+// is refused as two connections of one name. Checked whole, as a new one is: taken out
+// for that, and put back where it was when refused, so the view is as it was.
 void connect_ports(View &view, Arguments arguments, const Around &around) {
   Connection connection{.name = std::string(arguments[0]),
                         .from = Edits::endpoint(arguments[1])};
-  if (const auto had = std::ranges::find(view.connections, connection.name, &Connection::name);
-      had != view.connections.end() && had->from.text() == connection.from.text()) {
+  const auto had =
+      std::ranges::find(view.connections, connection.name, &Connection::name);
+  const auto at = had - view.connections.begin();
+  std::optional<Connection> taken;
+  if (had != view.connections.end() && had->from.text() == connection.from.text()) {
     connection.to = had->to;
+    taken = std::move(*had);
     view.connections.erase(had);
   }
-  for (const std::string_view to : arguments.subspan(2))
-    if (Endpoint end = Edits::endpoint(to);
-        std::ranges::none_of(connection.to, [&](const Endpoint &given) {
-          return given.text() == end.text();
-        }))
-      connection.to.push_back(std::move(end));
-  Edits::connect(view, std::move(connection), around.beside);
+  try {
+    for (const std::string_view to : arguments.subspan(2))
+      if (Endpoint end = Edits::endpoint(to);
+          std::ranges::none_of(connection.to, [&](const Endpoint &given) {
+            return given.text() == end.text();
+          }))
+        connection.to.push_back(std::move(end));
+    Edits::connect(view, std::move(connection), around.beside);
+  } catch (const std::exception &) {
+    if (taken)
+      view.connections.insert(view.connections.begin() + at, std::move(*taken));
+    throw;
+  }
 }
 
 void disconnect(View &view, Arguments arguments, const Around &) {
