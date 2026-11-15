@@ -252,11 +252,18 @@ bool Schedule::check_counts(Bound &bound) const {
 }
 
 // A draw's shaders only read buffers: storing from them needs features beyond the
-// Vulkan floor (RVK01). So do draw stages that lack one, which will draw.
+// Vulkan floor (RVK01). So do draw stages that lack one, which will draw. A pass block
+// past what this GPU's uniform blocks hold would be read as each vendor happens to (C10).
 void Schedule::check_stages(Bound &bound) const {
   const Node &node = *bound.node;
   if (is_fragment(node))
     return;
+  if (const std::uint32_t most = _wiring.resources.max_uniform_buffer_range();
+      bound.block_size > most)
+    bound.errors.push_back(std::format("its pass block is {} bytes, past the {} bytes "
+                                       "this GPU's uniform blocks hold",
+                                       bound.block_size,
+                                       most));
   if (!holds_stage(node, compute_stage)) {
     for (const Field &field : bound.fields)
       if (field.buffer() && field.access != Access::read)

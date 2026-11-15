@@ -309,6 +309,12 @@ std::uint32_t Resources::max_compute_work_group_count() const {
   return properties.limits.maxComputeWorkGroupCount[0];
 }
 
+std::uint32_t Resources::max_uniform_buffer_range() const {
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(_physical_device, &properties);
+  return properties.limits.maxUniformBufferRange;
+}
+
 bool Resources::runs(VkShaderStageFlagBits stage) const {
   VkPhysicalDeviceFeatures features{};
   vkGetPhysicalDeviceFeatures(_physical_device, &features);

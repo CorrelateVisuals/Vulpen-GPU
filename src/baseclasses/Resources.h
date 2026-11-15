@@ -95,6 +95,8 @@ public:
   bool samples(VkFormat format, Fill fill = Fill::copy) const;
   // The most workgroups a dispatch runs along x on this GPU.
   std::uint32_t max_compute_work_group_count() const;
+  // The most bytes a uniform block holds on this GPU; Vulkan guarantees 16,384.
+  std::uint32_t max_uniform_buffer_range() const;
   // Whether a draw may run a shader of the stage: a geometry or a tessellation stage
   // needs a feature past the Vulkan floor, which the device enables where the GPU has it.
   bool runs(VkShaderStageFlagBits stage) const;
