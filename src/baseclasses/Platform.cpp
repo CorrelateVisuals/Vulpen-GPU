@@ -95,6 +95,9 @@ constexpr std::uint32_t continuation_mask = (1u << continuation_bits) - 1;
 // By the character's length in bytes: the largest it holds, and its first byte's mark.
 constexpr std::array<std::uint32_t, 3> length_ends{0x800, 0x10000, 0x110000};
 constexpr std::array<std::uint32_t, 3> first_marks{0xC0, 0xE0, 0xF0};
+// U+FFFD stands for a point past Unicode's last, which UTF-8 cannot write and only a
+// malformed string from an input method hands on.
+constexpr std::uint32_t replacement = 0xFFFD;
 
 std::size_t utf8_length(unsigned char first) {
   if (first < ascii_end)
@@ -111,6 +114,8 @@ std::size_t utf8_length(unsigned char first) {
 std::string utf8(std::uint32_t point) {
   if (point < ascii_end)
     return std::string(1, static_cast<char>(point));
+  if (point >= length_ends.back())
+    point = replacement;
   const auto end = std::ranges::find_if(
       length_ends, [&](std::uint32_t largest) { return point < largest; });
   const auto extra = static_cast<std::size_t>(end - length_ends.begin()) + 1;
