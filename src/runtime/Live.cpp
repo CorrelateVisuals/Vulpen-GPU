@@ -53,15 +53,17 @@ std::vector<std::filesystem::path> lines_of(const std::filesystem::path &file) {
 constexpr std::string_view glslang_error = "ERROR: ";
 constexpr std::string_view no_token = "'' : ";
 
-// The folder a line names a file in, the deepest, as a view may host one inside it;
-// npos for none.
+// The folder a line names its file in: the first a line names, as an error's words may
+// name another file after it, and of those named there the deepest, as a view may host
+// one inside it; npos for none.
 std::size_t folder_in(std::string_view line,
                       const std::vector<std::string> &folders,
                       std::string_view &folder) {
   std::size_t found = std::string_view::npos;
   for (const std::string &each : folders)
     if (const std::size_t at = line.find(each);
-        at != std::string_view::npos && each.size() > folder.size()) {
+        at != std::string_view::npos &&
+        (at < found || (at == found && each.size() > folder.size()))) {
       found = at;
       folder = each;
     }
