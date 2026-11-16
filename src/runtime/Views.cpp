@@ -40,7 +40,8 @@ bool project(const View &view) {
 
 // A project's files and folders, each by its path from the project's folder, a folder's
 // ending in /, but the hidden ones, as .vulpen/, where the parts keep what a run
-// rewrites as it goes; and apart, the files too large or unreadable to keep.
+// rewrites as it goes, and the links, which lead to what is none of its own; and apart,
+// the files too large or unreadable to keep.
 struct Kept {
   bool there = false; // the project's folder
   std::map<std::string, std::string, std::less<>> files;
@@ -57,6 +58,8 @@ void walk(FilePort &files,
       continue;
     std::string path = inside + name;
     std::error_code unread;
+    if (std::filesystem::is_symlink(folder / inside / name.substr(0, name.find('/')), unread))
+      continue;
     if (name.ends_with('/')) {
       walk(files, folder, path, kept);
       kept.folders.insert(std::move(path));
