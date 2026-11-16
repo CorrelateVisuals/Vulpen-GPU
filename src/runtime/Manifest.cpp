@@ -152,10 +152,10 @@ struct Note {
 using Notes = std::map<std::string, Note, std::less<>>;
 
 // A line's place: a section's header, or one word of it. A word that may repeat is told
-// apart by what it names: a param by its key, a to by its port.
+// apart by what it names: a param by its key, an image and a to by their port.
 std::string
 place(std::string_view section, std::string_view key = {}, std::string_view value = {}) {
-  if (key == "param")
+  if (key == "param" || key == "image")
     value = trim(value.substr(0, value.find('=')));
   else if (key != "to")
     value = {};
