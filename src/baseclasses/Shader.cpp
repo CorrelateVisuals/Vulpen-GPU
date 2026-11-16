@@ -155,8 +155,17 @@ void read(Module &module, std::uint32_t opcode, std::span<const std::uint32_t> o
       break;
     }
     case spirv::op_execution_mode:
-      if (at(operands, 1) == spirv::mode_local_size)
+      if (at(operands, 1) == spirv::mode_local_size) {
         module.workgroup_size = {at(operands, 2), at(operands, 3), at(operands, 4)};
+        // A dispatch's workgroups are its invocations divided by this size, so a damaged
+        // file's zero would end the process there.
+        if (std::ranges::find(module.workgroup_size, 0u) != module.workgroup_size.end())
+          throw std::runtime_error(std::format("its local size {} by {} by {} holds no "
+                                               "invocation",
+                                               module.workgroup_size[0],
+                                               module.workgroup_size[1],
+                                               module.workgroup_size[2]));
+      }
       break;
     case spirv::op_type_int:
     case spirv::op_type_float:
