@@ -83,13 +83,19 @@ Kept kept_of(FilePort &files, const View &view) {
   return kept;
 }
 
+// A file left out of what was kept, too large or unreadable then: nothing can put it
+// back, and it was there, so it is never one made since.
+bool left_out(const Kept &kept, std::string_view path) {
+  return std::ranges::find(kept.left, path) != kept.left.end();
+}
+
 // What differs from what was kept, sorted: a file changed, made or deleted since, and a
 // folder made or deleted since.
 std::vector<std::string> differences(const Kept &kept, const Kept &now) {
   std::vector<std::string> changed;
   for (const auto &[path, text] : now.files)
     if (const auto found = kept.files.find(path);
-        found == kept.files.end() || found->second != text)
+        found == kept.files.end() ? !left_out(kept, path) : found->second != text)
       changed.push_back(path);
   for (const auto &[path, text] : kept.files)
     if (!now.files.contains(path))
@@ -112,7 +118,7 @@ void put_back(FilePort &files, const std::filesystem::path &folder, const Kept &
   Kept now;
   walk(files, folder, {}, now);
   for (const auto &[path, text] : now.files)
-    if (!kept.files.contains(path))
+    if (!kept.files.contains(path) && !left_out(kept, path))
       files.remove((folder / path).string());
   for (auto made = now.folders.rbegin(); made != now.folders.rend(); ++made) {
     std::error_code gone;
