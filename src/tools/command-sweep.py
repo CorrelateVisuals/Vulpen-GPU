@@ -491,7 +491,7 @@ class Copy:
         # Not a save's temp file: a vulpen still running renames it away mid-clean, and
         # git stops at the name it listed.
         subprocess.run(["git", "clean", "-fdxq", "-e", "/out", "-e", "/projects/bf-*",
-                        "-e", "*.tmp"], cwd=self.tree, check=True)
+                        "-e", "*.vulpen-tmp"], cwd=self.tree, check=True)
         for folder in (self.tree / "projects").glob("bf*"):
             if folder.name not in SANDBOX or held(folder) != held(self.pristine /
                                                                   folder.name):
