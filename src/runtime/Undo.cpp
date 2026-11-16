@@ -145,14 +145,18 @@ private:
   }
 
   // The change, kept with the folders above its paths as they are now; null while no
-  // step records, and for a hidden file.
+  // step records, and for a hidden file. A folder made and a copy's or rename's new
+  // path are kept too, as not there before, so a later change of the step inside them
+  // never takes them for folders the line found.
   Step::Change *
   noted(Step::Change::Kind kind, std::string_view path, std::string_view to = {}) {
     Step *const step = _undo._step.get();
     if (!step || hidden(path) || (!to.empty() && hidden(to)))
       return nullptr;
     for (const std::string_view at : {path, to})
-      for (std::filesystem::path folder = std::filesystem::path(at).parent_path();
+      for (std::filesystem::path folder = at == to || kind == Step::Change::Kind::make
+                                              ? std::filesystem::path(at)
+                                              : std::filesystem::path(at).parent_path();
            !at.empty() && !folder.empty();
            folder = folder.parent_path()) {
         if (std::ranges::find(step->folders, folder, &Step::Folder::path) !=
