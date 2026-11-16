@@ -278,12 +278,15 @@ Live::Build Live::poll() {
         continue;
       const std::string name = target.substr(view_target.size());
       const auto view = std::ranges::find(scan.views, name, &Scan::View::name);
-      if (view != scan.views.end() && moved)
+      if (view == scan.views.end())
+        continue;
+      scan.failed.push_back(name);
+      if (moved)
         view->built_from = std::filesystem::file_time_type::min();
-      else if (view != scan.views.end())
-        scan.failed.push_back(name);
     }
-    build = scan.failed.empty() ? Build::succeeded : Build::failed;
+    build = scan.failed.empty() ? Build::succeeded
+            : moved             ? Build::unsettled
+                                : Build::failed;
   }
   if (build == Build::none && now >= scan.next_scan && !scan.builder.running()) {
     scan.next_scan = now + scan_interval;

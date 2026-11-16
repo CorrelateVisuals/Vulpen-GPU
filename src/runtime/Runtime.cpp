@@ -559,7 +559,8 @@ void Runtime::loop() {
 }
 
 void Runtime::watch() {
-  switch (_live->poll()) {
+  const Live::Build build = _live->poll();
+  switch (build) {
     case Live::Build::started:
       _log.write(
           Level::debug, Tag::mod, "a file changed; building the modules and shaders");
@@ -572,8 +573,14 @@ void Runtime::watch() {
                              _live->errors()));
       _log.write(Level::debug, Tag::mod, "live: the whole build said\n" + _live->said());
       [[fallthrough]];
+    case Live::Build::unsettled:
     case Live::Build::succeeded:
-      _modules.builds_ended(_live->built(), _live->failed());
+      // A view whose build met files still changing keeps its modules, as a failed one
+      // does, till it builds again once they settle; not marked failed, its nodes wait
+      // for that build quietly.
+      _modules.builds_ended(_live->built(),
+                            build == Live::Build::failed ? _live->failed()
+                                                         : std::vector<std::string>());
       // Each module would refuse to load, and every node with C++ would drop out.
       if (!Modules::builds_loadable()) {
         _log.write(Level::warn,

@@ -24,7 +24,7 @@ class Log;
 // a time, so a view that fails to build keeps running as it was and holds back no other.
 class Live {
 public:
-  enum class Build { none, started, succeeded, failed };
+  enum class Build { none, started, succeeded, failed, unsettled };
   // A view it builds: the name the build tree mirrors it by, the library's for the
   // recipes, as src/runtime/cmake/nodes.cmake names its target, and the folder whose
   // saves build it.
@@ -39,7 +39,9 @@ public:
   // Once a frame. A change must be seen twice, so a file still being written never
   // builds; a view first watched after the start, as a project loaded, builds at once,
   // as no build may have made it yet: run.sh builds only the projects it opens. Failed
-  // when any view failed to build.
+  // when any view failed to build; unsettled when it failed while files changed under the
+  // views, as a file gone mid-build fails one, so those views build again once the files
+  // settle, and only then is their failure said.
   Build poll();
   // The views the last build failed on, by name; the others built.
   const std::vector<std::string> &failed() const;
