@@ -208,8 +208,17 @@ public:
   }
 
 private:
+  // Its shaders named but not read, as when one failed to load, which the node's error
+  // says: what they hold is unknown, so no port is said to be missing from them, as that
+  // would ask for a change to code that may be right (A02).
+  bool shaders_unread() const {
+    return !_bound.shaders_named.empty() && !_bound.loaded();
+  }
+
   std::uint32_t value_offset(std::string_view name, std::string_view type) override {
     const Field *const field = _bound.field(name);
+    if (!field && shaders_unread())
+      return 0;
     if (!field || field->buffer()) {
       _bound.errors.push_back(std::format(
           "the operator sets {}, which the shader's pass block does not hold as a value",
@@ -230,11 +239,11 @@ private:
 
   std::uint32_t readback_index(std::string_view name, const Element &element) override {
     const Field *const field = _bound.field(name);
-    if (!field || !field->buffer())
+    if (field && field->buffer())
+      check_element(*field, "reads", element);
+    else if (field || !shaders_unread())
       _bound.errors.push_back(std::format(
           "the operator reads back {}, which is not a buffer of its shader", name));
-    else
-      check_element(*field, "reads", element);
     _bound.readbacks.emplace_back(name);
     return static_cast<std::uint32_t>(_bound.readbacks.size() - 1);
   }
@@ -247,7 +256,7 @@ private:
                              std::uint32_t count) override {
     const Field *const field = _bound.field(name);
     Field written = element_field(name, element);
-    if (!field && count == 0)
+    if (!field && count == 0 && !shaders_unread())
       _bound.errors.push_back(
           std::format("the operator writes {}, which no shader of its node holds; give "
                       "it room, node.upload<T>(\"{}\", count), for a connection to take "
