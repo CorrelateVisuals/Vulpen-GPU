@@ -268,6 +268,18 @@ std::string line_of(std::string_view line, const std::vector<std::string> &hoste
   return std::format("{} (in {})", line.substr(colon + mark.size()), line.substr(0, colon));
 }
 
+// The path moved along with from to to: the same path under to; none when it is neither
+// from nor inside it.
+std::optional<std::filesystem::path> moved(const std::filesystem::path &path,
+                                           const std::filesystem::path &from,
+                                           const std::filesystem::path &to) {
+  const std::filesystem::path relative =
+      path.lexically_normal().lexically_relative(from.lexically_normal());
+  if (relative.empty() || *relative.begin() == "..")
+    return std::nullopt;
+  return relative == "." ? to : to / relative;
+}
+
 // The file, or the first path in the folder, that own refuses; a hidden one is a
 // part's, as no step changes the parts' files.
 template <class Own>
@@ -327,53 +339,89 @@ void Undo::take_back(Call &call, bool again) {
   (again ? _done : _undone).push_back(std::move(step));
 }
 
-// Each path as the step left it, for undo, or found it, for redo, by its last change or
-// its first, so neither writes over a change made since, by a line or another program:
-// a rename, as remove's into the trash, goes back only while its new path is there and
-// its old one free again.
+// Each path as the step left it, for undo, or found it, for redo, so neither writes over
+// a change made since, by a line or another program: a rename, as remove's into the
+// trash, goes back only while its new path is there and its old one free again. Each
+// change is looked for where the step's own changes between it and now leave it, as
+// undo takes them back last first and redo makes them again first first: a file saved
+// and then renamed in one line is looked for under its new name.
 void Undo::check(const Step &step, bool again) {
   using ChangeKind = Step::Change::Kind;
-  for (const Step::Change &change : step.changes) {
+  // Where the path of the change at the index is now, past the step's renames between
+  // them: the later ones, for undo, or the earlier ones taken back, for redo. None when
+  // a change between saved, removed, made, copied or moved something there, which undo
+  // or redo takes back or makes before it reaches this one, so that one's check stands
+  // for this.
+  const auto now_at = [&](std::size_t index,
+                          std::filesystem::path path) -> std::optional<std::filesystem::path> {
+    const auto past = [&](const Step::Change &other) {
+      if (other.kind == ChangeKind::rename) {
+        const std::filesystem::path &from = again ? other.to : other.path;
+        const std::filesystem::path &to = again ? other.path : other.to;
+        if (const std::optional<std::filesystem::path> moved_to = moved(path, from, to)) {
+          path = *moved_to;
+          return true;
+        }
+        return !moved(path, to, to);
+      }
+      if (other.kind == ChangeKind::copy)
+        return !moved(path, other.to, other.to);
+      return other.path.lexically_normal() != path.lexically_normal();
+    };
+    if (again) {
+      for (std::size_t at = index; at-- > 0;)
+        if (!past(step.changes[at]))
+          return std::nullopt;
+    } else {
+      for (std::size_t at = index + 1; at < step.changes.size(); ++at)
+        if (!past(step.changes[at]))
+          return std::nullopt;
+    }
+    return path;
+  };
+  for (std::size_t index = 0; index < step.changes.size(); ++index) {
+    const Step::Change &change = step.changes[index];
     if (change.kind != ChangeKind::rename)
       continue;
-    const std::filesystem::path &from = again ? change.path : change.to;
-    const std::filesystem::path &to = again ? change.to : change.path;
-    if (!there(from) || there(to))
+    const std::optional<std::filesystem::path> from =
+        now_at(index, again ? change.path : change.to);
+    const std::optional<std::filesystem::path> to =
+        now_at(index, again ? change.to : change.path);
+    const bool taken = to && there(*to);
+    if (taken || (from && !there(*from)))
       throw std::runtime_error(
           std::format("{} {} since the line {}, which {} would {}; nothing changed",
-                      there(to) ? to.string() : from.string(),
-                      there(to) ? "is there again" : "is gone",
+                      taken ? to->string() : from->string(),
+                      taken ? "is there again" : "is gone",
                       line_of(step.line, step.hosted),
                       again ? "redo" : "undo",
-                      there(to) ? "write over" : "need"));
+                      taken ? "write over" : "need"));
   }
-  std::vector<std::filesystem::path> seen;
   const auto holds = [&](const std::filesystem::path &file, std::string_view text) {
     std::error_code unread;
     return std::filesystem::is_regular_file(file, unread) &&
            static_cast<FilePort &>(*_recorded).read(file.string()) == text;
   };
-  const auto look = [&](const Step::Change &change) {
+  const auto look = [&](std::size_t index) {
+    const Step::Change &change = step.changes[index];
     if ((change.kind != ChangeKind::save && change.kind != ChangeKind::remove) ||
-        std::ranges::find(seen, change.path) != seen.end() ||
         kept_by_view(step, change.path, again))
       return;
-    seen.push_back(change.path);
+    const std::optional<std::filesystem::path> at = now_at(index, change.path);
+    if (!at)
+      return;
     const bool saved = change.kind == ChangeKind::save;
-    const bool as_left = saved ? holds(change.path, change.after) : !there(change.path);
-    const bool as_found =
-        change.before ? holds(change.path, *change.before) : there(change.path) != saved;
+    const bool as_left = saved ? holds(*at, change.after) : !there(*at);
+    const bool as_found = change.before ? holds(*at, *change.before) : there(*at) != saved;
     if (again ? !as_found : !as_left)
       throw std::runtime_error(std::format("{} changed since the line {}, which {} would "
                                            "lose; nothing changed",
-                                           change.path.string(),
+                                           at->string(),
                                            line_of(step.line, step.hosted),
                                            again ? "redo" : "undo"));
   };
-  if (again)
-    std::ranges::for_each(step.changes, look);
-  else
-    std::ranges::for_each(step.changes | std::views::reverse, look);
+  for (std::size_t index = 0; index < step.changes.size(); ++index)
+    look(again ? index : step.changes.size() - 1 - index);
 }
 
 // Undo removes a copy or a folder made whole, so what it holds that neither the change
