@@ -86,16 +86,18 @@ constexpr std::uint32_t frame_rects = 4;
 // The frame round the panel holding the node in focus: two pixels wide, inside the panel,
 // so it never covers the seams between panels, in the text's color faded halfway toward
 // the ground, a light grey, so it marks the panel without drawing the eye from what the
-// panel shows, nor reading as a thing selected, which the accent marks.
+// panel shows, nor reading as a thing selected, which the accent marks. Every other panel
+// shown has the same frame in the border's color, near the panel's own, so where each
+// panel ends shows too, quieter than the one in focus.
 constexpr std::int32_t focus_ring = 2;
 constexpr float focus_fade = 0.5f;
-// A divider, then the focus's frame, then a drop's.
-constexpr std::uint32_t rect_room = 1 + 2 * frame_rects;
 // A panel's close mark, in the cells at the end of its tab strip that its tabs leave
 // free, as the panel component's list param end does, which a press hides the panel by.
 constexpr std::uint32_t close_cells = 2;
 constexpr std::string_view close_text = "x";
 constexpr std::uint32_t close_room = 32; // panels seated whose marks show, at most
+// A divider, then a frame round each panel shown, as many as show marks, then a drop's.
+constexpr std::uint32_t rect_room = 1 + (close_room + 1) * frame_rects;
 
 // A panel a dock seats, where it shows, and its tab strip, which a drag takes it by, and
 // where the view lists its bar, which orders the buttons.
@@ -442,7 +444,17 @@ class Docking final : public VP::Operator {
     std::uint32_t written = 0;
     if (_divider && _divider->seam.extent.x != 0)
       rects[written++] = divider_at(cell);
-    if (const std::optional<std::size_t> framed = focused(frame.view()))
+    const std::optional<std::size_t> framed = focused(frame.view());
+    std::uint32_t ringed = 0;
+    for (std::size_t at = 0; at < _seated.size() && ringed + 1 < close_room; ++at) {
+      const VP_VIEW::Rect &area = _seated[at].area;
+      if (at == framed || area.extent.x == 0 || area.extent.y == 0)
+        continue;
+      ++ringed;
+      written += ring_round(
+          rects.subspan(written), area, focus_ring, {.role = VP_VIEW::role("border")});
+    }
+    if (framed)
       written += ring_round(rects.subspan(written),
                             _seated[*framed].area,
                             focus_ring,
