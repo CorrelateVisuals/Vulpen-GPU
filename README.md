@@ -57,7 +57,7 @@
 
 ## Quick start
 
-On Linux:
+With the [prerequisites](#prerequisites) below installed, on Linux:
 
 ```bash
 git clone https://github.com/CorrelateVisuals/Vulpen-GPU.git Vulpen
@@ -78,6 +78,7 @@ In the ide's terminal, type `view load ray-cubes`, then double-click a file in t
 > [!NOTE]
 > Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address.
 
+<a id="prerequisites"></a>
 <details>
 <summary><b>Prerequisites</b></summary>
 
@@ -90,7 +91,15 @@ sudo apt install build-essential cmake python3 libvulkan-dev glslang-tools spirv
                  libwayland-dev libxkbcommon-dev xorg-dev
 ```
 
-Older releases, such as Ubuntu 22.04 and Debian 12, need a newer GCC beside their own (Ubuntu 22.04 a newer CMake too), named when a build folder is first configured: `CC=gcc-14 CXX=g++-14 ./run.sh`.
+`sudo apt install vulkan-validationlayers` adds Vulkan's validation, which a debug build turns on when it finds it.
+
+Older releases, such as Ubuntu 22.04 and Debian 12, need a newer GCC beside their own (Ubuntu 22.04 a newer CMake too), named when a build folder is first configured: `CC=gcc-13 CXX=g++-13 ./run.sh`. On Ubuntu 22.04, GCC 13 comes from the toolchain PPA, and CMake from pip, into `~/.local/bin`, which must come before `/usr/bin` on the `PATH`:
+
+```bash
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt install g++-13
+pip3 install --user cmake    # then cmake --version names 3.24 or newer
+```
 
 **Windows:** Visual Studio 2022, or its Build Tools, with the C++ workload, and the LunarG Vulkan SDK; CMake and Python on the `PATH`. If PowerShell refuses to run `run.ps1`, allow local scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 

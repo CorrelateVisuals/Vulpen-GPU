@@ -112,8 +112,14 @@ try {
     # fails, the cache and every output dropped, as a tree an older or failed build left
     # can fail where a clean one builds; the first failure goes to the log too.
     function Build($target, $clean) {
+        # What --fresh drops, dropped by hand, as run.sh's: a CMake before 3.24 refuses
+        # --fresh, and its retry would then name the flag in place of the version asked for.
+        if ($clean) {
+            Remove-Item -LiteralPath (Join-Path $built 'CMakeCache.txt'), (Join-Path $built 'CMakeFiles') `
+                -Recurse -Force -ErrorAction SilentlyContinue
+        }
         & {
-            if ($target -eq 'vulpen') { cmake --preset $preset @(if ($clean) { '--fresh' }) }
+            if ($target -eq 'vulpen') { cmake --preset $preset }
             if ($LASTEXITCODE -eq 0) {
                 cmake --build --preset $preset --parallel --target $target @(if ($clean) { '--clean-first' })
             }
