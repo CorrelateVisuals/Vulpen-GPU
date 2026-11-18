@@ -15,7 +15,9 @@ $options = '--log', '--log-file', '--frames', '--fps', '--first-frame', '--sourc
 # with, and --ide for the cli's and the ide's, which vulpen then hosts beside the
 # projects, as it hosts each view named after the first. vulpen's options come before a
 # project, so one named like an option runs by its path; each takes a value, and any
-# other word is a view.
+# other word is a view. A view.vlp outside projects\, as a project in a repository of its
+# own, builds as one there: its folder goes into the build tree's mounted-views, which the
+# build reads (CMakeLists.txt), unless a project in projects\ has its name.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
 # level its newest line, as progress while it builds, and all of it when it fails (C09),
 # so a long build says what it builds and a quick one leaves nothing behind. Each run's
@@ -25,8 +27,17 @@ $options = '--log', '--log-file', '--frames', '--fps', '--first-frame', '--sourc
 function App($flag) {
     @(Join-Path $recipes 'cli\view.vlp') + @(if ($flag -eq '--ide') { Join-Path $recipes 'ide\view.vlp' })
 }
+# The view.vlp of the project of that name in projects\, or in a folder there that groups
+# projects, as triangles\ does; none when no project has it.
+function ProjectOf($name) {
+    @(Join-Path $projects "$name\view.vlp"
+      Get-ChildItem -LiteralPath $projects -Directory -ErrorAction SilentlyContinue |
+          ForEach-Object { Join-Path $_.FullName "$name\view.vlp" }) |
+        Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
 $arguments = @()
 $opened = @() # the targets of the projects it opens, as nodes.cmake names them
+$mounted = @() # the folders of those outside projects\
 $named = $false
 $verbose = $false
 $log = $null
@@ -39,12 +50,8 @@ for ($i = 0; $i -lt $rest.Count; $i++) {
         $arguments += $rest[$i]
         if ($i + 1 -lt $rest.Count) { $i++; $arguments += $rest[$i] }
     } elseif ($rest[$i] -like '--*') {
-        # In projects\, or in a folder there that groups projects, as triangles\ does.
         $name = $rest[$i] -replace '^--'
-        $project = @(Join-Path $projects "$name\view.vlp"
-                     Get-ChildItem -LiteralPath $projects -Directory -ErrorAction SilentlyContinue |
-                         ForEach-Object { Join-Path $_.FullName "$name\view.vlp" }) |
-            Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+        $project = ProjectOf $name
         # vulpen names an option it does not know.
         if ($project) {
             $arguments += $project; $named = $true; $opened += "vulpen_view_$name"
@@ -55,6 +62,11 @@ for ($i = 0; $i -lt $rest.Count; $i++) {
         $above = Split-Path -Parent $folder
         if ($above -eq $projects -or ((Split-Path -Parent $above) -eq $projects -and
                 -not (Test-Path -LiteralPath (Join-Path $above 'view.vlp')))) {
+            $opened += "vulpen_view_$(Split-Path -Leaf $folder)"
+        } elseif ((Test-Path -LiteralPath (Join-Path $folder 'view.vlp')) -and
+                  -not $folder.StartsWith((Join-Path $PSScriptRoot 'src\')) -and
+                  -not (ProjectOf (Split-Path -Leaf $folder))) {
+            $mounted += $folder.Replace('\', '/')
             $opened += "vulpen_view_$(Split-Path -Leaf $folder)"
         }
     }
@@ -81,6 +93,12 @@ if ($folder) { New-Item -ItemType Directory -Force -Path $folder | Out-Null }
 # every project's nodes, so its target builds them all.
 $built = Join-Path $PSScriptRoot "out\build\$preset"
 New-Item -ItemType Directory -Force -Path $built | Out-Null
+# Before the build, which reads them as it configures.
+$mounts = Join-Path $built 'mounted-views'
+foreach ($mount in $mounted) {
+    $lines = @(if (Test-Path -LiteralPath $mounts) { Get-Content -LiteralPath $mounts })
+    if ($mount -notin $lines) { Add-Content -LiteralPath $mounts -Value $mount -Encoding utf8 }
+}
 $lock = $null
 while (-not $lock) {
     try { $lock = [System.IO.File]::Open((Join-Path $built 'build.lock'), 'OpenOrCreate', 'ReadWrite', 'None') }

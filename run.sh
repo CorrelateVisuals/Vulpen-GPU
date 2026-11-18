@@ -17,7 +17,9 @@ projects=$root/projects
 # with, and --ide for the cli's and the ide's, which vulpen then hosts beside the
 # projects, as it hosts each view named after the first. vulpen's options come before a
 # project, so one named like an option runs by its path; each takes a value, and any
-# other word is a view.
+# other word is a view. A view.vlp outside projects/, as a project in a repository of its
+# own, builds as one there: its folder goes into the build tree's mounted-views, which the
+# build reads (CMakeLists.txt), unless a project in projects/ has its name.
 # vulpen's --log sets how much the build says too: all of it at debug, and at any other
 # level its newest line, in place while it builds on a terminal, and all of it when it
 # fails (C09), so a long build says what it builds and a quick one leaves nothing behind.
@@ -25,8 +27,19 @@ projects=$root/projects
 # newest 20 kept, so a run on another machine leaves behind what went wrong, a failed
 # build's output with it; --log-file names another file, and that one alone is written.
 app() { views=("$recipes/cli/view.vlp"); [[ $1 == --cli ]] || views+=("$recipes/ide/view.vlp"); }
+# The project of that name in projects/, or in a folder there that groups projects, as
+# triangles/ does: its view.vlp in project, and whether there is one.
+project_of() {
+  project=
+  local found
+  for found in "$projects/$1/view.vlp" "$projects"/*/"$1"/view.vlp; do
+    [[ -f $found ]] && { project=$found; return 0; }
+  done
+  return 1
+}
 arguments=()
 opened=() # the targets of the projects it opens, as nodes.cmake names them
+mounted=() # the folders of those outside projects/
 named=false
 verbose=false
 log=
@@ -39,12 +52,7 @@ while (($#)); do
       arguments+=("${@:1:2}")
       shift $(($# > 1 ? 2 : 1)) ;;
     --*)
-      # In projects/, or in a folder there that groups projects, as triangles/ does.
-      project=
-      for found in "$projects/${1#--}/view.vlp" "$projects"/*/"${1#--}"/view.vlp; do
-        [[ -f $found ]] && { project=$found; break; }
-      done
-      if [[ -n $project ]]; then
+      if project_of "${1#--}"; then
         arguments+=("$project"); named=true
         opened+=("vulpen_view_${1#--}")
       else
@@ -56,6 +64,9 @@ while (($#)); do
       folder=$(cd "$(dirname -- "$1")" 2>/dev/null && pwd) || folder=
       above=${folder%/*}
       if [[ $above == "$projects" || (${above%/*} == "$projects" && ! -f $above/view.vlp) ]]; then
+        opened+=("vulpen_view_${folder##*/}")
+      elif [[ -f $folder/view.vlp && $folder != "$root"/src/* ]] && ! project_of "${folder##*/}"; then
+        mounted+=("$folder")
         opened+=("vulpen_view_${folder##*/}")
       fi
       shift ;;
@@ -69,6 +80,12 @@ if [[ -z $log ]]; then
   arguments+=(--log-file "$log")
 fi
 mkdir -p -- "$(dirname -- "$log")"
+# Before the build, which reads them as it configures.
+mounts=$root/out/build/$preset/mounted-views
+for mount in "${mounted[@]}"; do
+  mkdir -p -- "${mounts%/*}" && touch -- "$mounts"
+  grep -qxF -- "$mount" "$mounts" || printf '%s\n' "$mount" >>"$mounts"
+done
 
 # CMake reads the presets from the current folder; vulpen itself runs from the
 # caller's, since nothing in it may depend on the working directory. One build at a time

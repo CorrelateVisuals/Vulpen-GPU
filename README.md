@@ -148,6 +148,7 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 | `./run.sh --life` | `.\run.ps1 --life` | Conway's Game of Life, its cells stepped on the GPU; `engine seed` sows them anew |
 | `./run.sh --ray-cubes` | `.\run.ps1 --ray-cubes` | mirror cubes ray traced in compute shaders, three bounces deep: the project in the pictures above |
 | `./run.sh --wave --log info` | `.\run.ps1 --wave --log info` | headless compute: `wave` fills a buffer and `probe` prints it |
+| `./run.sh ../game/view.vlp` | `.\run.ps1 ..\game\view.vlp` | a project outside `projects/`, as one in a repository of its own: the build compiles it as one in `projects/` from then on |
 | `./run.sh --release …` | `.\run.ps1 --release …` | the `release` preset, in place of `debug` |
 | `cmake --build --preset debug` | `cmake --build --preset debug` | builds everything the tests run, where `./run.sh` builds vulpen and the projects it opens |
 | `ctest --preset debug` | `ctest --preset debug` | the tests, after that build; also `release` and `gpu-validation` (on a GPU, as lavapipe cannot run it), and on Linux `asan` and `tsan` |

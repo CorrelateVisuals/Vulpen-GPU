@@ -61,7 +61,11 @@ def path_of(key: str) -> Path:
 
 
 def ours(file: Path) -> bool:
-    return SOURCE in file.parents or PROJECTS in file.parents
+    """src/'s, a project's, or the view's --view names, as one outside projects/ that
+    run.sh mounts, whose node code then keeps the node rule as a project's does."""
+    view = view_folder()
+    return (SOURCE in file.parents or PROJECTS in file.parents
+            or view is not None and (file == view or view in file.parents))
 
 
 def node_root(file: Path) -> Path | None:

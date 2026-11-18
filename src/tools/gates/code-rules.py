@@ -92,8 +92,12 @@ def citations(name: str, text: str, ids: set[str]) -> list[str]:
 
 
 def name_of(file: Path) -> str:
-    """From src/, as the platform files are named, or a project's from the top."""
-    return file.relative_to(SOURCE if SOURCE in file.parents else ROOT).as_posix()
+    """From src/, as the platform files are named, a project's from the top, and one
+    outside the tree, as a project run.sh mounts, whole."""
+    for top in (SOURCE, ROOT):
+        if top in file.parents:
+            return file.relative_to(top).as_posix()
+    return file.as_posix()
 
 
 def problems(file: Path) -> list[str]:

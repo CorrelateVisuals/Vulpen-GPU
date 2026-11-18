@@ -228,6 +228,27 @@ if(VULPEN_LIVE)
   vulpen_view(${PROJECT_SOURCE_DIR}/src/tools/tests/mistakes)
 endif()
 vulpen_recipes(${PROJECT_SOURCE_DIR}/src/runtime/recipes)
+# A project outside projects/, as one in a repository of its own, builds as one in it
+# once run.sh or run.ps1 starts it: they write its folder into mounted-views, a folder a
+# line, in the build tree, which git never sees, and it builds from then on while the
+# folder holds a view.vlp; deleting its line takes it out. One named like a view the
+# build has already is not built, as the tree holds one view of each name (A02).
+set(mounted ${CMAKE_BINARY_DIR}/mounted-views)
+if(NOT EXISTS ${mounted})
+  file(WRITE ${mounted} "")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${mounted})
+file(STRINGS ${mounted} mounts)
+foreach(view IN LISTS mounts)
+  file(TO_CMAKE_PATH "${view}" view)
+  get_filename_component(name ${view} NAME)
+  get_property(taken GLOBAL PROPERTY vulpen_view_${name})
+  if(taken)
+    message(WARNING "${view} is not built: ${taken} is a view named ${name} too")
+  elseif(EXISTS ${view}/view.vlp)
+    vulpen_view(${view})
+  endif()
+endforeach()
 vulpen_link_modules(${generated}/linked-modules.h)
 vulpen_list_views()
 
