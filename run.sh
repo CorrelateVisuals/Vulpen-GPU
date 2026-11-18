@@ -93,7 +93,9 @@ build() (
   if [[ ${2:-} == clean ]]; then
     mapfile -t fresh < <(sed -nE 's/^CMAKE_(C|CXX)_COMPILER:[A-Z]*=(.+)/-DCMAKE_\1_COMPILER=\2/p' \
                            "out/build/$preset/CMakeCache.txt" 2>/dev/null)
-    fresh+=(--fresh)
+    # What --fresh drops, dropped by hand: a CMake before 3.24 refuses --fresh, and its
+    # retry would then name the flag in place of the version CMakeLists.txt asks for.
+    rm -rf "out/build/$preset/CMakeCache.txt" "out/build/$preset/CMakeFiles"
   fi
   if [[ $1 == vulpen ]]; then cmake --preset "$preset" "${fresh[@]}" || exit; fi
   cmake --build --preset "$preset" --parallel --target "$1" ${2:+--clean-first}
