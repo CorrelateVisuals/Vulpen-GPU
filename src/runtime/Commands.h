@@ -153,14 +153,19 @@ public:
   Commands &operator=(const Commands &) = delete;
 
   // usage: the command's words as a person types them. Throws naming the mistake, so a
-  // command without its usage and help never registers (A02). view: the view whose node
-  // registers it, by its name, which may hold a command another view holds too, as two
-  // projects' nodes of one name; none for the engine's own, which every view shares.
+  // command without its usage and help never registers (A02). view: the project whose
+  // node registers it, by its name, which may hold a command another project holds too,
+  // as two projects' nodes of one name; none for the engine's own and an app's node's,
+  // which every view shares. by_node: a node's, an app's or a project's, so a project's
+  // may hold one an app's node holds, as a game using the library's font part and the
+  // ide's font both register zoom in: a line addressing that project reaches its own,
+  // and any other line the app's. The engine's, as undo, no node may hold (A02).
   Command add(std::string_view usage,
               std::string_view help,
               CommandHandler &handler,
               Primitive primitive = Primitive::no,
-              std::optional<std::string_view> view = std::nullopt);
+              std::optional<std::string_view> view = std::nullopt,
+              bool by_node = false);
   // Before the command's handler goes, so no run reaches it after.
   void remove(Command command);
   // A line from outside the port, in a group of its own; returns what its command

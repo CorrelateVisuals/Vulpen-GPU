@@ -174,7 +174,8 @@ public:
           *_bound.op,
           Primitive::no,
           _schedule._project ? std::optional<std::string_view>(_schedule._name)
-                             : std::nullopt));
+                             : std::nullopt,
+          true));
     } catch (const std::runtime_error &failure) {
       _bound.errors.emplace_back(failure.what());
       return {};
@@ -456,7 +457,8 @@ private:
     return _schedule._wiring.commands;
   }
   InputPort &input() override {
-    return _schedule._wiring.ports.input(_schedule._name, _bound.node->name);
+    return _schedule._wiring.ports.input(
+        _schedule._name, _bound.node->name, _schedule._into == Into::window);
   }
   TerminalPort &terminal() override {
     _schedule._wiring.commands.reads_terminal(_schedule._name, _bound.node->name);
@@ -480,8 +482,10 @@ private:
   std::span<const NodePort> ports(std::string_view view) const override {
     return _schedule._wiring.commands.ports(view);
   }
-  void hand_pointer(std::string_view view) override {
-    _schedule._wiring.ports.hand_pointer(view, _schedule._name, _bound.node->name);
+  // Every view's window is as large as the frame, so the one handed's is this one's.
+  void hand_pointer(std::string_view view, glm::vec2 at, glm::vec2 size) override {
+    _schedule._wiring.ports.hand_pointer(
+        view, _schedule._name, _bound.node->name, {at, size, glm::vec2(_resolution)});
   }
   void unread(std::string_view port) override {
     _schedule._wiring.ports.unread(_schedule._name, _bound.node->name, port);

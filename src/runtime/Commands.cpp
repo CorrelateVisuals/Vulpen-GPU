@@ -354,7 +354,8 @@ struct Commands::Spec {
   Command command;
   CommandHandler *handler = nullptr;
   Primitive primitive = Primitive::no;
-  std::optional<std::string> view; // whose node registered it; none for the engine's
+  std::optional<std::string> view; // the project whose node registered it; else none
+  bool by_node = false;            // a node's, an app's or a project's, not the engine's
 
   // A <project> that names no folder names a project, which its command finds, so only a
   // path resolves, and the log names it from its own folder; a <path> or a <folder> so
@@ -440,7 +441,8 @@ Command Commands::add(std::string_view usage,
                       std::string_view help,
                       CommandHandler &handler,
                       Primitive primitive,
-                      std::optional<std::string_view> view) {
+                      std::optional<std::string_view> view,
+                      bool by_node) {
   std::vector<std::string_view> words = words_of(usage);
   if (words.empty() || help.empty())
     throw std::runtime_error(
@@ -467,9 +469,12 @@ Command Commands::add(std::string_view usage,
         usage,
         joined(kinds)));
   const std::span<const std::string_view> name(words.begin(), arguments);
+  // Two projects' nodes may share a name, and a project's an app's node's, but never the
+  // engine's, nor two of one view, nor two apps'.
   if (std::ranges::any_of(_specs, [&](const Spec &spec) {
         return std::ranges::equal(spec.name, name) &&
-               (!spec.view || !view || *spec.view == *view);
+               (!spec.by_node || !by_node || (!spec.view && !view) ||
+                (spec.view && view && *spec.view == *view));
       }))
     throw std::runtime_error(std::format("command `{}` registers twice", usage));
   std::vector<std::string_view> placeholders;
@@ -487,7 +492,8 @@ Command Commands::add(std::string_view usage,
                     .command = command,
                     .handler = &handler,
                     .primitive = primitive,
-                    .view = view ? std::optional<std::string>(*view) : std::nullopt});
+                    .view = view ? std::optional<std::string>(*view) : std::nullopt,
+                    .by_node = by_node});
   return command;
 }
 
@@ -933,8 +939,9 @@ void Commands::quit(bool force) {
 // The longest name the line starts with, so a name may begin another (`view`,
 // `view save`).
 // The longest a line's words start with: of those, the one of the view the line
-// addresses, else the only one; several views' with none of them addressed are refused,
-// naming the views, as a line runs one view's.
+// addresses, else the only one, or the app's beside projects' of its name; several
+// projects' with none of them addressed are refused, naming the views, as a line runs
+// one view's.
 const Commands::Spec *Commands::match(std::span<const std::string_view> words,
                                       std::string_view address) const {
   std::vector<const Spec *> found;
@@ -953,6 +960,12 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words,
   });
   if (own != found.end())
     return *own;
+  // An app's node's, which a project's of its name leaves to the lines addressing no
+  // project holding one.
+  const auto shared =
+      std::ranges::find_if(found, [](const Spec *spec) { return !spec->view; });
+  if (shared != found.end())
+    return *shared;
   // Both string_views, as a std::string the two would make dies with the line.
   std::vector<std::string_view> views;
   for (const Spec *const spec : found)
