@@ -36,9 +36,12 @@ must then hold the box moved. The last run hosts the
 triangle after the copy, which it keeps presented, and the copy hosts a view of its own,
 inner; it must read the .ini back without a word, select probe and inner as a script does,
 the graph following the copy presented, not the triangle hosted last, show both with info
-under their headers, and delete them with the key, so the .ini no longer places probe and
-inner is no longer hosted, with this file open in the editor, in Python's colors; ls on
-standard input must answer for the copy, as the terminal follows it too. Each must end
+under their headers, and delete them with the key a frame later, as the menus' remove
+force and view close, so probe's folder is gone and inner is no longer hosted, the .ini
+keeping where probe was, as a typed remove leaves it, and what the build made of the
+example's probe stays, as the copy only shares its name, with this file open in the
+editor, in Python's colors; ls on standard input must answer for the copy, as the
+terminal follows it too. Each must end
 with exit 0 and print no validation message or sanitizer report (RVK00, A03), so in the
 asan preset it checks the memory of the keys part, the terminal, the editor, modes, the
 graph, their panels, the dock, the images a hosted view's window renders into, the atlas
@@ -128,7 +131,6 @@ REMOVE_ITEM = (4 + CELL_WIDE * 2, 4 + CELL * 5 + CELL // 2)
 # A node left out as its view loads, or whose operator stops, names itself in the log.
 STOPPED = re.compile(r"\{!!!\} (?:\S+ )?node [\w.-]+: ")
 INFO = ['[node "probe"]', '[view "inner"]']  # info's headers for the boxes selected
-DELETED = "place probe"
 NESTED = '\n[view "inner"]\n'  # a view the copy hosts, empty until a save writes it
 CLOSED = "child inner: no longer hosted"
 FOLLOWED = re.compile(r"^  Wave\.comp$", re.M)  # a row ls answers for the copy
@@ -347,17 +349,19 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
     ]
 
 
-def deletes(wave: Path) -> list[str]:
-    return [
-        f"view load {wave}",
-        f"view load {TRIANGLE}",  # hosted last, presented as it comes
-        "view switch wave",  # so the panels follow the copy, not the view hosted last
-        f"open {Path(__file__).resolve()}",  # Python in color, a docstring over many rows
-        "wave: select probe inner",  # as a script selects, before the first frame
-        "wave: info",  # the node and the view selected, under their headers
-        "focus ide.graph.graph",
-        "input key down delete",  # probe goes, and the connection it reads; inner closes
-    ]
+def deletes(wave: Path) -> tuple[list[str], list[str]]:
+    """The lines that host the copy and select in it, and those that delete the selection
+    after. The graph takes a key before it lays out the frame's boxes, and every scripted
+    event reaches the first frame, which lays out the copy's first, so the key comes in a
+    script standard input sources then."""
+    return ([f"view load {wave}",
+             f"view load {TRIANGLE}",  # hosted last, presented as it comes
+             "view switch wave",  # so the panels follow the copy, not the view hosted last
+             f"open {Path(__file__).resolve()}",  # Python in color, a docstring over rows
+             "wave: select probe inner",  # as a script selects, before the first frame
+             "wave: info"],  # the node and the view selected, under their headers
+            ["focus ide.graph.graph",
+             "input key down delete"])  # probe goes, and the connection it reads; inner closes
 
 
 def numbers(text: str) -> dict[str, list[float]]:
@@ -469,16 +473,22 @@ def test() -> None:
         manifest = wave / "view.vlp"
         nested = manifest.read_text(encoding="utf-8") + NESTED
         manifest.write_text(nested, encoding="utf-8")
-        deleted = drive(folder, "graph read back", deletes(wave), typed="ls\n")
+        hosting, deleting = deletes(wave)
+        later = folder / "deletes.txt"
+        later.write_text("\n".join(deleting) + "\n", encoding="utf-8")
+        deleted = drive(folder, "graph read back", hosting, typed=f"ls\nsource {later}\n")
         if kept.name in said + deleted:
             sys.exit(f"ide: expected the graph to read its .ini without a word, got:\n"
                      f"{said}{deleted}")
-        placed = numbers(kept.read_text(encoding="utf-8"))
         if (any(header not in deleted.splitlines() for header in INFO)
-                or DELETED in placed or CLOSED not in deleted):
+                or (wave / "probe").exists() or CLOSED not in deleted):
             sys.exit(f"ide: expected info to show probe and inner selected under {INFO}, "
-                     f"and delete to take probe's place out of the .ini and close inner, "
-                     f"got:\n{deleted}\n{kept.read_text(encoding='utf-8')}")
+                     f"and delete to remove probe's folder and close inner, got:\n"
+                     f"{deleted}")
+        built = Path(sys.argv[1]).resolve().parent / "views" / "wave" / "probe"
+        if not built.is_dir() or not any(built.iterdir()):
+            sys.exit(f"ide: expected removing the copy's probe to leave what the build "
+                     f"made of the example's in {built}, got:\n{deleted}")
         if not FOLLOWED.search(deleted):
             sys.exit(f"ide: expected ls on standard input to answer for the copy "
                      f"presented, {FOLLOWED.pattern}, got:\n{deleted}")

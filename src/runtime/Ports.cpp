@@ -411,9 +411,17 @@ Ports::Ports(const Log &log, Recipes &recipes, std::filesystem::path mirror)
 // the mirror, as a view is named for its folder (V03) and a node's folder is its path
 // there (RV08), goes with the folder: one made again by that name then builds anew, rather
 // than binding the old one's code, whose problems are not its own (A02). The mirror's
-// folders stay, as the build made them as it configured and writes into them.
+// folders stay, as the build made them as it configured and writes into them. Only a
+// view the build reads, one in a folder its read-folders lists: a copy hosted from
+// elsewhere, as a test's, is named like the view it copies and binds what the build made
+// of that one, which its removes leave as it was.
 void Ports::unbuild(const std::filesystem::path &view,
                     const std::filesystem::path &folder) const {
+  const std::string read = Files::text(_mirror.parent_path() / VP_READ_FILE);
+  if (std::ranges::none_of(lines_in(read), [&](std::string_view line) {
+        return std::filesystem::path(line).lexically_normal() == view.parent_path();
+      }))
+    return;
   const std::filesystem::path built =
       (_mirror / view.filename() / folder.lexically_relative(view)).lexically_normal();
   std::error_code none;
