@@ -83,12 +83,15 @@ struct Document {
 };
 
 // Where the text goes in the area, in pixels, and how many rows and columns of it fit;
-// no rows when it has no room, or no font.
+// no rows when it has no room, or no font. Left of it, the rows' numbers: where their
+// column starts, and how many cells the widest takes.
 struct Grid {
   glm::ivec2 origin{};
   glm::ivec2 cell{};
   std::size_t rows = 0;
   std::size_t columns = 0;
+  glm::ivec2 numbers{};
+  std::size_t digits = 0;
 };
 
 // The text a person reads and edits, loaded and saved through the file port. It writes
@@ -97,7 +100,9 @@ struct Grid {
 // is only a front end on it.
 //
 // It holds the files open, shows one, and hands a panel a tab for each, whose press shows
-// it again; while one has changes, quit refuses, naming it. The file shown, changed on
+// it again; while one has changes, quit refuses, naming it. Each row shown has its number
+// left of it, muted but the caret's, so a line a log or a build error names is found by
+// eye, as jump finds a name. The file shown, changed on
 // disk by a line or another program, shows as it is there, unless it has changes. Several
 // text nodes are
 // several editors: each hands on, as editors, those a connection to its before brings and

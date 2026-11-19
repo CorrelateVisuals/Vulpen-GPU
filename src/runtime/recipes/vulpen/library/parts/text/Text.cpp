@@ -13,10 +13,13 @@
 #include <glm/common.hpp>
 
 #include <algorithm>
+#include <array>
+#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <limits>
 #include <map>
 #include <stdexcept>
 
@@ -24,7 +27,11 @@ namespace {
 
 constexpr std::int32_t margin = 4; // around the text, as the terminal's
 constexpr std::size_t row_room = 256; // rows shown at most; a taller area shows these
-constexpr std::uint32_t label_room = 16384; // a run of one role a Label, in rows shown
+// The rows' numbers' least cells, and the blank cells between them and the text.
+constexpr std::size_t least_digits = 3;
+constexpr std::size_t number_gap = 2;
+// A run of one role a Label, in rows shown, and a row's number.
+constexpr std::uint32_t label_room = 16384;
 constexpr std::uint32_t character_room = 131072; // the rows' characters together
 // The ground, a selection Rect a row shown, the caret and the scroll bars' thumbs.
 constexpr std::uint32_t rect_room = row_room + 4;
@@ -362,6 +369,38 @@ glm::uvec2 extent_of(const Grid &grid, std::size_t columns) {
   return glm::uvec2(static_cast<std::uint32_t>(columns), 1) * glm::uvec2(grid.cell);
 }
 
+// The cells the rows' numbers take: as many as the last row's, but at least least_digits,
+// so the text moves right only once a file grows past a thousand rows.
+std::size_t digits_of(std::size_t rows) {
+  std::size_t digits = 1;
+  for (; rows >= 10; rows /= 10)
+    ++digits;
+  return std::max(digits, least_digits);
+}
+
+// A row's number, by the right edge of the numbers' column, from 1: the caret's in the
+// text's role, so the row being edited shows, and the others muted. Written from a buffer
+// on the stack, so a frame allocates nothing for it (CPP10).
+void write_number(Labels &written,
+                  const Grid &grid,
+                  std::size_t shown,
+                  std::size_t number,
+                  bool caret) {
+  std::array<char, std::numeric_limits<std::size_t>::digits10 + 1> text{};
+  const char *const end = std::to_chars(text.data(), text.data() + text.size(), number).ptr;
+  const auto length = static_cast<std::size_t>(end - text.data());
+  const glm::ivec2 at =
+      grid.numbers +
+      glm::ivec2(static_cast<std::int32_t>(grid.digits - std::min(grid.digits, length)) *
+                     grid.cell.x,
+                 static_cast<std::int32_t>(shown) * grid.cell.y);
+  const std::uint32_t role = caret ? VP_VIEW::role("text") : VP_VIEW::role("muted");
+  if (written.add({.offset = at, .role = role}, std::string_view(text.data(), length))) {
+    VP_VIEW::Label &label = written.labels[written.label_count - 1];
+    label.extent = extent_of(grid, label.count);
+  }
+}
+
 } // namespace
 
 namespace {
@@ -465,12 +504,14 @@ void Text::cook(VP::Cook &frame) {
     reread(frame, _documents[_shown]);
   if (_head && holder_named(_typed->focus))
     _last = _typed->focus;
-  const Grid grid = this->grid();
+  const Grid typing = this->grid();
   if (!focused())
     _shift = _control = false;
   for (const VP::Event &event : _typed->to(_name))
-    if (!escape(frame, event, grid))
-      edit(frame.input(), event, grid);
+    if (!escape(frame, event, typing))
+      edit(frame.input(), event, typing);
+  // Found again, as an edit may have given the rows' numbers another digit.
+  const Grid grid = this->grid();
   if (!_documents.empty()) {
     Document &document = _documents[_shown];
     if (std::exchange(document.restyle, false))
@@ -490,17 +531,24 @@ void Text::cook(VP::Cook &frame) {
 }
 
 // The text keeps clear of the scroll bars, and of a strip as wide as a bar at its left,
-// so it sits as far in from either side.
+// so it sits as far in from either side; the rows' numbers go between that strip and the
+// text, as wide as the file shown needs them.
 Grid Text::grid() const {
   const glm::ivec2 cell(_font->cell);
-  const glm::ivec2 room =
-      glm::ivec2(_area->extent) - 2 * margin - glm::ivec2(2, 1) * Scroll::width;
+  const std::size_t digits =
+      digits_of(_documents.empty() ? 0 : _documents[_shown].lines.size());
+  const std::int32_t gutter = static_cast<std::int32_t>(digits + number_gap) * cell.x;
+  const glm::ivec2 room = glm::ivec2(_area->extent) - 2 * margin -
+                          glm::ivec2(2, 1) * Scroll::width - glm::ivec2(gutter, 0);
   if (cell.x <= 0 || cell.y <= 0 || room.x < cell.x || room.y < cell.y)
     return {};
-  return {.origin = _area->offset + margin + glm::ivec2(Scroll::width, 0),
+  const glm::ivec2 numbers = _area->offset + margin + glm::ivec2(Scroll::width, 0);
+  return {.origin = numbers + glm::ivec2(gutter, 0),
           .cell = cell,
           .rows = std::min(static_cast<std::size_t>(room.y / cell.y), row_room),
-          .columns = static_cast<std::size_t>(room.x / cell.x)};
+          .columns = static_cast<std::size_t>(room.x / cell.x),
+          .numbers = numbers,
+          .digits = digits};
 }
 
 bool Text::focused() const {
@@ -803,7 +851,7 @@ void Text::measure(Document &document) {
 }
 
 // A Label a run of one role in a row shown, holding the bytes of it that fit from the
-// first column shown; what the room lacks is cut.
+// first column shown, after a Label of the row's number; what the room lacks is cut.
 void Text::write_lines(VP::Cook &frame,
                        const Document &document,
                        const Grid &grid,
@@ -813,6 +861,7 @@ void Text::write_lines(VP::Cook &frame,
   const std::size_t room = written.characters.size();
   for (std::size_t shown = 0; shown < rows; ++shown) {
     const std::size_t row = document.scroll.first() + shown;
+    write_number(written, grid, shown, row + 1, row == document.caret.row);
     const std::string_view line = document.lines[row];
     const std::size_t right = left + grid.columns;
     const std::uint32_t first = written.label_count; // the row's first Label
