@@ -39,13 +39,29 @@ public:
   // Before a frame cooks: what came in for the last one is gone, and what came since is
   // this frame's.
   void frame();
+  // Where a GUI shows a view's whole window, in the window's pixels, its top left and how
+  // far it reaches, and how large that window is (Cook::hand_pointer).
+  struct Shown {
+    glm::vec2 at{};
+    glm::vec2 size{};
+    glm::vec2 window{};
+  };
+
   // The input as a node of a view reads it this frame: all of it, unless a node outside
-  // the one it is in held the pointer the frame before (Cook::hold_pointer).
-  InputPort &input(std::string_view view, std::string_view node);
+  // the one it is in held the pointer the frame before (Cook::hold_pointer); then the
+  // pointer's moves but nothing pressed, let go or turned, and for a view drawn into an
+  // image, no wheel, press or move of it at all, as the GUI holding it shows the view
+  // somewhere else than under the pointer. A view handed the pointer reads it whole,
+  // over its own window, as the GUI shows it. windowed: whether the view draws into the
+  // window, rather than into an image or nowhere.
+  InputPort &input(std::string_view view, std::string_view node, bool windowed);
   void hold_pointer(std::string_view view, std::string_view node);
-  // As hold_pointer, the nodes of the view named to taking the presses too (Cook::
-  // hand_pointer).
-  void hand_pointer(std::string_view to, std::string_view view, std::string_view node);
+  // As hold_pointer, the nodes of the view named to taking the presses too, over the
+  // window of theirs a GUI shows where shown says (Cook::hand_pointer).
+  void hand_pointer(std::string_view to,
+                    std::string_view view,
+                    std::string_view node,
+                    Shown shown);
   // A node of a view reads nothing at an input this frame (Cook::unread). Until the next
   // frame, whether a node said so as the frame before cooked, which decides the views
   // that rest.
@@ -81,15 +97,18 @@ private:
     std::uint32_t nodes = 1;   // that hold it
   };
 
-  // What a node outside a hold reads of the input, in Ports.cpp.
-  class Unheld;
+  // What a node reads of the input but all of it as the window gave it: outside a hold,
+  // of a view drawn into an image outside it, or of a view handed the pointer, in
+  // Ports.cpp.
+  class Filtered;
   // The nodes a hold keeps the pointer for: those of a view whose names start with
-  // inside, and every node of the view a hand names, as handed. Swapped a frame, so
-  // their names never allocate again (CPP10).
+  // inside, and every node of the view a hand names, as handed, over its window where
+  // shown says. Swapped a frame, so their names never allocate again (CPP10).
   struct Holder {
     std::string view;
     std::string inside;
     std::string handed;
+    Shown shown;
     bool holds = false;
   };
 
@@ -156,7 +175,11 @@ private:
   Holder _holding;             // asked for this frame
   Holder _held;                // asked for the frame before, which this frame keeps
   std::vector<Event> _unheld;  // while it does, this frame's but presses and the wheel
-  std::unique_ptr<Unheld> _unheld_input;
+  std::vector<Event> _unpointed; // and but the pointer's moves too
+  std::vector<Event> _handed;    // this frame's, the pointer over the window handed
+  std::unique_ptr<Filtered> _unheld_input;
+  std::unique_ptr<Filtered> _unpointed_input;
+  std::unique_ptr<Filtered> _handed_input;
   glm::vec2 _pointer{};
   const Window *_window = nullptr; // borrowed from the runtime, which owns it (A01)
   std::string _clipboard;          // what was copied last, for a run with no window

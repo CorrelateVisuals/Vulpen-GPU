@@ -251,8 +251,13 @@ struct Event {
 // reads alike.
 class InputPort {
 public:
+  // A view whose window draws into an image, as a GUI's pane shows it, reads the pointer
+  // only while a GUI hands it the pointer (Cook::hand_pointer), over its own window then;
+  // else it reads no move, press or turn of it, as the pointer is over none of its window.
   virtual std::span<const Event> events() const = 0;
-  // Where the pointer is, as the frame block's cursor says: zero until it first moves.
+  // Where the pointer is, zero until it first moves: for a view drawing into the window as
+  // the frame block's cursor says, and for one drawn into an image where the hand puts it
+  // over its window, zero while nothing hands it the pointer.
   virtual glm::vec2 pointer() const = 0;
   // Whether a key event may carry the name, as the input command checks it, so a part
   // that binds keys refuses one no key has.
@@ -605,8 +610,13 @@ public:
   // a line addresses it with, as a GUI showing that view's window hands them to it while
   // a person works in it there: as hold_pointer keeps them, for those nodes too. A hand
   // wins over a hold in the same frame, as the GUI showing the view is the one nearest
-  // the pointer. Last, as above.
-  virtual void hand_pointer(std::string_view view) = 0;
+  // the pointer. at and size: where the GUI shows that view's whole window, in the
+  // window's pixels, its top left and how far it reaches, so the view reads the pointer
+  // as over its own window, as large as the resolution, at the place of it under the
+  // pointer, kept inside its edges as a screen keeps the pointer: a press on a picture
+  // of it a third of the way across lands a third of the way across it, and the pointer
+  // at the picture's edge, or past it, is at its window's. Last, as above.
+  virtual void hand_pointer(std::string_view view, glm::vec2 at, glm::vec2 size) = 0;
   // Says the node reads nothing at that input this frame, as an image given no room
   // shows nothing: a hosted view no reader read the frame before rests while a view
   // beside it presents views, none of it cooking, dispatching or drawing. Last, as above.

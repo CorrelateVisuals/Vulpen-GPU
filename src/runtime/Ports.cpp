@@ -337,18 +337,47 @@ View Ports::manifest(std::string_view file) {
   return Manifest::flatten(view, _recipes);
 }
 
-// What a node reads of the input while a node outside the one it is in holds the
-// pointer: everything but the presses and the wheel, so nothing under an open menu takes
-// them.
-class Ports::Unheld final : public InputPort {
+namespace {
+
+// The place of a view's window under the pointer, as a GUI shows that window: a pointer
+// at the picture's edge, or past it, as a drag begun over it goes on, is at the window's,
+// as a screen keeps the pointer. A picture of no size shows nowhere to be over, so the
+// pointer stays as the window has it.
+glm::vec2 over(const Ports::Shown &shown, glm::vec2 at) {
+  if (shown.size.x <= 0.0f || shown.size.y <= 0.0f)
+    return at;
+  const glm::vec2 on = (at - shown.at) / shown.size * shown.window;
+  return {std::clamp(on.x, 0.0f, std::max(shown.window.x - 1.0f, 0.0f)),
+          std::clamp(on.y, 0.0f, std::max(shown.window.y - 1.0f, 0.0f))};
+}
+
+} // namespace
+
+// What a node reads of the input but all of it as the window gave it, from one of the
+// lists frame() fills: while a node outside the one it is in holds the pointer,
+// everything but the presses and the wheel, so nothing under an open menu takes them,
+// and in a view drawn into an image not the moves either, its pointer nowhere; and in a
+// view handed the pointer, everything, the pointer over its window as the GUI shows it.
+class Ports::Filtered final : public InputPort {
 public:
-  explicit Unheld(Ports &ports) : _ports(ports) {}
+  enum class Pointer : std::uint8_t { window, none, handed };
+
+  Filtered(Ports &ports, const std::vector<Event> &events, Pointer pointer)
+      : _ports(ports), _events(events), _pointer(pointer) {}
 
 private:
   std::span<const Event> events() const override {
-    return _ports._unheld;
+    return _events;
   }
   glm::vec2 pointer() const override {
+    switch (_pointer) {
+    case Pointer::none:
+      return {};
+    case Pointer::handed:
+      return over(_ports._held.shown, _ports._pointer);
+    case Pointer::window:
+      break;
+    }
     return _ports._pointer;
   }
   bool names_key(std::string_view name) const override {
@@ -365,11 +394,18 @@ private:
   }
 
   Ports &_ports;
+  const std::vector<Event> &_events;
+  const Pointer _pointer;
 };
 
 Ports::Ports(const Log &log, Recipes &recipes, std::filesystem::path mirror)
     : _log(log), _recipes(recipes), _mirror(std::move(mirror)),
-      _unheld_input(std::make_unique<Unheld>(*this)) {}
+      _unheld_input(
+          std::make_unique<Filtered>(*this, _unheld, Filtered::Pointer::window)),
+      _unpointed_input(
+          std::make_unique<Filtered>(*this, _unpointed, Filtered::Pointer::none)),
+      _handed_input(
+          std::make_unique<Filtered>(*this, _handed, Filtered::Pointer::handed)) {}
 
 // What the build made of a folder of a view, at views/<view>/<the folder inside it> in
 // the mirror, as a view is named for its folder (V03) and a node's folder is its path
@@ -421,17 +457,30 @@ void Ports::frame() {
   _holding.holds = false;
   _holding.handed.clear();
   _unheld.clear();
-  if (_held.holds)
+  _unpointed.clear();
+  _handed.clear();
+  if (_held.holds) {
     std::ranges::copy_if(_events, std::back_inserter(_unheld), [](const Event &event) {
       return event.kind != Event::Kind::button && event.kind != Event::Kind::wheel;
     });
+    std::ranges::copy_if(_unheld, std::back_inserter(_unpointed), [](const Event &event) {
+      return event.kind != Event::Kind::pointer;
+    });
+  }
+  if (!_held.handed.empty())
+    for (const Event &event : _events) {
+      _handed.push_back(event);
+      if (event.kind == Event::Kind::pointer)
+        _handed.back().at = over(_held.shown, event.at);
+    }
 }
 
-InputPort &Ports::input(std::string_view view, std::string_view node) {
-  if (!_held.holds || (view == _held.view && node.starts_with(_held.inside)) ||
-      (!_held.handed.empty() && view == _held.handed))
+InputPort &Ports::input(std::string_view view, std::string_view node, bool windowed) {
+  if (!_held.handed.empty() && view == _held.handed)
+    return *_handed_input;
+  if (!_held.holds || (view == _held.view && node.starts_with(_held.inside)))
     return *this;
-  return *_unheld_input;
+  return windowed ? *_unheld_input : *_unpointed_input;
 }
 
 // The node's own name up to its last dot, so the nodes beside it inside the one it is in
@@ -447,10 +496,12 @@ void Ports::hold_pointer(std::string_view view, std::string_view node) {
 
 void Ports::hand_pointer(std::string_view to,
                          std::string_view view,
-                         std::string_view node) {
+                         std::string_view node,
+                         Shown shown) {
   _holding.handed.clear();
   hold_pointer(view, node);
   _holding.handed.assign(to);
+  _holding.shown = shown;
 }
 
 void Ports::unread(std::string_view view, std::string_view node, std::string_view port) {

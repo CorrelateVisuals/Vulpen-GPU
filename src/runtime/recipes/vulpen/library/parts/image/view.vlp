@@ -7,7 +7,8 @@
 # to its typed: h then brings it home, letterboxed again. A still part connected to its
 # held and still holds the frame it shows, which shows in place of the picture while held.
 # With interact = yes too, the view whose window it shows takes the presses and the wheel
-# in its area, while it has the focus, in place of the drag and the wheel moving it.
+# in its area, while it has the focus, in place of the drag and the wheel moving it, the
+# pointer over its window where the picture shows it, at its edge where the picture's is.
 [manifest]
 version = 1
 

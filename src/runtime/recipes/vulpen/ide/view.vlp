@@ -125,11 +125,16 @@ recipe = switch-tabs
 recipe = deck
 
 # A pane each project, an image and a still of its own, added as the project comes and
-# gone as it goes: a drag moves the project's window and the wheel zooms it, as in the
-# graph, and while the pane has the focus, h brings it home and space, as a double click
-# on it, holds the frame it shows, to look at while the project goes on, and again lets
-# it go; each pane keeps its own, through a switch to another tab and back, a move of its
-# panel, and perform mode, which shows the project itself.
+# gone as it goes. With interact on, as it starts, a press on the pane gives it the focus,
+# and from then on the project takes the pointer there as it would filling the window,
+# the picture standing for the whole screen: a press a third of the way across lands a
+# third of the way across its window, and the pointer at the picture's edge is at the
+# window's, where a game pans. With interact off, a drag moves the project's window and
+# the wheel zooms it, as in the graph. Either way, while the pane has the focus, h brings
+# it home and space, as a double click on it, holds the frame it shows, to look at while
+# the project goes on, and again lets it go; each pane keeps its own, through a switch to
+# another tab and back, a move of its panel, and perform mode, which shows the project
+# itself.
 [node "ide.panes"]
 recipe = panes
 param  = to=ide.screen.picture
@@ -137,6 +142,7 @@ param  = pane=still-image
 param  = rooms=image.area,still.area
 param  = keys=image.typed,still.typed
 param  = pictures=image.picture,still.picture
+param  = interact=yes
 
 # An image file open opens, as a preview: it shows in the Perform panel in place of the
 # view presented, never in perform mode, under a tab of its own, whose close mark closes
@@ -150,9 +156,9 @@ recipe = image
 param  = moves=yes
 
 # Along the bottom of the Perform panel's room, a button a setting of what it shows, as
-# the graph panel's: interact, the panes part's, whose project in a pane takes the
-# pointer's presses there, as perform mode gives it the window, in place of the drag and
-# the wheel moving its picture.
+# the graph panel's: interact, the panes part's, lit as it starts, whose project in a
+# pane takes the pointer's presses there, as perform mode gives it the window, in place
+# of the drag and the wheel moving its picture.
 [node "ide.perform-bar"]
 recipe = bar
 param  = edge=bottom

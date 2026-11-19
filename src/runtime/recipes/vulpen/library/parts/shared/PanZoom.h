@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -41,6 +42,17 @@ struct PanZoom {
   // Where a place of what it shows is, in pixels from the area's top left.
   glm::vec2 on_screen(glm::vec2 at) const {
     return pan + at * zoom;
+  }
+
+  // Where a picture of size pixels shows in an area of room pixels, from the area's top
+  // left, as the image part's shaders draw it: letterboxed, as large as fits at its own
+  // aspect and centered, then moved and zoomed. Its top left, and how far it reaches;
+  // nothing for a picture of no size.
+  std::pair<glm::vec2, glm::vec2> shows(glm::vec2 room, glm::vec2 size) const {
+    if (size.x <= 0.0f || size.y <= 0.0f)
+      return {};
+    const glm::vec2 fit = size * std::min(room.x / size.x, room.y / size.y);
+    return {on_screen((room - fit) * 0.5f), fit * zoom};
   }
 };
 

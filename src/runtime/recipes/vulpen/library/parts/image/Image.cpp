@@ -36,7 +36,8 @@ constexpr float nearest = 10.0f * PanZoom::most;
 // picture, moved and zoomed as the picture was, so it is looked at where it was. With
 // param interact = yes too, the view whose window it shows takes the presses and the
 // wheel in its area instead, as perform mode gives that view the window: while the image
-// has the focus, which a press there gives it, it hands that view the pointer, and a drag
+// has the focus, which a press there gives it, it hands that view the pointer, over its
+// window where the picture shows it, as though the picture were the screen, and a drag
 // begun there goes on to its letting go wherever the pointer goes; it neither moves nor
 // zooms, and h still brings it home.
 class Image final : public VP::Operator {
@@ -148,7 +149,10 @@ class Image final : public VP::Operator {
 
   // A press in its area gives it the focus; once it has it, the pointer goes to the view
   // its picture is the window of, from the frame after, while it is over the area or a
-  // press made there is not let go, which the image sees as the view does.
+  // press made there is not let go, which the image sees as the view does. The picture
+  // is that view's whole window, as large as the frame, so the view reads the pointer
+  // over its window where the picture shows under it: at the picture's edge, or past it
+  // beside the picture, at its window's edge, as a pointer at a screen's edge.
   void hand(VP::Cook &frame) {
     const bool focused = _typed->focus == _name;
     for (const VP::Event &event : frame.input().events()) {
@@ -161,8 +165,11 @@ class Image final : public VP::Operator {
         _dragging = event.down ? _dragging || (inside && focused) : false;
       }
     }
-    if (_from.view() && focused && (_dragging || VP_VIEW::contains(*_area, _pointer)))
-      frame.hand_pointer(_from.node);
+    if (!_from.view() || !focused || (!_dragging && !VP_VIEW::contains(*_area, _pointer)))
+      return;
+    const auto [at, size] =
+        _view.shows(glm::vec2(_area->extent), glm::vec2(frame.resolution()));
+    frame.hand_pointer(_from.node, glm::vec2(_area->offset) + at, size);
   }
 
   const VP_VIEW::Rect *_area = nullptr;

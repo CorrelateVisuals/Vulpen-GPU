@@ -28,7 +28,8 @@ it placed among them, the flow layer alone showing its curves, with
 Wave.comp open in the editor: a press on a box's name selects it, a drag moves the box
 selected, a drag on the ground lets go of the selection and moves the graph, shift with a
 press selects the box again, the wheel zooms the graph, and shift with a drag on the
-ground draws a select box over the box; the wheel then zooms the Perform panel's view,
+ground draws a select box over the box; with interact turned off, as it starts on, the
+wheel then zooms the Perform panel's view,
 which a drag moves, and h, with the focus the press gave the panel, brings home; a double
 click on it holds the frame it shows, and space lets it go and holds it again. The .ini
 must then hold the box moved. The last run hosts the
@@ -300,6 +301,8 @@ def graph(wave: Path, width: int, height: int) -> list[str]:
         # The flow layer alone, so no curve of the docs ids the copy cites crosses the
         # boxes; the box outside they reach is placed with the others.
         "ide: param set ide.graph.graph relations flow",
+        # So the wheel and a drag move the Perform panel's view, not the copy's own.
+        "ide: param unset ide.panes interact",
         f"view load {wave}",
         f"open {wave / 'wave' / 'Wave.comp'}",  # GLSL in the editor, in color
         f"input pointer {box[0]} {box[1]}",
