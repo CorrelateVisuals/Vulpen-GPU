@@ -250,16 +250,16 @@ def edits(width: int) -> list[str]:
     ]
 
 
-def menu(gone: Path, width: int) -> list[str]:
+def menu(gone: Path, width: int) -> tuple[list[str], list[str]]:
+    """The lines that open the file's menu, and those that press its remove after. The
+    menu opens where the first frame leaves the pointer, and every scripted event
+    reaches that frame, so the press comes in a script standard input sources then."""
     graph = (round((width - 4) * 0.5) + 4, MENUBAR + STRIP)  # the graph's area's corner
     at = (graph[0] + 40, graph[1] + 40)  # where the menu opens, the pointer there
-    return [
-        f"input pointer {at[0]} {at[1]}",
-        f"menu file for {gone}",  # shown with the first frame, before the moves
-        f"input pointer {at[0] + REMOVE_ITEM[0]} {at[1] + REMOVE_ITEM[1]}",
-        "input button down left",
-        "input button up left",
-    ]
+    return ([f"input pointer {at[0]} {at[1]}", f"menu file for {gone}"],
+            [f"input pointer {at[0] + REMOVE_ITEM[0]} {at[1] + REMOVE_ITEM[1]}",
+             "input button down left",
+             "input button up left"])
 
 
 def docked(width: int, height: int) -> list[str]:
@@ -433,7 +433,10 @@ def test() -> None:
                      f"it kept\n{zoomed}")
         gone = folder / "gone.txt"
         gone.write_text(NOTE, encoding="utf-8")
-        removing = drive(folder, "menu", menu(gone, width))
+        opening, pressing = menu(gone, width)
+        presses = folder / "presses.txt"
+        presses.write_text("\n".join(pressing) + "\n", encoding="utf-8")
+        removing = drive(folder, "menu", opening, typed=f"source {presses}\n")
         if gone.exists():
             sys.exit(f"ide: expected the file menu's remove to delete {gone}, got:\n"
                      f"{removing}")
