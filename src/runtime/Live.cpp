@@ -108,22 +108,31 @@ public:
   // log: the file in the build folder what it says goes to.
   Builder(const std::filesystem::path &build, std::string_view log)
       : _build(build), _log_file(build / log), _lock_file(build / build_lock),
-        _views_file(build / VP_VIEWS_FILE) {}
+        _views_file(build / VP_VIEWS_FILE), _mounted_file(build / VP_MOUNTED_FILE) {}
 
-  void start(std::vector<std::string> targets) {
+  // hosted: the views first hosted since the last build, whose folders the build may
+  // not read yet.
+  void start(std::vector<std::string> targets, std::vector<Live::Root> hosted = {}) {
     _running = true;
     _started = std::chrono::steady_clock::now();
     _failure.clear();
     _failed.clear();
-    _thread = std::jthread([this, targets = std::move(targets)] {
+    _thread = std::jthread([this, targets = std::move(targets), hosted = std::move(hosted)] {
       // A build that cannot take the lock fails, naming why, rather than ending the run
       // as an exception leaving a thread would.
       try {
         const FileLock lock(_lock_file);
         bool first = true;
-        for (const std::string &target : targets)
+        // A view hosted from a folder the build reads no views from, as a project in a
+        // repository of its own, has a target once a configure reads its folder from
+        // mounted-views, which a build of the library's target runs.
+        const std::string library = std::format("{}{}", view_target, library_view);
+        for (const std::string &target : targets) {
+          if (!built(target) && mount(target, hosted))
+            Shell::run(command(library, std::exchange(first, false)));
           if (built(target) && Shell::run(command(target, std::exchange(first, false))) != 0)
             _failed.push_back(target);
+        }
       } catch (const std::exception &failure) {
         _failure = failure.what();
         _failed = targets;
@@ -162,6 +171,36 @@ private:
     return std::ranges::find(views, target.substr(view_target.size())) != views.end();
   }
 
+  // Writes the folder of the hosted view the target builds into mounted-views, a line, as
+  // run.sh writes the folder of one it starts; whether it wrote one. The build names a
+  // view for its folder, as a line may host one under another name, so a folder named
+  // like a view the build lists is one it reads already, or one it would refuse as a
+  // second of that name. One listed there already is written no second time, and the
+  // lines of folders gone, as a test's, go as it is written.
+  bool mount(std::string_view target, std::span<const Live::Root> hosted) const {
+    const auto view = std::ranges::find_if(hosted, [&](const Live::Root &root) {
+      return target == std::format("{}{}", view_target, root.first);
+    });
+    if (view == hosted.end())
+      return false;
+    const std::filesystem::path folder =
+        std::filesystem::absolute(view->second).lexically_normal();
+    const std::vector<std::filesystem::path> views = lines_of(_views_file);
+    std::vector<std::filesystem::path> mounted = lines_of(_mounted_file);
+    if (std::ranges::find(views, folder.filename()) != views.end() ||
+        std::ranges::find(mounted, folder) != mounted.end())
+      return false;
+    std::erase_if(mounted, [](const std::filesystem::path &line) {
+      std::error_code unread;
+      return !std::filesystem::is_directory(line, unread);
+    });
+    std::string text;
+    for (const std::filesystem::path &line : mounted)
+      text.append(line.generic_string()).append("\n");
+    Files::save(_mounted_file, text + folder.generic_string() + '\n');
+    return true;
+  }
+
   std::string command(std::string_view target, bool first) const {
     return std::format(R"("{}" --build "{}" --target {} --parallel {} "{}" 2>&1)",
                        VP_CMAKE_COMMAND,
@@ -175,6 +214,7 @@ private:
   const std::filesystem::path _log_file;
   const std::filesystem::path _lock_file;
   const std::filesystem::path _views_file;
+  const std::filesystem::path _mounted_file;
   std::chrono::steady_clock::time_point _started{};
   std::atomic<bool> _running{false};
   std::atomic<bool> _finished{false};
@@ -295,11 +335,12 @@ Live::Build Live::poll() {
     scan.notice_engine();
     std::vector<std::string> targets;
     std::vector<std::string> built;
-    bool fresh = false;
+    std::vector<Root> hosted; // those no build made yet
     for (Scan::View &view : scan.views) {
       const auto seen = newest(view.folder);
       if (seen != view.built_from && seen == view.pending) {
-        fresh = fresh || view.built_from == std::filesystem::file_time_type::min();
+        if (view.built_from == std::filesystem::file_time_type::min())
+          hosted.emplace_back(view.name, view.folder);
         view.built_from = seen;
         targets.push_back(std::format("{}{}", view_target, view.name));
         built.push_back(view.name);
@@ -309,12 +350,12 @@ Live::Build Live::poll() {
     // A view no build made yet has a target only once the build read the folders again,
     // which a build of a target it knows does first, as the library's.
     if (const std::string library = std::format("{}{}", view_target, library_view);
-        fresh && std::ranges::find(targets, library) == targets.end())
+        !hosted.empty() && std::ranges::find(targets, library) == targets.end())
       targets.insert(targets.begin(), library);
     if (!targets.empty()) {
       scan.built = std::move(built);
       scan.read_from = newest(scan.read);
-      scan.builder.start(std::move(targets));
+      scan.builder.start(std::move(targets), std::move(hosted));
       build = Build::started;
     }
   }

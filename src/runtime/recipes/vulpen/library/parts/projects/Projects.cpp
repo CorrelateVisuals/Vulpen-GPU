@@ -67,7 +67,8 @@ class Projects final : public VP::Operator {
                         "path, with none project1 on, the first free, and saves its "
                         "view.vlp");
     _load = node.command("view load <project>",
-                         "hosts the view of a project by name, or of a folder by path; "
+                         "hosts the view of a project by name, or of a folder by path, "
+                         "or of the one folder in it holding a view, as a repository's; "
                          "an app's name, as ide, hosts the app beside the projects again");
     _save_as = node.command("view save as [<name>]",
                             "copies the view, its edits too, into a new project, with no "
@@ -91,8 +92,10 @@ class Projects final : public VP::Operator {
       host_app(call, _apps / word);
     else if (call.is(_new) && word.empty())
       host(call, _folder / free_project(call, "project", 1), true);
-    else if (call.is(_new) || call.is(_load))
-      host(call, folder_of(call, word), call.is(_new));
+    else if (call.is(_new))
+      host(call, folder_of(call, word), true);
+    else if (call.is(_load))
+      host(call, view_in(call, folder_of(call, word)), false);
     else if (call.is(_save_as))
       save_as(call);
     else if (call.is(_rename))
@@ -116,6 +119,30 @@ class Projects final : public VP::Operator {
     }
     return path.filename().empty() || path.filename() == manifest ? path.parent_path()
                                                                    : path;
+  }
+
+  // The folder load hosts the view of: the one named, or, where it holds no view, the one
+  // folder in it that does, as a repository of its own holds its project in a folder
+  // named for it, so a path to the repository loads the project too. Two or more such
+  // folders name no view alone.
+  static std::filesystem::path view_in(VP::Call &call, const std::filesystem::path &folder) {
+    if (holds_view(call, folder))
+      return folder;
+    std::vector<std::string> inside;
+    std::string named;
+    for (const std::string &entry : call.files().list(folder.string()))
+      if (entry.ends_with('/') && holds_view(call, folder / entry)) {
+        inside.push_back(entry.substr(0, entry.size() - 1));
+        named.append(named.empty() ? "" : ", ").append(inside.back());
+      }
+    if (inside.size() > 1)
+      throw std::runtime_error(std::format(
+          "{} holds no {}, and {} folders in it do: {}; view load takes the path of one",
+          folder.string(),
+          manifest,
+          inside.size(),
+          named));
+    return inside.empty() ? folder : folder / inside.front();
   }
 
   // The projects, each by its folder from the projects' folder: one there holding a view,

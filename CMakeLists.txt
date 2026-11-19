@@ -229,21 +229,29 @@ if(VULPEN_LIVE)
 endif()
 vulpen_recipes(${PROJECT_SOURCE_DIR}/src/runtime/recipes)
 # A project outside projects/, as one in a repository of its own, builds as one in it
-# once run.sh or run.ps1 starts it: they write its folder into mounted-views, a folder a
-# line, in the build tree, which git never sees, and it builds from then on while the
-# folder holds a view.vlp; deleting its line takes it out. One named like a view the
-# build has already is not built, as the tree holds one view of each name (A02).
-set(mounted ${CMAKE_BINARY_DIR}/mounted-views)
+# once run.sh or run.ps1 starts it, or vulpen hosts it, as view load does: they write its
+# folder into mounted-views, a folder a line, in the build tree, which git never sees,
+# and it builds from then on while the folder holds a view.vlp; deleting its line takes
+# it out. One named like a view the build has already is not built, as the tree holds
+# one view of each name (A02). One in projects/ or src/ is the build's own to read, as
+# above, or none to build, as a view inside a project's folder, so its line is passed by,
+# as one vulpen hosted there before the build read the folder writes it.
+set(mounted ${CMAKE_BINARY_DIR}/${mounted_file})
 if(NOT EXISTS ${mounted})
   file(WRITE ${mounted} "")
 endif()
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${mounted})
 file(STRINGS ${mounted} mounts)
+set(sources ${PROJECT_SOURCE_DIR}/src)
 foreach(view IN LISTS mounts)
   file(TO_CMAKE_PATH "${view}" view)
   get_filename_component(name ${view} NAME)
   get_property(taken GLOBAL PROPERTY vulpen_view_${name})
-  if(taken)
+  cmake_path(IS_PREFIX projects ${view} NORMALIZE in_projects)
+  cmake_path(IS_PREFIX sources ${view} NORMALIZE in_sources)
+  if(in_projects OR in_sources)
+    continue()
+  elseif(taken)
     message(WARNING "${view} is not built: ${taken} is a view named ${name} too")
   elseif(EXISTS ${view}/view.vlp)
     vulpen_view(${view})

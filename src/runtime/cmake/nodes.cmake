@@ -25,6 +25,7 @@ file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/${module_stamp_file} CONTENT "${module
 set(engine_sources_file engine-sources)
 set(views_file built-views)
 set(read_file read-folders)
+set(mounted_file mounted-views)
 get_target_property(engine_sources vulpen SOURCES)
 get_target_property(runtime_sources runtime SOURCES)
 get_target_property(layer_sources baseclasses SOURCES)
@@ -65,7 +66,8 @@ target_compile_definitions(runtime PRIVATE
   VP_ENGINE_SOURCES_FILE="${engine_sources_file}"
   VP_ENGINE_FILE="${engine_file}"
   VP_VIEWS_FILE="${views_file}"
-  VP_READ_FILE="${read_file}")
+  VP_READ_FILE="${read_file}"
+  VP_MOUNTED_FILE="${mounted_file}")
 
 # A view: each folder in it is a node, but its contracts/ and its shared/ (RV05, RV09). One
 # named so no target can be is named, and not built, so it stops no other build.
@@ -108,7 +110,7 @@ endfunction()
 
 # The views the build compiles, a name a line, beside vulpen, so the live build builds
 # a view vulpen hosts only when the build has its target, as one hosted from a folder
-# outside projects/ has none. And the folders a configure reads them from, which a build
+# outside projects/ has none till its folder is in mounted-views. And the folders a configure reads them from, which a build
 # of any view reads again once one changed, so a live build that failed while one changed
 # under it, as a project renamed twice quickly, builds again rather than failing.
 function(vulpen_list_views)

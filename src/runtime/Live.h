@@ -38,7 +38,9 @@ public:
 
   // Once a frame. A change must be seen twice, so a file still being written never
   // builds; a view first watched after the start, as a project loaded, builds at once,
-  // as no build may have made it yet: run.sh builds only the projects it opens. Failed
+  // as no build may have made it yet: run.sh builds only the projects it opens. One from
+  // a folder the build reads no views from goes into its mounted-views first, as run.sh
+  // puts one it starts, so the build has its target. Failed
   // when any view failed to build; unsettled when it failed while files changed under the
   // views, as a file gone mid-build fails one, so those views build again once the files
   // settle, and only then is their failure said.
