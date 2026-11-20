@@ -117,6 +117,17 @@ bool Modules::built(const std::string &module, const std::filesystem::path &fold
          std::filesystem::exists(folder / module_file, unread);
 }
 
+std::optional<std::filesystem::file_time_type>
+Modules::written(const std::string &module, const std::filesystem::path &folder) const {
+  std::error_code missing;
+  const auto time = std::filesystem::last_write_time(folder / module_file, missing);
+  if (missing || std::ranges::any_of(linked_modules, [&](const LinkedModule &linked) {
+        return linked.module == module;
+      }))
+    return std::nullopt;
+  return time;
+}
+
 // Its entry goes too, so a module no node loads again is not named rewritten by every
 // later swap, as its file stays newer than the time the entry kept.
 void Modules::unload(const std::string &module) {

@@ -58,6 +58,10 @@ public:
   // Whether the build made the module: linked in, or in the build tree, where a dev build
   // puts it once it first builds the node's folder.
   bool built(const std::string &module, const std::filesystem::path &folder) const;
+  // When the build wrote the module in the build tree, loaded or not; none for one
+  // linked in, or none built.
+  std::optional<std::filesystem::file_time_type>
+  written(const std::string &module, const std::filesystem::path &folder) const;
   // Whether the build tree builds modules this vulpen loads: the stamp the build writes
   // beside vulpen from the engine headers is its own (live code rule 6).
   static bool builds_loadable();

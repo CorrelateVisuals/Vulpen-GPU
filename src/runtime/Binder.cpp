@@ -66,6 +66,21 @@ bool unbuilt(const Node &node,
   });
 }
 
+// Whether a C++ file of the node was saved since the build wrote its module, as a pull
+// into a project's repository of its own does while no vulpen runs.
+bool older_than_its_code(const Node &node,
+                         const std::string &module,
+                         const std::filesystem::path &folder,
+                         const Modules &modules) {
+  const std::optional<std::filesystem::file_time_type> written =
+      modules.written(module, folder);
+  return written && std::ranges::any_of(node.files, [&](const std::string &file) {
+           std::error_code unread;
+           const auto saved = std::filesystem::last_write_time(node.folder / file, unread);
+           return file.ends_with(".cpp") && !unread && saved > *written;
+         });
+}
+
 // The shader a line declaring a port of a node writes it into, from the view's folder, as
 // a person's prompt at the project's top types it: a whole draw's .frag, which samples,
 // else its first.
@@ -542,12 +557,21 @@ Bound Schedule::bind(const Node &node,
     bound.log = *level_named(word);
   Bound *const old = replaced ? replaced->find(node.name) : nullptr;
   // Its every error would be what the build has not made yet, and the view vulpen started
-  // with fails loud on any, as ever, as does a view whose last build failed.
-  if (waits_for_build(_name) && !_wiring.modules.build_failed(_name) &&
-      unbuilt(node, module_of(_view, node), folder, _wiring.modules)) {
+  // with fails loud on any, as ever, as does a view whose last build failed. A project's
+  // node with no operator to keep, as one of a project just hosted, waits too while its
+  // module is older than its C++: the live build builds a project hosted after the start
+  // at once, and the old code would read the files that came with the new, naming
+  // mistakes that are none. An app's builds with the library, only as a file changes.
+  const std::string module = module_of(_view, node);
+  const bool waits = waits_for_build(_name) && !_wiring.modules.build_failed(_name);
+  const bool unmade = waits && unbuilt(node, module, folder, _wiring.modules);
+  if (unmade || (waits && _project && !(old && old->op) && runs_operator(node) &&
+                 older_than_its_code(node, module, folder, _wiring.modules))) {
     bound.unbuilt = true;
     bound.errors.emplace_back(
-        "is not built yet: the live build builds it, and says why if it cannot");
+        unmade ? "is not built yet: the live build builds it, and says why if it cannot"
+               : "has C++ saved since its module was built: the live build builds it "
+                 "again, and says why if it cannot");
     return bound;
   }
   bound.invocations = counted(bound);
@@ -562,7 +586,6 @@ Bound Schedule::bind(const Node &node,
     log(Level::debug, Tag::nod, bound, "keeps its operator");
   } else if (runs_operator(node)) {
     try {
-      const std::string module = module_of(_view, node);
       const std::string name = node.operator_name.empty()
                                    ? _wiring.modules.sole(module, folder)
                                    : node.operator_name;
@@ -580,7 +603,7 @@ Bound Schedule::bind(const Node &node,
     }
   }
   if (bound.op)
-    bound.module_built = _wiring.modules.built_at(module_of(_view, node));
+    bound.module_built = _wiring.modules.built_at(module);
   bound.rebuilding = waits_for_build(_name) && saved_since_built(bound);
   if (bound.op) {
     Binder binder(*this, bound, replaced);
