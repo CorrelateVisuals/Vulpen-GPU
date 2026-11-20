@@ -1522,10 +1522,12 @@ void Graph::arrange_anew(VP::FilePort &files) {
 // view close, pressed in the menus for every box of a kind at once, which hand each line
 // to the terminal's type, so it shows the line and its answer and undo takes it back, as
 // the menu's own press (V06); a node with files in its folder is refused, naming remove
-// force. A node inside another selected goes with that one, and what no menu removes, as
-// what lies outside and the view's own manifest, stays.
+// force. Views the delete before asked to close and that are still there, as view close
+// refused them over what no view save kept, go as view close force, so a second press
+// closes them anyway. A node inside another selected goes with that one, and what no
+// menu removes, as what lies outside and the view's own manifest, stays.
 void Graph::erase(VP::Cook &frame, bool force) {
-  std::vector<std::pair<std::string, std::string>> lines; // a kind's, by the kind
+  std::vector<std::pair<std::string, std::vector<std::string>>> kinds; // names, by kind
   for (const std::string &name : _selection) {
     const auto box = std::ranges::find(_boxes.boxes, name, &Box::name);
     if (box == _boxes.boxes.end() ||
@@ -1537,20 +1539,28 @@ void Graph::erase(VP::Cook &frame, bool force) {
         menu_of(frame, static_cast<std::size_t>(box - _boxes.boxes.begin()), false);
     if (kind.empty() || background(kind) || kind == "manifest" || !nameable(named))
       continue;
-    auto line =
-        std::ranges::find(lines, kind, &std::pair<std::string, std::string>::first);
-    if (line == lines.end())
-      line = lines.insert(lines.end(),
-                          {kind,
-                           std::format("menu press {} {} for",
-                                       kind,
-                                       kind == "view"                 ? "view close"
-                                       : force && kind != "file" ? "remove force"
-                                                                      : "remove")});
-    line->second.append(" ").append(named);
+    auto found = std::ranges::find(
+        kinds, kind, &std::pair<std::string, std::vector<std::string>>::first);
+    if (found == kinds.end())
+      found = kinds.insert(kinds.end(), {kind, {}});
+    found->second.push_back(named);
   }
-  for (const auto &[kind, line] : lines)
+  std::vector<std::string> closing;
+  for (const auto &[kind, names] : kinds) {
+    if (kind == "view")
+      closing = names;
+    const bool again = kind == "view" && names == _closing;
+    std::string line = std::format("menu press {} {} for",
+                                   kind,
+                                   kind == "view"            ? again ? "view close force"
+                                                                     : "view close"
+                                   : force && kind != "file" ? "remove force"
+                                                             : "remove");
+    for (const std::string &name : names)
+      line.append(" ").append(name);
     frame.commands().send(line);
+  }
+  _closing = std::move(closing);
   _grab.reset();
 }
 

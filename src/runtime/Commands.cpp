@@ -924,7 +924,9 @@ void Commands::quit(bool force) {
     throw std::runtime_error(
         std::format("quit would lose what nodes hold, or what no view save kept, so the "
                     "run goes on; view save keeps a project, quit force ends it anyway, "
-                    "a project's files put back as its last view save left them:\n{}",
+                    "a project's files put back as its last view save left them, which "
+                    "no undo brings back, as the run ends; the window's close button "
+                    "pressed again does that too:\n{}",
                     joined(lost, "\n")));
   for (const std::string &view : unkept)
     try {

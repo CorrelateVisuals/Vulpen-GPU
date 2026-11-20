@@ -289,6 +289,7 @@ private:
   std::optional<Desktop> _desktop; // from the first window on, outliving each
   std::optional<Window> _window;   // outlives the engine, which draws into it
   bool _windowless = false;        // the window could not open: no frame tries again
+  bool _close_refused = false;     // quit refused the close button's last press
   std::optional<Engine> _engine;
   Modules _modules; // outlives the schedules, whose operators run its code
   Recipes _recipes; // outlives the views and the file port, which unfold from it
@@ -495,9 +496,11 @@ void Runtime::loop() {
   std::uint64_t frames = 0;
   for (; !_commands.quitting() && (_options.frames == 0 || frames < _options.frames);
        ++frames) {
-    // The close button asks as quit does, so a node holding work keeps the run (V06).
+    // The close button asks as quit does, so a node holding work keeps the run (V06);
+    // pressed again once quit refused, it ends the run anyway, as quit force does, so a
+    // window never stays open for good.
     if (_window && !_window->poll(_feed)) {
-      _commands.send("quit");
+      _commands.send(std::exchange(_close_refused, true) ? "quit force" : "quit");
       if (_commands.quitting())
         break;
     }
