@@ -73,6 +73,7 @@ target_compile_definitions(runtime PRIVATE
 # named so no target can be is named, and not built, so it stops no other build.
 function(vulpen_view folder)
   get_filename_component(view ${folder} NAME)
+  # The projects part's check_buildable refuses to host a folder named otherwise.
   if(NOT view MATCHES "^[A-Za-z0-9_.+-]+$")
     message(WARNING "${folder} is not built: a view's name is letters, digits and _.+-")
     return()

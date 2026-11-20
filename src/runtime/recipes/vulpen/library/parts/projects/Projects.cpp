@@ -32,6 +32,21 @@ void check_free(VP::Call &call, std::string_view name) {
         "a view named {} is hosted already, from {}", name, hosted->file.string()));
 }
 
+// The build makes a view only of a folder named as nodes.cmake's vulpen_view allows, so
+// a project named otherwise would wait for a build that never comes (A02).
+void check_buildable(std::string_view name) {
+  const auto allowed = [](char letter) {
+    return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
+           (letter >= '0' && letter <= '9') ||
+           std::string_view("_.+-").find(letter) != std::string_view::npos;
+  };
+  if (name.empty() || !std::ranges::all_of(name, allowed))
+    throw std::runtime_error(std::format(
+        "{} cannot be built: the build names a view for its folder, of letters, digits "
+        "and _.+-",
+        name));
+}
+
 // The name the view a command addresses is hosted by beside this one. The view vulpen
 // started with cannot go, and a view a project hosts goes with that project.
 std::string hosted_name(VP::Call &call) {
@@ -236,6 +251,7 @@ class Projects final : public VP::Operator {
       call.commands().send(std::format("view switch {}", name));
       return call.reply(std::format("{} is loaded already; lines go to it now", name));
     }
+    check_buildable(name);
     check_free(call, name);
     const bool exists = holds_view(call, folder);
     if (fresh && exists)
