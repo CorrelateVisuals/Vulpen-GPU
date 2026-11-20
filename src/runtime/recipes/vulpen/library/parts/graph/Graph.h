@@ -303,6 +303,7 @@ private:
   std::vector<std::string> _selection;
   std::string _selected_in;
   std::vector<std::string> _closing; // the views the last delete closed, as named then
+  std::size_t _closing_done = 0;      // and what undo held then
   // The boxes raised by a press or select, by name, the last over the others, the order
   // the boxes are drawn in, and for each what of the boxes drawn after it hides it, kept
   // so a frame allocates nothing for them.

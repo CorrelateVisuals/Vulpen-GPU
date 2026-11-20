@@ -289,7 +289,8 @@ private:
   std::optional<Desktop> _desktop; // from the first window on, outliving each
   std::optional<Window> _window;   // outlives the engine, which draws into it
   bool _windowless = false;        // the window could not open: no frame tries again
-  bool _close_refused = false;     // quit refused the close button's last press
+  // How much the session had kept when quit refused the close button's last press.
+  std::optional<std::size_t> _close_refused_at;
   std::optional<Engine> _engine;
   Modules _modules; // outlives the schedules, whose operators run its code
   Recipes _recipes; // outlives the views and the file port, which unfold from it
@@ -497,12 +498,16 @@ void Runtime::loop() {
   for (; !_commands.quitting() && (_options.frames == 0 || frames < _options.frames);
        ++frames) {
     // The close button asks as quit does, so a node holding work keeps the run (V06);
-    // pressed again once quit refused, it ends the run anyway, as quit force does, so a
-    // window never stays open for good.
+    // pressed again once quit refused, with nothing saved, closed or changed since, it
+    // ends the run anyway, as quit force does, so a window never stays open for good. A
+    // press after more work asks again: the session's count of what it kept only grows,
+    // as undo leaves it, so the work done since shows however long the history is.
     if (_window && !_window->poll(_feed)) {
-      _commands.send(std::exchange(_close_refused, true) ? "quit force" : "quit");
+      const std::size_t kept = _commands.session().size();
+      _commands.send(_close_refused_at == kept ? "quit force" : "quit");
       if (_commands.quitting())
         break;
+      _close_refused_at = kept;
     }
     if (!_window && _desktop)
       _desktop->poll();

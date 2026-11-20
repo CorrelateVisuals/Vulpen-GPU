@@ -1524,7 +1524,8 @@ void Graph::arrange_anew(VP::FilePort &files) {
 // the menu's own press (V06); a node with files in its folder is refused, naming remove
 // force. Views the delete before asked to close and that are still there, as view close
 // refused them over what no view save kept, go as view close force, so a second press
-// closes them anyway. A node inside another selected goes with that one, and what no
+// closes them anyway, while nothing was saved or changed since, which undo counts; else
+// it asks again. A node inside another selected goes with that one, and what no
 // menu removes, as what lies outside and the view's own manifest, stays.
 void Graph::erase(VP::Cook &frame, bool force) {
   std::vector<std::pair<std::string, std::vector<std::string>>> kinds; // names, by kind
@@ -1549,7 +1550,8 @@ void Graph::erase(VP::Cook &frame, bool force) {
   for (const auto &[kind, names] : kinds) {
     if (kind == "view")
       closing = names;
-    const bool again = kind == "view" && names == _closing;
+    const bool again =
+        kind == "view" && names == _closing && frame.commands().done() == _closing_done;
     std::string line = std::format("menu press {} {} for",
                                    kind,
                                    kind == "view"            ? again ? "view close force"
@@ -1561,6 +1563,7 @@ void Graph::erase(VP::Cook &frame, bool force) {
     frame.commands().send(line);
   }
   _closing = std::move(closing);
+  _closing_done = frame.commands().done();
   _grab.reset();
 }
 
