@@ -1,40 +1,12 @@
 #include "contracts/Item.h"
 #include "runtime/Operator.h"
-
-// Static, so each view's copy of this part keeps stb_image to itself, and copies in two
-// views link into one release binary; the formats open hands it alone, 8 bits a channel,
-// read from the bytes the file port reads, so it holds no code for the others, and none
-// that opens a file.
-#define STB_IMAGE_STATIC
-#define STBI_ONLY_PNG
-#define STBI_ONLY_JPEG
-#define STBI_ONLY_BMP
-#define STBI_ONLY_TGA
-#define STBI_ONLY_GIF
-#define STBI_NO_LINEAR
-#define STBI_NO_HDR
-#define STBI_NO_STDIO
-#define STB_IMAGE_IMPLEMENTATION
-// A release build inlines stb_image into upload(), past the system header that keeps its
-// warnings out (RA02), and GCC then cannot see that bytes in memory never take the
-// branch that reads from a callback, whose fields they leave unset.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-#include <stb_image.h>
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
+#include "shared/Picture.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <functional>
-#include <memory>
 #include <optional>
-#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -42,7 +14,6 @@
 
 namespace {
 
-constexpr int rgba = 4; // channels a pixel takes, as the picture's format holds them
 // At the label's end, so a tab cut short, which loses what its label starts with, still
 // says it is a preview.
 constexpr std::string_view preview_label = "{} (preview)";
@@ -89,30 +60,11 @@ class ImageFile final : public VP::Operator {
       return;
     _decoded = read; // decoded once, whether it decodes or not, until it changes
     try {
-      upload(frame, bytes);
+      const Pixels pixels = decoded(bytes, _file);
+      frame.upload(_picture, pixels.rgba, pixels.size);
     } catch (const std::runtime_error &failure) {
       frame.log(VP::Level::error, failure.what());
     }
-  }
-
-  void upload(VP::Cook &frame, std::string_view bytes) {
-    glm::ivec2 size{};
-    int channels = 0;
-    const std::unique_ptr<stbi_uc, void (*)(void *)> pixels(
-        stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(bytes.data()),
-                              static_cast<int>(bytes.size()),
-                              &size.x,
-                              &size.y,
-                              &channels,
-                              rgba),
-        stbi_image_free);
-    if (!pixels)
-      throw std::runtime_error(
-          std::format("{} is no image stb_image reads: {}", _file, stbi_failure_reason()));
-    const auto count = static_cast<std::size_t>(size.x) * static_cast<std::size_t>(size.y);
-    frame.upload(_picture,
-                 std::span(reinterpret_cast<const glm::u8vec4 *>(pixels.get()), count),
-                 glm::uvec2(size));
   }
 
   std::string _file;   // the param's, as an absolute path; empty for none

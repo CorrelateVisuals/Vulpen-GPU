@@ -71,5 +71,5 @@ A file of the recipes (`src/runtime/recipes/`: vulpen's library and each other g
 | `baseclasses/GpuLayout.glsl` | the GPU layout every shader declares (RV02) |
 | `<glm/*>` | GLSL's vectors and matrices in C++, name for name |
 | `<stb_truetype.h>` | the glyph atlas the `font` part bakes |
-| `<stb_image.h>` | the image files the `image-file` part decodes |
+| `<stb_image.h>` | the picture files `shared/Picture.h` decodes, for the `picture` and `image-file` parts |
 | `<stb_image_write.h>` | the PNG files the `snapshot` part saves |

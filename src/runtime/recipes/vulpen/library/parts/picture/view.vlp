@@ -1,0 +1,11 @@
+# The picture part: one node whose operator is Picture; it fills its picture with the
+# picture file its file param names, as stb_image reads a PNG, a JPEG, a BMP, a TGA or a
+# GIF, for a node a connection takes the picture to, as an image part shows it, and again
+# as the file changes on disk. mip_levels: how many mip levels it makes, a count or all,
+# which a shader's sample_level reads where the picture is drawn smaller than it is.
+[manifest]
+version = 1
+
+[node "picture"]
+image = picture=R8G8B8A8_SRGB
+param = mip_levels=1
