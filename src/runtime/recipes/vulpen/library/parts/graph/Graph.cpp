@@ -1322,8 +1322,11 @@ template <class Port> void Graph::leave(Port &port) {
       port.commands().send(host->empty() ? std::string("view switch")
                                          : std::format("view switch {}", *host));
     } else if (view && !view->file.empty()) {
+      // Above the view vulpen started with is where it started, which its prompt shows.
       _left = view->file.parent_path().lexically_normal().generic_string();
-      show_folder(port.commands(), view->file.parent_path().parent_path());
+      show_folder(port.commands(),
+                  _shown.empty() ? std::filesystem::current_path()
+                                 : view->file.parent_path().parent_path());
     }
     return;
   }
@@ -1417,8 +1420,9 @@ void Graph::find(VP::Call &call) {
 // other place is refused, naming why.
 void Graph::cd(VP::Call &call) {
   if (call.arguments().empty()) {
-    call.reply(std::filesystem::path(_place->folder)
-                   .lexically_proximate(std::filesystem::current_path())
+    const std::filesystem::path started = std::filesystem::current_path();
+    call.reply((_place->folder.empty() ? started : std::filesystem::path(_place->folder))
+                   .lexically_proximate(started)
                    .generic_string());
     return;
   }
@@ -1485,13 +1489,16 @@ void Graph::cd(VP::Call &call) {
 
 // The folder of what shows, as it changes: the folder shown, or the folder of the node
 // whose inside shows, which holds its files and the nodes inside it (RV08), or of the
-// view.
+// view; none at the top of the view vulpen started with, as a terminal with no graph has
+// none there, so lines typed count from where vulpen started, as ../ from its top.
 void Graph::place(const VP::View *edited, const VP::View *flat) {
   std::filesystem::path folder(_relations->folder);
   if (folder.empty() && edited && flat) {
     const auto scope = std::ranges::find(flat->nodes, _boxes.scope, &VP::Node::name);
     const bool top = _boxes.scope.empty() || scope == flat->nodes.end();
-    folder = top ? edited->file.parent_path() : scope->folder;
+    folder = !top ? scope->folder
+         : _shown.empty() ? std::filesystem::path()
+                          : edited->file.parent_path();
   }
   if (_place->folder != folder.string())
     _place->folder = folder.string();
