@@ -16,6 +16,7 @@ namespace VP {
 class Commands;
 class Log;
 class RawTerminal;
+class Speakers;
 class Window;
 struct Recipes;
 
@@ -26,6 +27,7 @@ class Ports final : public InputPort,
                     public FilePort,
                     public ProcessPort,
                     public TerminalPort,
+                    public SoundPort,
                     public CommandHandler {
 public:
   // log: what clears the line typed at the terminal before it prints. recipes: what a
@@ -77,6 +79,14 @@ public:
   void listen(Commands &commands);
   // The window whose clipboard copy and paste use while it is open; null once it closes.
   void attach(const Window *window);
+  // Before a frame cooks: the frame before's sound becomes what played, and the frame's
+  // starts silent, frames long. After it cooked: the frame's goes to the speakers, which
+  // open as a node first adds to it while a window is open.
+  void start_sound(std::size_t frames);
+  void play_sound();
+  std::size_t frames() const override;
+  void add(std::span<const float> samples) override;
+  std::span<const float> played() const override;
   // Whether a file or a folder was made, removed, moved or copied through the port since
   // the last ask, so the views list their nodes' files anew; a hidden one, as the parts
   // keep in .vulpen/, never counts, as no node holds it.
@@ -200,6 +210,10 @@ private:
   struct Windowing {
     Command title, fullscreen_on, fullscreen_off, pointer_lock, pointer_free;
   } _windowing;
+  std::vector<float> _sound;  // the frame's, as the nodes add to it
+  std::vector<float> _played; // the frame before's
+  std::unique_ptr<Speakers> _speakers;
+  bool _deaf = false; // the speakers would not open, so they are not tried again
   std::string _title; // none for the one the view's name gives
   bool _fills = false;
   bool _locked = false;

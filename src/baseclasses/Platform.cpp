@@ -4,6 +4,8 @@
 #include "baseclasses/Platform.h"
 
 #include <GLFW/glfw3.h>
+#define SOKOL_AUDIO_IMPL
+#include <sokol_audio.h>
 #include <time.h>
 
 #ifdef _WIN32
@@ -23,6 +25,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cctype>
 #include <cerrno>
 #include <cstdio>
@@ -199,6 +202,87 @@ void on_focus(GLFWwindow *window, int focused) {
 }
 
 } // namespace
+
+// Its message where the build keeps them, else its number, each a value that outlives
+// the run; atomic, as the device's thread sets them while the caller's reads.
+struct SpeakersTrouble {
+  std::atomic<const char *> message{nullptr};
+  std::atomic<std::uint32_t> item{0};
+  std::atomic<bool> fresh{false};
+};
+
+namespace {
+
+constexpr std::uint32_t sokol_information = 3; // sokol_audio's level past the problems
+// The frames sokol_audio hands the device at a time; its buffer holds whole packets.
+constexpr std::uint32_t packet_frames = 128;
+
+void on_sokol(const char *,
+              std::uint32_t level,
+              std::uint32_t item,
+              const char *message,
+              std::uint32_t,
+              const char *,
+              void *user) {
+  if (level >= sokol_information)
+    return;
+  SpeakersTrouble &trouble = *static_cast<SpeakersTrouble *>(user);
+  trouble.message.store(message);
+  trouble.item.store(item);
+  trouble.fresh.store(true);
+}
+
+} // namespace
+
+Speakers::Speakers(std::uint32_t rate, std::uint32_t channels, std::uint32_t buffered)
+    : _trouble(std::make_unique<SpeakersTrouble>()), _channels(channels) {
+  const std::uint32_t packets = (buffered + packet_frames - 1) / packet_frames;
+  const saudio_desc desc{.sample_rate = static_cast<int>(rate),
+                         .num_channels = static_cast<int>(channels),
+                         .buffer_frames = static_cast<int>(packets * packet_frames),
+                         .packet_frames = static_cast<int>(packet_frames),
+                         .logger = {.func = on_sokol, .user_data = _trouble.get()}};
+  saudio_setup(&desc);
+  if (!saudio_isvalid()) {
+    const std::string why = trouble();
+    saudio_shutdown();
+    throw std::runtime_error(std::format("the system's sound output did not open{}{}",
+                                         why.empty() ? "" : ": ",
+                                         why));
+  }
+  if (const int plays = saudio_sample_rate(); plays != static_cast<int>(rate)) {
+    saudio_shutdown();
+    throw std::runtime_error(
+        std::format("the sound output plays {} Hz, not the {} Hz frames make", plays, rate));
+  }
+}
+
+Speakers::~Speakers() {
+  saudio_shutdown();
+}
+
+bool Speakers::heard() {
+#if defined(SOKOL_DUMMY_BACKEND)
+  return false;
+#else
+  return true;
+#endif
+}
+
+std::uint32_t Speakers::buffered() const {
+  return static_cast<std::uint32_t>(saudio_buffer_frames());
+}
+
+void Speakers::play(std::span<const float> samples) const {
+  saudio_push(samples.data(), static_cast<int>(samples.size() / _channels));
+}
+
+std::string Speakers::trouble() const {
+  if (!_trouble->fresh.exchange(false))
+    return {};
+  const char *const message = _trouble->message.load();
+  return message ? message : std::format("sokol_audio's item {}", _trouble->item.load());
+}
 
 // A name of the table, or one printable character, as a layout's key prints it without
 // shift, as glfwGetKeyName gives it, so a letter is lower case.

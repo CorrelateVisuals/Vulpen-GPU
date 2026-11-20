@@ -188,6 +188,37 @@ private:
   std::unique_ptr<Placed> _placed;
 };
 
+// What sokol_audio said went wrong last, set from the device's thread (Platform.cpp).
+struct SpeakersTrouble;
+
+// The system's default sound output, through sokol_audio, which keeps process-wide state,
+// so one is open at a time: samples, 32-bit floats interleaved by channel, handed on as
+// each frame makes them, which the device plays on its own thread after a buffer of
+// buffered frames. A build without a backend's headers plays to no device.
+class Speakers {
+public:
+  // Throws naming why when no device opens, or one opens at another rate.
+  Speakers(std::uint32_t rate, std::uint32_t channels, std::uint32_t buffered);
+  ~Speakers();
+  Speakers(const Speakers &) = delete;
+  Speakers &operator=(const Speakers &) = delete;
+
+  // Whether a device hears them: false in a build without a backend.
+  static bool heard();
+  // How many frames ahead the device plays.
+  std::uint32_t buffered() const;
+  // As many of the samples as the device has room for; the rest drop, as a device that
+  // fell behind skips rather than lags.
+  void play(std::span<const float> samples) const;
+  // What went wrong since the last call, as sokol_audio said it, from whichever thread;
+  // empty when nothing did.
+  std::string trouble() const;
+
+private:
+  std::unique_ptr<SpeakersTrouble> _trouble;
+  std::uint32_t _channels = 0;
+};
+
 // The terminal vulpen writes to, when it runs in one.
 class Terminal {
 public:

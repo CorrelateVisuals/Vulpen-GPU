@@ -79,6 +79,7 @@ TAKE = '[node "take"]\noperator = Take\n'
 SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
 MAKER = '[node "maker"]\noperator = Maker\n'
 PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = picture=R8_UNORM\n'
+TONE = '[node "tone"]\noperator = Tone\n'
 LEVELS = ('[node "levels"]\noperator = Levels\ninvocations = 8\n'
           'image = picture=R8G8B8A8_SRGB\n')
 SIGN = '[node "sign"]\noperator = Sign\n'
@@ -409,6 +410,18 @@ def images(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def sound(vulpen: str, folder: Path) -> str | None:
+    """Why what a node added to the frame's sound did not come back as what played, or
+    None: the next frame hears its samples, clamped, and each frame takes its share of
+    the second; the fixture's operator stops when either differs."""
+    view = view_in(folder, "sound", HEAD + TONE)
+    code, output = run(vulpen, [view, "--frames", 5, "--fps", 0])
+    if code != 0 or problems(output):
+        return (f"sound: expected each frame to hear what the one before added, got "
+                f"exit {code}:\n{output}")
+    return None
+
+
 def windowed(vulpen: str, folder: Path, name: str, parts: tuple[str, ...], nodes: str,
              connections: str) -> tuple[int, str]:
     """The exit code and output of a view of fixture nodes and library parts run in a
@@ -714,7 +727,8 @@ def main() -> None:
             failed += recipes(vulpen, folder)
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
                             frame_block(vulpen, folder), cpp(vulpen, folder),
-                            images(vulpen, folder), text(vulpen, folder),
+                            images(vulpen, folder), sound(vulpen, folder),
+                            text(vulpen, folder),
                             offscreen(vulpen, folder),
                             stored(vulpen, folder),
                             halves(vulpen, folder),

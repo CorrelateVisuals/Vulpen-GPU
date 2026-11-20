@@ -60,6 +60,11 @@ ALLOWED = {
     "stbiw__crc32(unsigned char*, int)::crc_table",
     "stbiw__encode_png_line(unsigned char*, int, int, int, int, int, int, signed char*)::mapping",
     "stbiw__encode_png_line(unsigned char*, int, int, int, int, int, int, signed char*)::firstmap",
+    # sokol_audio.h, compiled into Platform.cpp: its one state, which the Speakers class
+    # alone sets up and shuts down, one at a time, as Desktop owns GLFW's; and its
+    # messages, which it never writes.
+    "_saudio",
+    "_saudio_log_messages",
 }
 
 

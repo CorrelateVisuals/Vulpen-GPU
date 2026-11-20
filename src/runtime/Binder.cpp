@@ -513,6 +513,9 @@ private:
   double seconds() const override {
     return _seconds;
   }
+  SoundPort &sound() override {
+    return _schedule._wiring.ports;
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }

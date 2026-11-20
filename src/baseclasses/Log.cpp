@@ -50,7 +50,8 @@ constexpr std::array marks{Mark{"{run}", bold},
                            Mark{"{nod}", blue},
                            Mark{"{mem}", blue},
                            Mark{"{mod}", magenta},
-                           Mark{"{out}", cyan}};
+                           Mark{"{out}", cyan},
+                           Mark{"{snd}", green}};
 // By Level: an error, a warning.
 constexpr std::array problems{Mark{"{!!!}", red}, Mark{"{ ! }", yellow}};
 constexpr Mark repeat{"{rep}", dim};

@@ -38,6 +38,13 @@ constexpr const char *usage =
     "              [--size WxH] [--log error|warn|info|debug] [--log-file FILE]\n"
     "              [--source FILE] [--restart FILE]";
 constexpr std::uint32_t default_fps = 60;
+
+// The frame's share of the second's samples, counted from the frame index, so each
+// frame's samples fall where its seconds do and none is lost to rounding (C01).
+std::size_t sound_frames(std::uint64_t frame, std::uint64_t fps) {
+  constexpr std::uint64_t rate = SoundPort::sample_rate;
+  return static_cast<std::size_t>((frame + 1) * rate / fps - frame * rate / fps);
+}
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 // Beside vulpen, what quit restart hands the new vulpen to replay.
 constexpr const char *restart_file = "restart.log";
@@ -530,6 +537,7 @@ void Runtime::loop() {
     _commands.frame();
     const std::uint64_t frame = _options.first_frame + frames;
     const double seconds = static_cast<double>(frame) / rate;
+    _ports.start_sound(sound_frames(frame, static_cast<std::uint64_t>(rate)));
     // Read as the swapchain will be made for it, so C++ lays out what shaders map.
     const VkExtent2D resolution = _window ? _window->size() : _options.size;
     _clears.clear();
@@ -547,6 +555,7 @@ void Runtime::loop() {
                  seconds,
                  {cursor.x, cursor.y},
                  _options.size);
+    _ports.play_sound();
     next = std::max(next + period, std::chrono::steady_clock::now());
     std::this_thread::sleep_until(next);
   }

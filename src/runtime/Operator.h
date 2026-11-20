@@ -347,6 +347,27 @@ protected:
 };
 
 // Lines typed on standard input and text for standard output, so a CLI needs no window.
+// The frame's sound, at sample_rate in channels interleaved, left then right: each frame
+// takes as many sample frames as its share of the second, counted from the frame index
+// as Cook::seconds is, so a replay makes the same samples (C01). What the nodes add
+// sums, clamped to -1 to 1 where the speakers take it. The speakers play it only while a
+// window is open, an output beside it, so a run without one stays silent (V07).
+class SoundPort {
+public:
+  static constexpr std::uint32_t sample_rate = 48000;
+  static constexpr std::uint32_t channels = 2;
+
+  // How many sample frames this frame takes, each channels samples.
+  virtual std::size_t frames() const = 0;
+  // Adds samples to the frame's, from its first, up to frames() * channels of them.
+  virtual void add(std::span<const float> samples) = 0;
+  // What the frame before played, as the speakers took it, so a part records it.
+  virtual std::span<const float> played() const = 0;
+
+protected:
+  ~SoundPort() = default;
+};
+
 class TerminalPort {
 public:
   // Whether a person types at the terminal, a terminal this run holds, not a pipe or a
@@ -637,6 +658,8 @@ public:
   // The frame's time in seconds, the value the frame block hands shaders: frames counted
   // at the run's rate, so a replay sees the same time (C01). Last, as above.
   virtual double seconds() const = 0;
+  // The frame's sound, which the node adds to. Last, as above.
+  virtual SoundPort &sound() = 0;
 
 private:
   // As upload_image, which a module built before it calls, with the levels to make.

@@ -8,6 +8,7 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <cmath>
 #include <array>
 #include <charconv>
 #include <cstdint>
@@ -610,6 +611,58 @@ glm::vec2 Ports::pointer() const {
 
 bool Ports::names_key(std::string_view name) const {
   return key_named(name);
+}
+
+void Ports::start_sound(std::size_t frames) {
+  std::swap(_sound, _played);
+  _sound.assign(frames * channels, 0.0f);
+}
+
+// Clamped, as each GPU or sound card would wrap or clip a sum past 1 its own way; a
+// sample no number holds plays as silence (C01).
+void Ports::play_sound() {
+  for (float &sample : _sound)
+    sample = std::isfinite(sample) ? std::clamp(sample, -1.0f, 1.0f) : 0.0f;
+  if (!_speakers)
+    return;
+  _speakers->play(_sound);
+  if (const std::string trouble = _speakers->trouble(); !trouble.empty())
+    _log.write(Level::warn, Tag::snd, std::format("the speakers: {}", trouble));
+}
+
+std::size_t Ports::frames() const {
+  return _sound.size() / channels;
+}
+
+// A frame's few samples a node at a time; the speakers open with the first, three
+// frames ahead, so a frame that runs late is still heard.
+void Ports::add(std::span<const float> samples) {
+  const std::size_t added = std::min(samples.size(), _sound.size());
+  for (std::size_t at = 0; at < added; ++at)
+    _sound[at] += samples[at];
+  if (_speakers || _deaf || !_window || added == 0)
+    return;
+  constexpr std::size_t ahead = 3;
+  try {
+    _speakers = std::make_unique<Speakers>(
+        sample_rate, channels, static_cast<std::uint32_t>(frames() * ahead));
+    _log.write(Level::info,
+               Tag::snd,
+               Speakers::heard()
+                   ? std::format("plays {} Hz in {} channels, {} frames ahead",
+                                 sample_rate,
+                                 channels,
+                                 _speakers->buffered())
+                   : std::string("this build plays sound to no device, as PulseAudio's "
+                                 "headers (libpulse-dev) were not there to build with"));
+  } catch (const std::runtime_error &failure) {
+    _deaf = true;
+    _log.write(Level::warn, Tag::snd, std::format("no speakers: {}", failure.what()));
+  }
+}
+
+std::span<const float> Ports::played() const {
+  return _played;
 }
 
 void Ports::attach(const Window *window) {
