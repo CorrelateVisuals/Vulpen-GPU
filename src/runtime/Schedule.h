@@ -179,6 +179,7 @@ private:
   VkRenderPass target_of(Bound &bound) const;
   void make_pipeline(Bound &bound, VkRenderPass render_pass) const;
   Depth depth_of(const Bound &bound) const;
+  const Buffer &indirect_for(const Bound &bound);
   void pair_draws(Schedule *replaced);
   Bound *fragment_of(Bound &vertex);
   void check_varyings(const Bound &vertex,
@@ -243,6 +244,9 @@ private:
   std::vector<Held> _objects;
   std::vector<Bound> _bound; // in graph order
   std::map<std::string, Buffer, std::less<>> _buffers;
+  // Each draw's own VkDrawIndirectCommand whose instances a DrawCount counts, by its
+  // node's name.
+  std::map<std::string, Buffer, std::less<>> _indirect;
   // Each buffer's used length in elements, which a draw's instance count may follow; a
   // pass holds its address, which stays while the schedule does.
   std::map<std::string, std::uint32_t, std::less<>> _used;

@@ -456,10 +456,14 @@ void Schedule::make_buffer(Bound &writer,
       return;
     }
   }
+  // A transfer's source too, as a DrawCount is copied into a draw's indirect command.
   std::optional<Buffer> made;
   try {
-    made.emplace(_wiring.resources.buffer(
-        size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, memory));
+    made.emplace(_wiring.resources.buffer(size,
+                                          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                              VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+                                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                          memory));
   } catch (const std::runtime_error &failure) {
     writer.errors.push_back(
         std::format("{} of {} elements: {}", name, elements, failure.what()));
@@ -756,9 +760,16 @@ void Schedule::make_passes() {
               .vertex_count = draw ? bound.node->vertex_count : 0,
               .instance_count = instance_number(*bound.node).value_or(0),
               .stores = std::ranges::any_of(bound.fields, &Field::image)};
-    if (draw && !instance_number(*bound.node))
-      pass.instances =
-          &_used.at(buffer_name(bound.node->name, bound.node->instance_count));
+    if (draw && !instance_number(*bound.node)) {
+      const std::string counted =
+          buffer_name(bound.node->name, bound.node->instance_count);
+      if (bound.field(bound.node->instance_count)->type == draw_count_type) {
+        pass.count = _buffers.at(counted).handle();
+        pass.indirect = indirect_for(bound).handle();
+      } else {
+        pass.instances = &_used.at(counted);
+      }
+    }
     for (const std::unique_ptr<Rendered> &rendered : _rendered)
       if (rendered->writer == &bound)
         pass.offscreen = &rendered->offscreen;
@@ -775,6 +786,22 @@ void Schedule::make_passes() {
     _passes.push_back(std::move(pass));
     _passed.push_back(static_cast<std::size_t>(&bound - _bound.data()));
   }
+}
+
+// A draw's own command for vkCmdDrawIndirect: its vertex count, written once, and the
+// instance count each frame copies in from the GPU.
+const Buffer &Schedule::indirect_for(const Bound &bound) {
+  if (const auto made = _indirect.find(bound.node->name); made != _indirect.end())
+    return made->second;
+  Buffer command =
+      _wiring.resources.buffer(sizeof(VkDrawIndirectCommand),
+                               VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+                                   VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                               Memory::upload);
+  const VkDrawIndirectCommand first{.vertexCount = bound.node->vertex_count};
+  std::memcpy(command.bytes().data(), &first, sizeof first);
+  command.flush();
+  return _indirect.emplace(bound.node->name, std::move(command)).first->second;
 }
 
 // A node keeps what it cost through a rebuild, as an edit changes nothing it does, so

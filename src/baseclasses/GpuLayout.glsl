@@ -29,6 +29,18 @@ VP_READS(FloatsIn, float);
 VP_WRITES(FloatsOut, float);
 VP_BUFFER(Floats, float);
 
+// A draw's instance count, counted on the GPU: a dispatch adds to it, as
+// atomicAdd(pass.drawn.at[0].instance_count, 1), and a draw whose instance_count names
+// a DrawCountsIn of its pass block draws that many instances, read there
+// (vkCmdDrawIndirect), so the CPU never waits to learn it (VK03). Vulpen zeroes it
+// before each frame's passes; only the first element counts.
+struct DrawCount {
+  uint instance_count;
+};
+
+VP_READS(DrawCountsIn, DrawCount);
+VP_BUFFER(DrawCounts, DrawCount);
+
 // What every pass may read about the frame; the push constant holds its address (RV02).
 // The engine writes each member by its name, at the offset reflection gives it (RA03).
 layout(buffer_reference, std430) readonly buffer FrameBlock {

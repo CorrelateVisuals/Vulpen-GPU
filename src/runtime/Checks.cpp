@@ -269,12 +269,23 @@ void Schedule::check_stages(Bound &bound) const {
       if (field.buffer() && field.access != Access::read)
         bound.errors.push_back(std::format(
             "{}: a draw's shaders only read buffers; declare it readonly", field.name));
-    if (const Field *const field = bound.field(node.instance_count);
-        !instance_number(node) && (!field || !field->buffer()))
+    const Field *const field = bound.field(node.instance_count);
+    if (!instance_number(node) && (!field || !field->buffer()))
       bound.errors.push_back(
           std::format("instance_count = {}: its shaders hold no buffer of that name, "
                       "whose used length would count the instances",
                       node.instance_count));
+    // The frame zeroes a DrawCount before its passes, so one C++ wrote would be lost.
+    const Connection *const counted =
+        field && field->type == draw_count_type
+            ? connection_of(node.name, node.instance_count)
+            : nullptr;
+    const auto place = counted ? _places.find(counted->from.node) : _places.end();
+    if (place != _places.end() && _bound[place->second].uploads_to(counted->from.port))
+      bound.errors.push_back(std::format(
+          "instance_count = {}: a DrawCount counts on the GPU, which a dispatch adds to; "
+          "C++ counts a draw by the used length of a buffer it writes",
+          node.instance_count));
     return;
   }
   if (!node.instance_count.empty())

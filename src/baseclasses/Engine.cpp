@@ -5,7 +5,9 @@
 #include "baseclasses/Resources.h"
 #include "baseclasses/Swapchain.h"
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <limits>
 #include <optional>
 #include <vector>
@@ -55,6 +57,40 @@ void bind(VkCommandBuffer commands, const Pipelines &pipelines, const Pass &pass
 
 std::uint32_t instances_of(const Pass &pass) {
   return pass.instances ? *pass.instances : pass.instance_count;
+}
+
+// An indirect draw's count lands in its command, past the vertex count, from where the
+// dispatches left it, before the render pass that reads it starts (copies run outside
+// one).
+void count_draws(VkCommandBuffer commands, std::span<const Pass> passes, bool window) {
+  const auto counted = [&](const Pass &pass) {
+    return pass.indirect && (pass.offscreen == nullptr) == window;
+  };
+  if (std::ranges::none_of(passes, counted))
+    return;
+  barrier(commands,
+          shader_stages | VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+          VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_ACCESS_TRANSFER_READ_BIT);
+  for (const Pass &pass : passes)
+    if (counted(pass)) {
+      const VkBufferCopy region{.dstOffset = offsetof(VkDrawIndirectCommand, instanceCount),
+                                .size = sizeof(std::uint32_t)};
+      vkCmdCopyBuffer(commands, pass.count, pass.indirect, 1, &region);
+    }
+  barrier(commands,
+          VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_ACCESS_TRANSFER_WRITE_BIT,
+          VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+          VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+}
+
+void draw(VkCommandBuffer commands, const Pass &pass) {
+  if (pass.indirect)
+    vkCmdDrawIndirect(commands, pass.indirect, 0, 1, sizeof(VkDrawIndirectCommand));
+  else if (instances_of(pass) != 0)
+    vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
 }
 
 // The viewport and the scissor cover the image a render pass draws into.
@@ -240,7 +276,11 @@ void Engine::run(std::span<const VkBuffer> clears,
   _gpu->begin_timing(commands, passes.size());
   for (const VkBuffer buffer : clears)
     vkCmdFillBuffer(commands, buffer, 0, VK_WHOLE_SIZE, 0);
-  if (!clears.empty())
+  const bool counts = std::ranges::any_of(passes, &Pass::count);
+  for (const Pass &pass : passes)
+    if (pass.count)
+      vkCmdFillBuffer(commands, pass.count, 0, sizeof(std::uint32_t), 0);
+  if (!clears.empty() || counts)
     barrier(commands,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -296,16 +336,18 @@ void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes)
               VK_ACCESS_SHADER_WRITE_BIT,
               shader_stages,
               VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-    if (records && draw)
+    if (records && draw) {
+      count_draws(commands, run, false);
       begin(commands, *pass.offscreen);
+    }
     for (std::size_t each = 0; each < run.size(); ++each) {
       stamp(commands, at + each, false);
       if (records && run[each].pipeline) {
         bind(commands, pipelines, run[each]);
         if (!draw)
           vkCmdDispatch(commands, run[each].groups, 1, 1);
-        else if (instances_of(run[each]) != 0)
-          vkCmdDraw(commands, run[each].vertex_count, instances_of(run[each]), 0, 0);
+        else
+          VP::draw(commands, run[each]);
       }
       stamp(commands, at + each, true);
     }
@@ -384,6 +426,7 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
           VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
           VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT);
+  count_draws(commands, passes, true);
   swapchain->begin(commands, target);
   fill(commands, target.extent);
   // A draw given nothing this frame records nothing, while its pipeline and buffers stay,
@@ -393,9 +436,9 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
     if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || pass.offscreen)
       continue;
     stamp(commands, at, false);
-    if (pass.pipeline && instances_of(pass) != 0) {
+    if (pass.pipeline && (pass.indirect || instances_of(pass) != 0)) {
       bind(commands, pipelines, pass);
-      vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
+      VP::draw(commands, pass);
     }
     stamp(commands, at, true);
   }
