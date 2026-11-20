@@ -10,10 +10,12 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <format>
 #include <iterator>
 #include <map>
+#include <optional>
 #include <ranges>
 #include <set>
 #include <stdexcept>
@@ -141,6 +143,51 @@ void put_back(FilePort &files, const std::filesystem::path &folder, const Kept &
   std::error_code missing;
   if (kept.there && !std::filesystem::exists(folder, missing))
     files.make(folder.string());
+}
+
+// How a project's save point moved: each file and folder one side keeps and the other
+// does not alike, as it was and as it went, so a step holds what moved, never a copy of
+// a project (A03).
+struct KeptMove {
+  std::map<std::string, std::array<std::optional<std::string>, 2>, std::less<>> files;
+  std::map<std::string, std::array<bool, 2>, std::less<>> folders;
+  std::array<std::vector<std::string>, 2> left;
+};
+
+KeptMove save_point_move(const Kept &was, const Kept &now) {
+  KeptMove by{.left = {was.left, now.left}};
+  for (const auto &[path, text] : was.files)
+    if (const auto found = now.files.find(path);
+        found == now.files.end() || found->second != text)
+      by.files[path] = {text,
+                        found == now.files.end() ? std::nullopt
+                                                 : std::optional(found->second)};
+  for (const auto &[path, text] : now.files)
+    if (!was.files.contains(path))
+      by.files[path] = {std::nullopt, text};
+  for (const std::string &folder : was.folders)
+    if (!now.folders.contains(folder))
+      by.folders[folder] = {true, false};
+  for (const std::string &folder : now.folders)
+    if (!was.folders.contains(folder))
+      by.folders[folder] = {false, true};
+  return by;
+}
+
+// The save point as it was, at undo, or as it went, at redo.
+void move_save_point(Kept &kept, const KeptMove &by, bool again) {
+  const std::size_t side = again ? 1 : 0;
+  for (const auto &[path, texts] : by.files)
+    if (texts[side])
+      kept.files.insert_or_assign(path, *texts[side]);
+    else
+      kept.files.erase(path);
+  for (const auto &[folder, there] : by.folders)
+    if (there[side])
+      kept.folders.insert(folder);
+    else
+      kept.folders.erase(folder);
+  kept.left = by.left[side];
 }
 
 // Throws naming what keeps it from running: a recipe the library lacks, or a cycle that
@@ -927,7 +974,12 @@ void Views::unhost(Hosted &hosted) {
 
 void Views::save(Hosted &hosted) {
   write(hosted);
-  hosted.kept = kept_of(_port.files(), hosted.current());
+  Kept now = kept_of(_port.files(), hosted.current());
+  moves_with_step(hosted.name,
+                  [by = save_point_move(hosted.kept, now)](Hosted &held, bool again) {
+                    move_save_point(held.kept, by, again);
+                  });
+  hosted.kept = std::move(now);
   _wiring.log.write(Level::info,
                     Tag::run,
                     std::format("view save: {}", hosted.current().file.string()));
@@ -978,9 +1030,27 @@ std::vector<std::string> Views::unkept(std::string_view name) {
   return differences(found->kept, kept_of(_port.files(), found->current()));
 }
 
+// The step of a forced close keeps what it put back, so the project its undo hosts again
+// keeps its save point, not the files undo brings back.
 void Views::put_back(std::string_view name) {
-  if (const Hosted *const found = hosted(name); found && project(found->current()))
-    VP::put_back(_port.files(), found->current().file.parent_path(), found->kept);
+  const Hosted *const found = hosted(name);
+  if (!found || !project(found->current()))
+    return;
+  moves_with_step(
+      found->name,
+      [by = save_point_move(found->kept, kept_of(_port.files(), found->current()))](
+          Hosted &held, bool again) { move_save_point(held.kept, by, again); });
+  VP::put_back(_port.files(), found->current().file.parent_path(), found->kept);
+}
+
+// Undo takes the change back with the step, and redo makes it again, in the project of
+// that name as it is hosted then: none once it is closed.
+void Views::moves_with_step(const std::string &name,
+                            std::function<void(Hosted &, bool)> change) {
+  _steps->joins([this, name, change = std::move(change)](bool again) {
+    if (Hosted *const found = hosted(name); found && project(found->current()))
+      change(*found, again);
+  });
 }
 
 void Views::begin_step(std::string_view line) {

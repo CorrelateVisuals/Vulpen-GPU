@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -41,6 +42,10 @@ public:
   // A view the line runs changes, as it was before its first change, and whether it is a
   // project, as a step keeps an app's view only while the line changed what is hosted.
   void note(std::string_view name, bool project, const View &before);
+  // A change of the line running that neither its views nor its files hold, as a
+  // project's save point moving, which its owner makes again through the function: false
+  // takes it back at undo, true makes it again at redo. None while no line runs.
+  void joins(std::function<void(bool again)> change);
   // The file port the lines reach files through, which keeps each change of a step.
   FilePort &files();
   // How many steps undo can take back now.

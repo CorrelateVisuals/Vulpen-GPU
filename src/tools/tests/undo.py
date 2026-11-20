@@ -8,9 +8,12 @@ when the file they wanted back is not there, or a node comes back without its fo
 The CLI takes the lines on standard input, as typed, in a project made in a temporary
 folder: a node holding a file of known text is removed with it and brought back; a copy
 of it, moved into a group, is taken back step by step and run again; a param set is taken
-back; a file copied alone is taken back and copied again. Each undo and redo must answer, nothing may be refused, and once the project is
-saved its folder must hold each file with its text, and its manifest each node, but the
-param taken back.
+back; a file copied alone is taken back and copied again. Then a file copied and saved
+is taken back with its save, so the project's save point goes back with it: view close
+must close it, as nothing differs from that point any more, where a save point left
+behind would refuse and its force put back the file taken back. Each undo and redo must
+answer, nothing may be refused, and the project's folder must hold each file with its
+text, but the one taken back, and its manifest each node, but the param taken back.
 
 Usage: python3 src/tools/tests/undo.py VULPEN
 """
@@ -41,8 +44,13 @@ copy {seed} a/again.txt
 undo
 redo
 view save
+copy {seed} a/third.txt
+view save
+undo
+undo
+view close
 """
-UNDID, REDID = 6, 3  # the answers the script's lines give
+UNDID, REDID = 8, 3  # the answers the script's lines give
 
 
 def main() -> None:
@@ -64,6 +72,8 @@ def main() -> None:
             file = project / kept
             if not file.is_file() or file.read_text(encoding="utf-8") != SEED:
                 failures.append(f"{kept} is not there with its text")
+        if (project / "a" / "third.txt").exists():
+            failures.append("a/third.txt is there, which undo took back")
         if (project / "g" / "b").exists() or not (project / "g").is_dir():
             failures.append("the group's folder is not as the last undo left it")
         manifest = (project / "view.vlp").read_text(encoding="utf-8") \

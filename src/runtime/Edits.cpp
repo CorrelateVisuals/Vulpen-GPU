@@ -1049,7 +1049,8 @@ void Edits::let_go(std::string_view view, bool force) {
     named += std::format(" and {} more", changed.size() - named_most);
   throw std::runtime_error(std::format("view close {} would lose what no view save kept: "
                                        "{}; view save keeps it, view close force puts "
-                                       "the files back as last saved",
+                                       "the files back as last saved, which undo takes "
+                                       "back",
                                        view,
                                        named));
 }

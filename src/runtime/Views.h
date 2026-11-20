@@ -116,6 +116,8 @@ private:
   std::size_t done() const override;
   void command(Call &call) override;
   Hosted *hosted(std::string_view name) const;
+  // A change of a project's save point that undo takes back with the line running.
+  void moves_with_step(const std::string &name, std::function<void(Hosted &, bool)> change);
   // The view whose connections take the view's window: the view hosting it, or one
   // beside it, hosted by the same view; null for none.
   const Hosted *taker(const Hosted &hosted) const;

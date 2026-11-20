@@ -79,6 +79,7 @@ struct Undo::Step {
   std::vector<std::string> left;    // and as it ended
   std::vector<Viewed> views;
   std::vector<Change> changes;
+  std::vector<std::function<void(bool again)>> joined; // the owners' own changes
   std::vector<Folder> folders;     // each once
   std::filesystem::path too_large; // a file past kept_most, which undo cannot bring back
 };
@@ -234,12 +235,17 @@ void Undo::end(std::optional<std::size_t> group) {
       viewed.after = *found;
   step->group = group;
   step->left = _views.names();
-  if (step->views.empty() && step->changes.empty())
+  if (step->views.empty() && step->changes.empty() && step->joined.empty())
     return;
   _done.push_back(std::move(*step));
   if (_done.size() > undo_room)
     _done.erase(_done.begin());
   _undone.clear();
+}
+
+void Undo::joins(std::function<void(bool again)> change) {
+  if (_step)
+    _step->joined.push_back(std::move(change));
 }
 
 FilePort &Undo::files() {
@@ -330,6 +336,12 @@ void Undo::take_back(Call &call, bool again) {
   else
     take_files_back(step);
   restore_views(step, again);
+  // Once the views are back, as a save point comes back to a project the step closed.
+  if (again)
+    std::ranges::for_each(step.joined, [](const auto &change) { change(true); });
+  else
+    std::ranges::for_each(step.joined | std::views::reverse,
+                          [](const auto &change) { change(false); });
   for (const Step::Viewed &viewed : step.views)
     if (viewed.project)
       _views.write(viewed.name);
