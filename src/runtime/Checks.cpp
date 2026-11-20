@@ -345,11 +345,15 @@ void Schedule::check_shaders(const Bound &bound) const {
         std::format("{}: a draw's shaders store into no image, as that needs features "
                     "past the Vulkan floor; a dispatch stores into one",
                     image->name));
-  if (!_wiring.resources.samples(pixel_format(stored_format)->format, Fill::store))
-    throw std::runtime_error(
-        std::format("{}: this GPU cannot store into images, as it cannot index "
-                    "images[] (shaderStorageImageArrayDynamicIndexing)",
-                    image->name));
+  for (const Field &field : bound.fields)
+    if (const PixelFormat *const format =
+            field.image() ? port_format(*bound.node, field.name, stored_format) : nullptr;
+        format && !_wiring.resources.samples(format->format, Fill::store))
+      throw std::runtime_error(
+          std::format("{}: this GPU cannot store into, or filter, {} images, or cannot "
+                      "index images[] (shaderStorageImageArrayDynamicIndexing)",
+                      field.name,
+                      format->name));
 }
 
 namespace {
@@ -535,7 +539,13 @@ void Schedule::check_fields(Bound &bound) const {
     return;
   for (const Param &param : bound.node->params) {
     const Field *const field = bound.field(param.key);
-    if (field && !field->buffer()) {
+    if (field && field->image()) {
+      if (!stored_size(param.value))
+        bound.errors.push_back(std::format(
+            "param {} = {}: an Image's size is its width and height in pixels, as 256,256",
+            param.key,
+            param.value));
+    } else if (field && !field->buffer()) {
       if (bound.set_by_operator.contains(param.key))
         bound.errors.push_back(
             std::format("{} is set both by a param and by the operator", param.key));
@@ -767,13 +777,15 @@ void Schedule::check_images() {
                         image.port,
                         image.format,
                         format_names()));
-      else if (stored && image.format != stored_format)
-        bound.errors.push_back(
-            std::format("image {}={}: a dispatch stores into {} images only, as "
-                        "images[] declares them",
-                        image.port,
-                        image.format,
-                        stored_format));
+      else if (stored && std::ranges::find(stored_formats,
+                                           std::string_view(image.format),
+                                           &StoredFormat::name) == stored_formats.end())
+        bound.errors.push_back(std::format(
+            "image {}={}: a dispatch stores into R8G8B8A8_UNORM (images[]), R32_SFLOAT "
+            "(images_r32f[]) or R32G32B32A32_SFLOAT (images_rgba32f[]) images, as "
+            "GpuLayout.glsl declares them",
+            image.port,
+            image.format));
       else if (!bound.fills(image.port) && image.port != bound.output && !stored)
         bound.errors.push_back(std::format("image {}={}: neither its operator fills, "
                                            "its draw renders nor its dispatch stores an "

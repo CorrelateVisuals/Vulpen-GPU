@@ -119,31 +119,49 @@ struct DepthWrite {
 
 // Every image a dispatch stores into (RV02), each also in textures[] at the same slot, so
 // a pass after it samples it through a Texture of that index. A pass block names one by
-// an Image, which the engine makes at the frame's size, zeroed. One format,
-// R8G8B8A8_UNORM, as rgba8 declares, so a store needs no feature past the floor's but
-// storage image dynamic indexing.
+// an Image, which the engine makes zeroed, at the size a param of the Image's name gives,
+// as param = heights=256,256, or else at the frame's, in the format the node's image word
+// gives it. A store's format must match its image's, so the array is declared once a
+// format: R8G8B8A8_UNORM, the default, as images[]; R32_SFLOAT and R32G32B32A32_SFLOAT
+// as their own; each a format every GPU stores into, so a store needs no feature past
+// the floor's but storage image dynamic indexing.
 layout(set = 0, binding = 2, rgba8) uniform writeonly image2D images[];
+layout(set = 0, binding = 2, r32f) uniform writeonly image2D images_r32f[];
+layout(set = 0, binding = 2, rgba32f) uniform writeonly image2D images_rgba32f[];
 
 struct Image {
   uint index;
 };
 
-// The image's size in pixels; zero for an unbound one, slot 0. An Image comes from the
-// pass block, the same for every invocation, as indexing images[] without nonuniformEXT
-// asks.
+// The image's size in pixels, whatever its format, read where textures[] holds it too;
+// zero for an unbound one, slot 0. An Image comes from the pass block, the same for every
+// invocation, as indexing without nonuniformEXT asks.
 ivec2 image_size(Image image) {
   if (image.index == 0u)
     return ivec2(0);
-  return imageSize(images[image.index]);
+  return textureSize(sampler2D(textures[image.index], samplers[nearest_clamp]), 0);
 }
 
 // color at pixel, from the top left; nothing into an unbound image, and nothing outside
 // it, which no GPU then writes differently (GLSL02).
+bool stores_at(Image image, ivec2 pixel) {
+  return all(greaterThanEqual(pixel, ivec2(0))) && all(lessThan(pixel, image_size(image)));
+}
+
 void store(Image image, ivec2 pixel, vec4 color) {
-  const ivec2 size = image_size(image);
-  if (any(lessThan(pixel, ivec2(0))) || any(greaterThanEqual(pixel, size)))
-    return;
-  imageStore(images[image.index], pixel, color);
+  if (stores_at(image, pixel))
+    imageStore(images[image.index], pixel, color);
+}
+
+// The same into an R32_SFLOAT image, and into an R32G32B32A32_SFLOAT one.
+void store_r32f(Image image, ivec2 pixel, float value) {
+  if (stores_at(image, pixel))
+    imageStore(images_r32f[image.index], pixel, vec4(value));
+}
+
+void store_rgba32f(Image image, ivec2 pixel, vec4 color) {
+  if (stores_at(image, pixel))
+    imageStore(images_rgba32f[image.index], pixel, color);
 }
 
 // The two triangles of a quad, as its corners from the top left, so a draw of six

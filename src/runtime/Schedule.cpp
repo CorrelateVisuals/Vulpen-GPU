@@ -120,12 +120,15 @@ struct Schedule::Rendered {
 };
 
 // An image a dispatch stores into, by its writer's node.port, as its readers' connection
-// names it: made at the frame's size, zeroed, and made again whenever the size changes;
-// none while there is no size. A rebuild keeps it, contents included, as it keeps a
+// names it: made at the size a param of its name gives, or else at the frame's, in the
+// format its image word gives, zeroed, and made again whenever either changes; none
+// while there is no size. A rebuild keeps it, contents included, as it keeps a
 // buffer, so what a dispatch stored once, as a frame a still holds, outlives the edit.
 struct Schedule::Stored {
   std::string name;
   const Bound *writer = nullptr;
+  const PixelFormat *format = nullptr;
+  VkExtent2D size{}; // the param's, or none for the frame's
   std::optional<Sampled> image;
 };
 
@@ -656,9 +659,15 @@ void Schedule::make_targets() {
                                      : "",
                    .writer = &bound}));
     for (const Field &field : bound.fields)
-      if (field.image())
-        _stored.push_back({.name = std::format("{}.{}", bound.node->name, field.name),
-                           .writer = &bound});
+      if (field.image()) {
+        const Param *const sized = bound.param(field.name);
+        _stored.push_back(
+            {.name = std::format("{}.{}", bound.node->name, field.name),
+             .writer = &bound,
+             .format = port_format(*bound.node, field.name, stored_format),
+             .size = sized ? stored_size(sized->value).value_or(VkExtent2D{})
+                           : VkExtent2D{}});
+      }
   }
   const PixelFormat *const window = pixel_format(window_format);
   for (const Connection &connection : _view.connections)
@@ -719,16 +728,20 @@ void Schedule::size_targets(VkExtent2D size) {
 
 // A new image is zeroed before the passes of the frame that first runs it, so what a
 // dispatch leaves unstored samples as nothing at all, the same on every run (C01).
-void Schedule::size_stored(Stored &stored, VkExtent2D size) {
+void Schedule::size_stored(Stored &stored, VkExtent2D frame) {
+  if (!stored.format)
+    return;
+  const VkExtent2D size = stored.size.width != 0 ? stored.size : frame;
   if (stored.image && stored.image->image().extent().width == size.width &&
-      stored.image->image().extent().height == size.height)
+      stored.image->image().extent().height == size.height &&
+      stored.image->image().format() == stored.format->format)
     return;
   if (stored.image) {
     const VkImage old = stored.image->image().handle();
     std::erase_if(_copies, [&](const Copy &copy) { return copy.to == old; });
     stored.image.reset();
   }
-  const PixelFormat &format = *pixel_format(stored_format);
+  const PixelFormat &format = *stored.format;
   if (size.width != 0 && size.height != 0) {
     const Sampled &made = stored.image.emplace(
         _wiring.pipelines, _wiring.resources.image(size, format.format, Fill::store));
