@@ -540,7 +540,13 @@ private:
   void upload_image(std::uint32_t index,
                     std::span<const std::byte> pixels,
                     glm::uvec2 size) override {
-    _schedule.upload(_bound, index, pixels, {size.x, size.y});
+    upload_levels(index, pixels, size, 1);
+  }
+  void upload_levels(std::uint32_t index,
+                     std::span<const std::byte> pixels,
+                     glm::uvec2 size,
+                     std::uint32_t mip_levels) override {
+    _schedule.upload(_bound, index, pixels, {size.x, size.y}, mip_levels);
   }
   bool image_empty(std::uint32_t index) const override {
     return std::ranges::find(_schedule._images,

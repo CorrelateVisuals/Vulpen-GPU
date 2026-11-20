@@ -61,14 +61,19 @@ private:
   VkShaderModule _module = VK_NULL_HANDLE;
 };
 
+// Between mip levels as between texels, so a linear sampler reads an image's levels
+// trilinear; as many levels as the image holds, so one of one level samples as ever.
 VkSampler make_sampler(VkDevice device, VkFilter filter, VkSamplerAddressMode address) {
   const VkSamplerCreateInfo info{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
                                  .magFilter = filter,
                                  .minFilter = filter,
-                                 .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                 .mipmapMode = filter == VK_FILTER_LINEAR
+                                                   ? VK_SAMPLER_MIPMAP_MODE_LINEAR
+                                                   : VK_SAMPLER_MIPMAP_MODE_NEAREST,
                                  .addressModeU = address,
                                  .addressModeV = address,
-                                 .addressModeW = address};
+                                 .addressModeW = address,
+                                 .maxLod = VK_LOD_CLAMP_NONE};
   VkSampler sampler = VK_NULL_HANDLE;
   check(vkCreateSampler(device, &info, nullptr, &sampler), "vkCreateSampler");
   return sampler;

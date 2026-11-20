@@ -1,0 +1,21 @@
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 8) in;
+
+VP_WRITES(Texels, vec4);
+
+layout(set = 1, binding = 0) uniform Pass {
+  Texture picture; // filled by the operator with every mip level
+  Texels texels;   // read back by the operator
+} pass;
+
+// Invocations 0 to 3 sample the middle of level 1's texels, row by row, and 4 level 2's
+// one, where linear filtering takes that texel of that level alone.
+void main() {
+  const uint i = gl_GlobalInvocationID.x;
+  if (i > 4u)
+    return;
+  const bool last = i == 4u;
+  const vec2 uv = last ? vec2(0.5) : (vec2(i % 2u, i / 2u) + 0.5) / 2.0;
+  pass.texels.at[i] = sample_level(pass.picture, uv, last ? 2.0 : 1.0);
+}

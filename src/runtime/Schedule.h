@@ -208,11 +208,13 @@ private:
   void upload(const Bound &writer,
               std::uint32_t texture,
               std::span<const std::byte> pixels,
-              VkExtent2D extent);
+              VkExtent2D extent,
+              std::uint32_t mip_levels);
   const Image &image_for(const Bound &writer,
                          const std::string &name,
                          VkExtent2D extent,
-                         const PixelFormat &format);
+                         const PixelFormat &format,
+                         std::uint32_t mip_levels);
   void point_readers(const std::string &name, std::uint32_t slot);
   void drop_commands(Bound &bound);
   void close_files(Bound &bound);

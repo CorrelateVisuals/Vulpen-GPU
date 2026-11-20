@@ -76,6 +76,17 @@ vec4 sample_nearest(Texture image, vec2 uv) {
       sampler2D(textures[nonuniformEXT(image.index)], samplers[nearest_clamp]), uv, 0.0);
 }
 
+// Between the image's mip levels, level 0 the image and each next half the one before,
+// as C++ uploaded them (mip_levels): for an image drawn smaller than it is, at the
+// log2 of its texels a pixel. Given, so no derivatives, as above; past the last level the
+// last.
+vec4 sample_level(Texture image, vec2 uv, float level) {
+  if (image.index == 0u)
+    return vec4(0.0);
+  return textureLod(
+      sampler2D(textures[nonuniformEXT(image.index)], samplers[linear_clamp]), uv, level);
+}
+
 // Every image a dispatch stores into (RV02), each also in textures[] at the same slot, so
 // a pass after it samples it through a Texture of that index. A pass block names one by
 // an Image, which the engine makes at the frame's size, zeroed. One format,

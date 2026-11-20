@@ -58,6 +58,28 @@ std::string pass_block(const std::vector<Field> &fields, std::uint32_t size) {
   return text;
 }
 
+// The mip levels an upload asked for, all_mip_levels counted out; refused naming why,
+// as more than the image holds, or levels of a format the CPU makes none of (A02).
+std::uint32_t
+levels_of(const Bound::Filled &filled, VkExtent2D extent, std::uint32_t asked) {
+  const std::uint32_t most = mip_level_count(extent);
+  const std::uint32_t levels = asked == all_mip_levels ? most : asked;
+  if (levels == 0 || levels > most)
+    throw std::runtime_error(std::format("the operator asks {} mip levels of {}, which "
+                                         "at {} by {} holds 1 to {}",
+                                         levels,
+                                         filled.port,
+                                         extent.width,
+                                         extent.height,
+                                         most));
+  if (levels > 1 && !makes_mip_levels(filled.format->format))
+    throw std::runtime_error(std::format("the operator asks mip levels of {}, which is "
+                                         "{}: only an 8-bit format takes them",
+                                         filled.port,
+                                         filled.format->name));
+  return levels;
+}
+
 } // namespace
 
 // An image a draw renders into, by its writer's node.port, or the window of a view this
@@ -496,12 +518,16 @@ void Schedule::point_readers(const std::string &name, std::uint32_t slot) {
 
 // The copy runs before the frame's passes, from a buffer that lasts until the frame
 // ends.
+// Levels past the first are made in memory the CPU reads fast, not in the staging
+// buffer, which the CPU may only write fast.
 void Schedule::upload(const Bound &writer,
                       std::uint32_t texture,
                       std::span<const std::byte> pixels,
-                      VkExtent2D extent) {
+                      VkExtent2D extent,
+                      std::uint32_t mip_levels) {
   const Bound::Filled &filled = writer.textures.at(texture);
-  const std::size_t count = pixels.size() / filled.format->bytes;
+  const PixelFormat &format = *filled.format;
+  const std::size_t count = pixels.size() / format.bytes;
   if (extent.width == 0 || extent.height == 0 ||
       count != std::size_t{extent.width} * extent.height)
     throw std::runtime_error(
@@ -510,12 +536,20 @@ void Schedule::upload(const Bound &writer,
                     filled.port,
                     extent.width,
                     extent.height));
-  const Image &image = image_for(writer, filled.name, extent, *filled.format);
+  const std::uint32_t levels = levels_of(filled, extent, mip_levels);
+  const Image &image = image_for(writer, filled.name, extent, format, levels);
+  std::vector<std::byte> chain(mip_level_offset(extent, format.bytes, levels));
+  std::ranges::copy(pixels, chain.begin());
+  make_mip_levels(chain, extent, format.format, levels);
   Buffer staged = _wiring.resources.buffer(
-      pixels.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::upload);
-  std::ranges::copy(pixels, staged.bytes().begin());
+      chain.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::upload);
+  std::ranges::copy(chain, staged.bytes().begin());
   staged.flush();
-  _copies.push_back({.from = staged.handle(), .to = image.handle(), .extent = extent});
+  _copies.push_back({.from = staged.handle(),
+                     .to = image.handle(),
+                     .extent = extent,
+                     .mip_levels = levels,
+                     .pixel_bytes = format.bytes});
   _staged.push_back(std::move(staged));
 }
 
@@ -524,17 +558,20 @@ void Schedule::upload(const Bound &writer,
 const Image &Schedule::image_for(const Bound &writer,
                                  const std::string &name,
                                  VkExtent2D extent,
-                                 const PixelFormat &format) {
+                                 const PixelFormat &format,
+                                 std::uint32_t mip_levels) {
   const auto picture = std::ranges::find(_images, name, &Picture::name);
   if (picture != _images.end()) {
     const Image &image = picture->sampled.image();
     if (image.extent().width == extent.width && image.extent().height == extent.height &&
-        image.format() == format.format)
+        image.format() == format.format && image.mip_levels() == mip_levels)
       return image;
   }
   // Made before the old one goes, so an image refused leaves the old one and the slot its
   // readers hold as they were, never a slot freed under them.
-  Sampled sampled(_wiring.pipelines, _wiring.resources.image(extent, format.format));
+  Sampled sampled(
+      _wiring.pipelines,
+      _wiring.resources.image(extent, format.format, Fill::copy, mip_levels));
   if (picture != _images.end()) {
     const VkImage old = picture->sampled.image().handle();
     std::erase_if(_copies, [&](const Copy &copy) { return copy.to == old; });
@@ -545,8 +582,12 @@ const Image &Schedule::image_for(const Bound &writer,
   log(Level::info,
       Tag::mem,
       writer,
-      std::format(
-          "{}: {} by {} pixels of {}", name, extent.width, extent.height, format.name));
+      std::format("{}: {} by {} pixels of {}{}",
+                  name,
+                  extent.width,
+                  extent.height,
+                  format.name,
+                  mip_levels == 1 ? "" : std::format(", {} mip levels", mip_levels)));
   return made.sampled.image();
 }
 

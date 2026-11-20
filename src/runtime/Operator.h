@@ -116,6 +116,8 @@ template <class T> struct Upload {
 template <class T> struct Texture {
   std::uint32_t index = 0;
 };
+// Every mip level an image of its size holds, as an upload's mip_levels.
+inline constexpr std::uint32_t all_mip_levels = ~std::uint32_t{0};
 
 // A command the node registered; its runs reach the node's command hook.
 struct Command {
@@ -541,11 +543,16 @@ public:
   // Row by row from the image's first pixel, which uv 0 samples. The image keeps the
   // pixels through rebuilds while the node and the port keep their names and format, so
   // a node uploads once. Throws unless pixels holds size.x by size.y.
+  // mip_levels: how many levels the image holds, each half the one before, which
+  // sample_level reads; all_mip_levels for every one down to a pixel. Vulpen makes them
+  // from the pixels on the CPU, so every GPU samples the same bits (C01). Only the 8-bit
+  // formats take more than one.
   template <class T>
   void upload(Texture<T> texture,
               std::type_identity_t<std::span<const T>> pixels,
-              glm::uvec2 size) {
-    upload_image(texture.index, std::as_bytes(pixels), size);
+              glm::uvec2 size,
+              std::uint32_t mip_levels = 1) {
+    upload_levels(texture.index, std::as_bytes(pixels), size, mip_levels);
   }
   // Whether the image holds no pixels: before the first upload, and after image clear or
   // a change of its format. A node that fills its image once fills it again then.
@@ -626,6 +633,14 @@ public:
   // The frame's time in seconds, the value the frame block hands shaders: frames counted
   // at the run's rate, so a replay sees the same time (C01). Last, as above.
   virtual double seconds() const = 0;
+
+private:
+  // As upload_image, which a module built before it calls, with the levels to make.
+  // Last, as above.
+  virtual void upload_levels(std::uint32_t index,
+                             std::span<const std::byte> pixels,
+                             glm::uvec2 size,
+                             std::uint32_t mip_levels) = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the

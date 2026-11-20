@@ -7,7 +7,9 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <format>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -150,6 +152,7 @@ Image &Image::operator=(Image &&other) noexcept {
   std::swap(_extent, other._extent);
   std::swap(_format, other._format);
   std::swap(_fill, other._fill);
+  std::swap(_mip_levels, other._mip_levels);
   return *this;
 }
 
@@ -178,6 +181,10 @@ VkFormat Image::format() const {
 
 Fill Image::fill() const {
   return _fill;
+}
+
+std::uint32_t Image::mip_levels() const {
+  return _mip_levels;
 }
 
 Resources::Resources(VkInstance instance,
@@ -236,7 +243,10 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
 }
 
 // A stored image is zeroed by a transfer once made.
-Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
+Image Resources::image(VkExtent2D extent,
+                       VkFormat format,
+                       Fill fill,
+                       std::uint32_t mip_levels) const {
   fits(_physical_device, extent, fill);
   const VkImageUsageFlags filled =
       fill == Fill::draw    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
@@ -246,7 +256,7 @@ Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
                                .imageType = VK_IMAGE_TYPE_2D,
                                .format = format,
                                .extent = {extent.width, extent.height, 1},
-                               .mipLevels = 1,
+                               .mipLevels = mip_levels,
                                .arrayLayers = 1,
                                .samples = VK_SAMPLE_COUNT_1_BIT,
                                .tiling = VK_IMAGE_TILING_OPTIMAL,
@@ -271,13 +281,15 @@ Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
   image._extent = extent;
   image._format = format;
   image._fill = fill;
-  const VkImageViewCreateInfo view{
-      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image = image._image,
-      .viewType = VK_IMAGE_VIEW_TYPE_2D,
-      .format = format,
-      .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
+  image._mip_levels = mip_levels;
+  const VkImageViewCreateInfo view{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                                   .image = image._image,
+                                   .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                                   .format = format,
+                                   .subresourceRange = {.aspectMask =
+                                                            VK_IMAGE_ASPECT_COLOR_BIT,
+                                                        .levelCount = mip_levels,
+                                                        .layerCount = 1}};
   check(vkCreateImageView(_device, &view, nullptr, &image._view), "vkCreateImageView");
   return image;
 }
@@ -324,6 +336,165 @@ bool Resources::runs(VkShaderStageFlagBits stage) const {
       stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
     return features.tessellationShader == VK_TRUE;
   return true;
+}
+
+namespace {
+
+constexpr std::uint32_t pixel_max = 255;   // an 8-bit channel at its brightest
+constexpr std::uint32_t linear_max = 65535; // linear light, held in 16 bits
+constexpr std::uint64_t light_step = linear_max / pixel_max; // 8 bits to 16, exactly
+constexpr std::uint32_t box = 2; // texels a level's texel averages each way
+constexpr std::uint32_t rgba = 4;
+constexpr std::uint32_t alpha = 3;
+
+// sRGB's decode (IEC 61966-2-1) of each 8-bit value, as 16-bit linear light. The
+// compiler works it out with + - * / alone, which IEEE 754 rounds alike everywhere
+// (RC06), so every machine holds the same table (C01), where a library's pow may differ:
+// x^2.4 as x^2 times the fifth root of x^2, by Newton's method from above.
+constexpr double srgb_toe = 0.04045;
+constexpr double srgb_toe_slope = 12.92;
+constexpr double srgb_offset = 0.055;
+constexpr double root_degree = 5.0;
+constexpr int root_steps = 40;
+
+constexpr double fifth_root(double value) {
+  double root = 1.0;
+  for (int step = 0; step < root_steps; ++step)
+    root =
+        ((root_degree - 1.0) * root + value / (root * root * root * root)) / root_degree;
+  return root;
+}
+
+constexpr std::array<std::uint16_t, pixel_max + 1> srgb_decoded = [] {
+  std::array<std::uint16_t, pixel_max + 1> table{};
+  for (std::uint32_t value = 0; value <= pixel_max; ++value) {
+    const double s = static_cast<double>(value) / pixel_max;
+    const double x = (s + srgb_offset) / (1.0 + srgb_offset);
+    const double light = s <= srgb_toe ? s / srgb_toe_slope : x * x * fifth_root(x * x);
+    table[value] = static_cast<std::uint16_t>(light * linear_max + 0.5);
+  }
+  return table;
+}();
+
+// The 8-bit value whose decode lies nearest the light; the darker on a tie.
+std::uint64_t srgb_encoded(std::uint64_t light) {
+  const auto above = std::ranges::lower_bound(srgb_decoded, light);
+  if (above == srgb_decoded.begin())
+    return 0;
+  if (above == srgb_decoded.end())
+    return pixel_max;
+  const auto below = std::prev(above);
+  return static_cast<std::uint64_t>(
+      (light - *below <= *above - light ? below : above) - srgb_decoded.begin());
+}
+
+// An 8-bit format's channels; none for any other format.
+std::uint32_t mip_channels(VkFormat format) {
+  switch (format) {
+  case VK_FORMAT_R8_UNORM:
+    return 1;
+  case VK_FORMAT_R8G8_UNORM:
+    return 2;
+  case VK_FORMAT_R8G8B8A8_UNORM:
+  case VK_FORMAT_R8G8B8A8_SRGB:
+    return rgba;
+  default:
+    return 0;
+  }
+}
+
+// The texel of the next level at x, y, from the box of 2 by 2 texels of the level above
+// over it, which an odd side's last row or column falls out of as the level halves. A
+// color weighs by its alpha, where the format has one, so a transparent texel lends it
+// none, as a premultiplied average would; with nothing covered, the colors' plain
+// average. sRGB colors average in linear light, as the sampler filters them.
+void average(std::span<const std::byte> from,
+             VkExtent2D above,
+             std::uint32_t x,
+             std::uint32_t y,
+             std::uint32_t channels,
+             bool srgb,
+             std::span<std::byte> texel) {
+  const std::uint32_t colors = channels == rgba ? alpha : channels;
+  std::array<std::uint64_t, rgba> weighed{};
+  std::array<std::uint64_t, rgba> plain{};
+  std::uint64_t weight = 0;
+  for (std::uint32_t dy = 0; dy < box; ++dy)
+    for (std::uint32_t dx = 0; dx < box; ++dx) {
+      const std::uint32_t column = std::min(x * box + dx, above.width - 1);
+      const std::uint32_t row = std::min(y * box + dy, above.height - 1);
+      const std::span<const std::byte> under =
+          from.subspan((std::size_t{row} * above.width + column) * channels, channels);
+      const std::uint64_t covers =
+          channels == rgba ? std::to_integer<std::uint64_t>(under[alpha]) : 1;
+      weight += covers;
+      for (std::uint32_t c = 0; c < channels; ++c) {
+        const auto value = std::to_integer<std::uint64_t>(under[c]);
+        const std::uint64_t light =
+            srgb && c < colors ? srgb_decoded[value] : value * light_step;
+        weighed[c] += light * covers;
+        plain[c] += light;
+      }
+    }
+  constexpr std::uint64_t texels = box * box;
+  for (std::uint32_t c = 0; c < channels; ++c) {
+    const std::uint64_t light = c < colors && weight > 0
+                                    ? (weighed[c] + weight / 2) / weight
+                                    : (plain[c] + texels / 2) / texels;
+    texel[c] = static_cast<std::byte>(srgb && c < colors
+                                          ? srgb_encoded(light)
+                                          : (2 * light + light_step) / (2 * light_step));
+  }
+}
+
+} // namespace
+
+std::uint32_t mip_level_count(VkExtent2D extent) {
+  return static_cast<std::uint32_t>(
+      std::bit_width(std::max(extent.width, extent.height)));
+}
+
+VkExtent2D mip_level_extent(VkExtent2D extent, std::uint32_t level) {
+  return {std::max(extent.width >> level, 1U), std::max(extent.height >> level, 1U)};
+}
+
+VkDeviceSize
+mip_level_offset(VkExtent2D extent, std::uint32_t pixel_bytes, std::uint32_t level) {
+  VkDeviceSize offset = 0;
+  for (std::uint32_t above = 0; above < level; ++above) {
+    const VkExtent2D size = mip_level_extent(extent, above);
+    offset += VkDeviceSize{size.width} * size.height * pixel_bytes;
+  }
+  return offset;
+}
+
+bool makes_mip_levels(VkFormat format) {
+  return mip_channels(format) != 0;
+}
+
+void make_mip_levels(std::span<std::byte> chain,
+                     VkExtent2D extent,
+                     VkFormat format,
+                     std::uint32_t levels) {
+  const std::uint32_t channels = mip_channels(format);
+  const bool srgb = format == VK_FORMAT_R8G8B8A8_SRGB;
+  for (std::uint32_t level = 1; level < levels; ++level) {
+    const VkExtent2D above = mip_level_extent(extent, level - 1);
+    const VkExtent2D below = mip_level_extent(extent, level);
+    const std::span<const std::byte> from =
+        chain.subspan(mip_level_offset(extent, channels, level - 1));
+    const std::span<std::byte> to =
+        chain.subspan(mip_level_offset(extent, channels, level));
+    for (std::uint32_t y = 0; y < below.height; ++y)
+      for (std::uint32_t x = 0; x < below.width; ++x)
+        average(from,
+                above,
+                x,
+                y,
+                channels,
+                srgb,
+                to.subspan((std::size_t{y} * below.width + x) * channels, channels));
+  }
 }
 
 } // namespace VP

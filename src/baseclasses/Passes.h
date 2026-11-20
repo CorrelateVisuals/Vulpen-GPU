@@ -46,6 +46,9 @@ struct Copy {
   VkBuffer from = VK_NULL_HANDLE;
   VkImage to = VK_NULL_HANDLE;
   VkExtent2D extent{};
+  // Levels from holds one after another, as mip_level_offset lays them out.
+  std::uint32_t mip_levels = 1;
+  std::uint32_t pixel_bytes = 0;
 };
 
 // Where barriers go between passes (V10): a pass waits for what an earlier pass wrote,

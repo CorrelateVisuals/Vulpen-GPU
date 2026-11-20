@@ -5,6 +5,7 @@
 #include "baseclasses/Resources.h"
 #include "baseclasses/Swapchain.h"
 
+#include <array>
 #include <limits>
 #include <optional>
 #include <vector>
@@ -25,6 +26,8 @@ constexpr float far_depth = 1.0f;
 constexpr double nanoseconds_per_millisecond = 1e6;
 // A timestamp's value, then whether it is there, as the query pool hands them back.
 constexpr std::size_t per_query = 2;
+// The levels of an image whose side is the most a VkExtent2D holds.
+constexpr std::size_t most_mip_levels = 32;
 
 void barrier(VkCommandBuffer commands,
              VkPipelineStageFlags source_stage,
@@ -92,17 +95,26 @@ void upload(VkCommandBuffer commands, const Copy &copy) {
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .image = copy.to,
-      .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
+      .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .levelCount = copy.mip_levels,
+                           .layerCount = 1}};
   const auto transition = [&](VkPipelineStageFlags source, VkPipelineStageFlags target) {
     vkCmdPipelineBarrier(commands, source, target, 0, 0, nullptr, 0, nullptr, 1, &layout);
   };
   transition(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-  const VkBufferImageCopy region{
-      .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
-      .imageExtent = {copy.extent.width, copy.extent.height, 1}};
+  std::array<VkBufferImageCopy, most_mip_levels> regions{};
+  for (std::uint32_t level = 0; level < copy.mip_levels; ++level) {
+    const VkExtent2D extent = mip_level_extent(copy.extent, level);
+    regions.at(level) = {
+        .bufferOffset = mip_level_offset(copy.extent, copy.pixel_bytes, level),
+        .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                             .mipLevel = level,
+                             .layerCount = 1},
+        .imageExtent = {extent.width, extent.height, 1}};
+  }
   if (copy.from)
-    vkCmdCopyBufferToImage(commands, copy.from, copy.to, written, 1, &region);
+    vkCmdCopyBufferToImage(
+        commands, copy.from, copy.to, written, copy.mip_levels, regions.data());
   else
     vkCmdClearColorImage(
         commands, copy.to, written, &transparent, 1, &layout.subresourceRange);

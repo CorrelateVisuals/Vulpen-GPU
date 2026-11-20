@@ -79,6 +79,8 @@ TAKE = '[node "take"]\noperator = Take\n'
 SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
 MAKER = '[node "maker"]\noperator = Maker\n'
 PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = picture=R8_UNORM\n'
+LEVELS = ('[node "levels"]\noperator = Levels\ninvocations = 8\n'
+          'image = picture=R8G8B8A8_SRGB\n')
 SIGN = '[node "sign"]\noperator = Sign\n'
 PAINT = '[node "paint"]\nvertex_count = 3\n'
 LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
@@ -389,15 +391,17 @@ def cpp(vulpen: str, folder: Path) -> str | None:
 def images(vulpen: str, folder: Path) -> str | None:
     """Why the pixels C++ filled an image with did not reach the shader, or None: through
     the node's own Texture, through a connection to it, as 16-bit floats no byte holds,
-    and filled again after image clear. The fixture's operator adds a node after it
-    fills, which rebuilds the view, and stops when a pixel differs."""
+    filled again after image clear, and its mip levels, as the CPU averaged them. The
+    fixture's operator adds a node after it fills, which rebuilds the view, and stops
+    when a pixel differs."""
     relayed = PICTURE.replace("Picture", "Relayed").replace("picture=", "copy=")
     for name, text in (("own", HEAD + PICTURE),
                        ("relayed", HEAD + relayed
                         + connection("copy", "picture.copy", "picture.picture")),
                        ("deep", HEAD + PICTURE.replace("Picture", "Deep")
                         .replace("R8_UNORM", "R16G16B16A16_SFLOAT")),
-                       ("cleared", HEAD + PICTURE.replace("Picture", "Cleared"))):
+                       ("cleared", HEAD + PICTURE.replace("Picture", "Cleared")),
+                       ("levels", HEAD + LEVELS)):
         view = view_in(folder, f"image-{name}", text)
         code, output = run(vulpen, [view, "--frames", 5, "--fps", 0])
         if code != 0 or problems(output):
