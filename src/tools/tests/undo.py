@@ -8,7 +8,7 @@ when the file they wanted back is not there, or a node comes back without its fo
 The CLI takes the lines on standard input, as typed, in a project made in a temporary
 folder: a node holding a file of known text is removed with it and brought back; a copy
 of it, moved into a group, is taken back step by step and run again; a param set is taken
-back. Each undo and redo must answer, nothing may be refused, and once the project is
+back; a file copied alone is taken back and copied again. Each undo and redo must answer, nothing may be refused, and once the project is
 saved its folder must hold each file with its text, and its manifest each node, but the
 param taken back.
 
@@ -37,9 +37,12 @@ param set a speed 2
 undo
 undo
 redo
+copy {seed} a/again.txt
+undo
+redo
 view save
 """
-UNDID, REDID = 5, 2  # the answers the script's lines give
+UNDID, REDID = 6, 3  # the answers the script's lines give
 
 
 def main() -> None:
@@ -57,7 +60,7 @@ def main() -> None:
         if (undid, redid) != (UNDID, REDID):
             failures.append(f"{undid} undid and {redid} redid answered, where the lines "
                             f"ask {UNDID} and {REDID}")
-        for kept in ("a/seed.txt", "b/seed.txt"):
+        for kept in ("a/seed.txt", "b/seed.txt", "a/again.txt"):
             file = project / kept
             if not file.is_file() or file.read_text(encoding="utf-8") != SEED:
                 failures.append(f"{kept} is not there with its text")

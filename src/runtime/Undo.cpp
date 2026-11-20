@@ -525,11 +525,14 @@ void Undo::bring_files_again(Step &step) {
 // folder its last file leaves.
 void Undo::remove_tree(const std::filesystem::path &path) {
   FilePort &files = *_recorded;
-  for (std::string name : files.list(path.string())) {
-    if (name.ends_with('/'))
-      name.pop_back();
-    remove_tree(path / name);
-  }
+  // A copy of one file is a file, which no listing reads.
+  std::error_code unread;
+  if (std::filesystem::is_directory(path, unread))
+    for (std::string name : files.list(path.string())) {
+      if (name.ends_with('/'))
+        name.pop_back();
+      remove_tree(path / name);
+    }
   if (there(path))
     files.remove(path.string());
 }
