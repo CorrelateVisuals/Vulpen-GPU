@@ -123,11 +123,16 @@ set_target_properties(vulpen PROPERTIES COMPILE_WARNING_AS_ERROR ON
                                         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<0:>)
 
 # Stamped at every build, not at configure: a configure-time stamp keeps naming
-# the old commit after the next `git commit`, and never sees a dirty tree.
+# the old commit after the next `git commit`, and never sees a dirty tree. A source
+# download (GitHub's Source code zip) holds no history to ask: there git archive has
+# written the commit into archive-commit.txt (.gitattributes), where a clone keeps the
+# placeholder, which matches no commit.
+file(STRINGS ${PROJECT_SOURCE_DIR}/src/runtime/cmake/archive-commit.txt archived)
+string(REGEX MATCH "^[0-9a-f]+$" archived "${archived}")
 set(generated ${CMAKE_BINARY_DIR}/generated)
 add_custom_target(commit
-  COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -DOUTPUT=${generated}/commit.h
-          -P ${PROJECT_SOURCE_DIR}/src/runtime/cmake/commit.cmake
+  COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -DARCHIVED=${archived}
+          -DOUTPUT=${generated}/commit.h -P ${PROJECT_SOURCE_DIR}/src/runtime/cmake/commit.cmake
   BYPRODUCTS ${generated}/commit.h
   VERBATIM)
 add_dependencies(vulpen commit)
@@ -154,16 +159,20 @@ if(NOT MSVC) # it reads the objects with objdump
   # build makes as modules vulpen does not wait for.
   add_dependencies(globals vulpen vulpen_modules baseclasses-triangle barriers)
 endif()
-add_custom_target(statistics ALL
-  COMMAND ${Python3_EXECUTABLE} ${tools}/fetch-statistics.py
-          "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
-  COMMAND_EXPAND_LISTS VERBATIM)
-add_dependencies(statistics vulpen)
-add_custom_target(images ALL
-  COMMAND ${Python3_EXECUTABLE} ${tools}/update-readme-images.py
-          "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
-  COMMAND_EXPAND_LISTS VERBATIM)
-add_dependencies(images statistics)
+# Both list the files with git, and keep the repository's records, which a download
+# has no history to keep them in.
+if(NOT archived)
+  add_custom_target(statistics ALL
+    COMMAND ${Python3_EXECUTABLE} ${tools}/fetch-statistics.py
+            "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
+    COMMAND_EXPAND_LISTS VERBATIM)
+  add_dependencies(statistics vulpen)
+  add_custom_target(images ALL
+    COMMAND ${Python3_EXECUTABLE} ${tools}/update-readme-images.py
+            "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
+    COMMAND_EXPAND_LISTS VERBATIM)
+  add_dependencies(images statistics)
+endif()
 
 # GLSL to SPIR-V at <out>/<name>.spv, as Shader loads it; the arguments after out are the
 # compiler's include flags. Every shader is GLSL 4.60 that may #include, so the build gives

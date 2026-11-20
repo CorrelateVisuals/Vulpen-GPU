@@ -21,3 +21,7 @@
 # alike. Vendored files also skip line-ending conversion, so they stay
 # byte-identical to the pinned upstream release.
 src/external-libraries/** -text linguist-vendored
+
+# GitHub's source downloads hold no history to ask for the commit: git archive writes it
+# into this file, where a clone keeps the placeholder (CMakeLists.txt reads it).
+src/runtime/cmake/archive-commit.txt export-subst
