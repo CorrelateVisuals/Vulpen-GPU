@@ -38,7 +38,7 @@ VENDORED = SOURCE / "external-libraries"  # not our code, so not our rules
 PLATFORM = {"baseclasses/Platform.h", "baseclasses/Platform.cpp"}
 # What any file may include; the include map says which files do.
 LIBRARIES = ("vulkan/", "glm/", "vk_mem_alloc.h", "stb_truetype.h", "stb_image.h",
-             "stb_image_write.h")
+             "stb_image_write.h", "tiny_obj_loader.h")
 
 # Raw strings first: their text may hold quotes.
 LITERALS = re.compile(r'R"([^(\s]*)\(.*?\)\1"|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\''

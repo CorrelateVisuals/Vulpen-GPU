@@ -73,3 +73,4 @@ A file of the recipes (`src/runtime/recipes/`: vulpen's library and each other g
 | `<stb_truetype.h>` | the glyph atlas the `font` part bakes |
 | `<stb_image.h>` | the picture files `shared/Picture.h` decodes, for the `picture` and `image-file` parts |
 | `<stb_image_write.h>` | the PNG files the `snapshot` part saves |
+| `<tiny_obj_loader.h>` | the OBJ files the `mesh-file` part reads |
