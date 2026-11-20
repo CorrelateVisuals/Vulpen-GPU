@@ -37,9 +37,10 @@ public:
                    double time,
                    VkExtent2D resolution,
                    std::array<float, 2> cursor) const;
-  // The render pass a draw into an image of the format records in, made the first time
-  // the format asks and kept, so every pipeline that draws into that format fits it.
-  VkRenderPass render_pass(VkFormat format) const;
+  // The render pass a draw into an image of the format records in, with a depth image
+  // when depth asks, made the first time it is asked for and kept, so every pipeline
+  // that draws into such an image fits it.
+  VkRenderPass render_pass(VkFormat format, bool depth = false) const;
 
 private:
   friend class Pipeline;
@@ -84,7 +85,12 @@ private:
   VkPipelineLayout _layout = VK_NULL_HANDLE;
   mutable std::vector<Pool> _pools;
   mutable std::optional<Frame> _frame;
-  mutable std::vector<std::pair<VkFormat, VkRenderPass>> _render_passes;
+  struct Made {
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    bool depth = false;
+    VkRenderPass render_pass = VK_NULL_HANDLE;
+  };
+  mutable std::vector<Made> _render_passes;
 };
 
 // A shader of a draw, and the stage Vulkan runs it as.
@@ -151,10 +157,11 @@ private:
 };
 
 // An image a draw renders into and passes then sample: its slot in textures[], and the
-// framebuffer its draw records through, in its format's render pass.
+// framebuffer its draw records through, in its format's render pass; with depth, a depth
+// image of its size beside it, which its draws test and write.
 class Drawn {
 public:
-  Drawn(const Pipelines &pipelines, Image image);
+  Drawn(const Pipelines &pipelines, Image image, bool depth = false);
   Drawn(Drawn &&other) noexcept;
   Drawn &operator=(Drawn &&other) noexcept;
   ~Drawn();
@@ -164,6 +171,7 @@ public:
 
 private:
   Sampled _sampled;
+  std::optional<Image> _depth;
   VkDevice _device = VK_NULL_HANDLE;
   VkFramebuffer _framebuffer = VK_NULL_HANDLE;
 };

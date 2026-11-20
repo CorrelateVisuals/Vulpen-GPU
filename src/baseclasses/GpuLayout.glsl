@@ -87,6 +87,21 @@ vec4 sample_level(Texture image, vec2 uv, float level) {
       sampler2D(textures[nonuniformEXT(image.index)], samplers[linear_clamp]), uv, level);
 }
 
+// A draw whose pass block holds one of these tests each fragment against the depth the
+// draws before it left in its target this frame, keeping it where it lies as near or
+// nearer: gl_Position's z / w, 0 near and 1 far, which each frame clears to 1. A
+// DepthWrite then leaves its own depth there, a DepthTest only tests, as a surface seen
+// through does. A view's window has a depth for its draws to share; an image a draw
+// renders into has one while that draw declares it. A draw without one stacks over what
+// came before, in graph order. Its index is 0: the declaration is all a draw needs.
+struct DepthTest {
+  uint index;
+};
+
+struct DepthWrite {
+  uint index;
+};
+
 // Every image a dispatch stores into (RV02), each also in textures[] at the same slot, so
 // a pass after it samples it through a Texture of that index. A pass block names one by
 // an Image, which the engine makes at the frame's size, zeroed. One format,

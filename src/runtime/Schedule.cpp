@@ -58,6 +58,15 @@ std::string pass_block(const std::vector<Field> &fields, std::uint32_t size) {
   return text;
 }
 
+// Whether a draw's pass block declares a depth, or its fragment node's, which a draw
+// split over two takes its fragment shader from.
+bool declares_depth(const Bound &bound) {
+  const auto in = [](const Bound &holder) {
+    return std::ranges::any_of(holder.fields, &Field::depth);
+  };
+  return in(bound) || (bound.fragment && in(*bound.fragment));
+}
+
 // The mip levels an upload asked for, all_mip_levels counted out; refused naming why,
 // as more than the image holds, or levels of a format the CPU makes none of (A02).
 std::uint32_t
@@ -90,6 +99,7 @@ struct Schedule::Rendered {
   std::string name;
   const PixelFormat *format = nullptr;
   VkRenderPass render_pass = VK_NULL_HANDLE; // which its draws' pipelines fit
+  bool depth = false; // a view's window always, a draw's image while it declares one
   const Bound *writer = nullptr;             // null for a view's window
   std::optional<Drawn> drawn;                // none while there is no size
   Offscreen offscreen;
@@ -152,7 +162,7 @@ Schedule::Schedule(const Wiring &wiring,
                    bool project)
     : _wiring(wiring), _name(name), _view(view), _joined(joined_of(view)),
       _window(into == Into::image
-                  ? wiring.pipelines.render_pass(pixel_format(window_format)->format)
+                  ? wiring.pipelines.render_pass(pixel_format(window_format)->format, true)
               : into == Into::window ? wiring.render_pass
                                      : VK_NULL_HANDLE),
       _into(into), _project(project) {
@@ -313,13 +323,17 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
   if (!_wiring.resources.samples(colors.drawn->format, Fill::draw))
     throw std::runtime_error(std::format(
         "{}: this GPU cannot draw into {} images", colors.output, colors.drawn->name));
-  return _wiring.pipelines.render_pass(colors.drawn->format);
+  return _wiring.pipelines.render_pass(colors.drawn->format, declares_depth(bound));
 }
 
 // A draw's pipeline fits the render pass it records in.
 void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
   std::string from = joined(bound.shaders_named, " and ");
   if (!is_draw(*bound.node)) {
+    if (declares_depth(bound))
+      throw std::runtime_error(
+          "its pass block declares a depth, which only a draw tests: a dispatch "
+          "samples a draw's depth through a Texture");
     bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
   } else {
     const Bound &colors = bound.fragment ? *bound.fragment : bound;
@@ -606,6 +620,7 @@ void Schedule::make_targets() {
           Rendered{.name = std::format("{}.{}", colors.node->name, colors.output),
                    .format = colors.drawn,
                    .render_pass = bound.render_pass,
+                   .depth = declares_depth(bound),
                    .writer = &bound}));
     for (const Field &field : bound.fields)
       if (field.image())
@@ -618,7 +633,8 @@ void Schedule::make_targets() {
       _rendered.push_back(std::make_unique<Rendered>(
           Rendered{.name = connection.from.text(),
                    .format = window,
-                   .render_pass = _wiring.pipelines.render_pass(window->format)}));
+                   .render_pass = _wiring.pipelines.render_pass(window->format, true),
+                   .depth = true}));
 }
 
 // To the frame's size, before any pass runs: an image of another size goes, and its
@@ -634,10 +650,13 @@ void Schedule::size_targets(VkExtent2D size) {
     const PixelFormat &format = *rendered->format;
     if (size.width != 0 && size.height != 0) {
       const Drawn &drawn = rendered->drawn.emplace(
-          _wiring.pipelines, _wiring.resources.image(size, format.format, Fill::draw));
+          _wiring.pipelines,
+          _wiring.resources.image(size, format.format, Fill::draw),
+          rendered->depth);
       rendered->offscreen = {.render_pass = rendered->render_pass,
                              .framebuffer = drawn.framebuffer(),
-                             .extent = size};
+                             .extent = size,
+                             .depth = rendered->depth};
       const std::string pixels =
           std::format("{} by {} pixels of {}", size.width, size.height, format.name);
       if (rendered->writer)

@@ -12,12 +12,12 @@ vec3 unit(vec3 v) {
   return l > 0.0 ? v / l : vec3(0.0);
 }
 
-// Lit as a matte surface: by how squarely it faces the light. A triangle's back is not
-// drawn, so with no depth buffer a convex model's far side never paints over its near.
+// Lit as a matte surface: by how squarely it faces the light, a back as the other way, so
+// a model that is open, as a plane, shows from either side; the depth keeps what is
+// nearest.
 void main() {
-  if (!gl_FrontFacing)
-    discard;
+  const vec3 facing = gl_FrontFacing ? normal : -normal;
   const float lit =
-      ambient + (1.0 - ambient) * max(dot(unit(normal), unit(pass.light.xyz)), 0.0);
+      ambient + (1.0 - ambient) * max(dot(unit(facing), unit(pass.light.xyz)), 0.0);
   color = vec4(tint.rgb * lit, tint.a);
 }

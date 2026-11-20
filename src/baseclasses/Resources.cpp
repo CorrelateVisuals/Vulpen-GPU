@@ -55,7 +55,7 @@ void fits(VkPhysicalDevice device, VkExtent2D extent, Fill fill) {
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(device, &properties);
   const VkPhysicalDeviceLimits &limits = properties.limits;
-  const bool drawn = fill == Fill::draw;
+  const bool drawn = fill == Fill::draw || fill == Fill::depth;
   const std::uint32_t widest = drawn ? std::min(limits.maxImageDimension2D,
                                                 limits.maxFramebufferWidth)
                                      : limits.maxImageDimension2D;
@@ -201,6 +201,18 @@ Resources::Resources(VkInstance instance,
                                     .instance = instance,
                                     .vulkanApiVersion = VK_API_VERSION_1_2};
   check(vmaCreateAllocator(&info, &_allocator), "vmaCreateAllocator");
+  constexpr std::array depths{
+      VK_FORMAT_D32_SFLOAT, VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D16_UNORM};
+  constexpr VkFormatFeatureFlags tested =
+      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+  for (const VkFormat format : depths) {
+    VkFormatProperties properties{};
+    vkGetPhysicalDeviceFormatProperties(physical_device, format, &properties);
+    if ((properties.optimalTilingFeatures & tested) == tested) {
+      _depth_format = format;
+      break;
+    }
+  }
 }
 
 Resources::~Resources() {
@@ -251,6 +263,7 @@ Image Resources::image(VkExtent2D extent,
   const VkImageUsageFlags filled =
       fill == Fill::draw    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
       : fill == Fill::store ? VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+      : fill == Fill::depth ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
                             : VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   const VkImageCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                                .imageType = VK_IMAGE_TYPE_2D,
@@ -287,7 +300,9 @@ Image Resources::image(VkExtent2D extent,
                                    .viewType = VK_IMAGE_VIEW_TYPE_2D,
                                    .format = format,
                                    .subresourceRange = {.aspectMask =
-                                                            VK_IMAGE_ASPECT_COLOR_BIT,
+                                                            fill == Fill::depth
+                                                                ? VK_IMAGE_ASPECT_DEPTH_BIT
+                                                                : VK_IMAGE_ASPECT_COLOR_BIT,
                                                         .levelCount = mip_levels,
                                                         .layerCount = 1}};
   check(vkCreateImageView(_device, &view, nullptr, &image._view), "vkCreateImageView");
@@ -313,6 +328,10 @@ bool Resources::samples(VkFormat format, Fill fill) const {
   vkGetPhysicalDeviceFeatures(_physical_device, &features);
   return (properties.optimalTilingFeatures & needed) == needed &&
          (fill != Fill::store || features.shaderStorageImageArrayDynamicIndexing);
+}
+
+VkFormat Resources::depth_format() const {
+  return _depth_format;
 }
 
 std::uint32_t Resources::max_compute_work_group_count() const {

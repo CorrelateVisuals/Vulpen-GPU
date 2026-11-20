@@ -22,7 +22,6 @@ constexpr VkPipelineStageFlags shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_B
 // A draw's image starts as nothing at all, so what the draw leaves uncovered samples as
 // transparent.
 constexpr VkClearColorValue transparent{.float32 = {0.0f, 0.0f, 0.0f, 0.0f}};
-constexpr float far_depth = 1.0f;
 constexpr double nanoseconds_per_millisecond = 1e6;
 // A timestamp's value, then whether it is there, as the query pool hands them back.
 constexpr std::size_t per_query = 2;
@@ -69,13 +68,14 @@ void fill(VkCommandBuffer commands, VkExtent2D extent) {
 }
 
 void begin(VkCommandBuffer commands, const Offscreen &offscreen) {
-  const VkClearValue clear{.color = transparent};
+  const std::array clears{VkClearValue{.color = transparent},
+                          VkClearValue{.depthStencil = {.depth = far_depth}}};
   const VkRenderPassBeginInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                                    .renderPass = offscreen.render_pass,
                                    .framebuffer = offscreen.framebuffer,
                                    .renderArea = {.extent = offscreen.extent},
-                                   .clearValueCount = 1,
-                                   .pClearValues = &clear};
+                                   .clearValueCount = offscreen.depth ? 2U : 1U,
+                                   .pClearValues = clears.data()};
   vkCmdBeginRenderPass(commands, &info, VK_SUBPASS_CONTENTS_INLINE);
   fill(commands, offscreen.extent);
 }
@@ -144,7 +144,7 @@ struct Engine::Gpu {
                   ? ~std::uint64_t{0}
                   : (std::uint64_t{1} << mechanics.timestamp_bits()) - 1) {
     if (window)
-      swapchain.emplace(engine_log, mechanics, *window);
+      swapchain.emplace(engine_log, mechanics, resources, *window);
   }
   ~Gpu() {
     vkDestroyQueryPool(mechanics.device(), queries, nullptr);
@@ -208,7 +208,7 @@ const Pipelines &Engine::pipelines() const {
 }
 
 void Engine::open(const Window &window) {
-  _gpu->swapchain.emplace(_gpu->log, _gpu->mechanics, window);
+  _gpu->swapchain.emplace(_gpu->log, _gpu->mechanics, _gpu->resources, window);
 }
 
 void Engine::close() {

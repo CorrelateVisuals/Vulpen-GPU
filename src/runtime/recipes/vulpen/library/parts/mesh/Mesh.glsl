@@ -9,4 +9,6 @@ layout(set = 1, binding = 0) uniform Pass {
   Cameras camera;      // a connection: the eye and the frame it looks along
   vec4 color;          // tints every triangle
   vec4 light;          // xyz: toward the light, which need not be unit
+  float near;          // how near the eye a point may lie and still show
+  DepthWrite depth;    // a triangle hides what lies behind it
 } pass;

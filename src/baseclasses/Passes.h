@@ -16,6 +16,7 @@ struct Offscreen {
   VkRenderPass render_pass = VK_NULL_HANDLE;
   VkFramebuffer framebuffer = VK_NULL_HANDLE;
   VkExtent2D extent{};
+  bool depth = false; // whether its render pass clears a depth image too
 };
 
 // One dispatch or draw and the buffers it touches, as its shaders' qualifiers declare

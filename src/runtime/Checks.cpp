@@ -173,7 +173,7 @@ void list_values(std::span<const Bound> bounds, std::vector<NodePort> &ports) {
                                  .joined = bound.param(name) != nullptr});
     };
     for (const Field &field : bound.fields)
-      if (!field.buffer() && !field.texture() && !field.image() &&
+      if (!field.buffer() && !field.texture() && !field.image() && !field.depth() &&
           !bound.set_by_operator.contains(field.name))
         add(field.name, field.type);
     for (const auto &[read, type] : bound.read_by_operator)
@@ -537,7 +537,7 @@ void Schedule::check_fields(Bound &bound) const {
     }
   }
   for (const Field &field : bound.fields)
-    if (!field.buffer() && !field.texture() && !field.image() &&
+    if (!field.buffer() && !field.texture() && !field.image() && !field.depth() &&
         !bound.param(field.name) && !bound.set_by_operator.contains(field.name))
       bound.warnings.push_back(
           std::format("{} in the pass block: nothing sets it, so it reads 0: param set "

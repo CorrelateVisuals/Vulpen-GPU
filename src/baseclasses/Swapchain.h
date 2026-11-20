@@ -3,13 +3,16 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <vector>
 
 namespace VP {
 
+class Image;
 class Log;
 class Mechanics;
+class Resources;
 class Window;
 
 // The window image one frame renders into, and what orders the frame around it.
@@ -22,13 +25,16 @@ struct Target {
 };
 
 // The window output: one output next to files and streams, never needed to run. It
-// remakes its images when the window's size changes; its render pass stays, so the
-// draws' pipelines stay too.
+// remakes its images when the window's size changes, a depth image with them, which the
+// window's draws share; its render pass stays, so the draws' pipelines stay too.
 class Swapchain {
 public:
   // Makes the window's surface. Throws, naming why, when the device cannot present to
   // it. The window must outlive it.
-  Swapchain(const Log &log, const Mechanics &mechanics, const Window &window);
+  Swapchain(const Log &log,
+            const Mechanics &mechanics,
+            const Resources &resources,
+            const Window &window);
   ~Swapchain();
   Swapchain(const Swapchain &) = delete;
   Swapchain &operator=(const Swapchain &) = delete;
@@ -36,7 +42,7 @@ public:
   VkRenderPass render_pass() const;
   // Nothing while the window is minimized, or while its images are being remade.
   std::optional<Target> acquire();
-  // Starts the render pass on the target, clearing it.
+  // Starts the render pass on the target, clearing it and the depth.
   void begin(VkCommandBuffer commands, const Target &target) const;
   void present(const Target &target);
 
@@ -46,6 +52,7 @@ private:
   void release();
 
   const Log &_log;
+  const Resources &_resources;
   const Window &_window;
   const VkInstance _instance;
   const VkPhysicalDevice _physical_device;
@@ -61,6 +68,7 @@ private:
   VkExtent2D _made_for{}; // the window's size then, which _extent may be clamped from
   bool _stale = false;
   std::vector<VkImageView> _views;
+  std::unique_ptr<Image> _depth; // the window's size, as its images are
   std::vector<VkFramebuffer> _framebuffers;
   // One per image: presenting holds its semaphore until that image shows, which no
   // fence tells the CPU.

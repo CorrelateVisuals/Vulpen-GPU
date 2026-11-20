@@ -3,8 +3,10 @@
 #include "baseclasses/Log.h"
 #include "baseclasses/Mechanics.h"
 #include "baseclasses/Platform.h"
+#include "baseclasses/Resources.h"
 
 #include <algorithm>
+#include <array>
 #include <format>
 #include <limits>
 #include <stdexcept>
@@ -48,31 +50,54 @@ VkPresentModeKHR pick_present_mode(VkPhysicalDevice device, VkSurfaceKHR surface
              : VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkRenderPass make_render_pass(VkDevice device, VkFormat format) {
-  const VkAttachmentDescription color{.format = format,
-                                      .samples = VK_SAMPLE_COUNT_1_BIT,
-                                      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                                      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                      .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
+// The depth is dropped once the pass ends, so a tile-based GPU never writes it out; the
+// last frame's tests on it finish before this frame's start.
+VkRenderPass make_render_pass(VkDevice device, VkFormat format, VkFormat depth_format) {
+  if (depth_format == VK_FORMAT_UNDEFINED)
+    throw std::runtime_error("this GPU tests depth in none of D32_SFLOAT, "
+                             "X8_D24_UNORM_PACK32 and D16_UNORM");
+  const std::array attachments{
+      VkAttachmentDescription{.format = format,
+                              .samples = VK_SAMPLE_COUNT_1_BIT,
+                              .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                              .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                              .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                              .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                              .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR},
+      VkAttachmentDescription{
+          .format = depth_format,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+          .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}};
   const VkAttachmentReference target{.attachment = 0,
                                      .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+  const VkAttachmentReference tested{
+      .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
   const VkSubpassDescription subpass{.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
                                      .colorAttachmentCount = 1,
-                                     .pColorAttachments = &target};
+                                     .pColorAttachments = &target,
+                                     .pDepthStencilAttachment = &tested};
   // The image's layout changes only once it is acquired, which the submit waits for at
   // this stage.
+  constexpr VkPipelineStageFlags tests = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
   const VkSubpassDependency acquired{
       .srcSubpass = VK_SUBPASS_EXTERNAL,
       .dstSubpass = 0,
-      .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT};
+      .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
+      .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
+      .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT};
   const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                    .attachmentCount = 1,
-                                    .pAttachments = &color,
+                                    .attachmentCount =
+                                        static_cast<std::uint32_t>(attachments.size()),
+                                    .pAttachments = attachments.data(),
                                     .subpassCount = 1,
                                     .pSubpasses = &subpass,
                                     .dependencyCount = 1,
@@ -102,13 +127,16 @@ VkSemaphore make_semaphore(VkDevice device) {
 
 } // namespace
 
-Swapchain::Swapchain(const Log &log, const Mechanics &mechanics, const Window &window)
-    : _log(log), _window(window), _instance(mechanics.instance()),
+Swapchain::Swapchain(const Log &log,
+                     const Mechanics &mechanics,
+                     const Resources &resources,
+                     const Window &window)
+    : _log(log), _resources(resources), _window(window), _instance(mechanics.instance()),
       _physical_device(mechanics.physical_device()), _device(mechanics.device()),
       _queue(mechanics.queue()), _surface(make_surface(mechanics, window)),
       _format(pick_format(_physical_device, _surface)),
       _present_mode(pick_present_mode(_physical_device, _surface)),
-      _render_pass(make_render_pass(_device, _format.format)),
+      _render_pass(make_render_pass(_device, _format.format, resources.depth_format())),
       _acquired(make_semaphore(_device)) {
   if (_format.format != srgb.format || _format.colorSpace != srgb.colorSpace)
     _log.write(Level::warn,
@@ -171,13 +199,15 @@ std::optional<Target> Swapchain::acquire() {
 }
 
 void Swapchain::begin(VkCommandBuffer commands, const Target &target) const {
-  const VkClearValue clear{.color = clear_color};
+  const std::array clears{VkClearValue{.color = clear_color},
+                          VkClearValue{.depthStencil = {.depth = far_depth}}};
   const VkRenderPassBeginInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                                    .renderPass = _render_pass,
                                    .framebuffer = target.framebuffer,
                                    .renderArea = {.extent = target.extent},
-                                   .clearValueCount = 1,
-                                   .pClearValues = &clear};
+                                   .clearValueCount =
+                                       static_cast<std::uint32_t>(clears.size()),
+                                   .pClearValues = clears.data()};
   vkCmdBeginRenderPass(commands, &info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
@@ -247,6 +277,8 @@ void Swapchain::make_images() {
   vkGetSwapchainImagesKHR(_device, _swapchain, &count, nullptr);
   std::vector<VkImage> images(count);
   vkGetSwapchainImagesKHR(_device, _swapchain, &count, images.data());
+  _depth = std::make_unique<Image>(
+      _resources.image(_extent, _resources.depth_format(), Fill::depth));
   for (const VkImage image : images) {
     const VkImageViewCreateInfo view{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -258,11 +290,12 @@ void Swapchain::make_images() {
                              .layerCount = 1}};
     check(vkCreateImageView(_device, &view, nullptr, &_views.emplace_back()),
           "vkCreateImageView");
+    const std::array attachments{_views.back(), _depth->view()};
     const VkFramebufferCreateInfo framebuffer{
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = _render_pass,
-        .attachmentCount = 1,
-        .pAttachments = &_views.back(),
+        .attachmentCount = static_cast<std::uint32_t>(attachments.size()),
+        .pAttachments = attachments.data(),
         .width = _extent.width,
         .height = _extent.height,
         .layers = 1};
@@ -284,6 +317,7 @@ void Swapchain::release() {
   _rendered.clear();
   _framebuffers.clear();
   _views.clear();
+  _depth.reset();
 }
 
 } // namespace VP

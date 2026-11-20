@@ -15,8 +15,11 @@ namespace VP {
 enum class Memory { device, upload, readback };
 
 // What gives an image its pixels: a copy from what the CPU filled, a draw, or a
-// dispatch's stores.
-enum class Fill { copy, draw, store };
+// dispatch's stores; or the depth a draw tests and writes.
+enum class Fill { copy, draw, store, depth };
+
+// What a depth image clears to each frame: the far plane, so the first draw keeps all.
+inline constexpr float far_depth = 1.0f;
 
 // An image's mip levels as an upload lays them out in one buffer, one after another:
 // level 0 the image, each next half the one before, rounded down, never below a pixel.
@@ -113,6 +116,9 @@ public:
   // Whether shaders may sample, filtered, an image of the format filled so; a draw also
   // blends into it, and a dispatch stores into it from images[].
   bool samples(VkFormat format, Fill fill = Fill::copy) const;
+  // The format every depth image takes: the first of D32_SFLOAT, X8_D24_UNORM_PACK32 and
+  // D16_UNORM a draw tests and a shader samples on this GPU, as Vulkan promises the last.
+  VkFormat depth_format() const;
   // The most workgroups a dispatch runs along x on this GPU.
   std::uint32_t max_compute_work_group_count() const;
   // The most bytes a uniform block holds on this GPU; Vulkan guarantees 16,384.
@@ -125,6 +131,7 @@ private:
   const VkPhysicalDevice _physical_device;
   const VkDevice _device;
   VmaAllocator_T *_allocator = nullptr;
+  VkFormat _depth_format = VK_FORMAT_UNDEFINED;
 };
 
 } // namespace VP
