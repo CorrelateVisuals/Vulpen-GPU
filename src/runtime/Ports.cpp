@@ -665,16 +665,25 @@ std::span<const float> Ports::played() const {
   return _played;
 }
 
+// The speakers close with the window, an output beside it, and may open with the next.
 void Ports::attach(const Window *window) {
   _window = window;
-  if (!_window)
+  if (!_window) {
+    _speakers.reset();
+    _deaf = false;
     return;
+  }
   if (!_title.empty())
     _window->title(_title);
-  if (_fills)
-    _window->fullscreen(true);
   if (_locked)
     _window->lock_pointer(true);
+  try {
+    if (_fills)
+      _window->fullscreen(true);
+  } catch (const std::runtime_error &failure) {
+    _fills = false;
+    _log.write(Level::warn, Tag::run, std::format("the window: {}", failure.what()));
+  }
 }
 
 bool Ports::windowed() const {
@@ -830,9 +839,10 @@ void Ports::window(Call &call) {
       _window->title(_title);
     done = std::format("named the window {}", _title);
   } else if (call.is(_windowing.fullscreen_on) || call.is(_windowing.fullscreen_off)) {
-    _fills = call.is(_windowing.fullscreen_on);
+    const bool fills = call.is(_windowing.fullscreen_on);
     if (_window)
-      _window->fullscreen(_fills);
+      _window->fullscreen(fills); // throws before the state changes, so none latches
+    _fills = fills;
     done = _fills ? "made the window fill its monitor" : "put the window back as it was";
   } else {
     _locked = call.is(_windowing.pointer_lock);

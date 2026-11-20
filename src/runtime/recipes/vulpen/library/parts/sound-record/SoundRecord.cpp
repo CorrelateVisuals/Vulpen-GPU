@@ -42,10 +42,12 @@ class SoundRecord final : public VP::Operator {
     if (std::exchange(_fresh, false))
       return;
     const std::span<const float> played = frame.sound().played();
-    const std::size_t taken = std::min(played.size(), _wanted - _recorded.size());
-    std::copy_n(played.begin(), taken, std::back_inserter(_recorded));
+    const std::size_t room = _wanted > _recorded.size() ? _wanted - _recorded.size() : 0;
+    std::copy_n(
+        played.begin(), std::min(played.size(), room), std::back_inserter(_recorded));
     if (_recorded.size() < _wanted)
       return;
+    _recorded.resize(_wanted); // seconds made shorter since it began
     _recording = false;
     const std::string path = (std::filesystem::path(_folder) / _file).string();
     frame.files().save(path, wave_write(_recorded));

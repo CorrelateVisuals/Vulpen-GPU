@@ -124,7 +124,8 @@ struct DepthWrite {
 // gives it. A store's format must match its image's, so the array is declared once a
 // format: R8G8B8A8_UNORM, the default, as images[]; R32_SFLOAT and R32G32B32A32_SFLOAT
 // as their own; each a format every GPU stores into, so a store needs no feature past
-// the floor's but storage image dynamic indexing.
+// the floor's but storage image dynamic indexing. A GPU that cannot filter one, as some
+// cannot 32-bit floats, refuses it, as it refuses any image so (GLSL02).
 layout(set = 0, binding = 2, rgba8) uniform writeonly image2D images[];
 layout(set = 0, binding = 2, r32f) uniform writeonly image2D images_r32f[];
 layout(set = 0, binding = 2, rgba32f) uniform writeonly image2D images_rgba32f[];

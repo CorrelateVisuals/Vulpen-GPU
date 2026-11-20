@@ -163,7 +163,8 @@ inline constexpr std::string_view default_format = "R8G8B8A8_UNORM";
 inline constexpr std::string_view stored_format = "R8G8B8A8_UNORM";
 // The formats a dispatch stores into, those every Vulkan device stores into (RVK01),
 // each with the array GpuLayout.glsl declares it by, as a store's format must match
-// its image's.
+// its image's. As for any image, a GPU that cannot filter the format is refused, as a
+// linear sampler would read it as each vendor likes (GLSL02): some cannot, 32-bit floats.
 struct StoredFormat {
   std::string_view name;
   std::string_view array;

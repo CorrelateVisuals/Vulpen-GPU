@@ -275,17 +275,6 @@ void Schedule::check_stages(Bound &bound) const {
           std::format("instance_count = {}: its shaders hold no buffer of that name, "
                       "whose used length would count the instances",
                       node.instance_count));
-    // The frame zeroes a DrawCount before its passes, so one C++ wrote would be lost.
-    const Connection *const counted =
-        field && field->type == draw_count_type
-            ? connection_of(node.name, node.instance_count)
-            : nullptr;
-    const auto place = counted ? _places.find(counted->from.node) : _places.end();
-    if (place != _places.end() && _bound[place->second].uploads_to(counted->from.port))
-      bound.errors.push_back(std::format(
-          "instance_count = {}: a DrawCount counts on the GPU, which a dispatch adds to; "
-          "C++ counts a draw by the used length of a buffer it writes",
-          node.instance_count));
     return;
   }
   if (!node.instance_count.empty())
@@ -557,6 +546,23 @@ void Schedule::check_fields(Bound &bound) const {
           "param {}: nothing reads it{}", param.key, as_word(bound.node->name, param)));
     }
   }
+  // The frame zeroes a DrawCount before its passes, so one C++ wrote would be lost: the
+  // draw's own operator's, or its writer's, bound before it as writers go first.
+  const Node &node = *bound.node;
+  const Field *const counted = bound.field(node.instance_count);
+  const Connection *const connection =
+      counted && counted->type == draw_count_type
+          ? connection_of(node.name, node.instance_count)
+          : nullptr;
+  const auto writer = connection ? _places.find(connection->from.node) : _places.end();
+  if (counted && counted->type == draw_count_type &&
+      (connection ? writer != _places.end() &&
+                        _bound[writer->second].uploads_to(connection->from.port)
+                  : bound.uploads_to(node.instance_count)))
+    bound.errors.push_back(std::format(
+        "instance_count = {}: a DrawCount counts on the GPU, which a dispatch adds to; "
+        "C++ counts a draw by the used length of a buffer it writes",
+        node.instance_count));
   for (const Field &field : bound.fields)
     if (!field.buffer() && !field.texture() && !field.image() && !field.depth() &&
         !bound.param(field.name) && !bound.set_by_operator.contains(field.name))

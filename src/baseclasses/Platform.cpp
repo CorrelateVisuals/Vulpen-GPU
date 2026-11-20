@@ -101,6 +101,15 @@ constexpr std::string_view left_stick = "gamepad_left";
 constexpr std::string_view right_stick = "gamepad_right";
 constexpr std::string_view left_trigger = "gamepad_left_trigger";
 constexpr std::string_view right_trigger = "gamepad_right_trigger";
+
+// A gamepad at rest, as none present reads too: no button down, its sticks centered and
+// its triggers let go, which GLFW reads as -1, so a pad unplugged lets go of all.
+GLFWgamepadstate resting() {
+  GLFWgamepadstate state{};
+  state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] = -1.0f;
+  state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] = -1.0f;
+  return state;
+}
 // UTF-8 (RFC 3629): a character past ASCII takes a first byte that marks how many bytes
 // follow it, each carrying six more bits of the character.
 constexpr std::uint32_t ascii_end = 0x80;
@@ -214,7 +223,9 @@ struct SpeakersTrouble {
 namespace {
 
 constexpr std::uint32_t sokol_information = 3; // sokol_audio's level past the problems
-// The frames sokol_audio hands the device at a time; its buffer holds whole packets.
+// The frames sokol_audio hands the device at a time; its buffer holds whole packets, and
+// its queue as many as the buffer, so what is pushed plays as far ahead as asked and no
+// more: a run gone ahead of the device drops samples rather than lags.
 constexpr std::uint32_t packet_frames = 128;
 
 void on_sokol(const char *,
@@ -241,6 +252,7 @@ Speakers::Speakers(std::uint32_t rate, std::uint32_t channels, std::uint32_t buf
                          .num_channels = static_cast<int>(channels),
                          .buffer_frames = static_cast<int>(packets * packet_frames),
                          .packet_frames = static_cast<int>(packet_frames),
+                         .num_packets = static_cast<int>(packets),
                          .logger = {.func = on_sokol, .user_data = _trouble.get()}};
   saudio_setup(&desc);
   if (!saudio_isvalid()) {
@@ -273,7 +285,11 @@ std::uint32_t Speakers::buffered() const {
   return static_cast<std::uint32_t>(saudio_buffer_frames());
 }
 
+// A frame of no samples, as a rate past the sample rate makes some, pushes none, which
+// sokol_audio would refuse.
 void Speakers::play(std::span<const float> samples) const {
+  if (samples.size() < _channels)
+    return;
   saudio_push(samples.data(), static_cast<int>(samples.size() / _channels));
 }
 
@@ -968,7 +984,8 @@ void Desktop::poll() const {
 }
 
 Window::Window(const Desktop &, const std::string &title, VkExtent2D size)
-    : _pad(std::make_unique<GLFWgamepadstate>()), _placed(std::make_unique<Placed>()) {
+    : _pad(std::make_unique<GLFWgamepadstate>(resting())),
+      _placed(std::make_unique<Placed>()) {
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   // It fills the screen as it opens, as an editor does; size is what it is restored to.
   glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
@@ -1041,7 +1058,7 @@ bool axis_named(std::string_view name) {
 // before: a button as a key, a stick as an axis from -1 to 1 each way, y down, and a
 // trigger as one from 0, let go, to 1, as GLFW's -1 to 1 maps to it.
 void Window::poll_gamepad(WindowInput &input) const {
-  GLFWgamepadstate state{};
+  GLFWgamepadstate state = resting();
   for (int pad = GLFW_JOYSTICK_1; pad <= GLFW_JOYSTICK_LAST; ++pad)
     if (glfwJoystickIsGamepad(pad) == GLFW_TRUE && glfwGetGamepadState(pad, &state))
       break;

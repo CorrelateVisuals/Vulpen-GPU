@@ -19,6 +19,11 @@ constexpr std::uint32_t wave_rate = 48000;
 constexpr std::uint32_t wave_channels = 2;
 constexpr std::uint16_t wave_pcm = 1;   // integer samples
 constexpr std::uint16_t wave_float = 3; // IEEE 754 samples
+// A format that names its own in a sub-format, as wider samples are often written: its
+// first two bytes are the format, at extensible_format in an fmt chunk of extended size.
+constexpr std::uint16_t wave_extensible = 0xFFFE;
+constexpr std::size_t extended_format_bytes = 40;
+constexpr std::size_t extensible_format = 24;
 constexpr std::uint32_t wave_header = 44; // RIFF, fmt and data heads, as written
 constexpr std::uint32_t wave_format_bytes = 16;
 
@@ -64,6 +69,9 @@ inline std::vector<float> wave_read(std::string_view bytes, std::string_view fil
       throw refuse(std::format("its {} chunk runs past its end", id));
     if (id == "fmt " && size >= wave_format_bytes) {
       format = static_cast<std::uint16_t>(wave_word(bytes, body, 2));
+      if (format == wave_extensible && size >= extended_format_bytes)
+        format =
+            static_cast<std::uint16_t>(wave_word(bytes, body + extensible_format, 2));
       channels = static_cast<std::uint16_t>(wave_word(bytes, body + 2, 2));
       rate = wave_word(bytes, body + 4, 4);
       bits = static_cast<std::uint16_t>(wave_word(bytes, body + 14, 2));
