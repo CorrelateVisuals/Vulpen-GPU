@@ -34,16 +34,17 @@ constexpr double toe = 0.04045;
 constexpr double toe_light = 0.0031308;
 constexpr double toe_slope = 12.92;
 constexpr double offset = 0.055;
-constexpr double gamma = 2.4;
+constexpr double srgb_gamma = 2.4;
 
 double decoded(double code) {
   return code <= toe ? code / toe_slope
-                     : std::pow((code + offset) / (1.0 + offset), gamma);
+                     : std::pow((code + offset) / (1.0 + offset), srgb_gamma);
 }
 
 double encoded(double light) {
-  return light <= toe_light ? light * toe_slope
-                            : (1.0 + offset) * std::pow(light, 1.0 / gamma) - offset;
+  return light <= toe_light
+             ? light * toe_slope
+             : (1.0 + offset) * std::pow(light, 1.0 / srgb_gamma) - offset;
 }
 
 // A texel as the GPU samples it: its color in light, its alpha as is.
