@@ -209,7 +209,7 @@ CASES = {
                    + connection("smeared", "smear.color", "look.painted"),
                    "canvas: a draw's shaders store into no image"),
     "store-format": (HEAD + STAMP + "image = canvas=R8_UNORM\n",
-                     "image canvas=R8_UNORM: a dispatch stores into R8G8B8A8_UNORM images only"),
+                     "image canvas=R8_UNORM: a dispatch stores into R8G8B8A8_UNORM (images[]), R32_SFLOAT"),
     "store-reader": (HEAD + STAMP + SUM + connection("stamped", "stamp.canvas", "sum.values"),
                      "connection stamped: stamp stores an image, which values is no Texture"),
     "varying-unwritten": (HEAD + '[node "rub"]\nvertex_count = 3\n' + LOOK
