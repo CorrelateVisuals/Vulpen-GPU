@@ -618,6 +618,15 @@ void Schedule::check_connections() {
     }
     const bool drawn = writer.drawn && connection.from.port == writer.output;
     const Field *const out = writer.field(connection.from.port);
+    if (out && out->depth()) {
+      if (!writer.drawn && !(writer.fragment && writer.fragment->drawn))
+        writer.errors.push_back(std::format(
+            "connection {}: its depth reaches a later pass only from an image it draws "
+            "into; a connection from its color to a Texture draws it into one",
+            connection.name));
+      sampled(connection, std::format("{} draws the depth of", connection.from.node));
+      continue;
+    }
     if (writer.fills(connection.from.port) || drawn || (out && out->image())) {
       sampled(connection,
               std::format("{} {}",
@@ -810,10 +819,10 @@ void Schedule::list_ports() {
         if (!port.joined)
           port.alike = port.writes ? readers_alike(_bound, bound, field, false, loose)
                                    : writers_alike(_bound, bound, field, loose);
-      } else if (field.texture() || field.image()) {
+      } else if (field.texture() || field.image() || field.depth()) {
         // An Image is what the dispatch stores into, as make_targets has it: its field
-        // holds the image's handle, which the block only reads.
-        add(field.name, "image", field.image(), field.type);
+        // holds the image's handle, which the block only reads. A depth is the draw's.
+        add(field.name, "image", !field.texture(), field.type);
       }
     for (const Bound::Written &filled : bound.uploads)
       if (!bound.field(filled.port) && filled.count != 0)

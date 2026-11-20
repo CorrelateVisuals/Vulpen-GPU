@@ -58,13 +58,24 @@ std::string pass_block(const std::vector<Field> &fields, std::uint32_t size) {
   return text;
 }
 
-// Whether a draw's pass block declares a depth, or its fragment node's, which a draw
-// split over two takes its fragment shader from.
-bool declares_depth(const Bound &bound) {
-  const auto in = [](const Bound &holder) {
+// The node whose pass block declares a draw's depth: its own, or its fragment node's,
+// which a draw split over two takes its fragment shader from; null for none. The
+// declaring field's name is the depth's port.
+const Bound *depth_holder(const Bound &bound) {
+  const auto declares = [](const Bound &holder) {
     return std::ranges::any_of(holder.fields, &Field::depth);
   };
-  return in(bound) || (bound.fragment && in(*bound.fragment));
+  return declares(bound)                             ? &bound
+         : bound.fragment && declares(*bound.fragment) ? bound.fragment
+                                                       : nullptr;
+}
+
+bool declares_depth(const Bound &bound) {
+  return depth_holder(bound) != nullptr;
+}
+
+const Field &depth_field(const Bound &holder) {
+  return *std::ranges::find_if(holder.fields, &Field::depth);
 }
 
 // The mip levels an upload asked for, all_mip_levels counted out; refused naming why,
@@ -99,7 +110,10 @@ struct Schedule::Rendered {
   std::string name;
   const PixelFormat *format = nullptr;
   VkRenderPass render_pass = VK_NULL_HANDLE; // which its draws' pipelines fit
-  bool depth = false; // a view's window always, a draw's image while it declares one
+  // A view's window's is dropped; a draw's image has one while the draw declares it,
+  // kept while a connection takes it to a later pass, by depth_name.
+  Depth depth = Depth::none;
+  std::string depth_name;
   const Bound *writer = nullptr;             // null for a view's window
   std::optional<Drawn> drawn;                // none while there is no size
   Offscreen offscreen;
@@ -162,7 +176,8 @@ Schedule::Schedule(const Wiring &wiring,
                    bool project)
     : _wiring(wiring), _name(name), _view(view), _joined(joined_of(view)),
       _window(into == Into::image
-                  ? wiring.pipelines.render_pass(pixel_format(window_format)->format, true)
+                  ? wiring.pipelines.render_pass(pixel_format(window_format)->format,
+                                                 Depth::dropped)
               : into == Into::window ? wiring.render_pass
                                      : VK_NULL_HANDLE),
       _into(into), _project(project) {
@@ -323,7 +338,17 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
   if (!_wiring.resources.samples(colors.drawn->format, Fill::draw))
     throw std::runtime_error(std::format(
         "{}: this GPU cannot draw into {} images", colors.output, colors.drawn->name));
-  return _wiring.pipelines.render_pass(colors.drawn->format, declares_depth(bound));
+  return _wiring.pipelines.render_pass(colors.drawn->format, depth_of(bound));
+}
+
+// A draw's depth keeps past its render pass only while a connection takes its port to a
+// later pass.
+Depth Schedule::depth_of(const Bound &bound) const {
+  const Bound *const holder = depth_holder(bound);
+  if (!holder)
+    return Depth::none;
+  return connection_of(holder->node->name, depth_field(*holder).name) ? Depth::kept
+                                                                      : Depth::dropped;
 }
 
 // A draw's pipeline fits the render pass it records in.
@@ -620,7 +645,11 @@ void Schedule::make_targets() {
           Rendered{.name = std::format("{}.{}", colors.node->name, colors.output),
                    .format = colors.drawn,
                    .render_pass = bound.render_pass,
-                   .depth = declares_depth(bound),
+                   .depth = depth_of(bound),
+                   .depth_name = depth_of(bound) == Depth::kept
+                                     ? image_name(depth_holder(bound)->node->name,
+                                                  depth_field(*depth_holder(bound)).name)
+                                     : "",
                    .writer = &bound}));
     for (const Field &field : bound.fields)
       if (field.image())
@@ -633,8 +662,9 @@ void Schedule::make_targets() {
       _rendered.push_back(std::make_unique<Rendered>(
           Rendered{.name = connection.from.text(),
                    .format = window,
-                   .render_pass = _wiring.pipelines.render_pass(window->format, true),
-                   .depth = true}));
+                   .render_pass =
+                       _wiring.pipelines.render_pass(window->format, Depth::dropped),
+                   .depth = Depth::dropped}));
 }
 
 // To the frame's size, before any pass runs: an image of another size goes, and its
@@ -656,7 +686,7 @@ void Schedule::size_targets(VkExtent2D size) {
       rendered->offscreen = {.render_pass = rendered->render_pass,
                              .framebuffer = drawn.framebuffer(),
                              .extent = size,
-                             .depth = rendered->depth};
+                             .depth = rendered->depth != Depth::none};
       const std::string pixels =
           std::format("{} by {} pixels of {}", size.width, size.height, format.name);
       if (rendered->writer)
@@ -675,6 +705,9 @@ void Schedule::size_targets(VkExtent2D size) {
                   instead != _instead.end() ? instead->second
                   : rendered->drawn         ? rendered->drawn->sampled().slot()
                                             : 0);
+    if (!rendered->depth_name.empty())
+      point_readers(rendered->depth_name,
+                    rendered->drawn ? rendered->drawn->depth()->slot() : 0);
   }
   for (Stored &stored : _stored)
     size_stored(stored, size);

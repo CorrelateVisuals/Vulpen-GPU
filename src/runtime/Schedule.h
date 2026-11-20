@@ -22,6 +22,7 @@ class Commands;
 class Engine;
 class Modules;
 class Pipelines;
+enum class Depth; // in baseclasses/Pipelines.h
 class Ports;
 struct Connection;
 struct Copy;
@@ -177,6 +178,7 @@ private:
   void fit_pipeline(Bound &bound, Bound *old, bool unchanged);
   VkRenderPass target_of(Bound &bound) const;
   void make_pipeline(Bound &bound, VkRenderPass render_pass) const;
+  Depth depth_of(const Bound &bound) const;
   void pair_draws(Schedule *replaced);
   Bound *fragment_of(Bound &vertex);
   void check_varyings(const Bound &vertex,

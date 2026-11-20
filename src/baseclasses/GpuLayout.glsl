@@ -93,7 +93,10 @@ vec4 sample_level(Texture image, vec2 uv, float level) {
 // DepthWrite then leaves its own depth there, a DepthTest only tests, as a surface seen
 // through does. A view's window has a depth for its draws to share; an image a draw
 // renders into has one while that draw declares it. A draw without one stacks over what
-// came before, in graph order. Its index is 0: the declaration is all a draw needs.
+// came before, in graph order. Its index is 0: the declaration is all a draw needs. Its
+// name is a port too: a connection from it to a later pass's Texture hands that pass the
+// depth of the image the draw renders into, which it reads by sample_nearest, as some
+// GPUs cannot filter a depth.
 struct DepthTest {
   uint index;
 };
