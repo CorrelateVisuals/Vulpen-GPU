@@ -223,10 +223,13 @@ struct SpeakersTrouble {
 namespace {
 
 constexpr std::uint32_t sokol_information = 3; // sokol_audio's level past the problems
-// The frames sokol_audio hands the device at a time; its buffer holds whole packets, and
-// its queue as many as the buffer, so what is pushed plays as far ahead as asked and no
-// more: a run gone ahead of the device drops samples rather than lags.
+// The frames sokol_audio hands the device at a time. Its buffer holds whole packets, and
+// its queue two buffers: the device reads a whole buffer at once, which a queue of one
+// would hold only when full, and a run gone ahead of the device drops samples rather
+// than lags further. The queue fits sokol_audio's ring, whatever the frame rate.
 constexpr std::uint32_t packet_frames = 128;
+constexpr std::uint32_t queued_buffers = 2;
+constexpr std::uint32_t most_packets = (SAUDIO_RING_MAX_SLOTS - 1) / queued_buffers;
 
 void on_sokol(const char *,
               std::uint32_t level,
@@ -247,12 +250,13 @@ void on_sokol(const char *,
 
 Speakers::Speakers(std::uint32_t rate, std::uint32_t channels, std::uint32_t buffered)
     : _trouble(std::make_unique<SpeakersTrouble>()), _channels(channels) {
-  const std::uint32_t packets = (buffered + packet_frames - 1) / packet_frames;
+  const std::uint32_t packets =
+      std::min((buffered + packet_frames - 1) / packet_frames, most_packets);
   const saudio_desc desc{.sample_rate = static_cast<int>(rate),
                          .num_channels = static_cast<int>(channels),
                          .buffer_frames = static_cast<int>(packets * packet_frames),
                          .packet_frames = static_cast<int>(packet_frames),
-                         .num_packets = static_cast<int>(packets),
+                         .num_packets = static_cast<int>(packets * queued_buffers),
                          .logger = {.func = on_sokol, .user_data = _trouble.get()}};
   saudio_setup(&desc);
   if (!saudio_isvalid()) {
@@ -1058,10 +1062,15 @@ bool axis_named(std::string_view name) {
 // before: a button as a key, a stick as an axis from -1 to 1 each way, y down, and a
 // trigger as one from 0, let go, to 1, as GLFW's -1 to 1 maps to it.
 void Window::poll_gamepad(WindowInput &input) const {
+  // Read into its own state, as GLFW zeroes it before a read that fails, as one of a pad
+  // unplugged meanwhile does.
   GLFWgamepadstate state = resting();
   for (int pad = GLFW_JOYSTICK_1; pad <= GLFW_JOYSTICK_LAST; ++pad)
-    if (glfwJoystickIsGamepad(pad) == GLFW_TRUE && glfwGetGamepadState(pad, &state))
+    if (GLFWgamepadstate read{};
+        glfwJoystickIsGamepad(pad) == GLFW_TRUE && glfwGetGamepadState(pad, &read)) {
+      state = read;
       break;
+    }
   for (std::size_t button = 0; button < gamepad_buttons.size(); ++button)
     if (state.buttons[button] != _pad->buttons[button])
       input.key(gamepad_buttons[button], state.buttons[button] == GLFW_PRESS);
