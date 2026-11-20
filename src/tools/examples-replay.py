@@ -436,40 +436,37 @@ def examples(scratch: Path) -> list[Example]:
     ]
     every.append(e)
 
-    # triangle-cpp-clock: a node named wrong, renamed with its folder.
-    e = Example("triangle-cpp-clock")
+    # triangle-wire: the draw made first, then the compute copied in under a wrong name,
+    # renamed with its folder and moved before the draw it feeds; the wire made by connect;
+    # looked at as the graph goes into a node by cd, and through ls, info and probe stats;
+    # the focus let go and given back.
+    e = Example("triangle-wire")
     e.steps = [
         ok(f"view new {e.copy}"),
-        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        ok(f"copy {at(e.name, 'raster')}/ {at(e.copy, 'rastr')}/",
-           "node set rastr invocations=65536 param=frames_per_turn=600 param=side=256"),
-        no(f"rename {at(e.copy, 'rastr')}/ {at(e.copy, 'ras.ter')}/", "no node's folder"),
-        ok(f"rename {at(e.copy, 'rastr')}/ {at(e.copy, 'raster')}/"),
-        ok(f"copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
-           "node set screen vertex_count=6 instance_count=cells"),
-        ok("connect cells raster.cells screen.cells"),
+        *made(e.name, "face"),
+        ok(f"copy {at(e.name, 'corners')}/ {at(e.copy, 'corner')}/",
+           "node set corner invocations=3 param=frames_per_turn=600"),
+        no(f"rename {at(e.copy, 'corner')}/ {at(e.copy, 'cor.ners')}/", "no node's folder"),
+        ok(f"rename {at(e.copy, 'corner')}/ {at(e.copy, 'corners')}/"),
+        no("node move corners corners", "corners"),
+        ok("node move corners face"),
+        ok("node set face vertex_count=3 instance_count= param="),
+        ok("connect angles corners.angles face.angles"),
+        ok("cd corners"),
+        ok("ls"),
+        ok("cd .."),
+        no("cd nowhere", "nowhere"),
+        ok("cd"),
+        ok("select find corners"),
+        ok("info"),
+        ok("probe stats"),
+        # A right press on the graph's ground opens its menu, escape shuts it; the wheel
+        # zooms the graph in and out.
+        ok("input pointer 760 180", "input button down right", "input button up right"),
+        ok("input key down escape", "input key up escape"),
+        ok("input pointer 900 150", "input wheel 0 1", "input wheel 0 -1"),
         ok("focus"),
         ok("focus ide.terminal.command-line"),
-        ok("view save"),
-    ]
-    every.append(e)
-
-    # triangle-cpp-corners: the nodes made in the wrong order, then moved.
-    e = Example("triangle-cpp-corners")
-    e.steps = [
-        ok(f"view new {e.copy}"),
-        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        ok(f"copy {at(e.name, 'screen')}/ {at(e.copy, 'screen')}/",
-           "node set screen vertex_count=6 instance_count=cells"),
-        ok(f"copy {at(e.name, 'raster')}/ {at(e.copy, 'raster')}/",
-           "node set raster invocations=65536 param=side=256"),
-        ok(f"copy {at(e.name, 'corners')}/ {at(e.copy, 'corners')}/",
-           "node set corners param=frames_per_turn=600"),
-        no("node move corners corners", "corners"),
-        ok("node move corners screen"),
-        ok("node move raster screen"),
-        ok("connect corners corners.corners raster.corners"),
-        ok("connect cells raster.cells screen.cells"),
         ok("view save"),
     ]
     every.append(e)
@@ -492,34 +489,6 @@ def examples(scratch: Path) -> list[Example]:
         ok("disconnect corner"),
         ok("connect corners corners.corners face.corners"),
         ok("connect color face.color blend.color"),
-        ok("view save"),
-    ]
-    every.append(e)
-
-    # triangle-header: a node with a header beside its C++, started as a C++ node, looked
-    # at as the graph goes into it by cd, and through ls, info and probe stats.
-    e = Example("triangle-header")
-    e.steps = [
-        ok(f"view new {e.copy}"),
-        ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/"),
-        *made(e.name, "corners"),
-        ok("node set corners param=frames_per_turn=600"),
-        ok(f"copy {at(e.name, 'face')}/ {at(e.copy, 'face')}/",
-           "node set face vertex_count=3"),
-        ok("connect corners corners.corners face.corners"),
-        ok("cd corners"),
-        ok("ls"),
-        ok("cd .."),
-        no("cd nowhere", "nowhere"),
-        ok("cd"),
-        ok("select find corners"),
-        ok("info"),
-        ok("probe stats"),
-        # A right press on the graph's ground opens its menu, escape shuts it; the wheel
-        # zooms the graph in and out.
-        ok("input pointer 760 180", "input button down right", "input button up right"),
-        ok("input key down escape", "input key up escape"),
-        ok("input pointer 900 150", "input wheel 0 1", "input wheel 0 -1"),
         ok("view save"),
     ]
     every.append(e)
@@ -838,7 +807,7 @@ def examples(scratch: Path) -> list[Example]:
         typed("cd u"),
         typed("new"),
         typed("cd .."),
-        ok(f"copy {at('triangle-header', 'contracts', 'Corner.h')} "
+        ok(f"copy {at('triangle-files', 'contracts', 'Corner.h')} "
            f"{at(e.copy, 'contracts', 'Corner.h')}"),
         ok(f"new {alone} {shaded} {beside}"),
         settled(f"param declare {shaded} float phase",

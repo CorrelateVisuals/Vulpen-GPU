@@ -1,0 +1,23 @@
+# Two nodes and one wire: corners, a compute shader, works out where each of the
+# triangle's three corners has turned to this frame and writes its angle; face, a draw,
+# reads the three angles over the wire and puts its corners on a circle by them. Each node
+# is a folder, and the files in it are its code; the wire, the connection below, is all
+# the two share. No C++ and no contract: the wire carries floats, which every shader knows
+# as FloatsOut and FloatsIn. Run ./run.sh --triangle-wire, then
+# `triangle-wire: param set corners frames_per_turn 120`.
+[manifest]
+version = 1
+
+# Three invocations, a corner each. A whole turn every 600 frames, and 0 holds the
+# triangle still.
+[node "corners"]
+invocations = 3
+param       = frames_per_turn=600
+
+# Three vertices, a corner each.
+[node "face"]
+vertex_count = 3
+
+[connection "angles"]
+from = corners.angles
+to   = face.angles

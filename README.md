@@ -118,6 +118,20 @@ A project is a view: one manifest, `view.vlp`, and a folder for each node. A nod
 - **Contracts, not copies.** What two nodes share is a contract in `contracts/`: a GLSL struct, or a C++ header both languages read.
 - **A small, closed manifest language.** A few words, each with a closed set of values; a bigger recipe of the library uses smaller ones and connects them, never copying their code.
 
+**Learn it from the triangles.** Each project in [`projects/triangles/`](projects/triangles) draws the same turning triangle, each one idea further. Run one with `./run.sh --<name>`, or type `view load <name>` in the ide, and read its `view.vlp` first.
+
+| Project | What it adds | Stands for |
+|---|---|---|
+| `triangle-shaders` | a node: a folder, whose files are its code; GLSL alone, swapped in as you save | a shader sketch |
+| `triangle-params` | a param: a setting in the manifest, changed by `param set` while it runs | live tuning, a performance |
+| `triangle-wire` | a wire: one node's buffer drawn by another | a simulation feeding a picture |
+| `triangle-compute` | a wire carrying an image a compute shader fills | image processing, ray tracing as in ray-cubes |
+| `triangle` | C++ in a node, writing a buffer its shaders draw | app or game logic on the CPU |
+| `triangle-points` | nodes inside a node, which the graph shows as one box | a large graph kept readable |
+| `triangle-files` | every file a node of its own: a C++ object between C++ nodes, a contract between C++ and GLSL, a varying between a vertex and a fragment node | parts to swap and reuse |
+| `triangle-twin` | one header that both C++ and GLSL include | tables and math the CPU and GPU share |
+| `triangle-cpp-raster` | triangle-compute's raster on the CPU: 256 KB cross to the GPU each frame, which `probe stats` shows | where work belongs: data stays on the GPU |
+
 The graph opens any folder the same way. Here is Vulpen in its own graph, from the repository's top down to the part that draws the graph:
 
 ![A dive through Vulpen in its own graph: the repository, src, the runtime, the recipes, the library, its parts, the graph part, and the ide inside its own graph](docs/images/dive.png)

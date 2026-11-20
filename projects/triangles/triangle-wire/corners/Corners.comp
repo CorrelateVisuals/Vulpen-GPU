@@ -1,0 +1,26 @@
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 1) in; // a corner an invocation
+
+layout(set = 1, binding = 0) uniform Pass {
+  uint frames_per_turn; // a param: frames a whole turn takes; 0 holds the triangle still
+  FloatsOut angles;     // the wire to face: a corner's angle an element, in radians
+} pass;
+
+const float turn = 6.28318530718; // radians in a whole turn
+const float corners = 3.0;
+
+// How far the triangle has turned this frame, counted from the frame index, so it never
+// drifts.
+float angle_at(uint frames_per_turn) {
+  if (frames_per_turn == 0u)
+    return 0.0;
+  return turn * float(frame.index % frames_per_turn) / float(frames_per_turn);
+}
+
+void main() {
+  const uint corner = gl_GlobalInvocationID.x;
+  // A third of a turn apart, the first straight up, as y points down.
+  pass.angles.at[corner] =
+      angle_at(pass.frames_per_turn) + turn * (float(corner) / corners - 0.25);
+}
