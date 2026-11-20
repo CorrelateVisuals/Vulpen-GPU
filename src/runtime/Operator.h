@@ -253,7 +253,9 @@ class InputPort {
 public:
   // A view whose window draws into an image, as a GUI's pane shows it, reads the pointer
   // only while a GUI hands it the pointer (Cook::hand_pointer), over its own window then;
-  // else it reads no move, press or turn of it, as the pointer is over none of its window.
+  // else it reads no move, press or turn of it, as the pointer is over none of its window,
+  // and no key pressed or text typed, which a person types into the GUI beside it, but
+  // each key let go, so none it saw pressed stays held.
   virtual std::span<const Event> events() const = 0;
   // Where the pointer is, zero until it first moves: for a view drawing into the window as
   // the frame block's cursor says, and for one drawn into an image where the hand puts it

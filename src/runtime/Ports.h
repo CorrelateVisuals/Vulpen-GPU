@@ -175,7 +175,7 @@ private:
   Holder _holding;             // asked for this frame
   Holder _held;                // asked for the frame before, which this frame keeps
   std::vector<Event> _unheld;  // while it does, this frame's but presses and the wheel
-  std::vector<Event> _unpointed; // and but the pointer's moves too
+  std::vector<Event> _unpointed; // and but its moves, the keys pressed and text too
   std::vector<Event> _handed;    // this frame's, the pointer over the window handed
   std::unique_ptr<Filtered> _unheld_input;
   std::unique_ptr<Filtered> _unpointed_input;

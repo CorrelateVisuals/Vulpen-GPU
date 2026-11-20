@@ -356,7 +356,8 @@ glm::vec2 over(const Ports::Shown &shown, glm::vec2 at) {
 // What a node reads of the input but all of it as the window gave it, from one of the
 // lists frame() fills: while a node outside the one it is in holds the pointer,
 // everything but the presses and the wheel, so nothing under an open menu takes them,
-// and in a view drawn into an image not the moves either, its pointer nowhere; and in a
+// and in a view drawn into an image not the moves either, its pointer nowhere, nor the
+// keys pressed and the text typed, which a person types into the GUI beside it; and in a
 // view handed the pointer, everything, the pointer over its window as the GUI shows it.
 class Ports::Filtered final : public InputPort {
 public:
@@ -471,8 +472,11 @@ void Ports::frame() {
     std::ranges::copy_if(_events, std::back_inserter(_unheld), [](const Event &event) {
       return event.kind != Event::Kind::button && event.kind != Event::Kind::wheel;
     });
+    // A key let go still comes, so a view that saw it pressed as it was handed the
+    // pointer never keeps it held.
     std::ranges::copy_if(_unheld, std::back_inserter(_unpointed), [](const Event &event) {
-      return event.kind != Event::Kind::pointer;
+      return event.kind == Event::Kind::focus ||
+             (event.kind == Event::Kind::key && !event.down);
     });
   }
   if (!_held.handed.empty())
