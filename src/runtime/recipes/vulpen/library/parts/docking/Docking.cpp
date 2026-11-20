@@ -417,7 +417,7 @@ class Docking final : public VP::Operator {
     _name = node.name();
     _view = node.view_name();
     _area = &node.input<VP_VIEW::Rect>("area");
-    _font = &node.input<VP_VIEW::Font>("font");
+    _font = &node.input<VP_VIEW::Metrics>("font");
     _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
     _labels = node.upload<VP_VIEW::Label>("labels", close_room);
     _characters = node.upload<VP_VIEW::Character>("characters", close_room);
@@ -428,7 +428,7 @@ class Docking final : public VP::Operator {
   }
 
   void cook(VP::Cook &frame) override {
-    const glm::uvec2 cell = _font->cell;
+    const glm::uvec2 cell = _font->font.cell;
     if (!_started)
       start(frame);
     if (const Laid laid{_area->offset, _area->extent, cell}; _laid_out != laid) {
@@ -760,7 +760,9 @@ class Docking final : public VP::Operator {
   // An x a panel shown, in the middle of its close mark's cells, muted, or in the text's
   // color under the pointer.
   void write_marks(VP::Cook &frame, glm::uvec2 cell) {
-    Labels written{frame.write(_labels), frame.write(_characters)};
+    Labels written{frame.write(_labels),
+                   frame.write(_characters),
+                   static_cast<float>(_font->font.cell.x)};
     for (const Seated &seated : _seated) {
       const VP_VIEW::Rect mark = close_of(seated, cell);
       if (mark.extent.x == 0)
@@ -1831,7 +1833,7 @@ class Docking final : public VP::Operator {
   std::string _name;
   std::string _view; // the one it runs in, whose docks it edits
   const VP_VIEW::Rect *_area = nullptr;
-  const VP_VIEW::Font *_font = nullptr;
+  const VP_VIEW::Metrics *_font = nullptr;
   VP::Upload<VP_VIEW::Rect> _rects;
   VP::Upload<VP_VIEW::Label> _labels; // the close marks'
   VP::Upload<VP_VIEW::Character> _characters;

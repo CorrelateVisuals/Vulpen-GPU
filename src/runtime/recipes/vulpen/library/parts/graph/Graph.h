@@ -239,7 +239,7 @@ private:
   VP_VIEW::Rect select_box(glm::vec2 from) const;
 
   const VP_VIEW::Rect *_area = nullptr;
-  const VP_VIEW::Font *_font = nullptr;
+  const VP_VIEW::Metrics *_font = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;
   // What links the files shown, and the folder shown in place of the view, if any.
   const VP_VIEW::Relations *_relations = nullptr;

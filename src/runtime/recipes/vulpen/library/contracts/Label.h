@@ -33,9 +33,12 @@ struct alignas(8) Label {
 struct Character {
   std::uint32_t code = 0;
   std::uint32_t label = 0;
+  float x = 0.0f;
 
   static constexpr auto members() {
-    return std::array{VP_MEMBER(Character, code), VP_MEMBER(Character, label)};
+    return std::array{VP_MEMBER(Character, code),
+                      VP_MEMBER(Character, label),
+                      VP_MEMBER(Character, x)};
   }
 };
 

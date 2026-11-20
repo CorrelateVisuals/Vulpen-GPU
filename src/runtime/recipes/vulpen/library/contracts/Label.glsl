@@ -12,11 +12,14 @@ struct Label {
                 // left of its room is cut at that edge too; 0 for none
 };
 
-// One character of the list: its code, and the label it belongs to. Its writer keeps the
-// label among the Labels it wrote, as a shader cannot know how many there are (GLSL02).
+// One character of the list: its code, the label it belongs to, and where its cell
+// starts in it. Its writer keeps the label among the Labels it wrote, as a shader cannot
+// know how many there are (GLSL02).
 struct Character {
   uint code;  // Unicode; the font draws printable ASCII
   uint label; // its label in the list of labels
+  float x;    // from the label's offset, in pixels at the font's size: the advances
+              // before it, a monospace layout's column times the cell's width
 };
 
 VP_READS(Labels, Label);

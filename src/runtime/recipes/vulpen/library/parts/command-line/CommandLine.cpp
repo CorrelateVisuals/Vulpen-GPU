@@ -522,7 +522,7 @@ class CommandLine final : public VP::Operator {
       return;
     }
     _area = &node.input<VP_VIEW::Rect>("area");
-    _font = &node.input<VP_VIEW::Font>("font");
+    _font = &node.input<VP_VIEW::Metrics>("font");
     _typed = &node.input<VP_VIEW::Typed>("typed");
     _name = node.name();
     _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
@@ -754,7 +754,7 @@ class CommandLine final : public VP::Operator {
     const std::size_t shown = rows_shown(grid);
     if (!grid.room || shown == 0)
       return;
-    const glm::vec2 cell(_font->cell);
+    const glm::vec2 cell(_font->font.cell);
     const auto top = static_cast<float>(grid.bottom) - static_cast<float>(shown) * cell.y;
     const glm::vec2 from(static_cast<float>(grid.left), top);
     const glm::vec2 room(static_cast<float>(grid.columns), static_cast<float>(shown));
@@ -783,7 +783,7 @@ class CommandLine final : public VP::Operator {
   // and the boundary between characters closest to it, as a press puts the editor's
   // caret; or with character, the start of the character it is on.
   Mark mark_at(const Grid &grid, bool character = false) const {
-    const glm::vec2 cell(_font->cell);
+    const glm::vec2 cell(_font->font.cell);
     const std::size_t shown = rows_shown(grid);
     if (shown == 0) // cleared, or given no room, while dragged
       return _end;
@@ -803,7 +803,7 @@ class CommandLine final : public VP::Operator {
   // Of the scrollback, as many of its newest rows as fit above the line, and as Labels
   // the line leaves.
   std::size_t rows_shown(const Grid &grid) const {
-    const auto rows = grid.above / static_cast<std::int32_t>(_font->cell.y);
+    const auto rows = grid.above / static_cast<std::int32_t>(_font->font.cell.y);
     return std::min({static_cast<std::size_t>(rows), _scrollback.size(), rows_most});
   }
 
@@ -920,7 +920,7 @@ class CommandLine final : public VP::Operator {
   // of a strip as wide as a bar at its left, so it sits as far in from either side.
   Grid grid() const {
     const glm::ivec2 size(_area->extent);
-    const glm::ivec2 cell(_font->cell);
+    const glm::ivec2 cell(_font->font.cell);
     Grid grid{.columns =
                   cell.x == 0 ? 0 : (size.x - 2 * margin - 2 * Scroll::width) / cell.x,
               .left = _area->offset.x + Scroll::width + margin,
@@ -1365,7 +1365,7 @@ class CommandLine final : public VP::Operator {
   // the caret in view.
   void lay_out(VP::Cook &frame) {
     const VP_VIEW::Rect &area = *_area;
-    const glm::ivec2 cell(_font->cell);
+    const glm::ivec2 cell(_font->font.cell);
     const auto [columns, left, line, rule, bottom, above, room] = grid();
     _line_row = {};
     if (!room) {
@@ -1389,7 +1389,9 @@ class CommandLine final : public VP::Operator {
                 .extent = {area.extent.x, rule_width},
                 .role = VP_VIEW::role("border")};
     std::uint32_t count = 2;
-    Labels text{frame.write(_labels), frame.write(_characters)};
+    Labels text{frame.write(_labels),
+                frame.write(_characters),
+                static_cast<float>(_font->font.cell.x)};
     const std::size_t shown = rows_shown(grid());
     const glm::uvec2 row_extent(static_cast<std::uint32_t>(columns * cell.x), cell.y);
     const std::size_t first = _columns.first();
@@ -1463,10 +1465,10 @@ class CommandLine final : public VP::Operator {
   // The boundary between characters of the line typed nearest a place across, as a press
   // puts the editor's caret.
   std::size_t column_at(float x) const {
-    if (_font->cell.x == 0)
+    if (_font->font.cell.x == 0)
       return _caret;
     const float cells = std::round((x - static_cast<float>(_line_left)) /
-                                   static_cast<float>(_font->cell.x));
+                                   static_cast<float>(_font->font.cell.x));
     const auto past = static_cast<std::size_t>(std::max(cells, 0.0f));
     return std::min(_first + past, _line.size());
   }
@@ -1624,7 +1626,7 @@ class CommandLine final : public VP::Operator {
   // Open, a row at the top of its area, ruled off below: the prompt and the words, the
   // caret in focus, and what the last find answered, muted, after them; closed, none.
   void lay_out_bar(VP::Cook &frame) {
-    const glm::ivec2 cell(_font->cell);
+    const glm::ivec2 cell(_font->font.cell);
     const std::int32_t height =
         _open && cell.y > 0
             ? std::min(cell.y + 2 * margin, static_cast<std::int32_t>(_area->extent.y))
@@ -1651,7 +1653,9 @@ class CommandLine final : public VP::Operator {
                 .extent = {_area->extent.x, rule_width},
                 .role = VP_VIEW::role("border")};
     std::uint32_t count = 2;
-    Labels text{frame.write(_labels), frame.write(_characters)};
+    Labels text{frame.write(_labels),
+                frame.write(_characters),
+                static_cast<float>(_font->font.cell.x)};
     const glm::ivec2 at = _area->offset + glm::ivec2(margin, margin);
     const VP_VIEW::Rect caret =
         lay_out_line(text, find_prompt, at.x, columns - start, cell, at.y);
@@ -1820,7 +1824,7 @@ class CommandLine final : public VP::Operator {
   VP::TerminalPort *_terminal = nullptr; // while a person's keys edit the line there
   // In a window: what it reads and writes, and the line being typed.
   const VP_VIEW::Rect *_area = nullptr;
-  const VP_VIEW::Font *_font = nullptr;
+  const VP_VIEW::Metrics *_font = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;
   std::string _name;    // as the focus names it
   glm::vec2 _pointer{}; // as the events so far left it

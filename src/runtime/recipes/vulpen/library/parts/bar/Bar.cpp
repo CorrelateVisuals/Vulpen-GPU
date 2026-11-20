@@ -30,14 +30,14 @@ class Bar final : public VP::Operator {
     check_word("seam", seam, {"yes", "no"});
     _seam = seam == "yes" ? static_cast<std::uint32_t>(seam_width) : 0;
     _area = &node.input<VP_VIEW::Rect>("area");
-    _font = &node.input<VP_VIEW::Font>("font");
+    _font = &node.input<VP_VIEW::Metrics>("font");
     _strip = &node.output<VP_VIEW::Rect>("strip");
     _rest = &node.output<VP_VIEW::Rect>("rest");
   }
 
   void cook(VP::Cook &) override {
     const std::uint32_t whole = _area->extent[_along];
-    const std::uint32_t length = bar_length(_size, _font->cell[_along], whole);
+    const std::uint32_t length = bar_length(_size, _font->font.cell[_along], whole);
     const std::uint32_t parted = std::min(whole - length, _seam);
     *_strip = *_area;
     *_rest = *_area;
@@ -54,7 +54,7 @@ class Bar final : public VP::Operator {
   std::uint32_t _size = 0;
   std::uint32_t _seam = 0; // pixels parting the strip from the rest
   const VP_VIEW::Rect *_area = nullptr;
-  const VP_VIEW::Font *_font = nullptr;
+  const VP_VIEW::Metrics *_font = nullptr;
   VP_VIEW::Rect *_strip = nullptr;
   VP_VIEW::Rect *_rest = nullptr;
 };
