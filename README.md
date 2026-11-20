@@ -73,7 +73,7 @@ cd Vulpen
 .\run.ps1                # builds the debug preset and opens the ide
 ```
 
-In the ide's terminal, type `view load ray-cubes`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window; <kbd>F2</kbd> to <kbd>F5</kbd> put the keys in the terminal, the graph, the editor and the Perform panel.
+In the ide's terminal, type `view load ray-cubes`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window, and <kbd>F1</kbd> or <kbd>Shift</kbd>+<kbd>Esc</kbd> takes it back, as <kbd>Esc</kbd> alone is the project's; <kbd>F2</kbd> to <kbd>F5</kbd> put the keys in the terminal, the graph, the editor and the Perform panel.
 
 > [!NOTE]
 > Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address.

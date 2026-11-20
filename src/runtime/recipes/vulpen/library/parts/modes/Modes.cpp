@@ -47,8 +47,9 @@ constexpr auto rate_every = std::chrono::seconds(1);
 // view load hosts that draws has at once and one view new makes has at its first draw,
 // the panel its shows param names comes back if it was hidden, or the panel holding the
 // node it names, as panel show finds it; a project with nothing to show leaves it hidden.
-// It takes the keys no part in focus takes: escape leaves perform mode, and in edit mode
-// ends the run, once the part in focus let go of its selection and of the focus. It hands
+// It takes the keys no part in focus takes: in edit mode escape ends the run, once the
+// part in focus let go of its selection and of the focus; in perform mode escape is the
+// project's, and the keymap's shift with escape leaves. It hands
 // on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
 // Perform panel's own button, a switch of two whose mode in force is on, and past a
 // divider gpu, which makes the next launch prefer the other kind of GPU (gpu toggle), lit
@@ -123,9 +124,9 @@ class Modes final : public VP::Operator {
         "{}: param set {} mode {}", _view, _name, perform ? "perform" : "edit"));
   }
 
-  // Perform mode gives way to edit mode as escape asks, once nothing is presented nor
-  // about to be, as after view close of the view presented, and once the log printed an
-  // error since the frame before, which perform mode would hide.
+  // Perform mode gives way to edit mode once nothing is presented nor about to be, as
+  // after view close of the view presented, and once the log printed an error since the
+  // frame before, which perform mode would hide.
   // The projects are read before a line goes, as one may replace the view they are in.
   void cook(VP::Cook &frame) override {
     read_gpu(frame);
@@ -158,22 +159,18 @@ class Modes final : public VP::Operator {
         _known.push_back(child.name);
     }
     _started = true;
-    // A person's escape runs its line in the terminal, as a key's chord does, so the
-    // terminal shows it and what it answers, as quit's refusal while work would be lost.
-    bool leave = false;
+    // A person's escape runs quit in the terminal, as a key's chord runs its line, so the
+    // terminal shows it and what it answers, as quit's refusal while work would be lost;
+    // in perform mode the project presented takes it, as its own menu may.
     for (const VP::Event &event : _typed->to(""))
-      if (event.kind == VP::Event::Kind::key && event.down && event.name == escape) {
-        leave = leave || _perform;
-        if (!_perform)
-          frame.commands().send("type quit");
-      }
+      if (!_perform && event.kind == VP::Event::Kind::key && event.down &&
+          event.name == escape)
+        frame.commands().send("type quit");
     const auto erred = [](const VP::Logged &line) {
       return line.level == VP::Level::error;
     };
-    if (_perform && leave)
-      frame.commands().send("type mode edit");
-    else if (_perform && ((presented.empty() && none) ||
-                          std::ranges::any_of(frame.commands().log(), erred)))
+    if (_perform && ((presented.empty() && none) ||
+                     std::ranges::any_of(frame.commands().log(), erred)))
       frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;
     *_shown = _perform ? *_area : VP_VIEW::Rect{};

@@ -19,8 +19,9 @@ panel, where the cli takes ls on standard input, the terminal vulpen was started
 prints what it answers for the triangle, the view both terminals follow, and completes a
 path begun to the one folder it fits from the folders the file port lists, and one in
 perform mode by the keymap's chord in the first frame, its window over the whole window,
-which nothing may refuse; a third then presses escape three times, back to edit mode, out
-of the terminal's focus and out of the run, which must end before its frames do; every
+which nothing may refuse; a third then presses the keymap's shift with escape, back to
+edit mode, and escape twice, out of the terminal's focus and out of the run, which must
+end before its frames do; every
 other run must run all of them, so the end of standard input, which every run finds at
 once, ends none. The last two host a copy of the wave example, its boxes placed by the
 .ini put beside it, which home centers in the graph's area at zoom 1, what lies outside
@@ -87,8 +88,10 @@ LAID = RUNTIME / "recipes/vulpen/ide/.vulpen/layout.log"
 TRIANGLE = RUNTIME.parents[1] / "projects" / "triangles" / "triangle"
 PRESENT = [f"view load {TRIANGLE}"]  # presented as it comes
 PERFORM = [*PRESENT, "input key down f1", "input key up f1"]  # the chord: mode toggle
-# Back to edit mode, out of the terminal's focus, and out of the run.
-ESCAPE = [*PERFORM, *["input key down escape"] * 3]
+# Back to edit mode by the keymap's chord, as escape alone is the project's in perform
+# mode; then out of the terminal's focus, and out of the run.
+ESCAPE = [*PERFORM, "input key down shift", "input key down escape", "input key up escape",
+          "input key up shift", *["input key down escape"] * 2]
 RAN = re.compile(r"\{run\} ran (\d+) frames")
 LISTED = re.compile(r"^  Triangle\.vert$", re.M)  # a row ls answers for the triangle
 # The folder a path begun completes to, which complete answers alone on its line, the
