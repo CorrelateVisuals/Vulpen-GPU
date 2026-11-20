@@ -234,13 +234,17 @@ protected:
 // A key, text, the pointer, a button, the wheel or focus. The input command makes the
 // same events without a window, so a headless test types and points as a person does.
 struct Event {
-  enum class Kind : std::uint8_t { key, text, pointer, button, wheel, focus };
+  enum class Kind : std::uint8_t { key, text, pointer, button, wheel, focus, axis };
   Kind kind = Kind::key;
   // A key or a button pressed, or let go; focus gained, or lost.
   bool down = false;
-  // A key's name, as a, enter or f1; a button's, left, right or middle; the text typed.
+  // A key's name, as a, enter, f1 or a gamepad's gamepad_a; a button's, left, right or
+  // middle; the text typed; an axis's, gamepad_left or gamepad_right, a stick, or
+  // gamepad_left_trigger or gamepad_right_trigger.
   std::string name;
-  glm::vec2 at{};   // where the pointer went, in pixels from the window's top left
+  // Where the pointer went, in pixels from the window's top left; where an axis is, a
+  // stick's x and y from -1 to 1, y down, a trigger's x from 0, let go, to 1.
+  glm::vec2 at{};
   glm::vec2 turn{}; // how far the wheel turned
   // A button pressed: how many presses of it came in a row, each soon after the one
   // before and near it, so 2 is a double click's second; 0 for every other event.

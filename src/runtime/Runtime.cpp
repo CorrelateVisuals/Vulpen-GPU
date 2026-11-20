@@ -105,6 +105,9 @@ private:
   void focus(bool gained) override {
     _ports.add({.kind = Event::Kind::focus, .down = gained});
   }
+  void axis(std::string_view name, float x, float y) override {
+    _ports.add({.kind = Event::Kind::axis, .name = std::string(name), .at = {x, y}});
+  }
 
   // The press's place in its row, which the clock alone tells, so it is counted here, as
   // the window hands it on; the input command is given it.

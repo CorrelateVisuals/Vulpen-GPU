@@ -63,9 +63,30 @@ std::string checked_key(std::string_view name) {
     throw std::runtime_error(std::format(
         "{} is no key: a key is named by the character it prints without shift, as a, "
         "or as space, enter, escape, tab, backspace, insert, delete, left, right, up, "
-        "down, page_up, page_down, home, end, shift, control, alt, super, or f1 to f12",
+        "down, page_up, page_down, home, end, shift, control, alt, super, f1 to f12, or "
+        "a gamepad's button, as gamepad_a or gamepad_dpad_up",
         name));
   return std::string(name);
+}
+
+// A stick's x and y each from -1 to 1, a trigger's x from 0 to 1 and its y 0, as a
+// window hands them on.
+glm::vec2 checked_axis(std::string_view name, glm::vec2 at) {
+  constexpr float most = 1.0f;
+  const bool trigger = name.ends_with("_trigger");
+  if (!axis_named(name))
+    throw std::runtime_error(std::format(
+        "{} is no axis: an axis is gamepad_left or gamepad_right, a stick, or "
+        "gamepad_left_trigger or gamepad_right_trigger",
+        name));
+  if (trigger ? at.x < 0.0f || at.x > most || at.y != 0.0f
+              : std::abs(at.x) > most || std::abs(at.y) > most)
+    throw std::runtime_error(std::format(
+        "{} {} {}: a stick's x and y go from -1 to 1, a trigger's x from 0 to 1, its y 0",
+        name,
+        at.x,
+        at.y));
+  return at;
 }
 
 std::string checked_button(std::string_view name) {
@@ -562,7 +583,21 @@ void Ports::listen(Commands &commands) {
       .button_up = form("input button up <value>", "lets a pointer button go"),
       .wheel = form("input wheel <value> <value>", "turns the wheel by x and y"),
       .focus_on = form("input focus on", "gives the window focus"),
-      .focus_off = form("input focus off", "takes focus from the window")};
+      .focus_off = form("input focus off", "takes focus from the window"),
+      .axis = form("input axis <value> <value> <value>",
+                   "moves a gamepad's stick, gamepad_left or gamepad_right, to x and y, "
+                   "each from -1 to 1, y down; or pulls a trigger, gamepad_left_trigger or "
+                   "gamepad_right_trigger, to x, from 0 to 1, its y 0")};
+  _windowing = {
+      .title = form("window title <value>...",
+                    "names the window, the words joined by single blanks"),
+      .fullscreen_on = form("window fullscreen on", "makes the window fill its monitor"),
+      .fullscreen_off =
+          form("window fullscreen off", "puts the window back where and as it was"),
+      .pointer_lock = form("window pointer lock",
+                           "hides the pointer and holds it in the window, its moves "
+                           "unbounded, as a camera that turns by it wants"),
+      .pointer_free = form("window pointer free", "shows the pointer and lets it go")};
 }
 
 std::span<const Event> Ports::events() const {
@@ -579,6 +614,14 @@ bool Ports::names_key(std::string_view name) const {
 
 void Ports::attach(const Window *window) {
   _window = window;
+  if (!_window)
+    return;
+  if (!_title.empty())
+    _window->title(_title);
+  if (_fills)
+    _window->fullscreen(true);
+  if (_locked)
+    _window->lock_pointer(true);
 }
 
 bool Ports::windowed() const {
@@ -711,9 +754,40 @@ void Ports::command(Call &call) {
          .presses = !down ? 0 : words.size() > 1 ? presses_of(words[1]) : 1});
   } else if (call.is(_input.wheel)) {
     add({.kind = Event::Kind::wheel, .turn = {number(words[0]), number(words[1])}});
-  } else {
+  } else if (call.is(_input.axis)) {
+    add({.kind = Event::Kind::axis,
+         .name = std::string(words[0]),
+         .at = checked_axis(words[0], {number(words[1]), number(words[2])})});
+  } else if (call.is(_input.focus_on) || call.is(_input.focus_off)) {
     add({.kind = Event::Kind::focus, .down = call.is(_input.focus_on)});
+  } else {
+    window(call);
   }
+}
+
+// What the window command sets holds while the run does; with no window it waits for
+// one, so the answer says so.
+void Ports::window(Call &call) {
+  std::string done;
+  if (call.is(_windowing.title)) {
+    _title.clear();
+    for (const std::string_view word : call.arguments())
+      _title.append(_title.empty() ? "" : " ").append(word);
+    if (_window)
+      _window->title(_title);
+    done = std::format("named the window {}", _title);
+  } else if (call.is(_windowing.fullscreen_on) || call.is(_windowing.fullscreen_off)) {
+    _fills = call.is(_windowing.fullscreen_on);
+    if (_window)
+      _window->fullscreen(_fills);
+    done = _fills ? "made the window fill its monitor" : "put the window back as it was";
+  } else {
+    _locked = call.is(_windowing.pointer_lock);
+    if (_window)
+      _window->lock_pointer(_locked);
+    done = _locked ? "locked the pointer in the window" : "freed the pointer";
+  }
+  call.reply(_window ? done : done + "; no window is open, so it waits for one");
 }
 
 } // namespace VP

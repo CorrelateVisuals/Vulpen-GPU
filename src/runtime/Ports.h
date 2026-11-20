@@ -188,11 +188,21 @@ private:
   std::vector<Moved> _moved;
   std::size_t _moved_before = 0;
   bool _relisted = false; // since relisted last asked
+  void window(Call &call);
+
   // The input command's forms, as the window's events come in.
   struct Input {
     Command key_down, key_up, text, pointer, button_down, button_up, wheel, focus_on,
-        focus_off;
+        focus_off, axis;
   } _input;
+  // The window command's forms, and what they set, which a window opened later takes
+  // too, so a run with none takes them as one with a window does (V07).
+  struct Windowing {
+    Command title, fullscreen_on, fullscreen_off, pointer_lock, pointer_free;
+  } _windowing;
+  std::string _title; // none for the one the view's name gives
+  bool _fills = false;
+  bool _locked = false;
 };
 
 } // namespace VP

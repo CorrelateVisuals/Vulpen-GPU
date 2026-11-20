@@ -27,6 +27,7 @@ class Unread final : public VP::WindowInput {
   void button(std::string_view, bool) override {}
   void wheel(float, float) override {}
   void focus(bool) override {}
+  void axis(std::string_view, float, float) override {}
 };
 
 void draw(const VP::Log &log) {
