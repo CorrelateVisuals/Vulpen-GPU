@@ -9,6 +9,7 @@ Everything in `src/external-libraries/` is a pinned upstream release, byte-ident
 | [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) | `v2.0.0rc13` (newest tag) | `tiny_obj_loader.h` | MIT, [tinyobjloader.txt](tinyobjloader.txt) |
 | [GLM](https://github.com/g-truc/glm) | `1.0.3` | `glm/` | MIT or Happy Bunny, [glm.txt](glm.txt) |
 | [GLFW](https://github.com/glfw/glfw) | `3.5.1` | `glfw/` | zlib, [glfw.md](glfw.md) |
+| [sokol](https://github.com/floooh/sokol) | commit `c3e8cfb` (no tagged releases), 2026-10-28 | `sokol_audio.h` | zlib, [sokol.txt](sokol.txt) |
 
 Two libraries are subsets of their release archive, so the repository stays small. The files that are kept are unchanged.
 
