@@ -449,8 +449,13 @@ private:
 // What an operator reaches during a frame: its node's block and read-backs, nothing else.
 class Schedule::Cooker final : public Cook {
 public:
-  Cooker(Schedule &schedule, Bound &bound, std::uint64_t frame, glm::uvec2 resolution)
-      : _schedule(schedule), _bound(bound), _frame(frame), _resolution(resolution) {}
+  Cooker(Schedule &schedule,
+         Bound &bound,
+         std::uint64_t frame,
+         double seconds,
+         glm::uvec2 resolution)
+      : _schedule(schedule), _bound(bound), _frame(frame), _seconds(seconds),
+        _resolution(resolution) {}
 
 private:
   std::uint64_t index() const override {
@@ -505,6 +510,9 @@ private:
   void unread(std::string_view port) override {
     _schedule._wiring.ports.unread(_schedule._name, _bound.node->name, port);
   }
+  double seconds() const override {
+    return _seconds;
+  }
   std::span<std::byte> block() override {
     return _bound.block->bytes();
   }
@@ -543,6 +551,7 @@ private:
   Schedule &_schedule;
   Bound &_bound;
   const std::uint64_t _frame;
+  const double _seconds;
   const glm::uvec2 _resolution;
 };
 
@@ -747,7 +756,7 @@ std::uint32_t Schedule::counted(Bound &bound) const {
 }
 
 // Each node's cook is timed, a node in error none; while the view rests, no node cooks.
-void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
+void Schedule::cook(std::uint64_t frame, double seconds, VkExtent2D resolution) {
   if (_resting)
     return;
   size_targets(resolution);
@@ -764,7 +773,7 @@ void Schedule::cook(std::uint64_t frame, VkExtent2D resolution) {
     }
     if (!_pulled.empty() && !_pulled[at])
       continue;
-    Cooker cooker(*this, bound, frame, {resolution.width, resolution.height});
+    Cooker cooker(*this, bound, frame, seconds, {resolution.width, resolution.height});
     const auto started = std::chrono::steady_clock::now();
     try {
       const Log::Speaking speaking(_wiring.log, {_name, bound.node->name, bound.log});

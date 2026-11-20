@@ -623,6 +623,9 @@ public:
   // shows nothing: a hosted view no reader read the frame before rests while a view
   // beside it presents views, none of it cooking, dispatching or drawing. Last, as above.
   virtual void unread(std::string_view port) = 0;
+  // The frame's time in seconds, the value the frame block hands shaders: frames counted
+  // at the run's rate, so a replay sees the same time (C01). Last, as above.
+  virtual double seconds() const = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the

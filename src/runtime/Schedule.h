@@ -94,9 +94,10 @@ public:
   // Before a module swap: the operators' code is about to go, so they go first, with
   // their commands and the C++ objects their modules made. modules: as "view/folder".
   void drop_operators(const std::vector<std::string> &modules);
-  // resolution: the window's size, or without one --size's, zero without either; the
-  // images draws render into take it too.
-  void cook(std::uint64_t frame, VkExtent2D resolution);
+  // seconds: the frame's time, as the frame block hands it to shaders. resolution: the
+  // window's size, or without one --size's, zero without either; the images draws
+  // render into take it too.
+  void cook(std::uint64_t frame, double seconds, VkExtent2D resolution);
   // Whether the view rests, as nothing shows it (Views::pull): none of its nodes cooks,
   // and it hands on no work and no draws, so the passes are gathered again as it changes.
   void rest(bool rests);
