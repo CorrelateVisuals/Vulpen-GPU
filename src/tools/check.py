@@ -22,6 +22,7 @@ full and nightly run the Linux presets (asan, tsan) and Linux's tools.
 Usage: python3 src/tools/check.py quick|full|nightly|install-hook
 """
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -34,6 +35,10 @@ TOOLS = ROOT / "src" / "tools"
 # The simulated testers are private, beside the handoffs, which git ignores.
 SIMULATION = ROOT / "docs" / "logs" / "beta-sim" / "sim.py"
 REPORTS = ROOT / "docs" / "reports"
+# A build's count of jobs: with none, CMake hands Unix Makefiles make -j, which starts
+# every compile at once, as a fresh tree's or every module's after an engine header
+# changed. The machine's threads, near what Ninja starts by default.
+JOBS = str(os.cpu_count() or 1)
 TAIL = 30  # lines of a failed step's log the report shows, after those naming an error
 HOOK = """#!/bin/sh
 # Written by src/tools/check.py install-hook: each push runs its quick checks first, and
@@ -52,7 +57,8 @@ class Step:
 
 def preset(name: str) -> list[Step]:
     return [Step(f"configure {name}", ["cmake", "--preset", name]),
-            Step(f"build {name}", ["cmake", "--build", "--preset", name, "--parallel"],
+            Step(f"build {name}",
+                 ["cmake", "--build", "--preset", name, "--parallel", JOBS],
                  f"configure {name}"),
             Step(f"test {name}", ["ctest", "--preset", name], f"build {name}")]
 
@@ -68,7 +74,7 @@ def simulate(log, out: Path) -> bool:
 
     passed = (run(["git", "worktree", "add", "--detach", str(tree), "HEAD"])
               and run(["cmake", "--preset", "debug"], tree)
-              and run(["cmake", "--build", "--preset", "debug", "--parallel"], tree)
+              and run(["cmake", "--build", "--preset", "debug", "--parallel", JOBS], tree)
               and run([sys.executable, SIMULATION, tree, out / "simulation"]))
     run(["git", "worktree", "remove", "--force", str(tree)])
     return passed

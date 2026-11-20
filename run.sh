@@ -115,7 +115,8 @@ build() (
     rm -rf "out/build/$preset/CMakeCache.txt" "out/build/$preset/CMakeFiles"
   fi
   if [[ $1 == vulpen ]]; then cmake --preset "$preset" "${fresh[@]}" || exit; fi
-  cmake --build --preset "$preset" --parallel --target "$1" ${2:+--clean-first}
+  # A count of jobs: with none, Unix Makefiles start every compile at once.
+  cmake --build --preset "$preset" --parallel "$(getconf _NPROCESSORS_ONLN)" --target "$1" ${2:+--clean-first}
 )
 # Each line kept for a failure, and shown in place cut to the terminal's width, so it
 # never wraps onto a row the next line would leave behind.

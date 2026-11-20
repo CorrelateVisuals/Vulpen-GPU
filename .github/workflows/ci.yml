@@ -38,7 +38,8 @@ jobs:
       - name: Configure
         run: cmake --preset debug -DVULPEN_TEST_DRIVER="$LAVAPIPE"
       - name: Build
-        run: cmake --build --preset debug --parallel
+        # A count of jobs: with none, Unix Makefiles start every compile at once.
+        run: cmake --build --preset debug --parallel "$(nproc)"
       - name: Test
         run: ctest --preset debug
 

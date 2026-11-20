@@ -201,11 +201,15 @@ private:
     return true;
   }
 
+  // --parallel with a count: with none, Unix Makefiles get make -j, which starts every
+  // compile at once, as every module after an engine header changed (A03). The machine's
+  // threads, near what Ninja starts by default.
   std::string command(std::string_view target, bool first) const {
-    return std::format(R"("{}" --build "{}" --target {} --parallel {} "{}" 2>&1)",
+    return std::format(R"("{}" --build "{}" --target {} --parallel {} {} "{}" 2>&1)",
                        VP_CMAKE_COMMAND,
                        _build.string(),
                        target,
+                       std::max(std::thread::hardware_concurrency(), 1u),
                        first ? ">" : ">>",
                        _log_file.string());
   }
