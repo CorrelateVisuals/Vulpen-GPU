@@ -5,9 +5,9 @@ quick: configure, build and test the debug preset, as CI does on every push; the
 runs the gates, the mutable-globals check and the statistics. Then, but on Windows, the
 names hidden as MSVC refuses them and GCC lets pass (hidden-names.py). About a minute.
 full: quick, then every example made again by typing (examples-replay.py), every command
-swept in each state with the menus and keys (command-sweep.py's sweep and gui), and the
-address sanitizer's build and tests. About half an hour; a round runs it before it
-lands.
+swept in each state with the menus and keys (command-sweep.py's sweep and gui), the
+address sanitizer's build and tests, and ctest's window tests under an Xvfb of the run's
+own. About half an hour; a round runs it before it lands.
 nightly: every preset built and tested, GPU-assisted validation, the nightly tests (the
 soaks, the long fuzz, examples-replay), the whole command sweep, and the simulated
 testers where docs/logs/beta-sim/ holds them, in a tree of their own. Some hours; its
@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -48,19 +49,61 @@ exec python3 "$(git rev-parse --show-toplevel)/src/tools/check.py" quick
 
 
 class Step:
-    """A command, or a function given the log, run once the step it needs passed."""
+    """A command, or a function given the log, run once the step it needs passed; env: the
+    command's environment, if not this one's."""
 
-    def __init__(self, name, run, needs=None):
-        self.name, self.run, self.needs = name, run, needs
+    def __init__(self, name, run, needs=None, env=None):
+        self.name, self.run, self.needs, self.env = name, run, needs, env
         self.result, self.seconds = "skipped", 0.0
 
 
-def preset(name: str) -> list[Step]:
+def preset(name: str, window: dict[str, str] | None = None) -> list[Step]:
     return [Step(f"configure {name}", ["cmake", "--preset", name]),
             Step(f"build {name}",
                  ["cmake", "--build", "--preset", name, "--parallel", JOBS],
                  f"configure {name}"),
-            Step(f"test {name}", ["ctest", "--preset", name], f"build {name}")]
+            Step(f"test {name}", ["ctest", "--preset", name], f"build {name}", window)]
+
+
+def test_driver() -> str:
+    """The Vulkan driver the debug build's tests take, lavapipe, which the goldens were
+    made on; none before a configure."""
+    cache = ROOT / "out" / "build" / "debug" / "CMakeCache.txt"
+    return next((line.split("=", 1)[1] for line in cache.read_text().splitlines()
+                 if line.startswith("VULPEN_TEST_DRIVER:")), "") if cache.is_file() else ""
+
+
+@contextmanager
+def screen(wanted: bool):
+    """The environment ctest's window tests (triangle, ide) run in: for full and nightly, a
+    display of the run's own, an Xvfb server no person sees, and no Wayland display, so
+    nothing opens on the screen beside the run, on the tests' driver, as a window would
+    take the machine's own GPU; None for quick, as CI runs it, and where Xvfb is not
+    installed, where those tests say they skipped."""
+    xvfb = shutil.which("Xvfb")
+    if not wanted or xvfb is None or sys.platform == "win32":
+        yield None
+        return
+    read, write = os.pipe()
+    # Over twice vulpen's window of 1280 by 720, which no window manager moves from the
+    # top left here: X starts the pointer in the screen's middle, so it lies outside the
+    # window, and only the pointer a test scripts moves in it, as the file menu's place.
+    server = subprocess.Popen([xvfb, "-displayfd", str(write), "-screen", "0", "2600x1500x24",
+                               "-nolisten", "tcp", "-noreset"], pass_fds=(write,),
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    os.close(write)
+    with os.fdopen(read) as ready:  # the server writes its number once it listens
+        number = ready.readline().strip()
+    window = {key: value for key, value in os.environ.items()
+              if key != "WAYLAND_DISPLAY"}
+    window["DISPLAY"] = f":{number}"
+    if driver := test_driver():
+        window["VK_DRIVER_FILES"] = driver
+    try:
+        yield window if number else None
+    finally:
+        server.terminate()
+        server.wait()
 
 
 def simulate(log, out: Path) -> bool:
@@ -80,9 +123,9 @@ def simulate(log, out: Path) -> bool:
     return passed
 
 
-def steps(tier: str, out: Path) -> list[Step]:
+def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
     python = sys.executable
-    quick = preset("debug")
+    quick = preset("debug", window)
     if sys.platform != "win32":
         quick.insert(2, Step("hidden names", [python, TOOLS / "hidden-names.py",
                                               ROOT / "out/build/debug"], "build debug"))
@@ -95,9 +138,9 @@ def steps(tier: str, out: Path) -> list[Step]:
                                   out / "examples-replay.log"], "build debug"),
                 Step("commands", [python, TOOLS / "command-sweep.py", "--only",
                                   "sweep,gui", "--report", out / "command-sweep.md"]),
-                *preset("asan")]
+                *preset("asan", window)]
     presets = ("debug", "release", "asan", "tsan")
-    nightly = [*quick, *(step for name in presets[1:] for step in preset(name))]
+    nightly = [*quick, *(step for name in presets[1:] for step in preset(name, window))]
     nightly += [Step("test gpu-validation", ["ctest", "--preset", "gpu-validation"],
                      "build debug"),
                 Step("test nightly", ["ctest", "--preset", "nightly"], "build debug"),
@@ -123,7 +166,7 @@ def run(step: Step, out: Path) -> None:
             command = [str(word) for word in step.run]
             log.write(f"$ {' '.join(command)}\n")
             log.flush()
-            passed = subprocess.run(command, cwd=ROOT, stdout=log,
+            passed = subprocess.run(command, cwd=ROOT, env=step.env, stdout=log,
                                     stderr=subprocess.STDOUT).returncode == 0
     step.result = "passed" if passed else "failed"
     step.seconds = time.monotonic() - started
@@ -155,17 +198,18 @@ def check(tier: str) -> int:
     began = datetime.now(timezone.utc)
     out = ROOT / "out" / "check" / f"{tier}-{began:%Y%m%dT%H%M%SZ}"
     out.mkdir(parents=True)
-    done = steps(tier, out)
     passed = set()
-    for step in done:
-        if step.needs and step.needs not in passed:
-            print(f"{step.name}: skipped, as {step.needs} did not pass", flush=True)
-            continue
-        print(f"{step.name}: ", end="", flush=True)
-        run(step, out)
-        print(f"{step.result} in {step.seconds:.0f} s", flush=True)
-        if step.result == "passed":
-            passed.add(step.name)
+    with screen(tier != "quick") as window:
+        done = steps(tier, out, window)
+        for step in done:
+            if step.needs and step.needs not in passed:
+                print(f"{step.name}: skipped, as {step.needs} did not pass", flush=True)
+                continue
+            print(f"{step.name}: ", end="", flush=True)
+            run(step, out)
+            print(f"{step.result} in {step.seconds:.0f} s", flush=True)
+            if step.result == "passed":
+                passed.add(step.name)
     text = report(tier, done, out, began)
     (out / "report.md").write_text(text)
     if tier == "nightly":
