@@ -40,28 +40,13 @@ std::pair<std::string_view, std::string_view> split_port(std::string_view inside
   return {inside.substr(0, dot), inside.substr(dot + 1)};
 }
 
-// A pane a view hosted beside its GUI, a node of the recipe its pane param names, as the
-// still-image component: added as the view comes and removed as it goes, so what it
-// holds, as a frame held still and where it is moved and zoomed, lasts while the view
-// does, and the memory it takes only then, for as many views as there are. A pane takes
-// its room from the deck whose holds param names its view, at that deck's port named for
-// the view, at the ports its rooms param names, each a node inside the pane and a port,
-// joined by commas, and the keys part's typed, which its host connects to its typed, at
-// those its keys param names; a view hosted anew, or presented anew, that no deck holds
-// joins the holds of the deck holding the view presented before it, or else of the first
-// deck, as view load hosts one, and a view closed leaves them, so one a deck let go of,
-// as its tab's close mark does, stays hosted with no pane until it is presented again. It
-// connects a view's window to its pane, at the ports its pictures param names, while its
-// deck shows it, and the window of the view presented also to the ports its to param
-// names, as the image filling the window in perform mode, through the connection
-// shared/Presented.h names: one connection a window, as a port joins one; the window of a
-// view no deck shows nor presented draws nowhere. The view presented is the current
-// view's project, or the one holding the current view. With interact = yes, each pane's
-// picture takes it too, so the view it shows takes the pointer's presses there, as in
-// perform mode, in place of the drag and the wheel moving the picture, as an inspect
-// does; it hands on buttons, for a bar, whose press turns that on or off. It keeps no
-// views between runs: quit restart's replay hosts again those the run had, the one
-// presented presented again (V08), and a run started anew starts with none.
+// Keeps a pane for each view hosted beside its GUI: a node of the recipe its pane param
+// names, as the still-image component. A pane is added as its view comes and removed as
+// it goes, so what it holds, as a frame held still or where it was moved and zoomed,
+// lasts as long as the view, and so does the memory it takes. The view presented is the
+// current view's project, or the one holding the current view. It keeps no views between
+// runs: quit restart's replay hosts again those the run had (V08), and a run started anew
+// has none.
 class Panes final : public VP::Operator {
   // A pane as the view holds it: its node, the view and the deck its room comes from, and
   // the connection bringing it.
@@ -409,8 +394,10 @@ class Panes final : public VP::Operator {
   }
 
   // Each view's window to its pane while its deck shows it, and the presented one's to
-  // the ports its to param names too: a line only for a connection that differs from the
-  // one there, those going first, as a window joins one connection at a time.
+  // the ports its to param names too, through the connection shared/Presented.h names. A
+  // window that no deck shows, and that is not presented, draws nowhere. It sends a line
+  // only for a connection that differs from the one there, those going first, as a window
+  // joins one connection at a time.
   void connect(VP::CommandPort &commands, const VP::View &own) {
     struct Wanted {
       std::string name;
