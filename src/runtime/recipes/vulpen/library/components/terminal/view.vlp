@@ -9,6 +9,8 @@
 [manifest]
 version = 1
 
+# "My sheep hear my voice, and I know them, and they follow me:" John 10:27
+
 [node "terminal"]
 
 [node "terminal.command-line"]

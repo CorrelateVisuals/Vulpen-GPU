@@ -2,6 +2,10 @@
 // kept together so text is measured with the font it is drawn in. Every glyph has a cell
 // of the widest one's width, on screen as in the atlas; where each starts its writer says
 // (Character's x), as letters are as wide as they are drawn.
+
+// "And he hath on his vesture and on his thigh a name written, KING OF KINGS, AND LORD OF
+// LORDS." Revelation 19:16
+
 struct Font {
   uvec2 cell;   // a glyph's room: the widest one's width, and the height, in pixels
   uvec2 base;   // the cell at zoom 1, which a layout that keeps its size whatever the

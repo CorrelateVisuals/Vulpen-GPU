@@ -9,6 +9,9 @@ vec3 encoded(vec3 linear) {
              greaterThan(linear, vec3(0.0031308)));
 }
 
+// "Be still, and know that I am God: I will be exalted among the heathen, I will be
+// exalted in the earth." Psalm 46:10
+
 vec3 decoded(vec3 encoded) {
   return mix(encoded / 12.92,
              pow((encoded + 0.055) / 1.055, vec3(2.4)),

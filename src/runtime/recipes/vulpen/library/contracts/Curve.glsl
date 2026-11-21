@@ -4,6 +4,10 @@
 // its reader from the left, and turns in a lane as tight as the lane is wide.
 // Connections and relations are both curves, so one part draws every line the graph
 // shows.
+
+// "Every valley shall be filled, and every mountain and hill shall be brought low; and
+// the crooked shall be made straight, and the rough ways shall be made smooth;" Luke 3:5
+
 struct Curve {
   vec2 from;   // where it leaves
   vec2 to;     // where it arrives

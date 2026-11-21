@@ -3,6 +3,9 @@
 // reaches every panel.
 VP_READS(Palette, vec4);
 
+// "And he had in his right hand seven stars: and out of his mouth went a sharp twoedged
+// sword: and his countenance was as the sun shineth in his strength." Revelation 1:16
+
 // As many roles as contracts/Palette.h names. A role past them draws in the last, so no
 // read leaves the buffer (GLSL02).
 const uint roles = 40u;

@@ -1,6 +1,10 @@
 // A rectangle in pixels, offset and extent as VkRect2D names them, and the palette role
 // it is drawn in, or a blend of two. The part that places a thing writes its Rect once, and drawing and hit
 // testing read that same Rect, so what is drawn is what is clicked.
+
+// "And are built upon the foundation of the apostles and prophets, Jesus Christ himself
+// being the chief corner stone;" Ephesians 2:20
+
 struct Rect {
   ivec2 offset;    // its top left, in pixels from the window's top left
   uvec2 extent;    // its width and height, in pixels

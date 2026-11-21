@@ -8,6 +8,8 @@
 [manifest]
 version = 1
 
+# "I and my Father are one." John 10:30
+
 [node "stack"]
 
 [node "stack.switch"]

@@ -1,5 +1,8 @@
 # arcball
 
+<!-- "But these are written, that ye might believe that Jesus is the Christ, the Son of
+God; and that believing ye might have life through his name." John 20:31 -->
+
 A camera you turn and pan with the pointer, for any view that looks through a camera: one C++ node, `Arcball.cpp`, writing one `Camera` a frame at its port `camera`, the struct ray-cubes' `rays` reads (`contracts/Camera.h`, which a drop brings along).
 
 | Pointer | Does |

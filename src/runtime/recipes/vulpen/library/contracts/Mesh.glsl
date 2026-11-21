@@ -1,6 +1,10 @@
 // A triangle of a mesh, as mesh-file writes it from a model's file and mesh draws it:
 // its corners, the surface's direction at each, and its color. contracts/Mesh.h is the
 // same struct as C++ writes it. Each a vec4, so std430 and C++ lay it out alike.
+
+// "And the Word was made flesh, and dwelt among us, (and we beheld his glory, the glory
+// as of the only begotten of the Father,) full of grace and truth." John 1:14
+
 struct Triangle {
   vec4 a;        // xyz: a corner; w: 1
   vec4 b;        // xyz: the next corner, counterclockwise seen from the front

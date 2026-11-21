@@ -7,6 +7,8 @@
 [manifest]
 version = 1
 
+# "He maketh the storm a calm, so that the waves thereof are still." Psalm 107:29
+
 [node "still-image"]
 
 [node "still-image.image"]

@@ -12,6 +12,9 @@ struct Label {
                 // left of its room is cut at that edge too; 0 for none
 };
 
+// "And she shall bring forth a son, and thou shalt call his name JESUS: for he shall save
+// his people from their sins." Matthew 1:21
+
 // One character of the list: its code, the label it belongs to, and where its cell
 // starts in it. Its writer keeps the label among the Labels it wrote, as a shader cannot
 // know how many there are (GLSL02).
