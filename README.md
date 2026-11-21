@@ -178,6 +178,7 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 | `python3 src/tools/check.py quick` | `python src\tools\check.py quick` | configure, build and test, as CI does on every push, and on Linux the names MSVC would refuse, about a minute; `install-hook` runs it before each `git push` |
 | `python3 src/tools/check.py full` | | quick, every example made again by typing, every command swept in each state, and the `asan` preset, about half an hour |
 | `python3 src/tools/check.py nightly` | | every preset, GPU-assisted validation, the soaks, the long fuzz and the whole command sweep, some hours |
+| `python3 src/tools/check.py release` | | before `main` moves to a commit, in a worktree of it: nightly, the commit built as GitHub's source download, and main's own lines and projects run on main's build and this one, compared, some hours |
 
 `--log error|warn|info|debug` sets how much a run says; each run keeps its log in `docs/logs/`, the newest 20.
 
