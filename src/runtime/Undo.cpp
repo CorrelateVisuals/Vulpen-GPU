@@ -80,7 +80,7 @@ struct Undo::Step {
   std::vector<Viewed> views;
   std::vector<Change> changes;
   std::vector<std::function<void(bool again)>> joined; // the owners' own changes
-  std::vector<Folder> folders;     // each once
+  std::vector<Folder> folders;                         // each once
   std::filesystem::path too_large; // a file past kept_most, which undo cannot bring back
 };
 
@@ -208,8 +208,8 @@ Undo::Undo(FilePort &files, ViewLookup &views, Commands &port)
 Undo::~Undo() = default;
 
 void Undo::begin(std::string_view line) {
-  _step = std::make_unique<Step>(
-      Step{.line = std::string(line), .hosted = _views.names()});
+  _step =
+      std::make_unique<Step>(Step{.line = std::string(line), .hosted = _views.names()});
 }
 
 void Undo::note(std::string_view name, bool project, const View &before) {
@@ -271,7 +271,8 @@ std::string line_of(std::string_view line, const std::vector<std::string> &hoste
   if (colon == std::string_view::npos ||
       std::ranges::find(hosted, line.substr(0, colon)) == hosted.end())
     return std::string(line);
-  return std::format("{} (in {})", line.substr(colon + mark.size()), line.substr(0, colon));
+  return std::format(
+      "{} (in {})", line.substr(colon + mark.size()), line.substr(0, colon));
 }
 
 // The path moved along with from to to: the same path under to; none when it is neither
@@ -364,8 +365,9 @@ void Undo::check(const Step &step, bool again) {
   // a change between saved, removed, made, copied or moved something there, which undo
   // or redo takes back or makes before it reaches this one, so that one's check stands
   // for this.
-  const auto now_at = [&](std::size_t index,
-                          std::filesystem::path path) -> std::optional<std::filesystem::path> {
+  const auto now_at =
+      [&](std::size_t index,
+          std::filesystem::path path) -> std::optional<std::filesystem::path> {
     const auto past = [&](const Step::Change &other) {
       if (other.kind == ChangeKind::rename) {
         const std::filesystem::path &from = again ? other.to : other.path;
@@ -424,7 +426,8 @@ void Undo::check(const Step &step, bool again) {
       return;
     const bool saved = change.kind == ChangeKind::save;
     const bool as_left = saved ? holds(*at, change.after) : !there(*at);
-    const bool as_found = change.before ? holds(*at, *change.before) : there(*at) != saved;
+    const bool as_found =
+        change.before ? holds(*at, *change.before) : there(*at) != saved;
     if (again ? !as_found : !as_left)
       throw std::runtime_error(std::format("{} changed since the line {}, which {} would "
                                            "lose; nothing changed",

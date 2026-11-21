@@ -14,7 +14,7 @@
 namespace {
 
 constexpr std::string_view picture = "picture"; // the port its shader copies from
-constexpr std::string_view held_port = "held";   // and stores the frame into
+constexpr std::string_view held_port = "held";  // and stores the frame into
 constexpr std::string_view hold_key = "space";
 
 // Holds a frame of its picture still, for a person to look at while what draws it goes

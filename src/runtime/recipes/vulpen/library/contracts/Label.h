@@ -36,9 +36,8 @@ struct Character {
   float x = 0.0f;
 
   static constexpr auto members() {
-    return std::array{VP_MEMBER(Character, code),
-                      VP_MEMBER(Character, label),
-                      VP_MEMBER(Character, x)};
+    return std::array{
+        VP_MEMBER(Character, code), VP_MEMBER(Character, label), VP_MEMBER(Character, x)};
   }
 };
 

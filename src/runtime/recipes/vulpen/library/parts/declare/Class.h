@@ -195,7 +195,7 @@ std::optional<std::string> member_of(std::string_view code) {
 // A start's row in bind() commented out, as `// _speed = node.param<float>("speed");`:
 // the way it binds, param, and the member it assigns, _speed; none for any other row.
 std::optional<std::pair<std::string, std::string>> hint_of(std::string_view row,
-                                                          std::string_view node) {
+                                                           std::string_view node) {
   const std::optional<std::string> hint = uncommented(row);
   if (!hint)
     return std::nullopt;
@@ -223,8 +223,8 @@ std::string bind_word(std::string_view code) {
   const std::size_t at = code.find(taken);
   std::string word;
   for (std::size_t each = at == std::string_view::npos ? code.size() : at + taken.size();
-       each < code.size() && (glsl_name(code.substr(each, 1)) ||
-                              (code[each] >= '0' && code[each] <= '9'));
+       each < code.size() &&
+       (glsl_name(code.substr(each, 1)) || (code[each] >= '0' && code[each] <= '9'));
        ++each)
     word.push_back(code[each]);
   return word;
@@ -328,8 +328,8 @@ std::string operator_named(const Code &cpp) {
                     "line declares in",
                     shown(cpp.file)));
   const std::string_view macro = code_of(*named);
-  return std::string(trim(
-      macro.substr(operator_macro.size(), macro.find(')') - operator_macro.size())));
+  return std::string(
+      trim(macro.substr(operator_macro.size(), macro.find(')') - operator_macro.size())));
 }
 
 // The class's bind() with a body, in the class or after it in the .cpp, as Class::bind
@@ -406,9 +406,8 @@ Change placed(const Located &op, const std::string &line) {
 // The bind() line: in place of the start's row of that way commented out, which it
 // renames, else placed. The old name the start's row assigned, which its member row names
 // too; empty for none.
-std::string bind_change(const Located &op,
-                        const Binding &binding,
-                        std::vector<Change> &changes) {
+std::string
+bind_change(const Located &op, const Binding &binding, std::vector<Change> &changes) {
   const Rows &rows = op.bound->rows;
   const std::string line = binding.line(op.node);
   for (const std::size_t at : top_rows(rows, op.bind))
@@ -487,9 +486,8 @@ std::vector<Code> declaring_cpp(VP::FilePort &files,
   const std::string hinted = bind_change(op, binding, changes);
   member_change(op, binding, hinted, changes);
   include_change(op, binding, changes);
-  std::ranges::sort(changes, [](const Change &one, const Change &other) {
-    return one.at > other.at;
-  });
+  std::ranges::sort(
+      changes, [](const Change &one, const Change &other) { return one.at > other.at; });
   for (Change &change : changes) {
     Rows &rows = change.code->rows;
     const auto at = rows.begin() + static_cast<std::ptrdiff_t>(change.at);
@@ -541,8 +539,8 @@ Binding typed_binding(VP::FilePort &files,
     binding.type = value->cpp;
   else if (type == word_type.glsl)
     binding.type = word_type.cpp;
-  for (CppContract &contract : binding.type.empty() ? cpp_contracts(files, file)
-                                                    : std::vector<CppContract>())
+  for (CppContract &contract :
+       binding.type.empty() ? cpp_contracts(files, file) : std::vector<CppContract>())
     if (contract.type == type) {
       binding.way = "output";
       binding.type = std::format("{}{}", view_namespace, type);
@@ -641,11 +639,11 @@ Binding input_binding(VP::Call &call,
                                          port,
                                          each.holds));
   }
-  throw std::runtime_error(std::format(
-      "{} is no C++ output a node of view {} writes; they are {}",
-      port,
-      call.view().name,
-      outputs.empty() ? std::string("none") : listed(outputs)));
+  throw std::runtime_error(
+      std::format("{} is no C++ output a node of view {} writes; they are {}",
+                  port,
+                  call.view().name,
+                  outputs.empty() ? std::string("none") : listed(outputs)));
 }
 
 // What uses a binding next, which no line writes, as cook() is the person's own: the line

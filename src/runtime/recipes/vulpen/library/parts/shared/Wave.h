@@ -36,8 +36,10 @@ inline std::uint32_t wave_word(std::string_view bytes, std::size_t at, std::size
 
 // One sample, as a float from -1 to 1: 16- and 24-bit integers by their range, floats as
 // they are.
-inline float wave_sample(std::string_view bytes, std::size_t at, std::uint16_t format,
-                  std::uint16_t bits) {
+inline float wave_sample(std::string_view bytes,
+                         std::size_t at,
+                         std::uint16_t format,
+                         std::uint16_t bits) {
   if (format == wave_float) {
     const std::uint32_t word = wave_word(bytes, at, sizeof(float));
     float value = 0.0f;

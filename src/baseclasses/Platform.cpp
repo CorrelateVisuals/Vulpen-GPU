@@ -44,7 +44,7 @@ namespace VP {
 
 namespace {
 
-constexpr std::size_t input_chunk = 4096; // bytes of standard input one read takes
+constexpr std::size_t input_chunk = 4096;  // bytes of standard input one read takes
 constexpr std::size_t common_columns = 80; // as a terminal starts
 // At most this much input a frame, so input that never pauses cannot hold a frame.
 constexpr std::size_t input_per_call = 16 * input_chunk;
@@ -92,11 +92,21 @@ constexpr std::array<std::string_view, 3> buttons{"left", "right", "middle"};
 // A gamepad's buttons, as keys, in GLFW's order of GLFW_GAMEPAD_BUTTON_A on, so a part
 // binds them as it binds keys; and its sticks and triggers, as axes, by GLFW's names.
 constexpr std::array<std::string_view, GLFW_GAMEPAD_BUTTON_LAST + 1> gamepad_buttons{
-    "gamepad_a",           "gamepad_b",          "gamepad_x",
-    "gamepad_y",           "gamepad_left_bumper", "gamepad_right_bumper",
-    "gamepad_back",        "gamepad_start",      "gamepad_guide",
-    "gamepad_left_thumb",  "gamepad_right_thumb", "gamepad_dpad_up",
-    "gamepad_dpad_right",  "gamepad_dpad_down",  "gamepad_dpad_left"};
+    "gamepad_a",
+    "gamepad_b",
+    "gamepad_x",
+    "gamepad_y",
+    "gamepad_left_bumper",
+    "gamepad_right_bumper",
+    "gamepad_back",
+    "gamepad_start",
+    "gamepad_guide",
+    "gamepad_left_thumb",
+    "gamepad_right_thumb",
+    "gamepad_dpad_up",
+    "gamepad_dpad_right",
+    "gamepad_dpad_down",
+    "gamepad_dpad_left"};
 constexpr std::string_view left_stick = "gamepad_left";
 constexpr std::string_view right_stick = "gamepad_right";
 constexpr std::string_view left_trigger = "gamepad_left_trigger";
@@ -262,14 +272,13 @@ Speakers::Speakers(std::uint32_t rate, std::uint32_t channels, std::uint32_t buf
   if (!saudio_isvalid()) {
     const std::string why = trouble();
     saudio_shutdown();
-    throw std::runtime_error(std::format("the system's sound output did not open{}{}",
-                                         why.empty() ? "" : ": ",
-                                         why));
+    throw std::runtime_error(std::format(
+        "the system's sound output did not open{}{}", why.empty() ? "" : ": ", why));
   }
   if (const int plays = saudio_sample_rate(); plays != static_cast<int>(rate)) {
     saudio_shutdown();
-    throw std::runtime_error(
-        std::format("the sound output plays {} Hz, not the {} Hz frames make", plays, rate));
+    throw std::runtime_error(std::format(
+        "the sound output plays {} Hz, not the {} Hz frames make", plays, rate));
   }
 }
 
@@ -577,7 +586,8 @@ std::wstring quoted(const std::wstring &word) {
 
 } // namespace
 
-// The new process takes this one's standard streams, a pipe's too, as handles it inherits.
+// The new process takes this one's standard streams, a pipe's too, as handles it
+// inherits.
 void Shell::replace(const std::filesystem::path &program,
                     std::span<const std::string> arguments) {
   std::wstring line = quoted(program.wstring());
@@ -1048,7 +1058,8 @@ void Window::fullscreen(bool fills) const {
 // Hidden and held in the window, the pointer moves without end, as a camera that turns
 // by it wants; raw where the desktop offers it, so no acceleration bends the moves.
 void Window::lock_pointer(bool locked) const {
-  glfwSetInputMode(_window, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+  glfwSetInputMode(
+      _window, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
   if (glfwRawMouseMotionSupported() == GLFW_TRUE)
     glfwSetInputMode(_window, GLFW_RAW_MOUSE_MOTION, locked ? GLFW_TRUE : GLFW_FALSE);
 }
@@ -1085,9 +1096,7 @@ void Window::poll_gamepad(WindowInput &input) const {
     input.axis(right_stick,
                state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X],
                state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
-  const auto pulled = [&](int trigger) {
-    return (state.axes[trigger] + 1.0f) / 2.0f;
-  };
+  const auto pulled = [&](int trigger) { return (state.axes[trigger] + 1.0f) / 2.0f; };
   for (const auto &[trigger, name] :
        {std::pair{GLFW_GAMEPAD_AXIS_LEFT_TRIGGER, left_trigger},
         std::pair{GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER, right_trigger}})

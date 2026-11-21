@@ -75,7 +75,8 @@ void count_draws(VkCommandBuffer commands, std::span<const Pass> passes, bool wi
           VK_ACCESS_TRANSFER_READ_BIT);
   for (const Pass &pass : passes)
     if (counted(pass)) {
-      const VkBufferCopy region{.dstOffset = offsetof(VkDrawIndirectCommand, instanceCount),
+      const VkBufferCopy region{.dstOffset =
+                                    offsetof(VkDrawIndirectCommand, instanceCount),
                                 .size = sizeof(std::uint32_t)};
       vkCmdCopyBuffer(commands, pass.count, pass.indirect, 1, &region);
     }
@@ -141,12 +142,12 @@ void upload(VkCommandBuffer commands, const Copy &copy) {
   std::array<VkBufferImageCopy, most_mip_levels> regions{};
   for (std::uint32_t level = 0; level < copy.mip_levels; ++level) {
     const VkExtent2D extent = mip_level_extent(copy.extent, level);
-    regions.at(level) = {
-        .bufferOffset = mip_level_offset(copy.extent, copy.pixel_bytes, level),
-        .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                             .mipLevel = level,
-                             .layerCount = 1},
-        .imageExtent = {extent.width, extent.height, 1}};
+    regions.at(level) = {.bufferOffset =
+                             mip_level_offset(copy.extent, copy.pixel_bytes, level),
+                         .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                              .mipLevel = level,
+                                              .layerCount = 1},
+                         .imageExtent = {extent.width, extent.height, 1}};
   }
   if (copy.from)
     vkCmdCopyBufferToImage(
@@ -410,8 +411,8 @@ void Engine::Gpu::read_times() {
     const std::uint64_t *const before = &stamps[2 * per_query * pass];
     const std::uint64_t *const after = before + per_query;
     if (before[1] != 0 && after[1] != 0)
-      times[pass] = static_cast<float>(
-          static_cast<double>((after[0] - before[0]) & valid) * tick);
+      times[pass] =
+          static_cast<float>(static_cast<double>((after[0] - before[0]) & valid) * tick);
   }
   queried = 0;
 }

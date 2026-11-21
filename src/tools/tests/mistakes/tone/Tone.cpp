@@ -24,12 +24,14 @@ class Tone final : public VP::Operator {
     VP::SoundPort &sound = frame.sound();
     const std::span<const float> played = sound.played();
     if (!std::ranges::equal(played, _expected))
-      throw std::runtime_error(std::format(
-          "frame {} heard {} samples other than the {} it added", frame.index(),
-          played.size(), _expected.size()));
+      throw std::runtime_error(
+          std::format("frame {} heard {} samples other than the {} it added",
+                      frame.index(),
+                      played.size(),
+                      _expected.size()));
     if (sound.frames() != VP::SoundPort::sample_rate / frames_a_second)
-      throw std::runtime_error(std::format("frame {} takes {} sample frames",
-                                           frame.index(), sound.frames()));
+      throw std::runtime_error(
+          std::format("frame {} takes {} sample frames", frame.index(), sound.frames()));
     std::vector<float> added(sound.frames() * VP::SoundPort::channels);
     for (float &sample : added) {
       sample = _next % loud_every == 0

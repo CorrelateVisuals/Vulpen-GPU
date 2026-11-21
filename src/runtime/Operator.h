@@ -76,7 +76,8 @@ template <> inline constexpr std::string_view pixel_type<glm::vec4> = "vec4";
 // compare alike (GLSL02); the value is then as it was, as a bind may read it.
 template <class T> bool parse_param(std::string_view text, T &value) {
   const auto number = [](std::string_view part, auto &into) {
-    const auto [end, error] = std::from_chars(part.data(), part.data() + part.size(), into);
+    const auto [end, error] =
+        std::from_chars(part.data(), part.data() + part.size(), into);
     return error == std::errc{} && end == part.data() + part.size() &&
            (into == 0 || std::isnormal(into));
   };
@@ -259,13 +260,13 @@ class InputPort {
 public:
   // A view whose window draws into an image, as a GUI's pane shows it, reads the pointer
   // only while a GUI hands it the pointer (Cook::hand_pointer), over its own window then;
-  // else it reads no move, press or turn of it, as the pointer is over none of its window,
-  // and no key pressed or text typed, which a person types into the GUI beside it, but
-  // each key let go, so none it saw pressed stays held.
+  // else it reads no move, press or turn of it, as the pointer is over none of its
+  // window, and no key pressed or text typed, which a person types into the GUI beside
+  // it, but each key let go, so none it saw pressed stays held.
   virtual std::span<const Event> events() const = 0;
-  // Where the pointer is, zero until it first moves: for a view drawing into the window as
-  // the frame block's cursor says, and for one drawn into an image where the hand puts it
-  // over its window, zero while nothing hands it the pointer.
+  // Where the pointer is, zero until it first moves: for a view drawing into the window
+  // as the frame block's cursor says, and for one drawn into an image where the hand puts
+  // it over its window, zero while nothing hands it the pointer.
   virtual glm::vec2 pointer() const = 0;
   // Whether a key event may carry the name, as the input command checks it, so a part
   // that binds keys refuses one no key has.
@@ -487,7 +488,8 @@ private:
   virtual std::uint32_t texture_index(std::string_view port, std::string_view pixel) = 0;
   virtual std::string_view param_text(std::string_view name) = 0;
   // The type a param is read as, which a line setting it is checked against as it runs.
-  virtual void param_read_as(std::string_view name, std::string_view type, bool valid) = 0;
+  virtual void
+  param_read_as(std::string_view name, std::string_view type, bool valid) = 0;
   virtual void *output_object(std::string_view port, const Kind &kind) = 0;
   virtual const void *input_object(std::string_view port, const Kind &kind) = 0;
 

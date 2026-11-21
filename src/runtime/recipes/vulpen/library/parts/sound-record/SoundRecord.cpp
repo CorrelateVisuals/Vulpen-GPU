@@ -31,8 +31,9 @@ class SoundRecord final : public VP::Operator {
     const float seconds = node.param<float>("seconds");
     if (!(seconds > 0.0f))
       throw std::runtime_error(std::format("seconds = {} records nothing", seconds));
-    _wanted = static_cast<std::size_t>(std::lround(seconds * VP::SoundPort::sample_rate)) *
-              VP::SoundPort::channels;
+    _wanted =
+        static_cast<std::size_t>(std::lround(seconds * VP::SoundPort::sample_rate)) *
+        VP::SoundPort::channels;
   }
 
   void cook(VP::Cook &frame) override {

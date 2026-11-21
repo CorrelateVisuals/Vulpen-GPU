@@ -81,10 +81,11 @@ class Projects final : public VP::Operator {
                         "hosts a new, empty view, a project's by name or a folder's by "
                         "path, with none project1 on, the first free, and saves its "
                         "view.vlp");
-    _load = node.command("view load <project>",
-                         "hosts the view of a project by name, or of a folder by path, "
-                         "or of the one folder in it holding a view, as a repository's; "
-                         "an app's name, as ide, hosts the app beside the projects again");
+    _load =
+        node.command("view load <project>",
+                     "hosts the view of a project by name, or of a folder by path, "
+                     "or of the one folder in it holding a view, as a repository's; "
+                     "an app's name, as ide, hosts the app beside the projects again");
     _save_as = node.command("view save as [<name>]",
                             "copies the view, its edits too, into a new project, with no "
                             "name the view's numbered on, as wave2, and works on the "
@@ -101,7 +102,8 @@ class Projects final : public VP::Operator {
   }
 
   void command(VP::Call &call) override {
-    const std::string_view word = call.arguments().empty() ? "" : call.arguments().front();
+    const std::string_view word =
+        call.arguments().empty() ? "" : call.arguments().front();
     if (call.is(_load) && VP::is_name(word) && found(call, word).empty() &&
         holds_view(call, _apps / word))
       host_app(call, _apps / word);
@@ -133,14 +135,15 @@ class Projects final : public VP::Operator {
       return there.empty() ? _folder / path : there;
     }
     return path.filename().empty() || path.filename() == manifest ? path.parent_path()
-                                                                   : path;
+                                                                  : path;
   }
 
   // The folder load hosts the view of: the one named, or, where it holds no view, the one
   // folder in it that does, as a repository of its own holds its project in a folder
   // named for it, so a path to the repository loads the project too. Two or more such
   // folders name no view alone.
-  static std::filesystem::path view_in(VP::Call &call, const std::filesystem::path &folder) {
+  static std::filesystem::path view_in(VP::Call &call,
+                                       const std::filesystem::path &folder) {
     if (holds_view(call, folder))
       return folder;
     std::vector<std::string> inside;
@@ -224,7 +227,8 @@ class Projects final : public VP::Operator {
   // A project's name when the line gives none: the stem numbered on from the first, the
   // first no hosted view, project or folder in the projects' folder has, as project1 or
   // wave2.
-  std::string free_project(VP::Call &call, std::string_view base, std::size_t first) const {
+  std::string
+  free_project(VP::Call &call, std::string_view base, std::size_t first) const {
     const std::vector<std::string> listed = call.files().list(_folder.string());
     for (std::size_t number = first;; ++number) {
       std::string name = std::format("{}{}", base, number);
@@ -236,10 +240,10 @@ class Projects final : public VP::Operator {
 
   void check_unused(VP::Call &call, std::string_view name) const {
     if (const std::filesystem::path there = found(call, name); !there.empty())
-      throw std::runtime_error(std::format(
-          "{} holds a project named {} already, and the build holds one view of each name",
-          there.string(),
-          name));
+      throw std::runtime_error(std::format("{} holds a project named {} already, and the "
+                                           "build holds one view of each name",
+                                           there.string(),
+                                           name));
   }
 
   void host(VP::Call &call, const std::filesystem::path &folder, bool fresh) const {
@@ -334,9 +338,10 @@ class Projects final : public VP::Operator {
         "saved {} and renamed it {}; lines go to {} now", hosted, shown(to), name));
   }
 
-  // By a project's name alone, so no path reaches an app's folder or one elsewhere. Closed
-  // first, as a folder holding a view that runs is never deleted, then deleted by the
-  // files part's line, which refuses a folder holding another view that runs, naming it.
+  // By a project's name alone, so no path reaches an app's folder or one elsewhere.
+  // Closed first, as a folder holding a view that runs is never deleted, then deleted by
+  // the files part's line, which refuses a folder holding another view that runs, naming
+  // it.
   void remove(VP::Call &call) const {
     const std::string_view name = call.arguments().front();
     if (!VP::is_name(name))
@@ -351,13 +356,15 @@ class Projects final : public VP::Operator {
                                            (_folder / name).string(),
                                            manifest));
     if (const VP::View *const hosted = call.view(name);
-        hosted && hosted->file.lexically_normal() == (folder / manifest).lexically_normal())
+        hosted &&
+        hosted->file.lexically_normal() == (folder / manifest).lexically_normal())
       call.commands().send(std::format(": view close force {}", name));
     call.reply(call.commands().send(std::format("remove force {}/", folder.string())));
   }
 
   std::filesystem::path _folder;
-  std::filesystem::path _apps; // the recipes' folder, where each app beside the library is
+  std::filesystem::path
+      _apps; // the recipes' folder, where each app beside the library is
   VP::Command _new;
   VP::Command _load;
   VP::Command _save_as;

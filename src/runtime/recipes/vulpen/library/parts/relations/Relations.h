@@ -105,23 +105,21 @@ private:
   void relate_seams();
   void relate_stages();
   void relate_wires();
-  std::optional<std::pair<std::filesystem::path, std::uint32_t>>
-  port_file(const std::filesystem::path &folder,
-            std::string_view port,
-            bool writes) const;
+  std::optional<std::pair<std::filesystem::path, std::uint32_t>> port_file(
+      const std::filesystem::path &folder, std::string_view port, bool writes) const;
 
   VP_VIEW::Relations *_relations = nullptr;
   std::string _folder;
-  std::string _docs; // the folder whose documents define the ids a file cites
+  std::string _docs;  // the folder whose documents define the ids a file cites
   std::string _shown; // the view read last
   const void *_read_view = nullptr;
   bool _stale = true;
   std::uint64_t _frames = 0; // since the last reading, or the reading under way took
   std::size_t _bytes = 0;    // the last reading read
-  // A reading under way, which may take frames: the folder's tree and its top, the folders
-  // below it to walk and the next of them, the files to read and the next of them, the
-  // folders listed, the ids the documents define, the relations found so far, and what
-  // was read, a folder listed counting as a page.
+  // A reading under way, which may take frames: the folder's tree and its top, the
+  // folders below it to walk and the next of them, the files to read and the next of
+  // them, the folders listed, the ids the documents define, the relations found so far,
+  // and what was read, a folder listed counting as a page.
   bool _reading = false;
   bool _holding = false; // a folder shown anew, which waits for its relations
   VP::View _tree;

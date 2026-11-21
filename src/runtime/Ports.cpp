@@ -46,7 +46,8 @@ std::filesystem::path normal(const std::filesystem::path &path) {
 // above; none outside every view.
 std::filesystem::path view_of(const std::filesystem::path &path) {
   std::error_code none;
-  for (std::filesystem::path view = path; view.has_relative_path(); view = view.parent_path())
+  for (std::filesystem::path view = path; view.has_relative_path();
+       view = view.parent_path())
     if (std::filesystem::exists(view / manifest_file, none))
       return view;
   return {};
@@ -259,8 +260,8 @@ void Ports::save(std::string_view file, std::string_view text) {
 }
 
 // A folder's files go one by one, its last taking it, as a delete is undone a file at a
-// time, so what goes of a view is known only after: the whole view once its manifest went,
-// as nothing then builds it, else the highest folder the remove left gone.
+// time, so what goes of a view is known only after: the whole view once its manifest
+// went, as nothing then builds it, else the highest folder the remove left gone.
 void Ports::remove(std::string_view file) {
   const std::filesystem::path path = normal(absolute(file));
   const std::filesystem::path view = view_of(path);
@@ -271,7 +272,8 @@ void Ports::remove(std::string_view file) {
   listing_changed(absolute(file));
   if (view.empty())
     return;
-  std::filesystem::path gone = path == view / manifest_file ? view : std::filesystem::path();
+  std::filesystem::path gone =
+      path == view / manifest_file ? view : std::filesystem::path();
   for (std::filesystem::path at = folder ? path : path.parent_path();
        gone != view && at != view.parent_path() && !std::filesystem::exists(at, none);
        at = at.parent_path())
@@ -311,13 +313,13 @@ void Ports::rename(std::string_view from, std::string_view to) {
   const bool folder = std::filesystem::is_directory(path, none);
   Files::rename(absolute(from), absolute(to));
   const std::filesystem::path moved = absolute(to).lexically_normal();
-  const bool hides = std::ranges::any_of(
-      moved.lexically_relative(path.parent_path()),
-      [](const std::filesystem::path &part) {
-        return part != ".." && part.string().starts_with('.');
-      });
-  _moved.push_back(
-      {absolute(from).lexically_normal().string(), hides ? std::string() : moved.string()});
+  const bool hides =
+      std::ranges::any_of(moved.lexically_relative(path.parent_path()),
+                          [](const std::filesystem::path &part) {
+                            return part != ".." && part.string().starts_with('.');
+                          });
+  _moved.push_back({absolute(from).lexically_normal().string(),
+                    hides ? std::string() : moved.string()});
   listing_changed(absolute(from));
   listing_changed(absolute(to));
   if (folder && !view.empty())
@@ -394,12 +396,12 @@ private:
   }
   glm::vec2 pointer() const override {
     switch (_pointer) {
-    case Pointer::none:
-      return {};
-    case Pointer::handed:
-      return over(_ports._held.shown, _ports._pointer);
-    case Pointer::window:
-      break;
+      case Pointer::none:
+        return {};
+      case Pointer::handed:
+        return over(_ports._held.shown, _ports._pointer);
+      case Pointer::window:
+        break;
     }
     return _ports._pointer;
   }
@@ -432,10 +434,10 @@ Ports::Ports(const Log &log, Recipes &recipes, std::filesystem::path mirror)
 
 // What the build made of a folder of a view, at views/<view>/<the folder inside it> in
 // the mirror, as a view is named for its folder (V03) and a node's folder is its path
-// there (RV08), goes with the folder: one made again by that name then builds anew, rather
-// than binding the old one's code, whose problems are not its own (A02). The mirror's
-// folders stay, as the build made them as it configured and writes into them. Only a
-// view the build reads, one in a folder its read-folders lists: a copy hosted from
+// there (RV08), goes with the folder: one made again by that name then builds anew,
+// rather than binding the old one's code, whose problems are not its own (A02). The
+// mirror's folders stay, as the build made them as it configured and writes into them.
+// Only a view the build reads, one in a folder its read-folders lists: a copy hosted from
 // elsewhere, as a test's, is named like the view it copies and binds what the build made
 // of that one, which its removes leave as it was.
 void Ports::unbuild(const std::filesystem::path &view,
@@ -473,7 +475,8 @@ Ports::~Ports() {
 void Ports::frame() {
   ++_frames;
   _unread_count = 0;
-  _moved.erase(_moved.begin(), _moved.begin() + static_cast<std::ptrdiff_t>(_moved_before));
+  _moved.erase(_moved.begin(),
+               _moved.begin() + static_cast<std::ptrdiff_t>(_moved_before));
   _moved_before = _moved.size();
   _lines.clear();
   _read = false;
@@ -550,11 +553,10 @@ void Ports::unread(std::string_view view, std::string_view node, std::string_vie
 bool Ports::was_unread(std::string_view view,
                        std::string_view node,
                        std::string_view port) const {
-  return std::ranges::any_of(std::span(_unread).first(_unread_count),
-                             [&](const Unread &input) {
-                               return input.view == view && input.node == node &&
-                                      input.port == port;
-                             });
+  return std::ranges::any_of(
+      std::span(_unread).first(_unread_count), [&](const Unread &input) {
+        return input.view == view && input.node == node && input.port == port;
+      });
 }
 
 void Ports::add(Event event) {
@@ -585,10 +587,11 @@ void Ports::listen(Commands &commands) {
       .wheel = form("input wheel <value> <value>", "turns the wheel by x and y"),
       .focus_on = form("input focus on", "gives the window focus"),
       .focus_off = form("input focus off", "takes focus from the window"),
-      .axis = form("input axis <value> <value> <value>",
-                   "moves a gamepad's stick, gamepad_left or gamepad_right, to x and y, "
-                   "each from -1 to 1, y down; or pulls a trigger, gamepad_left_trigger or "
-                   "gamepad_right_trigger, to x, from 0 to 1, its y 0")};
+      .axis =
+          form("input axis <value> <value> <value>",
+               "moves a gamepad's stick, gamepad_left or gamepad_right, to x and y, "
+               "each from -1 to 1, y down; or pulls a trigger, gamepad_left_trigger or "
+               "gamepad_right_trigger, to x, from 0 to 1, its y 0")};
   _windowing = {
       .title = form("window title <value>...",
                     "names the window, the words joined by single blanks"),
@@ -813,7 +816,9 @@ void Ports::command(Call &call) {
     add({.kind = Event::Kind::button,
          .down = down,
          .name = checked_button(words[0]),
-         .presses = !down ? 0 : words.size() > 1 ? presses_of(words[1]) : 1});
+         .presses = !down              ? 0
+                    : words.size() > 1 ? presses_of(words[1])
+                                       : 1});
   } else if (call.is(_input.wheel)) {
     add({.kind = Event::Kind::wheel, .turn = {number(words[0]), number(words[1])}});
   } else if (call.is(_input.axis)) {

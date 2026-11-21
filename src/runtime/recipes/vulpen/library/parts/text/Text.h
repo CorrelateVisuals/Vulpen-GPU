@@ -67,7 +67,8 @@ struct Document {
   Scroll scroll; // the rows shown
   Scroll columns{Scroll::Axis::across};
   bool changed = false; // since it was opened or last written
-  // A line deleted its file while it held changes, which it keeps until written or closed.
+  // A line deleted its file while it held changes, which it keeps until written or
+  // closed.
   bool gone = false;
   // The file as it was read or last written, so write sees a change on disk since, by a
   // line or another program, and the editor shows one it holds no changes of.
@@ -129,7 +130,8 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   void show(VP::FilePort &files, std::string_view path, VP::File watched) override;
   void write(VP::Call &call, bool force) override;
   void close(VP::Call &call, std::string_view path, bool force) override;
-  void close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside beside) override;
+  void
+  close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside beside) override;
   void find(VP::Call &call) override;
   void move(std::string_view path, std::string_view to) override;
   std::span<const std::string> rows() const override;
@@ -161,9 +163,8 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   bool escape(VP::Cook &frame, const VP::Event &event, const Grid &grid);
   void edit(VP::InputPort &input, const VP::Event &event, const Grid &grid);
   bool clip(VP::InputPort &input, Document &document, std::string_view key) const;
-  std::optional<Spot> moved(const Document &document,
-                            std::string_view key,
-                            const Grid &grid) const;
+  std::optional<Spot>
+  moved(const Document &document, std::string_view key, const Grid &grid) const;
   void lay_out(VP::Cook &frame, const Grid &grid);
   void follow(Document &document);
   static void measure(Document &document);

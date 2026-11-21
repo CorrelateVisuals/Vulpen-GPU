@@ -16,7 +16,7 @@ namespace {
 // goes sideways, right nearer, and its home key brings it home; the part hands it the
 // drags, turns and keys it takes.
 struct PanZoom {
-  static constexpr float step = 1.1f; // how much nearer a step of the wheel zooms
+  static constexpr float step = 1.1f;       // how much nearer a step of the wheel zooms
   static constexpr float drag_step = 20.0f; // pixels sideways a step of the wheel
   static constexpr float least = 0.25f;
   static constexpr float most = 4.0f;

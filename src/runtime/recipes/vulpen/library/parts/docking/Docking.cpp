@@ -203,9 +203,8 @@ from(const VP::View &view, std::string_view node, std::string_view port) {
 const VP::Connection *
 into(const VP::View &view, std::string_view node, std::string_view port) {
   const auto found = std::ranges::find_if(view.connections, [&](const VP::Connection &c) {
-    return std::ranges::any_of(c.to, [&](const VP::Endpoint &to) {
-      return to.node == node && to.port == port;
-    });
+    return std::ranges::any_of(
+        c.to, [&](const VP::Endpoint &to) { return to.node == node && to.port == port; });
   });
   return found == view.connections.end() ? nullptr : &*found;
 }
@@ -233,8 +232,7 @@ half_of(const VP::View &view, std::string_view stack, std::size_t half) {
   if (!room || !tabs)
     return std::nullopt;
   Content content{.area = room->to, .tabs = tabs->from};
-  std::erase_if(content.area,
-                [&](const VP::Endpoint &to) { return to.node == tabs_of; });
+  std::erase_if(content.area, [&](const VP::Endpoint &to) { return to.node == tabs_of; });
   return content;
 }
 
@@ -246,7 +244,7 @@ std::string stack_of(const VP::View &view, const Content &held) {
   const std::string stack(node.substr(0, node.size() - switch_node.size()));
   const auto found = std::ranges::find(view.nodes, stack, &VP::Node::name);
   return found != view.nodes.end() && found->recipe == stack_recipe ? stack
-                                                                     : std::string();
+                                                                    : std::string();
 }
 
 // The panel whose room a node takes, through what hands the room on, as a find bar's rest
@@ -405,11 +403,12 @@ class Docking final : public VP::Operator {
     _maximize = node.command("panel maximize <node>",
                              "gives a panel the docks' whole room, the others none, or, "
                              "given it already, the others the room they had");
-    _focus = node.command("panel focus <value>",
-                          "gives the keys to a panel of a kind, as its button names it "
-                          "without a number, terminal, graph, editor or perform, or to "
-                          "the panel named, showing it if it hides; again, to the next of "
-                          "that kind, so a key bound to it goes round them");
+    _focus =
+        node.command("panel focus <value>",
+                     "gives the keys to a panel of a kind, as its button names it "
+                     "without a number, terminal, graph, editor or perform, or to "
+                     "the panel named, showing it if it hides; again, to the next of "
+                     "that kind, so a key bound to it goes round them");
     _manifest = node.view().file.string();
     _manifest_file = node.file(_manifest);
     _kept = (node.view().file.parent_path() / kept_folder / kept_file).string();
@@ -550,10 +549,10 @@ class Docking final : public VP::Operator {
   }
 
   // At the first frame, on a view as its manifest has it, the panels as the file keeps
-  // them, through panel restore, so a line arranges them (V06); a view a replay of the log
-  // arranged already, as a restart's, is left as it is, and so is one whose file was kept
-  // for the manifest before it changed, which the next save keeps anew. With no file,
-  // nothing is saved until the panels change.
+  // them, through panel restore, so a line arranges them (V06); a view a replay of the
+  // log arranged already, as a restart's, is left as it is, and so is one whose file was
+  // kept for the manifest before it changed, which the next save keeps anew. With no
+  // file, nothing is saved until the panels change.
   void start(VP::Cook &frame) {
     _started = true;
     VP::FilePort &files = frame.files();
@@ -579,11 +578,12 @@ class Docking final : public VP::Operator {
   // Why a file is not replayed: its lines name what the manifest's nodes and connections
   // were, which have changed since, so they would join what the names now mean.
   std::string stale() const {
-    return std::format("{} was kept for {} before its nodes or connections changed, so the "
-                       "panels show as the manifest has them, and the next change keeps "
-                       "them so",
-                       _kept,
-                       _manifest);
+    return std::format(
+        "{} was kept for {} before its nodes or connections changed, so the "
+        "panels show as the manifest has them, and the next change keeps "
+        "them so",
+        _kept,
+        _manifest);
   }
 
   // The view as its manifest writes it, which the file keeps the panels against, read
@@ -605,9 +605,9 @@ class Docking final : public VP::Operator {
   }
 
   // The panels as the view holds them now, saved once they changed: a panel moved, hidden
-  // or shown, a seam or the menubar's divider dragged, a stack's other half shown, written
-  // as the edits that make the manifest's panels these, so the file stays as short as
-  // the panels' changes, however many edits made them.
+  // or shown, a seam or the menubar's divider dragged, a stack's other half shown,
+  // written as the edits that make the manifest's panels these, so the file stays as
+  // short as the panels' changes, however many edits made them.
   void keep(VP::Cook &frame) {
     if (!read_manifest(frame))
       return;
@@ -656,8 +656,10 @@ class Docking final : public VP::Operator {
       try {
         call.commands().send(std::format("{}: {}", _view, line));
       } catch (const std::runtime_error &refused) {
-        stopped = std::format(
-            "{}: {}: {}; the panels stay as restored so far", _kept, line, refused.what());
+        stopped = std::format("{}: {}: {}; the panels stay as restored so far",
+                              _kept,
+                              line,
+                              refused.what());
         break;
       }
     }
@@ -700,14 +702,13 @@ class Docking final : public VP::Operator {
     if (node == view.nodes.end() || param_of(*node, "seam") != "yes")
       return;
     const std::string_view size = param_of(*node, "size");
-    _divider = Divider{
-        .bar = root->from.node,
-        .seam = {.offset = _area->offset - glm::ivec2(0, seam_width),
-                 .extent = {_area->extent.x,
-                            _area->extent.x == 0
-                                ? 0u
-                                : static_cast<std::uint32_t>(seam_width)}},
-        .size = size.empty() ? 1u : number<std::uint32_t>(size)};
+    _divider = Divider{.bar = root->from.node,
+                       .seam = {.offset = _area->offset - glm::ivec2(0, seam_width),
+                                .extent = {_area->extent.x,
+                                           _area->extent.x == 0
+                                               ? 0u
+                                               : static_cast<std::uint32_t>(seam_width)}},
+                       .size = size.empty() ? 1u : number<std::uint32_t>(size)};
     if (_divider->size != 0)
       _shown_size = _divider->size;
   }
@@ -723,7 +724,7 @@ class Docking final : public VP::Operator {
                                  top + strip_length(_shown_size, cell));
     }
     seam.role = _dividing || VP_VIEW::contains(seam, _pointer) ? VP_VIEW::role("accent")
-                                                                : VP_VIEW::role("border");
+                                                               : VP_VIEW::role("border");
     return seam;
   }
 
@@ -861,7 +862,8 @@ class Docking final : public VP::Operator {
         return VP_VIEW::contains(close_of(seated, cell), _pointer);
       });
       const auto seam = std::ranges::find_if(_seams, [&](const Seam &each) {
-        return VP_VIEW::contains(halves(each.area, each.along, each.ratio).seam, _pointer);
+        return VP_VIEW::contains(halves(each.area, each.along, each.ratio).seam,
+                                 _pointer);
       });
       if (event.down && _divider && VP_VIEW::contains(_divider->seam, _pointer)) {
         _dividing = true;
@@ -916,8 +918,8 @@ class Docking final : public VP::Operator {
       const auto nearest = std::ranges::min_element(near);
       const std::string_view side =
           *nearest > middle_from ? middle : sides[nearest - near.begin()];
-      if (at == *_grabbed && (!_splits || side == middle ||
-                              VP_VIEW::contains(_seated[at].strip, _pointer)))
+      if (at == *_grabbed &&
+          (!_splits || side == middle || VP_VIEW::contains(_seated[at].strip, _pointer)))
         return std::nullopt;
       return std::pair(at, side);
     }
@@ -927,9 +929,8 @@ class Docking final : public VP::Operator {
   // Whether a panel holds several contents, as a stack, or an editor holding several
   // files, or a deck holding several views hosted, so the one it shows may leave it for a
   // panel beside it; a deck holding fewer in a stack still leaves the stack several.
-  bool several(const VP::View &view,
-               const VP::View &top,
-               const std::string &panel) const {
+  bool
+  several(const VP::View &view, const VP::View &top, const std::string &panel) const {
     if (const std::string deck = deck_in(view, panel);
         !deck.empty() && held(view, top, deck).size() >= 2)
       return true;
@@ -951,13 +952,12 @@ class Docking final : public VP::Operator {
   }
 
   // The views a deck holds that are hosted beside the view it runs in, in its order.
-  std::vector<std::string> held(const VP::View &view,
-                                const VP::View &top,
-                                std::string_view deck) const {
+  std::vector<std::string>
+  held(const VP::View &view, const VP::View &top, std::string_view deck) const {
     const auto node = std::ranges::find(view.nodes, deck, &VP::Node::name);
-    std::vector<std::string> views =
-        node == view.nodes.end() ? std::vector<std::string>()
-                                 : split_names(param_value(*node, holds_param));
+    std::vector<std::string> views = node == view.nodes.end()
+                                         ? std::vector<std::string>()
+                                         : split_names(param_value(*node, holds_param));
     auto hosted = projects(top, _view);
     std::erase_if(views, [&](const std::string &name) {
       return std::ranges::none_of(
@@ -1055,9 +1055,8 @@ class Docking final : public VP::Operator {
         kinds.push_back(named);
     }
     if (kind.empty())
-      throw std::runtime_error(std::format("no panel is a {}; the kinds seated are {}",
-                                           word,
-                                           joined(kinds)));
+      throw std::runtime_error(
+          std::format("no panel is a {}; the kinds seated are {}", word, joined(kinds)));
     const std::optional<std::size_t> now = focused(view);
     auto next = now ? std::ranges::find(kind, *now) : kind.end();
     next = next == kind.end() || ++next == kind.end() ? kind.begin() : next;
@@ -1111,13 +1110,15 @@ class Docking final : public VP::Operator {
     if (std::ranges::all_of(way, all)) {
       for (const Seating &seating : way) {
         if (_maximized.panel == panel &&
-            std::ranges::find(_maximized.splits, seating.split) == _maximized.splits.end())
+            std::ranges::find(_maximized.splits, seating.split) ==
+                _maximized.splits.end())
           continue;
         const auto kept = _ratios.find(seating.split);
         send(call,
              std::format("param set {} ratio {}",
                          seating.split,
-                         kept != _ratios.end() && kept->second > 0.0f && kept->second < 1.0f
+                         kept != _ratios.end() && kept->second > 0.0f &&
+                                 kept->second < 1.0f
                              ? kept->second
                              : even));
       }
@@ -1131,8 +1132,9 @@ class Docking final : public VP::Operator {
       if (!seating.gives_none(seating.half))
         _ratios[seating.split] = seating.ratio;
       _maximized.splits.push_back(seating.split);
-      send(call,
-           std::format("param set {} ratio {}", seating.split, seating.half == 0 ? 1 : 0));
+      send(
+          call,
+          std::format("param set {} ratio {}", seating.split, seating.half == 0 ? 1 : 0));
     }
   }
 
@@ -1163,8 +1165,7 @@ class Docking final : public VP::Operator {
         return;
       if (!seating->gives_none(1 - seating->half)) {
         _ratios[seating->split] = seating->ratio;
-        send(call,
-             std::format("param set {} ratio {}", seating->split, seating->half));
+        send(call, std::format("param set {} ratio {}", seating->split, seating->half));
         return;
       }
     }
@@ -1183,17 +1184,14 @@ class Docking final : public VP::Operator {
          seating;
          seating = seating_of(view, seating->split))
       way.push_back(*seating);
-    if (const std::optional<Holder> holder = way.empty() ? holder_of(view, panel)
-                                                         : std::nullopt) {
+    if (const std::optional<Holder> holder =
+            way.empty() ? holder_of(view, panel) : std::nullopt) {
       std::vector<std::string> fronts; // read before a line changes the view
       for (const auto &[stack, half] : holder->halves)
         if (param_of(*std::ranges::find(view.nodes, stack, &VP::Node::name),
                      shown_switch) != half_ports[half])
-          fronts.push_back(std::format("param set {}{} {} {}",
-                                       stack,
-                                       switch_node,
-                                       shown_param,
-                                       half_ports[half]));
+          fronts.push_back(std::format(
+              "param set {}{} {} {}", stack, switch_node, shown_param, half_ports[half]));
       for (const std::string &line : fronts)
         send(call, line);
       return show(call, holder->panel);
@@ -1208,11 +1206,11 @@ class Docking final : public VP::Operator {
         return up.gives_none(up.half);
       });
       const auto kept = _ratios.find(seating->split);
-      const float ratio = above ? (seating->half == 0 ? 1.0f : 0.0f)
-                          : kept != _ratios.end() && kept->second > 0.0f &&
-                                  kept->second < 1.0f
-                              ? kept->second
-                              : even;
+      const float ratio =
+          above ? (seating->half == 0 ? 1.0f : 0.0f)
+          : kept != _ratios.end() && kept->second > 0.0f && kept->second < 1.0f
+              ? kept->second
+              : even;
       send(call, std::format("param set {} ratio {}", seating->split, ratio));
     }
   }
@@ -1227,8 +1225,8 @@ class Docking final : public VP::Operator {
     const std::string target(call.arguments()[1]);
     const std::string side(call.arguments()[2]);
     if (side != middle && std::ranges::find(sides, side) == sides.end())
-      throw std::runtime_error(std::format(
-          "side {}: left, right, top, bottom or middle of {}", side, target));
+      throw std::runtime_error(
+          std::format("side {}: left, right, top, bottom or middle of {}", side, target));
     const VP::View &view = *call.view(_view);
     const VP::View &top = *call.view("");
     // Before a deck's view moves too, which seats a panel in the target's place.
@@ -1295,7 +1293,8 @@ class Docking final : public VP::Operator {
         (std::ranges::is_sorted(docks, {}, listed) &&
          static_cast<std::size_t>(listed(docks.back())) < first_panel))
       return;
-    const std::string before = view.nodes[first_panel].name; // each edit replaces the view
+    const std::string before =
+        view.nodes[first_panel].name; // each edit replaces the view
     for (const std::string &dock : docks)
       send(call, std::format("node move {} {}", dock, before));
   }
@@ -1410,8 +1409,7 @@ class Docking final : public VP::Operator {
     if (!going || !staying)
       throw std::runtime_error(std::format("{} holds no content in a half", stack));
     const VP::Connection room = *from(view, panel + std::string(bar_node), rest_port);
-    const VP::Connection tabs =
-        *into(view, panel + std::string(tabs_node), items_port);
+    const VP::Connection tabs = *into(view, panel + std::string(tabs_node), items_port);
     send(call, std::format("node remove keep {}", stack));
     connect(call, {.name = room.name, .from = room.from, .to = staying->area});
     const std::string named_tabs =
@@ -1490,7 +1488,8 @@ class Docking final : public VP::Operator {
     for (const VP::Connection &connection : view.connections) {
       VP::Connection more = connection;
       for (const VP::Endpoint &to : connection.to) {
-        const bool room = to.node == source + std::string(bar_node) && to.port == area_port;
+        const bool room =
+            to.node == source + std::string(bar_node) && to.port == area_port;
         if (!to.node.starts_with(own) || room || to.port == items_port)
           continue;
         more.to.push_back({panel + to.node.substr(source.size()), to.port});
@@ -1615,16 +1614,17 @@ class Docking final : public VP::Operator {
   VP_VIEW::Editor *editor_of(const Content &content) const {
     if (!_editors)
       return nullptr;
-    const auto found = std::ranges::find_if(*_editors, [&](const VP_VIEW::Editor *editor) {
-      return editor->name() == content.tabs.node;
-    });
+    const auto found =
+        std::ranges::find_if(*_editors, [&](const VP_VIEW::Editor *editor) {
+          return editor->name() == content.tabs.node;
+        });
     return found == _editors->end() ? nullptr : *found;
   }
 
   // The file the editor shows goes into the editor in the target's middle, or into a new
-  // one, in a panel of its own beside the target, or stacked in its middle; then it closes
-  // in the editor it left, so a file is open in one editor at a time. A file with changes
-  // stays, as closing it would drop them.
+  // one, in a panel of its own beside the target, or stacked in its middle; then it
+  // closes in the editor it left, so a file is open in one editor at a time. A file with
+  // changes stays, as closing it would drop them.
   void move_file(VP::Call &call,
                  VP_VIEW::Editor &editor,
                  const std::string &panel,
@@ -1643,8 +1643,8 @@ class Docking final : public VP::Operator {
   }
 
   // A text-area like the editor's, listed before the docking part as a panel is, taking
-  // what the editor's own takes but its room, its theme, its font, its atlas and its keys,
-  // and its place in the chain of editors just before the last, which answers the
+  // what the editor's own takes but its room, its theme, its font, its atlas and its
+  // keys, and its place in the chain of editors just before the last, which answers the
   // editor's commands; in a panel of its own beside the target, or stacked in its middle.
   // Returns its text node.
   std::string add_editor(VP::Call &call,
@@ -1708,9 +1708,10 @@ class Docking final : public VP::Operator {
     const VP::Connection *const before = into(view, text, before_port);
     const VP::Connection *const after = from(view, text, editors_port);
     const std::optional<VP::Connection> chained =
-        before && after ? std::optional(VP::Connection{
-                              .name = before->name, .from = before->from, .to = after->to})
-                        : std::nullopt;
+        before && after
+            ? std::optional(VP::Connection{
+                  .name = before->name, .from = before->from, .to = after->to})
+            : std::nullopt;
     remove_seated(call, text);
     send(call, std::format("node remove keep {}", editor));
     if (chained)
@@ -1743,7 +1744,9 @@ class Docking final : public VP::Operator {
       const std::string panel =
           holding->from.node.substr(0, holding->from.node.size() - bar_node.size());
       send(call,
-           std::format("param set {} shown {}", room, port == half_ports[1] ? half_ports[1] : half_ports[0]));
+           std::format("param set {} shown {}",
+                       room,
+                       port == half_ports[1] ? half_ports[1] : half_ports[0]));
       unstack(call, panel);
     }
   }
@@ -1822,8 +1825,8 @@ class Docking final : public VP::Operator {
   std::map<std::string, EditorSeen, std::less<>> _editors_seen;
   std::map<std::string, DeckSeen, std::less<>> _decks_seen;
   bool _swept = false; // the decks, since the last rebuild
-  // A dock's ratio before it hid a half, by its split, so showing it gives it back; and the
-  // panel maximized last, with the splits its maximize gave the panel's half all of.
+  // A dock's ratio before it hid a half, by its split, so showing it gives it back; and
+  // the panel maximized last, with the splits its maximize gave the panel's half all of.
   std::map<std::string, float, std::less<>> _ratios;
   struct Maximized {
     std::string panel;

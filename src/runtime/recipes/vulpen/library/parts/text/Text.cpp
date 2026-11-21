@@ -25,7 +25,7 @@
 
 namespace {
 
-constexpr std::int32_t margin = 4; // around the text, as the terminal's
+constexpr std::int32_t margin = 4;    // around the text, as the terminal's
 constexpr std::size_t row_room = 256; // rows shown at most; a taller area shows these
 // The rows' numbers' least cells, and the blank cells between them and the text.
 constexpr std::size_t least_digits = 3;
@@ -42,8 +42,8 @@ constexpr std::size_t undo_room = 1000;
 constexpr std::string_view undo_key = "z";
 constexpr std::string_view select_all_key = "a"; // with control, the whole file
 constexpr std::string_view comment_key = "/";    // with control, the rows a comment
-// The tab of an editor holding no file, so it still shows as open, empty, and a strip that
-// stacks it with other contents has a tab to show it again by.
+// The tab of an editor holding no file, so it still shows as open, empty, and a strip
+// that stacks it with other contents has a tab to show it again by.
 constexpr std::string_view empty_tab = "editor";
 // The ports a chain of editors joins by: the editors before a text node, and those it
 // hands on, itself last.
@@ -243,9 +243,9 @@ void break_row(Document &document, std::size_t spaces) {
   std::string &line = document.lines[caret.row];
   std::string below = line.substr(0, spaces) + line.substr(caret.column);
   line.erase(caret.column);
-  document.lines.insert(
-      document.lines.begin() + static_cast<std::ptrdiff_t>(caret.row) + 1,
-      std::move(below));
+  document.lines.insert(document.lines.begin() + static_cast<std::ptrdiff_t>(caret.row) +
+                            1,
+                        std::move(below));
   document.caret = document.anchor = {caret.row + 1, spaces};
   document.changed = document.restyle = true;
 }
@@ -257,8 +257,8 @@ void insert(Document &document, std::string_view text) {
   erase(document, from, to);
   for (std::size_t end = text.find('\n');; end = text.find('\n')) {
     const std::string_view line = text.substr(0, end);
-    const std::string_view kept = line.ends_with('\r') ? line.substr(0, line.size() - 1)
-                                                        : line;
+    const std::string_view kept =
+        line.ends_with('\r') ? line.substr(0, line.size() - 1) : line;
     document.lines[document.caret.row].insert(document.caret.column, kept);
     document.caret.column += kept.size();
     if (end == std::string_view::npos)
@@ -312,11 +312,8 @@ std::size_t text_start(std::string_view row) {
 
 // A spot on a row an edit put text in at a column, or took text out from there, goes with
 // the text after it.
-void shift(Spot &spot,
-           std::size_t row,
-           std::size_t at,
-           std::size_t put,
-           std::size_t taken) {
+void shift(
+    Spot &spot, std::size_t row, std::size_t at, std::size_t put, std::size_t taken) {
   if (spot.row == row && spot.column >= at)
     spot.column = spot.column - std::min(spot.column - at, taken) + put;
 }
@@ -387,7 +384,8 @@ void write_number(Labels &written,
                   std::size_t number,
                   bool caret) {
   std::array<char, std::numeric_limits<std::size_t>::digits10 + 1> text{};
-  const char *const end = std::to_chars(text.data(), text.data() + text.size(), number).ptr;
+  const char *const end =
+      std::to_chars(text.data(), text.data() + text.size(), number).ptr;
   const auto length = static_cast<std::size_t>(end - text.data());
   const glm::ivec2 at =
       grid.numbers +
@@ -411,8 +409,8 @@ namespace {
 void Text::bind(VP::Bind &node) {
   std::string file;
   if (node.sets("file"))
-    file = (std::filesystem::path(node.folder()) / node.param<std::string>("file"))
-               .string();
+    file =
+        (std::filesystem::path(node.folder()) / node.param<std::string>("file")).string();
   if (std::exchange(_file, file) != file)
     _opening = !file.empty();
   // Watched anew at every bind, as the watches go with the schedule that took them.
@@ -433,9 +431,8 @@ void Text::bind(VP::Bind &node) {
   });
   _head = std::ranges::none_of(connections, [&](const VP::Connection &c) {
     return c.from.node == _name && c.from.port == editors_port &&
-           std::ranges::any_of(c.to, [](const VP::Endpoint &to) {
-             return to.port == before_port;
-           });
+           std::ranges::any_of(
+               c.to, [](const VP::Endpoint &to) { return to.port == before_port; });
   });
   _before = brought ? &node.input<VP_VIEW::Editors>(before_port) : nullptr;
   _editors = &node.output<VP_VIEW::Editors>(editors_port);
@@ -464,10 +461,11 @@ void Text::bind(VP::Bind &node) {
     _close_all = node.command("close all [<file>]",
                               "closes every file of the editor holding a file, or of the "
                               "editor in focus, but those with changes");
-    _find = node.command("find <value>...",
-                         "selects the next place the file the editor in focus shows holds "
-                         "the words, joined by single blanks, after the caret, and from "
-                         "its start past its end");
+    _find =
+        node.command("find <value>...",
+                     "selects the next place the file the editor in focus shows holds "
+                     "the words, joined by single blanks, after the caret, and from "
+                     "its start past its end");
     _move = node.command("tab move <file> <file>",
                          "puts the first file's tab where the second's is, in the editor "
                          "holding both, as a drag of one onto the other does");
@@ -557,8 +555,9 @@ bool Text::focused() const {
 
 // In the order the events came, so a press is tested where the pointer was then. A drag
 // moves the caret and leaves the selection's start where it was pressed; a press on a
-// scroll bar only scrolls; a right press with text selected opens the menus' selection. The wheel scrolls across as it turns sideways, or with shift
-// held, which the window says whatever part has the focus.
+// scroll bar only scrolls; a right press with text selected opens the menus' selection.
+// The wheel scrolls across as it turns sideways, or with shift held, which the window
+// says whatever part has the focus.
 void Text::point(VP::Cook &frame, const Grid &grid) {
   Document *const document =
       _documents.empty() || grid.rows == 0 ? nullptr : &_documents[_shown];
@@ -823,9 +822,8 @@ std::size_t Text::select(const Document &document,
     if (row < from.row || row > to.row)
       continue;
     const std::size_t first = std::max(row == from.row ? from.column : 0, left);
-    const std::size_t end =
-        std::min(row == to.row ? to.column : document.lines[row].size() + 1,
-                 left + grid.columns);
+    const std::size_t end = std::min(
+        row == to.row ? to.column : document.lines[row].size() + 1, left + grid.columns);
     if (first < end)
       rects[count++] = {.offset = cell_at(grid, shown, first - left),
                         .extent = extent_of(grid, end - first),
@@ -1211,8 +1209,8 @@ void Text::reread(VP::Cook &frame, Document &document) {
     text = frame.files().text(document.watched);
   } catch (const std::runtime_error &failure) {
     document.watched = {};
-    frame.log(VP::Level::warn, std::format("{}; the editor shows it as it was read",
-                                           failure.what()));
+    frame.log(VP::Level::warn,
+              std::format("{}; the editor shows it as it was read", failure.what()));
     return;
   }
   if (text.empty() || text == document.disk)
@@ -1304,15 +1302,15 @@ void Text::drop(VP::CommandPort &commands, std::size_t at) {
 
 // A file a line moved, or the folder holding it, as node, file and view rename do, goes
 // on showing where it went, so write saves it there, the param naming it there too; one
-// deleted with nothing typed closes, and one with changes stays, its text kept and its tab
-// marked deleted, which write force makes the file of again, and close force drops.
+// deleted with nothing typed closes, and one with changes stays, its text kept and its
+// tab marked deleted, which write force makes the file of again, and close force drops.
 void Text::follow(VP::FilePort &files, VP::CommandPort &commands) {
   for (const VP::Moved &moved : files.moved())
     for (std::size_t at = _documents.size(); at-- > 0;) {
       Document &document = _documents[at];
-      const std::filesystem::path inside =
-          std::filesystem::path(document.path).lexically_normal().lexically_relative(
-              moved.from);
+      const std::filesystem::path inside = std::filesystem::path(document.path)
+                                               .lexically_normal()
+                                               .lexically_relative(moved.from);
       if (inside.empty() || *inside.begin() == "..")
         continue;
       if (moved.to.empty()) {
@@ -1324,8 +1322,9 @@ void Text::follow(VP::FilePort &files, VP::CommandPort &commands) {
         continue;
       }
       const std::string to =
-          inside == "." ? moved.to
-                        : (std::filesystem::path(moved.to) / inside).lexically_normal().string();
+          inside == "."
+              ? moved.to
+              : (std::filesystem::path(moved.to) / inside).lexically_normal().string();
       if (document.path == _file) {
         _file = to;
         commands.send(std::format("{}: param set {} file {}", _view, _name, to));
@@ -1372,8 +1371,9 @@ void Text::close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside b
   auto still = std::ranges::find(_documents, shown, &Document::path);
   if (still == _documents.end())
     still = std::ranges::find(_documents, named_path, &Document::path);
-  _shown = still == _documents.end() ? 0
-                                     : static_cast<std::size_t>(still - _documents.begin());
+  _shown = still == _documents.end()
+               ? 0
+               : static_cast<std::size_t>(still - _documents.begin());
   _dragging = false;
   _follow = true;
   name_tabs();

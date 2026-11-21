@@ -301,8 +301,7 @@ class Menus final : public VP::Operator {
     if (!chosen.empty())
       return entries;
     for (std::string &word : found(look, line))
-      entries.push_back(
-          {.word = std::move(word), .value = true, .joins = line.joins()});
+      entries.push_back({.word = std::move(word), .value = true, .joins = line.joins()});
     return entries;
   }
 
@@ -313,11 +312,11 @@ class Menus final : public VP::Operator {
     if (!registered("complete", usages))
       return {};
     const std::string_view current = commands.current();
-    const std::string answer = commands.send(std::format(
-        "{}complete {} {}",
-        current.empty() ? std::string() : std::string(current) + ": ",
-        joined(line.columns()),
-        no_word));
+    const std::string answer = commands.send(
+        std::format("{}complete {} {}",
+                    current.empty() ? std::string() : std::string(current) + ": ",
+                    joined(line.columns()),
+                    no_word));
     std::vector<std::string> values;
     for (std::string &word : words_of(answer))
       if (!word.starts_with('<'))
@@ -327,9 +326,8 @@ class Menus final : public VP::Operator {
 
   // The node a name pressed is: a node's own, or for a port, as node.port, its node.
   static std::string node_of(const Look &look, std::string_view named) {
-    const bool node = std::ranges::any_of(look.ports, [&](const VP::NodePort &port) {
-      return port.node == named;
-    });
+    const bool node = std::ranges::any_of(
+        look.ports, [&](const VP::NodePort &port) { return port.node == named; });
     return node ? std::string(named) : std::string(VP::port_node(named));
   }
 
@@ -370,8 +368,8 @@ class Menus final : public VP::Operator {
         path ? std::filesystem::absolute(named).lexically_normal().string()
              : absolute_folder(look, node_of(look, named));
     std::vector<std::string> files;
-    for (std::string &name : folder.empty() ? std::vector<std::string>()
-                                            : look.files.list(folder))
+    for (std::string &name :
+         folder.empty() ? std::vector<std::string>() : look.files.list(folder))
       if (!name.ends_with('/') && !name.starts_with('.'))
         files.push_back(std::move(name));
     return line.kind == path_kind ? files : lacking(files);
@@ -445,12 +443,13 @@ class Menus final : public VP::Operator {
         const std::string &writer = own.writes ? name : other;
         const std::string &reader = own.writes ? other : name;
         const std::string line = joining(look, writer, reader);
-        const std::string label = line.substr(line.find(' ') + 1,
-                                              line.find(' ', line.find(' ') + 1) -
-                                                  line.find(' ') - 1);
-        if (std::ranges::none_of(
-                links, [&](const Link &link) { return link.line == line; }))
-          links.push_back({.first = two ? std::string(own.name) : port ? other : label,
+        const std::string label = line.substr(
+            line.find(' ') + 1, line.find(' ', line.find(' ') + 1) - line.find(' ') - 1);
+        if (std::ranges::none_of(links,
+                                 [&](const Link &link) { return link.line == line; }))
+          links.push_back({.first = two    ? std::string(own.name)
+                                    : port ? other
+                                           : label,
                            .second = two ? other : std::string(),
                            .line = line});
       }
@@ -511,13 +510,15 @@ class Menus final : public VP::Operator {
 
   // A word's commands name its group and the words up to it, so a press reaches the line
   // it ends whatever the columns show by then.
-  VP_VIEW::Item
-  item(std::string_view group, std::span<const std::string> before, const Entry &entry) const {
+  VP_VIEW::Item item(std::string_view group,
+                     std::span<const std::string> before,
+                     const Entry &entry) const {
     std::string words = std::format("{} {}", group, joined(before));
     words.append(before.empty() ? "" : " ").append(entry.word);
-    const bool on_path = _group == group && before.size() < _path.size() &&
-                         std::ranges::equal(before, std::span(_path).first(before.size())) &&
-                         _path[before.size()] == entry.word;
+    const bool on_path =
+        _group == group && before.size() < _path.size() &&
+        std::ranges::equal(before, std::span(_path).first(before.size())) &&
+        _path[before.size()] == entry.word;
     const bool muted = group != _sections.front();
     return {.label = entry.word,
             .command = std::format("menu {} {}", press_word, words),
@@ -528,8 +529,8 @@ class Menus final : public VP::Operator {
                          : std::format("menu {} {}", point_word, words)};
   }
 
-  // A line made from menu.ini's: a value chosen in place of the placeholder that lists it,
-  // after what comes before it in its word, {} naming what was pressed, a path as the
+  // A line made from menu.ini's: a value chosen in place of the placeholder that lists
+  // it, after what comes before it in its word, {} naming what was pressed, a path as the
   // terminal takes it, {/} its folder, {1} and {2} the first and second pressed, {node}
   // a port's node, and {view} the view lines go to. Whole, it is run; else it is begun up
   // to the first word it still wants, as <name>, or {} for nothing pressed, past the part
@@ -627,8 +628,10 @@ class Menus final : public VP::Operator {
     if (named.find('/') != std::string_view::npos) {
       const std::filesystem::path path =
           std::filesystem::absolute(std::filesystem::path(named)).lexically_normal();
-      const std::filesystem::path bare = path.filename().empty() ? path.parent_path() : path;
-      const std::vector<std::string> names = call.files().list(bare.parent_path().string());
+      const std::filesystem::path bare =
+          path.filename().empty() ? path.parent_path() : path;
+      const std::vector<std::string> names =
+          call.files().list(bare.parent_path().string());
       const bool folder =
           std::ranges::find(names, bare.filename().string() + '/') != names.end();
       return typed(folder ? bare : bare.parent_path());
@@ -639,7 +642,8 @@ class Menus final : public VP::Operator {
                                          VP::folder_in(*view, named))
                    .lexically_normal()
              : std::filesystem::path();
-    if (view && std::ranges::find(view->nodes, named, &VP::Node::name) != view->nodes.end())
+    if (view &&
+        std::ranges::find(view->nodes, named, &VP::Node::name) != view->nodes.end())
       return typed(own);
     // A port, as node.port, its node's.
     if (const std::string_view node = VP::port_node(named);
@@ -649,7 +653,8 @@ class Menus final : public VP::Operator {
     if (const VP::View *const hosted = call.view(named))
       return typed(std::filesystem::absolute(hosted->file.parent_path()));
     if (view) {
-      const std::vector<std::string> names = call.files().list(own.parent_path().string());
+      const std::vector<std::string> names =
+          call.files().list(own.parent_path().string());
       if (std::ranges::find(names, own.filename().string() + '/') != names.end())
         return typed(own);
     }
@@ -670,10 +675,12 @@ class Menus final : public VP::Operator {
         continue;
       const std::size_t past = words.size() - columns.size();
       if (line.kind == link_kind && past > 0)
-        if (const auto link = std::ranges::find_if(_links, [&](const Link &each) {
-              return each.first == words[columns.size()] &&
-                     (past == 1 ? each.second.empty() : each.second == words.back());
-            });
+        if (const auto link = std::ranges::find_if(
+                _links,
+                [&](const Link &each) {
+                  return each.first == words[columns.size()] &&
+                         (past == 1 ? each.second.empty() : each.second == words.back());
+                });
             link != _links.end())
           return hand_link(call, *link);
       const bool ends = past == 0 && !line.lists();
@@ -781,11 +788,12 @@ class Menus final : public VP::Operator {
     const auto named_for = std::ranges::find(words, for_word);
     std::vector<std::string> sections(words.begin(), named_for);
     for (const std::string &section : sections)
-      if (std::ranges::none_of(_lines, [&](const Line &line) {
-            return line.section == section;
-          }))
-        throw std::runtime_error(std::format(
-            "no section of {} is named {}; it gives {}", menu_file, section, this->sections()));
+      if (std::ranges::none_of(_lines,
+                               [&](const Line &line) { return line.section == section; }))
+        throw std::runtime_error(std::format("no section of {} is named {}; it gives {}",
+                                             menu_file,
+                                             section,
+                                             this->sections()));
     if (named_for == words.end()) {
       _next.emplace(Opening{.sections = std::move(sections)});
       return;
@@ -808,35 +816,36 @@ class Menus final : public VP::Operator {
 
   VP::Command _menu;
   std::string _name;
-  std::string _view; // the view it runs in, where the panel it shows is
-  std::string _line; // the node whose line a begun one is typed into, as the terminal
+  std::string _view;  // the view it runs in, where the panel it shows is
+  std::string _line;  // the node whose line a begun one is typed into, as the terminal
   std::string _shows; // the panel holding it, or a node it holds; none for none
   VP::File _file;
   std::optional<std::string> _read; // the file the lines are from
   std::vector<Line> _lines;
   const VP_VIEW::Typed *_typed = nullptr;
-  const VP_VIEW::Rect *_area = nullptr; // where a line opening it shows it, at its top left
+  const VP_VIEW::Rect *_area =
+      nullptr; // where a line opening it shows it, at its top left
   std::array<VP_VIEW::Items *, column_count> _columns{};
   VP_VIEW::Rect *_at = nullptr;
   const VP_VIEW::Place *_place = nullptr; // where the terminal's lines count from
   bool _shown = false;
-  glm::ivec2 _corner{};              // where it was opened
+  glm::ivec2 _corner{};               // where it was opened
   std::vector<std::string> _sections; // the kind it opened for, then those muted
   std::vector<std::string> _subjects; // the names {} stands for
   bool _image = false; // the one pressed is an image its node writes, which {image} names
-  std::vector<Link> _links;          // what a <link> stands for, as the columns show it
+  std::vector<Link> _links; // what a <link> stands for, as the columns show it
   // What each line's placeholder the menus find stood for as the columns were written,
   // by the line's place, so a press of a word no column listed is refused (A02), as a
   // pointer could not press it.
   std::vector<std::vector<std::string>> _found;
-  std::string _group;                // the section the words chosen are of
-  std::vector<std::string> _path;    // the words chosen, a column each
-  std::optional<Opening> _next;      // what a line opened, for the next frame
-  bool _shutting = false;            // a press or escape, which shuts it the next frame
-  bool _begun = false;               // a line was begun, which keeps the focus there
-  std::string _returning;            // the node in focus as the menus opened
-  glm::vec2 _pointer{};              // as the events so far left it
-  bool _written = false;             // the columns are as the above say
+  std::string _group;             // the section the words chosen are of
+  std::vector<std::string> _path; // the words chosen, a column each
+  std::optional<Opening> _next;   // what a line opened, for the next frame
+  bool _shutting = false;         // a press or escape, which shuts it the next frame
+  bool _begun = false;            // a line was begun, which keeps the focus there
+  std::string _returning;         // the node in focus as the menus opened
+  glm::vec2 _pointer{};           // as the events so far left it
+  bool _written = false;          // the columns are as the above say
 };
 
 } // namespace

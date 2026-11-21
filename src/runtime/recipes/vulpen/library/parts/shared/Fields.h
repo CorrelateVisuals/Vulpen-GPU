@@ -306,9 +306,8 @@ struct CppField {
 
 // Each field of the shaders of a .cpp's node, which its C++ may fill or read back by a
 // line, as nothing does yet; none for a .cpp of no node of the view.
-inline std::vector<CppField> cpp_fields(VP::FilePort &files,
-                                        const std::filesystem::path &cpp,
-                                        const VP::View &view) {
+inline std::vector<CppField>
+cpp_fields(VP::FilePort &files, const std::filesystem::path &cpp, const VP::View &view) {
   const std::optional<std::string> node = node_named(view, cpp);
   if (!node || cpp.extension() != cpp_extension)
     return {};
@@ -343,9 +342,8 @@ inline std::vector<CppField> cpp_fields(VP::FilePort &files,
 }
 
 // The names of those its C++ may take, as Tab and the menus offer them.
-inline std::vector<std::string> free_fields(VP::FilePort &files,
-                                            const std::filesystem::path &cpp,
-                                            const VP::View &view) {
+inline std::vector<std::string>
+free_fields(VP::FilePort &files, const std::filesystem::path &cpp, const VP::View &view) {
   std::vector<std::string> names;
   for (const CppField &each : cpp_fields(files, cpp, view))
     if (each.taken.empty())
@@ -375,9 +373,9 @@ inline std::optional<std::string> contract_type(std::string_view row) {
   if (end == std::string_view::npos || !glsl_name(code.substr(0, end)))
     return std::nullopt;
   const std::string_view rest = trim(code.substr(end));
-  const bool defines = alias ? rest.starts_with('=')
-                             : rest.starts_with('{') || rest.starts_with(':') ||
-                                   rest.starts_with("final");
+  const bool defines =
+      alias ? rest.starts_with('=')
+            : rest.starts_with('{') || rest.starts_with(':') || rest.starts_with("final");
   return defines ? std::optional(std::string(code.substr(0, end))) : std::nullopt;
 }
 

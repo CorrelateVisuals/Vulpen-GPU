@@ -44,11 +44,15 @@ void draw_order(const Boxes &boxes,
                 std::span<const std::string> raised,
                 std::vector<std::size_t> &order) {
   order.clear();
-  add_inside(boxes, no_box, [&](std::size_t box) {
-    const auto found = std::ranges::find(raised, boxes.boxes[box].name);
-    return std::pair(found == raised.end() ? std::ptrdiff_t{-1} : found - raised.begin(),
-                     box);
-  }, order);
+  add_inside(
+      boxes,
+      no_box,
+      [&](std::size_t box) {
+        const auto found = std::ranges::find(raised, boxes.boxes[box].name);
+        return std::pair(
+            found == raised.end() ? std::ptrdiff_t{-1} : found - raised.begin(), box);
+      },
+      order);
 }
 
 // What of a Rect still shows, in pieces.

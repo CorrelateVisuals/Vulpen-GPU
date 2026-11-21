@@ -6,8 +6,8 @@
 
 namespace VP_VIEW {
 
-// contracts/Corner.glsl's Corner, member for member, as C++ writes it; the loader holds it
-// to the shader's (RA03). Two vec4s, so std430 and C++ lay it out alike.
+// contracts/Corner.glsl's Corner, member for member, as C++ writes it; the loader holds
+// it to the shader's (RA03). Two vec4s, so std430 and C++ lay it out alike.
 struct Corner {
   glm::vec4 position{};
   glm::vec4 color{};

@@ -30,9 +30,10 @@ constexpr std::string_view kept_head =
     "# and their nodes' params. Deleting the file shows the manifest's own.\n";
 // The recipes of the nodes the panels are made of, which the file keeps: the docks
 // seating them, the panels, the stacks holding several contents, the editors, the decks.
-constexpr std::array<std::string_view, 5> laid_recipes{"dock", "panel", "stack",
-                                                       "text-area", "deck"};
-constexpr std::string_view strip_params = "bar."; // a panel's strip's, which no file keeps
+constexpr std::array<std::string_view, 5> laid_recipes{
+    "dock", "panel", "stack", "text-area", "deck"};
+constexpr std::string_view strip_params =
+    "bar."; // a panel's strip's, which no file keeps
 // An editor, the param that names the file its text shows, as open sets it and as an
 // image file's names the file it previews, and that param as the editor holds it, which
 // the file never keeps, as it keeps no tab.
@@ -98,7 +99,8 @@ void move_into_order(std::vector<std::string> &order,
 }
 
 // Whether the unfolded manifest's node or connection of that name is one a recipe its
-// nodes use brings, inside a node that uses one, which the manifest itself does not write.
+// nodes use brings, inside a node that uses one, which the manifest itself does not
+// write.
 bool brought(const VP::View &written, std::string_view name) {
   return std::ranges::any_of(written.nodes, [&](const VP::Node &user) {
     return user.uses() && name != user.name && VP::within(name, user.name);
@@ -134,7 +136,8 @@ std::string fingerprint_of(const VP::View &written) {
   return std::format("{:016x}", hash);
 }
 
-// The fingerprint a kept file names; empty for none, as a file kept before files named it.
+// The fingerprint a kept file names; empty for none, as a file kept before files named
+// it.
 std::string_view kept_for(std::string_view text) {
   const std::size_t at = text.find(written_line);
   if (at == std::string_view::npos)
@@ -182,7 +185,8 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
         return VP::within(end.node, panel);
       });
     };
-    return connection && (of(connection->from) || std::ranges::any_of(connection->to, of));
+    return connection &&
+           (of(connection->from) || std::ranges::any_of(connection->to, of));
   };
   std::vector<std::string> lines;
   std::vector<VP::Connection> left; // the manifest's own, as the removals leave them
@@ -215,7 +219,8 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
   }
   for (const VP::Connection &connection : left)
     if (const VP::Connection *const now_is = connection_in(kept_now, connection.name);
-        (ours(&connection) || ours(now_is)) && (!now_is || !same_ends(*now_is, connection)))
+        (ours(&connection) || ours(now_is)) &&
+        (!now_is || !same_ends(*now_is, connection)))
       lines.push_back(std::format("disconnect {}", connection.name));
   for (const VP::Node &node : now.nodes)
     if (laid(node) && !node_in(written, node.name)) {
@@ -229,9 +234,11 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
   move_into_order(order, now, lines);
   for (const VP::Connection &connection : kept_now)
     if (const VP::Connection *const was = connection_in(left, connection.name);
-        (ours(&connection) || ours(connection_in(written.connections, connection.name))) &&
+        (ours(&connection) ||
+         ours(connection_in(written.connections, connection.name))) &&
         (!was || !same_ends(*was, connection))) {
-      std::string line = std::format("connect {} {}", connection.name, connection.from.text());
+      std::string line =
+          std::format("connect {} {}", connection.name, connection.from.text());
       for (const VP::Endpoint &to : connection.to)
         line += ' ' + to.text();
       lines.push_back(std::move(line));

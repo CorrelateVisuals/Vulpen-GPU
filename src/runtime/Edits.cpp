@@ -67,7 +67,9 @@ void check_value(std::string_view key, std::string_view value) {
 [[noreturn]] void unknown_word(std::string_view key) {
   std::string words;
   for (const std::string_view word : node_words)
-    words.append(words.empty() ? "" : word == node_words.back() ? " and " : ", ")
+    words.append(words.empty()               ? ""
+                 : word == node_words.back() ? " and "
+                                             : ", ")
         .append(word);
   throw std::runtime_error(
       std::format("unknown word {} in a node; its words are {}", key, words));
@@ -189,8 +191,8 @@ void add_image(Node &node, std::string_view value) {
 // What no single word can show.
 void check_whole(const Node &node) {
   if (node.uses()) {
-    if (!node.operator_name.empty() || node.counts_invocations() || node.vertex_count != 0 ||
-        !node.instance_count.empty() || !node.images.empty())
+    if (!node.operator_name.empty() || node.counts_invocations() ||
+        node.vertex_count != 0 || !node.instance_count.empty() || !node.images.empty())
       throw std::runtime_error(
           std::format("node {} uses recipe {} as it is, whose node gives it those words: "
                       "only param and log go with it",
@@ -330,12 +332,12 @@ bool reaches(const View &view, std::string_view writer, std::string_view reader)
 void check_spaced(Arguments words) {
   for (std::size_t at = 0; at + 1 < words.size(); ++at)
     if (words[at].find('=') == std::string_view::npos && words[at + 1].starts_with('='))
-      throw std::runtime_error(std::format(
-          "{} is not word=value: {}={}",
-          words[at],
-          words[at],
-          words[at + 1] == "=" && at + 2 < words.size() ? words[at + 2]
-                                                         : words[at + 1].substr(1)));
+      throw std::runtime_error(std::format("{} is not word=value: {}={}",
+                                           words[at],
+                                           words[at],
+                                           words[at + 1] == "=" && at + 2 < words.size()
+                                               ? words[at + 2]
+                                               : words[at + 1].substr(1)));
 }
 
 // A word=value argument, split at its first =.
@@ -704,7 +706,8 @@ constexpr std::string_view close_force = "view close force [<view>]";
 // The view a view close names, or with none the current one, which the log then keeps
 // by name (V08); the view vulpen started with is no view a view hosts.
 std::vector<std::string_view> closing(Call &call, std::string_view current) {
-  std::vector<std::string_view> arguments(call.arguments().begin(), call.arguments().end());
+  std::vector<std::string_view> arguments(call.arguments().begin(),
+                                          call.arguments().end());
   if (!arguments.empty())
     return arguments;
   if (current.empty())
@@ -745,7 +748,8 @@ void keep_terminal(const Commands &port, std::string_view view, std::string_view
     return reader.substr(reader.find(':') + 1);
   };
   if (!readers.empty() && std::ranges::all_of(readers, [&](std::string_view reader) {
-        return reader.substr(0, reader.find(':')) == view && within(node_of(reader), node);
+        return reader.substr(0, reader.find(':')) == view &&
+               within(node_of(reader), node);
       }))
     throw std::runtime_error(
         std::format("{} reads the terminal, as no other node does, so it stays: without "
@@ -774,8 +778,8 @@ View named_by(bool param, const View &edited, Arguments arguments) {
 // The name a line left out, as its edit chooses it, which the log keeps (V08): a node's
 // node1 on, the first free; a connection's its writer's port, or the view whose window
 // it takes; a view's its folder; each numbered on while taken, as arcball2.
-std::string chosen_name(Change change, const View &view, Arguments arguments,
-                        ViewLookup &views) {
+std::string
+chosen_name(Change change, const View &view, Arguments arguments, ViewLookup &views) {
   const std::vector<std::string> hosted = views.names();
   std::vector<std::string_view> taken;
   std::string base;
@@ -968,7 +972,8 @@ void Edits::connect(View &view,
 void Edits::command(Call &call) {
   std::string address(_port.addressed());
   const std::string current(_port.current());
-  std::vector<std::string_view> arguments(call.arguments().begin(), call.arguments().end());
+  std::vector<std::string_view> arguments(call.arguments().begin(),
+                                          call.arguments().end());
   for (std::size_t index = 0; index < edits.size(); ++index)
     if (call.is(_commands[index]) && edits[index].change == view_close) {
       arguments = closing(call, current);

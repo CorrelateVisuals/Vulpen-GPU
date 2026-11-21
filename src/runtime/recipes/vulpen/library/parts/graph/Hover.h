@@ -43,8 +43,9 @@ glm::vec2 bend_reach(glm::vec2 from, glm::vec2 to) {
 float away(glm::vec2 point, glm::vec2 from, glm::vec2 to) {
   const glm::vec2 along = to - from;
   const float length = glm::dot(along, along);
-  const float t =
-      length > 0.0f ? std::clamp(glm::dot(point - from, along) / length, 0.0f, 1.0f) : 0.0f;
+  const float t = length > 0.0f
+                      ? std::clamp(glm::dot(point - from, along) / length, 0.0f, 1.0f)
+                      : 0.0f;
   return glm::length(point - (from + along * t));
 }
 
@@ -78,11 +79,10 @@ void curves_near(std::span<const Route> routes,
       for (std::size_t piece = 1; piece <= pieces; ++piece) {
         const float t = static_cast<float>(piece) / static_cast<float>(pieces);
         const float s = 1.0f - t;
-        const glm::vec2 next = way[at].bends ? s * s * s * from +
-                                                   3.0f * s * s * t * (from + reach) +
-                                                   3.0f * s * t * t * (to - reach) +
-                                                   t * t * t * to
-                                             : to;
+        const glm::vec2 next =
+            way[at].bends ? s * s * s * from + 3.0f * s * s * t * (from + reach) +
+                                3.0f * s * t * t * (to - reach) + t * t * t * to
+                          : to;
         least = std::min(least, away(point, before, next));
         before = next;
       }
@@ -153,18 +153,18 @@ void tell(VP_VIEW::Items &tip,
   tip.push_back({.label = joins(boxes, end, flat)});
   for (const std::size_t at : boxes.told[end])
     if (at < relations.size())
-      tip.push_back(
-          {.label = std::format(
-               "{}:{} {}",
-               std::filesystem::path(relations[at].from).lexically_proximate(base).generic_string(),
-               relations[at].line,
-               relations[at].said)});
+      tip.push_back({.label = std::format("{}:{} {}",
+                                          std::filesystem::path(relations[at].from)
+                                              .lexically_proximate(base)
+                                              .generic_string(),
+                                          relations[at].line,
+                                          relations[at].said)});
 }
 
 // A box's name or one of its rows, whole, where the box cuts it short at its end, a cell
-// in from either edge, as the graph draws them: a row with a port read and a port written,
-// side by side a cell apart, the two two blanks apart; empty while it shows whole. The
-// cells are those of the layout.
+// in from either edge, as the graph draws them: a row with a port read and a port
+// written, side by side a cell apart, the two two blanks apart; empty while it shows
+// whole. The cells are those of the layout.
 std::string cut_short(const Boxes &boxes,
                       const Placed &placed,
                       std::size_t at,
@@ -185,7 +185,8 @@ std::string cut_short(const Boxes &boxes,
   const bool both = !shown.text.empty() && !shown.written.empty();
   if (shown.text.size() + shown.written.size() + (both ? 1 : 0) <= room)
     return {};
-  return both ? std::format("{}  {}", shown.text, shown.written) : shown.text + shown.written;
+  return both ? std::format("{}  {}", shown.text, shown.written)
+              : shown.text + shown.written;
 }
 
 // The names a box lists past those it shows, two blanks apart, as many a row as fit in

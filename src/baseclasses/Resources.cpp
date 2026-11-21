@@ -41,7 +41,10 @@ std::string gigabytes(VkDeviceSize bytes) {
 
 // Throws naming what an allocation that failed asked for and what is free, as a count
 // the GPU cannot hold fails so (A02); any other failure as check does.
-void allocated(VkResult result, const char *call, std::string_view asked, VkDeviceSize free) {
+void allocated(VkResult result,
+               const char *call,
+               std::string_view asked,
+               VkDeviceSize free) {
   if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY || result == VK_ERROR_OUT_OF_HOST_MEMORY)
     throw std::runtime_error(std::format(
         "{} is more than the GPU can give, with {} free", asked, gigabytes(free)));
@@ -56,12 +59,12 @@ void fits(VkPhysicalDevice device, VkExtent2D extent, Fill fill) {
   vkGetPhysicalDeviceProperties(device, &properties);
   const VkPhysicalDeviceLimits &limits = properties.limits;
   const bool drawn = fill == Fill::draw || fill == Fill::depth;
-  const std::uint32_t widest = drawn ? std::min(limits.maxImageDimension2D,
-                                                limits.maxFramebufferWidth)
-                                     : limits.maxImageDimension2D;
-  const std::uint32_t tallest = drawn ? std::min(limits.maxImageDimension2D,
-                                                 limits.maxFramebufferHeight)
-                                      : limits.maxImageDimension2D;
+  const std::uint32_t widest =
+      drawn ? std::min(limits.maxImageDimension2D, limits.maxFramebufferWidth)
+            : limits.maxImageDimension2D;
+  const std::uint32_t tallest =
+      drawn ? std::min(limits.maxImageDimension2D, limits.maxFramebufferHeight)
+            : limits.maxImageDimension2D;
   if (extent.width > widest || extent.height > tallest)
     throw std::runtime_error(
         std::format("an image of {} by {} pixels is past the {} by {} this GPU makes",
@@ -194,17 +197,17 @@ Resources::Resources(VkInstance instance,
     : _physical_device(physical_device), _device(device) {
   const VmaAllocatorCreateFlags told =
       budget ? VmaAllocatorCreateFlags{VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT} : 0;
-  const VmaAllocatorCreateInfo info{.flags =
-                                        VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | told,
-                                    .physicalDevice = physical_device,
-                                    .device = device,
-                                    .instance = instance,
-                                    .vulkanApiVersion = VK_API_VERSION_1_2};
+  const VmaAllocatorCreateInfo info{
+      .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | told,
+      .physicalDevice = physical_device,
+      .device = device,
+      .instance = instance,
+      .vulkanApiVersion = VK_API_VERSION_1_2};
   check(vmaCreateAllocator(&info, &_allocator), "vmaCreateAllocator");
   constexpr std::array depths{
       VK_FORMAT_D32_SFLOAT, VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D16_UNORM};
-  constexpr VkFormatFeatureFlags tested =
-      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+  constexpr VkFormatFeatureFlags tested = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                                          VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
   for (const VkFormat format : depths) {
     VkFormatProperties properties{};
     vkGetPhysicalDeviceFormatProperties(physical_device, format, &properties);
@@ -237,8 +240,8 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
     VkBufferCreateInfo least = info;
     least.size = 1;
     std::uint32_t type = 0;
-    const bool typed =
-        vmaFindMemoryTypeIndexForBufferInfo(_allocator, &least, &where, &type) == VK_SUCCESS;
+    const bool typed = vmaFindMemoryTypeIndexForBufferInfo(
+                           _allocator, &least, &where, &type) == VK_SUCCESS;
     allocated(result,
               "vmaCreateBuffer",
               gigabytes(size),
@@ -282,8 +285,8 @@ Image Resources::image(VkExtent2D extent,
     VkImageCreateInfo least = info; // as a buffer's, for a pixel
     least.extent = {1, 1, 1};
     std::uint32_t type = 0;
-    const bool typed =
-        vmaFindMemoryTypeIndexForImageInfo(_allocator, &least, &where, &type) == VK_SUCCESS;
+    const bool typed = vmaFindMemoryTypeIndexForImageInfo(
+                           _allocator, &least, &where, &type) == VK_SUCCESS;
     allocated(result,
               "vmaCreateImage",
               std::format("an image of {} by {} pixels", extent.width, extent.height),
@@ -295,16 +298,15 @@ Image Resources::image(VkExtent2D extent,
   image._format = format;
   image._fill = fill;
   image._mip_levels = mip_levels;
-  const VkImageViewCreateInfo view{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                                   .image = image._image,
-                                   .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                                   .format = format,
-                                   .subresourceRange = {.aspectMask =
-                                                            fill == Fill::depth
-                                                                ? VK_IMAGE_ASPECT_DEPTH_BIT
-                                                                : VK_IMAGE_ASPECT_COLOR_BIT,
-                                                        .levelCount = mip_levels,
-                                                        .layerCount = 1}};
+  const VkImageViewCreateInfo view{
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = image._image,
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = format,
+      .subresourceRange = {.aspectMask = fill == Fill::depth ? VK_IMAGE_ASPECT_DEPTH_BIT
+                                                             : VK_IMAGE_ASPECT_COLOR_BIT,
+                           .levelCount = mip_levels,
+                           .layerCount = 1}};
   check(vkCreateImageView(_device, &view, nullptr, &image._view), "vkCreateImageView");
   return image;
 }
@@ -319,11 +321,11 @@ bool Resources::samples(VkFormat format, Fill fill) const {
   const VkFormatFeatureFlags needed =
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
-      (fill == Fill::draw    ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-                                   VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
-       : fill == Fill::store ? VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
-                                   VK_FORMAT_FEATURE_TRANSFER_DST_BIT
-                             : VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
+      (fill == Fill::draw ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                                VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
+       : fill == Fill::store
+           ? VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT
+           : VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
   VkPhysicalDeviceFeatures features{};
   vkGetPhysicalDeviceFeatures(_physical_device, &features);
   return (properties.optimalTilingFeatures & needed) == needed &&
@@ -359,7 +361,7 @@ bool Resources::runs(VkShaderStageFlagBits stage) const {
 
 namespace {
 
-constexpr std::uint32_t pixel_max = 255;   // an 8-bit channel at its brightest
+constexpr std::uint32_t pixel_max = 255;    // an 8-bit channel at its brightest
 constexpr std::uint32_t linear_max = 65535; // linear light, held in 16 bits
 constexpr std::uint64_t light_step = linear_max / pixel_max; // 8 bits to 16, exactly
 constexpr std::uint32_t box = 2; // texels a level's texel averages each way
@@ -403,22 +405,22 @@ std::uint64_t srgb_encoded(std::uint64_t light) {
   if (above == srgb_decoded.end())
     return pixel_max;
   const auto below = std::prev(above);
-  return static_cast<std::uint64_t>(
-      (light - *below <= *above - light ? below : above) - srgb_decoded.begin());
+  return static_cast<std::uint64_t>((light - *below <= *above - light ? below : above) -
+                                    srgb_decoded.begin());
 }
 
 // An 8-bit format's channels; none for any other format.
 std::uint32_t mip_channels(VkFormat format) {
   switch (format) {
-  case VK_FORMAT_R8_UNORM:
-    return 1;
-  case VK_FORMAT_R8G8_UNORM:
-    return 2;
-  case VK_FORMAT_R8G8B8A8_UNORM:
-  case VK_FORMAT_R8G8B8A8_SRGB:
-    return rgba;
-  default:
-    return 0;
+    case VK_FORMAT_R8_UNORM:
+      return 1;
+    case VK_FORMAT_R8G8_UNORM:
+      return 2;
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_R8G8B8A8_SRGB:
+      return rgba;
+    default:
+      return 0;
   }
 }
 

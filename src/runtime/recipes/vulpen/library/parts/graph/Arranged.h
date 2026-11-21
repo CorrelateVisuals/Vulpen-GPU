@@ -32,7 +32,8 @@ constexpr std::string_view kept_header =
     "# The graph editor's look at this view, which a restart keeps: each box placed by\n"
     "# hand, from the graph's top left at zoom 1, or from the top left of the boxes\n"
     "# inside the box holding it, and each box made larger by hand, as wide and as tall\n"
-    "# in pixels at zoom 1. The graph part writes it as boxes move; delete it to lay the\n"
+    "# in pixels at zoom 1. The graph part writes it as boxes move; delete it to lay "
+    "the\n"
     "# boxes out from the graph again. What a box is colors it, as theme.ini says.\n";
 
 // What a person arranged, which the graph's .ini keeps through a restart: each box placed
@@ -90,9 +91,9 @@ bool renamed(Arranged &arranged, std::string_view from, std::string_view to) {
     std::vector<std::pair<std::string, glm::ivec2>> moved;
     for (auto at = kept->begin(); at != kept->end();) {
       const std::string_view key = at->first;
-      if (!key.starts_with(from) || (key.size() > from.size() &&
-                                     std::string_view("./ ").find(key[from.size()]) ==
-                                         std::string_view::npos)) {
+      if (!key.starts_with(from) ||
+          (key.size() > from.size() &&
+           std::string_view("./ ").find(key[from.size()]) == std::string_view::npos)) {
         ++at;
         continue;
       }

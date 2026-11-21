@@ -62,9 +62,8 @@ public:
   void gather(std::vector<Pass> &passes) const;
   // Whether a node of a view said it read nothing at an input as the frame before
   // cooked (Cook::unread), by the view's name, the node's and the port's.
-  using Unread = std::function<bool(std::string_view view,
-                                    std::string_view node,
-                                    std::string_view port)>;
+  using Unread = std::function<bool(
+      std::string_view view, std::string_view node, std::string_view port)>;
   // Before a frame, after rebuild: which views rest, none of their nodes cooking,
   // dispatching or drawing, their windows keeping what they drew last. A view rests while
   // a view beside it presents views, as the ide presents the projects, and no connection
@@ -117,7 +116,8 @@ private:
   void command(Call &call) override;
   Hosted *hosted(std::string_view name) const;
   // A change of a project's save point that undo takes back with the line running.
-  void moves_with_step(const std::string &name, std::function<void(Hosted &, bool)> change);
+  void moves_with_step(const std::string &name,
+                       std::function<void(Hosted &, bool)> change);
   // The view whose connections take the view's window: the view hosting it, or one
   // beside it, hosted by the same view; null for none.
   const Hosted *taker(const Hosted &hosted) const;
@@ -151,9 +151,8 @@ private:
               std::vector<const Hosted *> &gathered) const;
   // The draws of each view whose draws into its window go where into's go, null for the
   // window, in the order hosted, recording into the image given, or the window for none.
-  void draw_into(const Hosted *into,
-                 const Offscreen *image,
-                 std::vector<Pass> &passes) const;
+  void
+  draw_into(const Hosted *into, const Offscreen *image, std::vector<Pass> &passes) const;
   void host(const Child &child, const std::string &parent);
   void follow(const std::string &host, const View &view);
   void unhost(Hosted &hosted);
@@ -168,7 +167,7 @@ private:
   std::vector<std::unique_ptr<Hosted>> _hosted; // the host first
   std::vector<Schedule *> _schedules;           // by _hosted, once built
   const Hosted *_owner = nullptr; // the window's, as the last rebuild chose it
-  std::unique_ptr<Undo> _steps; // the lines undo takes back, and their file port
+  std::unique_ptr<Undo> _steps;   // the lines undo takes back, and their file port
   // Registered once the views the host names are hosted, so a constructor that throws
   // leaves no command to a handler that is gone.
   Command _save;

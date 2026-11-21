@@ -67,8 +67,7 @@ constexpr std::size_t file_capacity = std::size_t{1} << 20;
 
 Log::Log(Level level, std::string_view title, std::string_view file)
     : _level(level), _colors(Terminal::colors()), _file(file),
-      _text(file.empty() ? std::string() : Files::text(_file)),
-      _speaker{.shown = level} {
+      _text(file.empty() ? std::string() : Files::text(_file)), _speaker{.shown = level} {
   if (_text.size() > file_capacity / 2)
     _text.erase(0, _text.find('\n', _text.size() - file_capacity / 2) + 1);
   for (const std::string_view line : {rule, banner, rule})
@@ -165,8 +164,7 @@ private:
 };
 
 Printed::Printed(const Log &log)
-    : _log(log),
-      _out(std::make_unique<Lines>(log, std::cout, false)),
+    : _log(log), _out(std::make_unique<Lines>(log, std::cout, false)),
       _err(std::make_unique<Lines>(log, std::cerr, true)) {
   log._printed = this;
 }
@@ -212,9 +210,9 @@ void Log::print(Level level,
   if (!node.empty())
     _line.append(node).append(": ");
   // Text read from a file, such as a build's output, ends in a newline the line adds. A
-  // control character in it, as a refusal quoting a file's bytes holds, shows as its code,
-  // since the terminal would obey it, as an escape that clears the screen; a line break
-  // and a tab stay what they are.
+  // control character in it, as a refusal quoting a file's bytes holds, shows as its
+  // code, since the terminal would obey it, as an escape that clears the screen; a line
+  // break and a tab stay what they are.
   for (const char letter : text.substr(0, text.find_last_not_of('\n') + 1)) {
     const auto code = static_cast<unsigned char>(letter);
     if ((code < first_shown && letter != '\n' && letter != '\t') || code == delete_code)
@@ -311,8 +309,8 @@ void Log::emit(std::string_view tag, const char *color, std::string_view text) c
   add_to_file();
 }
 
-// Past its room, the file lets the oldest half of this run's lines go, so a long run keeps
-// its build and its last lines.
+// Past its room, the file lets the oldest half of this run's lines go, so a long run
+// keeps its build and its last lines.
 void Log::add_to_file() const {
   if (_file.empty())
     return;
@@ -324,8 +322,8 @@ void Log::add_to_file() const {
 }
 
 // Whole, as every save is (RA04), at each problem and at the end, so a run that crashes
-// leaves what went wrong before it. A file that cannot be saved any more is said once, and
-// the run goes on, as the log is no part of what it runs.
+// leaves what went wrong before it. A file that cannot be saved any more is said once,
+// and the run goes on, as the log is no part of what it runs.
 void Log::save() const {
   if (_file.empty() || _unsaved)
     return;

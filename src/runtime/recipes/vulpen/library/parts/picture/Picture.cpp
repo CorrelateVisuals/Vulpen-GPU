@@ -20,7 +20,8 @@ std::uint32_t mip_levels(std::string_view text) {
   if (text == all_levels)
     return VP::all_mip_levels;
   std::uint32_t count = 0;
-  const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), count);
+  const auto [end, error] =
+      std::from_chars(text.data(), text.data() + text.size(), count);
   if (error != std::errc{} || end != text.data() + text.size() || count == 0)
     throw std::runtime_error(
         std::format("mip_levels = {} is no count of levels, nor {}", text, all_levels));

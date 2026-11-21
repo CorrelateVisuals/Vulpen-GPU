@@ -25,9 +25,22 @@ using Pixel = glm::u8vec4;
 constexpr Pixel black{0, 0, 0, 255}, white{255, 255, 255, 255}, red{255, 0, 0, 255},
     clear{255, 255, 255, 0}, dark{64, 64, 64, 255}, gray{128, 128, 128, 255},
     clear_red{255, 0, 0, 0}, clear_green{0, 255, 0, 0}, clear_blue{0, 0, 255, 0};
-constexpr std::array<Pixel, std::size_t{side} * side> pixels{
-    black, white, red,   clear,     white, black, clear,      clear,
-    black, dark,  clear_red, clear_green, gray, white, clear_blue, clear};
+constexpr std::array<Pixel, std::size_t{side} * side> pixels{black,
+                                                             white,
+                                                             red,
+                                                             clear,
+                                                             white,
+                                                             black,
+                                                             clear,
+                                                             clear,
+                                                             black,
+                                                             dark,
+                                                             clear_red,
+                                                             clear_green,
+                                                             gray,
+                                                             white,
+                                                             clear_blue,
+                                                             clear};
 
 // sRGB's transfer (IEC 61966-2-1).
 constexpr double toe = 0.04045;
@@ -42,9 +55,8 @@ double decoded(double code) {
 }
 
 double encoded(double light) {
-  return light <= toe_light
-             ? light * toe_slope
-             : (1.0 + offset) * std::pow(light, 1.0 / srgb_gamma) - offset;
+  return light <= toe_light ? light * toe_slope
+                            : (1.0 + offset) * std::pow(light, 1.0 / srgb_gamma) - offset;
 }
 
 // A texel as the GPU samples it: its color in light, its alpha as is.

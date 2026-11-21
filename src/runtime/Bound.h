@@ -72,7 +72,8 @@ inline bool writes(Access access) {
   return access != Access::read;
 }
 
-// Where the build puts a shader's SPIR-V: beside it in the node's folder of the build tree.
+// Where the build puts a shader's SPIR-V: beside it in the node's folder of the build
+// tree.
 inline std::filesystem::path spirv_of(const std::filesystem::path &folder,
                                       std::string_view shader) {
   return folder / (std::string(shader) + ".spv");
@@ -188,7 +189,8 @@ inline const PixelFormat *pixel_format(std::string_view name) {
 inline const PixelFormat *
 port_format(const Node &node, std::string_view port, std::string_view fallback) {
   const auto word = std::ranges::find(node.images, port, &ImagePort::port);
-  return pixel_format(word == node.images.end() ? fallback : std::string_view(word->format));
+  return pixel_format(word == node.images.end() ? fallback
+                                                : std::string_view(word->format));
 }
 
 // The size a param gives an image a dispatch stores into, as its width and height in
@@ -318,8 +320,8 @@ struct Bound {
     const PixelFormat *format = nullptr;
   };
   std::vector<Filled> textures;
-  std::vector<Command> commands; // registered while it bound
-  std::vector<File> files;       // opened while it bound
+  std::vector<Command> commands;    // registered while it bound
+  std::vector<File> files;          // opened while it bound
   std::vector<std::string> outputs; // its ports that carry C++ objects to C++ nodes
   std::vector<std::string> inputs;  // and that read them
   // Each one's type, as code spells it, so a loose one finds those alike, and a part
@@ -330,8 +332,8 @@ struct Bound {
   // error; made by its module, so it goes with it.
   std::vector<Object> stand_ins;
   std::vector<std::string> errors;
-  // What it runs with but likely not as meant, as a Texture nothing fills: said only while
-  // it has no error, which would say more.
+  // What it runs with but likely not as meant, as a Texture nothing fills: said only
+  // while it has no error, which would say more.
   std::vector<std::string> warnings;
   // A hosted view's node of which a live run's build has yet to make some code, as all of
   // one of a project loaded before it was ever built, or a shader new beside those built:
@@ -347,7 +349,8 @@ struct Bound {
   bool rebuilding = false;
   // A dispatch's threads, as its word gives them or the buffer at its port counts them.
   std::uint32_t invocations = 0;
-  // Its operator's bind ended in a throw, so what it would have asked for after is unknown.
+  // Its operator's bind ended in a throw, so what it would have asked for after is
+  // unknown.
   bool cut_short = false;
   // Its operator read the view as it bound, so the ports it asked for may follow the
   // connections, as a deck's rooms do, and only its next bind knows them.
@@ -369,9 +372,8 @@ struct Bound {
   }
   // Its shader of the stage, as reflection read it, which it must hold.
   const Shader &stage(std::string_view stage) const {
-    const auto named = std::ranges::find_if(shaders_named, [&](const std::string &file) {
-      return file.ends_with(stage);
-    });
+    const auto named = std::ranges::find_if(
+        shaders_named, [&](const std::string &file) { return file.ends_with(stage); });
     return shaders.at(static_cast<std::size_t>(named - shaders_named.begin()));
   }
   const Field *field(std::string_view name) const {
@@ -441,14 +443,14 @@ struct Picture {
 
 // The line that joins a writer to readers, its connection named for the writer's port,
 // or while a connection of the view holds that name, for its node's and the port's.
-inline std::string joining(const View &view,
-                           std::string_view writer,
-                           std::span<const std::string> readers) {
+inline std::string
+joining(const View &view, std::string_view writer, std::span<const std::string> readers) {
   const std::size_t dot = writer.rfind('.');
   const std::size_t before = writer.rfind('.', dot - 1);
   const std::size_t node = before == std::string_view::npos ? 0 : before + 1;
   std::string name(writer.substr(dot + 1));
-  if (std::ranges::find(view.connections, name, &Connection::name) != view.connections.end())
+  if (std::ranges::find(view.connections, name, &Connection::name) !=
+      view.connections.end())
     name = std::format("{}-{}", writer.substr(node, dot - node), name);
   std::string line = std::format("connect {} {}", name, writer);
   for (const std::string &reader : readers)
@@ -461,11 +463,8 @@ inline std::string joining(const View &view,
 inline std::string as_word(std::string_view node, const Param &param) {
   if (std::ranges::find(node_words, param.key) == node_words.end())
     return {};
-  return std::format("; {} is a node word: node set {} {}={}",
-                     param.key,
-                     node,
-                     param.key,
-                     param.value);
+  return std::format(
+      "; {} is a node word: node set {} {}={}", param.key, node, param.key, param.value);
 }
 
 // A buffer holds one element per invocation of its writer: a dispatch's threads, or a

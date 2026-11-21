@@ -110,10 +110,12 @@ bool Modules::builds_loadable() {
   return stamp.substr(0, stamp.find_last_not_of(" \r\n") + 1) == VP_MODULE_STAMP;
 }
 
-bool Modules::built(const std::string &module, const std::filesystem::path &folder) const {
+bool Modules::built(const std::string &module,
+                    const std::filesystem::path &folder) const {
   std::error_code unread;
-  return std::ranges::any_of(linked_modules,
-                             [&](const LinkedModule &linked) { return linked.module == module; }) ||
+  return std::ranges::any_of(
+             linked_modules,
+             [&](const LinkedModule &linked) { return linked.module == module; }) ||
          std::filesystem::exists(folder / module_file, unread);
 }
 

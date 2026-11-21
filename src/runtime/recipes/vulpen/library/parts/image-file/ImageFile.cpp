@@ -21,11 +21,12 @@ constexpr std::string_view preview_label = "{} (preview)";
 // The image file its file param names, decoded by stb_image into its picture, sRGB as a
 // file holds its colors, for the node a connection takes the picture to: read again once
 // it changes on disk, so an image edited elsewhere shows anew, a preview of it. Its tab
-// names the file, a preview, and its close mark lets go of the file, as param unset, which
-// clears the picture, so its pixels go with it (A03). Its switch param names the switch
-// whose second half shows the picture, set to it as a file opens and back as it closes, so
-// a preview takes the place of what the first half shows while it is open, and the person
-// is shown the file opened. A file it cannot read or decode is named in the log.
+// names the file, a preview, and its close mark lets go of the file, as param unset,
+// which clears the picture, so its pixels go with it (A03). Its switch param names the
+// switch whose second half shows the picture, set to it as a file opens and back as it
+// closes, so a preview takes the place of what the first half shows while it is open, and
+// the person is shown the file opened. A file it cannot read or decode is named in the
+// log.
 class ImageFile final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string file = node.sets("file") ? node.param<std::string>("file") : "";
@@ -39,7 +40,8 @@ class ImageFile final : public VP::Operator {
     _tabs->clear();
     if (!_file.empty())
       _tabs->push_back(
-          {.label = std::format(preview_label, std::filesystem::path(_file).filename().string()),
+          {.label = std::format(preview_label,
+                                std::filesystem::path(_file).filename().string()),
            .current = true,
            .close = std::format("{}: param unset {} file", _view, _name)});
   }
@@ -49,8 +51,10 @@ class ImageFile final : public VP::Operator {
       _decoded.reset();
       if (_file.empty())
         frame.commands().send(std::format("{}: image clear {}.picture", _view, _name));
-      frame.commands().send(std::format(
-          "{}: param set {} shown {}", _view, _switch, _file.empty() ? "first" : "second"));
+      frame.commands().send(std::format("{}: param set {} shown {}",
+                                        _view,
+                                        _switch,
+                                        _file.empty() ? "first" : "second"));
     }
     if (_file.empty())
       return;
@@ -67,7 +71,7 @@ class ImageFile final : public VP::Operator {
     }
   }
 
-  std::string _file;   // the param's, as an absolute path; empty for none
+  std::string _file;    // the param's, as an absolute path; empty for none
   bool _opened = false; // another file, or none, since the frame before
   std::string _switch;
   std::string _name;

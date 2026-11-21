@@ -42,10 +42,10 @@ struct Labels {
     const auto fits = static_cast<std::uint32_t>(
         std::min(text.size(), characters.size() - character_count));
     for (std::uint32_t at = 0; at < fits; ++at)
-      characters[character_count + at] = {
-          .code = static_cast<unsigned char>(text[at]),
-          .label = label_count - 1,
-          .x = static_cast<float>(label.count + at) * cell_width};
+      characters[character_count + at] = {.code = static_cast<unsigned char>(text[at]),
+                                          .label = label_count - 1,
+                                          .x = static_cast<float>(label.count + at) *
+                                               cell_width};
     character_count += fits;
     label.count += fits;
   }

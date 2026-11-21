@@ -54,9 +54,8 @@ inline auto projects(const VP::View &top, std::string_view own) {
 // The project that is the current view or holds it, so a nested view shows through its
 // project; empty while the current view is none of them.
 template <class Find, class Projects>
-std::string_view project_of(const Find &view_of,
-                            Projects &&projects,
-                            std::string_view current) {
+std::string_view
+project_of(const Find &view_of, Projects &&projects, std::string_view current) {
   for (const VP::Child &child : projects)
     if (!current.empty() && holds(view_of, child.name, current))
       return child.name;
@@ -109,9 +108,8 @@ inline std::string joined_names(const std::vector<std::string> &names) {
 // The view a deck shows of those it holds that hosts takes: the one presented while it
 // holds that one, else the one its shown param names, else the first; empty for none.
 template <class Hosts>
-std::string deck_shows(const VP::Node &deck,
-                       std::string_view presented,
-                       const Hosts &hosts) {
+std::string
+deck_shows(const VP::Node &deck, std::string_view presented, const Hosts &hosts) {
   const std::vector<std::string> held = split_names(param_value(deck, holds_param));
   const auto has = [&](std::string_view name) {
     return !name.empty() && hosts(name) && std::ranges::find(held, name) != held.end();

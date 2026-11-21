@@ -46,8 +46,8 @@ constexpr std::string_view press_word = "press";
 constexpr std::size_t column_count = 3;
 // Placeholders that stand for a few known words, which a column lists as the terminal's
 // complete answers them; the person types any other, as a new name.
-constexpr std::array<std::string_view, 4> completed_kinds{"<recipe>", "<node>", "<view>",
-                                                          "<connection>"};
+constexpr std::array<std::string_view, 4> completed_kinds{
+    "<recipe>", "<node>", "<view>", "<connection>"};
 // And those the menus find themselves, from the view lines go to and its ports, for what
 // was pressed: a line connecting a loose port to one alike, which for one node takes two
 // columns, its port and the other end; a connection joining what was pressed; a value a

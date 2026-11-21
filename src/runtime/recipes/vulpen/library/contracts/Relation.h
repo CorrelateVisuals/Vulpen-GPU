@@ -53,8 +53,8 @@ struct Relations {
   // once it is read; empty for the view. A level up goes up from it, so two in a row go
   // two levels up.
   std::string asked;
-  std::string top;    // absolute; empty for the view
-  VP::View tree;      // the folder's
+  std::string top; // absolute; empty for the view
+  VP::View tree;   // the folder's
   std::vector<Relation> relations;
   std::uint64_t changes = 0; // the readings that changed what it holds, so far
 };

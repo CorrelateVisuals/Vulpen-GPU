@@ -19,7 +19,8 @@ class Engine final : public VP::Operator {
     _stepping = node.value<std::uint32_t>("stepping");
     _seeding = node.value<std::uint32_t>("seeding");
     _frames_per_generation = node.param<std::uint32_t>("frames_per_generation");
-    _generations = node.sets("generations") ? node.param<std::uint32_t>("generations") : 0;
+    _generations =
+        node.sets("generations") ? node.param<std::uint32_t>("generations") : 0;
     // Every view's commands share one port, so the command carries the node's own name.
     const std::string name = node.name();
     _seed = node.command(std::format("{} seed", name.substr(name.rfind('.') + 1)),
@@ -55,7 +56,8 @@ class Engine final : public VP::Operator {
   std::uint32_t _frames_per_generation = 0;
   std::uint32_t _generations = 0; // after each seed, 0 for no end
   VP::Command _seed;
-  std::uint32_t _written = 0; // generations written, the seed's too; wraps, keeping parity
+  std::uint32_t _written =
+      0; // generations written, the seed's too; wraps, keeping parity
   std::uint32_t _stepped = 0; // generations stepped since the last seed
   bool _seed_asked = true;    // the first frame starts the cells from the seed
 };

@@ -161,7 +161,8 @@ make_render_pass(VkDevice device, VkFormat format, VkFormat depth_format, Depth 
           .format = depth_format,
           .samples = VK_SAMPLE_COUNT_1_BIT,
           .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp = kept ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
+          .storeOp =
+              kept ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
           .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
           .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
           .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -174,43 +175,40 @@ make_render_pass(VkDevice device, VkFormat format, VkFormat depth_format, Depth 
   const VkSubpassDescription subpass{.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
                                      .colorAttachmentCount = 1,
                                      .pColorAttachments = &target,
-                                     .pDepthStencilAttachment = depth ? &tested : nullptr};
-  const VkPipelineStageFlags tests =
-      depth ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-            : 0;
+                                     .pDepthStencilAttachment =
+                                         depth ? &tested : nullptr};
+  const VkPipelineStageFlags tests = depth ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                                           : 0;
   const VkAccessFlags written = depth ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0;
   const VkPipelineStageFlags kept_tests =
       kept ? VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT : 0;
   const VkAccessFlags kept_written = kept ? written : 0;
   const std::array dependencies{
-      VkSubpassDependency{.srcSubpass = VK_SUBPASS_EXTERNAL,
-                          .dstSubpass = 0,
-                          .srcStageMask =
-                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
-                          .dstStageMask =
-                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
-                          .srcAccessMask = written,
-                          .dstAccessMask =
-                              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | written},
-      VkSubpassDependency{.srcSubpass = 0,
-                          .dstSubpass = VK_SUBPASS_EXTERNAL,
-                          .srcStageMask =
-                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | kept_tests,
-                          .dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-                                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                          .srcAccessMask =
-                              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | kept_written,
-                          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT}};
-  const VkRenderPassCreateInfo info{
-      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      .attachmentCount = depth ? 2U : 1U,
-      .pAttachments = attachments.data(),
-      .subpassCount = 1,
-      .pSubpasses = &subpass,
-      .dependencyCount = static_cast<std::uint32_t>(dependencies.size()),
-      .pDependencies = dependencies.data()};
+      VkSubpassDependency{
+          .srcSubpass = VK_SUBPASS_EXTERNAL,
+          .dstSubpass = 0,
+          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
+          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
+          .srcAccessMask = written,
+          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | written},
+      VkSubpassDependency{
+          .srcSubpass = 0,
+          .dstSubpass = VK_SUBPASS_EXTERNAL,
+          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | kept_tests,
+          .dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | kept_written,
+          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT}};
+  const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+                                    .attachmentCount = depth ? 2U : 1U,
+                                    .pAttachments = attachments.data(),
+                                    .subpassCount = 1,
+                                    .pSubpasses = &subpass,
+                                    .dependencyCount =
+                                        static_cast<std::uint32_t>(dependencies.size()),
+                                    .pDependencies = dependencies.data()};
   VkRenderPass render_pass = VK_NULL_HANDLE;
   check(vkCreateRenderPass(device, &info, nullptr, &render_pass), "vkCreateRenderPass");
   return render_pass;
@@ -295,10 +293,10 @@ VkRenderPass Pipelines::render_pass(VkFormat format, Depth depth) const {
     throw std::runtime_error("this GPU tests depth in none of D32_SFLOAT, "
                              "X8_D24_UNORM_PACK32 and D16_UNORM");
   return _render_passes
-      .emplace_back(Made{.format = format,
-                         .depth = depth,
-                         .render_pass =
-                             make_render_pass(_device, format, depth_format, depth)})
+      .emplace_back(
+          Made{.format = format,
+               .depth = depth,
+               .render_pass = make_render_pass(_device, format, depth_format, depth)})
       .render_pass;
 }
 
@@ -428,8 +426,7 @@ Pipeline::Pipeline(const Pipelines &pipelines,
                      .stage = stage.stage,
                      .module = modules.emplace_back(_device, *stage.shader).handle(),
                      .pName = "main"});
-    tessellates =
-        tessellates || stage.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    tessellates = tessellates || stage.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
   }
   const VkPipelineVertexInputStateCreateInfo input{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
@@ -502,9 +499,8 @@ Pipeline::Pipeline(const Pipelines &pipelines,
       .pDynamicState = &dynamic_state,
       .layout = pipelines.layout(),
       .renderPass = render_pass};
-  check(
-      vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline),
-      "vkCreateGraphicsPipelines");
+  check(vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline),
+        "vkCreateGraphicsPipelines");
 }
 
 Pipeline::Pipeline(Pipeline &&other) noexcept
@@ -625,14 +621,14 @@ Drawn::Drawn(const Pipelines &pipelines, Image image, Depth depth)
                              : _kept  ? _kept->image().view()
                                       : VK_NULL_HANDLE;
   const std::array views{drawn.view(), tested};
-  const VkFramebufferCreateInfo info{
-      .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-      .renderPass = pipelines.render_pass(drawn.format(), depth),
-      .attachmentCount = depth == Depth::none ? 1U : 2U,
-      .pAttachments = views.data(),
-      .width = drawn.extent().width,
-      .height = drawn.extent().height,
-      .layers = 1};
+  const VkFramebufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                                     .renderPass =
+                                         pipelines.render_pass(drawn.format(), depth),
+                                     .attachmentCount = depth == Depth::none ? 1U : 2U,
+                                     .pAttachments = views.data(),
+                                     .width = drawn.extent().width,
+                                     .height = drawn.extent().height,
+                                     .layers = 1};
   check(vkCreateFramebuffer(_device, &info, nullptr, &_framebuffer),
         "vkCreateFramebuffer");
 }
