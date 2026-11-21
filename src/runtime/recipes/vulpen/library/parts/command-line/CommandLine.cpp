@@ -473,44 +473,18 @@ struct Mark {
 };
 
 // One line of input with history and completion, sent to the command port. The CLI, the
-// terminal and the find bar are this part, so each reaches Vulpen only through the
-// command port; its param on says where it is. On the terminal it is the CLI: each line
-// typed or piped in runs, what it answers is printed, and the run ends with the input. In
-// a window it takes keys from the keys part while it has the focus, which a press in its
-// area gives it, and shows what lines answer and the log above the line typed, in the
-// Rect its area gives, with a tab for the panel it sits in, named by its title param; a
-// drag selects in what it shows, as a double click does a word and one more press its
-// row, which control with c copies, and the wheel or a drag on the bar at its right edge
-// scrolls it; turned sideways or with shift, or a drag on the bar above the rule, scrolls
-// its rows across, while the line typed keeps its caret in view. A press on the line
-// typed puts the caret there, and a drag over it, shift with a key that moves the caret,
-// or control with a, selects in it, which control with c copies, with x cuts, and what is
-// typed or pasted replaces. Only the one on the terminal registers help, complete and
-// clear, as a command has one owner, and a terminal in a window sends them as it sends
-// any line, taking what clear answers as a terminal takes it; one in a window registers
-// type, the one way a key or a menu in the window runs a line a person could type, so
-// each shows here with what it answers, as if typed (V06), or is begun here for the
-// person to finish; on the terminal, the end of the input ends the run while no window is
-// open, as one a launcher gives no input still shows its window. In a window, control+f
-// makes its line a search, the line typed set aside: the words, which enter and control+f
-// find again in the rows above, older first, selecting the match and scrolling to it,
-// until escape gives the line back. As a find bar, on=find, it is a search alone, over a
-// host whose control+f opens it: a row at the top of its area, whose words enter and
-// control+f send to the command its finds param names, its words joined by commas, as the
-// graph's select,find, or to find, which the editors' owner answers, and which escape
-// closes, the focus back to the host, and a press on which takes the focus back from the
-// host; the rest of its area goes to the host. A line that names no view goes to the
-// current view, which view switch moves, so it needs no name and every log line still has
-// one. The prompt shows that view's folder, as a shell shows the one it is in, where a
-// line's relative paths count from, and the log keeps to that view. A line one word short
-// of the node its usage wants acts on the nodes the graph selects, a line each, as Tab
-// with no word begun offers them.
+// terminal and the find bar are all this part, so each reaches Vulpen only through the
+// command port; its on param says which it is. A line that names no view goes to the
+// current view, which view switch moves, so a line needs no name and every log line
+// still has one.
 class CommandLine final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string on = node.param<std::string>("on");
     check_word("on", on, {"terminal", "window", "find"});
     _window = on != "terminal";
     _finder = on == "find";
+    // Only the one on the terminal registers help, complete and clear, as a command has
+    // one owner; a terminal in a window sends them as it sends any line.
     if (!_window) {
       _help = node.command("help [<value>...]",
                            "lists every command, under the words it shares, and what "
@@ -540,6 +514,8 @@ class CommandLine final : public VP::Operator {
     }
     _title = node.param<std::string>("title");
     _tabs = &node.output<VP_VIEW::Items>("tabs");
+    // type is the one way a key or a menu in the window runs a line a person could type,
+    // so each shows here with what it answers, as if typed (V06).
     _type = node.command("type <value>...",
                          "runs a line here as if typed and sent: the rows show it and "
                          "what it answers, the history keeps it, and undo takes it back "
@@ -628,6 +604,9 @@ class CommandLine final : public VP::Operator {
     name_tab();
   }
 
+  // The CLI: each line typed or piped in runs, and what it answers prints. The end of the
+  // input ends the run while no window is open, so a run a launcher gives no input still
+  // shows its window.
   void on_terminal(VP::Cook &frame) {
     VP::TerminalPort &terminal = frame.terminal();
     if (terminal.typed())
@@ -1522,9 +1501,10 @@ class CommandLine final : public VP::Operator {
             .role = VP_VIEW::role("accent")};
   }
 
-  // The keys a search takes: enter and control+f find its words again, and escape ends
-  // it; tab, up and down do nothing, as nothing completes or recalls a search. Whether it
-  // took the key; the rest edit the words.
+  // In a window, control+f makes the line a search, the line typed set aside until escape
+  // gives it back. The keys a search takes: enter and control+f find its words again, and
+  // escape ends it; tab, up and down do nothing, as nothing completes or recalls a
+  // search. Whether it took the key; the rest edit the words.
   bool finds(VP::Cook &frame, std::string_view key) {
     if (key == "enter" || (_control && key == "f")) {
       if (_line.find_first_not_of(' ') == std::string::npos)
@@ -1578,9 +1558,11 @@ class CommandLine final : public VP::Operator {
     }
   }
 
-  // Control+f in its host opens it, taking the focus, as a press on its row does, which
-  // puts the caret there too; open, it takes its own keys, and its row leaves the host
-  // the rest of its area.
+  // As a find bar, on=find, it is a search alone over a host. Control+f in its host opens
+  // it, taking the focus, as a press on its row does, which puts the caret there too;
+  // open, it takes its own keys, and its row leaves the host the rest of its area. Its
+  // words go to the command its finds param names, as the graph's select,find, or else to
+  // find, which the editors' owner answers. Escape closes it, the focus back to the host.
   void find_bar(VP::Cook &frame) {
     for (const VP::Event &event : frame.input().events())
       point_bar(frame, event);
