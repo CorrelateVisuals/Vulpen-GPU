@@ -18,17 +18,15 @@ constexpr std::string_view held_port = "held";  // and stores the frame into
 constexpr std::string_view hold_key = "space";
 
 // Holds a frame of its picture still, for a person to look at while what draws it goes
-// on: space, while the node its host param names has the focus, or else the node its held
-// reaches, as the image showing the frame, or a double click in its area, copies the
-// picture into held at once, its shader storing it the frame it was asked, and still
-// tells the image held reaches to show it in place of the picture; either again lets it
-// go. The frame is of what wrote the picture then, as a project's window, and it holds
-// while that writes it: through the picture's connection going and coming back, as a
-// pane's view shown again, and while its area has no room, as in perform mode or under a
-// preview; a picture another writes shows as it is, and holding it lets go of the first,
-// as does a change of the window's size, which makes held anew, empty. A key held down
-// holds once, however often it repeats. It changes nothing a view holds, so it sends no
-// line: a frame held is a look at the view, as a pan of the image is.
+// on. Space, while its host has the focus, or a double click in its area, copies the
+// picture into held, and the image held reaches shows it in place of the picture;
+// either again lets it go. Its host is the node its host param names, or else the node
+// its held reaches, as the image showing the frame. The frame is of what wrote the
+// picture then, as a project's window, and stays held while that writes it: through the
+// picture's connection going and coming back, and while its area has no room, as in
+// perform mode. Another writer's picture shows as it is, and a change of the window's
+// size lets go, as held is made anew, empty. It changes nothing a view holds, so it
+// sends no line: a frame held is a look at the view, as a pan of the image is.
 class Still final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _name = node.name();

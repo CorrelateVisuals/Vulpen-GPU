@@ -75,20 +75,18 @@ struct Known {
   std::vector<VP_VIEW::Relation> relations;
 };
 
-// Finds what links the files of the view the graph shows, the current one, or of the
-// folder its folder param names, whose inside the graph shows, which open and the graph
-// set while the ide runs: a file including or importing another, a CMake file naming
-// one, a document linking one or citing an id a document of its docs param's folder
-// defines, a manifest naming a recipe it uses; and what the engine carries between files:
-// a node's C++ binding a name its shader's pass block declares, a stage of a draw reading
-// what the stage before it writes, C++ loading a shader by its SPIR-V's name, and in a
-// folder shown, a manifest's connection between the files of its nodes; and hands them
-// to the graph as Relations,
-// with the folder a level deep as a view's nodes, hidden ones too, and the top of its
-// repository. No compiler is asked: it reads the lines that say so, as they are on disk,
-// through the file port, again as what is shown changes, and every two seconds while
-// what it reads is small, a little a frame; a folder read lately shows what was found
-// then at once, while it is read again.
+// Finds what links the files the graph shows, of the current view or of the folder its
+// folder param names, and hands them to the graph as Relations, with the folder's files
+// a level deep, hidden ones too, and the top of its repository. A relation is a file
+// including or importing another, a CMake file naming one, a document linking one or
+// citing an id a document of its docs param's folder defines, or a manifest naming a
+// recipe it uses. Or it is what the engine carries between files: a node's C++ binding a
+// name its shader's pass block declares, a stage of a draw reading what the stage before
+// it writes, C++ loading a shader by its SPIR-V's name, and in a folder shown, a
+// manifest's connection between the files of its nodes. No compiler is asked: it reads
+// the lines that say so, as they are on disk, a little a frame, again as what is shown
+// changes and every two seconds while it is small. A folder read lately shows what was
+// found then at once, while it is read again.
 class Relations final : public VP::Operator {
 public:
   void bind(VP::Bind &node) override;
