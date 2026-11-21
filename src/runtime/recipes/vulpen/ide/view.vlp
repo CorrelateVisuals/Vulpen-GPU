@@ -1,11 +1,9 @@
-# The IDE app: Vulpen editing Vulpen, a window the cli hosts beside the projects, so every
-# command that reads or changes a view is the cli's, and this adds what the window
-# shows: ./run.sh --ide. Only child recipes and the wires between them, built by
-# addition: each row is recipes placed side by side and connected, never a bigger recipe
-# with nodes removed. Built so far: Look, Keys, Modes, the menubar along the window's
-# top, a button a panel and the run's, the dock below it, with the editor in its top row
-# beside the graph over the Perform panel, and the terminal in its bottom row, and the
-# menus a right press opens in the graph.
+# The IDE app: Vulpen editing Vulpen, ./run.sh --ide. It is a window the cli hosts
+# beside the projects, so every command that reads or changes a view is the cli's; this
+# adds what the window shows. It holds only child recipes and the wires between them,
+# each row below recipes placed side by side and connected (V11). The window: the
+# menubar along the top, then the dock, with the editor beside the graph over the
+# Perform panel, and the terminal below them.
 #
 #   Look       palette + font         one theme and one atlas for every drawing part
 #   Keys       keys                   keymap chords to commands, other keys to the focus

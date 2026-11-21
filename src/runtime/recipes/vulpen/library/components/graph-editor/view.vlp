@@ -1,14 +1,12 @@
-# The graph-editor component: the relations part, which finds what links the files the
-# graph shows; a bar, which keeps a row along the bottom of the Rect its host gives for a
-# button a layer of curves, one each kind of heat and manhattan, and the rest for the
-# graph part, which draws its ground; over it curves, rects and glyphs: its curves first,
-# then its boxes over them, then their names; the buttons, as a panel shows its tabs, a
-# list with rects and glyphs of its own and a hit, whose press sends the line turning a
-# layer, the heat or manhattan on or off; and last, over all of it, a tooltip, which shows
-# the details of the curve under the pointer, or what a box costs while the heat shows.
-# The host connects a Rect to bar.area, the font's metrics to bar.font, graph.font,
-# buttons.font and tip.list.font, the keys part's typed to graph.typed, the theme to the
-# graph and the seven drawing parts, and the font and its atlas to the three glyphs; a
+# The graph-editor component: the graph part and what it needs, in the order they draw.
+# relations finds what links the files the graph shows. A bar keeps a row along the
+# bottom for buttons and gives the rest to the graph, which draws its ground; over it
+# its curves, its boxes and their names. The buttons are a list with rects, glyphs and a
+# hit of their own, each turning a layer, a kind of heat or manhattan on or off. Last, a
+# tooltip shows the details of the curve under the pointer, or what a box costs.
+# Its host connects a Rect to bar.area; the font's metrics to bar.font, graph.font,
+# buttons.font and tip.list.font; the keys part's typed to graph.typed; the theme to the
+# graph and the seven drawing parts; and the font and its atlas to the three glyphs. A
 # panel shows graph.tabs.
 [manifest]
 version = 1
