@@ -85,7 +85,8 @@ struct Document {
 
 // Where the text goes in the area, in pixels, and how many rows and columns of it fit;
 // no rows when it has no room, or no font. Left of it, the rows' numbers: where their
-// column starts, and how many cells the widest takes.
+// column starts, and how many cells the widest takes. Each row shows its number, so a
+// line that a log or a build error names is found by eye.
 struct Grid {
   glm::ivec2 origin{};
   glm::ivec2 cell{};
@@ -100,23 +101,10 @@ struct Grid {
 // parts and a fix to text reaches them all. Find is one of its commands, so a find bar
 // is only a front end on it.
 //
-// It holds the files open, shows one, and hands a panel a tab for each, whose press shows
-// it again; while one has changes, quit refuses, naming it. Each row shown has its number
-// left of it, muted but the caret's, so a line a log or a build error names is found by
-// eye, as jump finds a name. The file shown, changed on
-// disk by a line or another program, shows as it is there, unless it has changes. Several
-// text nodes are
-// several editors: each hands on, as editors, those a connection to its before brings and
-// itself, and the one whose editors reach no text node's before registers write, close
-// and find, acting on the editor in focus, or the one in focus last, and takes open's
-// file param for them all, showing a file in the editor holding it, else in that one, and
-// jump, which F12 sends, showing where the name at the caret comes from. The wheel
-// scrolls it, as does a drag on the bar at its right edge, and across, turned sideways or
-// with shift, as does a drag on the bar at its bottom edge; a double click selects a
-// word, and one more press the row. It takes keys from the keys part while it has the
-// focus, which a press in its area gives it, and none while it has no room. The font
-// draws ASCII, so a character past it shows as a blank cell a byte, but the caret steps
-// over it whole and no edit ever splits it.
+// Several text nodes are several editors. Each hands on the editors a connection to its
+// before brings, then itself. The last of the chain, whose editors reach no other's
+// before, answers the commands for them all. The font draws ASCII: a character past it
+// shows as a blank cell a byte, but the caret steps over it whole and no edit splits it.
 class Text final : public VP::Operator, public VP_VIEW::Editor {
   void bind(VP::Bind &node) override;
   void cook(VP::Cook &frame) override;
