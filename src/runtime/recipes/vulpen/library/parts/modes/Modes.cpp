@@ -34,30 +34,11 @@ constexpr std::string_view takes = "takes the ";
 // How long the frames a second are counted over, so the count shown changes once in it.
 constexpr auto rate_every = std::chrono::seconds(1);
 
-// Chooses what reaches the window. In edit mode the dock gets the Rect its area gives;
-// in perform mode the view presented gets all of it and the dock none, so the dock draws
-// and takes nothing (no room, no work). The mode is its param, so a save keeps it and a
-// replay restores it. The view presented is the one shared/Presented.h names, which the
-// panes part connects. Perform mode needs a view presented, so it refuses while none is
-// nor about to be, and gives way to edit mode once none is; it hides the log, so it gives
-// way too once the log shows an error, as a line refused's, which the terminal then
-// shows. A project presented anew, as a press on its tab presents it, shows: the switch
-// its switch param names gives the view presented its first half, in place of a preview.
-// Once the project to present has something to perform, a draw into its window, as one
-// view load hosts that draws has at once and one view new makes has at its first draw,
-// the panel its shows param names comes back if it was hidden, or the panel holding the
-// node it names, as panel show finds it; a project with nothing to show leaves it hidden.
-// It takes the keys no part in focus takes: in edit mode escape ends the run, once the
-// part in focus let go of its selection and of the focus; in perform mode escape is the
-// project's, and the keymap's shift with escape leaves. It hands
-// on the buttons of the run, for a bar: edit and run, perform mode, named so beside the
-// Perform panel's own button, a switch of two whose mode in force is on, and past a
-// divider gpu, which makes the next launch prefer the other kind of GPU (gpu toggle), lit
-// as the kind it takes: discrete in the build curves' orange, integrated in the accent,
-// as edit and run are; and beside it, muted, the frames a second the run shows in its
-// window, a person's reading, never what a node computes from (C01). Run with nothing to
-// present, and gpu on a machine without both kinds, are stuck: a press flashes them, and
-// mode perform then warns, rather than refuse, as gpu toggle does.
+// Chooses what reaches the window. In edit mode the dock gets the area; in perform mode
+// the view presented gets all of it and the dock none, so the dock draws and takes
+// nothing (no room, no work). The mode is its param, so a save keeps it and a replay
+// restores it. The view presented is the one shared/Presented.h names, which the panes
+// part connects.
 class Modes final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string mode = node.param<std::string>("mode");
@@ -159,9 +140,11 @@ class Modes final : public VP::Operator {
         _known.push_back(child.name);
     }
     _started = true;
-    // A person's escape runs quit in the terminal, as a key's chord runs its line, so the
-    // terminal shows it and what it answers, as quit's refusal while work would be lost;
-    // in perform mode the project presented takes it, as its own menu may.
+    // It reads the keys no part in focus takes, so escape comes here only once the part
+    // in focus let go of its selection and of the focus. In edit mode escape runs quit in
+    // the terminal, as a key's chord runs its line, so the terminal shows it and what it
+    // answers, as quit's refusal while work would be lost. In perform mode the project
+    // presented takes escape, as its own menu may, and the keymap's shift+escape leaves.
     for (const VP::Event &event : _typed->to(""))
       if (!_perform && event.kind == VP::Event::Kind::key && event.down &&
           event.name == escape)
@@ -195,6 +178,12 @@ class Modes final : public VP::Operator {
     }
   }
 
+  // The run's buttons, for a bar. Edit and run are a switch of two, the mode in force on;
+  // run is perform mode, named so apart from the Perform panel's own button beside it.
+  // Past a divider, gpu makes the next launch take the other kind of GPU (gpu toggle),
+  // lit in the build curves' orange for a discrete one. Then, muted, the frames a second.
+  // A stuck button flashes when pressed: run with nothing to present, and gpu on a
+  // machine without both kinds; mode perform then warns, as gpu toggle does.
   void write_buttons() {
     *_buttons = {
         {.label = "edit", .command = "mode edit", .current = !_perform, .toggles = true},
@@ -264,7 +253,9 @@ class Modes final : public VP::Operator {
   // Whether the project to present has something to perform it had not the frame before:
   // hosted since then and drawing at once, or the same project, its first draw into its
   // window made; never at the first frame, nor as another project is presented, so a
-  // switch between projects leaves a panel hidden as it is.
+  // switch between projects leaves a panel hidden as it is. Then the panel its shows
+  // param names comes back if it was hidden; a project with nothing to show leaves it
+  // hidden.
   bool begins_to_perform(const VP::Cook &frame, std::string_view next) {
     const VP::View *const view = next.empty() ? nullptr : frame.unfolded(next);
     const bool performs = view && VP::draws_into_window(*view);
