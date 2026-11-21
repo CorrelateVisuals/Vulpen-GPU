@@ -53,6 +53,7 @@ A handle is an index into a set 0 array; 0 means unbound. UBOs are std140, buffe
 - **RC05** No phase, plan or task tags (`B3`, `P11.x`, `T4`) in code comments.
 - **RC06** Floating point follows IEEE 754 in every build: no fast-math.
 - **RC07** Every binary logs the commit it was built from at startup.
+- **RC08** No comment in C++ or GLSL runs past 15 lines in a row (C07).
 
 ## Vulkan
 

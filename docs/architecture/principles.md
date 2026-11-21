@@ -51,7 +51,7 @@ Principles are must-haves that leave room for interpretation; they may pull agai
 - **C04** Minimize LOC (lines of code) for every implementation.
 - **C05** Build modular: a module is self-contained, so it can be replaced or moved whole.
 - **C06** Reuse existing code before extending existing code to fit more use cases, before writing new code.
-- **C07** Comments describe only the why (why here, why this order, why at all), not what happens below. If the syntax explains it, leave them out.
+- **C07** Comments describe only the why (why here, why this order, why at all), not what happens below. If the syntax explains it, leave them out. Write them in short sentences, one idea each. A class comment says what the class is for in a few lines; what the code does is said once, where it does it.
 - **C08** If applicable for the scope, follow MVC.
 - **C09** Detailed logging based on a log level enumeration: quiet by default.
 - **C10** Build for as many physical systems as we can manage, including Raspberry Pi and Steam Deck. Exception: a system that lacks a feature the Vulkan floor requires (RVK01), such as Raspberry Pi without descriptor indexing, is supported only once a fallback tier exists; the design keeps that tier possible.

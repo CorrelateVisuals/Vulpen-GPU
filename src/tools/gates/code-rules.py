@@ -19,6 +19,9 @@
 - RC05: a comment cites principles and requirements, never a plan's row or step, which
   points at nothing once the plan is done. Each ID in parentheses in a comment of the
   C++, the shaders or the node template is one principles.md or requirements.md defines.
+- RC08: no comment there runs past 15 lines, so a class's comment stays what the class is
+  for, and what the code does is said where it does it, rather than growing a clause
+  with each feature (C07).
 
 Comments and string literals are left out of every other rule, so prose and log text
 never trip one.
@@ -52,8 +55,9 @@ VIEW_NAMESPACE = re.compile(r"\bnamespace\s+VP_VIEW\b")
 SHARED_CODE = "shared"
 UNNAMED_NAMESPACE = re.compile(r"\bnamespace\s*\{")
 DOCS = ROOT / "docs" / "architecture"
-# RC05 reads the comments of these; the other rules hold for C++ alone.
+# RC05 and RC08 read the comments of these; the other rules hold for C++ alone.
 COMMENTED = ("*.h", "*.cpp", "*.in", "*.glsl", "*.comp", "*.vert", "*.frag")
+LONGEST_COMMENT = 15  # lines a comment may run (RC08)
 DEFINED = re.compile(r"\*\*([A-Z]+\d+)\b")
 CITED = re.compile(r"\(([^()\n]*)\)")
 ID = re.compile(r"\b[A-Z]+\d+\b")
@@ -75,6 +79,26 @@ def ownership(line: str) -> list[str]:
         # operator new and a deleted function (= delete) own nothing.
         if not before.endswith("operator") and not (word == "delete" and before.endswith("=")):
             found.append(f"a naked {word}")
+    return found
+
+
+def long_comments(name: str, text: str) -> list[str]:
+    """Each run of more than LONGEST_COMMENT lines that hold only a comment. String
+    literals are blanked first, so a // inside one starts no comment."""
+    def keep_comments(match: re.Match) -> str:
+        return match.group(0) if match.group(0).startswith(("//", "/*")) else blank(match)
+
+    lines = LITERALS.sub(keep_comments, text).splitlines()
+    found, run = [], 0
+    for number, line in enumerate(lines + [""], 1):
+        if line.lstrip().startswith("//"):
+            run += 1
+            continue
+        if run > LONGEST_COMMENT:
+            found.append(f"{name}:{number - run}: a comment of {run} lines, past "
+                         f"{LONGEST_COMMENT}: keep what the code is for, and say the "
+                         "rest where the code does it (RC08)")
+        run = 0
     return found
 
 
@@ -137,7 +161,9 @@ def main() -> None:
                    if VENDORED not in file.parents)
     found = []
     for file in files:
-        found += citations(name_of(file), file.read_text(encoding="utf-8"), ids)
+        text = file.read_text(encoding="utf-8")
+        found += citations(name_of(file), text, ids)
+        found += long_comments(name_of(file), text)
         if file.suffix in (".h", ".cpp"):
             found += problems(file)
     if found:
