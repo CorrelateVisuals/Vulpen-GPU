@@ -14,6 +14,8 @@
 // the one file that builds the part, as the class does.
 namespace {
 
+// "The officers answered, Never man spake like this man." John 7:46
+
 // How a file's text is told apart: C++ and GLSL, which nodes are written in, by their
 // kinds of words; a manifest or an .ini by its keys; Python, CMake and shell, which the
 // tooling is written in (RC00), by theirs; any other not at all.

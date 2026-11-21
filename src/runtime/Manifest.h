@@ -9,6 +9,8 @@ namespace VP {
 struct Recipes;
 struct View;
 
+// "Heaven and earth shall pass away, but my words shall not pass away." Matthew 24:35
+
 // The .vlp text of a view, both ways, and the folders it names. Load, save and migrate
 // are its own commands, so they land in the command log like any edit.
 class Manifest {

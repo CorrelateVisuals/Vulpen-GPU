@@ -11,6 +11,9 @@
 
 namespace {
 
+// "And that every tongue should confess that Jesus Christ is Lord, to the glory of God
+// the Father." Philippians 2:11
+
 // The Labels and their Characters a part writes for glyphs in a frame, filled in turn,
 // so every part that shows text writes them alike (RV09): a Label's characters follow
 // those written before it, and what the buffers lack is cut, a Label past their room

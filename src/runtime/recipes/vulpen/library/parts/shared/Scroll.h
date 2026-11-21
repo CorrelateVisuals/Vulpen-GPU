@@ -9,6 +9,10 @@
 
 namespace {
 
+// "And they sung a new song, saying, Thou art worthy to take the book, and to open the
+// seals thereof: for thou wast slain, and hast redeemed us to God by thy blood out of
+// every kindred, and tongue, and people, and nation;" Revelation 5:9
+
 // Rows of which as many as fit show at once, from a first row that the wheel and a drag
 // on a bar's thumb move, as the editor's and the terminal's; or across, columns, as of
 // their rows wider than they show. The first row keeps its fraction, so a touchpad's many

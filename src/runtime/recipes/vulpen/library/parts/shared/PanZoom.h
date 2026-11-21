@@ -9,6 +9,9 @@
 
 namespace {
 
+// "But now in Christ Jesus ye who sometimes were far off are made nigh by the blood of
+// Christ." Ephesians 2:13
+
 // How far what an area shows moved, and how near it is: the graph's, and the Perform
 // panel's image, so both move alike (RV09). A drag moves it as far as the pointer went,
 // the wheel zooms it about the pointer, which stays over the same place, a drag with the

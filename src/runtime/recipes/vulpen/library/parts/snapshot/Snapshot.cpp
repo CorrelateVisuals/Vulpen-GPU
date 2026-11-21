@@ -19,6 +19,9 @@
 
 namespace {
 
+// "Who is the image of the invisible God, the firstborn of every creature:"
+// Colossians 1:15
+
 // Channels a pixel of the file takes: the window shows no alpha.
 constexpr int rgb = 3;
 constexpr int stride = 0;       // rows packed, as the pixels read back are

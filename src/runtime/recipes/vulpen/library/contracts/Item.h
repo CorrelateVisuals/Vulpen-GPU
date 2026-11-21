@@ -7,6 +7,9 @@
 
 namespace VP_VIEW {
 
+// "And whatsoever ye shall ask in my name, that will I do, that the Father may be
+// glorified in the Son." John 14:13
+
 // An entry a list shows, by its label, and the command a press on it sends, as a line
 // typed at the command port. Completions, menus and tab strips are lists of Items, so
 // none of them places its rows or finds the one pressed itself; the help a tooltip

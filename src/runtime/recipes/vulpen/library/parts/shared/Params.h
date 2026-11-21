@@ -9,6 +9,9 @@
 
 namespace {
 
+// "For the Son of God, Jesus Christ, who was preached among you by us, even by me and
+// Silvanus and Timotheus, was not yea and nay, but in him was yea." 2 Corinthians 1:19
+
 // A param that takes one of a closed set of words, as an axis takes x or y: any other
 // word is refused naming them all. One left unset reads empty, and the binder names it
 // already, so it is named once (A02).

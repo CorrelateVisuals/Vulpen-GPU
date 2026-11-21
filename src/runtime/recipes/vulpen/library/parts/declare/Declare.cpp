@@ -19,6 +19,9 @@
 
 namespace {
 
+// "No man hath seen God at any time; the only begotten Son, which is in the bosom of the
+// Father, he hath declared him." John 1:18
+
 // The pass block as every start writes it, so one made reads as one uncommented.
 constexpr std::string_view block_open = "layout(set = 1, binding = 0) uniform Pass {";
 constexpr std::string_view block_close = "} pass;";

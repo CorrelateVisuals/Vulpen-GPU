@@ -5,6 +5,9 @@
 
 namespace VP {
 
+// "In the beginning was the Word, and the Word was with God, and the Word was God."
+// John 1:1
+
 // The top of the tree: builds every module and runs the loop, so main() only calls this
 // and a test can call it without a window. The runtime lives in Runtime.cpp, so nothing
 // that calls it compiles the modules it owns.

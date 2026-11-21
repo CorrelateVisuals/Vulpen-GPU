@@ -6,6 +6,10 @@
 
 namespace {
 
+// "When they had heard the king, they departed; and, lo, the star, which they saw in the
+// east, went before them, till it came and stood over where the young child was."
+// Matthew 2:9
+
 // Where typing goes, marked alike in the editor and the terminal (RV09): a bar width
 // pixels across at the start of the cell typed into, which blinks, as a person's editor's
 // does. It shows whole as it comes into focus, as it moves and as a key reaches it, so it

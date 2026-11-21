@@ -16,6 +16,10 @@
 // compiler is asked, as the relations part asks none: the lines say it.
 namespace {
 
+// "But whosoever drinketh of the water that I shall give him shall never thirst; but the
+// water that I shall give him shall be in him a well of water springing up into
+// everlasting life." John 4:14
+
 // A place a name comes from: the file, absolute, the row, and the byte of it where the
 // name starts, and how long it is.
 struct Source {

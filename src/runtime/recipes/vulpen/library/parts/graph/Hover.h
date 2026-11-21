@@ -27,6 +27,9 @@
 // and the tip that tells a developer what they stand for.
 namespace {
 
+// "And in the fourth watch of the night Jesus went unto them, walking on the sea."
+// Matthew 14:25
+
 constexpr float least_reach = 32.0f;    // a bend's handles, at least, in pixels
 constexpr float curve_reach = 4.0f;     // how near the pointer comes to be over a curve
 constexpr std::size_t bend_pieces = 16; // a bend is measured in

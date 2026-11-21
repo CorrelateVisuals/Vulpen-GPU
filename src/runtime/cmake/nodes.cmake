@@ -4,6 +4,9 @@
 # by path alone. Included by the top-level CMakeLists.txt after the runtime, vulpen and
 # gates targets, VULPEN_LIVE, and vulpen_spirv, which compiles a shader.
 
+# "For every house is builded by some man; but he that built all things is God."
+# Hebrews 3:4
+
 # Every engine header, hashed into a module's entry name: a module built against other
 # headers than the running vulpen then fails to load, naming why, instead of crashing it.
 file(GLOB engine_headers CONFIGURE_DEPENDS

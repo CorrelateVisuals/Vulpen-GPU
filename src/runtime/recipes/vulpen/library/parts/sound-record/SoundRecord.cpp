@@ -14,6 +14,9 @@
 
 namespace {
 
+// "And this is the record, that God hath given to us eternal life, and this life is in
+// his Son." 1 John 5:11
+
 // Records what each frame played, read a frame after, as the port hands it on, until it
 // holds seconds of it, then saves it to the file its file param names, once each time
 // the param names another (RA04: a write the run was asked for). Its memory is bounded by

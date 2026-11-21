@@ -22,6 +22,9 @@
 
 namespace {
 
+// "And declared to be the Son of God with power, according to the spirit of holiness, by
+// the resurrection from the dead:" Romans 1:4
+
 // What a node's C++ names a contract's type by: the namespace the build gives each view
 // (RV05), as code spells it.
 constexpr std::string_view view_namespace = "VP_VIEW::";

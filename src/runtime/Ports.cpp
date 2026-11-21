@@ -26,6 +26,9 @@ namespace VP {
 
 namespace {
 
+// "The voice of him that crieth in the wilderness, Prepare ye the way of the LORD, make
+// straight in the desert a highway for our God." Isaiah 40:3
+
 // A relative path would resolve against the working directory (RP02).
 std::filesystem::path absolute(std::string_view path) {
   if (!std::filesystem::path(path).is_absolute())

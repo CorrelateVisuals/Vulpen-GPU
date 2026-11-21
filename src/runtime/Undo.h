@@ -17,6 +17,9 @@ class FilePort;
 class ViewLookup;
 struct View;
 
+// "But that ye may know that the Son of man hath power on earth to forgive sins, (he
+// saith to the sick of the palsy,)" Mark 2:10
+
 // A file larger than this neither a step nor a project keeps, so its data files are never
 // held in memory twice; undo refuses a step that changed one, and view close force and
 // quit force leave one as it is.

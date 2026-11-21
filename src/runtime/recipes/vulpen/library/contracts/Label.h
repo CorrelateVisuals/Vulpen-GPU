@@ -7,6 +7,9 @@
 
 namespace VP_VIEW {
 
+// "That at the name of Jesus every knee should bow, of things in heaven, and things in
+// earth, and things under the earth;" Philippians 2:10
+
 // contracts/Label.glsl's Label and Character, member for member, as C++ writes them; the
 // loader holds them to the shader's (RA03). std430 aligns a Label as its ivec2, so a list
 // of them steps 40 bytes.

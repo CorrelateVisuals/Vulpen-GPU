@@ -13,6 +13,8 @@ namespace VP {
 // The rules of the graph, written once here, where the engine and every part that reads
 // the graph look (C02).
 
+// "And he that seeth me seeth him that sent me." John 12:45
+
 // A view's manifest in its folder, and the folders at its top that hold the contracts and
 // the code its nodes share (RV05, RV09), which are no node's.
 inline constexpr std::string_view manifest_file = "view.vlp";

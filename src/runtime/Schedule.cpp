@@ -22,6 +22,9 @@ namespace VP {
 
 namespace {
 
+// "Jesus said unto them, Verily, verily, I say unto you, Before Abraham was, I am."
+// John 8:58
+
 // Where a pass lands among the frame's passes while no frame gathers it, as the draws of
 // a view that draws nowhere.
 constexpr std::size_t no_pass = static_cast<std::size_t>(-1);

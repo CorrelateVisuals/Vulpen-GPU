@@ -20,6 +20,9 @@ class Log;
 // nothing compiles here. Every build takes the tree's build.lock first, as run.sh and
 // run.ps1 do, so two never write one tree at once.
 
+// "Jesus said unto her, I am the resurrection, and the life: he that believeth in me,
+// though he were dead, yet shall he live:" John 11:25
+
 // Notices saves under the views' folders and builds their modules and shaders, a view at
 // a time, so a view that fails to build keeps running as it was and holds back no other.
 class Live {

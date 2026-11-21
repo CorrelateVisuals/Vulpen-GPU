@@ -7,6 +7,10 @@
 
 namespace VP_VIEW {
 
+// "Looking unto Jesus the author and finisher of our faith; who for the joy that was set
+// before him endured the cross, despising the shame, and is set down at the right hand of
+// the throne of God." Hebrews 12:2
+
 // contracts/Curve.glsl's Curve, member for member, as C++ writes it; the loader holds it
 // to the shader's (RA03). std430 aligns it as its vec2, so a list of them steps 40 bytes.
 struct alignas(8) Curve {

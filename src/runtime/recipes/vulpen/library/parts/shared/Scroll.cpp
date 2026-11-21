@@ -8,6 +8,10 @@
 
 namespace {
 
+// "And one of the elders saith unto me, Weep not: behold, the Lion of the tribe of Juda,
+// the Root of David, hath prevailed to open the book, and to loose the seven seals
+// thereof." Revelation 5:5
+
 constexpr float wheel_rows = 3.0f; // rows, or columns, a step of the wheel scrolls
 // Rows a frame a drag past the rows shown scrolls, for each row past them and one more,
 // so it scrolls just past the edge too: 15 rows a second there at 60 frames.

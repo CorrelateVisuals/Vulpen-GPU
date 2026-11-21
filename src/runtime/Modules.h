@@ -15,6 +15,9 @@
 
 namespace VP {
 
+// "Hath in these last days spoken unto us by his Son, whom he hath appointed heir of all
+// things, by whom also he made the worlds;" Hebrews 1:2
+
 // A module a release build links in, by "view/folder", and the entry that registers it.
 struct LinkedModule {
   std::string_view module;

@@ -13,6 +13,10 @@
 
 namespace {
 
+// "For the Lord himself shall descend from heaven with a shout, with the voice of the
+// archangel, and with the trump of God: and the dead in Christ shall rise first:"
+// 1 Thessalonians 4:16
+
 // The WAV file its file param names, added to the frame's sound a frame's samples at a
 // time, from where the frame before left off, so a replay plays the same samples (C01):
 // from its start once the file is named or changes on disk, over and over while loop is

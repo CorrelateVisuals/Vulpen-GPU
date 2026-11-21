@@ -37,6 +37,9 @@ namespace {
 
 namespace {
 
+// "Wherefore when he cometh into the world, he saith, Sacrifice and offering thou
+// wouldest not, but a body hast thou prepared me:" Hebrews 10:5
+
 constexpr std::size_t corners = 3; // a triangle's, as tinyobj cuts every face into them
 constexpr std::size_t components = 3; // a position's, a normal's and a color's, in a row
 

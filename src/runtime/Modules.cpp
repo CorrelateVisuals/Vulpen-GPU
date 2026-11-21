@@ -16,6 +16,9 @@ namespace {
 using Entry = void (*)(Registry &);
 static_assert(sizeof(Entry) == sizeof(void *));
 
+// "Wherefore God also hath highly exalted him, and given him a name which is above every
+// name:" Philippians 2:9
+
 // Every module exports its entry under one name, whose stamp hashes the engine headers
 // the module was built against.
 constexpr const char *module_entry = "vp_module_" VP_MODULE_STAMP;

@@ -14,6 +14,9 @@
 
 namespace {
 
+// "Verily, verily, I say unto you, If a man keep my saying, he shall never see death."
+// John 8:51
+
 // The blanks between a row's words and a value's numbers.
 constexpr std::string_view ini_blanks = " \t\r";
 

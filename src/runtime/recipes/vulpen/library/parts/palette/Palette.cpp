@@ -15,6 +15,9 @@
 
 namespace {
 
+// "And was transfigured before them: and his face did shine as the sun, and his raiment
+// was white as the light." Matthew 17:2
+
 constexpr std::string_view theme_file = "theme.ini";
 constexpr auto roles = static_cast<std::uint32_t>(VP_VIEW::role_names.size());
 constexpr std::size_t channels = 4; // red, green, blue and alpha

@@ -15,6 +15,9 @@
 // plays, which a file of another is refused naming.
 namespace {
 
+// "And his feet like unto fine brass, as if they burned in a furnace; and his voice as
+// the sound of many waters." Revelation 1:15
+
 constexpr std::uint32_t wave_rate = 48000;
 constexpr std::uint32_t wave_channels = 2;
 constexpr std::uint16_t wave_pcm = 1;   // integer samples

@@ -8,6 +8,8 @@
 // frames what it hashes itself, as the fingerprints already written must not change.
 namespace {
 
+// "Jesus Christ the same yesterday, and to day, and for ever." Hebrews 13:8
+
 constexpr std::uint64_t fnv_offset = 14695981039346656037ULL;
 constexpr std::uint64_t fnv_prime = 1099511628211ULL;
 

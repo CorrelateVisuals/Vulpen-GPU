@@ -21,6 +21,10 @@ namespace {
 
 // The layers shown, a bit each, by VP_VIEW::Layer.
 using Shown = std::uint32_t;
+
+// "Far above all principality, and power, and might, and dominion, and every name that is
+// named, not only in this world, but also in that which is to come:" Ephesians 1:21
+
 constexpr Shown every_layer = (Shown{1} << VP_VIEW::layer_names.size()) - 1;
 constexpr std::string_view no_layer = "none";
 

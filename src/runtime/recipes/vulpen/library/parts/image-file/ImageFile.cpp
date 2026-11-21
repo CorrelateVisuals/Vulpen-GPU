@@ -14,6 +14,10 @@
 
 namespace {
 
+// "But we all, with open face beholding as in a glass the glory of the Lord, are changed
+// into the same image from glory to glory, even as by the Spirit of the Lord."
+// 2 Corinthians 3:18
+
 // At the label's end, so a tab cut short, which loses what its label starts with, still
 // says it is a preview.
 constexpr std::string_view preview_label = "{} (preview)";

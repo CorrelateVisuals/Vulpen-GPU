@@ -20,6 +20,9 @@ class Speakers;
 class Window;
 struct Recipes;
 
+// "Behold, I stand at the door, and knock: if any man hear my voice, and open the door, I
+// will come in to him, and will sup with him, and he with me." Revelation 3:20
+
 // The general ports a node reads besides commands (V05): input from the window or the
 // input command, files, and the terminal's lines. One owner feeds every node, so each
 // frame's events reach them all alike.

@@ -25,6 +25,10 @@
 
 namespace {
 
+// "These things have I written unto you that believe on the name of the Son of God; that
+// ye may know that ye have eternal life, and that ye may believe on the name of the Son
+// of God." 1 John 5:13
+
 constexpr std::int32_t margin = 4;    // around the text, as the terminal's
 constexpr std::size_t row_room = 256; // rows shown at most; a taller area shows these
 // The rows' numbers' least cells, and the blank cells between them and the text.

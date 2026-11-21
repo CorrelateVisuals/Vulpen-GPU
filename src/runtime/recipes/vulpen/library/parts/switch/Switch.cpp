@@ -11,6 +11,10 @@
 
 namespace {
 
+// "No man taketh it from me, but I lay it down of myself. I have power to lay it down,
+// and I have power to take it again. This commandment have I received of my Father."
+// John 10:18
+
 constexpr std::array<std::string_view, 2> halves{"first", "second"};
 
 // Hands the Rect its area gives to one of two halves, the one its shown param names, and

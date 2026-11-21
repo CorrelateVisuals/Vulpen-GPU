@@ -6,6 +6,9 @@
 
 namespace {
 
+// "For he is our peace, who hath made both one, and hath broken down the middle wall of
+// partition between us;" Ephesians 2:14
+
 // Joins two lists of Items into one, the first's then the second's, a divider between
 // them, as a bar shows the buttons two parts offer in one row; written anew only as
 // either changes, so a frame allocates nothing for them (CPP10).

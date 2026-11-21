@@ -22,6 +22,9 @@
 
 namespace {
 
+// "He answered and said, Lo, I see four men loose, walking in the midst of the fire, and
+// they have no hurt; and the form of the fourth is like the Son of God." Daniel 3:25
+
 // The printable ASCII the Font contract names.
 constexpr std::uint32_t first = VP_VIEW::first_printable;
 constexpr std::uint32_t count = VP_VIEW::last_printable - first + 1;

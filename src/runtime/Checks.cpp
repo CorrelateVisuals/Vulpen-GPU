@@ -14,6 +14,8 @@ namespace VP {
 
 namespace {
 
+// "And Thomas answered and said unto him, My Lord and my God." John 20:28
+
 std::string format_names() {
   std::string names;
   for (const PixelFormat &format : pixel_formats)

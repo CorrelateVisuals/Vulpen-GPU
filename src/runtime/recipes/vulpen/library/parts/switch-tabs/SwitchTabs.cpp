@@ -14,6 +14,9 @@
 
 namespace {
 
+// "That all men should honour the Son, even as they honour the Father. He that honoureth
+// not the Son honoureth not the Father which hath sent him." John 5:23
+
 constexpr std::array<std::string_view, 2> halves{"first", "second"};
 
 // The tabs of two contents a switch holds, as one row: the shown one's as they are, the

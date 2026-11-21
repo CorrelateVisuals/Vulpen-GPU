@@ -18,6 +18,10 @@
 
 namespace {
 
+// "And there are also many other things which Jesus did, the which, if they should be
+// written every one, I suppose that even the world itself could not contain the books
+// that should be written. Amen." John 21:25
+
 // Works on recipe and view folders through the file port: lists recipes, and drops and
 // syncs them. A drop copies files, and then adds nodes, so the view owns its copy from
 // the first edit on (V03).

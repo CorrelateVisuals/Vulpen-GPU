@@ -15,6 +15,8 @@
 
 namespace VP {
 
+// "Why doth this man thus speak blasphemies? who can forgive sins but God only?" Mark 2:7
+
 // The lines undo takes back at most, so memory stays bounded (A03); a step keeps no file
 // past kept_most either, and undo refuses its line, naming the file.
 constexpr std::size_t undo_room = 100;

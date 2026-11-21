@@ -23,6 +23,9 @@
 // .ini, and how it reads and writes it.
 namespace {
 
+// "Mine hand also hath laid the foundation of the earth, and my right hand hath spanned
+// the heavens: when I call unto them, they stand up together." Isaiah 48:13
+
 constexpr std::string_view kept_folder = ".vulpen"; // which no build or scan reads
 constexpr std::string_view kept_file = "graph.ini";
 constexpr std::string_view place_key = "place ";

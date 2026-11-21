@@ -9,6 +9,10 @@
 // stats and the graph's heat sum them alike, so both tell the same cost.
 namespace {
 
+// "Take heed therefore unto yourselves, and to all the flock, over the which the Holy
+// Ghost hath made you overseers, to feed the church of God, which he hath purchased with
+// his own blood." Acts 20:28
+
 struct Weight {
   float cpu = 0.0f;
   float cpu_last = 0.0f;

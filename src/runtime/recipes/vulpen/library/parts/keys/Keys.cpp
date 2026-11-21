@@ -18,6 +18,9 @@
 
 namespace {
 
+// "I am he that liveth, and was dead; and, behold, I am alive for evermore, Amen; and
+// have the keys of hell and of death." Revelation 1:18
+
 constexpr std::string_view keymap_file = "keymap.ini";
 constexpr std::string_view typed_port = "typed";
 // The terminal's command a chord's line runs through, so the terminal shows it and what

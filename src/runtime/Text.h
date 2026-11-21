@@ -17,6 +17,9 @@
 // the bottom of the include map, it includes nothing of ours.
 namespace VP {
 
+// "And he was clothed with a vesture dipped in blood: and his name is called The Word of
+// God." Revelation 19:13
+
 // What parts the words of a line, the \r a Windows file ends each line with too.
 inline constexpr std::string_view blanks = " \t\r";
 

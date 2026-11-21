@@ -18,6 +18,8 @@
 // hides the boxes behind it, their text too.
 namespace {
 
+// "In whom are hid all the treasures of wisdom and knowledge." Colossians 2:3
+
 constexpr std::size_t piece_room = 16; // pieces a row shows in at most; the rest go
 
 // The boxes inside one, or at the top, each followed by the boxes inside it, so a frame

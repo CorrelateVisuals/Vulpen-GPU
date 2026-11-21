@@ -12,6 +12,10 @@
 
 namespace {
 
+// "For by him were all things created, that are in heaven, and that are in earth, visible
+// and invisible, whether they be thrones, or dominions, or principalities, or powers: all
+// things were created by him, and for him:" Colossians 1:16
+
 // How far a drag across the picture's shorter side turns the scene: half a turn.
 constexpr float drag_turn = std::numbers::pi_v<float>;
 // How much nearer a step of the wheel brings the eye, and how near and far it goes, as a

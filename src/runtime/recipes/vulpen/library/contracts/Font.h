@@ -8,6 +8,9 @@
 
 namespace VP_VIEW {
 
+// "I am Alpha and Omega, the beginning and the end, the first and the last."
+// Revelation 22:13
+
 // The characters a font bakes, printable ASCII from the space to the tilde, and so what a
 // part that takes typed text keeps, since no other shows.
 inline constexpr char first_printable = ' ';

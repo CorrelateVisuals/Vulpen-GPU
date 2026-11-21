@@ -12,6 +12,10 @@
 
 namespace VP_VIEW {
 
+// "And to the angel of the church in Philadelphia write; These things saith he that is
+// holy, he that is true, he that hath the key of David, he that openeth, and no man
+// shutteth; and shutteth, and no man openeth;" Revelation 3:7
+
 // Which files beside one a close takes: those left of it, those right of it, or all of
 // them with it.
 enum class Beside : std::uint8_t { left, right, all };

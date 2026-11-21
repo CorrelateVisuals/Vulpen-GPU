@@ -21,6 +21,10 @@
 
 namespace {
 
+// "Then answered Jesus and said unto them, Verily, verily, I say unto you, The Son can do
+// nothing of himself, but what he seeth the Father do: for what things soever he doeth,
+// these also doeth the Son likewise." John 5:19
+
 // What a drop copies besides the nodes' files: the contracts and the shared code they
 // include, at the same path from the view's top (RV05, RV09). Vulpen's library keeps its
 // shared code in parts/, beside the parts that include it, and lists it as no recipe; a

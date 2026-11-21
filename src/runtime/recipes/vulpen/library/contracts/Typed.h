@@ -9,6 +9,8 @@
 
 namespace VP_VIEW {
 
+// "For whosoever shall call upon the name of the Lord shall be saved." Romans 10:13
+
 // The keys and text the keys part hands on, and the node they go to: the one in focus.
 // A part that takes keys reads them here, not from the input port, so a key reaches one
 // part, and one a chord turned into a command reaches none. The focus changes only as the

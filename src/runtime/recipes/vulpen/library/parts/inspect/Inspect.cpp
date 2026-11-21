@@ -17,6 +17,10 @@
 
 namespace {
 
+// "Then saith he to Thomas, Reach hither thy finger, and behold my hands; and reach
+// hither thy hand, and thrust it into my side: and be not faithless, but believing."
+// John 20:27
+
 constexpr std::string_view note_gap = "  "; // between a folder and what it is
 constexpr std::size_t bar_room = 10;        // a bar's #, for the costliest beside it
 // Half a microsecond, in milliseconds: a time below it prints as 0.000, so it has no bar.

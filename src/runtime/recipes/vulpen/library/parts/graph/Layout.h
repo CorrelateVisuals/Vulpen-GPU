@@ -25,6 +25,9 @@
 // its tracks push its boxes down, so the file runs a little past 800 lines (CPP12).
 namespace {
 
+// "And hath put all things under his feet, and gave him to be the head over all things to
+// the church," Ephesians 1:22
+
 constexpr std::int32_t pad = 4;         // in pixels, above and below a box's rows
 constexpr std::int32_t column_gap = 4;  // in cells, between columns besides their lanes
 constexpr std::int32_t name_margin = 1; // in cells, either side of a row in its box

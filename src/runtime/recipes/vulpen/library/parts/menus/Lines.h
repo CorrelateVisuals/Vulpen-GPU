@@ -20,6 +20,9 @@
 
 namespace {
 
+// "Then Simon Peter answered him, Lord, to whom shall we go? thou hast the words of
+// eternal life." John 6:68
+
 constexpr std::string_view menu_file = "menu.ini";
 // Where the name of what a menu opened for goes in a line; first, with a colon, it names
 // the view the line addresses, as a typed line does. {/} is the folder of what was

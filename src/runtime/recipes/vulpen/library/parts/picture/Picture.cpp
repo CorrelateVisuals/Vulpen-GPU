@@ -13,6 +13,9 @@
 
 namespace {
 
+// "For he whom God hath sent speaketh the words of God: for God giveth not the Spirit by
+// measure unto him." John 3:34
+
 constexpr std::string_view all_levels = "all";
 
 // The mip levels a param names: a count, or every one.

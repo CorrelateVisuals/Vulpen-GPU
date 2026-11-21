@@ -27,6 +27,9 @@
 // node's operator, and Checks.cpp holds what the loader refuses (A02).
 namespace VP {
 
+// "The grace of the Lord Jesus Christ, and the love of God, and the communion of the Holy
+// Ghost, be with you all. Amen." 2 Corinthians 13:14
+
 // The param's text as a T at out, which the field's offset gives, the T's components
 // one after another, as std140 lays a vector; false when it does not parse.
 template <class T> bool parse(std::string_view text, std::byte *out) {

@@ -13,6 +13,9 @@
 
 namespace {
 
+// "And before him shall be gathered all nations: and he shall separate them one from
+// another, as a shepherd divideth his sheep from the goats:" Matthew 25:32
+
 constexpr std::uint32_t backing = 2; // the ground under both Rects, then the seam
 
 // Divides the Rect its area gives in two along its axis, the first taking its ratio of

@@ -23,6 +23,9 @@ namespace {
 // the line that declares one, the terminal's Tab and the menus' columns (RV09), so the
 // three offer what the engine takes.
 
+// "And ye are complete in him, which is the head of all principality and power:"
+// Colossians 2:10
+
 // A value a param sets: its type as GLSL names it, which the engine reads it by, and as
 // C++ spells the type a node's C++ reads it into.
 struct ValueType {

@@ -21,6 +21,10 @@ namespace VP {
 
 namespace {
 
+// "And he said unto them, Where is your faith? And they being afraid wondered, saying one
+// to another, What manner of man is this! for he commandeth even the winds and water, and
+// they obey him." Luke 8:25
+
 // The frames after a person's line in which the parts' lines answer it: the panes part
 // answers at its next cook, the docking part at the one after.
 constexpr std::uint64_t answer_frames = 3;

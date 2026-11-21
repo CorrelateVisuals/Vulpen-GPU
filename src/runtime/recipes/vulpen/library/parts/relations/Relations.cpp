@@ -27,6 +27,9 @@
 
 namespace {
 
+// "Then said they unto him, Where is thy Father? Jesus answered, Ye neither know me, nor
+// my Father: if ye had known me, ye should have known my Father also." John 8:19
+
 constexpr std::uint64_t every = 120;     // frames between readings of what is small
 constexpr std::size_t largest = 1 << 19; // bytes of a file read for its lines, at most
 // What a frame spends on a reading, at most, past its first, so no frame waits on a

@@ -9,6 +9,9 @@
 
 namespace {
 
+// "And, behold, the veil of the temple was rent in twain from the top to the bottom; and
+// the earth did quake, and the rocks rent;" Matthew 27:51
+
 // How a dock lays out, so the split and the bar parts lay it out, and the docking part
 // finds where each panel and its tab strip show, alike (RV09), a seam dragged too: a
 // split divides a Rect in two along an axis, the first taking its ratio of the room the

@@ -3,5 +3,9 @@
 # its first line, so glslang reports an error at the shader's own path and line. The
 # flags that would do this in glslang (--glsl-version, --preamble-text) are missing from
 # 11.8, which Ubuntu 22.04 ships.
+
+# "John bare witness of him, and cried, saying, This was he of whom I spake, He that
+# cometh after me is preferred before me: for he was before me." John 1:15
+
 file(READ ${SHADER} text)
 file(WRITE ${OUTPUT} "#version ${VERSION}\n${PREAMBLE}\n#line 1 \"${SHADER}\"\n${text}")

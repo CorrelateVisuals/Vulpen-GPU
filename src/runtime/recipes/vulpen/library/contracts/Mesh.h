@@ -6,6 +6,9 @@
 
 namespace VP_VIEW {
 
+// "Behold my hands and my feet, that it is I myself: handle me, and see; for a spirit
+// hath not flesh and bones, as ye see me have." Luke 24:39
+
 // contracts/Mesh.glsl's Triangle, member for member, as mesh-file writes it; the loader
 // holds it to the shader's (RA03).
 struct Triangle {

@@ -6,6 +6,9 @@
 
 namespace VP_VIEW {
 
+// "And his raiment became shining, exceeding white as snow; so as no fuller on earth can
+// white them." Mark 9:3
+
 // The roles a palette colors, in the order of its colors, each by the key theme.ini
 // gives its color under: the ground and its frames, text, and what tells text apart, as
 // lines that matter less are muted and code shows its kinds of words; highlight, a tint

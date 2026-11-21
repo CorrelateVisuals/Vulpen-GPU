@@ -20,6 +20,9 @@ namespace VP {
 
 namespace {
 
+// "Jesus answered and said unto them, Destroy this temple, and in three days I will raise
+// it up." John 2:19
+
 constexpr auto scan_interval = std::chrono::milliseconds(100);
 constexpr const char *build_log = "live-build.log";
 constexpr const char *restart_log = "restart-build.log";

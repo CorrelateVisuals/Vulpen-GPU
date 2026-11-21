@@ -11,6 +11,9 @@
 
 namespace VP_VIEW {
 
+// "For there is one God, and one mediator between God and men, the man Christ Jesus;"
+// 1 Timothy 2:5
+
 // What links two files, by the layer the graph draws it in, a hue of the theme each,
 // which its relations param turns on and off: flow, a connection, which the graph reads
 // from the view itself; structure, a recipe a node uses; code, a file including or

@@ -3,6 +3,8 @@
 
 namespace {
 
+// "For it pleased the Father that in him should all fulness dwell;" Colossians 1:19
+
 // Hands on the whole Rect a frame draws into, the window's, as Vulkan's viewport names
 // it, so the outermost split of a dock divides it as any other Rect, and a dock nests
 // in a dock unchanged. Empty without a window.

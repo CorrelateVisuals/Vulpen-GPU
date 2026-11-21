@@ -22,6 +22,10 @@
 // anew opens none, and quit restart's replay brings them back (V08).
 namespace {
 
+// "While I was with them in the world, I kept them in thy name: those that thou gavest me
+// I have kept, and none of them is lost, but the son of perdition; that the scripture
+// might be fulfilled." John 17:12
+
 constexpr std::string_view kept_folder = ".vulpen"; // which no build or scan reads
 constexpr std::string_view kept_file = "layout.log";
 constexpr std::string_view kept_head =

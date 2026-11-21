@@ -8,6 +8,10 @@
 
 namespace VP_VIEW {
 
+// "Wherefore also it is contained in the scripture, Behold, I lay in Sion a chief corner
+// stone, elect, precious: and he that believeth on him shall not be confounded."
+// 1 Peter 2:6
+
 // contracts/Rect.glsl's Rect, member for member, as C++ writes it; the loader holds it
 // to the shader's (RA03). std430 aligns it as its ivec2, so a list of them steps 32
 // bytes.

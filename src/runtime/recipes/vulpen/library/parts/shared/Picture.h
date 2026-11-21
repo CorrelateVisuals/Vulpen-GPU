@@ -38,6 +38,9 @@
 
 namespace {
 
+// "The same came therefore to Philip, which was of Bethsaida of Galilee, and desired him,
+// saying, Sir, we would see Jesus." John 12:21
+
 // A picture file's pixels, 8-bit RGBA row by row from the top left, as frame.upload takes
 // them, and how many each way.
 struct Pixels {

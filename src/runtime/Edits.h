@@ -14,6 +14,9 @@ struct Connection;
 struct Endpoint;
 struct Node;
 
+// "Blotting out the handwriting of ordinances that was against us, which was contrary to
+// us, and took it out of the way, nailing it to his cross;" Colossians 2:14
+
 // The primitive edits, which are the manifest's own words: node add, remove and set,
 // connect and disconnect, param set and unset, view add and view close. Loading a view
 // runs its lines through them, so a typed edit and a loaded one change a view alike.

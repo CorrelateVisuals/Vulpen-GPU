@@ -16,6 +16,9 @@
 
 namespace {
 
+// "And Jesus, immediately knowing in himself that virtue had gone out of him, turned him
+// about in the press, and said, Who touched my clothes?" Mark 5:30
+
 constexpr float drag_from = 8.0f; // pixels the pointer goes from a press before it drags
 // The command a terminal in a window runs a line with, as typed, as a key or a menu
 // runs one.

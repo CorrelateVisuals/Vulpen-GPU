@@ -12,6 +12,10 @@
 
 namespace {
 
+// "For the word of God is quick, and powerful, and sharper than any twoedged sword,
+// piercing even to the dividing asunder of soul and spirit, and of the joints and marrow,
+// and is a discerner of the thoughts and intents of the heart." Hebrews 4:12
+
 // Cuts a bar off one edge of the Rect its area gives, size text cells across: rows at the
 // top or bottom, columns at the left or right, so it follows the font. It hands on the
 // bar as strip and what is left as rest, so a strip of tabs and the content under it

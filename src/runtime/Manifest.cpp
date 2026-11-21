@@ -21,6 +21,9 @@
 
 namespace VP {
 
+// "(For the life was manifested, and we have seen it, and bear witness, and shew unto you
+// that eternal life, which was with the Father, and was manifested unto us;)" 1 John 1:2
+
 // A recipe as unfolded, and each file and folder it was read from, as written then.
 struct Recipes::Kept {
   struct Read {
