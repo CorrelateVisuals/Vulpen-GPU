@@ -23,23 +23,12 @@ constexpr std::string_view still = "still"; // where a still says whether it hol
 // at a time; the graph keeps its own, as its boxes' text has nothing more to show.
 constexpr float nearest = 10.0f * PanZoom::most;
 
-// Seats the image in the Rect its area gives, as a panel seats any content, and its
-// shaders letterbox it there: one instance of its draw, none while the area is empty, so
-// an image given no room costs no draw. With param moves = yes, a drag moves it and the
-// wheel zooms it about the pointer, as the graph moves, and its shaders cut it at the
-// area's edge, so it never draws over what is beside it, and a drag with the middle
-// button zooms it about where it was pressed, going right nearer and left farther, as in
-// the graph; a press in its area gives it
-// the focus, and while it has it, h brings it home, letterboxed again. What another
-// writer brings to its picture, as another view presented, shows at home too. While a
-// still connected to it holds a frame, it shows that frame, held, in place of the
-// picture, moved and zoomed as the picture was, so it is looked at where it was. With
-// param interact = yes too, the view whose window it shows takes the presses and the
-// wheel in its area instead, as perform mode gives that view the window: while the image
-// has the focus, which a press there gives it, it hands that view the pointer, over its
-// window where the picture shows it, as though the picture were the screen, and a drag
-// begun there goes on to its letting go wherever the pointer goes; it neither moves nor
-// zooms, and h still brings it home.
+// Seats the image in its area, as a panel seats any content, and its shaders letterbox
+// it there. It draws one instance, or none while the area is empty, so an image given no
+// room costs no draw. With moves = yes, a drag and the wheel move and zoom it, as in the
+// graph; with interact = yes too, they go to the view whose window it shows instead. A
+// still connected to it shows its held frame in place of the picture, moved and zoomed
+// as the picture was, so the frame is looked at where it was.
 class Image final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _area = &node.input<VP_VIEW::Rect>("area");
@@ -93,9 +82,9 @@ class Image final : public VP::Operator {
   }
 
   // The writer of the connection that reaches its picture, as it was last, copied only
-  // when another comes, so a frame allocates nothing for it; a picture that goes and
-  // comes back from the same writer, as a pane's view shown again, stays where it was
-  // moved and zoomed.
+  // when another comes, so a frame allocates nothing for it. Another writer's picture, as
+  // another view presented, starts at home. A picture that goes and comes back from the
+  // same writer, as a pane's view shown again, stays where it was moved and zoomed.
   void follow(const VP::View &view) {
     const VP::Endpoint *from = nullptr;
     for (const VP::Connection &connection : view.connections)
@@ -108,7 +97,8 @@ class Image final : public VP::Operator {
     _view.home();
   }
 
-  // Escape lets go of the focus, as the other parts that take keys do.
+  // h brings the image home, letterboxed again, interacting or not. Escape lets go of
+  // the focus, as the other parts that take keys do.
   void keys(VP::Cook &frame) {
     for (const VP::Event &event : _typed->to(_name)) {
       if (event.kind != VP::Event::Kind::key || !event.down)
@@ -120,7 +110,10 @@ class Image final : public VP::Operator {
     }
   }
 
-  // In the order the events came, so a press is tested where the pointer was then.
+  // A press in its area gives it the focus. A left drag moves it, the wheel zooms it
+  // about the pointer, and a middle drag zooms it about where it was pressed, nearer
+  // going right, as in the graph. The events are read in order, so a press is tested
+  // where the pointer was then.
   void move(VP::Cook &frame) {
     for (const VP::Event &event : frame.input().events()) {
       const bool inside = VP_VIEW::contains(*_area, _pointer);
