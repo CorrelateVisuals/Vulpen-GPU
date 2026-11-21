@@ -298,15 +298,17 @@ Image Resources::image(VkExtent2D extent,
   image._format = format;
   image._fill = fill;
   image._mip_levels = mip_levels;
-  const VkImageViewCreateInfo view{
-      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image = image._image,
-      .viewType = VK_IMAGE_VIEW_TYPE_2D,
-      .format = format,
-      .subresourceRange = {.aspectMask = fill == Fill::depth ? VK_IMAGE_ASPECT_DEPTH_BIT
-                                                             : VK_IMAGE_ASPECT_COLOR_BIT,
-                           .levelCount = mip_levels,
-                           .layerCount = 1}};
+  // Chosen outside the braces: MSVC gives the enum an int type, and a choice made at run
+  // time inside braces narrows into the unsigned mask, which MSVC refuses to compile.
+  const VkImageAspectFlags aspect =
+      fill == Fill::depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+  const VkImageViewCreateInfo view{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                                   .image = image._image,
+                                   .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                                   .format = format,
+                                   .subresourceRange = {.aspectMask = aspect,
+                                                        .levelCount = mip_levels,
+                                                        .layerCount = 1}};
   check(vkCreateImageView(_device, &view, nullptr, &image._view), "vkCreateImageView");
   return image;
 }
