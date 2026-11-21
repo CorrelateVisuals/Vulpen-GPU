@@ -73,7 +73,10 @@ cd Vulpen
 .\run.ps1                # builds the debug preset and opens the ide
 ```
 
-In the ide's terminal, type `view load ray-cubes`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window, and <kbd>F1</kbd> or <kbd>Shift</kbd>+<kbd>Esc</kbd> takes it back, as <kbd>Esc</kbd> alone is the project's; <kbd>F2</kbd> to <kbd>F5</kbd> put the keys in the terminal, the graph, the editor and the Perform panel.
+In the ide's terminal, type `view load ray-cubes`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in.
+
+- <kbd>F1</kbd> gives the project the whole window. <kbd>F1</kbd> or <kbd>Shift</kbd>+<kbd>Esc</kbd> brings the ide back, as <kbd>Esc</kbd> alone goes to the project.
+- <kbd>F2</kbd> to <kbd>F5</kbd> send the keys to the terminal, the graph, the editor or the Perform panel.
 
 ### Your own node
 
