@@ -31,8 +31,15 @@ word sent names a path outside the copy's folder, and no count a GPU could not h
 (no-memory-bombs); vulpen is killed if the machine's memory runs low. It takes the
 machine's own GPU, with no window.
 
+With --jobs N, the sweep and the gui run as pieces in up to N copies side by side,
+fewer where the machine's memory holds fewer: the sweep a piece a state, the menus in
+MENU_PIECES pieces of whole sections, the keys one. Copy k takes every N-th piece from
+the k-th, so each piece runs in the same copy every run (C01). A piece that did not run
+to its end is a finding, so a copy that failed fails the run rather than passing it.
+
 Usage: python3 src/tools/command-sweep.py [--only PART,...] [--states NAME,...]
            [--seed N] [--walks N] [--steps N] [--tree DIR] [--keep] [--report FILE]
+           [--jobs N]
 """
 import argparse
 import hashlib
@@ -45,6 +52,8 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -116,6 +125,11 @@ CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 # killed: a line asking for more than a GPU holds can take the machine down with it.
 LEAST_FREE_KB = 6 * 1024 * 1024
 MOST_HELD_KB = 8 * 1024 * 1024
+# What a copy at work takes of the machine's memory at most, its vulpen and a live build:
+# --jobs runs no more copies than fit above LEAST_FREE_KB.
+COPY_KB = 2 * 1024 * 1024
+# The menus' pieces for --jobs, of whole sections, each about as long as a state's sweep.
+MENU_PIECES = 3
 
 
 # The copy's own projects, each a copy of an example: a group of nodes and a draw, C++
@@ -578,10 +592,11 @@ def held(folder: Path) -> dict[str, str]:
             if (path.is_file() or path.is_dir()) and ".vulpen" not in path.parts}
 
 
-def copy_tree(to: Path) -> None:
+def copy_tree(to: Path, jobs: str = JOBS) -> None:
     """The tree's files as they are, committed or not, but what it ignores, as a git
     repository of their own, which the build stamps its commit from and the graph finds
-    the top by; the editor's program a stand-in; the projects of SANDBOX; built."""
+    the top by; the editor's program a stand-in; the projects of SANDBOX; built, with
+    jobs compiles at once, fewer where copies build side by side."""
     listed = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "-z"],
                             cwd=ROOT, capture_output=True, check=True).stdout
     for name in filter(None, listed.decode().split("\0")):
@@ -607,7 +622,7 @@ def copy_tree(to: Path) -> None:
         shutil.copytree(pristine / name, (to / "projects" if name != "decoy"
                                           else to.parent) / name)
     for command in (["cmake", "--preset", "debug"],
-                    ["cmake", "--build", "--preset", "debug", "-j", JOBS]):
+                    ["cmake", "--build", "--preset", "debug", "-j", jobs]):
         done = subprocess.run(command, cwd=to, capture_output=True, text=True)
         if done.returncode != 0:
             sys.exit(f"{' '.join(command)} failed in {to}:\n{done.stdout[-3000:]}"
@@ -1187,13 +1202,16 @@ FOLDERS = {"node", "dropped", "folder", "stray", "project-folder", "pair", "node
            "folders"}
 
 
-def gui(copy: Copy) -> None:
+def gui(copy: Copy, sections: list[str] | None = None, keys: bool = True) -> None:
     """Every line the menus send, on a thing of its kind in a project, and every chord of
-    the keymap, which must send its line."""
+    the keymap, which must send its line; only the menus' sections named, where named, and
+    no chord without keys, as --jobs runs them as pieces."""
     state = State("gui", loads=("bf-one", "bf-two"), current="bf-one")
     vulpen = copy.start(state)
     print("gui: menus", flush=True)
     for section, lines in menu_lines(copy.tree).items():
+        if sections is not None and section not in sections:
+            continue
         tree = str(copy.tree)
         name, folder, before = PRESSED.get(section, ("face", "{tree}/projects/bf-one", []))
         name, folder = name.replace("{tree}", tree), folder.replace("{tree}", tree)
@@ -1223,6 +1241,13 @@ def gui(copy: Copy) -> None:
                 vulpen = put_back(copy, vulpen, state)
             except Ended as why:
                 vulpen = ended(copy, state, vulpen, why)
+    if keys:
+        vulpen = chords(copy, state, vulpen)
+    vulpen.end(force=True)
+
+
+def chords(copy: Copy, state: State, vulpen: Vulpen) -> Vulpen:
+    """Every chord of the keymap, which must send its line."""
     print("gui: keys", flush=True)
     for line in (copy.tree / KEYMAP).read_text().splitlines():
         if "=" not in line or line.lstrip().startswith("#"):
@@ -1242,7 +1267,7 @@ def gui(copy: Copy) -> None:
                           answers(said))
         except Ended as why:
             vulpen = ended(copy, state, vulpen, why)
-    vulpen.end(force=True)
+    return vulpen
 
 
 def signature(vulpen: Vulpen) -> dict[str, list[str]]:
@@ -1439,14 +1464,149 @@ def seen(copy: Copy) -> None:
         vulpen.end(force=True)
 
 
+# --- pieces side by side (--jobs) --------------------------------------------------------
+
+@dataclass
+class Piece:
+    """What --jobs hands one copy whole; once it ran to its end, what it found and tried,
+    and until then why it did not."""
+    name: str
+    part: str
+    run: Callable[[Copy], None]
+    copy: int = 0
+    findings: list[Finding] = field(default_factory=list)
+    tried: list[Tried] | None = None
+    lost: str = "no copy reached it"
+
+
+def split(sections: dict[str, list[str]], count: int) -> list[list[str]]:
+    """The sections in at most count runs of about as many lines each, in their order."""
+    total = sum(len(lines) for lines in sections.values())
+    runs, run, held = [], [], 0
+    for section, lines in sections.items():
+        run.append(section)
+        held += len(lines)
+        if len(runs) < count - 1 and held >= total * (len(runs) + 1) / count:
+            runs, run = runs + [run], []
+    return runs + [run] if run else runs
+
+
+def pieces(parts: list[str], states: list[State]) -> list[Piece]:
+    """The parts as pieces, in the order one copy would run them: a state's sweep, a run
+    of the menus' sections, the keys."""
+    made = []
+    for part in parts:
+        if part == "sweep":
+            made += [Piece(f"sweep {state.name}", part,
+                           lambda copy, state=state: sweep(copy, [state]))
+                     for state in states]
+        elif part == "gui":
+            sections = menu_lines(ROOT)
+            runs = split(sections, MENU_PIECES)
+            if [section for run in runs for section in run] != list(sections):
+                sys.exit("the menus' pieces do not hold each section once")
+            made += [Piece(f"gui menus {at}", part,
+                           lambda copy, run=run: gui(copy, run, keys=False))
+                     for at, run in enumerate(runs, 1)]
+            made.append(Piece("gui keys", part, lambda copy: gui(copy, [], keys=True)))
+        else:
+            sys.exit(f"--jobs runs the sweep and the gui as pieces, not {part}: run {part} "
+                     "with --jobs 1")
+    return made
+
+
+def side_by_side(made: list[Piece], copies: int, report: Path, keep: bool) -> None:
+    """Each piece in a copy, copy k taking every copies-th from the k-th, so each runs in
+    the same copy every run (C01); the copies built at once, sharing the machine's
+    threads. A copy that fails leaves the pieces it had not ended lost, saying why."""
+    jobs = str(max(1, (os.cpu_count() or 1) // copies))
+
+    def work(k: int) -> None:
+        mine = made[k::copies]
+        tree = Path(tempfile.mkdtemp(prefix="command-sweep-")) / "Vulpen"
+        print(f"copy {k + 1}: copying and building the tree in {tree}", flush=True)
+        try:
+            copy_tree(tree, jobs)
+            copy = Copy(tree, report.with_name(f"{report.stem}-{k + 1}{report.suffix}"))
+            for piece in mine:
+                print(f"copy {k + 1}: {piece.name}", flush=True)
+                piece.copy, found, tried = k + 1, len(copy.findings), len(copy.tried)
+                copy.part = piece.part
+                piece.run(copy)
+                piece.findings, piece.tried = copy.findings[found:], copy.tried[tried:]
+        except BaseException as error:  # SystemExit too, as a copy that did not build
+            why = "".join(traceback.format_exception_only(error)).strip()
+            for piece in mine:
+                piece.lost = f"copy {k + 1} ended: {why}"
+        finally:
+            if keep:
+                print(f"copy {k + 1} stays in {tree}", flush=True)
+            else:
+                shutil.rmtree(tree.parent, ignore_errors=True)
+
+    workers = [threading.Thread(target=work, args=(k,), daemon=True) for k in range(copies)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join()
+
+
+def merged(made: list[Piece]) -> tuple[list[Finding], list[Tried]]:
+    """What the pieces found and tried, in their order; a piece that did not run to its
+    end, or tried no line, is a finding, so no piece passes by being lost."""
+    findings = [finding for piece in made for finding in piece.findings]
+    tried = [line for piece in made for line in piece.tried or []]
+    for piece in made:
+        if piece.tried is None:
+            findings.append(Finding(piece.part, piece.name, "a piece did not run to its end, "
+                                    "so the lines it holds were not all tried", piece.name,
+                                    piece.lost.splitlines()[-TAIL_LINES:]))
+        elif not piece.tried:
+            findings.append(Finding(piece.part, piece.name, "a piece tried no line",
+                                    piece.name))
+    return findings, tried
+
+
+def room() -> int:
+    """The copies the machine's free memory holds above LEAST_FREE_KB, at least one."""
+    return max(1, (free_kb() - LEAST_FREE_KB) // COPY_KB)
+
+
+def pieced(arguments: argparse.Namespace, parts: list[str], states: list[State],
+           started: float, commit: str) -> int:
+    if arguments.tree:
+        sys.exit("--tree reuses one copy, which --jobs 1 runs")
+    made = pieces(parts, states)
+    copies = min(arguments.jobs, len(made))
+    if (fits := room()) < copies:
+        print(f"{fits} copies, not {copies}: the machine has {free_kb() // 1024} MiB free",
+              flush=True)
+        copies = fits
+    # The threads lavapipe draws a vulpen with: each copy's shares the machine's.
+    os.environ.setdefault("LP_NUM_THREADS", str(max(1, (os.cpu_count() or 1) // copies)))
+    report = arguments.report.resolve()
+    report.parent.mkdir(parents=True, exist_ok=True)
+    print(f"{len(made)} pieces in {copies} copies side by side", flush=True)
+    side_by_side(made, copies, report, arguments.keep)
+    findings, tried = merged(made)
+    write_report(findings, tried, report, time.monotonic() - started, commit, made)
+    print(f"{len(tried)} lines, {len(findings)} findings; the report is {report}, every "
+          f"line in {report.with_suffix('.tsv')}, what each copy's vulpen said in "
+          f"{report.with_name(report.stem + '-<copy>.log')}")
+    for finding in findings[:40]:
+        print(f"  {finding.part}, {finding.state}: {finding.what}: {finding.line[:120]}")
+    return 1 if findings else 0
+
+
 # --- the report --------------------------------------------------------------------------
 
-def write_report(copy: Copy, report: Path, took: float, commit: str) -> None:
+def write_report(findings: list[Finding], tried_all: list[Tried], report: Path,
+                 took: float, commit: str, made: list[Piece] | None = None) -> None:
     by_what: dict[str, list[Finding]] = {}
-    for finding in copy.findings:
+    for finding in findings:
         by_what.setdefault(finding.what, []).append(finding)
     text = [f"# command-sweep at {commit}", "",
-            f"{len(copy.tried)} lines tried, {len(copy.findings)} findings, "
+            f"{len(tried_all)} lines tried, {len(findings)} findings, "
             f"in {took / 60:.1f} minutes.", "", "## Findings", ""]
     for what, found in by_what.items():
         text += [f"### {what} ({len(found)})", ""]
@@ -1454,14 +1614,20 @@ def write_report(copy: Copy, report: Path, took: float, commit: str) -> None:
             text.append(f"- {finding.part}, {finding.state}: `{finding.line[:160]}`")
             text += [f"    - {line[:300]}" for line in finding.said[:8]]
         text.append("")
-    states = sorted({tried.state for tried in copy.tried if tried.part == "sweep"},
+    if made:
+        text += ["## Pieces", "", "| piece | copy | lines tried |", "|---|--:|--:|"]
+        text += [f"| {piece.name} | {piece.copy or '-'} | "
+                 f"{len(piece.tried) if piece.tried is not None else 'did not run'} |"
+                 for piece in made]
+        text.append("")
+    states = sorted({tried.state for tried in tried_all if tried.part == "sweep"},
                     key=lambda name: [state.name for state in STATES].index(name)
                     if name in [state.name for state in STATES] else 99)
     text += ["## The lines help means, by state", "",
              "| usage | " + " | ".join(states) + " |",
              "|---|" + "---|" * len(states)]
     rows: dict[str, dict[str, str]] = {}
-    for tried in copy.tried:
+    for tried in tried_all:
         if tried.part == "sweep" and tried.variant == "valid":
             why = next((line for line in tried.said if line.startswith(ERROR)), "")
             rows.setdefault(tried.usage, {})[tried.state] = (
@@ -1473,7 +1639,7 @@ def write_report(copy: Copy, report: Path, took: float, commit: str) -> None:
     report.write_text("\n".join(text) + "\n")
     with report.with_suffix(".tsv").open("w") as table:
         table.write("part\tstate\tusage\tvariant\tline\toutcome\tsaid\n")
-        for tried in copy.tried:
+        for tried in tried_all:
             table.write("\t".join([tried.part, tried.state, tried.usage, tried.variant,
                                    tried.line[:300], tried.outcome,
                                    " / ".join(tried.said)[:600]]).replace("\n", " ") + "\n")
@@ -1490,6 +1656,8 @@ def main() -> None:
     parser.add_argument("--tree", type=Path, help="a copy a run before kept, to reuse")
     parser.add_argument("--keep", action="store_true", help="keep the copy, to reuse")
     parser.add_argument("--report", type=Path, default=ROOT / "out" / "command-sweep.md")
+    parser.add_argument("--jobs", type=int, default=1,
+                        help="copies side by side, running the sweep and the gui as pieces")
     arguments = parser.parse_args()
     parts = arguments.only.split(",") if arguments.only else list(PARTS)
     states = [state for state in STATES if not arguments.states
@@ -1497,6 +1665,8 @@ def main() -> None:
     started = time.monotonic()
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
                             capture_output=True, text=True).stdout.strip()
+    if arguments.jobs > 1:
+        sys.exit(pieced(arguments, parts, states, started, commit))
     if arguments.tree:
         tree = arguments.tree.resolve()
     else:
@@ -1521,7 +1691,7 @@ def main() -> None:
                 for seed in range(arguments.seed, arguments.seed + arguments.walks):
                     walk(copy, seed, arguments.steps)
     finally:
-        write_report(copy, report, time.monotonic() - started, commit)
+        write_report(copy.findings, copy.tried, report, time.monotonic() - started, commit)
         if arguments.keep or arguments.tree:
             print(f"the copy stays in {tree}")
         else:
