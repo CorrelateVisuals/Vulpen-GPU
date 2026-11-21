@@ -239,7 +239,12 @@ def take(binary: Path, run: Run, into: Path) -> dict[str, Path]:
         # refuses to lose; the copy goes once the run ends, so nothing is lost.
         vulpen.stdin.write("quit force\n")
         vulpen.stdin.close()
-        code = vulpen.wait(TIMEOUT_S)
+        try:
+            code = vulpen.wait(TIMEOUT_S)
+        except subprocess.TimeoutExpired:  # not left running on the copy and the GPU
+            vulpen.kill()
+            sys.exit(f"vulpen did not end after quit force:\n"
+                     f"{said.read_text(errors='replace')}")
     errors = [line for line in said.read_text(errors="replace").splitlines() if ERROR in line]
     if code != 0 or errors:
         sys.exit(f"vulpen exited {code}:\n" + "\n".join(errors))
