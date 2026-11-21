@@ -1073,7 +1073,9 @@ def tab(copy: Copy, states: list[State]) -> None:
         if not reached(copy, state, vulpen):
             continue
         words = Words(copy, state)
-        for usage in usages(vulpen):
+        listed = usages(vulpen)
+        commands = {tuple(each.words) for each in listed}
+        for usage in listed:
             if not usage.kinds:
                 continue
             try:
@@ -1095,7 +1097,12 @@ def tab(copy: Copy, states: list[State]) -> None:
                         continue
                     if usage.text not in takes:
                         continue
-                    for word in offered[:3]:
+                    # A word that makes the line another command, as force makes view
+                    # close view close force, is none of the kind: tried as one, it ran
+                    # that command, and the next word met what it changed.
+                    values = [word for word in offered
+                              if (*usage.words, *arguments[:at], word) not in commands]
+                    for word in values[:3]:
                         given = [*arguments[:at], word, *arguments[at + 1:]]
                         tried = " ".join([*usage.words, *given])
                         said = try_line(copy, vulpen, state, usage, f"tab:{word}",
