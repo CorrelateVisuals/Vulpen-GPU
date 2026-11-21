@@ -24,22 +24,10 @@ constexpr std::string_view typed_port = "typed"; // the keys part's, for the foc
 // editor's has.
 constexpr std::string_view empty_tab = "perform";
 
-// Holds views by name, as its holds param names them, and shows one in the Rect its area
-// gives: the view presented while it holds that one, else the one its shown param names,
-// else the first it holds; each port of it but tabs, named for a view, reaches the pane
-// showing that view, as the panes part connects it, and the one shown gets the room, the
-// others none. A tab a view it holds that is hosted, in the order its holds param names
-// them, whose press presents the view, and so shows it here, the one presented labeled in
-// the string role's green, as perform mode shows that one, its close mark letting go of
-// the view, which stays hosted and, shown by no deck, draws nowhere until it is presented
-// again; with none, a tab of its own, named perform, which does nothing pressed. Its
-// shown param follows the view presented as that comes to one it holds, so a save keeps
-// the one it shows and the docking part finds it. The focus on the pane it hides, while
-// its host connects the keys part's typed to its typed, goes to the pane it shows, the
-// node of it listed where the other's was, so keys go to the view seen. Showing none, it
-// takes the focus itself at a press in its room, as an empty editor does, so the panel
-// holding it is framed as the one in focus, and escape lets go of it; the first view it
-// shows then takes it, at the pane's first node.
+// Holds views and shows one of them in its area: the view presented while it holds that
+// one, else the one its shown param names, else the first. The panes part connects each
+// port but tabs, named for a view, to the pane that shows that view. The view shown gets
+// the area, the others none.
 class Deck final : public VP::Operator {
   // A port to a pane: the view it is named for, the Rect it hands, and the nodes it
   // reaches, in the order the connection lists them.
@@ -99,7 +87,9 @@ class Deck final : public VP::Operator {
       take_focus(frame);
   }
 
-  // In the order the events came, so a press is tested where the pointer was then.
+  // Showing no view, it takes the focus at a press in its area, as an empty editor does,
+  // so its panel is framed as the one in focus; escape lets the focus go. The events are
+  // read in order, so a press is tested where the pointer was then.
   void take_focus(VP::Cook &frame) {
     for (const VP::Event &event : frame.input().events())
       if (event.kind == VP::Event::Kind::pointer)
@@ -113,9 +103,9 @@ class Deck final : public VP::Operator {
         frame.commands().send(std::format("{}: focus", _view));
   }
 
-  // The view it shows, its tabs, and the focus and its shown param following them; only
-  // as what it holds, the views hosted or the one presented change, so a frame allocates
-  // nothing for them.
+  // The view it shows, its tabs, and the focus and its shown param following them. It
+  // runs only when what it holds, the views hosted or the one presented change, so a
+  // frame allocates nothing for them.
   void choose(VP::CommandPort &commands, const VP::View &own) {
     const auto self = std::ranges::find(own.nodes, _name, &VP::Node::name);
     const auto hosts = [&](std::string_view name) {
@@ -125,9 +115,14 @@ class Deck final : public VP::Operator {
         self == own.nodes.end() ? std::string() : deck_shows(*self, _presented, hosts);
     if (shows != _shows)
       refocus(commands, std::exchange(_shows, std::move(shows)));
+    // The shown param follows the view presented, so a save keeps the view shown and the
+    // docking part finds it.
     if (!_shows.empty() && _shows == _presented && _shows != _shown_param)
       commands.send(
           std::format("{}: param set {} {} {}", _view, _name, shown_param, _shows));
+    // A tab for each view it holds that is hosted, in the order its holds param names
+    // them. A press presents the view, and the one presented, which perform mode shows,
+    // is green.
     _tabs->clear();
     for (const std::string &view : _holds)
       if (hosts(view))
@@ -142,7 +137,9 @@ class Deck final : public VP::Operator {
       _tabs->push_back({.label = std::string(empty_tab), .current = true});
   }
 
-  // The line a tab's close mark sends: the deck holds the view no more.
+  // The line a tab's close mark sends: the deck holds the view no more. The view stays
+  // hosted, and unless another deck holds it, it draws nowhere until it is presented
+  // again.
   std::string let_go(std::string_view view) const {
     std::vector<std::string> rest = _holds;
     std::erase_if(rest, [&](const std::string &held) { return held == view; });
