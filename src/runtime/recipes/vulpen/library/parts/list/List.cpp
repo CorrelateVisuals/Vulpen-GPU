@@ -70,23 +70,12 @@ VP_VIEW::Rect within(VP_VIEW::Rect rect, const VP_VIEW::Rect &strip) {
   return rect;
 }
 
-// Lays out the Items it is handed in the Rect its place gives: stacked, a row each, over
-// a framed fill, or with axis x side by side, each as wide as its label, up to tab_cells
-// of it, the rest cut at its start, one joined to the one before it going on from it as
-// one tab, each still pressed apart, over a ground, the current one in the content's
-// color, so it joins the content it names, the strip scrolling across as the wheel turns
-// over it, with no bar, and to show the current one as it changes, its end cells left
-// free for a mark its host draws there, and the pointer over a label cut showing it whole
-// below its tab; an Item with a close command shows a close mark at its end, and a stuck
-// one pressed flashes; a column marks its current Item's row. With drop = below the
-// column drops below its place instead, as wide as its widest label and as tall as its
-// Items, inside the window, as a menu drops below where it was opened; with drop = right
-// it opens beside its place, its first row level with it, as a menu's items open beside
-// its name: right of it, or left where the window has no room, its frame on the column's
-// own and its fill over their shared border, so the two read as one. It hands on where
-// each Item shows, and where its mark does, so hit finds the one pressed, and where the
-// current one does, so what it opens shows below it. Tab strips, menus and tips are this
-// part, so none of them places its entries itself.
+// Lays out the Items it is handed in its place: stacked in a framed column, a row each,
+// or with axis x side by side, as tabs. With drop = below or right, the column opens
+// beside its place instead, as a menu does. It hands on where each Item and its close
+// mark show, so hit finds the one pressed, and where the current one shows, so what it
+// opens shows below it. Tab strips, menus and tips are all this part, so none of them
+// places its entries itself.
 class List final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string axis = node.param<std::string>("axis");
@@ -356,6 +345,8 @@ class List final : public VP::Operator {
           frame.write(_rects, frame_and_fill + (marked ? 1 : 0) + rules);
       rects[0] = grown(place, margin + frame_width, VP_VIEW::role("border"));
       rects[1] = grown(place, margin, VP_VIEW::role("panel"));
+      // A column opened beside another lays its fill over their shared border, so the
+      // two read as one.
       rects[1].extent.x += _joined != 0 ? frame_width : 0;
       rects[1].offset.x -= _joined > 0 ? frame_width : 0;
       std::size_t next = frame_and_fill;
