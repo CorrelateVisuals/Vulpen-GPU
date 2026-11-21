@@ -186,7 +186,9 @@ DETAILS = {
     "cli": ["ide: mode edit", *panels("maximize", "terminal"),
             "ide: focus ide.terminal.command-line", *CLEAR, *typed("help"), *typed("ls"),
             *typed("info rays"), "ide: focus"],
-    "graph-repository": [*panels("maximize", "terminal", "graph"), *graph("../../")],
+    "graph-repository": [*panels("maximize", "terminal", "graph"), *zoom_out(7),
+                         *graph("../../"), *pause(60), *fit(960, 560, 4, 1920),
+                         "ide: zoom reset", *zoom(5), "ide: focus"],
     "graph-ide": [*zoom_out(3), *INSIDE_IDE, *pause(5), *fit(82, 364, 17, 1920), "ide: focus"],
 }
 
