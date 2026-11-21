@@ -798,20 +798,21 @@ def examples(scratch: Path) -> list[Example]:
     e.check = lambda example, run, found: stages_checked(example, run, found, shots)
     every.append(e)
 
-    # declare: a param and a port added to nodes by lines: param declare into a .frag, set
-    # in the same frame, as a script would; into the .vert beside it, which takes the
-    # .frag's fields first, as both hold one pass block; an Image and a buffer a .comp
-    # writes, then connect declare reading each, typed too, as a connect of a port not
-    # declared yet names it; the lines a shader may not take refused, and one whose
-    # connect is refused writing nothing; then by the menus, which list a draw no Image
-    # and a .comp none of its own ports. Then the stages a lone .tesc lacks, as its node's
-    # menu offers them, a press each, never a .geom; and new with no path, typed inside a
-    # lone .frag's node, writing its .vert. Then into C++: a param, set in the frame its
-    # line runs, and an output of a contract copied in, in a .cpp alone; a value and a
-    # readback of its node's shaders' fields, typed and by the menu, which lists only
-    # those nothing fills, the .cpp made a line after its .comp, so the two come apart
-    # (joined has them made in one); an input of the output, which a connect before
-    # names, then connected; and the lines a .cpp may not take refused.
+    # declare: params and ports added to nodes by lines, in this order:
+    # - param declare into a .frag, set in the same frame, as a script would;
+    #   then into the .vert beside it, which takes the .frag's fields first, as both
+    #   hold one pass block;
+    # - an Image and a buffer a .comp writes, then connect declare reading each, typed
+    #   too, as a connect of a port not declared yet names it;
+    # - the lines a shader may not take refused, one whose connect is refused writing
+    #   nothing; the menus, which list a draw no Image and a .comp none of its own ports;
+    # - the stages a lone .tesc lacks, as its node's menu offers them, a press each, never
+    #   a .geom; new with no path, typed inside a lone .frag's node, writing its .vert;
+    # - into C++: a param, set in the frame its line runs, and an output of a contract
+    #   copied in, in a .cpp alone; a value and a readback of its node's shaders' fields,
+    #   typed and by the menu, which lists only those nothing fills; the .cpp made a line
+    #   after its .comp, so the two come apart (joined makes them in one line); an input
+    #   of the output, then connected; and the lines a .cpp may not take refused.
     e = Example("declare", compared=False)
     vert, frag = at(e.copy, "n", "N.vert"), at(e.copy, "n", "N.frag")
     writer, reader = at(e.copy, "a", "A.comp"), at(e.copy, "b", "B.comp")

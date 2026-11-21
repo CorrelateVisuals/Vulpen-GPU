@@ -12,20 +12,20 @@ if [[ ${1:-} == --release ]]; then preset=release; shift; fi
 root=$(cd "$(dirname "$0")" && pwd)
 recipes=$root/src/runtime/recipes/vulpen
 projects=$root/projects
-# An app's flag and a project's are the script's own and stand for views, so vulpen knows
-# no app or project by name (V05): --cli for the cli's view.vlp, which vulpen starts
-# with, and --ide for the cli's and the ide's, which vulpen then hosts beside the
-# projects, as it hosts each view named after the first. vulpen's options come before a
-# project, so one named like an option runs by its path; each takes a value, and any
-# other word is a view. A view.vlp outside projects/, as a project in a repository of its
-# own, builds as one there: its folder goes into the build tree's mounted-views, which the
-# build reads (CMakeLists.txt), unless a project in projects/ has its name.
-# vulpen's --log sets how much the build says too: all of it at debug, and at any other
-# level its newest line, in place while it builds on a terminal, and all of it when it
-# fails (C09), so a long build says what it builds and a quick one leaves nothing behind.
-# Each run's log goes to docs/logs/, which git ignores, named for when it started, the
-# newest 20 kept, so a run on another machine leaves behind what went wrong, a failed
-# build's output with it; --log-file names another file, and that one alone is written.
+# The app and project flags are this script's own, and each stands for views, so vulpen
+# knows no app or project by name (V05). --cli is the cli's view.vlp, which vulpen
+# starts with; --ide adds the ide's, which vulpen hosts beside the projects, as it hosts
+# each view named after the first. vulpen's options come before a project and each takes
+# a value; any other word is a view, so a project named like an option runs by its path.
+# A view.vlp outside projects/, as a project in a repository of its own, builds as one
+# there: its folder goes into the build tree's mounted-views (CMakeLists.txt), unless a
+# project in projects/ has its name.
+# --log sets how much the build says too: all of it at debug; at any other level its
+# newest line, in place on a terminal, and all of it when it fails (C09). So a long build
+# says what it builds, and a quick one leaves nothing behind. Each run's log goes to
+# docs/logs/, which git ignores, named for when it started, the newest 20 kept, so a run
+# on another machine leaves behind what went wrong. --log-file names another file, and
+# only that one is written.
 app() { views=("$recipes/cli/view.vlp"); [[ $1 == --cli ]] || views+=("$recipes/ide/view.vlp"); }
 # The project of that name in projects/, or in a folder there that groups projects, as
 # triangles/ does: its view.vlp in project, and whether there is one.
@@ -87,20 +87,20 @@ for mount in "${mounted[@]}"; do
   grep -qxF -- "$mount" "$mounts" || printf '%s\n' "$mount" >>"$mounts"
 done
 
-# CMake reads the presets from the current folder; vulpen itself runs from the
-# caller's, since nothing in it may depend on the working directory. One build at a time
-# on a tree, as two at once corrupt it: the build folder's build.lock, which a running
-# vulpen's builds take too, held in a subshell, so it is let go before vulpen starts.
-# vulpen's target builds the engine, the library and the apps, which vulpen needs; a
-# project's builds its nodes, and only for the projects it opens, so one broken, or
-# half typed when vulpen last quit, never keeps it from starting: its nodes name why, and
-# the live build builds a project once it is opened or saved. A release vulpen links
-# every project's nodes, so its target builds them all. The full build,
-# cmake --build --preset debug, builds and checks every project, and the statistics.
-# A tree an older or failed build left can fail where a clean one builds (a cache from
-# another folder or CMake, a file since moved), so vulpen's build, failing, runs once more
-# from a clean tree before it fails: the cache and every output dropped, about 20 s, the
-# compilers the tree was first configured with kept, as CC=gcc-14 ./run.sh named them.
+# CMake reads the presets from the current folder; vulpen itself runs from the caller's,
+# since nothing in it may depend on the working directory. One build runs on a tree at a
+# time, as two at once corrupt it: the build folder's build.lock, which a running
+# vulpen's builds take too, is held in a subshell, so it is let go before vulpen starts.
+# vulpen's target builds the engine, the library and the apps. A project's nodes build
+# only for the projects it opens, so a broken one, or one half typed when vulpen last
+# quit, never keeps it from starting: its nodes name why, and the live build builds the
+# project once it is opened or saved. A release vulpen links every project's nodes, so
+# its target builds them all. The full build, cmake --build --preset debug, builds and
+# checks every project, and the statistics. A tree an older or failed build left can
+# fail where a clean one builds (a cache from another folder or CMake, a file since
+# moved), so a failed build runs once more from a clean tree: the cache and every output
+# dropped, about 20 s, the compilers the tree was first configured with kept, as
+# CC=gcc-14 ./run.sh named them.
 retry="the build failed; building once more from a clean tree"
 build() (
   cd "$root" && mkdir -p "out/build/$preset"
