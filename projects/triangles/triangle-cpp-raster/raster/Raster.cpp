@@ -20,8 +20,9 @@ constexpr float turn = 2.0f * std::numbers::pi_v<float>; // radians in a whole t
 // column of colors a corner.
 constexpr std::array corners{
     glm::vec2(0.0f, -0.5f), glm::vec2(0.5f, 0.5f), glm::vec2(-0.5f, 0.5f)};
-constexpr glm::mat3 colors(
-    glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+constexpr glm::mat3 colors(glm::vec3(1.0f, 0.0f, 0.0f),
+                           glm::vec3(0.0f, 1.0f, 0.0f),
+                           glm::vec3(0.0f, 0.0f, 1.0f));
 constexpr glm::vec2 center = (corners[0] + corners[1] + corners[2]) / 3.0f;
 constexpr std::uint32_t nothing = 0; // a packed color with no alpha: no cell at all
 
@@ -41,7 +42,8 @@ float edge(glm::vec2 a, glm::vec2 b, glm::vec2 p) {
 
 // Almost all on the CPU, as software rendering is: C++ turns the corners and fills every
 // cell of the grid, line for line as the compute raster of triangle-compute does in GLSL,
-// and packs each cell's color into four bytes, which the node's shader unpacks and places.
+// and packs each cell's color into four bytes, which the node's shader unpacks and
+// places.
 class Raster final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _packed = node.upload<std::uint32_t>("packed");

@@ -60,7 +60,8 @@ void walk(FilePort &files,
       continue;
     std::string path = inside + name;
     std::error_code unread;
-    if (std::filesystem::is_symlink(folder / inside / name.substr(0, name.find('/')), unread))
+    if (std::filesystem::is_symlink(folder / inside / name.substr(0, name.find('/')),
+                                    unread))
       continue;
     if (name.ends_with('/')) {
       walk(files, folder, path, kept);
@@ -159,9 +160,8 @@ KeptMove save_point_move(const Kept &was, const Kept &now) {
   for (const auto &[path, text] : was.files)
     if (const auto found = now.files.find(path);
         found == now.files.end() || found->second != text)
-      by.files[path] = {text,
-                        found == now.files.end() ? std::nullopt
-                                                 : std::optional(found->second)};
+      by.files[path] = {
+          text, found == now.files.end() ? std::nullopt : std::optional(found->second)};
   for (const auto &[path, text] : now.files)
     if (!was.files.contains(path))
       by.files[path] = {std::nullopt, text};
@@ -268,13 +268,14 @@ Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recip
       _schedules{_hosted.front()->schedule.get()},
       _steps(std::make_unique<Undo>(commands.files(), *this, commands)) {
   follow({}, _hosted.front()->current());
-  _save = commands.add("view save",
-                       "writes the view over its manifest, keeping the comments in it, "
-                       "and keeps a project's files as they are, which view close force "
-                       "and quit force put back; a line typed writes the manifest anyway; "
-                       "refused for an app's view, which every run of the app starts from",
-                       *this,
-                       Primitive::save);
+  _save =
+      commands.add("view save",
+                   "writes the view over its manifest, keeping the comments in it, "
+                   "and keeps a project's files as they are, which view close force "
+                   "and quit force put back; a line typed writes the manifest anyway; "
+                   "refused for an app's view, which every run of the app starts from",
+                   *this,
+                   Primitive::save);
   _save_force = commands.add("view save force",
                              "writes the view over its manifest as view save does, an "
                              "app's too, as when a person changes the app itself",
@@ -294,12 +295,13 @@ Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recip
                         "drops the pixels of an image a node's C++ fills, named by that "
                         "port or one that samples it, until the node fills it again",
                         *this);
-  _undo = commands.add("undo",
-                       "takes back the last line a person ran that changed a project or "
-                       "its files, typed, picked from a menu or sent by the graph's keys: "
-                       "its graph edits and the files it made, removed, moved, copied or "
-                       "wrote",
-                       *this);
+  _undo =
+      commands.add("undo",
+                   "takes back the last line a person ran that changed a project or "
+                   "its files, typed, picked from a menu or sent by the graph's keys: "
+                   "its graph edits and the files it made, removed, moved, copied or "
+                   "wrote",
+                   *this);
   _redo = commands.add("redo", "runs again what undo took back last", *this);
 }
 
@@ -353,13 +355,13 @@ bool Views::rebuild() {
     // So a project that shows nothing says why.
     if ((into == Schedule::Into::none) != (hosted.into == Schedule::Into::none) &&
         draws_into_window(hosted.next()))
-      _wiring.log.write(
-          Level::info,
-          Tag::run,
-          into == Schedule::Into::none
-              ? std::format(
-                    "child {}: draws nowhere, since {}", hosted.name, nowhere(hosted))
-              : std::format("child {}: draws again", hosted.name));
+      _wiring.log.write(Level::info,
+                        Tag::run,
+                        into == Schedule::Into::none
+                            ? std::format("child {}: draws nowhere, since {}",
+                                          hosted.name,
+                                          nowhere(hosted))
+                            : std::format("child {}: draws again", hosted.name));
     if (hosted.edited) {
       const bool added = !hosted.schedule;
       hosted.schedule = std::make_unique<Schedule>(_wiring,
@@ -497,12 +499,11 @@ void Views::show_image(Call &call) {
     std::string names;
     for (const std::string &name : found->schedule->images())
       names.append(names.empty() ? "" : ", ").append(name);
-    throw std::runtime_error(
-        std::format("{} has no image {}; {}",
-                    found->name,
-                    image,
-                    names.empty() ? "it has none"
-                                  : std::format("its images are {}", names)));
+    throw std::runtime_error(std::format(
+        "{} has no image {}; {}",
+        found->name,
+        image,
+        names.empty() ? "it has none" : std::format("its images are {}", names)));
   }
   found->shows = image;
   call.reply(std::format("{} shows {} in its window's place, running only what it needs",
@@ -761,7 +762,8 @@ std::span<const Cost> Views::costs(std::string_view name) {
 
 std::span<const NodePort> Views::ports(std::string_view name) {
   const Hosted *const found = hosted(name);
-  return found && found->schedule ? found->schedule->ports() : std::span<const NodePort>();
+  return found && found->schedule ? found->schedule->ports()
+                                  : std::span<const NodePort>();
 }
 
 void Views::check(std::string_view name, const View &view) {
@@ -805,27 +807,28 @@ void Views::command(Call &call) {
       throw std::runtime_error(std::format(
           "{} is an app's view, which every run of the app starts from, so view save "
           "leaves it; view save force writes it",
-          found->current().file.lexically_proximate(std::filesystem::current_path())
+          found->current()
+              .file.lexically_proximate(std::filesystem::current_path())
               .generic_string()));
     save(*found);
-    call.reply(std::format("saved {}{}",
-                           found->current()
-                               .file.lexically_proximate(std::filesystem::current_path())
-                               .generic_string(),
-                           project(found->current()) ? ", the project kept as it is now"
-                                                     : ""));
+    call.reply(
+        std::format("saved {}{}",
+                    found->current()
+                        .file.lexically_proximate(std::filesystem::current_path())
+                        .generic_string(),
+                    project(found->current()) ? ", the project kept as it is now" : ""));
   } else if (call.is(_show)) {
     show_image(call);
   } else if (call.is(_list)) {
     for (const std::unique_ptr<Hosted> &hosted : _hosted)
       if (!hosted->removed)
-        call.reply(std::format(
-            "{} {}{}",
-            hosted->name.empty() ? std::string(":") : hosted->name,
-            hosted->current()
-                .file.lexically_proximate(std::filesystem::current_path())
-                .generic_string(),
-            hosted->name == _port.current() ? ", current" : ""));
+        call.reply(
+            std::format("{} {}{}",
+                        hosted->name.empty() ? std::string(":") : hosted->name,
+                        hosted->current()
+                            .file.lexically_proximate(std::filesystem::current_path())
+                            .generic_string(),
+                        hosted->name == _port.current() ? ", current" : ""));
   } else if (call.is(_clear)) {
     Hosted *const found = hosted(_port.addressed());
     const std::string_view port = call.arguments().front();

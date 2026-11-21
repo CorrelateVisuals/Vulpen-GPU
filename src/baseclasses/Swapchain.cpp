@@ -253,9 +253,8 @@ void Swapchain::make_images() {
         .image = image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = _format.format,
-        .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                             .levelCount = 1,
-                             .layerCount = 1}};
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
     check(vkCreateImageView(_device, &view, nullptr, &_views.emplace_back()),
           "vkCreateImageView");
     const VkFramebufferCreateInfo framebuffer{

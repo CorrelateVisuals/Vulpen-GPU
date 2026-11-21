@@ -34,9 +34,8 @@ public:
   static void child(View &view, Child child);
   // beside: the views hosted beside the view, whose windows a connection may take while
   // both are hosted, as a GUI presents a project; a manifest names none of them (V03).
-  static void connect(View &view,
-                      Connection connection,
-                      std::span<const std::string> beside = {});
+  static void
+  connect(View &view, Connection connection, std::span<const std::string> beside = {});
 
 private:
   void command(Call &call) override;

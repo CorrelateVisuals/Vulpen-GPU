@@ -9,12 +9,12 @@
 
 namespace {
 
-constexpr float unorm = 255.0f;               // the byte that reads as 1
-constexpr float tolerance = 0.5f / unorm;     // less than a byte, so a neighbour differs
-constexpr std::uint64_t first_read = 2;       // a readback lags a frame behind its pass
-constexpr glm::uvec2 stride{37, 23};          // between the pixels, as Look.comp steps
+constexpr float unorm = 255.0f;           // the byte that reads as 1
+constexpr float tolerance = 0.5f / unorm; // less than a byte, so a neighbour differs
+constexpr std::uint64_t first_read = 2;   // a readback lags a frame behind its pass
+constexpr glm::uvec2 stride{37, 23};      // between the pixels, as Look.comp steps
 constexpr std::uint32_t byte_mask = 255;
-constexpr std::uint32_t block_shift = 3;      // scene's blocks are 8 pixels wide
+constexpr std::uint32_t block_shift = 3; // scene's blocks are 8 pixels wide
 
 // Stops when a pixel paint drew reads back as another, or when nothing reads back: the
 // image a draw renders into must reach a dispatch after it in the same frame, at the

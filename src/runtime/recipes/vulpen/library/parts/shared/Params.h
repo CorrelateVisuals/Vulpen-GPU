@@ -19,7 +19,9 @@ void check_word(std::string_view key,
     return;
   std::string named;
   for (const std::string_view word : words)
-    named.append(named.empty() ? "" : word == *(words.end() - 1) ? " or " : ", ")
+    named.append(named.empty()                ? ""
+                 : word == *(words.end() - 1) ? " or "
+                                              : ", ")
         .append(word);
   throw std::runtime_error(std::format("param {} = {}: {}", key, value, named));
 }

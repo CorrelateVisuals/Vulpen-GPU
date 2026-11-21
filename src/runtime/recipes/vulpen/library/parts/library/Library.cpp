@@ -78,7 +78,8 @@ class Library final : public VP::Operator {
 
   // A path from the recipes' folder, as list names a recipe and make takes one.
   std::string from_recipes(const std::filesystem::path &path) const {
-    return path.lexically_normal().lexically_relative(_recipes.lexically_normal())
+    return path.lexically_normal()
+        .lexically_relative(_recipes.lexically_normal())
         .generic_string();
   }
 
@@ -132,8 +133,7 @@ class Library final : public VP::Operator {
           if (recipe.name == name)
             found.push_back(std::move(recipe));
     if (found.empty())
-      throw std::runtime_error(
-          std::format("no recipe {}; recipe list lists them", word));
+      throw std::runtime_error(std::format("no recipe {}; recipe list lists them", word));
     if (found.size() > 1)
       throw std::runtime_error(std::format("{} is a recipe of {} and of {}: {}/{} or "
                                            "{}/{} names one",
@@ -184,9 +184,8 @@ class Library final : public VP::Operator {
   // and naming a folder that is not there yet, since the node's folder is its own.
   // A drop's name when the line gives none: the recipe's, as its word or its path ends,
   // numbered on while the view has a node or a folder of it, as arcball2.
-  static std::string free_node(VP::Call &call,
-                               const std::filesystem::path &view,
-                               std::string_view recipe) {
+  static std::string
+  free_node(VP::Call &call, const std::filesystem::path &view, std::string_view recipe) {
     const std::filesystem::path word(recipe);
     const std::string base =
         (word.filename().empty() ? word.parent_path() : word).filename().string();
@@ -199,8 +198,9 @@ class Library final : public VP::Operator {
     }
   }
 
-  // A recipe's name when the line gives none: the node's, its last name, numbered on while
-  // a recipe other than the one it was dropped from has it, as that one it is saved again.
+  // A recipe's name when the line gives none: the node's, its last name, numbered on
+  // while a recipe other than the one it was dropped from has it, as that one it is saved
+  // again.
   std::string free_recipe(VP::FilePort &files, const VP::Node &node) const {
     std::vector<std::string> taken;
     for (const std::string &group : groups(files))
@@ -215,9 +215,8 @@ class Library final : public VP::Operator {
     }
   }
 
-  static void check_new(VP::Call &call,
-                        const std::filesystem::path &view,
-                        std::string_view name) {
+  static void
+  check_new(VP::Call &call, const std::filesystem::path &view, std::string_view name) {
     if (!VP::is_path(name))
       throw std::runtime_error(std::format("{} is no node's name: names of letters, "
                                            "digits, _ and -, joined by dots",
@@ -275,7 +274,8 @@ class Library final : public VP::Operator {
     Copy copy = copy_of(view, root);
     for (Inner &inner : copy.nodes) {
       inner.node.folder = folder / VP::path_of(outer_name(root, inner.name));
-      if (const auto now = std::ranges::find(read.nodes, inner.node.name, &VP::Node::name);
+      if (const auto now =
+              std::ranges::find(read.nodes, inner.node.name, &VP::Node::name);
           now != read.nodes.end())
         inner.node.files = now->files;
     }
@@ -347,12 +347,11 @@ class Library final : public VP::Operator {
   adds(const Copy &copy, std::string_view root, std::string_view recipe) {
     std::vector<std::string> lines;
     for (const Inner &inner : copy.nodes)
-      lines.push_back(std::format("node add {}{}{}",
-                                  outer_name(root, inner.name),
-                                  inner.name.empty() && !recipe.empty()
-                                      ? sendable("recipe", recipe)
-                                      : "",
-                                  words_of(inner.node, inner.node.params, false)));
+      lines.push_back(std::format(
+          "node add {}{}{}",
+          outer_name(root, inner.name),
+          inner.name.empty() && !recipe.empty() ? sendable("recipe", recipe) : "",
+          words_of(inner.node, inner.node.params, false)));
     for (const VP::Connection &connection : copy.connections)
       lines.push_back(connect_line(root, connection));
     return lines;
@@ -439,13 +438,12 @@ class Library final : public VP::Operator {
     write(files, source.copy, view, name, source.top);
     for (const std::string &line : lines)
       call.commands().send(line);
-    call.reply(std::format("copied {} into {}, as node {}{}",
-                           source.named,
-                           shown(view / VP::path_of(name)),
-                           name,
-                           source.recipe.empty()
-                               ? ""
-                               : std::format(" of recipe {}", source.recipe)));
+    call.reply(std::format(
+        "copied {} into {}, as node {}{}",
+        source.named,
+        shown(view / VP::path_of(name)),
+        name,
+        source.recipe.empty() ? "" : std::format(" of recipe {}", source.recipe)));
   }
 
   // The files the copy holds that the recipe's version does not, gone, and the recipe's
@@ -507,8 +505,8 @@ class Library final : public VP::Operator {
     const Copy fresh = recipe(files, found);
     const std::string now = fingerprint(files, fresh);
     if (now == print)
-      return call.reply(std::format(
-          "node {} is as recipe {}/{} is", root, found.group, found.name));
+      return call.reply(
+          std::format("node {} is as recipe {}/{} is", root, found.group, found.name));
     check_outside(view, root, fresh, from);
     const std::vector<std::string> lines =
         edits(root, mine, fresh, from + fingerprint_mark + now);
@@ -625,7 +623,7 @@ class Library final : public VP::Operator {
     const std::string_view rest =
         in_kind ? word.substr(library.size() + kind.size() + 1) : word;
     const std::size_t slash = rest.find('/');
-    const std::string group(in_kind                ? vulpen_group
+    const std::string group(in_kind              ? vulpen_group
                             : slash == rest.npos ? custom_group
                                                  : rest.substr(0, slash));
     const std::string name(in_kind || slash == rest.npos ? rest : rest.substr(slash + 1));
@@ -685,10 +683,10 @@ class Library final : public VP::Operator {
            {top == _library ? in_library(file) : top / file, in_library(file)})
         if (holds(files, there.parent_path(), there.filename().string())) {
           if (files.read(there.string()) != files.read((view / file).string()))
-            throw std::runtime_error(std::format(
-                "{} differs from {}, which recipes include: name it apart",
-                shown(view / file),
-                shown(there)));
+            throw std::runtime_error(
+                std::format("{} differs from {}, which recipes include: name it apart",
+                            shown(view / file),
+                            shown(there)));
           held = true;
         }
       if (!held)
@@ -716,7 +714,8 @@ class Library final : public VP::Operator {
 
   // The nodes a drop brought inside the node, each the one a drop named, and so in a
   // component a use of its recipe; a node inside one of them came with it.
-  static std::vector<const VP::Node *> uses_of(const VP::View &graph, std::string_view root) {
+  static std::vector<const VP::Node *> uses_of(const VP::View &graph,
+                                               std::string_view root) {
     std::vector<const VP::Node *> uses;
     for (const VP::Node &node : graph.nodes)
       if (node.name != root && VP::within(node.name, root) &&
@@ -762,10 +761,12 @@ class Library final : public VP::Operator {
             full,
             full));
     }
-    VP::View made{.name = std::string(name), .nodes = {VP::Node{.name = std::string(name)}}};
+    VP::View made{.name = std::string(name),
+                  .nodes = {VP::Node{.name = std::string(name)}}};
     for (const VP::Node *const use : uses) {
       const std::string from = use->recipe.substr(0, use->recipe.find(fingerprint_mark));
-      if (fingerprint(files, copy_in(files, graph, graph.file.parent_path(), use->name)) !=
+      if (fingerprint(files,
+                      copy_in(files, graph, graph.file.parent_path(), use->name)) !=
           use->recipe.substr(use->recipe.find(fingerprint_mark) + 1))
         throw std::runtime_error(std::format(
             "{} changed since it was dropped from {}, and a component uses {} as the "
@@ -809,8 +810,8 @@ class Library final : public VP::Operator {
       for (const VP::Param &param : node.params)
         if (const VP::Param *const set = theirs ? theirs->node.param(param.key) : nullptr;
             !set || set->value != param.value)
-          params.push_back({inner->empty() ? param.key : *inner + '.' + param.key,
-                            param.value});
+          params.push_back(
+              {inner->empty() ? param.key : *inner + '.' + param.key, param.value});
     }
     return params;
   }

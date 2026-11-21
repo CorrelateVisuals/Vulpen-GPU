@@ -41,7 +41,7 @@ namespace VP {
 
 namespace {
 
-constexpr std::size_t input_chunk = 4096; // bytes of standard input one read takes
+constexpr std::size_t input_chunk = 4096;  // bytes of standard input one read takes
 constexpr std::size_t common_columns = 80; // as a terminal starts
 // At most this much input a frame, so input that never pauses cannot hold a frame.
 constexpr std::size_t input_per_call = 16 * input_chunk;
@@ -460,7 +460,8 @@ std::wstring quoted(const std::wstring &word) {
 
 } // namespace
 
-// The new process takes this one's standard streams, a pipe's too, as handles it inherits.
+// The new process takes this one's standard streams, a pipe's too, as handles it
+// inherits.
 void Shell::replace(const std::filesystem::path &program,
                     std::span<const std::string> arguments) {
   std::wstring line = quoted(program.wstring());

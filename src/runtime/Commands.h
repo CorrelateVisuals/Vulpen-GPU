@@ -112,7 +112,8 @@ public:
   // What the views' files do not hold yet: the edits of each view marked, kept since its
   // mark, in order, as text names them; a view not marked holds none, as one no longer
   // hosted. What a restart replays (V08).
-  std::string after(std::span<const Mark> marks, const std::filesystem::path &folder) const;
+  std::string after(std::span<const Mark> marks,
+                    const std::filesystem::path &folder) const;
 
 private:
   struct Kept {
@@ -125,7 +126,7 @@ private:
   static std::string line(const Kept &kept, const std::filesystem::path &folder);
 
   std::vector<std::vector<Kept>> _groups;
-  std::vector<bool> _taken; // by _groups: undo took it back
+  std::vector<bool> _taken;           // by _groups: undo took it back
   std::optional<std::size_t> _joined; // the group a part's answer joins, while it runs
   std::size_t _size = 0;
 };
@@ -273,7 +274,7 @@ private:
   CommandLog _session;
   std::vector<Source> _sourcing; // the files running, innermost last
   std::string _addressed;
-  std::string _changed; // by the primitive running
+  std::string _changed;   // by the primitive running
   std::size_t _depth = 0; // the lines running, each sent by the one before it
   // The group of the last line a person ran that kept edits, and the frame it ran: the
   // parts' lines of that frame and the few after answer it, and join its group. After an
@@ -285,7 +286,7 @@ private:
   bool _answers_undo = false; // the frames since are an undo's or a redo's
   bool _joining = false;      // the line about to run joins _answered's group
   bool _discarding = false;   // the line running keeps nothing
-  bool _replaying = false; // what runs, the log kept already
+  bool _replaying = false;    // what runs, the log kept already
   const Command _quit;
   const Command _quit_force;
   const Command _source;
@@ -293,13 +294,13 @@ private:
   const Command _log_save_force;
   const Command _switch;
   bool _quitting = false;
-  std::string _current;               // the view view switch moved to
+  std::string _current;              // the view view switch moved to
   std::vector<std::string> _holding; // the views that held it then, its host first
-  Holds _holds; // this frame's
-  Holds _held;  // the frame before's
-  Holds _reading; // the terminal's readers, this frame's
-  Holds _read;    // the frame before's
-  std::vector<Logged> _logged; // the first _logged_count are this frame's
+  Holds _holds;                      // this frame's
+  Holds _held;                       // the frame before's
+  Holds _reading;                    // the terminal's readers, this frame's
+  Holds _read;                       // the frame before's
+  std::vector<Logged> _logged;       // the first _logged_count are this frame's
   std::size_t _logged_count = 0;
 };
 

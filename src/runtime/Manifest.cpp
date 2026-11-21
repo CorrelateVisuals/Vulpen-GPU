@@ -130,9 +130,8 @@ std::vector<std::string> files_in(const std::filesystem::path &folder) {
 
 // A node's folder: its name's path from where the view's node names start, or that
 // folder itself for a project's top node.
-std::filesystem::path folder_of(const View &view,
-                                const std::filesystem::path &base,
-                                std::string_view node) {
+std::filesystem::path
+folder_of(const View &view, const std::filesystem::path &base, std::string_view node) {
   const std::filesystem::path inside = folder_in(view, node);
   return inside.empty() ? base : base / inside;
 }
@@ -724,8 +723,10 @@ std::vector<std::string> Manifest::refresh(View &view) {
         folder.empty() ? std::string("the view's folder") : folder.generic_string() + '/';
     for (const std::string &file : files)
       if (std::ranges::find(node.files, file) == node.files.end())
-        notes.push_back(std::format(
-            "node {}: {} is in {} now, so it is one of its files", node.name, file, shown));
+        notes.push_back(std::format("node {}: {} is in {} now, so it is one of its files",
+                                    node.name,
+                                    file,
+                                    shown));
     for (const std::string &file : node.files)
       if (std::ranges::find(files, file) == files.end())
         notes.push_back(

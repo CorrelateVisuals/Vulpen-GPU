@@ -70,13 +70,13 @@ VkInstance create_instance(const Log &log) {
   for (const VkExtensionProperties &extension : offered)
     if (std::string_view(extension.extensionName).ends_with(surface_extension))
       extensions.push_back(extension.extensionName);
-  const VkInstanceCreateInfo info{
-      .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-      .pApplicationInfo = &application,
-      .enabledLayerCount = validated ? 1u : 0u,
-      .ppEnabledLayerNames = &validation_layer,
-      .enabledExtensionCount = static_cast<std::uint32_t>(extensions.size()),
-      .ppEnabledExtensionNames = extensions.data()};
+  const VkInstanceCreateInfo info{.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+                                  .pApplicationInfo = &application,
+                                  .enabledLayerCount = validated ? 1u : 0u,
+                                  .ppEnabledLayerNames = &validation_layer,
+                                  .enabledExtensionCount =
+                                      static_cast<std::uint32_t>(extensions.size()),
+                                  .ppEnabledExtensionNames = extensions.data()};
   VkInstance instance = VK_NULL_HANDLE;
   check(vkCreateInstance(&info, nullptr, &instance), "vkCreateInstance");
   if constexpr (validate)
@@ -178,9 +178,9 @@ std::size_t rank(VkPhysicalDevice device, std::string_view prefer) {
     return 0;
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(device, &properties);
-  return 1 + static_cast<std::size_t>(
-                 std::ranges::find(preference, properties.deviceType) -
-                 preference.begin());
+  return 1 +
+         static_cast<std::size_t>(std::ranges::find(preference, properties.deviceType) -
+                                  preference.begin());
 }
 
 // The GPUs that meet the floor, and present to the window where there is one.

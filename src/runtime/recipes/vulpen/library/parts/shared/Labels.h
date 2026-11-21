@@ -41,7 +41,7 @@ struct Labels {
         std::min(text.size(), characters.size() - character_count));
     for (std::uint32_t at = 0; at < fits; ++at)
       characters[character_count + at] = {.code = static_cast<unsigned char>(text[at]),
-                                           .label = label_count - 1};
+                                          .label = label_count - 1};
     character_count += fits;
     label.count += fits;
   }

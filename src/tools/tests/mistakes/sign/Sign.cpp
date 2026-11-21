@@ -90,7 +90,9 @@ class Sign final : public VP::Operator {
     const std::span<Character> written = frame.write(_characters, characters);
     std::uint32_t next = 0;
     for (std::uint32_t line = 0; line < lines.size(); ++line) {
-      labels[line] = {.offset = first_line + glm::ivec2(0, line_height * static_cast<std::int32_t>(line)),
+      labels[line] = {.offset =
+                          first_line +
+                          glm::ivec2(0, line_height * static_cast<std::int32_t>(line)),
                       .extent = room,
                       .role = line == 0 ? text : accent,
                       .first = next,

@@ -27,9 +27,9 @@ constexpr std::size_t no_node = static_cast<std::size_t>(-1);
 // the folder is, empty for none.
 using Rows = std::vector<std::pair<std::string, std::string>>;
 
-// A file's lines, as docs/statistics counts them: one holding any code counts as code, one
-// a comment starts as comment, and one of blanks as blank; a file holding a zero byte is
-// no text, and has none.
+// A file's lines, as docs/statistics counts them: one holding any code counts as code,
+// one a comment starts as comment, and one of blanks as blank; a file holding a zero byte
+// is no text, and has none.
 struct Lines {
   std::size_t code = 0;
   std::size_t comment = 0;
@@ -49,15 +49,26 @@ struct Lines {
 // What starts a comment, by a file's ending: // in C++ and GLSL, # in a manifest, CMake,
 // Python, shell and a settings file; none in any other, as Markdown.
 std::string_view comment_of(const std::filesystem::path &file) {
-  static constexpr auto slashed = std::to_array<std::string_view>(
-      {".cpp", ".h", ".hpp", ".c", ".cc", ".glsl", ".vert", ".frag", ".comp", ".tesc",
-       ".tese", ".geom", ".in"});
+  static constexpr auto slashed = std::to_array<std::string_view>({".cpp",
+                                                                   ".h",
+                                                                   ".hpp",
+                                                                   ".c",
+                                                                   ".cc",
+                                                                   ".glsl",
+                                                                   ".vert",
+                                                                   ".frag",
+                                                                   ".comp",
+                                                                   ".tesc",
+                                                                   ".tese",
+                                                                   ".geom",
+                                                                   ".in"});
   static constexpr auto hashed =
       std::to_array<std::string_view>({".vlp", ".py", ".cmake", ".sh", ".ps1", ".ini"});
   const std::string ending = file.extension().string();
   if (std::ranges::find(slashed, ending) != slashed.end())
     return "//";
-  if (std::ranges::find(hashed, ending) != hashed.end() || file.filename() == "CMakeLists.txt")
+  if (std::ranges::find(hashed, ending) != hashed.end() ||
+      file.filename() == "CMakeLists.txt")
     return "#";
   return {};
 }
@@ -84,8 +95,11 @@ Lines lines_of(std::string_view text, std::string_view comment) {
 }
 
 std::string said(const Lines &lines) {
-  return std::format(
-      "{}: {} code, {} comment, {} blank", lines.all(), lines.code, lines.comment, lines.blank);
+  return std::format("{}: {} code, {} comment, {} blank",
+                     lines.all(),
+                     lines.code,
+                     lines.comment,
+                     lines.blank);
 }
 
 // A path as every answer names it, from where vulpen started.
@@ -336,8 +350,7 @@ class Inspect final : public VP::Operator {
     }
     const auto node = std::ranges::find(view.nodes, name, &VP::Node::name);
     if (node == view.nodes.end()) {
-      if (!inside(call, view, name) &&
-          !info_path(call, view, call.resolved(name), false))
+      if (!inside(call, view, name) && !info_path(call, view, call.resolved(name), false))
         throw std::runtime_error(
             std::format("no node, view, file or folder is named {}", name));
       return;
@@ -349,14 +362,14 @@ class Inspect final : public VP::Operator {
     if (!folder.empty())
       call.reply(std::format("folder = {}/", shown(folder)));
     for (const std::string &file : node->files)
-      call.reply(std::format("holds {}, {} lines", file, lines_in(call, folder / file).all()));
+      call.reply(
+          std::format("holds {}, {} lines", file, lines_in(call, folder / file).all()));
     for (const VP::Connection &connection : view.connections) {
       if (connection.from.node == name)
         call.reply(std::format("writes {} as {}", connection.from.port, connection.name));
       for (const VP::Endpoint &end : connection.to)
         if (end.node == name)
-          call.reply(
-              std::format("reads {} from {}", end.port, connection.from.text()));
+          call.reply(std::format("reads {} from {}", end.port, connection.from.text()));
     }
   }
 
@@ -377,10 +390,10 @@ class Inspect final : public VP::Operator {
     }
   }
 
-  // A file or a folder by its path: where it is, the node whose folder it is or is in, and
-  // a file's lines and bytes, or what a folder holds, a name a line, and the lines of the
-  // files among them, which info shows of each; under a header of its own when selected.
-  // Whether there is one.
+  // A file or a folder by its path: where it is, the node whose folder it is or is in,
+  // and a file's lines and bytes, or what a folder holds, a name a line, and the lines of
+  // the files among them, which info shows of each; under a header of its own when
+  // selected. Whether there is one.
   static bool info_path(VP::Call &call,
                         const VP::View &view,
                         const std::filesystem::path &absolute,
@@ -417,8 +430,8 @@ class Inspect final : public VP::Operator {
       lines.add(lines_in(call, path / held));
       ++files;
     }
-    call.reply(std::format("lines = {} in its {} file{}", said(lines), files,
-                           files == 1 ? "" : "s"));
+    call.reply(std::format(
+        "lines = {} in its {} file{}", said(lines), files, files == 1 ? "" : "s"));
     return true;
   }
 
@@ -502,11 +515,10 @@ class Inspect final : public VP::Operator {
     }
     const std::string_view name = costs[at].node;
     const Weight &sum = tree.sums[at];
-    rows.emplace_back(
-        std::string(2 * depth, ' ')
-            .append(depth == 0 ? name : name.substr(name.rfind('.') + 1)),
-        column(sum.cpu, most_cpu, sum.cooks, false) + ' ' +
-            column(sum.gpu, most_gpu, sum.runs, sum.untimed));
+    rows.emplace_back(std::string(2 * depth, ' ')
+                          .append(depth == 0 ? name : name.substr(name.rfind('.') + 1)),
+                      column(sum.cpu, most_cpu, sum.cooks, false) + ' ' +
+                          column(sum.gpu, most_gpu, sum.runs, sum.untimed));
     for (const std::size_t inner : tree.inside[at])
       cost_rows(costs, tree, inner, tree.inside[at], depth + 1, rows);
   }

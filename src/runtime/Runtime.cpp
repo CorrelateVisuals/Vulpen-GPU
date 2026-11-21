@@ -54,11 +54,8 @@ VkExtent2D size_of(std::string_view flag, std::string_view text) {
       by == std::string_view::npos ? std::nullopt
                                    : number_in<std::uint32_t>(text.substr(by + 1));
   if (!width || !height)
-    throw std::runtime_error(
-        std::format("{} {} is no size: a width and a height, as 1280x720\n{}",
-                    flag,
-                    text,
-                    usage));
+    throw std::runtime_error(std::format(
+        "{} {} is no size: a width and a height, as 1280x720\n{}", flag, text, usage));
   return {*width, *height};
 }
 
@@ -69,7 +66,6 @@ template <class T> T number(std::string_view flag, std::string_view text) {
         std::format("{} {} is not a whole number\n{}", flag, text, usage));
   return *value;
 }
-
 
 // A window's title names the view it shows.
 std::string title(const View &view) {
@@ -161,9 +157,12 @@ public:
         continue;
       const std::string_view kind = trim(line.substr(equals + 1));
       if (kind != integrated && kind != discrete)
-        throw std::runtime_error(std::format(
-            "{}: {} = {} is no kind of GPU: {} or {}", file.string(), key, kind,
-            integrated, discrete));
+        throw std::runtime_error(std::format("{}: {} = {} is no kind of GPU: {} or {}",
+                                             file.string(),
+                                             key,
+                                             kind,
+                                             integrated,
+                                             discrete));
       return std::string(kind);
     }
     return {};
@@ -247,7 +246,7 @@ private:
     std::uint64_t frames = 0; // 0 runs until stopped
     // Where the frame count starts, so a test reaches years of frames in a moment (A03).
     std::uint64_t first_frame = 0;
-    std::uint32_t fps = 0;    // 0 runs unpaced
+    std::uint32_t fps = 0; // 0 runs unpaced
     // While no window is open: the size of the images draws render into, and of the
     // frame block's resolution, so a run renders headless (V07). Zero renders none.
     VkExtent2D size{};
@@ -299,7 +298,7 @@ private:
   Commands _commands;
   std::optional<Wiring> _wiring; // what every schedule borrows, once the engine exists
   std::optional<Views> _views;
-  std::optional<Edits> _edits; // goes before the views it changes
+  std::optional<Edits> _edits;           // goes before the views it changes
   std::optional<Preference> _preference; // goes before the engine it names
   std::optional<Relaunch> _relaunch;
   // Every view's, in the order a frame runs them; the passes are gathered only when a
@@ -372,13 +371,13 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
         throw std::runtime_error(std::format("--log {} is no level\n{}", named, usage));
       options.log = *level;
     } else {
-      throw std::runtime_error(std::format(
-          "unknown argument {}{}\n{}",
-          argument,
-          argument.find('=') == std::string_view::npos
-              ? ""
-              : "; a value follows its flag after a blank, as --frames 2",
-          usage));
+      throw std::runtime_error(
+          std::format("unknown argument {}{}\n{}",
+                      argument,
+                      argument.find('=') == std::string_view::npos
+                          ? ""
+                          : "; a value follows its flag after a blank, as --frames 2",
+                      usage));
     }
   }
   return options;
@@ -574,11 +573,12 @@ void Runtime::watch() {
           Level::debug, Tag::mod, "a file changed; building the modules and shaders");
       break;
     case Live::Build::failed:
-      _log.write(Level::error,
-                 Tag::mod,
-                 std::format("live: the build of {} failed, so its running code stays\n{}",
-                             joined(_live->failed()),
-                             _live->errors()));
+      _log.write(
+          Level::error,
+          Tag::mod,
+          std::format("live: the build of {} failed, so its running code stays\n{}",
+                      joined(_live->failed()),
+                      _live->errors()));
       _log.write(Level::debug, Tag::mod, "live: the whole build said\n" + _live->said());
       [[fallthrough]];
     case Live::Build::unsettled:
@@ -604,12 +604,13 @@ void Runtime::watch() {
       break;
   }
   if (const std::filesystem::path changed = _live->engine_changed(); !changed.empty())
-    _log.write(Level::warn,
-               Tag::mod,
-               std::format("live: {} changed since this vulpen was built, and only a "
-                           "restart runs the engine anew: quit restart builds it and runs "
-                           "it",
-                           changed.string()));
+    _log.write(
+        Level::warn,
+        Tag::mod,
+        std::format("live: {} changed since this vulpen was built, and only a "
+                    "restart runs the engine anew: quit restart builds it and runs "
+                    "it",
+                    changed.string()));
 }
 
 // Between frames, with the GPU idle: swaps what the build rewrote and keeps the rest; a
@@ -718,16 +719,16 @@ Runtime::Relaunch Runtime::restarted(std::uint64_t ran) {
   Files::save(replay,
               _views->unsaved(replay.parent_path()) +
                   std::format("view switch {}\n", _commands.current()));
-  std::vector<std::string> arguments{_views->view().file.string(),
-                                     "--restart",
-                                     replay.string(),
-                                     "--first-frame",
-                                     std::to_string(_options.first_frame + ran),
-                                     "--fps",
-                                     std::to_string(_options.fps),
-                                     "--log",
-                                     std::string(level_names[static_cast<std::size_t>(
-                                         _options.log)])};
+  std::vector<std::string> arguments{
+      _views->view().file.string(),
+      "--restart",
+      replay.string(),
+      "--first-frame",
+      std::to_string(_options.first_frame + ran),
+      "--fps",
+      std::to_string(_options.fps),
+      "--log",
+      std::string(level_names[static_cast<std::size_t>(_options.log)])};
   if (_options.frames != 0)
     arguments.insert(arguments.end(),
                      {"--frames", std::to_string(_options.frames - ran)});

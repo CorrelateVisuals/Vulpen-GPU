@@ -51,7 +51,15 @@ constexpr std::uint64_t hold = 15;
 constexpr std::string_view blanks = " \t\r";
 
 // What a file's lines say links it to another, as its name or its extension tells.
-enum class Language : std::uint8_t { none, code, python, cmake, markdown, shell, manifest };
+enum class Language : std::uint8_t {
+  none,
+  code,
+  python,
+  cmake,
+  markdown,
+  shell,
+  manifest
+};
 
 Language language_of(const std::filesystem::path &file) {
   static constexpr auto code = std::to_array<std::string_view>({".h",
@@ -78,7 +86,8 @@ Language language_of(const std::filesystem::path &file) {
     return Language::markdown;
   if (extension == ".sh")
     return Language::shell;
-  return std::ranges::find(code, extension) != code.end() ? Language::code : Language::none;
+  return std::ranges::find(code, extension) != code.end() ? Language::code
+                                                          : Language::none;
 }
 
 std::string_view trim(std::string_view text) {
@@ -98,8 +107,10 @@ std::size_t id_length(std::string_view text, std::size_t at) {
   while (end < text.size() && text[end] >= '0' && text[end] <= '9')
     ++end;
   const std::size_t digits = end - at - letters;
-  const bool word = end == text.size() || !std::isalnum(static_cast<unsigned char>(text[end]));
-  return letters > 0 && letters <= 5 && (digits == 2 || digits == 3) && word ? end - at : 0;
+  const bool word =
+      end == text.size() || !std::isalnum(static_cast<unsigned char>(text[end]));
+  return letters > 0 && letters <= 5 && (digits == 2 || digits == 3) && word ? end - at
+                                                                             : 0;
 }
 
 // The ids a document defines, each to the document: a bullet that starts with one in
@@ -110,7 +121,8 @@ void define(std::string_view text,
   constexpr std::string_view bullet = "- **";
   for (std::size_t at = 0; at < text.size();) {
     const std::size_t end = std::min(text.find('\n', at), text.size());
-    if (const std::string_view line = trim(text.substr(at, end - at)); line.starts_with(bullet))
+    if (const std::string_view line = trim(text.substr(at, end - at));
+        line.starts_with(bullet))
       if (const std::size_t length = id_length(line, bullet.size()); length > 0)
         ids.try_emplace(std::string(line.substr(bullet.size(), length)), document);
     at = end + 1;
@@ -179,7 +191,8 @@ void find(Listed &listed,
 
 // A Python module as a path: a.b as a/b, its leading dots counting folders up from the
 // file's, as a relative import does; a module's file, else a package's folder.
-std::string module(Listed &listed, const std::filesystem::path &folder, std::string_view name) {
+std::string
+module(Listed &listed, const std::filesystem::path &folder, std::string_view name) {
   std::filesystem::path from = folder;
   const std::size_t dots = std::min(name.find_first_not_of('.'), name.size());
   for (std::size_t up = 1; up < dots; ++up)
@@ -265,13 +278,14 @@ void line_relations(Listed &listed,
     }
   } else if (language == Language::code) {
     loaded(listed, folder, said, add);
-  } else if (language == Language::python && (said.starts_with("import ") ||
-                                              said.starts_with("from "))) {
-    const std::string_view names = said.starts_with("from ") ? after("from") : after("import");
+  } else if (language == Language::python &&
+             (said.starts_with("import ") || said.starts_with("from "))) {
+    const std::string_view names =
+        said.starts_with("from ") ? after("from") : after("import");
     const std::string_view imported = names.substr(0, names.find_first_of(" ,"));
     add(module(listed, folder, imported), VP_VIEW::Layer::code, imported);
-  } else if (language == Language::shell && (said.starts_with("source ") ||
-                                             said.starts_with(". "))) {
+  } else if (language == Language::shell &&
+             (said.starts_with("source ") || said.starts_with(". "))) {
     std::string_view name = said.starts_with(". ") ? after(".") : after("source");
     name = name.substr(0, name.find_first_of(blanks));
     add(resolved(listed, folder, name, false), VP_VIEW::Layer::code, name);
@@ -383,20 +397,27 @@ bool assigns(std::string_view rest) {
   if (at != std::string_view::npos && rest[at] == '.')
     at = rest.find_first_not_of(
         " \tabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_", at + 1);
-  if (at != std::string_view::npos && std::string_view("+-*/").find(rest[at]) !=
-                                          std::string_view::npos)
+  if (at != std::string_view::npos &&
+      std::string_view("+-*/").find(rest[at]) != std::string_view::npos)
     ++at;
-  return at < rest.size() && rest[at] == '=' && (at + 1 == rest.size() || rest[at + 1] != '=');
+  return at < rest.size() && rest[at] == '=' &&
+         (at + 1 == rest.size() || rest[at + 1] != '=');
 }
 
 // What a stage hands the next with no declaration, each at the first line writing it: the
-// built-ins a vertex, tessellation or geometry stage writes out, as gl_Position, which the
-// next reads in as gl_in[].gl_Position, or the rasterizer turns into the pixels a fragment
-// stage runs for, and the tessellation levels, which cut the patch the next stage places.
+// built-ins a vertex, tessellation or geometry stage writes out, as gl_Position, which
+// the next reads in as gl_in[].gl_Position, or the rasterizer turns into the pixels a
+// fragment stage runs for, and the tessellation levels, which cut the patch the next
+// stage places.
 std::vector<Varying> builtins_of(std::string_view text) {
-  static constexpr auto written = std::to_array<std::string_view>(
-      {"gl_Position", "gl_PointSize", "gl_ClipDistance", "gl_CullDistance",
-       "gl_TessLevelOuter", "gl_TessLevelInner", "gl_Layer", "gl_ViewportIndex"});
+  static constexpr auto written = std::to_array<std::string_view>({"gl_Position",
+                                                                   "gl_PointSize",
+                                                                   "gl_ClipDistance",
+                                                                   "gl_CullDistance",
+                                                                   "gl_TessLevelOuter",
+                                                                   "gl_TessLevelInner",
+                                                                   "gl_Layer",
+                                                                   "gl_ViewportIndex"});
   std::vector<Varying> builtins;
   each_line(text, [&](std::string_view line, std::uint32_t number) {
     line = line.substr(0, line.find("//"));
@@ -433,21 +454,25 @@ void bind_names(std::string_view text,
                               {.call = ".readback<", .sends = false, .pass = true},
                               {.call = ".output<", .sends = true, .pass = false},
                               {.call = ".input<", .sends = false, .pass = false}});
-  each_line(text, [&](std::string_view line, std::uint32_t number) {
-    for (const Binding &binding : calls)
-      for (std::size_t at = line.find(binding.call); at != std::string_view::npos;
-           at = line.find(binding.call, at + binding.call.size())) {
-        const std::size_t open = line.find("(\"", at + binding.call.size());
-        const std::size_t close =
-            open == std::string_view::npos ? open : line.find('"', open + 2);
-        if (close != std::string_view::npos)
-          bound.push_back({.file = file,
-                           .name = std::string(line.substr(open + 2, close - open - 2)),
-                           .line = number,
-                           .sends = binding.sends,
-                           .pass = binding.pass});
-      }
-  }, before);
+  each_line(
+      text,
+      [&](std::string_view line, std::uint32_t number) {
+        for (const Binding &binding : calls)
+          for (std::size_t at = line.find(binding.call); at != std::string_view::npos;
+               at = line.find(binding.call, at + binding.call.size())) {
+            const std::size_t open = line.find("(\"", at + binding.call.size());
+            const std::size_t close =
+                open == std::string_view::npos ? open : line.find('"', open + 2);
+            if (close != std::string_view::npos)
+              bound.push_back(
+                  {.file = file,
+                   .name = std::string(line.substr(open + 2, close - open - 2)),
+                   .line = number,
+                   .sends = binding.sends,
+                   .pass = binding.pass});
+          }
+      },
+      before);
 }
 
 // The names a shader's pass block declares, the last word of each member, past its
@@ -551,9 +576,8 @@ std::string top_of(VP::FilePort &files,
     if (folder != folder.parent_path())
       continue;
     const std::filesystem::path below = shown.lexically_relative(before);
-    return !before.empty() && !below.empty() && *below.begin() != ".."
-               ? before.string()
-               : shown.string();
+    return !before.empty() && !below.empty() && *below.begin() != ".." ? before.string()
+                                                                       : shown.string();
   }
 }
 
@@ -569,9 +593,10 @@ bool tool_state(const std::vector<std::string> &names) {
 }
 
 bool same(const VP::View &a, const VP::View &b) {
-  return std::ranges::equal(a.nodes, b.nodes, [](const VP::Node &one, const VP::Node &two) {
-    return one.name == two.name && one.files == two.files;
-  });
+  return std::ranges::equal(
+      a.nodes, b.nodes, [](const VP::Node &one, const VP::Node &two) {
+        return one.name == two.name && one.files == two.files;
+      });
 }
 
 } // namespace
@@ -591,9 +616,10 @@ void Relations::bind(VP::Bind &node) {
         std::filesystem::path(node.param<std::string>("folder")).lexically_normal();
     folder = (named.filename().empty() ? named.parent_path() : named).string();
   }
-  std::string docs = (std::filesystem::path(node.folder()) / node.param<std::string>("docs"))
-                         .lexically_normal()
-                         .string();
+  std::string docs =
+      (std::filesystem::path(node.folder()) / node.param<std::string>("docs"))
+          .lexically_normal()
+          .string();
   if (folder != _folder || docs != _docs)
     _stale = true;
   _relations->asked = folder;
@@ -884,7 +910,7 @@ void Relations::relate_stages() {
       const std::vector<Varying> &outs = *written;
       const auto out = std::ranges::find_if(outs, [&](const Varying &each) {
         return each.out && (in.location && each.location ? *in.location == *each.location
-                                                       : in.name == each.name);
+                                                         : in.name == each.name);
       });
       if (out != outs.end())
         _found.push_back({.from = writer->generic_string(),
@@ -939,10 +965,8 @@ void Relations::relate_wires() {
 // The file of a node's folder that writes a port, or reads it, and the line saying so:
 // C++ binding it as data leaving it, or reaching it, else a shader whose pass block
 // declares it, or whose stage writes it out, or reads it in; none for none.
-std::optional<std::pair<std::filesystem::path, std::uint32_t>>
-Relations::port_file(const std::filesystem::path &folder,
-                     std::string_view port,
-                     bool writes) const {
+std::optional<std::pair<std::filesystem::path, std::uint32_t>> Relations::port_file(
+    const std::filesystem::path &folder, std::string_view port, bool writes) const {
   const auto in = _in_folder.find(folder);
   if (in == _in_folder.end())
     return std::nullopt;
@@ -954,11 +978,9 @@ Relations::port_file(const std::filesystem::path &folder,
         declared != names->end())
       return std::pair(*file, declared->line);
   for (const auto &[file, varyings] : in->second.varyings)
-    if (const auto varying = std::ranges::find_if(*varyings,
-                                                  [&](const Varying &each) {
-                                                    return each.name == port &&
-                                                           each.out == writes;
-                                                  });
+    if (const auto varying = std::ranges::find_if(
+            *varyings,
+            [&](const Varying &each) { return each.name == port && each.out == writes; });
         varying != varyings->end())
       return std::pair(*file, varying->line);
   return std::nullopt;

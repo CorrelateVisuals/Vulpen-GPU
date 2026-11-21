@@ -39,7 +39,10 @@ std::string gigabytes(VkDeviceSize bytes) {
 
 // Throws naming what an allocation that failed asked for and what is free, as a count
 // the GPU cannot hold fails so (A02); any other failure as check does.
-void allocated(VkResult result, const char *call, std::string_view asked, VkDeviceSize free) {
+void allocated(VkResult result,
+               const char *call,
+               std::string_view asked,
+               VkDeviceSize free) {
   if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY || result == VK_ERROR_OUT_OF_HOST_MEMORY)
     throw std::runtime_error(std::format(
         "{} is more than the GPU can give, with {} free", asked, gigabytes(free)));
@@ -54,12 +57,12 @@ void fits(VkPhysicalDevice device, VkExtent2D extent, Fill fill) {
   vkGetPhysicalDeviceProperties(device, &properties);
   const VkPhysicalDeviceLimits &limits = properties.limits;
   const bool drawn = fill == Fill::draw;
-  const std::uint32_t widest = drawn ? std::min(limits.maxImageDimension2D,
-                                                limits.maxFramebufferWidth)
-                                     : limits.maxImageDimension2D;
-  const std::uint32_t tallest = drawn ? std::min(limits.maxImageDimension2D,
-                                                 limits.maxFramebufferHeight)
-                                      : limits.maxImageDimension2D;
+  const std::uint32_t widest =
+      drawn ? std::min(limits.maxImageDimension2D, limits.maxFramebufferWidth)
+            : limits.maxImageDimension2D;
+  const std::uint32_t tallest =
+      drawn ? std::min(limits.maxImageDimension2D, limits.maxFramebufferHeight)
+            : limits.maxImageDimension2D;
   if (extent.width > widest || extent.height > tallest)
     throw std::runtime_error(
         std::format("an image of {} by {} pixels is past the {} by {} this GPU makes",
@@ -187,12 +190,12 @@ Resources::Resources(VkInstance instance,
     : _physical_device(physical_device), _device(device) {
   const VmaAllocatorCreateFlags told =
       budget ? VmaAllocatorCreateFlags{VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT} : 0;
-  const VmaAllocatorCreateInfo info{.flags =
-                                        VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | told,
-                                    .physicalDevice = physical_device,
-                                    .device = device,
-                                    .instance = instance,
-                                    .vulkanApiVersion = VK_API_VERSION_1_2};
+  const VmaAllocatorCreateInfo info{
+      .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | told,
+      .physicalDevice = physical_device,
+      .device = device,
+      .instance = instance,
+      .vulkanApiVersion = VK_API_VERSION_1_2};
   check(vmaCreateAllocator(&info, &_allocator), "vmaCreateAllocator");
 }
 
@@ -218,8 +221,8 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
     VkBufferCreateInfo least = info;
     least.size = 1;
     std::uint32_t type = 0;
-    const bool typed =
-        vmaFindMemoryTypeIndexForBufferInfo(_allocator, &least, &where, &type) == VK_SUCCESS;
+    const bool typed = vmaFindMemoryTypeIndexForBufferInfo(
+                           _allocator, &least, &where, &type) == VK_SUCCESS;
     allocated(result,
               "vmaCreateBuffer",
               gigabytes(size),
@@ -259,8 +262,8 @@ Image Resources::image(VkExtent2D extent, VkFormat format, Fill fill) const {
     VkImageCreateInfo least = info; // as a buffer's, for a pixel
     least.extent = {1, 1, 1};
     std::uint32_t type = 0;
-    const bool typed =
-        vmaFindMemoryTypeIndexForImageInfo(_allocator, &least, &where, &type) == VK_SUCCESS;
+    const bool typed = vmaFindMemoryTypeIndexForImageInfo(
+                           _allocator, &least, &where, &type) == VK_SUCCESS;
     allocated(result,
               "vmaCreateImage",
               std::format("an image of {} by {} pixels", extent.width, extent.height),
@@ -292,11 +295,11 @@ bool Resources::samples(VkFormat format, Fill fill) const {
   const VkFormatFeatureFlags needed =
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
-      (fill == Fill::draw    ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-                                   VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
-       : fill == Fill::store ? VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
-                                   VK_FORMAT_FEATURE_TRANSFER_DST_BIT
-                             : VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
+      (fill == Fill::draw ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                                VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
+       : fill == Fill::store
+           ? VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT
+           : VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
   VkPhysicalDeviceFeatures features{};
   vkGetPhysicalDeviceFeatures(_physical_device, &features);
   return (properties.optimalTilingFeatures & needed) == needed &&

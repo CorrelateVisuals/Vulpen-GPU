@@ -114,7 +114,7 @@ struct Node {
   // them. Its .vert and .frag make it a draw, with a .geom and a .tesc and .tese between
   // them if it holds them, and its .comp a dispatch, as glslang reads the extension.
   std::vector<std::string> files;
-  std::uint32_t invocations = 0;  // a dispatch's threads
+  std::uint32_t invocations = 0; // a dispatch's threads
   // In place of a number: the port of a buffer it reads, whose length counts them, so a
   // count shared along a chain is written once.
   std::string invocations_port;

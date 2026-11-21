@@ -290,17 +290,17 @@ class Modes final : public VP::Operator {
   }
 
   bool _perform = false;
-  std::string _shows;  // the panel a project to perform shows in, or a node it holds
-  std::string _switch; // and the switch giving the view presented its first half
+  std::string _shows;     // the panel a project to perform shows in, or a node it holds
+  std::string _switch;    // and the switch giving the view presented its first half
   std::string _presented; // the view presented, as the frame before found it
   std::vector<std::string> _known; // the projects hosted the frame before
   // The project to present the frame before, and whether it had something to perform.
   std::string _performer;
   bool _performed = false;
   std::string _name;
-  std::string _view; // the one it runs in, which its lines change
+  std::string _view;      // the one it runs in, which its lines change
   std::string _returning; // in focus as perform mode began, and again in edit mode
-  bool _started = false; // after the first frame, which may present the view hosted last
+  bool _started = false;  // after the first frame, which may present the view hosted last
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;
   VP_VIEW::Rect *_edit = nullptr;

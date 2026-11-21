@@ -40,9 +40,9 @@ std::ptrdiff_t count_stage(const std::vector<std::string> &shaders,
 // tessellation and geometry stages' inputs and the tessellation control stage's outputs.
 std::string_view per_corner(const Varying &varying, std::string_view stage, bool input) {
   constexpr std::string_view array = "[]";
-  const bool arrayed = stage == tessellation_control_stage ||
-                       (input && (stage == tessellation_evaluation_stage ||
-                                  stage == geometry_stage));
+  const bool arrayed =
+      stage == tessellation_control_stage ||
+      (input && (stage == tessellation_evaluation_stage || stage == geometry_stage));
   const std::string_view type = varying.type;
   return arrayed && type.ends_with(array) ? type.substr(0, type.size() - array.size())
                                           : type;
@@ -196,7 +196,9 @@ std::string lacks(const Bound &bound) {
   std::string named;
   std::string paths;
   for (const std::string_view &stage : missing) {
-    named.append(named.empty() ? "" : &stage == &missing.back() ? " or " : ", ")
+    named.append(named.empty()               ? ""
+                 : &stage == &missing.back() ? " or "
+                                             : ", ")
         .append(stage);
     paths.append(" ").append(beside(bound, stage));
   }
@@ -222,13 +224,13 @@ bool Schedule::check_counts(Bound &bound) const {
   const bool draw = is_draw(node);
   const std::size_t before = bound.errors.size();
   if (shaders.empty()) {
-    if (node.counts_invocations() || node.vertex_count != 0 || !node.instance_count.empty())
+    if (node.counts_invocations() || node.vertex_count != 0 ||
+        !node.instance_count.empty())
       bound.errors.emplace_back("it counts invocations or vertices, but its folder holds "
                                 "no shader to run them");
   } else if ((count(compute_stage) != 0 && !dispatch) ||
-             std::ranges::any_of(stages, [&](std::string_view stage) {
-               return count(stage) > 1;
-             })) {
+             std::ranges::any_of(
+                 stages, [&](std::string_view stage) { return count(stage) > 1; })) {
     bound.errors.push_back(std::format("its folder holds the shaders {}, but a node runs "
                                        "a lone .comp, or draw stages, one of each at "
                                        "most: .vert, .tesc, .tese, .geom and .frag",
@@ -291,13 +293,13 @@ void Schedule::check_stages(Bound &bound) const {
                     size[0]));
   else if (const std::uint32_t most = _wiring.resources.max_compute_work_group_count();
            bound.invocations / size[0] > most)
-    bound.errors.push_back(
-        std::format("invocations = {} makes {} workgroups of local_size_x = {}, more than "
-                    "this GPU dispatches at once, {}",
-                    bound.invocations,
-                    bound.invocations / size[0],
-                    size[0],
-                    most));
+    bound.errors.push_back(std::format(
+        "invocations = {} makes {} workgroups of local_size_x = {}, more than "
+        "this GPU dispatches at once, {}",
+        bound.invocations,
+        bound.invocations / size[0],
+        size[0],
+        most));
 }
 
 // Before the pipeline is made, which each of these would make wrongly: a fragment node's
@@ -398,14 +400,14 @@ void Schedule::pair_draws(Schedule *replaced) {
   };
   const auto reached = [&](std::string_view node) {
     return std::ranges::any_of(_view.connections, [&](const Connection &connection) {
-      return std::ranges::find(connection.to, node, &Endpoint::node) != connection.to.end();
+      return std::ranges::find(connection.to, node, &Endpoint::node) !=
+             connection.to.end();
     });
   };
   for (Bound &bound : _bound)
     if (is_fragment(*bound.node) && bound.loaded() && bound.errors.empty() &&
-        std::ranges::none_of(_bound, [&](const Bound &vertex) {
-          return vertex.fragment == &bound;
-        })) {
+        std::ranges::none_of(
+            _bound, [&](const Bound &vertex) { return vertex.fragment == &bound; })) {
       if (const Bound *const vertex = unbuilt_writer(bound))
         waits(bound,
               std::format("waits for the vertex node {}, which the live build builds",
@@ -451,9 +453,8 @@ Bound *Schedule::fragment_of(Bound &vertex) {
                                         fragment->node->name));
     return nullptr;
   }
-  if (std::ranges::any_of(_bound, [&](const Bound &other) {
-        return other.fragment == fragment;
-      })) {
+  if (std::ranges::any_of(
+          _bound, [&](const Bound &other) { return other.fragment == fragment; })) {
     vertex.errors.push_back(std::format("{} draws with another vertex node already; a "
                                         "draw has one",
                                         fragment->node->name));
@@ -506,9 +507,8 @@ void Schedule::check_varyings(const Bound &vertex,
   }
   for (const Varying &input : inputs)
     if (std::ranges::none_of(varyings, [&](const Connection *connection) {
-          return std::ranges::any_of(connection->to, [&](const Endpoint &to) {
-            return to.port == input.name;
-          });
+          return std::ranges::any_of(
+              connection->to, [&](const Endpoint &to) { return to.port == input.name; });
         }))
       fragment.errors.push_back(std::format(
           "{}: no connection brings it from {}", input.name, vertex.node->name));
@@ -586,10 +586,10 @@ void Schedule::check_connections() {
     // A varying, which pair_draws checked, or one of a vertex node that did not load,
     // which says why on its own.
     if (is_vertex(*writer.node) &&
-        (!writer.loaded() || std::ranges::find(writer.stage(vertex_stage).outputs(),
-                                               connection.from.port,
-                                               &Varying::name) !=
-                                 writer.stage(vertex_stage).outputs().end()))
+        (!writer.loaded() ||
+         std::ranges::find(writer.stage(vertex_stage).outputs(),
+                           connection.from.port,
+                           &Varying::name) != writer.stage(vertex_stage).outputs().end()))
       continue;
     // A buffer C++ fills at a port no shader of its node holds reaches shaders that hold
     // its element as C++ writes it.
@@ -622,7 +622,9 @@ void Schedule::check_connections() {
       sampled(connection,
               std::format("{} {}",
                           connection.from.node,
-                          drawn ? "draws" : out && out->image() ? "stores" : "fills"));
+                          drawn                 ? "draws"
+                          : out && out->image() ? "stores"
+                                                : "fills"));
       continue;
     }
     const bool written = out && out->buffer() &&
@@ -705,12 +707,11 @@ void Schedule::check_connections() {
               ? std::format("the operator writes {}, which nothing reads: connect it to "
                             "a buffer of another node's shader",
                             written.port)
-              : std::format(
-                    "the operator writes {}, which nothing reads: {}",
-                    written.port,
-                    joining(_view,
-                            std::format("{}.{}", bound.node->name, written.port),
-                            readers)));
+              : std::format("the operator writes {}, which nothing reads: {}",
+                            written.port,
+                            joining(_view,
+                                    std::format("{}.{}", bound.node->name, written.port),
+                                    readers)));
     }
 }
 
@@ -868,6 +869,5 @@ void Schedule::check_samples() {
     }
   }
 }
-
 
 } // namespace VP

@@ -66,9 +66,8 @@ public:
   // frame, whether a node said so as the frame before cooked, which decides the views
   // that rest.
   void unread(std::string_view view, std::string_view node, std::string_view port);
-  bool was_unread(std::string_view view,
-                  std::string_view node,
-                  std::string_view port) const;
+  bool
+  was_unread(std::string_view view, std::string_view node, std::string_view port) const;
   // An event for the next frame, from the window or the input command; the pointer's
   // moves in a row keep only the last.
   void add(Event event);
@@ -116,7 +115,8 @@ private:
   void refresh(Open &open);
   // Marks a change a node's folder may hold, unless the path is hidden.
   void listing_changed(const std::filesystem::path &path);
-  void unbuild(const std::filesystem::path &view, const std::filesystem::path &folder) const;
+  void unbuild(const std::filesystem::path &view,
+               const std::filesystem::path &folder) const;
   std::string_view text(File file) override;
   void save(File file, std::string_view text) override;
   std::string read(std::string_view file) override;
@@ -161,8 +161,8 @@ private:
   std::vector<Event> _keys;          // this frame's
   std::string _bytes;                // a key's first bytes, which wait for the rest
   bool _keyed = false;               // whether this frame read keys
-  std::vector<Event> _events;  // this frame's
-  std::vector<Event> _pending; // the next frame's
+  std::vector<Event> _events;        // this frame's
+  std::vector<Event> _pending;       // the next frame's
   // The inputs read nothing at as the frame cooks: the first count are this frame's and
   // the rest are written over next, so a frame allocates nothing once they grew (CPP10).
   struct Unread {
@@ -172,9 +172,9 @@ private:
   };
   std::vector<Unread> _unread;
   std::size_t _unread_count = 0;
-  Holder _holding;             // asked for this frame
-  Holder _held;                // asked for the frame before, which this frame keeps
-  std::vector<Event> _unheld;  // while it does, this frame's but presses and the wheel
+  Holder _holding;               // asked for this frame
+  Holder _held;                  // asked for the frame before, which this frame keeps
+  std::vector<Event> _unheld;    // while it does, this frame's but presses and the wheel
   std::vector<Event> _unpointed; // and but its moves, the keys pressed and text too
   std::vector<Event> _handed;    // this frame's, the pointer over the window handed
   std::unique_ptr<Filtered> _unheld_input;

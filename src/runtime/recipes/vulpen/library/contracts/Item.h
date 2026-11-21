@@ -33,7 +33,8 @@ struct Item {
   // gpu button in the build curves' orange; any other shows its label in it while current
   // and muted while not, on the fill any button has, as a layer's button in its curves'
   // color; in a column, its label shows in it, as a menu's lines for anywhere are muted.
-  // None for the accent's of one that toggles, the content's of a tab, or a column's text.
+  // None for the accent's of one that toggles, the content's of a tab, or a column's
+  // text.
   std::optional<std::uint32_t> role;
   // One with nothing to switch to, as gpu on a machine with one kind of GPU, or run with
   // nothing presented: a press still sends its command, which says why it does nothing,
@@ -42,8 +43,8 @@ struct Item {
   // What the pointer coming onto it sends while it is not current, as a menu's word opens
   // the words that may follow it beside it; empty for none.
   std::string hover;
-  // In a strip, drawn on from the Item before it as one tab, with no gap or blank between,
-  // as the words of where a graph is, each pressed going to its own place.
+  // In a strip, drawn on from the Item before it as one tab, with no gap or blank
+  // between, as the words of where a graph is, each pressed going to its own place.
   bool joined = false;
 
   bool operator==(const Item &) const = default;

@@ -88,7 +88,9 @@ std::filesystem::path bare(const std::filesystem::path &path) {
 }
 
 // What its folder lists of a path: a file's name, a folder's with a / after it.
-bool listed(VP::FilePort &files, const std::filesystem::path &path, std::string_view end) {
+bool listed(VP::FilePort &files,
+            const std::filesystem::path &path,
+            std::string_view end) {
   const std::vector<std::string> names = files.list(path.parent_path().string());
   return std::ranges::find(names, path.filename().string() + std::string(end)) !=
          names.end();
@@ -185,9 +187,9 @@ std::optional<Held> held_by(VP::Call &call, const std::filesystem::path &path) {
   return nearest;
 }
 
-// The node whose folder a folder of a view is, by its path from the view's folder: ui/panel
-// is ui.panel's (RV08); none for the shared folders, the hidden ones, as .vulpen, and
-// what they hold, where no node is.
+// The node whose folder a folder of a view is, by its path from the view's folder:
+// ui/panel is ui.panel's (RV08); none for the shared folders, the hidden ones, as
+// .vulpen, and what they hold, where no node is.
 std::optional<std::string> node_of(const std::filesystem::path &inside) {
   std::string name;
   for (const std::filesystem::path &part : inside) {
@@ -209,15 +211,23 @@ bool named(const VP::View &view, std::string_view node) {
 void sources_below(VP::FilePort &files,
                    const std::filesystem::path &folder,
                    std::vector<std::filesystem::path> &found) {
-  constexpr std::array<std::string_view, 10> sources{
-      ".cpp", ".h", ".hpp", ".comp", ".vert", ".tesc", ".tese", ".geom", ".frag",
-      ".glsl"};
+  constexpr std::array<std::string_view, 10> sources{".cpp",
+                                                     ".h",
+                                                     ".hpp",
+                                                     ".comp",
+                                                     ".vert",
+                                                     ".tesc",
+                                                     ".tese",
+                                                     ".geom",
+                                                     ".frag",
+                                                     ".glsl"};
   for (const std::string &name : files.list(folder.string()))
     if (name.starts_with('.'))
       continue;
     else if (name.ends_with('/'))
       sources_below(files, folder / bare(name), found);
-    else if (std::ranges::find(sources, std::filesystem::path(name).extension().string()) !=
+    else if (std::ranges::find(sources,
+                               std::filesystem::path(name).extension().string()) !=
              sources.end())
       found.push_back(folder / name);
 }
@@ -271,8 +281,8 @@ bool follow_class(VP::FilePort &files,
     return !name.empty() && !(name.front() >= '0' && name.front() <= '9') &&
            std::ranges::all_of(name, word_letter);
   };
-  if (to.extension() != ".cpp" || old_name == new_name ||
-      !identifier(old_name) || !identifier(new_name))
+  if (to.extension() != ".cpp" || old_name == new_name || !identifier(old_name) ||
+      !identifier(new_name))
     return false;
   std::string text = files.read(to.string());
   const auto whole = [&](std::size_t at, std::size_t size) {
@@ -338,12 +348,13 @@ std::vector<std::string> nodes_for(VP::FilePort &files,
     if (!node || named(view, *node) || std::ranges::find(nodes, *node) != nodes.end())
       return;
     if (!VP::is_name(inside.filename().string()))
-      throw std::runtime_error(std::format(
-          "{}/ in view {} would be node {}'s folder, as every folder in a view is a node's "
-          "(RV08), but a node's name holds letters, digits, _ and -",
-          inside.generic_string(),
-          held.view->name,
-          *node));
+      throw std::runtime_error(
+          std::format("{}/ in view {} would be node {}'s folder, as every folder in a "
+                      "view is a node's "
+                      "(RV08), but a node's name holds letters, digits, _ and -",
+                      inside.generic_string(),
+                      held.view->name,
+                      *node));
     nodes.push_back(*node);
   };
   std::filesystem::path inside;
@@ -355,12 +366,11 @@ std::vector<std::string> nodes_for(VP::FilePort &files,
   }
   if (folder && brought)
     each_below(files, *brought, held.inside, add);
-  const bool runs =
-      std::ranges::find(run_by_nodes, held.inside.extension().string()) !=
-      run_by_nodes.end();
+  const bool runs = std::ranges::find(run_by_nodes, held.inside.extension().string()) !=
+                    run_by_nodes.end();
   // An app's top is its own node already, named like its folder.
-  if (!folder && runs && !held.inside.has_parent_path() &&
-      !named(view, VP::top_node) && VP::is_top(view, VP::top_node))
+  if (!folder && runs && !held.inside.has_parent_path() && !named(view, VP::top_node) &&
+      VP::is_top(view, VP::top_node))
     nodes.emplace_back(VP::top_node);
   return nodes;
 }
@@ -402,9 +412,9 @@ void check_kept(VP::Call &call,
         shown(path),
         held->view->name,
         held->inside.empty() ? "folder" : "manifest",
-        renaming ? std::format("{}: view rename <name> moves", held->view->name)
-                 : std::format("goes once view close {} lets the view go",
-                               held->view->name)));
+        renaming
+            ? std::format("{}: view rename <name> moves", held->view->name)
+            : std::format("goes once view close {} lets the view go", held->view->name)));
 }
 
 // The node whose folder a path in a view is; none for any other path.
@@ -572,25 +582,28 @@ class Files final : public VP::Operator {
                            "the nodes inside it and the connections naming them, inside "
                            "another node's folder inside that node; a view's folder "
                            "moves with view rename");
-    _copy = node.command("copy [<file>...]",
-                         "copies a file to the second path, or with only the file "
-                         "beside it, as Name2.cpp, numbered on while taken, or a folder "
-                         "with all it holds, whole or not at all; in a view each folder "
-                         "it brings is a node, which it adds, and a node's folder or a "
-                         "recipe's comes as recipe drop brings one: with its words, the "
-                         "nodes inside it, their connections and the contracts and shared "
-                         "code they include; with none, what the part in focus has "
-                         "selected, as control with c does");
-    _remove = node.command("remove <file>",
-                           "moves a file or an empty folder into the trash, .vulpen/trash/ "
-                           "of the view holding it, where undo brings it back from and "
-                           "which keeps it 30 days; a "
-                           "node's folder takes the node with it, the nodes inside it and "
-                           "their connections; a view's goes once view close let it go; "
-                           "in the trash, it deletes");
-    _remove_force = node.command("remove force <file>",
-                                 "moves a folder with all it holds into the trash, a node's "
-                                 "with the node, as remove does the rest");
+    _copy =
+        node.command("copy [<file>...]",
+                     "copies a file to the second path, or with only the file "
+                     "beside it, as Name2.cpp, numbered on while taken, or a folder "
+                     "with all it holds, whole or not at all; in a view each folder "
+                     "it brings is a node, which it adds, and a node's folder or a "
+                     "recipe's comes as recipe drop brings one: with its words, the "
+                     "nodes inside it, their connections and the contracts and shared "
+                     "code they include; with none, what the part in focus has "
+                     "selected, as control with c does");
+    _remove =
+        node.command("remove <file>",
+                     "moves a file or an empty folder into the trash, .vulpen/trash/ "
+                     "of the view holding it, where undo brings it back from and "
+                     "which keeps it 30 days; a "
+                     "node's folder takes the node with it, the nodes inside it and "
+                     "their connections; a view's goes once view close let it go; "
+                     "in the trash, it deletes");
+    _remove_force =
+        node.command("remove force <file>",
+                     "moves a folder with all it holds into the trash, a node's "
+                     "with the node, as remove does the rest");
   }
 
   void command(VP::Call &call) override {
@@ -604,11 +617,12 @@ class Files final : public VP::Operator {
     else if (call.is(_copy) && words.size() == 1)
       move(call, bare(words[0]), beside(call.files(), bare(words[0])), true);
     else if (call.is(_copy) && words.size() != 2)
-      throw std::runtime_error(std::format("copy takes a file and the path of its copy, or "
-                                           "nothing for what the part in focus has "
-                                           "selected, where it got {} word{}",
-                                           words.size(),
-                                           words.size() == 1 ? "" : "s"));
+      throw std::runtime_error(
+          std::format("copy takes a file and the path of its copy, or "
+                      "nothing for what the part in focus has "
+                      "selected, where it got {} word{}",
+                      words.size(),
+                      words.size() == 1 ? "" : "s"));
     else if (call.is(_rename) || call.is(_copy))
       move(call, bare(words[0]), bare(words[1]), call.is(_copy));
     else if (call.is(_remove) || call.is(_remove_force))
@@ -756,9 +770,9 @@ class Files final : public VP::Operator {
   }
 
   // A rename takes what it names along, so a view's own folder stays where its name puts
-  // it, and a node's folder takes its node; a copy leaves it, so only where the copy lands
-  // counts, a node's folder or a recipe's coming as a drop. Both name the paths as typed,
-  // as new and remove do.
+  // it, and a node's folder takes its node; a copy leaves it, so only where the copy
+  // lands counts, a node's folder or a recipe's coming as a drop. Both name the paths as
+  // typed, as new and remove do.
   void move(VP::Call &call,
             const std::filesystem::path &from,
             const std::filesystem::path &to,
@@ -791,8 +805,8 @@ class Files final : public VP::Operator {
         also = std::format(
             ", and its class {} to {}", from.stem().string(), to.stem().string());
       if (const std::optional<Held> left = held_by(call, from))
-        if (const std::size_t sources = follow_includes(
-                call.files(), left->view->file.parent_path(), from, to))
+        if (const std::size_t sources =
+                follow_includes(call.files(), left->view->file.parent_path(), from, to))
           also += std::format(
               ", and the includes of {} file{}", sources, sources == 1 ? "" : "s");
       also += follow_recipe(call, from, to);
@@ -806,9 +820,9 @@ class Files final : public VP::Operator {
   }
 
   // A recipe's folder renamed renames the recipe (RV06): its own manifest names its node,
-  // and the nodes inside it, anew, as a node's folder is its name (RV08), and the drops of
-  // it in the views hosted name it anew, recipe=<name>@<fingerprint>, so recipe sync still
-  // finds it; a view not hosted is its own (V03) and names it as it did.
+  // and the nodes inside it, anew, as a node's folder is its name (RV08), and the drops
+  // of it in the views hosted name it anew, recipe=<name>@<fingerprint>, so recipe sync
+  // still finds it; a view not hosted is its own (V03) and names it as it did.
   std::string follow_recipe(VP::Call &call,
                             const std::filesystem::path &from,
                             const std::filesystem::path &to) const {
@@ -918,12 +932,13 @@ class Files final : public VP::Operator {
     return node && named(files.manifest((at / manifest).string()), *node);
   }
 
-  // The nodes the folders a line makes or brings into a view are, known before anything is
-  // written; in an app, which has no folders of its own, none may be.
-  std::vector<std::string> adopted(VP::Call &call,
-                                   const std::optional<Held> &held,
-                                   bool folder,
-                                   const std::optional<std::filesystem::path> &brought) const {
+  // The nodes the folders a line makes or brings into a view are, known before anything
+  // is written; in an app, which has no folders of its own, none may be.
+  std::vector<std::string>
+  adopted(VP::Call &call,
+          const std::optional<Held> &held,
+          bool folder,
+          const std::optional<std::filesystem::path> &brought) const {
     if (!held)
       return {};
     std::vector<std::string> nodes = nodes_for(call.files(), *held, folder, brought);
@@ -967,19 +982,18 @@ class Files final : public VP::Operator {
           return graph.adds.empty() && graph.sets.empty() && graph.then.empty();
         }))
       return {};
-    return std::format("{}{}",
-                       added.empty() ? ""
-                                     : std::format(", added node{} {}",
-                                                   count == 1 ? "" : "s",
-                                                   added),
-                       given.empty() ? "" : std::format(", gave node {}", given));
+    return std::format(
+        "{}{}",
+        added.empty() ? ""
+                      : std::format(", added node{} {}", count == 1 ? "" : "s", added),
+        given.empty() ? "" : std::format(", gave node {}", given));
   }
 
   // A node's folder takes the node out with it, the nodes inside it and the connections
   // they write and read, as the engine's edit does, before its files go, so no node is
   // left whose folder is gone; the view is saved, so its manifest names none either. What
-  // goes moves into the trash in one rename, which undo takes back, its files whole however
-  // large; what is in the trash already goes for good, as a person empties it so.
+  // goes moves into the trash in one rename, which undo takes back, its files whole
+  // however large; what is in the trash already goes for good, as a person empties it so.
   // filled: where the trash it kept something in goes.
   static void remove(VP::Call &call,
                      const std::filesystem::path &path,
@@ -1031,9 +1045,9 @@ class Files final : public VP::Operator {
   };
 
   // Where a remove keeps what it takes: in the trash of the view holding it, or of the
-  // nearest folder above it with a .vulpen/, else of the folder holding it, under the time
-  // it went, numbered on when that is taken, and its path from there; none for what is in
-  // that trash already.
+  // nearest folder above it with a .vulpen/, else of the folder holding it, under the
+  // time it went, numbered on when that is taken, and its path from there; none for what
+  // is in that trash already.
   static std::optional<Kept> trash_for(VP::Call &call,
                                        const std::optional<Held> &held,
                                        const std::filesystem::path &path) {

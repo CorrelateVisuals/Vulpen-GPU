@@ -165,14 +165,14 @@ VkRenderPass make_render_pass(VkDevice device, VkFormat format) {
                                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                           .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                           .dstAccessMask = VK_ACCESS_SHADER_READ_BIT}};
-  const VkRenderPassCreateInfo info{
-      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      .attachmentCount = 1,
-      .pAttachments = &color,
-      .subpassCount = 1,
-      .pSubpasses = &subpass,
-      .dependencyCount = static_cast<std::uint32_t>(dependencies.size()),
-      .pDependencies = dependencies.data()};
+  const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+                                    .attachmentCount = 1,
+                                    .pAttachments = &color,
+                                    .subpassCount = 1,
+                                    .pSubpasses = &subpass,
+                                    .dependencyCount =
+                                        static_cast<std::uint32_t>(dependencies.size()),
+                                    .pDependencies = dependencies.data()};
   VkRenderPass render_pass = VK_NULL_HANDLE;
   check(vkCreateRenderPass(device, &info, nullptr, &render_pass), "vkCreateRenderPass");
   return render_pass;
@@ -380,8 +380,7 @@ Pipeline::Pipeline(const Pipelines &pipelines,
                      .stage = stage.stage,
                      .module = modules.emplace_back(_device, *stage.shader).handle(),
                      .pName = "main"});
-    tessellates =
-        tessellates || stage.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    tessellates = tessellates || stage.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
   }
   const VkPipelineVertexInputStateCreateInfo input{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
@@ -438,9 +437,8 @@ Pipeline::Pipeline(const Pipelines &pipelines,
       .pDynamicState = &dynamic_state,
       .layout = pipelines.layout(),
       .renderPass = render_pass};
-  check(
-      vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline),
-      "vkCreateGraphicsPipelines");
+  check(vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline),
+        "vkCreateGraphicsPipelines");
 }
 
 Pipeline::Pipeline(Pipeline &&other) noexcept

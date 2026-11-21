@@ -30,7 +30,8 @@ constexpr const char *build_lock = "build.lock";
 // the engine's, which builds the library's too.
 constexpr std::string_view view_target = "vulpen_view_";
 constexpr std::string_view engine_target = "vulpen";
-constexpr std::string_view library_view = "library"; // the recipes', as nodes.cmake names it
+constexpr std::string_view library_view =
+    "library"; // the recipes', as nodes.cmake names it
 
 // When the file was last written; the earliest time there is while it is not there.
 std::filesystem::file_time_type written(const std::filesystem::path &file) {
@@ -72,7 +73,8 @@ std::size_t folder_in(std::string_view line,
 
 // What a failed build said, as a person reads it: each file's first error, its file named
 // from its view's folder, as the line before names the view. make's lines, and the
-// errors that follow from a file's first, tell a person nothing more, so they show only at
+// errors that follow from a file's first, tell a person nothing more, so they show only
+// at
 // --log debug (C09). All of it when no line is an error in a view's file, as when the
 // build could not start.
 std::string first_errors(std::string_view said, const std::vector<std::string> &folders) {
@@ -117,29 +119,31 @@ public:
     _started = std::chrono::steady_clock::now();
     _failure.clear();
     _failed.clear();
-    _thread = std::jthread([this, targets = std::move(targets), hosted = std::move(hosted)] {
-      // A build that cannot take the lock fails, naming why, rather than ending the run
-      // as an exception leaving a thread would.
-      try {
-        const FileLock lock(_lock_file);
-        bool first = true;
-        // A view hosted from a folder the build reads no views from, as a project in a
-        // repository of its own, has a target once a configure reads its folder from
-        // mounted-views, which a build of the library's target runs.
-        const std::string library = std::format("{}{}", view_target, library_view);
-        for (const std::string &target : targets) {
-          if (!built(target) && mount(target, hosted))
-            Shell::run(command(library, std::exchange(first, false)));
-          if (built(target) && Shell::run(command(target, std::exchange(first, false))) != 0)
-            _failed.push_back(target);
-        }
-      } catch (const std::exception &failure) {
-        _failure = failure.what();
-        _failed = targets;
-      }
-      _finished = true;
-      _running = false;
-    });
+    _thread =
+        std::jthread([this, targets = std::move(targets), hosted = std::move(hosted)] {
+          // A build that cannot take the lock fails, naming why, rather than ending the
+          // run as an exception leaving a thread would.
+          try {
+            const FileLock lock(_lock_file);
+            bool first = true;
+            // A view hosted from a folder the build reads no views from, as a project in
+            // a repository of its own, has a target once a configure reads its folder
+            // from mounted-views, which a build of the library's target runs.
+            const std::string library = std::format("{}{}", view_target, library_view);
+            for (const std::string &target : targets) {
+              if (!built(target) && mount(target, hosted))
+                Shell::run(command(library, std::exchange(first, false)));
+              if (built(target) &&
+                  Shell::run(command(target, std::exchange(first, false))) != 0)
+                _failed.push_back(target);
+            }
+          } catch (const std::exception &failure) {
+            _failure = failure.what();
+            _failed = targets;
+          }
+          _finished = true;
+          _running = false;
+        });
   }
   bool running() const {
     return _running;
@@ -267,8 +271,7 @@ struct Live::Scan {
   };
 
   Scan(const std::vector<Root> &roots, const std::filesystem::path &build)
-      : builder(build, build_log),
-        read(lines_of(build / VP_READ_FILE)),
+      : builder(build, build_log), read(lines_of(build / VP_READ_FILE)),
         engine(lines_of(build / VP_ENGINE_SOURCES_FILE)),
         engine_said(written(build / VP_ENGINE_FILE)) {
     for (const auto &[name, folder] : roots) {
@@ -288,10 +291,10 @@ struct Live::Scan {
 
   std::vector<View> views;
   Builder builder;
-  const std::vector<std::filesystem::path> read; // as the build lists them
-  std::filesystem::file_time_type read_from;     // their newest as the last build began
+  const std::vector<std::filesystem::path> read;   // as the build lists them
+  std::filesystem::file_time_type read_from;       // their newest as the last build began
   const std::vector<std::filesystem::path> engine; // as the build lists them
-  std::filesystem::file_time_type engine_said; // the newest engine file's, once said
+  std::filesystem::file_time_type engine_said;     // the newest engine file's, once said
   std::filesystem::path engine_change;
   std::vector<std::string> failed; // the views the last build failed on
   std::vector<std::string> built;  // the views the last build was for
@@ -399,7 +402,8 @@ std::string Live::errors() const {
   std::vector<std::string> folders;
   for (const Scan::View &view : _scan->views) {
     std::error_code unread;
-    const std::filesystem::path real = std::filesystem::weakly_canonical(view.folder, unread);
+    const std::filesystem::path real =
+        std::filesystem::weakly_canonical(view.folder, unread);
     folders.push_back(((unread ? std::filesystem::absolute(view.folder) : real) / "")
                           .lexically_normal()
                           .string());
@@ -417,12 +421,11 @@ void Live::watch(const std::vector<Root> &roots) {
   std::vector<Scan::View> views;
   for (const auto &[name, folder] : roots) {
     const auto was = std::ranges::find(_scan->views, folder, &Scan::View::folder);
-    views.push_back(was != _scan->views.end()
-                        ? std::move(*was)
-                        : Scan::View{name,
-                                     folder,
-                                     std::filesystem::file_time_type::min(),
-                                     newest(folder)});
+    views.push_back(
+        was != _scan->views.end()
+            ? std::move(*was)
+            : Scan::View{
+                  name, folder, std::filesystem::file_time_type::min(), newest(folder)});
   }
   _scan->views = std::move(views);
 }
@@ -522,7 +525,8 @@ bool Restart::ready(const Live *live) {
 }
 
 void Restart::command(Call &call) {
-  if (const std::vector<std::string_view> held = _state->commands.holding(); !held.empty())
+  if (const std::vector<std::string_view> held = _state->commands.holding();
+      !held.empty())
     throw std::runtime_error(refusal(held));
   call.reply(_state->asked ? "vulpen builds already; the run restarts once it is built"
                            : "vulpen builds; the run restarts once it is built, and goes "

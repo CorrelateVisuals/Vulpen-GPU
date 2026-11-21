@@ -356,8 +356,8 @@ void Engine::Gpu::read_times() {
     const std::uint64_t *const before = &stamps[2 * per_query * pass];
     const std::uint64_t *const after = before + per_query;
     if (before[1] != 0 && after[1] != 0)
-      times[pass] = static_cast<float>(
-          static_cast<double>((after[0] - before[0]) & valid) * tick);
+      times[pass] =
+          static_cast<float>(static_cast<double>((after[0] - before[0]) & valid) * tick);
   }
   queried = 0;
 }

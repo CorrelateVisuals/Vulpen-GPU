@@ -244,7 +244,7 @@ class Keys final : public VP::Operator {
 
   VP::Command _focus;
   std::string _name;
-  std::string _view; // the one it runs in
+  std::string _view;                // the one it runs in
   std::string _start;               // the node its focus param names
   bool _started = false;            // whether the param gave the focus yet
   std::optional<std::string> _next; // the node a focus line gave, for the next frame

@@ -27,7 +27,8 @@ const float turn = 6.28318530718f; // radians in a whole turn
 
 // The classic triangle: its corners in clip space, y pointing down, and a color each.
 const vec2 corners[3] = {vec2(0.0f, -0.5f), vec2(0.5f, 0.5f), vec2(-0.5f, 0.5f)};
-const vec3 colors[3] = {vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f)};
+const vec3 colors[3] = {
+    vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f)};
 
 // How far the triangle has turned at a frame, counted from the frame index, so it never
 // drifts; none while frames_per_turn is 0.

@@ -37,7 +37,8 @@ class Orbit final : public VP::Operator {
   void cook(VP::Cook &frame) override {
     const float angle = angle_at(frame.index(), _frames_per_turn);
     const glm::vec3 eye =
-        _target + glm::vec3(_distance * std::cos(angle), _height, _distance * std::sin(angle));
+        _target +
+        glm::vec3(_distance * std::cos(angle), _height, _distance * std::sin(angle));
     const glm::vec3 ahead = glm::normalize(_target - eye);
     const glm::vec3 right = glm::normalize(glm::cross(ahead, upward));
     frame.write(_camera)[0] = {.eye = glm::vec4(eye, 1.0f),

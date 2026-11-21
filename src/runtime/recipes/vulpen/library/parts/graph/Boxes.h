@@ -131,9 +131,7 @@ std::span<const BoxRow> rows_in(const Boxes &boxes, std::size_t box) {
 std::size_t view_box(const Boxes &boxes, std::string_view name) {
   return static_cast<std::size_t>(
       std::ranges::find_if(boxes.boxes,
-                           [&](const Box &box) {
-                             return box.view && box.name == name;
-                           }) -
+                           [&](const Box &box) { return box.view && box.name == name; }) -
       boxes.boxes.begin());
 }
 
@@ -167,10 +165,10 @@ outside_row(Ports &ports, bool left, std::string_view name, std::string_view pat
 }
 
 // The node its parent's name names, by the longest name of a node it is inside: the
-// names of a view's nodes join their folders by dots (RV08), and those of a folder's by /.
-std::size_t parent_of(const std::vector<VP::Node> &nodes,
-                      std::string_view name,
-                      char joins = '.') {
+// names of a view's nodes join their folders by dots (RV08), and those of a folder's by
+// /.
+std::size_t
+parent_of(const std::vector<VP::Node> &nodes, std::string_view name, char joins = '.') {
   for (std::size_t dot = name.rfind(joins); dot != std::string_view::npos;
        dot = name.rfind(joins, dot - 1)) {
     const auto found = std::ranges::find(nodes, name.substr(0, dot), &VP::Node::name);
@@ -192,9 +190,9 @@ struct Building {
   bool folders = false;
   std::vector<std::size_t> parents;
   std::vector<std::size_t> box_of_node;
-  std::multimap<std::string, std::size_t, std::less<>> nodes_in; // by folder
-  std::map<std::string, std::size_t, std::less<>> file_boxes;    // by path
-  std::map<std::string, std::size_t, std::less<>> file_rows;     // by path
+  std::multimap<std::string, std::size_t, std::less<>> nodes_in;    // by folder
+  std::map<std::string, std::size_t, std::less<>> file_boxes;       // by path
+  std::map<std::string, std::size_t, std::less<>> file_rows;        // by path
   std::map<std::size_t, std::vector<std::filesystem::path>> paired; // by box
   std::array<std::size_t, 2> outside{no_box, no_box};
   std::vector<Ports> ports;
@@ -309,8 +307,9 @@ void loose_ports(Boxes &boxes,
 // text, as a reading's every relation asks for each folder holding what it names.
 std::string_view folder_holding(std::string_view path) {
   const std::size_t slash = path.rfind('/');
-  return slash == std::string_view::npos ? std::string_view()
-                                         : path.substr(0, std::max<std::size_t>(slash, 1));
+  return slash == std::string_view::npos
+             ? std::string_view()
+             : path.substr(0, std::max<std::size_t>(slash, 1));
 }
 
 // A folder box's folder, as an absolute path: its name is its path from the folder
@@ -371,7 +370,9 @@ void relate(Boxes &boxes,
     if (froms.empty() && tos.empty())
       continue;
     const auto named = [&](const std::string &path) {
-      return std::filesystem::path(path).lexically_proximate(building.base).generic_string();
+      return std::filesystem::path(path)
+          .lexically_proximate(building.base)
+          .generic_string();
     };
     std::size_t from_row = row_showing(building, used);
     std::size_t to_row = row_showing(building, user);
@@ -472,7 +473,8 @@ void list_rows(Boxes &boxes,
       boxes.rows.push_back(
           {.text = std::format("node {}", name), .role = VP_VIEW::role("node")});
   if (listed.stray)
-    boxes.rows.push_back({.text = std::string(stray_row), .role = VP_VIEW::role("muted")});
+    boxes.rows.push_back(
+        {.text = std::string(stray_row), .role = VP_VIEW::role("muted")});
   listed.list_from = listed.role ? contents - listed.first : 0;
   listed.listed = listed.role ? boxes.rows.size() - contents : listed.ports;
   if (child)
@@ -548,9 +550,8 @@ constexpr std::array<std::pair<std::string_view, std::uint32_t>, 18> file_roles{
 std::uint32_t file_role(std::string_view name) {
   if (name.starts_with('.'))
     return VP_VIEW::role("hidden");
-  const auto found = std::ranges::find_if(file_roles, [&](const auto &ending) {
-    return name.ends_with(ending.first);
-  });
+  const auto found = std::ranges::find_if(
+      file_roles, [&](const auto &ending) { return name.ends_with(ending.first); });
   return found == file_roles.end() ? VP_VIEW::role("file") : found->second;
 }
 
@@ -581,11 +582,11 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
       if (paired.size() > 1)
         building.file_rows.emplace(paired[row].generic_string(), row);
     }
-    boxes.boxes.push_back({.name = std::format("{}/{}", folder.name, file),
-                           .title =
-                               paired.size() > 1 ? paired.front().stem().string() : file,
-                           .role = file_role(file),
-                           .opens = paired.front()});
+    boxes.boxes.push_back(
+        {.name = std::format("{}/{}", folder.name, file),
+         .title = paired.size() > 1 ? paired.front().stem().string() : file,
+         .role = file_role(file),
+         .opens = paired.front()});
     if (paired.size() > 1)
       building.paired.emplace(box, std::move(paired));
   }
@@ -596,8 +597,8 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
 // an empty one, named from it, and beside them what lies outside it, as connections
 // and relations reach in at their left and out at their right, the scope's own ports and
 // files among them, as the tab names the scope and no box shows it; with none, the boxes
-// of the nodes at the top, of the view's manifest, and of the views the view hosts, as the
-// view as edited names them, each as hosted lists its top nodes. The strays are the
+// of the nodes at the top, of the view's manifest, and of the views the view hosts, as
+// the view as edited names them, each as hosted lists its top nodes. The strays are the
 // folders of the level no node names, each ending with /, and at the top the files no
 // node holds, each a box as the manifest's. A node of the view as edited is its own; one
 // a recipe brings is not, nor a folder or a file. The paths outside are named from base.
@@ -613,9 +614,8 @@ Boxes boxes_of(const VP::View &edited,
                std::span<const std::string> strays,
                std::span<const VP::NodePort> ports) {
   Boxes boxes;
-  Building building{.folders = folders,
-                    .parents = parents_of(flat, folders ? '/' : '.'),
-                    .base = base};
+  Building building{
+      .folders = folders, .parents = parents_of(flat, folders ? '/' : '.'), .base = base};
   building.box_of_node.assign(flat.nodes.size(), no_box);
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     building.nodes_in.emplace(flat.nodes[at].folder.generic_string(), at);
@@ -628,13 +628,13 @@ Boxes boxes_of(const VP::View &edited,
       return;
     const VP::Node &node = flat.nodes[at];
     building.box_of_node[at] = boxes.boxes.size();
-    boxes.boxes.push_back(
-        {.name = node.name,
-         .title = node.name.substr(past),
-         .role = !folders                          ? VP_VIEW::role("node")
-                 : node.name.substr(past).starts_with('.') ? VP_VIEW::role("hidden")
-                                                           : VP_VIEW::role("folder"),
-         .has_inside = true});
+    boxes.boxes.push_back({.name = node.name,
+                           .title = node.name.substr(past),
+                           .role = !folders ? VP_VIEW::role("node")
+                                   : node.name.substr(past).starts_with('.')
+                                       ? VP_VIEW::role("hidden")
+                                       : VP_VIEW::role("folder"),
+                           .has_inside = true});
   };
   for (std::size_t at = 0; at < flat.nodes.size(); ++at)
     if (building.parents[at] == inside)

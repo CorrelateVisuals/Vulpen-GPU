@@ -153,8 +153,7 @@ private:
              std::span<const VP::NodePort> ports);
   void name_tab(VP::Cook &frame);
   void show_view(VP::CommandPort &commands) const;
-  void show_folder(VP::CommandPort &commands,
-                   const std::filesystem::path &folder) const;
+  void show_folder(VP::CommandPort &commands, const std::filesystem::path &folder) const;
   void home();
   void follow_font();
   void follow(VP::Cook &frame, bool room, const VP::Event &event);
@@ -162,7 +161,8 @@ private:
   // A right press opens the menu of what lies under the pointer, as menu.ini names a kind
   // of thing, with the names its lines take; the ground's, its level's, for none.
   void context(VP::Cook &frame);
-  std::pair<std::string, std::string> menu_of(VP::Cook &frame, std::size_t at, bool by_row) const;
+  std::pair<std::string, std::string>
+  menu_of(VP::Cook &frame, std::size_t at, bool by_row) const;
   std::pair<std::string, std::string> node_menu(VP::Cook &frame,
                                                 std::string_view name) const;
   std::pair<std::string, std::string> path_kind(VP::Cook &frame,
@@ -199,7 +199,8 @@ private:
   void keep(VP::FilePort &files);
   void follow(VP::FilePort &files);
   void write(VP::Cook &frame, glm::uvec2 cell);
-  void write_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written, std::size_t at) const;
+  void
+  write_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written, std::size_t at) const;
   void write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const;
   void write_select_box(std::span<VP_VIEW::Rect> rects, std::uint32_t &written) const;
   void write_labels(VP::Cook &frame, glm::uvec2 cell);
@@ -255,7 +256,7 @@ private:
   VP::Command _arrange;
   VP::Command _find;
   VP::Command _cd;
-  VP_VIEW::Place *_place = nullptr; // where it is, for a terminal's prompt
+  VP_VIEW::Place *_place = nullptr;  // where it is, for a terminal's prompt
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;
@@ -275,9 +276,9 @@ private:
   std::size_t _hovered_more = no_box; // a box whose row for the rest the pointer is over
   Heating _heating; // what the boxes show the cost of, and what each costs this frame
   std::filesystem::path _base; // where the paths of the boxes built are named from
-  Shown _layers = every_layer;        // as its relations param names them
+  Shown _layers = every_layer; // as its relations param names them
   bool _manhattan = true; // the curves turn in their lanes, as its manhattan param says
-  std::string _shown; // the view the tab names; empty for the one vulpen started with
+  std::string _shown;     // the view the tab names; empty for the one vulpen started with
   bool _tab_named = false; // the tab names what shows, named again only as that changes
   // The boxes of the view shown, built again only when the views they were built from
   // change, which each edit replaces, and laid out again only then, as the font's cell
@@ -303,7 +304,7 @@ private:
   std::vector<std::string> _selection;
   std::string _selected_in;
   std::vector<std::string> _closing; // the views the last delete closed, as named then
-  std::size_t _closing_done = 0;      // and what undo held then
+  std::size_t _closing_done = 0;     // and what undo held then
   // The boxes raised by a press or select, by name, the last over the others, the order
   // the boxes are drawn in, and for each what of the boxes drawn after it hides it, kept
   // so a frame allocates nothing for them.
@@ -317,11 +318,11 @@ private:
   Arranged _arranged;
   std::map<std::string, History, std::less<>> _histories; // by the .ini each changed
   std::size_t _lines = 0; // the lines undo could take back as this frame's cook began
-  std::string _ini;      // where the view shown keeps what is arranged; empty for none
-  bool _refused = false; // its .ini holds a mistake, which no save writes over
+  std::string _ini;       // where the view shown keeps what is arranged; empty for none
+  bool _refused = false;  // its .ini holds a mistake, which no save writes over
   PanZoom _pan_zoom;
   float _home_zoom = 1.0f; // as near as home is, leave_share of which zooming out goes up
-  float _drawn = 1.0f; // the font's glyphs' zoom, cell over base wide, in _pan_zoom
+  float _drawn = 1.0f;     // the font's glyphs' zoom, cell over base wide, in _pan_zoom
   glm::uvec2 _homed{};     // the area's size home was worked out for
   // Until the frame home is worked out in, which needs the boxes laid out in the area.
   bool _homing = false;
@@ -338,8 +339,8 @@ private:
   bool _dragging = false; // the ground, which the graph follows
   // Where a middle press began, which a drag sideways zooms about until it is let go.
   std::optional<glm::vec2> _zooming;
-  bool _shift = false;    // held, so a press adds a box to the selection or takes it out
-  bool _control = false;  // held, so a selects every box
+  bool _shift = false;   // held, so a press adds a box to the selection or takes it out
+  bool _control = false; // held, so a selects every box
 };
 
 } // namespace

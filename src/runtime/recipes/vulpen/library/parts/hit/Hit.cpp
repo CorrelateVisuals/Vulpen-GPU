@@ -126,8 +126,8 @@ class Hit final : public VP::Operator {
   const VP_VIEW::Items *_items = nullptr;
   const VP_VIEW::Rects *_rects = nullptr;
   const VP_VIEW::Rects *_marks = nullptr;
-  bool _typed = true; // a press goes through the terminal's type
-  glm::vec2 _pointer{}; // as the events so far left it
+  bool _typed = true;                  // a press goes through the terminal's type
+  glm::vec2 _pointer{};                // as the events so far left it
   std::optional<std::size_t> _hovered; // the Item the pointer is on, as last seen
   std::optional<std::size_t> _pressed; // the Item a press is on, until it is let go
   glm::vec2 _from{};                   // where that press was

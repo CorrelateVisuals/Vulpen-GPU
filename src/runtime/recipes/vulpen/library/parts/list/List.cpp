@@ -29,7 +29,7 @@ constexpr std::uint32_t character_room = 4096; // their labels together
 constexpr std::int32_t margin = 3;             // between a column's rows and its frame
 constexpr std::int32_t frame_width = 1;
 constexpr std::int32_t gap = 2; // between Items side by side, where the ground shows
-constexpr std::uint32_t mark_cells = 2;      // a close mark's: a blank, then the mark
+constexpr std::uint32_t mark_cells = 2;     // a close mark's: a blank, then the mark
 constexpr std::string_view mark_text = "x"; // which the font draws, as ASCII
 // Cells a tab's label shows at most, the rest cut at its start, so a strip of long names
 // shows several; the pointer over one cut shows it whole below the tab.
@@ -198,17 +198,18 @@ class List final : public VP::Operator {
     for (std::size_t at = 0; at < _items->size() && _laid.size() < row_room; ++at) {
       const VP_VIEW::Item &item = (*_items)[at];
       if (item.label.empty()) {
-        _laid.push_back({.offset = {reach + across / 2, place.offset.y + margin},
-                         .extent = {static_cast<std::uint32_t>(frame_width),
-                                    place.extent.y -
-                                        static_cast<std::uint32_t>(2 * margin)},
-                         .role = VP_VIEW::role("border")});
+        _laid.push_back(
+            {.offset = {reach + across / 2, place.offset.y + margin},
+             .extent = {static_cast<std::uint32_t>(frame_width),
+                        place.extent.y - static_cast<std::uint32_t>(2 * margin)},
+             .role = VP_VIEW::role("border")});
         reach += across + gap;
         continue;
       }
-      const std::size_t cells = std::min(item.label.size(), tab_cells) +
-                                (item.close.empty() ? 0 : mark_cells);
-      const std::int32_t pads = padding_cells - (joins(at) ? 1 : 0) - (joins(at + 1) ? 1 : 0);
+      const std::size_t cells =
+          std::min(item.label.size(), tab_cells) + (item.close.empty() ? 0 : mark_cells);
+      const std::int32_t pads =
+          padding_cells - (joins(at) ? 1 : 0) - (joins(at + 1) ? 1 : 0);
       const auto wide = (static_cast<std::int32_t>(cells) + pads) * across;
       if (item.current)
         current = _laid.size();
@@ -379,10 +380,11 @@ class List final : public VP::Operator {
     for (std::uint32_t at = 0; at < _shown->size(); ++at) {
       if (!_side_by_side) {
         const VP_VIEW::Rect &row = (*_shown)[at];
-        written.add({.offset = row.offset,
-                     .extent = row.extent,
-                     .role = (*_items)[at].role.value_or(VP_VIEW::role("text"))},
-                    std::string_view((*_items)[at].label).substr(0, row.extent.x / cell.x));
+        written.add(
+            {.offset = row.offset,
+             .extent = row.extent,
+             .role = (*_items)[at].role.value_or(VP_VIEW::role("text"))},
+            std::string_view((*_items)[at].label).substr(0, row.extent.x / cell.x));
         continue;
       }
       const std::int32_t middle =
@@ -396,8 +398,8 @@ class List final : public VP::Operator {
     }
     if (_tip)
       written.add({.offset = _tip_row.offset,
-                    .extent = _tip_row.extent,
-                    .role = VP_VIEW::role("text")},
+                   .extent = _tip_row.extent,
+                   .role = VP_VIEW::role("text")},
                   (*_items)[*_tip].label);
     frame.write(_labels, written.label_count);
     frame.write(_characters, written.character_count); // the used length glyphs draws
@@ -448,8 +450,8 @@ class List final : public VP::Operator {
   VP::Upload<VP_VIEW::Rect> _rects;
   VP::Upload<VP_VIEW::Label> _labels;
   VP::Upload<VP_VIEW::Character> _characters;
-  VP_VIEW::Rects *_shown = nullptr; // a Rect each Item shown, in the order of the Items
-  VP_VIEW::Rects *_marks = nullptr; // and its close mark's, none for no mark
+  VP_VIEW::Rects *_shown = nullptr;  // a Rect each Item shown, in the order of the Items
+  VP_VIEW::Rects *_marks = nullptr;  // and its close mark's, none for no mark
   VP_VIEW::Rect *_current = nullptr; // where the current Item shows; none for none
   // Side by side: the cells a strip leaves free at its end, how far it is scrolled, in
   // pixels, the pointer as the events so far left it, each tab whole before the strip

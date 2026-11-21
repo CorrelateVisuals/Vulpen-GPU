@@ -77,16 +77,20 @@ std::string text_of(Shown shown) {
 // A button a layer, its label in its curves' color while it shows and muted while not,
 // whose press sends the line turning it on or off, as the param that a save keeps and a
 // replay restores (V08), and with every layer on, unsets it, as it was.
-void buttons(VP_VIEW::Items &items, Shown shown, std::string_view view, std::string_view node) {
+void buttons(VP_VIEW::Items &items,
+             Shown shown,
+             std::string_view view,
+             std::string_view node) {
   items.clear();
   for (std::size_t layer = 0; layer < VP_VIEW::layer_names.size(); ++layer) {
     const Shown turned = shown ^ (Shown{1} << layer);
     items.push_back(
         {.label = std::string(VP_VIEW::layer_names[layer]),
-         .command = turned == every_layer
-                        ? std::format("{}: param unset {} relations", view, node)
-                        : std::format(
-                              "{}: param set {} relations {}", view, node, text_of(turned)),
+         .command =
+             turned == every_layer
+                 ? std::format("{}: param unset {} relations", view, node)
+                 : std::format(
+                       "{}: param set {} relations {}", view, node, text_of(turned)),
          .current = (shown & (Shown{1} << layer)) != 0,
          .role = layer_roles[layer]});
   }
@@ -107,11 +111,11 @@ void manhattan_button(VP_VIEW::Items &items,
                       std::string_view view,
                       std::string_view node) {
   items.push_back({});
-  items.push_back({.label = "manhattan",
-                   .command = manhattan
-                                  ? std::format("{}: param set {} manhattan no", view, node)
-                                  : std::format("{}: param unset {} manhattan", view, node),
-                   .current = manhattan});
+  items.push_back(
+      {.label = "manhattan",
+       .command = manhattan ? std::format("{}: param set {} manhattan no", view, node)
+                            : std::format("{}: param unset {} manhattan", view, node),
+       .current = manhattan});
   items.push_back({.label = "arrange", .command = std::format("{}: arrange", view)});
 }
 

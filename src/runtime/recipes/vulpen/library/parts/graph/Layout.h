@@ -73,9 +73,9 @@ struct Placed {
   // from the graph's top left for a box at the top.
   glm::ivec2 offset{};
   glm::uvec2 extent{};
-  glm::uvec2 natural{};    // as large as its rows and the boxes inside it
-  glm::uvec2 least{};      // as small as a person may make it: least_cells, or the boxes
-                           // inside it
+  glm::uvec2 natural{}; // as large as its rows and the boxes inside it
+  glm::uvec2 least{};   // as small as a person may make it: least_cells, or the boxes
+                        // inside it
   // Of the rows its box lists, from which they start, how many show, and how many the row
   // standing for the rest counts; and how many rows come after them.
   std::size_t list_from = 0;
@@ -195,10 +195,9 @@ public:
     arrange(boxes, no_box, arranged, cell);
     for (std::size_t box = 0; box < count; ++box) {
       const std::size_t parent = boxes.boxes[box].parent;
-      _placed[box].at =
-          parent == no_box ? _placed[box].offset
-                           : _placed[parent].at + content_of(parent, cell) +
-                                 _placed[box].offset;
+      _placed[box].at = parent == no_box ? _placed[box].offset
+                                         : _placed[parent].at + content_of(parent, cell) +
+                                               _placed[box].offset;
     }
     route(boxes, cell);
   }
@@ -383,29 +382,26 @@ private:
     std::size_t widest = shown.title.size();
     for (std::size_t slot = 0; slot < shown_rows(_placed[box]); ++slot) {
       const std::size_t row = row_at(_placed[box], slot);
-      widest = std::max(widest,
-                        row == more_row
-                            ? std::formatted_size(more_text, _placed[box].more)
-                            : rows[row].text.size() + rows[row].written.size() +
-                                  (rows[row].text.empty() || rows[row].written.empty()
-                                       ? 0
-                                       : 1));
+      widest = std::max(
+          widest,
+          row == more_row
+              ? std::formatted_size(more_text, _placed[box].more)
+              : rows[row].text.size() + rows[row].written.size() +
+                    (rows[row].text.empty() || rows[row].written.empty() ? 0 : 1));
     }
     const std::int32_t apart = inner.empty() ? 0 : static_cast<std::int32_t>(cell.y) / 2;
     // Known before the boxes inside it are placed, as where a curve crosses its edge is
     // from its top.
-    _placed[box].inside = inner.empty() ? rows_end(box, cell)
-                                        : on_lines(rows_end(box, cell) + apart);
+    _placed[box].inside =
+        inner.empty() ? rows_end(box, cell) : on_lines(rows_end(box, cell) + apart);
     const glm::ivec2 room =
         inner.empty() ? glm::ivec2(0) : columns(boxes, box, inner, arranged, cell);
     Placed &placed = _placed[box];
     placed.frames = !inner.empty();
-    const glm::ivec2 holds =
-        inner.empty()
-            ? glm::ivec2(0)
-            : glm::ivec2(room.x + 2 * line_spacing, placed.inside + room.y + apart);
-    const std::int32_t text =
-        static_cast<std::int32_t>(widest * cell.x) + 2 * margin;
+    const glm::ivec2 holds = inner.empty() ? glm::ivec2(0)
+                                           : glm::ivec2(room.x + 2 * line_spacing,
+                                                        placed.inside + room.y + apart);
+    const std::int32_t text = static_cast<std::int32_t>(widest * cell.x) + 2 * margin;
     placed.natural = glm::uvec2(on_lines(std::max(text, holds.x)),
                                 on_lines(std::max(placed.inside, holds.y)));
     placed.least = glm::uvec2(glm::max(least_of(cell), holds));
@@ -516,9 +512,8 @@ private:
   // Returns how many runs there are.
   std::size_t runs(const std::vector<std::size_t> &inner) {
     _sorted.assign(inner.begin(), inner.end());
-    std::ranges::sort(_sorted, {}, [&](std::size_t box) {
-      return _placed[box].offset.x;
-    });
+    std::ranges::sort(
+        _sorted, {}, [&](std::size_t box) { return _placed[box].offset.x; });
     _lefts.clear();
     _widths.clear();
     std::int32_t right = 0;
@@ -660,8 +655,8 @@ private:
     for (const std::size_t box : children(level)) {
       const Placed &placed = _placed[box];
       top = std::min(top, placed.offset.y);
-      bottom = std::max(bottom,
-                        placed.offset.y + static_cast<std::int32_t>(placed.extent.y));
+      bottom =
+          std::max(bottom, placed.offset.y + static_cast<std::int32_t>(placed.extent.y));
     }
     const std::array<std::size_t, 2> tracks =
         assign(static_cast<float>(top + bottom) / 2.0f);
@@ -854,8 +849,8 @@ private:
       return turned.wire == wire && turned.gap == gap;
     });
     if (found == _turning.end())
-      found = _turning.insert(
-          found, {.wire = wire, .gap = gap, .low = from.y, .high = from.y});
+      found = _turning.insert(found,
+                              {.wire = wire, .gap = gap, .low = from.y, .high = from.y});
     for (const Side &at : {from, to}) {
       (at.right ? found->right : found->left) += at.y;
       ++(at.right ? found->rights : found->lefts);
@@ -999,10 +994,8 @@ private:
   // leaves and the left of the one it reaches, at the end's port or where the connection
   // crosses the box's edge; or on the level's own edge, its left where it enters the
   // level's box and its right where it leaves it.
-  glm::vec2 point_of(const Boxes &boxes,
-                     const Leg &leg,
-                     bool writes,
-                     glm::uvec2 cell) const {
+  glm::vec2
+  point_of(const Boxes &boxes, const Leg &leg, bool writes, glm::uvec2 cell) const {
     const End &end = boxes.ends[leg.end];
     const std::size_t box = writes ? leg.writer : leg.reader;
     if (box == no_box) {

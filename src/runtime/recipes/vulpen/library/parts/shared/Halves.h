@@ -60,8 +60,8 @@ ratio_at(const VP_VIEW::Rect &area, glm::length_t along, float ratio, float at) 
       static_cast<std::int32_t>(split.first.extent[along] + split.second.extent[along]);
   if (room == 0)
     return ratio;
-  const float first = at - static_cast<float>(area.offset[along]) -
-                      static_cast<float>(seam_width) / 2.0f;
+  const float first =
+      at - static_cast<float>(area.offset[along]) - static_cast<float>(seam_width) / 2.0f;
   const float share = std::clamp(first / static_cast<float>(room), 0.0f, 1.0f);
   return std::round(share * ratio_steps) / ratio_steps;
 }

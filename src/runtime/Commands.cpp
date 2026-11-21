@@ -70,8 +70,8 @@ std::string unknown(std::span<const std::string_view> words,
   const auto starting = [&](std::size_t given) {
     for (const Usage &usage : usages)
       if (const std::vector<std::string_view> its = words_of(usage.usage);
-          its.size() > given && std::ranges::equal(words.first(given),
-                                                   std::span(its).first(given)))
+          its.size() > given &&
+          std::ranges::equal(words.first(given), std::span(its).first(given)))
         meant.push_back(usage.usage);
   };
   if (words.front().find('=') != std::string_view::npos) {
@@ -347,7 +347,7 @@ struct Commands::Spec {
   // it, when it takes one argument or more.
   std::vector<std::string_view> placeholders;
   bool more = false;
-  bool optional = false; // whether the last placeholder may be left out
+  bool optional = false;    // whether the last placeholder may be left out
   bool leaves_name = false; // whether its first placeholder, [<name>], may be
   std::string usage;
   std::string help;
@@ -364,16 +364,15 @@ struct Commands::Spec {
   bool names_file(std::size_t argument, std::string_view word) const {
     const std::string_view kind =
         placeholders[std::min(argument, placeholders.size() - 1)];
-    return kind == "file" ||
-           ((kind == "project" || kind == "path" || kind == "folder") &&
-            std::filesystem::path(word).has_parent_path());
+    return kind == "file" || ((kind == "project" || kind == "path" || kind == "folder") &&
+                              std::filesystem::path(word).has_parent_path());
   }
 
   // Whether a line left its name out: the first word given is already of the next kind,
   // a word=value by its =, a file by its / or ., which no name holds; its command chooses
-  // one (Call::keep_name). A connection's name may be dotted, as a drop's inside its node,
-  // so a port is told by its place: a window's ends in :, and a line of only ports is one
-  // word short of its name.
+  // one (Call::keep_name). A connection's name may be dotted, as a drop's inside its
+  // node, so a port is told by its place: a window's ends in :, and a line of only ports
+  // is one word short of its name.
   bool left_out(std::span<const std::string_view> arguments) const {
     if (!leaves_name || arguments.empty())
       return leaves_name;
@@ -456,9 +455,9 @@ Command Commands::add(std::string_view usage,
     words.back().remove_suffix(one_or_more.size());
   const auto arguments = std::ranges::find_if_not(words, command_word);
   // [<name>] first, before other placeholders: a name a line may leave out.
-  const bool leaves_name = arguments != words.end() && std::next(arguments) != words.end() &&
-                           *arguments == std::format("{}<name>{}", optional_open,
-                                                     optional_close);
+  const bool leaves_name =
+      arguments != words.end() && std::next(arguments) != words.end() &&
+      *arguments == std::format("{}<name>{}", optional_open, optional_close);
   if (leaves_name)
     *arguments = arguments->substr(1, arguments->size() - 2);
   if (arguments == words.begin() || ((more || optional) && arguments == words.end()) ||
@@ -556,7 +555,8 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
            std::move(from));
   spec->handler->command(call);
   if (const auto &left = call.left_out()) {
-    const std::size_t at = kept.size() - (arguments.size() - (unnamed ? 1 : 0)) + left->first;
+    const std::size_t at =
+        kept.size() - (arguments.size() - (unnamed ? 1 : 0)) + left->first;
     kept.insert(kept.begin() + static_cast<std::ptrdiff_t>(at), left->second);
     for (std::size_t &file : files)
       file += file >= at ? 1 : 0;
@@ -597,9 +597,8 @@ std::vector<std::string> Commands::resolve(const Spec &spec,
 std::vector<Usage> Commands::usages() const {
   std::vector<Usage> usages;
   for (const Spec &spec : _specs)
-    if (std::ranges::none_of(usages, [&](const Usage &usage) {
-          return usage.usage == spec.usage;
-        }))
+    if (std::ranges::none_of(
+            usages, [&](const Usage &usage) { return usage.usage == spec.usage; }))
       usages.push_back({spec.usage, spec.help});
   return usages;
 }
@@ -759,8 +758,8 @@ void Commands::source(const std::filesystem::path &file, bool past_refusals) {
   const std::filesystem::path path =
       std::filesystem::weakly_canonical(resolved(file), unread);
   if (unread)
-    throw std::runtime_error(std::format(
-        "{}: cannot be read: {}", resolved(file).string(), unread.message()));
+    throw std::runtime_error(
+        std::format("{}: cannot be read: {}", resolved(file).string(), unread.message()));
   if (std::ranges::find(_sourcing, path, &Source::file) != _sourcing.end())
     throw std::runtime_error(std::format(
         "{} is running already, so sourcing it again would never end", path.string()));
@@ -778,10 +777,10 @@ void Commands::source(const std::filesystem::path &file, bool past_refusals) {
     _sourcing.back().line = ++number;
     // The view the line names, as written, which a refusal may be that it is none.
     const std::vector<std::string_view> words = words_of(line);
-    const std::string address = !words.empty() && words.front().ends_with(':')
-                                    ? std::string(words.front().substr(
-                                          0, words.front().size() - 1))
-                                    : std::string();
+    const std::string address =
+        !words.empty() && words.front().ends_with(':')
+            ? std::string(words.front().substr(0, words.front().size() - 1))
+            : std::string();
     if (std::ranges::find(refused, address) != refused.end())
       continue;
     // A logic_error is a bug in vulpen, not a mistake in the file, so it keeps its own
@@ -798,14 +797,14 @@ void Commands::source(const std::filesystem::path &file, bool past_refusals) {
         message.remove_prefix(here.size());
       if (past_refusals) {
         refused.push_back(address);
-        _log.write(Level::error,
-                   Tag::run,
-                   std::format("{}:{}: {}; the lines after it of {} are passed over",
-                               path.string(),
-                               number,
-                               message,
-                               address.empty() ? "the view vulpen started with"
-                                               : address));
+        _log.write(
+            Level::error,
+            Tag::run,
+            std::format("{}:{}: {}; the lines after it of {} are passed over",
+                        path.string(),
+                        number,
+                        message,
+                        address.empty() ? "the view vulpen started with" : address));
         continue;
       }
       _sourcing.pop_back();
@@ -957,9 +956,8 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words,
     }
   if (found.size() < 2)
     return found.empty() ? nullptr : found.front();
-  const auto own = std::ranges::find_if(found, [&](const Spec *spec) {
-    return spec->view && *spec->view == address;
-  });
+  const auto own = std::ranges::find_if(
+      found, [&](const Spec *spec) { return spec->view && *spec->view == address; });
   if (own != found.end())
     return *own;
   // An app's node's, which a project's of its name leaves to the lines addressing no

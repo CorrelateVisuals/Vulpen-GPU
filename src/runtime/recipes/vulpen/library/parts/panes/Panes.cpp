@@ -334,18 +334,15 @@ class Panes final : public VP::Operator {
     // closes one project and hosts its copy, connects it again without them.
     if (grown)
       std::erase_if(grown->to, [&](const VP::Endpoint &end) {
-        return std::ranges::any_of(going, [&](const std::string &node) {
-          return VP::within(end.node, node);
-        });
+        return std::ranges::any_of(
+            going, [&](const std::string &node) { return VP::within(end.node, node); });
       });
     for (const std::string &node : going)
       commands.send(std::format("{}: node remove keep {}", _view, node));
     for (const auto &[pane, deck] : moving) {
       commands.send(std::format("{}: disconnect {}", _view, pane.room.name));
-      send_connect(commands,
-                   pane.room.name,
-                   std::format("{}.{}", deck, pane.view),
-                   pane.room.to);
+      send_connect(
+          commands, pane.room.name, std::format("{}.{}", deck, pane.view), pane.room.to);
     }
     for (std::size_t at = 0; at < added.size(); ++at) {
       const std::string &node = taken[at];
@@ -484,10 +481,10 @@ class Panes final : public VP::Operator {
   const VP::View *_seen = nullptr;    // its view, as the frame before found it
   std::string _selected;              // the view presented, or about to be
   std::string _previous;              // the one before it
-  bool _started = false; // after the first frame, which may present the one hosted last
-  bool _cooked = false;  // once, so the frame after the first lets go of what none hosts
-  bool _let_go = false;  // of the views the decks held that no line hosts
-  bool _dirty = true;   // the panes, their rooms and the windows follow what is
+  bool _started = false;  // after the first frame, which may present the one hosted last
+  bool _cooked = false;   // once, so the frame after the first lets go of what none hosts
+  bool _let_go = false;   // of the views the decks held that no line hosts
+  bool _dirty = true;     // the panes, their rooms and the windows follow what is
   bool _interact = false; // each pane's picture hands its view the pointer
 };
 

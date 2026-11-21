@@ -167,13 +167,16 @@ Schedule::Schedule(const Wiring &wiring,
   for (Bound &bound : _bound) {
     if (!bound.errors.empty())
       drop_commands(bound);
-    const std::string named = std::format(
-        "{} node {}", bound.node->where.empty() ? file : bound.node->where, bound.node->name);
+    const std::string named =
+        std::format("{} node {}",
+                    bound.node->where.empty() ? file : bound.node->where,
+                    bound.node->name);
     // A node only waiting for the build says so quietly: the build says why if it fails.
     const bool waiting = bound.only_waits();
     for (const std::string &error : bound.errors)
-      _wiring.log.write(
-          waiting ? Level::info : Level::error, Tag::nod, std::format("{}: {}", named, error));
+      _wiring.log.write(waiting ? Level::info : Level::error,
+                        Tag::nod,
+                        std::format("{}: {}", named, error));
     if (bound.errors.empty())
       for (const std::string &warning : bound.warnings)
         _wiring.log.write(Level::warn, Tag::nod, std::format("{}: {}", named, warning));
@@ -272,8 +275,8 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
   Bound &colors = bound.fragment ? *bound.fragment : bound;
   const std::vector<Varying> &written = colors.stage(fragment_stage).outputs();
   if (written.size() != 1)
-    throw std::runtime_error(std::format(
-        "its .frag writes {} colors, but a draw writes one", written.size()));
+    throw std::runtime_error(
+        std::format("its .frag writes {} colors, but a draw writes one", written.size()));
   colors.output = written.front().name;
   if (!connection_of(colors.node->name, colors.output)) {
     if (!_window && _into != Into::none)
@@ -309,9 +312,8 @@ void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
             {.stage = stage.stage, .shader = &holder.stage(stage.extension)});
     bound.pipeline.emplace(_wiring.pipelines, shaders, render_pass);
     if (bound.fragment)
-      from += std::format(" and {}'s {}",
-                          colors.node->name,
-                          colors.shaders_named.front());
+      from +=
+          std::format(" and {}'s {}", colors.node->name, colors.shaders_named.front());
   }
   bound.render_pass = render_pass;
   log(Level::info, Tag::nod, bound, "pipeline from " + from);
@@ -397,8 +399,10 @@ void Schedule::make_buffer(Bound &writer,
   }
   std::optional<Buffer> made;
   try {
-    made.emplace(_wiring.resources.buffer(
-        size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, memory));
+    made.emplace(_wiring.resources.buffer(size,
+                                          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                          memory));
   } catch (const std::runtime_error &failure) {
     writer.errors.push_back(
         std::format("{} of {} elements: {}", name, elements, failure.what()));
@@ -436,8 +440,9 @@ void Schedule::make_blocks() {
         // Gone only where the GPU could not hold it, as its writer says.
         const auto made = _buffers.find(buffer_name(bound.node->name, field.name));
         if (made == _buffers.end()) {
-          bound.errors.push_back(std::format(
-              "{} has no buffer, which the GPU could not hold for its writer", field.name));
+          bound.errors.push_back(
+              std::format("{} has no buffer, which the GPU could not hold for its writer",
+                          field.name));
           break;
         }
         const VkDeviceAddress address = made->second.address();
@@ -657,9 +662,9 @@ void Schedule::make_passes() {
                   draw ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE,
               .pipeline = bound.pipeline->handle(),
               .block = bound.block ? bound.block->set() : VK_NULL_HANDLE,
-              .groups = draw ? 0
-                             : bound.invocations /
-                                   bound.shaders.front().workgroup_size()[0],
+              .groups =
+                  draw ? 0
+                       : bound.invocations / bound.shaders.front().workgroup_size()[0],
               .vertex_count = draw ? bound.node->vertex_count : 0,
               .instance_count = instance_number(*bound.node).value_or(0),
               .stores = std::ranges::any_of(bound.fields, &Field::image)};
@@ -692,13 +697,13 @@ void Schedule::cost_from(const Schedule *replaced) {
   _costs.reserve(_bound.size());
   for (const Bound &bound : _bound) {
     const bool warns = bound.errors.empty() && !bound.warnings.empty();
-    _costs.push_back(
-        {.node = bound.node->name,
-         .problem = !bound.errors.empty() ? std::string_view(bound.errors.front())
-                    : warns               ? std::string_view(bound.warnings.front())
-                                          : std::string_view(),
-         .waits = !bound.errors.empty() && bound.only_waits(),
-         .warns = warns});
+    _costs.push_back({.node = bound.node->name,
+                      .problem = !bound.errors.empty()
+                                     ? std::string_view(bound.errors.front())
+                                 : warns ? std::string_view(bound.warnings.front())
+                                         : std::string_view(),
+                      .waits = !bound.errors.empty() && bound.only_waits(),
+                      .warns = warns});
   }
   for (const std::size_t at : _passed)
     _costs[at].runs = true;
@@ -898,7 +903,7 @@ void Schedule::show_instead(const std::string &window,
   for (const std::unique_ptr<Rendered> &rendered : _rendered)
     if (!rendered->writer && rendered->name == window)
       point_readers(window,
-                    slot             ? *slot
+                    slot              ? *slot
                     : rendered->drawn ? rendered->drawn->sampled().slot()
                                       : 0);
 }

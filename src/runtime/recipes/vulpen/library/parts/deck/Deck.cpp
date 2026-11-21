@@ -131,13 +131,13 @@ class Deck final : public VP::Operator {
     _tabs->clear();
     for (const std::string &view : _holds)
       if (hosts(view))
-        _tabs->push_back(
-            {.label = view,
-             .command = std::format("view switch {}", view),
-             .current = view == _shows,
-             .close = let_go(view),
-             .role = view == _presented ? std::optional(VP_VIEW::role("string"))
-                                        : std::nullopt});
+        _tabs->push_back({.label = view,
+                          .command = std::format("view switch {}", view),
+                          .current = view == _shows,
+                          .close = let_go(view),
+                          .role = view == _presented
+                                      ? std::optional(VP_VIEW::role("string"))
+                                      : std::nullopt});
     if (_tabs->empty())
       _tabs->push_back({.label = std::string(empty_tab), .current = true});
   }
@@ -177,7 +177,7 @@ class Deck final : public VP::Operator {
   }
 
   std::string _name;
-  std::string _view; // the one it runs in, which its lines change
+  std::string _view;               // the one it runs in, which its lines change
   std::vector<std::string> _holds; // as its param names them
   std::string _shown_param;
   const VP_VIEW::Rect *_area = nullptr;
@@ -186,8 +186,8 @@ class Deck final : public VP::Operator {
   std::vector<Room> _rooms;
   std::vector<std::string> _hosted; // the views hosted, as the frame before found them
   std::string _presented;
-  std::string _shows; // the view it shows; empty for none
-  bool _named = false; // its tabs and the view it shows follow what is
+  std::string _shows;   // the view it shows; empty for none
+  bool _named = false;  // its tabs and the view it shows follow what is
   glm::vec2 _pointer{}; // as the events so far left it
 };
 

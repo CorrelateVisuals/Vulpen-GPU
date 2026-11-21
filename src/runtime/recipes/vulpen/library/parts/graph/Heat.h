@@ -171,9 +171,8 @@ private:
       std::size_t hosted = walked;
       while (_walked[hosted].host != no_box && _walked[_walked[hosted].host].name != view)
         hosted = _walked[hosted].host;
-      const std::size_t hosted_box = _walked[hosted].host == no_box
-                                         ? no_box
-                                         : view_box(boxes, _walked[hosted].name);
+      const std::size_t hosted_box =
+          _walked[hosted].host == no_box ? no_box : view_box(boxes, _walked[hosted].name);
       for (std::size_t cost = 0; cost < costs.size(); ++cost)
         for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
           const Box &holder = boxes.boxes[box];
@@ -210,7 +209,7 @@ private:
     }
   }
 
-  std::vector<Walked> _walked; // this frame's
+  std::vector<Walked> _walked;                  // this frame's
   std::vector<std::span<const VP::Cost>> _from; // the costs counted were found in
   std::vector<Counted> _counted;
   bool _stale = true;
@@ -320,14 +319,13 @@ void heat_buttons(VP_VIEW::Items &items,
   items.push_back({});
   for (std::size_t on = 0; on < heat_names.size(); ++on) {
     const bool lit = heat.on == static_cast<Heat::On>(on + 1);
-    items.push_back({.label = std::string(heat_names[on]),
-                     .command = lit ? std::format("{}: param unset {} heat", view, node)
-                                    : std::format("{}: param set {} heat {}",
-                                                  view,
-                                                  node,
-                                                  heat_names[on]),
-                     .current = lit,
-                     .toggles = true});
+    items.push_back(
+        {.label = std::string(heat_names[on]),
+         .command =
+             lit ? std::format("{}: param unset {} heat", view, node)
+                 : std::format("{}: param set {} heat {}", view, node, heat_names[on]),
+         .current = lit,
+         .toggles = true});
   }
 }
 

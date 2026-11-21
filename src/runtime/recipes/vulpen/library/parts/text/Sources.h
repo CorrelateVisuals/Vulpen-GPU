@@ -48,7 +48,7 @@ bool name_byte(char byte) {
 
 // The name the caret stands in or just past: letters, digits and _; none for none.
 std::optional<std::pair<std::size_t, std::size_t>> name_at(std::string_view row,
-                                                            std::size_t column) {
+                                                           std::size_t column) {
   column = std::min(column, row.size());
   if ((column == row.size() || !name_byte(row[column])) &&
       (column == 0 || !name_byte(row[column - 1])))

@@ -30,7 +30,7 @@ namespace {
 // it carries.
 constexpr std::uint32_t box_rects = 6;
 constexpr std::uint32_t arrow_steps = 3;
-constexpr std::uint32_t mark_room = 12; // rects of marks a box, on average
+constexpr std::uint32_t mark_room = 12;   // rects of marks a box, on average
 constexpr std::uint32_t select_rects = 4; // the select box's edges
 constexpr std::uint32_t corner_rects = 8; // two a corner of the box the pointer is over
 constexpr std::uint32_t rect_room =
@@ -41,15 +41,15 @@ constexpr std::uint32_t label_room = 4096;      // the names, rows and ports tog
 constexpr std::uint32_t character_room = 32768; // their characters
 // A curve a line and a corner of each reader's way, as many as its levels have.
 constexpr std::uint32_t curve_room = 8192;
-constexpr std::int32_t border_width = 1;        // in pixels
+constexpr std::int32_t border_width = 1; // in pixels
 // The band behind a box's name: the fill blended this far toward what the box is, as its
 // name's color says, so the name reads as a tab apart from the rows it lists.
 constexpr float title_tone = 0.25f;
-constexpr std::int32_t selected_width = 2;      // a selected box's border, in pixels
-constexpr float mark_size = 6.0f;               // a port's mark, in pixels at zoom 1
+constexpr std::int32_t selected_width = 2; // a selected box's border, in pixels
+constexpr float mark_size = 6.0f;          // a port's mark, in pixels at zoom 1
 // A cubic's handles, of its radius, that keep it on a quarter circle.
 constexpr float quarter = 0.5523f;
-constexpr float drag_least = 3.0f;              // pixels a press moves before a box follows
+constexpr float drag_least = 3.0f; // pixels a press moves before a box follows
 // A corner a drag pulls: how far in from it a press takes it, never past a quarter of the
 // box, so a small box still moves, and how far out, past the box's edges, so a press
 // near the corner needs no aim; and its mark's arms, in pixels.
@@ -73,7 +73,6 @@ constexpr std::string_view every_key = "a"; // with control, every box selected
 constexpr std::string_view undo_key = "z";  // with control the last change of where the
                                             // boxes are taken back, with shift too again
 constexpr std::string_view title = "graph";
-
 
 // What of a Rect lies inside another, in its colors; no extent when nothing does.
 VP_VIEW::Rect cut(const VP_VIEW::Rect &rect, const VP_VIEW::Rect &by) {
@@ -158,18 +157,19 @@ std::optional<std::string> host_of(Port &port, std::string_view name) {
 // by name; the menus name it from where the prompt is, in the lines they hand the
 // terminal.
 std::string typed_path(const std::filesystem::path &path) {
-  const std::filesystem::path typed = path.lexically_proximate(std::filesystem::current_path());
+  const std::filesystem::path typed =
+      path.lexically_proximate(std::filesystem::current_path());
   return (typed.has_parent_path() ? typed : "." / typed).generic_string();
 }
 
 // The folders of a view's level no node names: at its top, but the folders of what its
-// nodes share, the hidden ones and its hosted views', or in a node's inside; each shows as
-// a box, which a right press makes a node, as every folder in a view is a node's (RV08).
-// At its top too the files beside its manifest while no node holds them, each a box a
-// press opens, as the manifest's, until the top folder is a node, node root, whose box
-// lists them; in a node's inside every file is the node's, and the top's inside
-// holds no folder, as the nodes in it show beside it. A folder's name ends with /, as the
-// file port lists it. Read as the level is built, as a node remove keep, which leaves the
+// nodes share, the hidden ones and its hosted views', or in a node's inside; each shows
+// as a box, which a right press makes a node, as every folder in a view is a node's
+// (RV08). At its top too the files beside its manifest while no node holds them, each a
+// box a press opens, as the manifest's, until the top folder is a node, node root, whose
+// box lists them; in a node's inside every file is the node's, and the top's inside holds
+// no folder, as the nodes in it show beside it. A folder's name ends with /, as the file
+// port lists it. Read as the level is built, as a node remove keep, which leaves the
 // folder, builds it anew.
 std::vector<std::string>
 strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) {
@@ -179,8 +179,8 @@ strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) 
   std::vector<std::string> strays;
   if (!inside.empty() && VP::is_top(edited, inside))
     return strays;
-  const bool top_node =
-      std::ranges::find(edited.nodes, VP::top_node, &VP::Node::name) != edited.nodes.end();
+  const bool top_node = std::ranges::find(edited.nodes, VP::top_node, &VP::Node::name) !=
+                        edited.nodes.end();
   std::vector<std::string> names;
   try {
     names = files.list(folder.lexically_normal().string());
@@ -191,7 +191,8 @@ strays_of(VP::FilePort &files, const VP::View &edited, std::string_view inside) 
     if (name.starts_with('.'))
       continue;
     if (!name.ends_with('/')) {
-      if (inside.empty() && !top_node && name != VP::manifest_file && !name.ends_with('~'))
+      if (inside.empty() && !top_node && name != VP::manifest_file &&
+          !name.ends_with('~'))
         strays.push_back(name);
       continue;
     }
@@ -247,15 +248,21 @@ std::int32_t line_past(std::int32_t at, int way) {
 
 // The way an arrow key points along each axis; none for any other key.
 glm::ivec2 arrow_of(std::string_view key) {
-  return {key == "right" ? 1 : key == "left" ? -1 : 0,
-          key == "down" ? 1 : key == "up" ? -1 : 0};
+  return {key == "right"  ? 1
+          : key == "left" ? -1
+                          : 0,
+          key == "down" ? 1
+          : key == "up" ? -1
+                        : 0};
 }
 
 // The Rect from one corner to the other, rounded to whole pixels.
 VP_VIEW::Rect between(glm::vec2 from, glm::vec2 to, std::uint32_t role) {
   const glm::ivec2 low(glm::round(from));
   const glm::ivec2 high(glm::round(to));
-  return {.offset = low, .extent = glm::uvec2(glm::max(high - low, glm::ivec2(0))), .role = role};
+  return {.offset = low,
+          .extent = glm::uvec2(glm::max(high - low, glm::ivec2(0))),
+          .role = role};
 }
 
 } // namespace
@@ -278,7 +285,8 @@ void Graph::bind(VP::Bind &node) {
   _heating.heat = node.sets("heat") ? heat_of(node.param<std::string>("heat")) : Heat{};
   heat_buttons(*_buttons, _heating.heat, _view, _name);
   _heating.stale();
-  _manhattan = !node.sets("manhattan") || manhattan_of(node.param<std::string>("manhattan"));
+  _manhattan =
+      !node.sets("manhattan") || manhattan_of(node.param<std::string>("manhattan"));
   manhattan_button(*_buttons, _manhattan, _view, _name);
   _select = node.command("select [<node>...]",
                          "selects nodes of the view the graph shows, views it hosts, or "
@@ -314,8 +322,8 @@ void Graph::bind(VP::Bind &node) {
   _spacing = node.value<float>("spacing");
 }
 
-// The current view, where the terminals' lines go, the one vulpen started with too, or the
-// folder the relations part reads in its place, until a view is switched to. The keys
+// The current view, where the terminals' lines go, the one vulpen started with too, or
+// the folder the relations part reads in its place, until a view is switched to. The keys
 // once it is known, and before it is read for the frame, as a removal changes it.
 void Graph::cook(VP::Cook &frame) {
   _lines = frame.commands().done();
@@ -344,7 +352,8 @@ void Graph::cook(VP::Cook &frame) {
   const VP::View *const edited = folder ? &_relations->tree : frame.view(shown);
   const VP::View *const flat = folder ? &_relations->tree : frame.unfolded(shown);
   _hosted.clear();
-  for (std::size_t child = 0; edited && !folder && child < edited->children.size(); ++child)
+  for (std::size_t child = 0; edited && !folder && child < edited->children.size();
+       ++child)
     _hosted.push_back(frame.view(edited->children[child].name));
   const std::span<const VP::NodePort> ports =
       folder ? std::span<const VP::NodePort>() : frame.ports(shown);
@@ -467,11 +476,11 @@ void Graph::command(VP::Call &call) {
 
 // delete removes what is selected with what it holds, and backspace only what holds
 // nothing, as remove force and remove do, each into the trash undo brings it back from;
-// an arrow moves it a line of the ground that way; escape lets go of it, and with none of the focus, as the editor and the
-// terminal do; control with a selects every box; control with z takes back the last
-// change of where the boxes are, or the line a person ran after it, and with shift too
-// does it again. The home key brings the graph home once the frame has laid the boxes
-// out.
+// an arrow moves it a line of the ground that way; escape lets go of it, and with none of
+// the focus, as the editor and the terminal do; control with a selects every box; control
+// with z takes back the last change of where the boxes are, or the line a person ran
+// after it, and with shift too does it again. The home key brings the graph home once the
+// frame has laid the boxes out.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
   if ((key == "delete" || key == "backspace") && chosen) {
@@ -503,7 +512,8 @@ void Graph::key(VP::Cook &frame, std::string_view key) {
 // The box selected last that has an inside, or the one under the pointer; what lies
 // outside, which has none, goes up a level only by , or the wheel.
 void Graph::go_in(VP::Cook &frame) {
-  for (auto name = _selection.rbegin(); name != _selection.rend() && _selected_in == _shown;
+  for (auto name = _selection.rbegin();
+       name != _selection.rend() && _selected_in == _shown;
        ++name)
     if (const auto found = std::ranges::find(_boxes.boxes, *name, &Box::name);
         found != _boxes.boxes.end() && found->role &&
@@ -577,7 +587,8 @@ void Graph::show(std::string_view name) {
 // over what a person typed; the graph then lays the boxes out from the graph alone.
 void Graph::arrange(VP::Cook &frame, const std::filesystem::path &beside) {
   const std::filesystem::path folder = beside.empty() ? beside : beside / kept_folder;
-  if (const std::string ini = folder.empty() ? std::string() : (folder / kept_file).string();
+  if (const std::string ini =
+          folder.empty() ? std::string() : (folder / kept_file).string();
       ini != _ini)
     _ini = ini;
   else
@@ -655,9 +666,9 @@ void Graph::show_view(VP::CommandPort &commands) const {
 void Graph::show_folder(VP::CommandPort &commands,
                         const std::filesystem::path &folder) const {
   commands.send(std::format("{}: param set {} folder {}",
-                                    _relations->view,
-                                    _relations->node,
-                                    folder.generic_string()));
+                            _relations->view,
+                            _relations->node,
+                            folder.generic_string()));
 }
 
 // The tab names where the graph is, a word a level, joined as one tab, a press on a word
@@ -786,11 +797,11 @@ void Graph::follow(VP::Cook &frame, bool room, const VP::Event &event) {
 }
 
 // It takes the focus. On a box, the box drawn last over the others: a second press opens
-// the file of the row pressed, or goes into the box's inside, or up a level from what lies
-// outside. Any box, a node's, a view's, a file's, a folder's or what lies outside: shift
-// adds it to the selection, or it is selected, unless it is already, and grabbed with
-// every box selected, so a drag moves them all; one selected already shift takes out as
-// it is let go where it was, so a drag with shift moves them too. On the ground, with
+// the file of the row pressed, or goes into the box's inside, or up a level from what
+// lies outside. Any box, a node's, a view's, a file's, a folder's or what lies outside:
+// shift adds it to the selection, or it is selected, unless it is already, and grabbed
+// with every box selected, so a drag moves them all; one selected already shift takes out
+// as it is let go where it was, so a drag with shift moves them too. On the ground, with
 // shift, a select box from there to the pointer until the button is let go; without, the
 // selection goes, and the graph follows the pointer until then.
 void Graph::press(VP::Cook &frame, std::uint32_t presses) {
@@ -846,7 +857,8 @@ void Graph::context(VP::Cook &frame) {
     std::string name;
     std::tie(kind, name) = menu_of(frame, at, true);
     names.push_back(std::move(name));
-    if (_selected_in == _shown && _selection.size() > 1 && selected(_boxes.boxes[at].name))
+    if (_selected_in == _shown && _selection.size() > 1 &&
+        selected(_boxes.boxes[at].name))
       for (const std::string &chosen : _selection)
         if (const auto box = std::ranges::find(_boxes.boxes, chosen, &Box::name);
             box != _boxes.boxes.end())
@@ -867,11 +879,11 @@ void Graph::context(VP::Cook &frame) {
       names.push_back(_built_flat->connections[end.wire].name);
     } else if (end.layer != VP_VIEW::Layer::flow) {
       kind = "relation";
-      for (const auto &[box, row] : {std::pair(end.from, end.from_row),
-                                    std::pair(end.to, end.to_row)})
-        if (const std::filesystem::path &opens =
-                row < _boxes.boxes[box].rows ? rows_in(_boxes, box)[row].opens
-                                             : _boxes.boxes[box].opens;
+      for (const auto &[box, row] :
+           {std::pair(end.from, end.from_row), std::pair(end.to, end.to_row)})
+        if (const std::filesystem::path &opens = row < _boxes.boxes[box].rows
+                                                     ? rows_in(_boxes, box)[row].opens
+                                                     : _boxes.boxes[box].opens;
             !opens.empty())
           names.push_back(typed_path(opens));
     }
@@ -892,10 +904,10 @@ void Graph::context(VP::Cook &frame) {
   frame.commands().send(line);
 }
 
-// What kind of thing a box is, as menu.ini names it, and its name as a line takes it; with
-// by_row, the row under the pointer: one naming a file or a folder, a port of a node, by
-// the side the pointer is on, loose or joined, as node.port, or a node inside, by its
-// name. A view's manifest at its top is one, as is a folder that holds a project.
+// What kind of thing a box is, as menu.ini names it, and its name as a line takes it;
+// with by_row, the row under the pointer: one naming a file or a folder, a port of a
+// node, by the side the pointer is on, loose or joined, as node.port, or a node inside,
+// by its name. A view's manifest at its top is one, as is a folder that holds a project.
 std::pair<std::string, std::string>
 Graph::menu_of(VP::Cook &frame, std::size_t at, bool by_row) const {
   const Box &box = _boxes.boxes[at];
@@ -1183,9 +1195,9 @@ void Graph::release(VP::Cook &frame, bool room) {
 // A second press on a row's name that names a file opens it, as a line typed would: a
 // node's file, from its folder in the view or the library, the manifest of the recipe a
 // node uses, that of a view where it is hosted from, a file's own box, or a row of what
-// lies outside naming what a relation reaches, a folder showing in the graph; a box's name
-// and its ports open none, nor the rest of a row past its name, which is the box's, as a
-// second press there goes into a node. Whether one was opened. A file goes on to the
+// lies outside naming what a relation reaches, a folder showing in the graph; a box's
+// name and its ports open none, nor the rest of a row past its name, which is the box's,
+// as a second press there goes into a node. Whether one was opened. A file goes on to the
 // panel its shows param names, which shows again if it was hidden, as a person who opens
 // a file looks at it.
 bool Graph::open(VP::Cook &frame, std::size_t at) {
@@ -1215,11 +1227,10 @@ bool Graph::on_text(std::size_t at, std::string_view text) const {
 // them.
 std::size_t Graph::row_under(std::size_t at) const {
   const Placed &placed = _layout.placed()[at];
-  const float slot =
-      ((_pointer.y - on_screen(glm::vec2(placed.at)).y) / _pan_zoom.zoom -
-       static_cast<float>(pad)) /
-          static_cast<float>(_laid_cell.y) -
-      1.0f;
+  const float slot = ((_pointer.y - on_screen(glm::vec2(placed.at)).y) / _pan_zoom.zoom -
+                      static_cast<float>(pad)) /
+                         static_cast<float>(_laid_cell.y) -
+                     1.0f;
   if (slot < 0.0f)
     return title_row;
   const auto shown = static_cast<std::size_t>(slot);
@@ -1298,8 +1309,8 @@ void Graph::into_folder(Port &port, const std::filesystem::path &folder) {
 // box; out of a folder to the one holding it, up to the top of its repository. The level
 // shown next shows the box left in focus, unless the caller lets go of it. Once a line
 // left a node's inside, the boxes show it still until the next frame builds them, so a
-// wheel turning on leaves it once, as its inside param, which it keeps as the line set it,
-// differs from the inside they show. The top is the one the last reading found, which
+// wheel turning on leaves it once, as its inside param, which it keeps as the line set
+// it, differs from the inside they show. The top is the one the last reading found, which
 // comes frames after the folder asked: a press before it, as , pressed fast, finds none
 // yet or another repository's, and goes no further up, so it never leaves the repository.
 template <class Port> void Graph::leave(Port &port) {
@@ -1336,9 +1347,8 @@ template <class Port> void Graph::leave(Port &port) {
   const std::size_t holder = parent_of(_built_flat->nodes, _left);
   _inside = holder == no_box ? std::string() : _built_flat->nodes[holder].name;
   port.commands().send(
-      _inside.empty()
-          ? std::format("{}: param unset {} inside", _view, _name)
-          : std::format("{}: param set {} inside {}", _view, _name, _inside));
+      _inside.empty() ? std::format("{}: param unset {} inside", _view, _name)
+                      : std::format("{}: param set {} inside {}", _view, _name, _inside));
 }
 
 bool Graph::selected(std::string_view node) const {
@@ -1432,11 +1442,11 @@ void Graph::cd(VP::Call &call) {
   if (const std::filesystem::path top(_relations->top);
       to == ".." && !folder.empty() && !top.empty() &&
       std::filesystem::path(folder).lexically_relative(top).lexically_normal() == ".") {
-    call.reply(std::format("{} is as far up as cd .. goes: its repository's top, or "
-                           "outside one the first folder gone into; cd <path> goes "
-                           "anywhere",
-                           top.lexically_proximate(std::filesystem::current_path())
-                               .generic_string()));
+    call.reply(std::format(
+        "{} is as far up as cd .. goes: its repository's top, or "
+        "outside one the first folder gone into; cd <path> goes "
+        "anywhere",
+        top.lexically_proximate(std::filesystem::current_path()).generic_string()));
   } else if (to == "..") {
     leave(call);
     _left.clear();
@@ -1470,10 +1480,9 @@ void Graph::cd(VP::Call &call) {
     const std::vector<std::string> names = call.files().list(path.parent_path().string());
     if (root ? names.empty()
              : std::ranges::find(names, path.filename().string() + '/') == names.end())
-      throw std::runtime_error(
-          std::format("{} is no folder",
-                      path.lexically_proximate(std::filesystem::current_path())
-                          .generic_string()));
+      throw std::runtime_error(std::format(
+          "{} is no folder",
+          path.lexically_proximate(std::filesystem::current_path()).generic_string()));
     into_folder(call, path);
   } else {
     const auto named = std::ranges::find_if(_boxes.boxes, [&](const Box &box) {
@@ -1496,9 +1505,9 @@ void Graph::place(const VP::View *edited, const VP::View *flat) {
   if (folder.empty() && edited && flat) {
     const auto scope = std::ranges::find(flat->nodes, _boxes.scope, &VP::Node::name);
     const bool top = _boxes.scope.empty() || scope == flat->nodes.end();
-    folder = !top ? scope->folder
-         : _shown.empty() ? std::filesystem::path()
-                          : edited->file.parent_path();
+    folder = !top             ? scope->folder
+             : _shown.empty() ? std::filesystem::path()
+                              : edited->file.parent_path();
   }
   if (_place->folder != folder.string())
     _place->folder = folder.string();
@@ -1552,12 +1561,12 @@ void Graph::erase(VP::Cook &frame, bool force) {
       closing = names;
     const bool again =
         kind == "view" && names == _closing && frame.commands().done() == _closing_done;
-    std::string line = std::format("menu press {} {} for",
-                                   kind,
-                                   kind == "view"            ? again ? "view close force"
-                                                                     : "view close"
-                                   : force && kind != "file" ? "remove force"
-                                                             : "remove");
+    std::string line =
+        std::format("menu press {} {} for",
+                    kind,
+                    kind == "view"            ? again ? "view close force" : "view close"
+                    : force && kind != "file" ? "remove force"
+                                              : "remove");
     for (const std::string &name : names)
       line.append(" ").append(name);
     frame.commands().send(line);
@@ -1590,7 +1599,8 @@ void Graph::keep(VP::FilePort &files) {
 void Graph::follow(VP::FilePort &files) {
   if (_ini.empty() || _refused || files.moved().empty())
     return;
-  const std::filesystem::path top = std::filesystem::path(_ini).parent_path().parent_path();
+  const std::filesystem::path top =
+      std::filesystem::path(_ini).parent_path().parent_path();
   const auto key = [](const std::filesystem::path &path, bool file) {
     std::string name;
     for (const std::filesystem::path &part : file ? path.parent_path() : path)
@@ -1601,7 +1611,8 @@ void Graph::follow(VP::FilePort &files) {
   for (const VP::Moved &moved : files.moved()) {
     const std::filesystem::path from =
         std::filesystem::path(moved.from).lexically_relative(top);
-    const std::filesystem::path to = std::filesystem::path(moved.to).lexically_relative(top);
+    const std::filesystem::path to =
+        std::filesystem::path(moved.to).lexically_relative(top);
     if (moved.to.empty() || from.empty() || to.empty() || *from.begin() == ".." ||
         *to.begin() == "..")
       continue;
@@ -1652,10 +1663,11 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
   const bool holds = placed.frames;
   const glm::vec2 from = on_screen(glm::vec2(placed.at));
   const glm::vec2 to = on_screen(glm::vec2(placed.at + glm::ivec2(placed.extent)));
-  const float below = holds ? on_screen(glm::vec2(placed.at) +
-                                        glm::vec2(0.0f, static_cast<float>(placed.inside)))
-                                  .y
-                            : to.y;
+  const float below = holds
+                          ? on_screen(glm::vec2(placed.at) +
+                                      glm::vec2(0.0f, static_cast<float>(placed.inside)))
+                                .y
+                          : to.y;
   const auto add = [&](const VP_VIEW::Rect &rect) {
     if (const VP_VIEW::Rect shows = cut(rect, *_area);
         shows.extent.x != 0 && written < rects.size())
@@ -1669,8 +1681,9 @@ void Graph::write_box(std::span<VP_VIEW::Rect> rects,
   inside.blend_role = fill.blend_role;
   inside.blend = fill.blend;
   add(inside);
-  const float band = from.y + static_cast<float>(pad + static_cast<std::int32_t>(_laid_cell.y)) *
-                                  _pan_zoom.zoom;
+  const float band =
+      from.y +
+      static_cast<float>(pad + static_cast<std::int32_t>(_laid_cell.y)) * _pan_zoom.zoom;
   VP_VIEW::Rect banner =
       between(from + width,
               {to.x - width, std::min(band, holds ? below : to.y - width)},
@@ -1719,14 +1732,15 @@ void Graph::write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written
   const VP_VIEW::Rect shown = box(_hovered.box);
   const glm::vec2 low(shown.offset);
   const glm::vec2 high = low + glm::vec2(shown.extent);
-  const float arm =
-      std::min(corner_arm, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
+  const float arm = std::min(
+      corner_arm, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
   for (const bool left : {true, false})
     for (const bool top : {true, false}) {
       const std::uint32_t role = _hovered.corner == glm::bvec2(left, top) ? pulled : arms;
       const glm::vec2 at{left ? low.x : high.x, top ? low.y : high.y};
       const glm::vec2 inward{left ? 1.0f : -1.0f, top ? 1.0f : -1.0f};
-      for (const glm::vec2 along : {glm::vec2(arm, corner_width), glm::vec2(corner_width, arm)})
+      for (const glm::vec2 along :
+           {glm::vec2(arm, corner_width), glm::vec2(corner_width, arm)})
         if (const VP_VIEW::Rect mark = cut(between(glm::min(at, at + inward * along),
                                                    glm::max(at, at + inward * along),
                                                    role),
@@ -1786,8 +1800,8 @@ void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
     const Placed &placed = _layout.placed()[at];
     const glm::vec2 text = glm::vec2(placed.at) + glm::vec2(margin, pad);
     const glm::ivec2 extent(placed.extent);
-    const glm::vec2 far =
-        glm::vec2(placed.at + glm::ivec2(extent.x, placed.frames ? placed.inside : extent.y));
+    const glm::vec2 far = glm::vec2(
+        placed.at + glm::ivec2(extent.x, placed.frames ? placed.inside : extent.y));
     const float end = far.x - margin;
     const auto room = [&](float right) {
       return cut(between(on_screen({text.x, static_cast<float>(placed.at.y)}),
@@ -1823,8 +1837,7 @@ void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
         continue;
       }
       const std::string &port = rows[row].written;
-      const float right =
-          std::max(text.x, end - static_cast<float>(port.size()) * wide);
+      const float right = std::max(text.x, end - static_cast<float>(port.size()) * wide);
       if (!rows[row].text.empty())
         write_row(on_screen(left),
                   rows[row].text,
@@ -1950,7 +1963,8 @@ void Graph::write_curves(VP::Cook &frame) {
 // While no box lies under the pointer and no drag goes on.
 void Graph::curves_under(glm::vec2 point) {
   _hovered_curves.clear();
-  if (_hovered.box != no_box || _grab || _dragging || _select_from || !inside(*_area, point))
+  if (_hovered.box != no_box || _grab || _dragging || _select_from ||
+      !inside(*_area, point))
     return;
   curves_near(_layout.routes(),
               _layout.waypoints(),
@@ -1970,9 +1984,8 @@ bool Graph::layer_shown(std::size_t end) const {
 }
 
 bool Graph::hovered(std::size_t end) const {
-  return std::ranges::any_of(_hovered_curves, [&](const auto &near) {
-    return near.second == end;
-  });
+  return std::ranges::any_of(_hovered_curves,
+                             [&](const auto &near) { return near.second == end; });
 }
 
 // The box whose row for the rows past listed_room the pointer is over, while no drag goes
@@ -2074,8 +2087,9 @@ Under Graph::under(glm::vec2 point) const {
     const VP_VIEW::Rect shown = box(at);
     const glm::vec2 low(shown.offset);
     const glm::vec2 high = low + glm::vec2(shown.extent);
-    const float reach = std::min(
-        corner_reach, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
+    const float reach =
+        std::min(corner_reach,
+                 static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
     const bool left = point.x < low.x + reach;
     const bool top = point.y < low.y + reach;
     const bool near = point.x >= low.x - corner_out && point.x < high.x + corner_out &&
@@ -2119,12 +2133,13 @@ VP_VIEW::Rect Graph::box(std::size_t at) const {
 
 VP_VIEW::Rect Graph::solid(std::size_t at) const {
   const Placed &placed = _layout.placed()[at];
-  const auto rows = placed.frames ? placed.inside : static_cast<std::int32_t>(placed.extent.y);
-  return between(on_screen(glm::vec2(placed.at)),
-                 on_screen(glm::vec2(placed.at) +
-                           glm::vec2(static_cast<float>(placed.extent.x),
-                                     static_cast<float>(rows))),
-                 0);
+  const auto rows =
+      placed.frames ? placed.inside : static_cast<std::int32_t>(placed.extent.y);
+  return between(
+      on_screen(glm::vec2(placed.at)),
+      on_screen(glm::vec2(placed.at) +
+                glm::vec2(static_cast<float>(placed.extent.x), static_cast<float>(rows))),
+      0);
 }
 
 VP_OPERATOR(Graph);

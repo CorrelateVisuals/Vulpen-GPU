@@ -8,7 +8,7 @@
 
 namespace {
 
-constexpr float wheel_rows = 3.0f;   // rows, or columns, a step of the wheel scrolls
+constexpr float wheel_rows = 3.0f; // rows, or columns, a step of the wheel scrolls
 // Rows a frame a drag past the rows shown scrolls, for each row past them and one more,
 // so it scrolls just past the edge too: 15 rows a second there at 60 frames.
 constexpr float drift_rows = 0.25f;

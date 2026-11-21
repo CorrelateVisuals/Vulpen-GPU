@@ -61,7 +61,8 @@ bool unbuilt(const Node &node,
     return true;
   return std::ranges::any_of(node.files, [&](const std::string &file) {
     std::error_code unread;
-    return std::ranges::any_of(stages, [&](auto stage) { return file.ends_with(stage); }) &&
+    return std::ranges::any_of(stages,
+                               [&](auto stage) { return file.ends_with(stage); }) &&
            !std::filesystem::exists(spirv_of(folder, file), unread);
   });
 }
@@ -76,7 +77,8 @@ bool older_than_its_code(const Node &node,
       modules.written(module, folder);
   return written && std::ranges::any_of(node.files, [&](const std::string &file) {
            std::error_code unread;
-           const auto saved = std::filesystem::last_write_time(node.folder / file, unread);
+           const auto saved =
+               std::filesystem::last_write_time(node.folder / file, unread);
            return file.ends_with(".cpp") && !unread && saved > *written;
          });
 }
@@ -85,12 +87,12 @@ bool older_than_its_code(const Node &node,
 // a person's prompt at the project's top types it: a whole draw's .frag, which samples,
 // else its first.
 std::string declaring_shader(const View &view, const Bound &node) {
-  const auto sampling = std::ranges::find_if(node.shaders_named, [](const std::string &file) {
-    return file.ends_with(fragment_stage);
-  });
-  return (folder_in(view, node.node->name) / (sampling != node.shaders_named.end()
-                                                   ? *sampling
-                                                   : node.shaders_named.front()))
+  const auto sampling =
+      std::ranges::find_if(node.shaders_named, [](const std::string &file) {
+        return file.ends_with(fragment_stage);
+      });
+  return (folder_in(view, node.node->name) /
+          (sampling != node.shaders_named.end() ? *sampling : node.shaders_named.front()))
       .generic_string();
 }
 
@@ -114,8 +116,9 @@ std::string end_fix(std::span<const NodePort> ports,
     return found == ports.end() ? nullptr : &*found;
   };
   const bool writes = &end == &connection.from;
-  const Endpoint *const other =
-      !writes ? &connection.from : connection.to.empty() ? nullptr : &connection.to.front();
+  const Endpoint *const other = !writes                 ? &connection.from
+                                : connection.to.empty() ? nullptr
+                                                        : &connection.to.front();
   const NodePort *const port = port_of(end);
   const bool none_that_way = std::ranges::none_of(ports, [&](const NodePort &each) {
     return each.node == end.node && each.kind != "value" && each.writes == writes;
@@ -399,7 +402,8 @@ private:
     _bound.input_types.push_back(type_name(kind.type));
     const Connection *const connection = _schedule.connection_of(_bound.node->name, port);
     const Held *const held = connection ? _schedule.held(connection->name) : nullptr;
-    const Bound *const writer = connection ? _schedule.find(connection->from.node) : nullptr;
+    const Bound *const writer =
+        connection ? _schedule.find(connection->from.node) : nullptr;
     if (!connection)
       _bound.errors.push_back(
           std::format("the operator reads {}, which no connection reaches: connect "
@@ -547,8 +551,8 @@ private:
 };
 
 Bound Schedule::bind(const Node &node,
-                               const std::filesystem::path &folder,
-                               Schedule *replaced) {
+                     const std::filesystem::path &folder,
+                     Schedule *replaced) {
   Bound bound{.node = &node, .log = _wiring.log.level()};
   if (!node.log.empty() && !level_named(node.log))
     bound.errors.push_back(
@@ -593,11 +597,11 @@ Bound Schedule::bind(const Node &node,
       log(Level::info, Tag::nod, bound, "new operator " + name);
     } catch (const Modules::Outdated &outdated) {
       bound.unbuilt = waits_for_build(_name);
-      bound.errors.emplace_back(bound.unbuilt
-                                    ? "was built against older engine headers than this "
-                                      "vulpen's: the live build builds it again, and says "
-                                      "why if it cannot"
-                                    : outdated.what());
+      bound.errors.emplace_back(
+          bound.unbuilt ? "was built against older engine headers than this "
+                          "vulpen's: the live build builds it again, and says "
+                          "why if it cannot"
+                        : outdated.what());
     } catch (const std::exception &failure) {
       bound.errors.emplace_back(failure.what());
     }

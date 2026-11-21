@@ -9,7 +9,8 @@
 namespace VP_VIEW {
 
 // contracts/Rect.glsl's Rect, member for member, as C++ writes it; the loader holds it
-// to the shader's (RA03). std430 aligns it as its ivec2, so a list of them steps 32 bytes.
+// to the shader's (RA03). std430 aligns it as its ivec2, so a list of them steps 32
+// bytes.
 struct alignas(8) Rect {
   glm::ivec2 offset{};
   glm::uvec2 extent{};

@@ -48,7 +48,8 @@ constexpr std::string_view no_word = "\"\"";
 // After a usage's last placeholder: it takes one argument or more.
 constexpr std::string_view one_or_more = "...";
 constexpr std::string_view output_mark = "{out}"; // a node's lines, as the log marks them
-constexpr std::string_view find_prompt = "find: "; // the line a search's words are typed on
+constexpr std::string_view find_prompt =
+    "find: "; // the line a search's words are typed on
 // The command a find bar sends its words to, unless its finds param names another.
 constexpr std::string_view find_command = "find";
 // Between a node's word and its value, as node add and node set take it, and the word
@@ -244,7 +245,8 @@ std::vector<std::string> held(VP::Call &call) {
 // it, else every port of its kind a node reads; before one, every port a node writes,
 // and the windows of the views it hosts, as <view>:, as a connection starts from its
 // writer.
-std::vector<std::string> ports_for(VP::Call &call, std::span<const std::string_view> typed) {
+std::vector<std::string> ports_for(VP::Call &call,
+                                   std::span<const std::string_view> typed) {
   const std::span<const VP::NodePort> ports = call.ports();
   const auto named = [](const VP::NodePort &port) {
     return std::format("{}.{}", port.node, port.name);
@@ -257,8 +259,7 @@ std::vector<std::string> ports_for(VP::Call &call, std::span<const std::string_v
   if (writer != ports.end() && !writer->alike.empty())
     return writer->alike;
   for (const VP::NodePort &port : ports)
-    if (writer == ports.end() ? port.writes
-                              : !port.writes && port.kind == writer->kind)
+    if (writer == ports.end() ? port.writes : !port.writes && port.kind == writer->kind)
       names.push_back(named(port));
   for (const VP::Child &child : call.view().children)
     if (writer == ports.end())
@@ -433,7 +434,7 @@ std::uint32_t role_of(const VP::Logged &line) {
   if (line.level == VP::Level::warn)
     return VP_VIEW::role("warning");
   return line.text.starts_with(output_mark) ? VP_VIEW::role("text")
-                                             : VP_VIEW::role("muted");
+                                            : VP_VIEW::role("muted");
 }
 
 // Where a terminal's text goes in its area, in pixels: the columns of text, where text
@@ -617,10 +618,10 @@ class CommandLine final : public VP::Operator {
     if (_place)
       _placed = _place->folder;
     const VP::View *const view = frame.view(_view);
-    const std::filesystem::path folder =
-        !_placed.empty()           ? std::filesystem::path(_placed)
-        : _view.empty() || !view ? std::filesystem::path()
-                                 : view->file.parent_path();
+    const std::filesystem::path folder = !_placed.empty() ? std::filesystem::path(_placed)
+                                         : _view.empty() || !view
+                                             ? std::filesystem::path()
+                                             : view->file.parent_path();
     _folder = folder.empty() ? std::string()
                              : folder.lexically_proximate(std::filesystem::current_path())
                                    .generic_string();
@@ -1062,8 +1063,7 @@ class CommandLine final : public VP::Operator {
     else if (key == "backspace" && _caret > 0) {
       const std::size_t from = _control ? word_before(_line, _caret) : _caret - 1;
       _line.erase(from, std::exchange(_caret, from) - from);
-    }
-    else if (key == "delete" && _caret < _line.size())
+    } else if (key == "delete" && _caret < _line.size())
       _line.erase(_caret, _control ? word_after(_line, _caret) - _caret : 1);
     else if (const std::optional<std::size_t> to = moved(key))
       _caret = *to;
@@ -1374,11 +1374,11 @@ class CommandLine final : public VP::Operator {
       frame.write(_characters, 0);
       return;
     }
-    _line_row = {.offset = {area.offset.x, rule},
-                 .extent = {area.extent.x,
-                            static_cast<std::uint32_t>(
-                                area.offset.y + static_cast<std::int32_t>(area.extent.y) -
-                                rule)}};
+    _line_row = {
+        .offset = {area.offset.x, rule},
+        .extent = {area.extent.x,
+                   static_cast<std::uint32_t>(
+                       area.offset.y + static_cast<std::int32_t>(area.extent.y) - rule)}};
     const std::string start = prompt();
     const auto prompt_columns = static_cast<std::int32_t>(start.size());
     const std::span<VP_VIEW::Rect> rects = frame.write(_rects);
@@ -1630,10 +1630,12 @@ class CommandLine final : public VP::Operator {
             ? std::min(cell.y + 2 * margin, static_cast<std::int32_t>(_area->extent.y))
             : 0;
     *_rest = {.offset = _area->offset + glm::ivec2(0, height),
-              .extent = _area->extent - glm::uvec2(0, static_cast<std::uint32_t>(height))};
+              .extent =
+                  _area->extent - glm::uvec2(0, static_cast<std::uint32_t>(height))};
     const auto start = static_cast<std::int32_t>(find_prompt.size());
     const std::int32_t columns =
-        cell.x == 0 ? 0 : (static_cast<std::int32_t>(_area->extent.x) - 2 * margin) / cell.x;
+        cell.x == 0 ? 0
+                    : (static_cast<std::int32_t>(_area->extent.x) - 2 * margin) / cell.x;
     _line_row = {};
     if (height < cell.y + 2 * margin || columns <= start) {
       frame.write(_rects, 0);
@@ -1660,11 +1662,12 @@ class CommandLine final : public VP::Operator {
     // Two blanks past the words, as much of its first line as the row holds.
     if (const auto past = start + static_cast<std::int32_t>(_line.size()) + 2;
         !_answer.empty() && past < columns)
-      text.add({.offset = at + glm::ivec2(past * cell.x, 0),
-                .extent = glm::uvec2(static_cast<std::uint32_t>((columns - past) * cell.x),
-                                     cell.y),
-                .role = VP_VIEW::role("muted")},
-               lines_of(_answer).front().substr(0, static_cast<std::size_t>(columns - past)));
+      text.add(
+          {.offset = at + glm::ivec2(past * cell.x, 0),
+           .extent =
+               glm::uvec2(static_cast<std::uint32_t>((columns - past) * cell.x), cell.y),
+           .role = VP_VIEW::role("muted")},
+          lines_of(_answer).front().substr(0, static_cast<std::size_t>(columns - past)));
     const bool typed = !_typed->to(_name).empty();
     if (focused() && _blink.shows(frame.index(), caret.offset, typed))
       rects[count++] = caret;
@@ -1740,9 +1743,10 @@ class CommandLine final : public VP::Operator {
         ++depth;
       }
       if (!own)
-        rows.emplace_back(std::string(2 * depth, ' ').append(
-                              usage.usage.substr(std::min(from, usage.usage.size()))),
-                          usage.help);
+        rows.emplace_back(
+            std::string(2 * depth, ' ')
+                .append(usage.usage.substr(std::min(from, usage.usage.size()))),
+            usage.help);
     }
     std::size_t width = 0;
     for (const auto &[words, help] : rows)
@@ -1809,12 +1813,12 @@ class CommandLine final : public VP::Operator {
   VP::Command _begin;
   VP::Command _list;
   std::vector<Brought> _brought; // since the frame before, in the order they came
-  std::string _view;   // the current view, as last found; empty for the host
+  std::string _view;             // the current view, as last found; empty for the host
   std::string _folder; // that view's, or the graph's place, as the prompt shows it
   const VP_VIEW::Place *_place = nullptr; // a connection's; none for none
   std::string _placed;                    // its folder, as the prompt last showed it
-  bool _followed = false; // until the first frame finds the current view
-  std::vector<std::string> _kept; // the views the log keeps to, as it was told
+  bool _followed = false;                 // until the first frame finds the current view
+  std::vector<std::string> _kept;         // the views the log keeps to, as it was told
   bool _prompted = false;
   bool _window = false;
   VP::TerminalPort *_terminal = nullptr; // while a person's keys edit the line there
@@ -1834,11 +1838,11 @@ class CommandLine final : public VP::Operator {
   std::size_t _widest = 0;  // its widest row's bytes
   Scroll _scroll;           // the rows of it shown
   Scroll _columns{Scroll::Axis::across};
-  Mark _anchor;             // where a drag over the scrollback started
-  Mark _end;                // where it is now; the anchor itself for no selection
-  bool _selecting = false;  // from a press on the scrollback until it is let go
-  bool _control = false;    // held, so c copies the selection and v pastes
-  bool _sideways = false;   // shift held, as the window says, so the wheel scrolls across
+  Mark _anchor;            // where a drag over the scrollback started
+  Mark _end;               // where it is now; the anchor itself for no selection
+  bool _selecting = false; // from a press on the scrollback until it is let go
+  bool _control = false;   // held, so c copies the selection and v pastes
+  bool _sideways = false;  // shift held, as the window says, so the wheel scrolls across
   std::string _line;
   std::size_t _caret = 0;
   // Where the selection of the line starts, the caret at its other end; none for none.
