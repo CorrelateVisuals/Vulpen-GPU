@@ -28,6 +28,25 @@ std::uint32_t mip_levels(std::string_view text) {
   return count;
 }
 
+// A picture file as a frame tells it changed: its size and the hashes of its first and
+// last end_bytes. Hashing all of a picture of megabytes each frame costs (C03), and a
+// PNG ends in a checksum of all its pixels, so a repaint anywhere in one changes its end.
+constexpr std::size_t end_bytes = 64 * 1024;
+struct Fingerprint {
+  std::size_t size = 0;
+  std::size_t head = 0;
+  std::size_t tail = 0;
+  bool operator==(const Fingerprint &) const = default;
+};
+
+Fingerprint fingerprint(std::string_view bytes) {
+  const std::hash<std::string_view> hash;
+  const std::size_t tail_from = bytes.size() > end_bytes ? bytes.size() - end_bytes : 0;
+  return {.size = bytes.size(),
+          .head = hash(bytes.substr(0, end_bytes)),
+          .tail = hash(bytes.substr(tail_from))};
+}
+
 // The picture file its file param names, decoded into its picture, sRGB as a file holds
 // its colors: read again once it changes on disk, so art saved elsewhere shows at once.
 // A file it cannot read or decode is named in the log, and the picture keeps what it
@@ -44,7 +63,7 @@ class Picture final : public VP::Operator {
     if (_file.empty())
       return;
     const std::string_view bytes = frame.files().text(_watched);
-    const std::size_t read = std::hash<std::string_view>{}(bytes);
+    const Fingerprint read = fingerprint(bytes);
     if (_decoded == read)
       return;
     _decoded = read; // decoded once, whether it decodes or not, until it changes
@@ -60,8 +79,8 @@ class Picture final : public VP::Operator {
   std::uint32_t _mip_levels = 1;
   VP::Texture<glm::u8vec4> _picture;
   VP::File _watched;
-  // The file's bytes the picture holds, by their hash; none until one decoded.
-  std::optional<std::size_t> _decoded;
+  // The file the picture holds, by its fingerprint; none until one decoded.
+  std::optional<Fingerprint> _decoded;
 };
 
 } // namespace
