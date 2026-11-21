@@ -129,7 +129,8 @@ struct Under {
 // folders it shows, which select and selected reach as lines do (V06), and of what lies
 // outside and the boxes whose names hold a blank, which no line names, for the eye alone;
 // control with a selects them all, and of them delete or backspace removes the nodes and
-// the views, as node remove and view close do, and takes keys from the keys part while it
+// the views, as node remove and view close do, a view that view close kept pressed again
+// as view close force, and takes keys from the keys part while it
 // has the focus, which a press in its area gives it. Its own shaders draw the ground,
 // lines that move and zoom with the graph over the whole area; it writes Rects, Labels
 // and Curves for the parts that draw over them, and only what lies in its area: a box cut
@@ -301,6 +302,8 @@ private:
   // graph shows it, as a script's does before the first frame.
   std::vector<std::string> _selection;
   std::string _selected_in;
+  std::vector<std::string> _closing; // the views the last delete closed, as named then
+  std::size_t _closing_done = 0;      // and what undo held then
   // The boxes raised by a press or select, by name, the last over the others, the order
   // the boxes are drawn in, and for each what of the boxes drawn after it hides it, kept
   // so a frame allocates nothing for them.

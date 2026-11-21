@@ -460,6 +460,9 @@ class Tried:
     said: list[str]
 
 
+# What the build makes something of: a node's code and its shaders.
+CODE = (".cpp", ".h", ".hpp", ".comp", ".vert", ".frag", ".tesc", ".tese", ".geom", ".glsl")
+
 class Copy:
     """The tree copied and built, its projects, a decoy folder beside it for paths that
     lead out of the copy, and what each part found and tried."""
@@ -486,22 +489,39 @@ class Copy:
 
     def put_back(self) -> None:
         """The copy as built: its files as committed, the projects and the decoy as they
-        were made, nothing a run keeps in .vulpen/, so the next state starts alike."""
+        were made, nothing a run keeps in .vulpen/, so the next state starts alike. Where
+        a line changed code or a shader, as connect declare does, the copy is built again
+        before the next vulpen loads it: what the build made of the change is newer than
+        the file put back, so neither make nor the live build would make it again, and the
+        next state would start on it."""
+        changed = subprocess.run(["git", "status", "--porcelain"], cwd=self.tree,
+                                 capture_output=True, text=True, check=True).stdout
+        built = any(line[3:].strip('"').endswith(CODE) for line in changed.splitlines())
         subprocess.run(["git", "checkout", "-q", "--", "."], cwd=self.tree, check=True)
         # Not a save's temp file: a vulpen still running renames it away mid-clean, and
         # git stops at the name it listed.
         subprocess.run(["git", "clean", "-fdxq", "-e", "/out", "-e", "/projects/bf-*",
                         "-e", "*.vulpen-tmp"], cwd=self.tree, check=True)
+        coded = set()
         for folder in (self.tree / "projects").glob("bf*"):
-            if folder.name not in SANDBOX or held(folder) != held(self.pristine /
-                                                                  folder.name):
+            now, was = held(folder), held(self.pristine / folder.name)
+            if folder.name not in SANDBOX or now != was:
+                if any(path.endswith(CODE) and now.get(path) != was.get(path)
+                       for path in now.keys() | was.keys()):
+                    coded.add(folder.name)
                 shutil.rmtree(folder)
         for name in SANDBOX:
             if not (self.tree / "projects" / name).exists():
-                shutil.copytree(self.pristine / name, self.tree / "projects" / name)
+                # A project whose code changed comes back with its files' times now, as
+                # git checkout gives them, so the build sees them newer than what it made.
+                shutil.copytree(self.pristine / name, self.tree / "projects" / name,
+                                copy_function=shutil.copy if name in coded else shutil.copy2)
         if held(self.decoy) != held(self.pristine / "decoy"):
             shutil.rmtree(self.decoy, ignore_errors=True)
             shutil.copytree(self.pristine / "decoy", self.decoy)
+        if built or coded & set(SANDBOX):
+            subprocess.run(["cmake", "--build", "--preset", "debug", "-j",
+                            str(os.cpu_count())], cwd=self.tree, capture_output=True)
 
     def changed(self) -> list[str]:
         """The files outside the projects a run changed: what git sees, but what the

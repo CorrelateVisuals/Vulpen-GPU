@@ -235,7 +235,9 @@ def take(binary: Path, run: Run, into: Path) -> dict[str, Path]:
             vulpen.stdin.write(f": param set cli.snapshot file {pictures[name]}\n")
             vulpen.stdin.flush()
             wait_for(pictures[name], name)
-        vulpen.stdin.write("quit\n")
+        # The scenes hold ray-cubes still by params no view save keeps, which plain quit
+        # refuses to lose; the copy goes once the run ends, so nothing is lost.
+        vulpen.stdin.write("quit force\n")
         vulpen.stdin.close()
         code = vulpen.wait(TIMEOUT_S)
     errors = [line for line in said.read_text(errors="replace").splitlines() if ERROR in line]
