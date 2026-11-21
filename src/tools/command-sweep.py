@@ -64,6 +64,7 @@ SIZE = "1280x720"
 # display is here to open it on.
 SNAPSHOT = "connect snapshot ide: cli.snapshot.picture"
 TIMEOUT_S = 90         # for a frame to pass, or a restart's build
+JOBS = str(os.cpu_count() or 1)  # a build's count of jobs, as check.py's
 POLL_S = 0.005
 FRAMES_A_LINE = 2      # at least, from one line to the next
 SETTLE_S = 0.4         # between looks at whether the live build is idle
@@ -478,6 +479,7 @@ class Copy:
         self.tried: list[Tried] = []
         self.fresh = 0
         self.part = ""
+        self.stale = False  # code put back that the build has not made yet
 
     def name(self, start: str = "bfn") -> str:
         self.fresh += 1
@@ -487,22 +489,28 @@ class Copy:
         self.findings.append(Finding(self.part, state, what, line,
                                      [short(text, self.tree) for text in said]))
 
-    def put_back(self) -> None:
+    def put_back(self, build: bool = True) -> bool:
         """The copy as built: its files as committed, the projects and the decoy as they
         were made, nothing a run keeps in .vulpen/, so the next state starts alike. Where
-        a line changed code or a shader, as connect declare does, the copy is built again
-        before the next vulpen loads it: what the build made of the change is newer than
-        the file put back, so neither make nor the live build would make it again, and the
-        next state would start on it."""
-        changed = subprocess.run(["git", "status", "--porcelain"], cwd=self.tree,
+        a line changed code or a shader, as connect declare does, or took a project of
+        SANDBOX away, the copy is built again before the next vulpen loads it: what the
+        build made of the change is newer than the file put back, so neither make nor the
+        live build would make it again, and the next state would start on it. With build
+        False, as while a vulpen runs, whose own build would race this one, the build
+        waits for the next put_back; says whether one waits."""
+        # Every file a line left, also inside a folder git has never seen.
+        changed = subprocess.run(["git", "status", "--porcelain", "-uall"], cwd=self.tree,
                                  capture_output=True, text=True, check=True).stdout
-        built = any(line[3:].strip('"').endswith(CODE) for line in changed.splitlines())
+        if any(line[3:].strip('"').endswith(CODE) for line in changed.splitlines()):
+            self.stale = True
         subprocess.run(["git", "checkout", "-q", "--", "."], cwd=self.tree, check=True)
         # Not a save's temp file: a vulpen still running renames it away mid-clean, and
         # git stops at the name it listed.
         subprocess.run(["git", "clean", "-fdxq", "-e", "/out", "-e", "/projects/bf-*",
                         "-e", "*.vulpen-tmp"], cwd=self.tree, check=True)
-        coded = set()
+        # A project a line renamed or removed may have had its code changed first: what
+        # the build made of that is newer than its files put back, as for one changed.
+        coded = {name for name in SANDBOX if not (self.tree / "projects" / name).exists()}
         for folder in (self.tree / "projects").glob("bf*"):
             now, was = held(folder), held(self.pristine / folder.name)
             if folder.name not in SANDBOX or now != was:
@@ -519,9 +527,17 @@ class Copy:
         if held(self.decoy) != held(self.pristine / "decoy"):
             shutil.rmtree(self.decoy, ignore_errors=True)
             shutil.copytree(self.pristine / "decoy", self.decoy)
-        if built or coded & set(SANDBOX):
-            subprocess.run(["cmake", "--build", "--preset", "debug", "-j",
-                            str(os.cpu_count())], cwd=self.tree, capture_output=True)
+        if coded & set(SANDBOX):
+            self.stale = True
+        if self.stale and build:
+            done = subprocess.run(["cmake", "--build", "--preset", "debug", "-j", JOBS],
+                                  cwd=self.tree, capture_output=True, text=True)
+            if done.returncode != 0:  # the next put_back tries again
+                self.find("put back", "the copy did not build as put back", "cmake --build",
+                          (done.stdout[-3000:] + done.stderr[-3000:]).splitlines())
+            else:
+                self.stale = False
+        return self.stale
 
     def changed(self) -> list[str]:
         """The files outside the projects a run changed: what git sees, but what the
@@ -591,7 +607,7 @@ def copy_tree(to: Path) -> None:
         shutil.copytree(pristine / name, (to / "projects" if name != "decoy"
                                           else to.parent) / name)
     for command in (["cmake", "--preset", "debug"],
-                    ["cmake", "--build", "--preset", "debug", "-j", str(os.cpu_count())]):
+                    ["cmake", "--build", "--preset", "debug", "-j", JOBS]):
         done = subprocess.run(command, cwd=to, capture_output=True, text=True)
         if done.returncode != 0:
             sys.exit(f"{' '.join(command)} failed in {to}:\n{done.stdout[-3000:]}"
@@ -946,7 +962,10 @@ def put_back(copy: Copy, vulpen: Vulpen, state: State) -> Vulpen:
     for name in views:  # with force, as the lines wrote what no view save kept
         if name != "ide":
             vulpen.send(f"view close force {name}")
-    copy.put_back()
+    if copy.put_back(build=False):
+        # Code to build again: built while no vulpen runs, whose own build would race it.
+        vulpen.end(force=True)
+        return copy.start(state)
     said = []
     for name in state.loads:
         said += vulpen.send(f"view load {name}")
