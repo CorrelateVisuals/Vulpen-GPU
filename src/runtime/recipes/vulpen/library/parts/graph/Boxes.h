@@ -593,17 +593,16 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
 }
 
 // The boxes of a view as it runs, each recipe a node uses unfolded, or of a folder, a
-// level at a time: with a scope, the boxes of the nodes and the files inside it, none for
-// an empty one, named from it, and beside them what lies outside it, as connections
-// and relations reach in at their left and out at their right, the scope's own ports and
-// files among them, as the tab names the scope and no box shows it; with none, the boxes
-// of the nodes at the top, of the view's manifest, and of the views the view hosts, as
-// the view as edited names them, each as hosted lists its top nodes. The strays are the
-// folders of the level no node names, each ending with /, and at the top the files no
-// node holds, each a box as the manifest's. A node of the view as edited is its own; one
-// a recipe brings is not, nor a folder or a file. The paths outside are named from base.
+// level at a time. With a scope: the boxes of the nodes and files inside it, named from
+// it, none for an empty one; and beside them what lies outside it, where connections and
+// relations reach in at the left and out at the right, the scope's own ports and files
+// among them. The tab names the scope, so no box shows it. With none: the boxes of the
+// nodes at the top, of the view's manifest, and of the views it hosts, each listing its
+// top nodes. The strays are the level's folders no node names, each ending with /, and
+// at the top the files no node holds. A node of the view as edited is its own; one a
+// recipe brings is not, nor a folder or a file. The paths outside are named from base.
 // Every layer's curves are ends, so the boxes and where they show are the same whichever
-// layers show, as the graph draws only theirs.
+// layers show; the graph draws only theirs.
 Boxes boxes_of(const VP::View &edited,
                const VP::View &flat,
                std::string_view scope,

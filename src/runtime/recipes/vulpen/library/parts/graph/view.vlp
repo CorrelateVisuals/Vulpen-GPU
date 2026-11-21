@@ -1,18 +1,15 @@
-# The graph part: one node whose operator is Graph; it lays out the graph of the view
-# presented, else of the one its view hosted most recently, in the Rect its area gives, a
-# box a node and one each view it hosts, and a curve a connection, and writes them as
-# Rects, Labels and Curves for rects, glyphs and curves to draw; its own shaders draw the
-# ground under them, lines that move and zoom with the graph, in the theme its host
-# connects to its palette. Its tab names the view it shows. It shows a level at a time,
-# the inside of the node its inside param names, if any, which a second press on a box or
-# zooming into it sets. A press selects a box, which select, selected and delete reach as
-# lines do, and the keys its typed hands on while it has the focus delete what is
-# selected. Its heat param, gpu or cpu, fills each box by what it holds costs a frame;
-# its manhattan param, no, draws each curve straight from end to end, not in its lanes;
-# its shows param names the panel a file a second press opens shows in, or a node the
-# panel holds, which it shows, as panel show finds it.
-# cd moves it by a line, and its place, the folder of what it shows, goes to a terminal's
-# prompt through a connection its host makes.
+# The graph part: one node whose operator is Graph. It lays out the graph of the view
+# presented, else of the one its view hosted most recently, a level at a time, in the
+# Rect its area gives. It writes Rects, Labels and Curves for rects, glyphs and curves to
+# draw; its own shaders draw the ground under them, in the theme its host connects to its
+# palette. Its host connects the keys part's typed to its typed, and its place, the
+# folder of what it shows, to a terminal's prompt.
+#   inside     the node whose inside shows, which a second press or zooming in sets
+#   heat       gpu or cpu: fills each box by what it holds costs a frame
+#   manhattan  no: draws each curve straight from end to end, not in its lanes
+#   relations  the layers of relations it shows
+#   shows      the panel a file opens in at a second press, or a node the panel holds
+# Its commands: select, selected, select find, arrange and cd.
 [manifest]
 version = 1
 

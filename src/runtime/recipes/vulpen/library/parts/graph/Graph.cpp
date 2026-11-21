@@ -474,13 +474,14 @@ void Graph::command(VP::Call &call) {
   }
 }
 
-// delete removes what is selected with what it holds, and backspace only what holds
-// nothing, as remove force and remove do, each into the trash undo brings it back from;
-// an arrow moves it a line of the ground that way; escape lets go of it, and with none of
-// the focus, as the editor and the terminal do; control with a selects every box; control
-// with z takes back the last change of where the boxes are, or the line a person ran
-// after it, and with shift too does it again. The home key brings the graph home once the
-// frame has laid the boxes out.
+// Delete removes what is selected with what it holds, and backspace only what holds
+// nothing, as remove force and remove do, each into the trash undo brings it back from.
+// An arrow moves the selection a line of the ground that way. Escape lets go of the
+// selection, and with none, of the focus, as the editor and the terminal do. Control with
+// a selects every box. Control with z takes back the last change of where the boxes are,
+// or the line a person ran after it, and with shift too does it again. h brings the graph
+// home once the frame has laid the boxes out. . goes into the box selected, or the one
+// under the pointer, and , up a level, shown from home.
 void Graph::key(VP::Cook &frame, std::string_view key) {
   const bool chosen = _selected_in == _shown && !_selection.empty();
   if ((key == "delete" || key == "backspace") && chosen) {
@@ -1244,7 +1245,9 @@ std::size_t Graph::row_under(std::size_t at) const {
 // nothing yet. Zoomed in to three times as near as zoom 1, or as near as it goes, the
 // graph shows the inside of the box under that place; zoomed out to leave_share as near
 // as home, as far as it goes here, a level up, once the level it left last shows: a turn
-// goes on while the level up is read, which would take it up a level each step.
+// goes on while the level up is read, which would take it up a level each step. Where
+// the wheel and a drag on the ground took the graph is not kept, so a view shows from
+// home again.
 void Graph::turn(VP::Cook &frame, float steps, glm::vec2 about) {
   const float farthest = _home_zoom * leave_share;
   _pan_zoom.wheel(

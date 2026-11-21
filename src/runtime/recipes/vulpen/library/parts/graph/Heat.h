@@ -91,7 +91,10 @@ bool holds(std::string_view name, std::string_view node, char joins = '.') {
 // What the boxes show the cost of, as the heat param names it; what each costs this
 // frame, and the most of the boxes, which the ramp's hot end stands for; and where each
 // node of the views vulpen runs counts, found again only as the boxes, the view shown or
-// a view's costs change, so a frame allocates nothing for it.
+// a view's costs change, so a frame allocates nothing for it. A box costs what it holds:
+// a node's box its node and those inside it, a view's every node of it and of the views
+// it hosts, a folder's every node of every view whose files it holds. So the boxes
+// filled lead, a level at a time, from the repository's top down to the node that costs.
 class Heating {
 public:
   // The boxes changed, or the view they show.
