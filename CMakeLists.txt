@@ -67,6 +67,21 @@ target_include_directories(baseclasses PUBLIC src)
 # Vendored code is not ours to warn about (RA02).
 target_include_directories(baseclasses SYSTEM PRIVATE src/external-libraries)
 target_link_libraries(baseclasses PUBLIC Vulkan::Vulkan PRIVATE glfw ${CMAKE_DL_LIBS})
+# The speakers (Platform.cpp, sokol_audio): PulseAudio on Linux where its headers are
+# installed (libpulse-dev), which PipeWire desktops serve too; Windows links its own;
+# elsewhere no device, so the build needs none (V07) and the run says so.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  find_path(VULPEN_PULSE_INCLUDE pulse/simple.h)
+  find_library(VULPEN_PULSE_SIMPLE pulse-simple)
+  find_library(VULPEN_PULSE pulse)
+  if(VULPEN_PULSE_INCLUDE AND VULPEN_PULSE_SIMPLE AND VULPEN_PULSE)
+    target_link_libraries(baseclasses PRIVATE ${VULPEN_PULSE_SIMPLE} ${VULPEN_PULSE})
+  else()
+    target_compile_definitions(baseclasses PRIVATE SOKOL_DUMMY_BACKEND)
+  endif()
+elseif(NOT WIN32)
+  target_compile_definitions(baseclasses PRIVATE SOKOL_DUMMY_BACKEND)
+endif()
 set_target_properties(baseclasses PROPERTIES COMPILE_WARNING_AS_ERROR ON)
 
 # The runtime, the rest of the engine, is a library of objects too, for the same reason;

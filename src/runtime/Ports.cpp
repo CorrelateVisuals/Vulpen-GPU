@@ -8,6 +8,7 @@
 #include "runtime/View.h"
 
 #include <algorithm>
+#include <cmath>
 #include <array>
 #include <charconv>
 #include <cstdint>
@@ -64,9 +65,30 @@ std::string checked_key(std::string_view name) {
     throw std::runtime_error(std::format(
         "{} is no key: a key is named by the character it prints without shift, as a, "
         "or as space, enter, escape, tab, backspace, insert, delete, left, right, up, "
-        "down, page_up, page_down, home, end, shift, control, alt, super, or f1 to f12",
+        "down, page_up, page_down, home, end, shift, control, alt, super, f1 to f12, or "
+        "a gamepad's button, as gamepad_a or gamepad_dpad_up",
         name));
   return std::string(name);
+}
+
+// A stick's x and y each from -1 to 1, a trigger's x from 0 to 1 and its y 0, as a
+// window hands them on.
+glm::vec2 checked_axis(std::string_view name, glm::vec2 at) {
+  constexpr float most = 1.0f;
+  const bool trigger = name.ends_with("_trigger");
+  if (!axis_named(name))
+    throw std::runtime_error(std::format(
+        "{} is no axis: an axis is gamepad_left or gamepad_right, a stick, or "
+        "gamepad_left_trigger or gamepad_right_trigger",
+        name));
+  if (trigger ? at.x < 0.0f || at.x > most || at.y != 0.0f
+              : std::abs(at.x) > most || std::abs(at.y) > most)
+    throw std::runtime_error(std::format(
+        "{} {} {}: a stick's x and y go from -1 to 1, a trigger's x from 0 to 1, its y 0",
+        name,
+        at.x,
+        at.y));
+  return at;
 }
 
 std::string checked_button(std::string_view name) {
@@ -564,7 +586,22 @@ void Ports::listen(Commands &commands) {
       .button_up = form("input button up <value>", "lets a pointer button go"),
       .wheel = form("input wheel <value> <value>", "turns the wheel by x and y"),
       .focus_on = form("input focus on", "gives the window focus"),
-      .focus_off = form("input focus off", "takes focus from the window")};
+      .focus_off = form("input focus off", "takes focus from the window"),
+      .axis =
+          form("input axis <value> <value> <value>",
+               "moves a gamepad's stick, gamepad_left or gamepad_right, to x and y, "
+               "each from -1 to 1, y down; or pulls a trigger, gamepad_left_trigger or "
+               "gamepad_right_trigger, to x, from 0 to 1, its y 0")};
+  _windowing = {
+      .title = form("window title <value>...",
+                    "names the window, the words joined by single blanks"),
+      .fullscreen_on = form("window fullscreen on", "makes the window fill its monitor"),
+      .fullscreen_off =
+          form("window fullscreen off", "puts the window back where and as it was"),
+      .pointer_lock = form("window pointer lock",
+                           "hides the pointer and holds it in the window, its moves "
+                           "unbounded, as a camera that turns by it wants"),
+      .pointer_free = form("window pointer free", "shows the pointer and lets it go")};
 }
 
 std::span<const Event> Ports::events() const {
@@ -579,8 +616,77 @@ bool Ports::names_key(std::string_view name) const {
   return key_named(name);
 }
 
+void Ports::start_sound(std::size_t frames) {
+  std::swap(_sound, _played);
+  _sound.assign(frames * channels, 0.0f);
+}
+
+// Clamped, as each GPU or sound card would wrap or clip a sum past 1 its own way; a
+// sample no number holds plays as silence (C01).
+void Ports::play_sound() {
+  for (float &sample : _sound)
+    sample = std::isfinite(sample) ? std::clamp(sample, -1.0f, 1.0f) : 0.0f;
+  if (!_speakers)
+    return;
+  _speakers->play(_sound);
+  if (const std::string trouble = _speakers->trouble(); !trouble.empty())
+    _log.write(Level::warn, Tag::snd, std::format("the speakers: {}", trouble));
+}
+
+std::size_t Ports::frames() const {
+  return _sound.size() / channels;
+}
+
+// A frame's few samples a node at a time; the speakers open with the first, three
+// frames ahead, so a frame that runs late is still heard.
+void Ports::add(std::span<const float> samples) {
+  const std::size_t added = std::min(samples.size(), _sound.size());
+  for (std::size_t at = 0; at < added; ++at)
+    _sound[at] += samples[at];
+  if (_speakers || _deaf || !_window || added == 0)
+    return;
+  constexpr std::size_t ahead = 3;
+  try {
+    _speakers = std::make_unique<Speakers>(
+        sample_rate, channels, static_cast<std::uint32_t>(frames() * ahead));
+    _log.write(Level::info,
+               Tag::snd,
+               Speakers::heard()
+                   ? std::format("plays {} Hz in {} channels, {} frames ahead",
+                                 sample_rate,
+                                 channels,
+                                 _speakers->buffered())
+                   : std::string("this build plays sound to no device, as PulseAudio's "
+                                 "headers (libpulse-dev) were not there to build with"));
+  } catch (const std::runtime_error &failure) {
+    _deaf = true;
+    _log.write(Level::warn, Tag::snd, std::format("no speakers: {}", failure.what()));
+  }
+}
+
+std::span<const float> Ports::played() const {
+  return _played;
+}
+
+// The speakers close with the window, an output beside it, and may open with the next.
 void Ports::attach(const Window *window) {
   _window = window;
+  if (!_window) {
+    _speakers.reset();
+    _deaf = false;
+    return;
+  }
+  if (!_title.empty())
+    _window->title(_title);
+  if (_locked)
+    _window->lock_pointer(true);
+  try {
+    if (_fills)
+      _window->fullscreen(true);
+  } catch (const std::runtime_error &failure) {
+    _fills = false;
+    _log.write(Level::warn, Tag::run, std::format("the window: {}", failure.what()));
+  }
 }
 
 bool Ports::windowed() const {
@@ -715,9 +821,41 @@ void Ports::command(Call &call) {
                                        : 1});
   } else if (call.is(_input.wheel)) {
     add({.kind = Event::Kind::wheel, .turn = {number(words[0]), number(words[1])}});
-  } else {
+  } else if (call.is(_input.axis)) {
+    add({.kind = Event::Kind::axis,
+         .name = std::string(words[0]),
+         .at = checked_axis(words[0], {number(words[1]), number(words[2])})});
+  } else if (call.is(_input.focus_on) || call.is(_input.focus_off)) {
     add({.kind = Event::Kind::focus, .down = call.is(_input.focus_on)});
+  } else {
+    window(call);
   }
+}
+
+// What the window command sets holds while the run does; with no window it waits for
+// one, so the answer says so.
+void Ports::window(Call &call) {
+  std::string done;
+  if (call.is(_windowing.title)) {
+    _title.clear();
+    for (const std::string_view word : call.arguments())
+      _title.append(_title.empty() ? "" : " ").append(word);
+    if (_window)
+      _window->title(_title);
+    done = std::format("named the window {}", _title);
+  } else if (call.is(_windowing.fullscreen_on) || call.is(_windowing.fullscreen_off)) {
+    const bool fills = call.is(_windowing.fullscreen_on);
+    if (_window)
+      _window->fullscreen(fills); // throws before the state changes, so none latches
+    _fills = fills;
+    done = _fills ? "made the window fill its monitor" : "put the window back as it was";
+  } else {
+    _locked = call.is(_windowing.pointer_lock);
+    if (_window)
+      _window->lock_pointer(_locked);
+    done = _locked ? "locked the pointer in the window" : "freed the pointer";
+  }
+  call.reply(_window ? done : done + "; no window is open, so it waits for one");
 }
 
 } // namespace VP

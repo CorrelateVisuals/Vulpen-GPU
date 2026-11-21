@@ -57,9 +57,11 @@ float zoom_of(std::string_view text) {
   return zoom;
 }
 
-// Bakes the monospace font file its face param names at the height its height param
-// gives, times its zoom, a cell a glyph, into an atlas that glyphs samples a texel a
-// pixel. It bakes once the face's bytes or the height change, as an edit of either param
+// Bakes the font file its face param names at the height its height param gives, times
+// its zoom, a cell a glyph, each as wide as the widest, into an atlas that glyphs samples
+// a texel a pixel; and how far each glyph moves the next on, its advance, for the parts
+// that lay text out (Metrics), as a proportional face's letters are as wide as they are
+// drawn. It bakes once the face's bytes or the height change, as an edit of either param
 // or a new file does, once the zoom changes the height, and once image clear empties the
 // atlas, so neither a frame nor a rebind for another node's edit bakes (CPP10, C03). The
 // zoom is a look at the text, not the view, so it stays out of the manifest, in
@@ -70,7 +72,7 @@ class Font final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _atlas = node.texture<std::uint8_t>("atlas");
     _font = node.upload<VP_VIEW::Font>("font", 1);
-    _metrics = &node.output<VP_VIEW::Font>("metrics");
+    _metrics = &node.output<VP_VIEW::Metrics>("metrics");
     _zoom_in = node.command("zoom in",
                             "draws the text a step larger, and with it every part that "
                             "lays text out in cells");
@@ -95,11 +97,11 @@ class Font final : public VP::Operator {
     // Once after a bind: another face, or its file changed on disk, reads as new bytes.
     if (std::exchange(_rebound, false) && frame.files().text(_file) != _baked_from)
       _baked = {};
-    if (_baked.count == 0 || _baked.cell.y != height() || frame.empty(_atlas)) {
+    if (_baked.font.count == 0 || _baked.font.cell.y != height() || frame.empty(_atlas)) {
       _baked = bake(frame);
       _baked_from = frame.files().text(_file);
     }
-    frame.write(_font).front() = _baked;
+    frame.write(_font).front() = _baked.font;
     *_metrics = _baked;
   }
 
@@ -137,11 +139,11 @@ class Font final : public VP::Operator {
   std::uint32_t height() const {
     return static_cast<std::uint32_t>(std::lround(static_cast<float>(_height) * _zoom));
   }
-  VP_VIEW::Font bake(VP::Cook &frame) const;
+  VP_VIEW::Metrics bake(VP::Cook &frame) const;
 
   VP::Texture<std::uint8_t> _atlas;
   VP::Upload<VP_VIEW::Font> _font;
-  VP_VIEW::Font *_metrics = nullptr;
+  VP_VIEW::Metrics *_metrics = nullptr;
   VP::Command _zoom_in, _zoom_out, _zoom_reset;
   VP::File _kept;
   std::optional<std::string> _read; // the .ini the zoom is from
@@ -149,15 +151,15 @@ class Font final : public VP::Operator {
   std::uint32_t _height = 0;
   std::string _face;
   VP::File _file;
-  VP_VIEW::Font _baked;
+  VP_VIEW::Metrics _baked;
   std::string _baked_from; // the face's bytes
   bool _rebound = false;
 };
 
-// A cell is as wide as the font's advance and as tall as the height param times the
-// zoom, its baseline where the font's ascent puts it. Ink past a cell's edge is cut, so
-// no glyph reaches into its neighbor's cell.
-VP_VIEW::Font Font::bake(VP::Cook &frame) const {
+// A cell is as wide as the widest glyph's advance and as tall as the height param times
+// the zoom, its baseline where the font's ascent puts it. Ink past a cell's edge is cut,
+// so no glyph reaches into its neighbor's cell in the atlas.
+VP_VIEW::Metrics Font::bake(VP::Cook &frame) const {
   const std::string_view bytes = frame.files().text(_file);
   if (bytes.empty())
     throw std::runtime_error(
@@ -168,12 +170,19 @@ VP_VIEW::Font Font::bake(VP::Cook &frame) const {
     throw std::runtime_error(std::format("face {} is no font stb_truetype reads", _face));
   const std::uint32_t tall = height();
   const float scale = stbtt_ScaleForPixelHeight(&font, static_cast<float>(tall));
-  int ascent = 0, descent = 0, gap = 0, advance = 0;
+  int ascent = 0, descent = 0, gap = 0, widest = 0;
   stbtt_GetFontVMetrics(&font, &ascent, &descent, &gap);
-  stbtt_GetCodepointHMetrics(&font, first, &advance, nullptr);
-  const glm::ivec2 cell(std::lround(static_cast<float>(advance) * scale), tall);
+  VP_VIEW::Metrics metrics;
+  for (std::uint32_t glyph = 0; glyph < count; ++glyph) {
+    int advance = 0;
+    stbtt_GetCodepointHMetrics(&font, static_cast<int>(first + glyph), &advance, nullptr);
+    widest = std::max(widest, advance);
+    metrics.advance[glyph] =
+        static_cast<std::uint32_t>(std::lround(static_cast<float>(advance) * scale));
+  }
+  const glm::ivec2 cell(std::lround(static_cast<float>(widest) * scale), tall);
   const float unzoomed = stbtt_ScaleForPixelHeight(&font, static_cast<float>(_height));
-  const glm::uvec2 base(std::lround(static_cast<float>(advance) * unzoomed), _height);
+  const glm::uvec2 base(std::lround(static_cast<float>(widest) * unzoomed), _height);
   if (cell.x <= 0 || cell.y <= 0)
     throw std::runtime_error(std::format("height = {} makes a cell of no size", tall));
   const glm::ivec2 size = cell * glm::ivec2(columns, rows);
@@ -182,11 +191,6 @@ VP_VIEW::Font Font::bake(VP::Cook &frame) const {
   std::vector<unsigned char> ink;
   for (std::uint32_t glyph = 0; glyph < count; ++glyph) {
     const int code = static_cast<int>(first + glyph);
-    int wide = 0;
-    stbtt_GetCodepointHMetrics(&font, code, &wide, nullptr);
-    if (wide != advance)
-      throw std::runtime_error(std::format(
-          "face {} is not monospace: {:c} is not as wide as the space", _face, code));
     glm::ivec2 low{}, high{};
     stbtt_GetCodepointBitmapBox(
         &font, code, scale, scale, &low.x, &low.y, &high.x, &high.y);
@@ -203,12 +207,13 @@ VP_VIEW::Font Font::bake(VP::Cook &frame) const {
       }
   }
   frame.upload(_atlas, pixels, glm::uvec2(size));
-  return {.cell = glm::uvec2(cell),
-          .base = base,
-          .atlas = glm::uvec2(size),
-          .columns = columns,
-          .first = first,
-          .count = count};
+  metrics.font = {.cell = glm::uvec2(cell),
+                  .base = base,
+                  .atlas = glm::uvec2(size),
+                  .columns = columns,
+                  .first = first,
+                  .count = count};
+  return metrics;
 }
 
 } // namespace

@@ -160,8 +160,20 @@ inline constexpr std::array<PixelFormat, 10> pixel_formats{
      {"R32G32B32A32_SFLOAT", VK_FORMAT_R32G32B32A32_SFLOAT, "vec4", 16}}};
 // What an image takes when its node gives it no format.
 inline constexpr std::string_view default_format = "R8G8B8A8_UNORM";
-// What an image a dispatch stores into takes: the one format images[] declares, rgba8.
+// What an image a dispatch stores into takes when its node gives it no format: rgba8.
 inline constexpr std::string_view stored_format = "R8G8B8A8_UNORM";
+// The formats a dispatch stores into, those every Vulkan device stores into (RVK01),
+// each with the array GpuLayout.glsl declares it by, as a store's format must match
+// its image's. As for any image, a GPU that cannot filter the format is refused, as a
+// linear sampler would read it as each vendor likes (GLSL02): some cannot, 32-bit floats.
+struct StoredFormat {
+  std::string_view name;
+  std::string_view array;
+};
+inline constexpr std::array<StoredFormat, 3> stored_formats{
+    {{"R8G8B8A8_UNORM", "images"},
+     {"R32_SFLOAT", "images_r32f"},
+     {"R32G32B32A32_SFLOAT", "images_rgba32f"}}};
 // What a view's window renders into while the view hosting it takes it: sRGB, as the
 // window prefers, so the view's draws blend and band as they would in a window of their
 // own.
@@ -170,6 +182,24 @@ inline constexpr std::string_view window_format = "R8G8B8A8_SRGB";
 inline const PixelFormat *pixel_format(std::string_view name) {
   const auto found = std::ranges::find(pixel_formats, name, &PixelFormat::name);
   return found == pixel_formats.end() ? nullptr : &*found;
+}
+
+// The format the node's image word gives its port, or fallback where it gives none; null
+// for a format there is not, which check_images names.
+inline const PixelFormat *
+port_format(const Node &node, std::string_view port, std::string_view fallback) {
+  const auto word = std::ranges::find(node.images, port, &ImagePort::port);
+  return pixel_format(word == node.images.end() ? fallback
+                                                : std::string_view(word->format));
+}
+
+// The size a param gives an image a dispatch stores into, as its width and height in
+// pixels; none for text that names no size.
+inline std::optional<VkExtent2D> stored_size(std::string_view text) {
+  glm::uvec2 size{};
+  if (!parse_param(text, size) || size.x == 0 || size.y == 0)
+    return std::nullopt;
+  return VkExtent2D{size.x, size.y};
 }
 
 // A buffer's element as C++ writes or reads it, described as reflection describes the

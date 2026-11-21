@@ -79,6 +79,9 @@ TAKE = '[node "take"]\noperator = Take\n'
 SHAPE = '[node "shape"]\noperator = Shapes\ninvocations = 4\n'
 MAKER = '[node "maker"]\noperator = Maker\n'
 PICTURE = '[node "picture"]\noperator = Picture\ninvocations = 8\nimage = picture=R8_UNORM\n'
+TONE = '[node "tone"]\noperator = Tone\n'
+LEVELS = ('[node "levels"]\noperator = Levels\ninvocations = 8\n'
+          'image = picture=R8G8B8A8_SRGB\n')
 SIGN = '[node "sign"]\noperator = Sign\n'
 PAINT = '[node "paint"]\nvertex_count = 3\n'
 LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
@@ -207,7 +210,7 @@ CASES = {
                    + connection("smeared", "smear.color", "look.painted"),
                    "canvas: a draw's shaders store into no image"),
     "store-format": (HEAD + STAMP + "image = canvas=R8_UNORM\n",
-                     "image canvas=R8_UNORM: a dispatch stores into R8G8B8A8_UNORM images only"),
+                     "image canvas=R8_UNORM: a dispatch stores into R8G8B8A8_UNORM (images[]), R32_SFLOAT"),
     "store-reader": (HEAD + STAMP + SUM + connection("stamped", "stamp.canvas", "sum.values"),
                      "connection stamped: stamp stores an image, which values is no Texture"),
     "varying-unwritten": (HEAD + '[node "rub"]\nvertex_count = 3\n' + LOOK
@@ -389,19 +392,33 @@ def cpp(vulpen: str, folder: Path) -> str | None:
 def images(vulpen: str, folder: Path) -> str | None:
     """Why the pixels C++ filled an image with did not reach the shader, or None: through
     the node's own Texture, through a connection to it, as 16-bit floats no byte holds,
-    and filled again after image clear. The fixture's operator adds a node after it
-    fills, which rebuilds the view, and stops when a pixel differs."""
+    filled again after image clear, and its mip levels, as the CPU averaged them. The
+    fixture's operator adds a node after it fills, which rebuilds the view, and stops
+    when a pixel differs."""
     relayed = PICTURE.replace("Picture", "Relayed").replace("picture=", "copy=")
     for name, text in (("own", HEAD + PICTURE),
                        ("relayed", HEAD + relayed
                         + connection("copy", "picture.copy", "picture.picture")),
                        ("deep", HEAD + PICTURE.replace("Picture", "Deep")
                         .replace("R8_UNORM", "R16G16B16A16_SFLOAT")),
-                       ("cleared", HEAD + PICTURE.replace("Picture", "Cleared"))):
+                       ("cleared", HEAD + PICTURE.replace("Picture", "Cleared")),
+                       ("levels", HEAD + LEVELS)):
         view = view_in(folder, f"image-{name}", text)
         code, output = run(vulpen, [view, "--frames", 5, "--fps", 0])
         if code != 0 or problems(output):
             return f"image-{name}: expected the pixels C++ filled, got exit {code}:\n{output}"
+    return None
+
+
+def sound(vulpen: str, folder: Path) -> str | None:
+    """Why what a node added to the frame's sound did not come back as what played, or
+    None: the next frame hears its samples, clamped, and each frame takes its share of
+    the second; the fixture's operator stops when either differs."""
+    view = view_in(folder, "sound", HEAD + TONE)
+    code, output = run(vulpen, [view, "--frames", 5, "--fps", 0])
+    if code != 0 or problems(output):
+        return (f"sound: expected each frame to hear what the one before added, got "
+                f"exit {code}:\n{output}")
     return None
 
 
@@ -710,7 +727,8 @@ def main() -> None:
             failed += recipes(vulpen, folder)
             for problem in (no_limit(vulpen, folder), terminal(vulpen, folder),
                             frame_block(vulpen, folder), cpp(vulpen, folder),
-                            images(vulpen, folder), text(vulpen, folder),
+                            images(vulpen, folder), sound(vulpen, folder),
+                            text(vulpen, folder),
                             offscreen(vulpen, folder),
                             stored(vulpen, folder),
                             halves(vulpen, folder),

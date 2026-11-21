@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 
+struct GLFWgamepadstate;
 struct GLFWwindow;
 
 namespace VP {
@@ -110,6 +111,8 @@ public:
   virtual void button(std::string_view name, bool down) = 0;
   virtual void wheel(float x, float y) = 0;
   virtual void focus(bool gained) = 0;
+  // A gamepad's stick or trigger moved, as axis_named names them.
+  virtual void axis(std::string_view name, float x, float y) = 0;
 
 protected:
   ~WindowInput() = default;
@@ -117,8 +120,12 @@ protected:
 
 // Whether a window names a key so, as the input command takes it too: the character a
 // printable key prints in the keyboard's layout without shift, or the name of one that
-// prints none.
+// prints none, or of a gamepad's button, as gamepad_a.
 bool key_named(std::string_view name);
+// Whether a window names a gamepad's stick or trigger so: gamepad_left and
+// gamepad_right, each an x and a y from -1 to 1, y down, and gamepad_left_trigger and
+// gamepad_right_trigger, each an x from 0, let go, to 1.
+bool axis_named(std::string_view name);
 
 // The desktop GLFW reaches, which keeps process-wide state: set up once, as the first
 // window opens, and let go as the run ends, so a window closed and opened again finds it
@@ -157,9 +164,59 @@ public:
   void copy(const std::string &text) const;
   // The caller owns the surface and destroys it before the instance.
   VkSurfaceKHR surface(VkInstance instance) const;
+  void title(const std::string &title) const;
+  // Fills the monitor, or goes back where and as large as it was. Throws when the
+  // desktop names no monitor.
+  void fullscreen(bool fills) const;
+  // Hides the pointer and holds it in the window, its moves unbounded, or lets it go.
+  void lock_pointer(bool locked) const;
 
 private:
+  void poll_gamepad(WindowInput &input) const;
+
+  struct Placed {
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+  };
+
   GLFWwindow *_window = nullptr;
+  // What the gamepad held at the poll before, and where the window was before it filled
+  // the monitor, behind pointers, as the window's polls are const.
+  std::unique_ptr<GLFWgamepadstate> _pad;
+  std::unique_ptr<Placed> _placed;
+};
+
+// What sokol_audio said went wrong last, set from the device's thread (Platform.cpp).
+struct SpeakersTrouble;
+
+// The system's default sound output, through sokol_audio, which keeps process-wide state,
+// so one is open at a time: samples, 32-bit floats interleaved by channel, handed on as
+// each frame makes them, which the device plays on its own thread after a buffer of
+// buffered frames. A build without a backend's headers plays to no device.
+class Speakers {
+public:
+  // Throws naming why when no device opens, or one opens at another rate.
+  Speakers(std::uint32_t rate, std::uint32_t channels, std::uint32_t buffered);
+  ~Speakers();
+  Speakers(const Speakers &) = delete;
+  Speakers &operator=(const Speakers &) = delete;
+
+  // Whether a device hears them: false in a build without a backend.
+  static bool heard();
+  // How many frames ahead the device plays.
+  std::uint32_t buffered() const;
+  // As many of the samples as the device has room for; the rest drop, as a device that
+  // fell behind skips rather than lags.
+  void play(std::span<const float> samples) const;
+  // What went wrong since the last call, as sokol_audio said it, from whichever thread;
+  // empty when nothing did.
+  std::string trouble() const;
+
+private:
+  std::unique_ptr<SpeakersTrouble> _trouble;
+  std::uint32_t _channels = 0;
 };
 
 // The terminal vulpen writes to, when it runs in one.

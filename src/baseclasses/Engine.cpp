@@ -5,6 +5,9 @@
 #include "baseclasses/Resources.h"
 #include "baseclasses/Swapchain.h"
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <limits>
 #include <optional>
 #include <vector>
@@ -21,10 +24,11 @@ constexpr VkPipelineStageFlags shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_B
 // A draw's image starts as nothing at all, so what the draw leaves uncovered samples as
 // transparent.
 constexpr VkClearColorValue transparent{.float32 = {0.0f, 0.0f, 0.0f, 0.0f}};
-constexpr float far_depth = 1.0f;
 constexpr double nanoseconds_per_millisecond = 1e6;
 // A timestamp's value, then whether it is there, as the query pool hands them back.
 constexpr std::size_t per_query = 2;
+// The levels of an image whose side is the most a VkExtent2D holds.
+constexpr std::size_t most_mip_levels = 32;
 
 void barrier(VkCommandBuffer commands,
              VkPipelineStageFlags source_stage,
@@ -55,6 +59,41 @@ std::uint32_t instances_of(const Pass &pass) {
   return pass.instances ? *pass.instances : pass.instance_count;
 }
 
+// An indirect draw's count lands in its command, past the vertex count, from where the
+// dispatches left it, before the render pass that reads it starts (copies run outside
+// one).
+void count_draws(VkCommandBuffer commands, std::span<const Pass> passes, bool window) {
+  const auto counted = [&](const Pass &pass) {
+    return pass.indirect && (pass.offscreen == nullptr) == window;
+  };
+  if (std::ranges::none_of(passes, counted))
+    return;
+  barrier(commands,
+          shader_stages | VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+          VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_ACCESS_TRANSFER_READ_BIT);
+  for (const Pass &pass : passes)
+    if (counted(pass)) {
+      const VkBufferCopy region{.dstOffset =
+                                    offsetof(VkDrawIndirectCommand, instanceCount),
+                                .size = sizeof(std::uint32_t)};
+      vkCmdCopyBuffer(commands, pass.count, pass.indirect, 1, &region);
+    }
+  barrier(commands,
+          VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_ACCESS_TRANSFER_WRITE_BIT,
+          VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+          VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+}
+
+void draw(VkCommandBuffer commands, const Pass &pass) {
+  if (pass.indirect)
+    vkCmdDrawIndirect(commands, pass.indirect, 0, 1, sizeof(VkDrawIndirectCommand));
+  else if (instances_of(pass) != 0)
+    vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
+}
+
 // The viewport and the scissor cover the image a render pass draws into.
 void fill(VkCommandBuffer commands, VkExtent2D extent) {
   const VkViewport viewport{.width = static_cast<float>(extent.width),
@@ -66,13 +105,14 @@ void fill(VkCommandBuffer commands, VkExtent2D extent) {
 }
 
 void begin(VkCommandBuffer commands, const Offscreen &offscreen) {
-  const VkClearValue clear{.color = transparent};
+  const std::array clears{VkClearValue{.color = transparent},
+                          VkClearValue{.depthStencil = {.depth = far_depth}}};
   const VkRenderPassBeginInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                                    .renderPass = offscreen.render_pass,
                                    .framebuffer = offscreen.framebuffer,
                                    .renderArea = {.extent = offscreen.extent},
-                                   .clearValueCount = 1,
-                                   .pClearValues = &clear};
+                                   .clearValueCount = offscreen.depth ? 2U : 1U,
+                                   .pClearValues = clears.data()};
   vkCmdBeginRenderPass(commands, &info, VK_SUBPASS_CONTENTS_INLINE);
   fill(commands, offscreen.extent);
 }
@@ -92,17 +132,26 @@ void upload(VkCommandBuffer commands, const Copy &copy) {
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .image = copy.to,
-      .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
+      .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .levelCount = copy.mip_levels,
+                           .layerCount = 1}};
   const auto transition = [&](VkPipelineStageFlags source, VkPipelineStageFlags target) {
     vkCmdPipelineBarrier(commands, source, target, 0, 0, nullptr, 0, nullptr, 1, &layout);
   };
   transition(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-  const VkBufferImageCopy region{
-      .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
-      .imageExtent = {copy.extent.width, copy.extent.height, 1}};
+  std::array<VkBufferImageCopy, most_mip_levels> regions{};
+  for (std::uint32_t level = 0; level < copy.mip_levels; ++level) {
+    const VkExtent2D extent = mip_level_extent(copy.extent, level);
+    regions.at(level) = {.bufferOffset =
+                             mip_level_offset(copy.extent, copy.pixel_bytes, level),
+                         .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                              .mipLevel = level,
+                                              .layerCount = 1},
+                         .imageExtent = {extent.width, extent.height, 1}};
+  }
   if (copy.from)
-    vkCmdCopyBufferToImage(commands, copy.from, copy.to, written, 1, &region);
+    vkCmdCopyBufferToImage(
+        commands, copy.from, copy.to, written, copy.mip_levels, regions.data());
   else
     vkCmdClearColorImage(
         commands, copy.to, written, &transparent, 1, &layout.subresourceRange);
@@ -132,7 +181,7 @@ struct Engine::Gpu {
                   ? ~std::uint64_t{0}
                   : (std::uint64_t{1} << mechanics.timestamp_bits()) - 1) {
     if (window)
-      swapchain.emplace(engine_log, mechanics, *window);
+      swapchain.emplace(engine_log, mechanics, resources, *window);
   }
   ~Gpu() {
     vkDestroyQueryPool(mechanics.device(), queries, nullptr);
@@ -196,7 +245,7 @@ const Pipelines &Engine::pipelines() const {
 }
 
 void Engine::open(const Window &window) {
-  _gpu->swapchain.emplace(_gpu->log, _gpu->mechanics, window);
+  _gpu->swapchain.emplace(_gpu->log, _gpu->mechanics, _gpu->resources, window);
 }
 
 void Engine::close() {
@@ -228,7 +277,11 @@ void Engine::run(std::span<const VkBuffer> clears,
   _gpu->begin_timing(commands, passes.size());
   for (const VkBuffer buffer : clears)
     vkCmdFillBuffer(commands, buffer, 0, VK_WHOLE_SIZE, 0);
-  if (!clears.empty())
+  const bool counts = std::ranges::any_of(passes, &Pass::count);
+  for (const Pass &pass : passes)
+    if (pass.count)
+      vkCmdFillBuffer(commands, pass.count, 0, sizeof(std::uint32_t), 0);
+  if (!clears.empty() || counts)
     barrier(commands,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -284,16 +337,18 @@ void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes)
               VK_ACCESS_SHADER_WRITE_BIT,
               shader_stages,
               VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-    if (records && draw)
+    if (records && draw) {
+      count_draws(commands, run, false);
       begin(commands, *pass.offscreen);
+    }
     for (std::size_t each = 0; each < run.size(); ++each) {
       stamp(commands, at + each, false);
       if (records && run[each].pipeline) {
         bind(commands, pipelines, run[each]);
         if (!draw)
           vkCmdDispatch(commands, run[each].groups, 1, 1);
-        else if (instances_of(run[each]) != 0)
-          vkCmdDraw(commands, run[each].vertex_count, instances_of(run[each]), 0, 0);
+        else
+          VP::draw(commands, run[each]);
       }
       stamp(commands, at + each, true);
     }
@@ -372,6 +427,7 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
           VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
           VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT);
+  count_draws(commands, passes, true);
   swapchain->begin(commands, target);
   fill(commands, target.extent);
   // A draw given nothing this frame records nothing, while its pipeline and buffers stay,
@@ -381,9 +437,9 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
     if (pass.bind_point != VK_PIPELINE_BIND_POINT_GRAPHICS || pass.offscreen)
       continue;
     stamp(commands, at, false);
-    if (pass.pipeline && instances_of(pass) != 0) {
+    if (pass.pipeline && (pass.indirect || instances_of(pass) != 0)) {
       bind(commands, pipelines, pass);
-      vkCmdDraw(commands, pass.vertex_count, instances_of(pass), 0, 0);
+      VP::draw(commands, pass);
     }
     stamp(commands, at, true);
   }

@@ -1,0 +1,10 @@
+# The sound-file part: one node whose operator is SoundFile; it plays the WAV file its
+# file param names, 16-bit or 24-bit integers or 32-bit floats, mono or stereo, at
+# 48000 Hz, from its start once the file is named, and again as it changes on disk;
+# loop = yes plays it over and over; volume scales it.
+[manifest]
+version = 1
+
+[node "sound-file"]
+param = loop=no
+param = volume=1

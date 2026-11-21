@@ -271,12 +271,14 @@ Field describe(const Module &module, const Member &member, std::uint32_t type_id
     return describe_buffer(
         module, {.name = member.name, .offset = member.offset}, type.at(2));
   if (const std::string name = glsl_name(module, type_id);
-      name == texture_type || name == image_type)
+      name == texture_type || name == image_type || name == depth_test_type ||
+      name == depth_write_type)
     return {.name = member.name, .type = name, .offset = member.offset};
   if (value_bytes(module, type_id) == 0)
     throw std::runtime_error(
         std::format("pass block field {} has a type this build cannot set yet: use "
-                    "float, int, uint, a vector of them, a buffer, a Texture or an Image",
+                    "float, int, uint, a vector of them, a buffer, a Texture, an Image, "
+                    "a DepthTest or a DepthWrite",
                     member.name));
   return {
       .name = member.name, .type = glsl_name(module, type_id), .offset = member.offset};
@@ -297,9 +299,9 @@ std::pair<std::vector<Field>, std::uint32_t> pass_block(const Module &module) {
     for (std::size_t index = 1; index < members.size(); ++index) {
       const Field &field = fields.emplace_back(
           describe(module, module.members.at(block).at(index - 1), members[index]));
-      // A Texture and an Image hold their slot as a uint.
+      // A Texture, an Image and a depth hold a slot as a uint.
       const std::uint32_t bytes = field.buffer() ? address_bytes
-                                  : field.texture() || field.image()
+                                  : field.texture() || field.image() || field.depth()
                                       ? scalar_bytes
                                       : value_bytes(module, members[index]);
       end = std::max(end, field.offset + bytes);

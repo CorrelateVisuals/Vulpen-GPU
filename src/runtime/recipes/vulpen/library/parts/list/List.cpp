@@ -98,7 +98,7 @@ class List final : public VP::Operator {
     _end = node.param<std::uint32_t>("end");
     _items = &node.input<VP_VIEW::Items>("items");
     _place = &node.input<VP_VIEW::Rect>("place");
-    _font = &node.input<VP_VIEW::Font>("font");
+    _font = &node.input<VP_VIEW::Metrics>("font");
     _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
     _labels = node.upload<VP_VIEW::Label>("labels", label_room);
     _characters = node.upload<VP_VIEW::Character>("characters", character_room);
@@ -111,7 +111,7 @@ class List final : public VP::Operator {
   }
 
   void cook(VP::Cook &frame) override {
-    const glm::uvec2 cell = _font->cell;
+    const glm::uvec2 cell = _font->font.cell;
     _shown->clear();
     _marks->clear();
     _tip.reset();
@@ -376,7 +376,9 @@ class List final : public VP::Operator {
   // its cell, muted, and the label of the tab the pointer is over whole below it. What
   // its room lacks is cut.
   void write_labels(VP::Cook &frame, glm::uvec2 cell) {
-    Labels written{frame.write(_labels), frame.write(_characters)};
+    Labels written{frame.write(_labels),
+                   frame.write(_characters),
+                   static_cast<float>(_font->font.cell.x)};
     for (std::uint32_t at = 0; at < _shown->size(); ++at) {
       if (!_side_by_side) {
         const VP_VIEW::Rect &row = (*_shown)[at];
@@ -446,7 +448,7 @@ class List final : public VP::Operator {
   std::int32_t _joined = 0;
   const VP_VIEW::Items *_items = nullptr;
   const VP_VIEW::Rect *_place = nullptr;
-  const VP_VIEW::Font *_font = nullptr;
+  const VP_VIEW::Metrics *_font = nullptr;
   VP::Upload<VP_VIEW::Rect> _rects;
   VP::Upload<VP_VIEW::Label> _labels;
   VP::Upload<VP_VIEW::Character> _characters;

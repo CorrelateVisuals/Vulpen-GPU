@@ -173,7 +173,7 @@ void list_values(std::span<const Bound> bounds, std::vector<NodePort> &ports) {
                                  .joined = bound.param(name) != nullptr});
     };
     for (const Field &field : bound.fields)
-      if (!field.buffer() && !field.texture() && !field.image() &&
+      if (!field.buffer() && !field.texture() && !field.image() && !field.depth() &&
           !bound.set_by_operator.contains(field.name))
         add(field.name, field.type);
     for (const auto &[read, type] : bound.read_by_operator)
@@ -271,8 +271,8 @@ void Schedule::check_stages(Bound &bound) const {
       if (field.buffer() && field.access != Access::read)
         bound.errors.push_back(std::format(
             "{}: a draw's shaders only read buffers; declare it readonly", field.name));
-    if (const Field *const field = bound.field(node.instance_count);
-        !instance_number(node) && (!field || !field->buffer()))
+    const Field *const field = bound.field(node.instance_count);
+    if (!instance_number(node) && (!field || !field->buffer()))
       bound.errors.push_back(
           std::format("instance_count = {}: its shaders hold no buffer of that name, "
                       "whose used length would count the instances",
@@ -336,11 +336,15 @@ void Schedule::check_shaders(const Bound &bound) const {
         std::format("{}: a draw's shaders store into no image, as that needs features "
                     "past the Vulkan floor; a dispatch stores into one",
                     image->name));
-  if (!_wiring.resources.samples(pixel_format(stored_format)->format, Fill::store))
-    throw std::runtime_error(
-        std::format("{}: this GPU cannot store into images, as it cannot index "
-                    "images[] (shaderStorageImageArrayDynamicIndexing)",
-                    image->name));
+  for (const Field &field : bound.fields)
+    if (const PixelFormat *const format =
+            field.image() ? port_format(*bound.node, field.name, stored_format) : nullptr;
+        format && !_wiring.resources.samples(format->format, Fill::store))
+      throw std::runtime_error(
+          std::format("{}: this GPU cannot store into, or filter, {} images, or cannot "
+                      "index images[] (shaderStorageImageArrayDynamicIndexing)",
+                      field.name,
+                      format->name));
 }
 
 namespace {
@@ -520,11 +524,33 @@ void Schedule::check_varyings(const Bound &vertex,
 // nothing sets reads 0, as the block starts zeroed, so the node runs on and says the
 // line that sets it, as a field is declared a save before its param is set (A02).
 void Schedule::check_fields(Bound &bound) const {
+  // The frame zeroes a DrawCount before its passes, so one C++ wrote would be lost: the
+  // draw's own operator's, or its writer's, bound before it as writers go first.
+  const Node &node = *bound.node;
+  const Field *const counted = bound.field(node.instance_count);
+  const Connection *const connection = counted && counted->type == draw_count_type
+                                           ? connection_of(node.name, node.instance_count)
+                                           : nullptr;
+  const auto writer = connection ? _places.find(connection->from.node) : _places.end();
+  if (counted && counted->type == draw_count_type && !holds_stage(node, compute_stage) &&
+      (connection ? writer != _places.end() &&
+                        _bound[writer->second].uploads_to(connection->from.port)
+                  : bound.uploads_to(node.instance_count)))
+    bound.errors.push_back(std::format(
+        "instance_count = {}: a DrawCount counts on the GPU, which a dispatch adds to; "
+        "C++ counts a draw by the used length of a buffer it writes",
+        node.instance_count));
   if (!bound.whole())
     return;
   for (const Param &param : bound.node->params) {
     const Field *const field = bound.field(param.key);
-    if (field && !field->buffer()) {
+    if (field && field->image()) {
+      if (!stored_size(param.value))
+        bound.errors.push_back(std::format("param {} = {}: an Image's size is its width "
+                                           "and height in pixels, as 256,256",
+                                           param.key,
+                                           param.value));
+    } else if (field && !field->buffer()) {
       if (bound.set_by_operator.contains(param.key))
         bound.errors.push_back(
             std::format("{} is set both by a param and by the operator", param.key));
@@ -537,7 +563,7 @@ void Schedule::check_fields(Bound &bound) const {
     }
   }
   for (const Field &field : bound.fields)
-    if (!field.buffer() && !field.texture() && !field.image() &&
+    if (!field.buffer() && !field.texture() && !field.image() && !field.depth() &&
         !bound.param(field.name) && !bound.set_by_operator.contains(field.name))
       bound.warnings.push_back(
           std::format("{} in the pass block: nothing sets it, so it reads 0: param set "
@@ -618,6 +644,15 @@ void Schedule::check_connections() {
     }
     const bool drawn = writer.drawn && connection.from.port == writer.output;
     const Field *const out = writer.field(connection.from.port);
+    if (out && out->depth()) {
+      if (!writer.drawn && !(writer.fragment && writer.fragment->drawn))
+        writer.errors.push_back(std::format(
+            "connection {}: its depth reaches a later pass only from an image it draws "
+            "into; a connection from its color to a Texture draws it into one",
+            connection.name));
+      sampled(connection, std::format("{} draws the depth of", connection.from.node));
+      continue;
+    }
     if (writer.fills(connection.from.port) || drawn || (out && out->image())) {
       sampled(connection,
               std::format("{} {}",
@@ -748,13 +783,15 @@ void Schedule::check_images() {
                         image.port,
                         image.format,
                         format_names()));
-      else if (stored && image.format != stored_format)
-        bound.errors.push_back(
-            std::format("image {}={}: a dispatch stores into {} images only, as "
-                        "images[] declares them",
-                        image.port,
-                        image.format,
-                        stored_format));
+      else if (stored && std::ranges::find(stored_formats,
+                                           std::string_view(image.format),
+                                           &StoredFormat::name) == stored_formats.end())
+        bound.errors.push_back(std::format(
+            "image {}={}: a dispatch stores into R8G8B8A8_UNORM (images[]), R32_SFLOAT "
+            "(images_r32f[]) or R32G32B32A32_SFLOAT (images_rgba32f[]) images, as "
+            "GpuLayout.glsl declares them",
+            image.port,
+            image.format));
       else if (!bound.fills(image.port) && image.port != bound.output && !stored)
         bound.errors.push_back(std::format("image {}={}: neither its operator fills, "
                                            "its draw renders nor its dispatch stores an "
@@ -811,10 +848,10 @@ void Schedule::list_ports() {
         if (!port.joined)
           port.alike = port.writes ? readers_alike(_bound, bound, field, false, loose)
                                    : writers_alike(_bound, bound, field, loose);
-      } else if (field.texture() || field.image()) {
+      } else if (field.texture() || field.image() || field.depth()) {
         // An Image is what the dispatch stores into, as make_targets has it: its field
-        // holds the image's handle, which the block only reads.
-        add(field.name, "image", field.image(), field.type);
+        // holds the image's handle, which the block only reads. A depth is the draw's.
+        add(field.name, "image", !field.texture(), field.type);
       }
     for (const Bound::Written &filled : bound.uploads)
       if (!bound.field(filled.port) && filled.count != 0)

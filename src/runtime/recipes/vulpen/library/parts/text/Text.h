@@ -206,7 +206,7 @@ class Text final : public VP::Operator, public VP_VIEW::Editor {
   VP::File _watched;     // its watch, which the editor showing it takes
   bool _opening = false; // the param named another file, which opens where the port is
   const VP_VIEW::Rect *_area = nullptr;
-  const VP_VIEW::Font *_font = nullptr;
+  const VP_VIEW::Metrics *_font = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;
   VP_VIEW::Items *_tabs = nullptr; // a tab a file open, for a panel
   VP::Upload<VP_VIEW::Rect> _rects;

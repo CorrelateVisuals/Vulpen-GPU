@@ -3,6 +3,7 @@
 #include "runtime/Operator.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace VP_VIEW {
@@ -31,6 +32,17 @@ struct alignas(8) Font {
                       VP_MEMBER(Font, first),
                       VP_MEMBER(Font, count)};
   }
+};
+
+inline constexpr std::size_t printable_count = last_printable - first_printable + 1;
+
+// The font as C++ that lays text out reads it: the Font glyphs draws with, and how far
+// each printable character moves the next one on, in pixels at the font's size, as a
+// proportional face's letters are as wide as they are drawn, so text is measured with
+// the font that draws it. A monospace layout counts in cells and reads only the Font.
+struct Metrics {
+  Font font;
+  std::array<std::uint32_t, printable_count> advance{};
 };
 
 } // namespace VP_VIEW

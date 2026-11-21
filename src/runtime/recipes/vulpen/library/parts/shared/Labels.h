@@ -15,10 +15,12 @@ namespace {
 // so every part that shows text writes them alike (RV09): a Label's characters follow
 // those written before it, and what the buffers lack is cut, a Label past their room
 // written not at all, so no character lands outside them. The part hands it the buffers
-// it writes, and sets their used lengths to its counts once it is done.
+// it writes and the font's cell width, as its layout counts in cells, a character a cell,
+// and sets their used lengths to its counts once it is done.
 struct Labels {
   std::span<VP_VIEW::Label> labels;
   std::span<VP_VIEW::Character> characters;
+  float cell_width = 0.0f;
   std::uint32_t label_count = 0;
   std::uint32_t character_count = 0;
 
@@ -41,7 +43,9 @@ struct Labels {
         std::min(text.size(), characters.size() - character_count));
     for (std::uint32_t at = 0; at < fits; ++at)
       characters[character_count + at] = {.code = static_cast<unsigned char>(text[at]),
-                                          .label = label_count - 1};
+                                          .label = label_count - 1,
+                                          .x = static_cast<float>(label.count + at) *
+                                               cell_width};
     character_count += fits;
     label.count += fits;
   }

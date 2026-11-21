@@ -476,7 +476,7 @@ void Text::bind(VP::Bind &node) {
         "includes or those beside it declare or define the name, as F12 does");
   }
   _area = &node.input<VP_VIEW::Rect>("area");
-  _font = &node.input<VP_VIEW::Font>("font");
+  _font = &node.input<VP_VIEW::Metrics>("font");
   _typed = &node.input<VP_VIEW::Typed>("typed");
   _tabs = &node.output<VP_VIEW::Items>("tabs");
   _rects = node.upload<VP_VIEW::Rect>("rects", rect_room);
@@ -532,7 +532,7 @@ void Text::cook(VP::Cook &frame) {
 // so it sits as far in from either side; the rows' numbers go between that strip and the
 // text, as wide as the file shown needs them.
 Grid Text::grid() const {
-  const glm::ivec2 cell(_font->cell);
+  const glm::ivec2 cell(_font->font.cell);
   const std::size_t digits =
       digits_of(_documents.empty() ? 0 : _documents[_shown].lines.size());
   const std::int32_t gutter = static_cast<std::int32_t>(digits + number_gap) * cell.x;
@@ -854,7 +854,9 @@ void Text::write_lines(VP::Cook &frame,
                        const Document &document,
                        const Grid &grid,
                        std::size_t rows) {
-  Labels written{frame.write(_labels), frame.write(_characters)};
+  Labels written{frame.write(_labels),
+                 frame.write(_characters),
+                 static_cast<float>(_font->font.cell.x)};
   const std::size_t left = document.columns.first();
   const std::size_t room = written.characters.size();
   for (std::size_t shown = 0; shown < rows; ++shown) {

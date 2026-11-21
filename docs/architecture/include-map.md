@@ -19,13 +19,13 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Passes.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Pipelines.cpp` | `baseclasses/Mechanics.h` `baseclasses/Pipelines.h` |
 | `baseclasses/Pipelines.h` | `baseclasses/Resources.h` `baseclasses/Shader.h` |
-| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<cxxabi.h>` `<dlfcn.h>` `<fcntl.h>` `<poll.h>` `<sys/file.h>` `<sys/ioctl.h>` `<termios.h>` `<time.h>` `<unistd.h>` `<windows.h>` `baseclasses/Platform.h` |
+| `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<cxxabi.h>` `<dlfcn.h>` `<fcntl.h>` `<poll.h>` `<sokol_audio.h>` `<sys/file.h>` `<sys/ioctl.h>` `<termios.h>` `<time.h>` `<unistd.h>` `<windows.h>` `baseclasses/Platform.h` |
 | `baseclasses/Platform.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
 | `baseclasses/Resources.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Shader.cpp` | `baseclasses/Shader.h` |
 | `baseclasses/Shader.h` | — |
-| `baseclasses/Swapchain.cpp` | `baseclasses/Log.h` `baseclasses/Mechanics.h` `baseclasses/Platform.h` `baseclasses/Swapchain.h` |
+| `baseclasses/Swapchain.cpp` | `baseclasses/Log.h` `baseclasses/Mechanics.h` `baseclasses/Platform.h` `baseclasses/Resources.h` `baseclasses/Swapchain.h` |
 | `baseclasses/Swapchain.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/examples/triangle/Triangle.frag` | — |
 | `baseclasses/examples/triangle/Triangle.vert` | — |
@@ -71,5 +71,6 @@ A file of the recipes (`src/runtime/recipes/`: vulpen's library and each other g
 | `baseclasses/GpuLayout.glsl` | the GPU layout every shader declares (RV02) |
 | `<glm/*>` | GLSL's vectors and matrices in C++, name for name |
 | `<stb_truetype.h>` | the glyph atlas the `font` part bakes |
-| `<stb_image.h>` | the image files the `image-file` part decodes |
+| `<stb_image.h>` | the picture files `shared/Picture.h` decodes, for the `picture` and `image-file` parts |
 | `<stb_image_write.h>` | the PNG files the `snapshot` part saves |
+| `<tiny_obj_loader.h>` | the OBJ files the `mesh-file` part reads |

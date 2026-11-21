@@ -22,6 +22,7 @@ class Commands;
 class Engine;
 class Modules;
 class Pipelines;
+enum class Depth; // in baseclasses/Pipelines.h
 class Ports;
 struct Connection;
 struct Copy;
@@ -94,9 +95,10 @@ public:
   // Before a module swap: the operators' code is about to go, so they go first, with
   // their commands and the C++ objects their modules made. modules: as "view/folder".
   void drop_operators(const std::vector<std::string> &modules);
-  // resolution: the window's size, or without one --size's, zero without either; the
-  // images draws render into take it too.
-  void cook(std::uint64_t frame, VkExtent2D resolution);
+  // seconds: the frame's time, as the frame block hands it to shaders. resolution: the
+  // window's size, or without one --size's, zero without either; the images draws
+  // render into take it too.
+  void cook(std::uint64_t frame, double seconds, VkExtent2D resolution);
   // Whether the view rests, as nothing shows it (Views::pull): none of its nodes cooks,
   // and it hands on no work and no draws, so the passes are gathered again as it changes.
   void rest(bool rests);
@@ -176,6 +178,8 @@ private:
   void fit_pipeline(Bound &bound, Bound *old, bool unchanged);
   VkRenderPass target_of(Bound &bound) const;
   void make_pipeline(Bound &bound, VkRenderPass render_pass) const;
+  Depth depth_of(const Bound &bound) const;
+  const Buffer &indirect_for(const Bound &bound);
   void pair_draws(Schedule *replaced);
   Bound *fragment_of(Bound &vertex);
   void check_varyings(const Bound &vertex,
@@ -207,11 +211,13 @@ private:
   void upload(const Bound &writer,
               std::uint32_t texture,
               std::span<const std::byte> pixels,
-              VkExtent2D extent);
+              VkExtent2D extent,
+              std::uint32_t mip_levels);
   const Image &image_for(const Bound &writer,
                          const std::string &name,
                          VkExtent2D extent,
-                         const PixelFormat &format);
+                         const PixelFormat &format,
+                         std::uint32_t mip_levels);
   void point_readers(const std::string &name, std::uint32_t slot);
   void drop_commands(Bound &bound);
   void close_files(Bound &bound);
@@ -238,6 +244,9 @@ private:
   std::vector<Held> _objects;
   std::vector<Bound> _bound; // in graph order
   std::map<std::string, Buffer, std::less<>> _buffers;
+  // Each draw's own VkDrawIndirectCommand whose instances a DrawCount counts, by its
+  // node's name.
+  std::map<std::string, Buffer, std::less<>> _indirect;
   // Each buffer's used length in elements, which a draw's instance count may follow; a
   // pass holds its address, which stays while the schedule does.
   std::map<std::string, std::uint32_t, std::less<>> _used;

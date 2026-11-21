@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string_view>
@@ -49,9 +50,11 @@ struct alignas(8) Label {
 struct Character {
   std::uint32_t code = 0;
   std::uint32_t label = 0;
+  float x = 0.0f;
 
   static constexpr auto members() {
-    return std::array{VP_MEMBER(Character, code), VP_MEMBER(Character, label)};
+    return std::array{
+        VP_MEMBER(Character, code), VP_MEMBER(Character, label), VP_MEMBER(Character, x)};
   }
 };
 
@@ -73,6 +76,9 @@ constexpr std::array<std::string_view, 2> lines{
     "qrstuvwxyz{|}~"};
 constexpr glm::ivec2 first_line{40, 40};
 constexpr std::int32_t line_height = 24;
+// A character's cell, as the font part bakes its RobotoMono at its height of 18: the sign
+// lays text out in cells, as the library's parts do.
+constexpr float cell_width = 8.0f;
 constexpr glm::uvec2 room{560, 18};
 constexpr auto characters = static_cast<std::uint32_t>(lines[0].size() + lines[1].size());
 
@@ -97,8 +103,10 @@ class Sign final : public VP::Operator {
                       .role = line == 0 ? text : accent,
                       .first = next,
                       .count = static_cast<std::uint32_t>(lines[line].size())};
-      for (const char code : lines[line])
-        written[next++] = {.code = static_cast<std::uint32_t>(code), .label = line};
+      for (std::size_t column = 0; column < lines[line].size(); ++column)
+        written[next++] = {.code = static_cast<std::uint32_t>(lines[line][column]),
+                           .label = line,
+                           .x = static_cast<float>(column) * cell_width};
     }
   }
 

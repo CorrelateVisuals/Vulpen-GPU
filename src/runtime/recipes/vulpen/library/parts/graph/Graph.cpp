@@ -269,7 +269,7 @@ VP_VIEW::Rect between(glm::vec2 from, glm::vec2 to, std::uint32_t role) {
 
 void Graph::bind(VP::Bind &node) {
   _area = &node.input<VP_VIEW::Rect>("area");
-  _font = &node.input<VP_VIEW::Font>("font");
+  _font = &node.input<VP_VIEW::Metrics>("font");
   _typed = &node.input<VP_VIEW::Typed>("typed");
   _name = node.name();
   _view = node.view_name();
@@ -364,9 +364,9 @@ void Graph::cook(VP::Cook &frame) {
     build(frame.files(), edited, flat, ports);
   if (!std::exchange(_tab_named, true))
     name_tab(frame);
-  const glm::uvec2 cell = _font->base;
+  const glm::uvec2 cell = _font->font.base;
   const bool room = edited && flat && _area->extent.x != 0 && _area->extent.y != 0 &&
-                    cell.x != 0 && cell.y != 0 && _font->cell.x != 0;
+                    cell.x != 0 && cell.y != 0 && _font->font.cell.x != 0;
   if (room)
     follow_font();
   const auto lay_out = [&] {
@@ -747,7 +747,7 @@ void Graph::home() {
 // the text; elsewhere it zooms about the area's middle.
 void Graph::follow_font() {
   const float drawn =
-      static_cast<float>(_font->cell.x) / static_cast<float>(_font->base.x);
+      static_cast<float>(_font->font.cell.x) / static_cast<float>(_font->font.base.x);
   if (drawn == _drawn)
     return;
   const float by = drawn / std::exchange(_drawn, drawn);
@@ -1784,7 +1784,9 @@ VP_VIEW::Rect Graph::select_box(glm::vec2 from) const {
 // path keeps its last names, and a row what it ends with, and a port written, right of
 // the port read on its row, moving no further left than the rows start.
 void Graph::write_labels(VP::Cook &frame, glm::uvec2 cell) {
-  Labels written{frame.write(_labels), frame.write(_characters)};
+  Labels written{frame.write(_labels),
+                 frame.write(_characters),
+                 static_cast<float>(_font->font.cell.x)};
   const auto margin = static_cast<float>(name_margin * cell.x);
   const auto wide = static_cast<float>(cell.x);
   _covers.clear();
@@ -2014,7 +2016,7 @@ std::string Graph::cut_under() const {
 void Graph::write_tip() {
   _tip->clear();
   *_tip_place = {};
-  const glm::ivec2 cell(_font->cell);
+  const glm::ivec2 cell(_font->font.cell);
   if (_hovered_more < _boxes.boxes.size() && cell.x > 0)
     tell_more(*_tip,
               rows_in(_boxes, _hovered_more)

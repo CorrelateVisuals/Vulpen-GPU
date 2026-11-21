@@ -117,6 +117,8 @@ template <class T> struct Upload {
 template <class T> struct Texture {
   std::uint32_t index = 0;
 };
+// Every mip level an image of its size holds, as an upload's mip_levels.
+inline constexpr std::uint32_t all_mip_levels = ~std::uint32_t{0};
 
 // A command the node registered; its runs reach the node's command hook.
 struct Command {
@@ -233,13 +235,17 @@ protected:
 // A key, text, the pointer, a button, the wheel or focus. The input command makes the
 // same events without a window, so a headless test types and points as a person does.
 struct Event {
-  enum class Kind : std::uint8_t { key, text, pointer, button, wheel, focus };
+  enum class Kind : std::uint8_t { key, text, pointer, button, wheel, focus, axis };
   Kind kind = Kind::key;
   // A key or a button pressed, or let go; focus gained, or lost.
   bool down = false;
-  // A key's name, as a, enter or f1; a button's, left, right or middle; the text typed.
+  // A key's name, as a, enter, f1 or a gamepad's gamepad_a; a button's, left, right or
+  // middle; the text typed; an axis's, gamepad_left or gamepad_right, a stick, or
+  // gamepad_left_trigger or gamepad_right_trigger.
   std::string name;
-  glm::vec2 at{};   // where the pointer went, in pixels from the window's top left
+  // Where the pointer went, in pixels from the window's top left; where an axis is, a
+  // stick's x and y from -1 to 1, y down, a trigger's x from 0, let go, to 1.
+  glm::vec2 at{};
   glm::vec2 turn{}; // how far the wheel turned
   // A button pressed: how many presses of it came in a row, each soon after the one
   // before and near it, so 2 is a double click's second; 0 for every other event.
@@ -342,6 +348,27 @@ protected:
 };
 
 // Lines typed on standard input and text for standard output, so a CLI needs no window.
+// The frame's sound, at sample_rate in channels interleaved, left then right: each frame
+// takes as many sample frames as its share of the second, counted from the frame index
+// as Cook::seconds is, so a replay makes the same samples (C01). What the nodes add
+// sums, clamped to -1 to 1 where the speakers take it. The speakers play it only while a
+// window is open, an output beside it, so a run without one stays silent (V07).
+class SoundPort {
+public:
+  static constexpr std::uint32_t sample_rate = 48000;
+  static constexpr std::uint32_t channels = 2;
+
+  // How many sample frames this frame takes, each channels samples.
+  virtual std::size_t frames() const = 0;
+  // Adds samples to the frame's, from its first, up to frames() * channels of them.
+  virtual void add(std::span<const float> samples) = 0;
+  // What the frame before played, as the speakers took it, so a part records it.
+  virtual std::span<const float> played() const = 0;
+
+protected:
+  ~SoundPort() = default;
+};
+
 class TerminalPort {
 public:
   // Whether a person types at the terminal, a terminal this run holds, not a pipe or a
@@ -543,11 +570,16 @@ public:
   // Row by row from the image's first pixel, which uv 0 samples. The image keeps the
   // pixels through rebuilds while the node and the port keep their names and format, so
   // a node uploads once. Throws unless pixels holds size.x by size.y.
+  // mip_levels: how many levels the image holds, each half the one before, which
+  // sample_level reads; all_mip_levels for every one down to a pixel. Vulpen makes them
+  // from the pixels on the CPU, so every GPU samples the same bits (C01). Only the 8-bit
+  // formats take more than one.
   template <class T>
   void upload(Texture<T> texture,
               std::type_identity_t<std::span<const T>> pixels,
-              glm::uvec2 size) {
-    upload_image(texture.index, std::as_bytes(pixels), size);
+              glm::uvec2 size,
+              std::uint32_t mip_levels = 1) {
+    upload_levels(texture.index, std::as_bytes(pixels), size, mip_levels);
   }
   // Whether the image holds no pixels: before the first upload, and after image clear or
   // a change of its format. A node that fills its image once fills it again then.
@@ -625,6 +657,19 @@ public:
   // shows nothing: a hosted view no reader read the frame before rests while a view
   // beside it presents views, none of it cooking, dispatching or drawing. Last, as above.
   virtual void unread(std::string_view port) = 0;
+  // The frame's time in seconds, the value the frame block hands shaders: frames counted
+  // at the run's rate, so a replay sees the same time (C01). Last, as above.
+  virtual double seconds() const = 0;
+  // The frame's sound, which the node adds to. Last, as above.
+  virtual SoundPort &sound() = 0;
+
+private:
+  // As upload_image, which a module built before it calls, with the levels to make.
+  // Last, as above.
+  virtual void upload_levels(std::uint32_t index,
+                             std::span<const std::byte> pixels,
+                             glm::uvec2 size,
+                             std::uint32_t mip_levels) = 0;
 };
 
 // One run of a command the node registered: its arguments, the text it answers, and the

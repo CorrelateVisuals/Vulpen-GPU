@@ -29,6 +29,18 @@ VP_READS(FloatsIn, float);
 VP_WRITES(FloatsOut, float);
 VP_BUFFER(Floats, float);
 
+// A draw's instance count, counted on the GPU: a dispatch adds to it, as
+// atomicAdd(pass.drawn.at[0].instance_count, 1), and a draw whose instance_count names
+// a DrawCountsIn of its pass block draws that many instances, read there
+// (vkCmdDrawIndirect), so the CPU never waits to learn it (VK03). Vulpen zeroes it
+// before each frame's passes; only the first element counts.
+struct DrawCount {
+  uint instance_count;
+};
+
+VP_READS(DrawCountsIn, DrawCount);
+VP_BUFFER(DrawCounts, DrawCount);
+
 // What every pass may read about the frame; the push constant holds its address (RV02).
 // The engine writes each member by its name, at the offset reflection gives it (RA03).
 layout(buffer_reference, std430) readonly buffer FrameBlock {
@@ -76,33 +88,81 @@ vec4 sample_nearest(Texture image, vec2 uv) {
       sampler2D(textures[nonuniformEXT(image.index)], samplers[nearest_clamp]), uv, 0.0);
 }
 
+// Between the image's mip levels, level 0 the image and each next half the one before,
+// as C++ uploaded them (mip_levels): for an image drawn smaller than it is, at the
+// log2 of its texels a pixel. Given, so no derivatives, as above; past the last level the
+// last.
+vec4 sample_level(Texture image, vec2 uv, float level) {
+  if (image.index == 0u)
+    return vec4(0.0);
+  return textureLod(
+      sampler2D(textures[nonuniformEXT(image.index)], samplers[linear_clamp]), uv, level);
+}
+
+// A draw whose pass block holds one of these tests each fragment against the depth the
+// draws before it left in its target this frame, keeping it where it lies as near or
+// nearer: gl_Position's z / w, 0 near and 1 far, which each frame clears to 1. A
+// DepthWrite then leaves its own depth there, a DepthTest only tests, as a surface seen
+// through does. A view's window has a depth for its draws to share; an image a draw
+// renders into has one while that draw declares it. A draw without one stacks over what
+// came before, in graph order. Its index is 0: the declaration is all a draw needs. Its
+// name is a port too: a connection from it to a later pass's Texture hands that pass the
+// depth of the image the draw renders into, which it reads by sample_nearest, as some
+// GPUs cannot filter a depth.
+struct DepthTest {
+  uint index;
+};
+
+struct DepthWrite {
+  uint index;
+};
+
 // Every image a dispatch stores into (RV02), each also in textures[] at the same slot, so
 // a pass after it samples it through a Texture of that index. A pass block names one by
-// an Image, which the engine makes at the frame's size, zeroed. One format,
-// R8G8B8A8_UNORM, as rgba8 declares, so a store needs no feature past the floor's but
-// storage image dynamic indexing.
+// an Image, which the engine makes zeroed, at the size a param of the Image's name gives,
+// as param = heights=256,256, or else at the frame's, in the format the node's image word
+// gives it. A store's format must match its image's, so the array is declared once a
+// format: R8G8B8A8_UNORM, the default, as images[]; R32_SFLOAT and R32G32B32A32_SFLOAT
+// as their own; each a format every GPU stores into, so a store needs no feature past
+// the floor's but storage image dynamic indexing. A GPU that cannot filter one, as some
+// cannot 32-bit floats, refuses it, as it refuses any image so (GLSL02).
 layout(set = 0, binding = 2, rgba8) uniform writeonly image2D images[];
+layout(set = 0, binding = 2, r32f) uniform writeonly image2D images_r32f[];
+layout(set = 0, binding = 2, rgba32f) uniform writeonly image2D images_rgba32f[];
 
 struct Image {
   uint index;
 };
 
-// The image's size in pixels; zero for an unbound one, slot 0. An Image comes from the
-// pass block, the same for every invocation, as indexing images[] without nonuniformEXT
-// asks.
+// The image's size in pixels, whatever its format, read where textures[] holds it too;
+// zero for an unbound one, slot 0. An Image comes from the pass block, the same for every
+// invocation, as indexing without nonuniformEXT asks.
 ivec2 image_size(Image image) {
   if (image.index == 0u)
     return ivec2(0);
-  return imageSize(images[image.index]);
+  return textureSize(sampler2D(textures[image.index], samplers[nearest_clamp]), 0);
 }
 
 // color at pixel, from the top left; nothing into an unbound image, and nothing outside
 // it, which no GPU then writes differently (GLSL02).
+bool stores_at(Image image, ivec2 pixel) {
+  return all(greaterThanEqual(pixel, ivec2(0))) && all(lessThan(pixel, image_size(image)));
+}
+
 void store(Image image, ivec2 pixel, vec4 color) {
-  const ivec2 size = image_size(image);
-  if (any(lessThan(pixel, ivec2(0))) || any(greaterThanEqual(pixel, size)))
-    return;
-  imageStore(images[image.index], pixel, color);
+  if (stores_at(image, pixel))
+    imageStore(images[image.index], pixel, color);
+}
+
+// The same into an R32_SFLOAT image, and into an R32G32B32A32_SFLOAT one.
+void store_r32f(Image image, ivec2 pixel, float value) {
+  if (stores_at(image, pixel))
+    imageStore(images_r32f[image.index], pixel, vec4(value));
+}
+
+void store_rgba32f(Image image, ivec2 pixel, vec4 color) {
+  if (stores_at(image, pixel))
+    imageStore(images_rgba32f[image.index], pixel, color);
 }
 
 // The two triangles of a quad, as its corners from the top left, so a draw of six

@@ -1,5 +1,6 @@
-# The glyphs part: one shader node with no C++; it lays out every Label in the font and
-# draws it, a quad a character, as many as the characters' writer wrote.
+# The glyphs part: one shader node with no C++; it lays out every Label in the font, each
+# character at the x its writer measured, and draws it, a quad a character, as many as
+# the characters' writer wrote.
 [manifest]
 version = 1
 

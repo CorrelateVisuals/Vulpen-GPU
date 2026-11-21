@@ -16,6 +16,7 @@ struct Offscreen {
   VkRenderPass render_pass = VK_NULL_HANDLE;
   VkFramebuffer framebuffer = VK_NULL_HANDLE;
   VkExtent2D extent{};
+  bool depth = false; // whether its render pass clears a depth image too
 };
 
 // One dispatch or draw and the buffers it touches, as its shaders' qualifiers declare
@@ -29,6 +30,11 @@ struct Pass {
   std::uint32_t instance_count = 1;
   // When set, the instance count, which the CPU sets each frame as it writes a buffer.
   const std::uint32_t *instances = nullptr;
+  // When set, the instance count a dispatch writes on the GPU, in the first element of
+  // count, which the frame zeroes before its passes and copies into indirect, the draw's
+  // own VkDrawIndirectCommand, before the draw's render pass.
+  VkBuffer count = VK_NULL_HANDLE;
+  VkBuffer indirect = VK_NULL_HANDLE;
   // The image a draw renders into, which a schedule keeps and remakes as the size
   // changes; null for a draw into the window.
   const Offscreen *offscreen = nullptr;
@@ -46,6 +52,9 @@ struct Copy {
   VkBuffer from = VK_NULL_HANDLE;
   VkImage to = VK_NULL_HANDLE;
   VkExtent2D extent{};
+  // Levels from holds one after another, as mip_level_offset lays them out.
+  std::uint32_t mip_levels = 1;
+  std::uint32_t pixel_bytes = 0;
 };
 
 // Where barriers go between passes (V10): a pass waits for what an earlier pass wrote,

@@ -1,0 +1,15 @@
+# The mesh part: one shader node with no C++; it draws the triangles a connection gives
+# it, a triangle an instance, as many as their writer wrote, as mesh-file writes a
+# model's, through the camera a connection gives it, as arcball writes one (up=0,1,0 for
+# a model saved y up, as Blender saves OBJ), lit from light's direction and tinted by
+# color. It tests and writes depth, so what lies nearer hides what lies behind, whatever
+# the file's order; near: how near the eye a point may lie and still show.
+[manifest]
+version = 1
+
+[node "mesh"]
+vertex_count   = 3
+instance_count = triangles
+param          = color=1,1,1,1
+param          = light=0.4,0.8,0.6,0
+param          = near=0.01

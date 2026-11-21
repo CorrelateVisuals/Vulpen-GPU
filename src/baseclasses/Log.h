@@ -38,11 +38,11 @@ inline std::optional<Level> level_named(std::string_view name) {
 // What a line is about, as its {tag} shows; on a terminal each tag has one color, and
 // tags about the same thing share it:
 // - run: the run itself, from the build it runs to how it ended;
-// - gpu, swp: the machine: the GPU, and the swapchain of the window;
+// - gpu, swp, snd: the machine: the GPU, the swapchain of the window, and the speakers;
 // - nod, mem: the graph: what the engine makes for a node, and the buffers it writes;
 // - mod: the nodes' modules and their live builds;
 // - out: what a node's operator writes.
-enum class Tag { run, gpu, swp, nod, mem, mod, out };
+enum class Tag { run, gpu, swp, nod, mem, mod, out, snd };
 
 // A line as the log printed it after its time, mark first, and the level it was written
 // at, so a node can show the log as the terminal does.

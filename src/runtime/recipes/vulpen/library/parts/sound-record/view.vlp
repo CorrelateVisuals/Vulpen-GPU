@@ -1,0 +1,10 @@
+# The sound-record part: one node whose operator is SoundRecord; it records what the
+# frames play, from the frame after its file param names a WAV file, for seconds, then
+# saves it there, 32-bit floats in two channels at 48000 Hz, and logs the file, so a run
+# without speakers is heard afterwards, or compared byte for byte. A relative path names
+# a file in its folder.
+[manifest]
+version = 1
+
+[node "sound-record"]
+param = seconds=1

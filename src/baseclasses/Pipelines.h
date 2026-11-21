@@ -17,6 +17,10 @@ namespace VP {
 inline constexpr std::uint32_t images_set = 0;
 inline constexpr std::uint32_t static_samplers = 4;
 
+// A render pass's depth: none, one dropped as the pass ends (its storeOp DONT_CARE), or
+// one kept for the passes after it to sample (STORE).
+enum class Depth { none, dropped, kept };
+
 // What the GPU runs: the one pipeline layout, and the shaders whose reflection gives
 // C++ its offsets and bindings.
 class Pipelines {
@@ -37,9 +41,10 @@ public:
                    double time,
                    VkExtent2D resolution,
                    std::array<float, 2> cursor) const;
-  // The render pass a draw into an image of the format records in, made the first time
-  // the format asks and kept, so every pipeline that draws into that format fits it.
-  VkRenderPass render_pass(VkFormat format) const;
+  // The render pass a draw into an image of the format records in, with a depth image
+  // as depth asks, made the first time it is asked for and kept, so every pipeline that
+  // draws into such an image fits it.
+  VkRenderPass render_pass(VkFormat format, Depth depth = Depth::none) const;
 
 private:
   friend class Pipeline;
@@ -84,7 +89,12 @@ private:
   VkPipelineLayout _layout = VK_NULL_HANDLE;
   mutable std::vector<Pool> _pools;
   mutable std::optional<Frame> _frame;
-  mutable std::vector<std::pair<VkFormat, VkRenderPass>> _render_passes;
+  struct Made {
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    Depth depth = Depth::none;
+    VkRenderPass render_pass = VK_NULL_HANDLE;
+  };
+  mutable std::vector<Made> _render_passes;
 };
 
 // A shader of a draw, and the stage Vulkan runs it as.
@@ -151,19 +161,25 @@ private:
 };
 
 // An image a draw renders into and passes then sample: its slot in textures[], and the
-// framebuffer its draw records through, in its format's render pass.
+// framebuffer its draw records through, in its format's render pass; with depth, a depth
+// image of its size beside it, which its draws test and write, and which has a slot of
+// its own while it is kept for later passes.
 class Drawn {
 public:
-  Drawn(const Pipelines &pipelines, Image image);
+  Drawn(const Pipelines &pipelines, Image image, Depth depth = Depth::none);
   Drawn(Drawn &&other) noexcept;
   Drawn &operator=(Drawn &&other) noexcept;
   ~Drawn();
 
   const Sampled &sampled() const;
+  // The depth, while it is kept; null otherwise.
+  const Sampled *depth() const;
   VkFramebuffer framebuffer() const;
 
 private:
   Sampled _sampled;
+  std::optional<Image> _dropped;
+  std::optional<Sampled> _kept;
   VkDevice _device = VK_NULL_HANDLE;
   VkFramebuffer _framebuffer = VK_NULL_HANDLE;
 };

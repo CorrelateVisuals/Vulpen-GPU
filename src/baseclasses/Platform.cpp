@@ -4,6 +4,8 @@
 #include "baseclasses/Platform.h"
 
 #include <GLFW/glfw3.h>
+#define SOKOL_AUDIO_IMPL
+#include <sokol_audio.h>
 #include <time.h>
 
 #ifdef _WIN32
@@ -23,6 +25,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cctype>
 #include <cerrno>
 #include <cstdio>
@@ -86,6 +89,37 @@ constexpr std::array<std::string_view, 12> function_keys{
     "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12"};
 // GLFW_MOUSE_BUTTON_LEFT, RIGHT and MIDDLE, in that order.
 constexpr std::array<std::string_view, 3> buttons{"left", "right", "middle"};
+// A gamepad's buttons, as keys, in GLFW's order of GLFW_GAMEPAD_BUTTON_A on, so a part
+// binds them as it binds keys; and its sticks and triggers, as axes, by GLFW's names.
+constexpr std::array<std::string_view, GLFW_GAMEPAD_BUTTON_LAST + 1> gamepad_buttons{
+    "gamepad_a",
+    "gamepad_b",
+    "gamepad_x",
+    "gamepad_y",
+    "gamepad_left_bumper",
+    "gamepad_right_bumper",
+    "gamepad_back",
+    "gamepad_start",
+    "gamepad_guide",
+    "gamepad_left_thumb",
+    "gamepad_right_thumb",
+    "gamepad_dpad_up",
+    "gamepad_dpad_right",
+    "gamepad_dpad_down",
+    "gamepad_dpad_left"};
+constexpr std::string_view left_stick = "gamepad_left";
+constexpr std::string_view right_stick = "gamepad_right";
+constexpr std::string_view left_trigger = "gamepad_left_trigger";
+constexpr std::string_view right_trigger = "gamepad_right_trigger";
+
+// A gamepad at rest, as none present reads too: no button down, its sticks centered and
+// its triggers let go, which GLFW reads as -1, so a pad unplugged lets go of all.
+GLFWgamepadstate resting() {
+  GLFWgamepadstate state{};
+  state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] = -1.0f;
+  state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] = -1.0f;
+  return state;
+}
 // UTF-8 (RFC 3629): a character past ASCII takes a first byte that marks how many bytes
 // follow it, each carrying six more bits of the character.
 constexpr std::uint32_t ascii_end = 0x80;
@@ -188,12 +222,104 @@ void on_focus(GLFWwindow *window, int focused) {
 
 } // namespace
 
+// Its message where the build keeps them, else its number, each a value that outlives
+// the run; atomic, as the device's thread sets them while the caller's reads.
+struct SpeakersTrouble {
+  std::atomic<const char *> message{nullptr};
+  std::atomic<std::uint32_t> item{0};
+  std::atomic<bool> fresh{false};
+};
+
+namespace {
+
+constexpr std::uint32_t sokol_information = 3; // sokol_audio's level past the problems
+// The frames sokol_audio hands the device at a time. Its buffer holds whole packets, and
+// its queue two buffers: the device reads a whole buffer at once, which a queue of one
+// would hold only when full, and a run gone ahead of the device drops samples rather
+// than lags further. The queue fits sokol_audio's ring, whatever the frame rate.
+constexpr std::uint32_t packet_frames = 128;
+constexpr std::uint32_t queued_buffers = 2;
+constexpr std::uint32_t most_packets = (SAUDIO_RING_MAX_SLOTS - 1) / queued_buffers;
+
+void on_sokol(const char *,
+              std::uint32_t level,
+              std::uint32_t item,
+              const char *message,
+              std::uint32_t,
+              const char *,
+              void *user) {
+  if (level >= sokol_information)
+    return;
+  SpeakersTrouble &trouble = *static_cast<SpeakersTrouble *>(user);
+  trouble.message.store(message);
+  trouble.item.store(item);
+  trouble.fresh.store(true);
+}
+
+} // namespace
+
+Speakers::Speakers(std::uint32_t rate, std::uint32_t channels, std::uint32_t buffered)
+    : _trouble(std::make_unique<SpeakersTrouble>()), _channels(channels) {
+  const std::uint32_t packets =
+      std::min((buffered + packet_frames - 1) / packet_frames, most_packets);
+  const saudio_desc desc{.sample_rate = static_cast<int>(rate),
+                         .num_channels = static_cast<int>(channels),
+                         .buffer_frames = static_cast<int>(packets * packet_frames),
+                         .packet_frames = static_cast<int>(packet_frames),
+                         .num_packets = static_cast<int>(packets * queued_buffers),
+                         .logger = {.func = on_sokol, .user_data = _trouble.get()}};
+  saudio_setup(&desc);
+  if (!saudio_isvalid()) {
+    const std::string why = trouble();
+    saudio_shutdown();
+    throw std::runtime_error(std::format(
+        "the system's sound output did not open{}{}", why.empty() ? "" : ": ", why));
+  }
+  if (const int plays = saudio_sample_rate(); plays != static_cast<int>(rate)) {
+    saudio_shutdown();
+    throw std::runtime_error(std::format(
+        "the sound output plays {} Hz, not the {} Hz frames make", plays, rate));
+  }
+}
+
+Speakers::~Speakers() {
+  saudio_shutdown();
+}
+
+bool Speakers::heard() {
+#if defined(SOKOL_DUMMY_BACKEND)
+  return false;
+#else
+  return true;
+#endif
+}
+
+std::uint32_t Speakers::buffered() const {
+  return static_cast<std::uint32_t>(saudio_buffer_frames());
+}
+
+// A frame of no samples, as a rate past the sample rate makes some, pushes none, which
+// sokol_audio would refuse.
+void Speakers::play(std::span<const float> samples) const {
+  if (samples.size() < _channels)
+    return;
+  saudio_push(samples.data(), static_cast<int>(samples.size() / _channels));
+}
+
+std::string Speakers::trouble() const {
+  if (!_trouble->fresh.exchange(false))
+    return {};
+  const char *const message = _trouble->message.load();
+  return message ? message : std::format("sokol_audio's item {}", _trouble->item.load());
+}
+
 // A name of the table, or one printable character, as a layout's key prints it without
 // shift, as glfwGetKeyName gives it, so a letter is lower case.
 bool key_named(std::string_view name) {
   return std::ranges::find(named_keys, name, &decltype(named_keys)::value_type::second) !=
              named_keys.end() ||
          std::ranges::find(function_keys, name) != function_keys.end() ||
+         std::ranges::find(gamepad_buttons, name) != gamepad_buttons.end() ||
          (!name.empty() && static_cast<unsigned char>(name.front()) > ' ' &&
           (name.front() < 'A' || name.front() > 'Z') &&
           name.size() == utf8_length(static_cast<unsigned char>(name.front())));
@@ -871,7 +997,9 @@ void Desktop::poll() const {
   glfwPollEvents();
 }
 
-Window::Window(const Desktop &, const std::string &title, VkExtent2D size) {
+Window::Window(const Desktop &, const std::string &title, VkExtent2D size)
+    : _pad(std::make_unique<GLFWgamepadstate>(resting())),
+      _placed(std::make_unique<Placed>()) {
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   // It fills the screen as it opens, as an editor does; size is what it is restored to.
   glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
@@ -897,10 +1025,91 @@ Window::~Window() {
   glfwDestroyWindow(_window);
 }
 
+void Window::title(const std::string &title) const {
+  glfwSetWindowTitle(_window, title.c_str());
+}
+
+// On the monitor it is on most, the primary as GLFW knows no other way; back where and
+// as large as it was.
+void Window::fullscreen(bool fills) const {
+  const bool fills_now = glfwGetWindowMonitor(_window) != nullptr;
+  if (fills == fills_now)
+    return;
+  if (fills) {
+    glfwGetWindowPos(_window, &_placed->x, &_placed->y);
+    glfwGetWindowSize(_window, &_placed->width, &_placed->height);
+    GLFWmonitor *const monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode *const mode = monitor ? glfwGetVideoMode(monitor) : nullptr;
+    if (!mode)
+      throw std::runtime_error("the desktop names no monitor to fill");
+    glfwSetWindowMonitor(
+        _window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+  } else {
+    glfwSetWindowMonitor(_window,
+                         nullptr,
+                         _placed->x,
+                         _placed->y,
+                         _placed->width,
+                         _placed->height,
+                         GLFW_DONT_CARE);
+  }
+}
+
+// Hidden and held in the window, the pointer moves without end, as a camera that turns
+// by it wants; raw where the desktop offers it, so no acceleration bends the moves.
+void Window::lock_pointer(bool locked) const {
+  glfwSetInputMode(
+      _window, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+  if (glfwRawMouseMotionSupported() == GLFW_TRUE)
+    glfwSetInputMode(_window, GLFW_RAW_MOUSE_MOTION, locked ? GLFW_TRUE : GLFW_FALSE);
+}
+
+bool axis_named(std::string_view name) {
+  return name == left_stick || name == right_stick || name == left_trigger ||
+         name == right_trigger;
+}
+
+// The first gamepad present, as GLFW maps it, handed on where it changed since the poll
+// before: a button as a key, a stick as an axis from -1 to 1 each way, y down, and a
+// trigger as one from 0, let go, to 1, as GLFW's -1 to 1 maps to it.
+void Window::poll_gamepad(WindowInput &input) const {
+  // Read into its own state, as GLFW zeroes it before a read that fails, as one of a pad
+  // unplugged meanwhile does.
+  GLFWgamepadstate state = resting();
+  for (int pad = GLFW_JOYSTICK_1; pad <= GLFW_JOYSTICK_LAST; ++pad)
+    if (GLFWgamepadstate read{};
+        glfwJoystickIsGamepad(pad) == GLFW_TRUE && glfwGetGamepadState(pad, &read)) {
+      state = read;
+      break;
+    }
+  for (std::size_t button = 0; button < gamepad_buttons.size(); ++button)
+    if (state.buttons[button] != _pad->buttons[button])
+      input.key(gamepad_buttons[button], state.buttons[button] == GLFW_PRESS);
+  const auto moved = [&](int x, int y) {
+    return state.axes[x] != _pad->axes[x] || state.axes[y] != _pad->axes[y];
+  };
+  if (moved(GLFW_GAMEPAD_AXIS_LEFT_X, GLFW_GAMEPAD_AXIS_LEFT_Y))
+    input.axis(left_stick,
+               state.axes[GLFW_GAMEPAD_AXIS_LEFT_X],
+               state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+  if (moved(GLFW_GAMEPAD_AXIS_RIGHT_X, GLFW_GAMEPAD_AXIS_RIGHT_Y))
+    input.axis(right_stick,
+               state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X],
+               state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+  const auto pulled = [&](int trigger) { return (state.axes[trigger] + 1.0f) / 2.0f; };
+  for (const auto &[trigger, name] :
+       {std::pair{GLFW_GAMEPAD_AXIS_LEFT_TRIGGER, left_trigger},
+        std::pair{GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER, right_trigger}})
+    if (state.axes[trigger] != _pad->axes[trigger])
+      input.axis(name, pulled(trigger), 0.0f);
+  *_pad = state;
+}
+
 bool Window::poll(WindowInput &input) const {
   glfwSetWindowUserPointer(_window, &input);
   glfwPollEvents();
   glfwSetWindowUserPointer(_window, nullptr);
+  poll_gamepad(input);
   const bool asked = glfwWindowShouldClose(_window) == GLFW_TRUE;
   glfwSetWindowShouldClose(_window, GLFW_FALSE);
   return !asked;

@@ -1,0 +1,10 @@
+# The mesh-file part: one node whose operator is MeshFile; it reads the OBJ file its file
+# param names, as tinyobj parses it, its faces cut into triangles, and writes them at
+# triangles for a node a connection takes them to, as the mesh part draws them, again as
+# the file changes on disk, so a model saved from Blender shows at once. most: the most
+# triangles it holds; a file of more is refused, naming the line that makes room.
+[manifest]
+version = 1
+
+[node "mesh-file"]
+param = most=65536

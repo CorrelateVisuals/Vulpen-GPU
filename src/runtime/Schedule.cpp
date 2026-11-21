@@ -58,6 +58,48 @@ std::string pass_block(const std::vector<Field> &fields, std::uint32_t size) {
   return text;
 }
 
+// The node whose pass block declares a draw's depth: its own, or its fragment node's,
+// which a draw split over two takes its fragment shader from; null for none. The
+// declaring field's name is the depth's port.
+const Bound *depth_holder(const Bound &bound) {
+  const auto declares = [](const Bound &holder) {
+    return std::ranges::any_of(holder.fields, &Field::depth);
+  };
+  return declares(bound)                               ? &bound
+         : bound.fragment && declares(*bound.fragment) ? bound.fragment
+                                                       : nullptr;
+}
+
+bool declares_depth(const Bound &bound) {
+  return depth_holder(bound) != nullptr;
+}
+
+const Field &depth_field(const Bound &holder) {
+  return *std::ranges::find_if(holder.fields, &Field::depth);
+}
+
+// The mip levels an upload asked for, all_mip_levels counted out; refused naming why,
+// as more than the image holds, or levels of a format the CPU makes none of (A02).
+std::uint32_t
+levels_of(const Bound::Filled &filled, VkExtent2D extent, std::uint32_t asked) {
+  const std::uint32_t most = mip_level_count(extent);
+  const std::uint32_t levels = asked == all_mip_levels ? most : asked;
+  if (levels == 0 || levels > most)
+    throw std::runtime_error(std::format("the operator asks {} mip levels of {}, which "
+                                         "at {} by {} holds 1 to {}",
+                                         levels,
+                                         filled.port,
+                                         extent.width,
+                                         extent.height,
+                                         most));
+  if (levels > 1 && !makes_mip_levels(filled.format->format))
+    throw std::runtime_error(std::format("the operator asks mip levels of {}, which is "
+                                         "{}: only an 8-bit format takes them",
+                                         filled.port,
+                                         filled.format->name));
+  return levels;
+}
+
 } // namespace
 
 // An image a draw renders into, by its writer's node.port, or the window of a view this
@@ -68,18 +110,25 @@ struct Schedule::Rendered {
   std::string name;
   const PixelFormat *format = nullptr;
   VkRenderPass render_pass = VK_NULL_HANDLE; // which its draws' pipelines fit
-  const Bound *writer = nullptr;             // null for a view's window
-  std::optional<Drawn> drawn;                // none while there is no size
+  // A view's window's is dropped; a draw's image has one while the draw declares it,
+  // kept while a connection takes it to a later pass, by depth_name.
+  Depth depth = Depth::none;
+  std::string depth_name;
+  const Bound *writer = nullptr; // null for a view's window
+  std::optional<Drawn> drawn;    // none while there is no size
   Offscreen offscreen;
 };
 
 // An image a dispatch stores into, by its writer's node.port, as its readers' connection
-// names it: made at the frame's size, zeroed, and made again whenever the size changes;
-// none while there is no size. A rebuild keeps it, contents included, as it keeps a
+// names it: made at the size a param of its name gives, or else at the frame's, in the
+// format its image word gives, zeroed, and made again whenever either changes; none
+// while there is no size. A rebuild keeps it, contents included, as it keeps a
 // buffer, so what a dispatch stored once, as a frame a still holds, outlives the edit.
 struct Schedule::Stored {
   std::string name;
   const Bound *writer = nullptr;
+  const PixelFormat *format = nullptr;
+  VkExtent2D size{}; // the param's, or none for the frame's
   std::optional<Sampled> image;
 };
 
@@ -130,7 +179,8 @@ Schedule::Schedule(const Wiring &wiring,
                    bool project)
     : _wiring(wiring), _name(name), _view(view), _joined(joined_of(view)),
       _window(into == Into::image
-                  ? wiring.pipelines.render_pass(pixel_format(window_format)->format)
+                  ? wiring.pipelines.render_pass(pixel_format(window_format)->format,
+                                                 Depth::dropped)
               : into == Into::window ? wiring.render_pass
                                      : VK_NULL_HANDLE),
       _into(into), _project(project) {
@@ -294,13 +344,27 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
   if (!_wiring.resources.samples(colors.drawn->format, Fill::draw))
     throw std::runtime_error(std::format(
         "{}: this GPU cannot draw into {} images", colors.output, colors.drawn->name));
-  return _wiring.pipelines.render_pass(colors.drawn->format);
+  return _wiring.pipelines.render_pass(colors.drawn->format, depth_of(bound));
+}
+
+// A draw's depth keeps past its render pass only while a connection takes its port to a
+// later pass.
+Depth Schedule::depth_of(const Bound &bound) const {
+  const Bound *const holder = depth_holder(bound);
+  if (!holder)
+    return Depth::none;
+  return connection_of(holder->node->name, depth_field(*holder).name) ? Depth::kept
+                                                                      : Depth::dropped;
 }
 
 // A draw's pipeline fits the render pass it records in.
 void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
   std::string from = joined(bound.shaders_named, " and ");
   if (!is_draw(*bound.node)) {
+    if (declares_depth(bound))
+      throw std::runtime_error(
+          "its pass block declares a depth, which only a draw tests: a dispatch "
+          "samples a draw's depth through a Texture");
     bound.pipeline.emplace(_wiring.pipelines, bound.shaders.front());
   } else {
     const Bound &colors = bound.fragment ? *bound.fragment : bound;
@@ -397,10 +461,12 @@ void Schedule::make_buffer(Bound &writer,
       return;
     }
   }
+  // A transfer's source too, as a DrawCount is copied into a draw's indirect command.
   std::optional<Buffer> made;
   try {
     made.emplace(_wiring.resources.buffer(size,
                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                              VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                           memory));
   } catch (const std::runtime_error &failure) {
@@ -501,12 +567,16 @@ void Schedule::point_readers(const std::string &name, std::uint32_t slot) {
 
 // The copy runs before the frame's passes, from a buffer that lasts until the frame
 // ends.
+// Levels past the first are made in memory the CPU reads fast, not in the staging
+// buffer, which the CPU may only write fast.
 void Schedule::upload(const Bound &writer,
                       std::uint32_t texture,
                       std::span<const std::byte> pixels,
-                      VkExtent2D extent) {
+                      VkExtent2D extent,
+                      std::uint32_t mip_levels) {
   const Bound::Filled &filled = writer.textures.at(texture);
-  const std::size_t count = pixels.size() / filled.format->bytes;
+  const PixelFormat &format = *filled.format;
+  const std::size_t count = pixels.size() / format.bytes;
   if (extent.width == 0 || extent.height == 0 ||
       count != std::size_t{extent.width} * extent.height)
     throw std::runtime_error(
@@ -515,12 +585,20 @@ void Schedule::upload(const Bound &writer,
                     filled.port,
                     extent.width,
                     extent.height));
-  const Image &image = image_for(writer, filled.name, extent, *filled.format);
+  const std::uint32_t levels = levels_of(filled, extent, mip_levels);
+  const Image &image = image_for(writer, filled.name, extent, format, levels);
+  std::vector<std::byte> chain(mip_level_offset(extent, format.bytes, levels));
+  std::ranges::copy(pixels, chain.begin());
+  make_mip_levels(chain, extent, format.format, levels);
   Buffer staged = _wiring.resources.buffer(
-      pixels.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::upload);
-  std::ranges::copy(pixels, staged.bytes().begin());
+      chain.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::upload);
+  std::ranges::copy(chain, staged.bytes().begin());
   staged.flush();
-  _copies.push_back({.from = staged.handle(), .to = image.handle(), .extent = extent});
+  _copies.push_back({.from = staged.handle(),
+                     .to = image.handle(),
+                     .extent = extent,
+                     .mip_levels = levels,
+                     .pixel_bytes = format.bytes});
   _staged.push_back(std::move(staged));
 }
 
@@ -529,17 +607,19 @@ void Schedule::upload(const Bound &writer,
 const Image &Schedule::image_for(const Bound &writer,
                                  const std::string &name,
                                  VkExtent2D extent,
-                                 const PixelFormat &format) {
+                                 const PixelFormat &format,
+                                 std::uint32_t mip_levels) {
   const auto picture = std::ranges::find(_images, name, &Picture::name);
   if (picture != _images.end()) {
     const Image &image = picture->sampled.image();
     if (image.extent().width == extent.width && image.extent().height == extent.height &&
-        image.format() == format.format)
+        image.format() == format.format && image.mip_levels() == mip_levels)
       return image;
   }
   // Made before the old one goes, so an image refused leaves the old one and the slot its
   // readers hold as they were, never a slot freed under them.
-  Sampled sampled(_wiring.pipelines, _wiring.resources.image(extent, format.format));
+  Sampled sampled(_wiring.pipelines,
+                  _wiring.resources.image(extent, format.format, Fill::copy, mip_levels));
   if (picture != _images.end()) {
     const VkImage old = picture->sampled.image().handle();
     std::erase_if(_copies, [&](const Copy &copy) { return copy.to == old; });
@@ -550,8 +630,12 @@ const Image &Schedule::image_for(const Bound &writer,
   log(Level::info,
       Tag::mem,
       writer,
-      std::format(
-          "{}: {} by {} pixels of {}", name, extent.width, extent.height, format.name));
+      std::format("{}: {} by {} pixels of {}{}",
+                  name,
+                  extent.width,
+                  extent.height,
+                  format.name,
+                  mip_levels == 1 ? "" : std::format(", {} mip levels", mip_levels)));
   return made.sampled.image();
 }
 
@@ -570,19 +654,31 @@ void Schedule::make_targets() {
           Rendered{.name = std::format("{}.{}", colors.node->name, colors.output),
                    .format = colors.drawn,
                    .render_pass = bound.render_pass,
+                   .depth = depth_of(bound),
+                   .depth_name = depth_of(bound) == Depth::kept
+                                     ? image_name(depth_holder(bound)->node->name,
+                                                  depth_field(*depth_holder(bound)).name)
+                                     : "",
                    .writer = &bound}));
     for (const Field &field : bound.fields)
-      if (field.image())
+      if (field.image()) {
+        const Param *const sized = bound.param(field.name);
         _stored.push_back({.name = std::format("{}.{}", bound.node->name, field.name),
-                           .writer = &bound});
+                           .writer = &bound,
+                           .format = port_format(*bound.node, field.name, stored_format),
+                           .size = sized
+                                       ? stored_size(sized->value).value_or(VkExtent2D{})
+                                       : VkExtent2D{}});
+      }
   }
   const PixelFormat *const window = pixel_format(window_format);
   for (const Connection &connection : _view.connections)
     if (connection.from.view())
-      _rendered.push_back(std::make_unique<Rendered>(
-          Rendered{.name = connection.from.text(),
-                   .format = window,
-                   .render_pass = _wiring.pipelines.render_pass(window->format)}));
+      _rendered.push_back(std::make_unique<Rendered>(Rendered{
+          .name = connection.from.text(),
+          .format = window,
+          .render_pass = _wiring.pipelines.render_pass(window->format, Depth::dropped),
+          .depth = Depth::dropped}));
 }
 
 // To the frame's size, before any pass runs: an image of another size goes, and its
@@ -598,10 +694,13 @@ void Schedule::size_targets(VkExtent2D size) {
     const PixelFormat &format = *rendered->format;
     if (size.width != 0 && size.height != 0) {
       const Drawn &drawn = rendered->drawn.emplace(
-          _wiring.pipelines, _wiring.resources.image(size, format.format, Fill::draw));
+          _wiring.pipelines,
+          _wiring.resources.image(size, format.format, Fill::draw),
+          rendered->depth);
       rendered->offscreen = {.render_pass = rendered->render_pass,
                              .framebuffer = drawn.framebuffer(),
-                             .extent = size};
+                             .extent = size,
+                             .depth = rendered->depth != Depth::none};
       const std::string pixels =
           std::format("{} by {} pixels of {}", size.width, size.height, format.name);
       if (rendered->writer)
@@ -620,6 +719,9 @@ void Schedule::size_targets(VkExtent2D size) {
                   instead != _instead.end() ? instead->second
                   : rendered->drawn         ? rendered->drawn->sampled().slot()
                                             : 0);
+    if (!rendered->depth_name.empty())
+      point_readers(rendered->depth_name,
+                    rendered->drawn ? rendered->drawn->depth()->slot() : 0);
   }
   for (Stored &stored : _stored)
     size_stored(stored, size);
@@ -627,16 +729,20 @@ void Schedule::size_targets(VkExtent2D size) {
 
 // A new image is zeroed before the passes of the frame that first runs it, so what a
 // dispatch leaves unstored samples as nothing at all, the same on every run (C01).
-void Schedule::size_stored(Stored &stored, VkExtent2D size) {
+void Schedule::size_stored(Stored &stored, VkExtent2D frame) {
+  if (!stored.format)
+    return;
+  const VkExtent2D size = stored.size.width != 0 ? stored.size : frame;
   if (stored.image && stored.image->image().extent().width == size.width &&
-      stored.image->image().extent().height == size.height)
+      stored.image->image().extent().height == size.height &&
+      stored.image->image().format() == stored.format->format)
     return;
   if (stored.image) {
     const VkImage old = stored.image->image().handle();
     std::erase_if(_copies, [&](const Copy &copy) { return copy.to == old; });
     stored.image.reset();
   }
-  const PixelFormat &format = *pixel_format(stored_format);
+  const PixelFormat &format = *stored.format;
   if (size.width != 0 && size.height != 0) {
     const Sampled &made = stored.image.emplace(
         _wiring.pipelines, _wiring.resources.image(size, format.format, Fill::store));
@@ -668,9 +774,16 @@ void Schedule::make_passes() {
               .vertex_count = draw ? bound.node->vertex_count : 0,
               .instance_count = instance_number(*bound.node).value_or(0),
               .stores = std::ranges::any_of(bound.fields, &Field::image)};
-    if (draw && !instance_number(*bound.node))
-      pass.instances =
-          &_used.at(buffer_name(bound.node->name, bound.node->instance_count));
+    if (draw && !instance_number(*bound.node)) {
+      const std::string counted =
+          buffer_name(bound.node->name, bound.node->instance_count);
+      if (bound.field(bound.node->instance_count)->type == draw_count_type) {
+        pass.count = _buffers.at(counted).handle();
+        pass.indirect = indirect_for(bound).handle();
+      } else {
+        pass.instances = &_used.at(counted);
+      }
+    }
     for (const std::unique_ptr<Rendered> &rendered : _rendered)
       if (rendered->writer == &bound)
         pass.offscreen = &rendered->offscreen;
@@ -687,6 +800,21 @@ void Schedule::make_passes() {
     _passes.push_back(std::move(pass));
     _passed.push_back(static_cast<std::size_t>(&bound - _bound.data()));
   }
+}
+
+// A draw's own command for vkCmdDrawIndirect: its vertex count, written once, and the
+// instance count each frame copies in from the GPU.
+const Buffer &Schedule::indirect_for(const Bound &bound) {
+  if (const auto made = _indirect.find(bound.node->name); made != _indirect.end())
+    return made->second;
+  Buffer command = _wiring.resources.buffer(sizeof(VkDrawIndirectCommand),
+                                            VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+                                                VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                            Memory::upload);
+  const VkDrawIndirectCommand first{.vertexCount = bound.node->vertex_count};
+  std::memcpy(command.bytes().data(), &first, sizeof first);
+  command.flush();
+  return _indirect.emplace(bound.node->name, std::move(command)).first->second;
 }
 
 // A node keeps what it cost through a rebuild, as an edit changes nothing it does, so

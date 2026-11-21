@@ -18,6 +18,12 @@ inline constexpr std::uint32_t pass_binding = 0;
 // as baseclasses/GpuLayout.glsl declares them.
 inline constexpr std::string_view texture_type = "Texture";
 inline constexpr std::string_view image_type = "Image";
+// The structs a draw's pass block declares its depth by, as Vulkan's depthTestEnable and
+// depthWriteEnable name them: tested only, or tested and written.
+inline constexpr std::string_view depth_test_type = "DepthTest";
+inline constexpr std::string_view depth_write_type = "DepthWrite";
+// The element of a buffer that counts a draw's instances on the GPU.
+inline constexpr std::string_view draw_count_type = "DrawCount";
 
 // What a shader does with a buffer, read from its qualifier: the node's declaration of
 // what it reads and writes, from which the barriers follow (V10).
@@ -40,6 +46,9 @@ struct Field {
   }
   bool image() const {
     return type == image_type;
+  }
+  bool depth() const {
+    return type == depth_test_type || type == depth_write_type;
   }
   bool operator==(const Field &) const = default;
 };
