@@ -25,7 +25,7 @@ std::string module_of(const View &view, const Node &node) {
 }
 
 // Whether a view's nodes wait for a live build that has not made their code yet: a view
-// this one hosts, in a run with one. The view vulpen started with fails loud as ever. One
+// this one hosts, in a run with one. The start view fails loud as ever. One
 // branch each, so a build with no live build has no code it never reaches.
 // The log word of the node, or else of the nearest node it is inside that has one (V09),
 // as ui sets it for ui.panel; empty for none, the process level then holding. A word that

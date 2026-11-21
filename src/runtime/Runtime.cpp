@@ -431,7 +431,7 @@ int Runtime::run() {
 }
 
 // Each named for its folder, as view load names a project, by a line the log keeps (V08).
-// Built before the script runs, as the view vulpen started with is, so the script may use
+// Built before the script runs, as the start view is, so the script may use
 // their commands, and the window opens as theirs draw; the views a manifest hosts build
 // with the first frame, after the script, as before.
 void Runtime::host() {
@@ -719,7 +719,7 @@ bool Runtime::ok() const {
   return std::ranges::all_of(_views->schedules(), &Schedule::ok);
 }
 
-// The view vulpen started with alone, as the replay hosts the views the arguments named;
+// The start view alone, as the replay hosts the views the arguments named;
 // the replay in place of a script; the frames on from the next; the other options as
 // they were.
 Runtime::Relaunch Runtime::restarted(std::uint64_t ran) {

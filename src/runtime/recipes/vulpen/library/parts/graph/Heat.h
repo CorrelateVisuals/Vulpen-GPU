@@ -150,7 +150,7 @@ private:
     std::size_t box = 0;
   };
 
-  // The one vulpen started with first, every other after the view hosting it.
+  // The start view first, every other after the view hosting it.
   void walk(VP::Cook &frame) {
     _walked.clear();
     _walked.push_back({});

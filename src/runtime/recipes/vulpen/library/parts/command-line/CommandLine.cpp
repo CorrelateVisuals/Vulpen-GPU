@@ -267,8 +267,8 @@ std::vector<std::string> ports_for(VP::Call &call,
   return names;
 }
 
-// Every view hosted, at any depth, by the name a line addresses it with: those the view
-// vulpen started with hosts, then those each of them hosts, each once.
+// Every view hosted, at any depth, by the name a line addresses it with: those the start
+// view hosts, then those each of them hosts, each once.
 void hosted(VP::Call &call, std::string_view host, std::vector<std::string> &names) {
   if (const VP::View *const view = call.view(host))
     for (const VP::Child &child : view->children)

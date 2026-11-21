@@ -93,7 +93,7 @@ std::string shown(const std::filesystem::path &path) {
 class Editor final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _program = node.param<std::string>("program");
-    // <view>:<node>, with no view for the one vulpen started with; unset, every file goes
+    // <view>:<node>, with no view for the start view; unset, every file goes
     // to the program, and every folder.
     _window = node.sets("window") ? node.param<std::string>("window") : std::string();
     _folders = node.sets("folders") ? node.param<std::string>("folders") : std::string();

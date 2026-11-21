@@ -107,15 +107,15 @@ public:
   void printed(std::string_view text, bool error) const;
   // A line about a node: its own level wins over the process level (V09), and its name
   // leads the text. view: the one the node runs in, by the name a line addresses it
-  // with, empty for the view vulpen started with.
+  // with, empty for the start view.
   void write(Level level,
              Level shown,
              Tag tag,
              std::string_view view,
              std::string_view node,
              std::string_view text) const;
-  // From now on the lines about nodes print only for these views, and those of the view
-  // vulpen started with; a line about no node, and every problem, prints still (A02).
+  // From now on the lines about nodes print only for these views and the start view; a
+  // line about no node, and every problem, prints still (A02).
   // None prints every line, as at the start. Like a write, it changes only what the log
   // prints next, so it is const too.
   void keep_to(std::span<const std::string> views) const;

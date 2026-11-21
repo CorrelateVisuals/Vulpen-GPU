@@ -44,7 +44,7 @@ bool holds(const Find &view_of, std::string_view name, std::string_view current)
          });
 }
 
-// The projects a GUI presents: the views the view vulpen started with hosts, but the
+// The projects a GUI presents: the views the start view hosts, but the
 // GUI's own, so those beside it, or, run as that view, those it hosts.
 inline auto projects(const VP::View &top, std::string_view own) {
   return top.children |

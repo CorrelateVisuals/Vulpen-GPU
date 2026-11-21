@@ -293,7 +293,7 @@ struct Hosted {
   std::filesystem::path folder;
 };
 
-// From the view vulpen started with down the views each hosts.
+// From the start view down the views each hosts.
 std::vector<Hosted> hosted_views(VP::Call &call) {
   std::vector<Hosted> views;
   std::vector<std::string> names{std::string()};

@@ -704,7 +704,7 @@ constexpr std::array edits{
 constexpr std::string_view close_force = "view close force [<view>]";
 
 // The view a view close names, or with none the current one, which the log then keeps
-// by name (V08); the view vulpen started with is no view a view hosts.
+// by name (V08); the start view is no view a view hosts.
 std::vector<std::string_view> closing(Call &call, std::string_view current) {
   std::vector<std::string_view> arguments(call.arguments().begin(),
                                           call.arguments().end());

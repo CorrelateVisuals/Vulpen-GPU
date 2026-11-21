@@ -278,7 +278,7 @@ private:
   std::filesystem::path _base; // where the paths of the boxes built are named from
   Shown _layers = every_layer; // as its relations param names them
   bool _manhattan = true; // the curves turn in their lanes, as its manhattan param says
-  std::string _shown;     // the view the tab names; empty for the one vulpen started with
+  std::string _shown;     // the view the tab names; empty for the start view
   bool _tab_named = false; // the tab names what shows, named again only as that changes
   // The boxes of the view shown, built again only when the views they were built from
   // change, which each edit replaces, and laid out again only then, as the font's cell

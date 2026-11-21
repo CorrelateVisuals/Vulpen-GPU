@@ -136,7 +136,7 @@ std::string_view kind_of_several(std::string_view kind, std::size_t count) {
   return kind;
 }
 
-// The view hosting the one named, found from the view vulpen started with down the views
+// The view hosting the one named, found from the start view down the views
 // each hosts, by the names lines address them with; none for that one, or one no view
 // hosts.
 template <class Port>
@@ -219,7 +219,7 @@ bool folder_named(VP::FilePort &files, const std::filesystem::path &path) {
 }
 
 // The view vulpen hosts whose folder this is, by the name lines address it with, empty
-// for the one vulpen started with; none for a folder no view is.
+// for the start view; none for a folder no view is.
 template <class Port>
 std::optional<std::string> view_in(Port &port, const std::filesystem::path &folder) {
   std::vector<std::string> views{std::string()};
@@ -322,7 +322,7 @@ void Graph::bind(VP::Bind &node) {
   _spacing = node.value<float>("spacing");
 }
 
-// The current view, where the terminals' lines go, the one vulpen started with too, or
+// The current view, where the terminals' lines go, the start view too, or
 // the folder the relations part reads in its place, until a view is switched to. The keys
 // once it is known, and before it is read for the frame, as a removal changes it.
 void Graph::cook(VP::Cook &frame) {
@@ -1305,7 +1305,7 @@ void Graph::into_folder(Port &port, const std::filesystem::path &folder) {
 
 // Out of the node whose inside shows, to the inside of the node holding it, or the top;
 // out of a view's top to the view hosting it, as view switch shows it, and out of the top
-// of the view vulpen started with to the folder holding its folder, where its folder is a
+// of the start view to the folder holding its folder, where its folder is a
 // box; out of a folder to the one holding it, up to the top of its repository. The level
 // shown next shows the box left in focus, unless the caller lets go of it. Once a line
 // left a node's inside, the boxes show it still until the next frame builds them, so a
@@ -1333,7 +1333,7 @@ template <class Port> void Graph::leave(Port &port) {
       port.commands().send(host->empty() ? std::string("view switch")
                                          : std::format("view switch {}", *host));
     } else if (view && !view->file.empty()) {
-      // Above the view vulpen started with is where it started, which its prompt shows.
+      // Above the start view is where vulpen started, which its prompt shows.
       _left = view->file.parent_path().lexically_normal().generic_string();
       show_folder(port.commands(),
                   _shown.empty() ? std::filesystem::current_path()
@@ -1498,7 +1498,7 @@ void Graph::cd(VP::Call &call) {
 
 // The folder of what shows, as it changes: the folder shown, or the folder of the node
 // whose inside shows, which holds its files and the nodes inside it (RV08), or of the
-// view; none at the top of the view vulpen started with, as a terminal with no graph has
+// view; none at the top of the start view, as a terminal with no graph has
 // none there, so lines typed count from where vulpen started, as ../ from its top.
 void Graph::place(const VP::View *edited, const VP::View *flat) {
   std::filesystem::path folder(_relations->folder);

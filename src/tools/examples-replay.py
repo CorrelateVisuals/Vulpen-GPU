@@ -577,7 +577,7 @@ def examples(scratch: Path) -> list[Example]:
     # out again; the modes switched, the graph zoomed and arranged.
     e = Example("wave")
     lines = scratch / "wave-words.txt"
-    # A file's lines go to the view vulpen started with, unless they name one, as a log's.
+    # A file's lines go to the start view, unless they name one, as a log's.
     lines.write_text(f"{e.copy}: node set wave invocations=1024 param=amplitude=1.0 "
                      "param=speed=0.02\n"
                      f"{e.copy}: node set probe invocations=8 param=step=128 param=every=60 "

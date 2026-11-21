@@ -28,7 +28,7 @@ struct Wiring;
 // its edits and its manifest; a command reaches a hosted view by its name.
 class Views final : public ViewLookup, public CommandHandler {
 public:
-  // Builds the schedule of the view vulpen started with, hosts the views it names, and
+  // Builds the schedule of the start view, hosts the views it names, and
   // registers view save, view list and image clear. recipes: what each view's recipes
   // unfold from, borrowed (A01).
   Views(const Wiring &wiring, View view, Commands &commands, Recipes &recipes);
@@ -39,13 +39,13 @@ public:
   // A manifest as a view runs it: each node with the files its folder holds now. What
   // changed since the manifest listed them, and each folder no node names, go to the log.
   static View read(const Log &log, const std::filesystem::path &file);
-  // The view vulpen started with, as the changes so far left it.
+  // The start view, as the changes so far left it.
   const View &view() const;
   // Whether a node of any view draws into the window, as the changes so far left them,
   // so the next frame needs one. A view whose window a view hosting it, or one beside
   // it, takes draws into an image instead, and so do the views it hosts that draw into
   // its window; one whose host draws into the same place itself draws nowhere, and so
-  // does each view the view vulpen started with hosts but the one the window shows.
+  // does each view the start view hosts but the one the window shows.
   bool shows() const;
   // Before a frame: rebuilds the schedule of each view that changed since the last, or
   // whose draws into its window go elsewhere now, and drops those of the views no longer
@@ -128,7 +128,7 @@ private:
   void show_image(Call &call);
   // Whether the view draws into its window, or a view it hosts does there.
   bool draws(const Hosted &hosted) const;
-  // Of the views the view vulpen started with hosts, the one the window shows while that
+  // Of the views the start view hosts, the one the window shows while that
   // view draws nothing there itself, so the window has one owner (A01): one that
   // presents a view beside it, or has presented one, until it closes; else the current
   // view, or the view holding it, while it draws; else the first hosted that draws. A
@@ -139,7 +139,7 @@ private:
   // The view whose window its draws into its window render into: its own, while a view
   // takes it with a connection; none, while the view hosting it draws into the same
   // place itself, which then is that view's alone (A01), or while the window shows
-  // another of the views the view vulpen started with hosts; else the host's. Null for
+  // another of the views the start view hosts; else the host's. Null for
   // the window.
   std::optional<const Hosted *> target(const Hosted &hosted, const Hosted *owner) const;
   // Why a view target sends nowhere does, for the log.

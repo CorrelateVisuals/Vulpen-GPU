@@ -215,7 +215,7 @@ void note(const Log &log,
 // the schedule runs it with the recipes its nodes use unfolded, so it outlives the
 // schedule.
 struct Views::Hosted {
-  std::string name;   // empty for the view vulpen started with
+  std::string name;   // empty for the start view
   std::string parent; // the name of the view whose manifest names it
   std::unique_ptr<View> view;
   std::unique_ptr<View> flat;
@@ -251,7 +251,7 @@ struct Views::Hosted {
   }
 };
 
-// The view vulpen started with is built before any command registers, so no command
+// The start view is built before any command registers, so no command
 // is left to a handler whose constructor threw.
 Views::Views(const Wiring &wiring, View view, Commands &commands, Recipes &recipes)
     : _wiring(wiring), _port(commands), _recipes(recipes), _hosted([&] {
@@ -483,7 +483,7 @@ bool Views::pull(const Unread &unread, bool rebuilt) {
 }
 
 // Of the view the line addresses, which a view taking its window shows: a project, not
-// the view vulpen started with, whose window nothing takes.
+// the start view, whose window nothing takes.
 void Views::show_image(Call &call) {
   Hosted *const found = hosted(_port.addressed());
   if (!found || found->name.empty() || !found->schedule)

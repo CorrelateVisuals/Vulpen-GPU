@@ -15,7 +15,7 @@ namespace VP {
 // implements it, so the port reaches a view without including its owner.
 class ViewLookup {
 public:
-  // An empty name finds the view vulpen started with, as the changes so far left it;
+  // An empty name finds the start view, as the changes so far left it;
   // null when no view has the name.
   virtual const View *find(std::string_view name) = 0;
   // The same view as the next frame runs it, each recipe a node uses unfolded.
@@ -133,18 +133,18 @@ private:
 
 // Every change to a view is a command through this one port, so the CLI, a GUI, a
 // script and an agent act alike, and replaying the log rebuilds the session. A command
-// registers with its usage, whose placeholders give its completion, and its help, or
-// not at all (RV04). A usage's last placeholder may end in ..., taking one argument or
+// registers with its usage and its help, or not at all (RV04); the usage's placeholders
+// give its completion. A usage's last placeholder may end in ..., taking one argument or
 // more, and stand in brackets, which a line may leave out: node add <name>
-// [<word=value>...]. A <file> argument reaches its command resolved, as an absolute path,
-// a relative one counting from the folder a person typed it at, beside the script
-// running it, or from where vulpen started; so does a <project> or a <path> that holds a
-// /, and one without names a project or a file the view holds, and comes as typed.
+// [<word=value>...]. A <file> argument reaches its command as an absolute path: a
+// relative one counts from the folder a person typed it at, from beside the script
+// running it, or from where vulpen started. So does a <project> or a <path> that holds a
+// /; one without names a project or a file the view holds, and comes as typed.
 //
-// A line addresses a hosted view by its name, as `<name>: <command>`, and `:` alone
-// addresses the view vulpen started with, which a line naming none addresses too. A line
-// a command sends addresses the same view unless it names one, and the log keeps each
-// primitive with the name of its view, so every line of it stands alone (V08).
+// A line addresses a hosted view by its name, as `<name>: <command>`. The start view is
+// the one vulpen started with: `:` alone addresses it, and so does a line naming no view.
+// A line a command sends addresses the same view unless it names one, and the log keeps
+// each primitive with the name of its view, so every line of it stands alone (V08).
 class Commands final : public CommandPort, public CommandHandler {
 public:
   // files and processes: what a command reaches files and programs through.

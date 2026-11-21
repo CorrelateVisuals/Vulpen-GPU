@@ -11,7 +11,7 @@ views (V08); the lines the ide's menus and keys send; and sequences a person was
 to run.
 
 The states: the cli alone; the ide hosted; a project loaded; two, the first current; the
-view vulpen started with current, a project hosted; the graph inside a node; a file open
+start view current, a project hosted; the graph inside a node; a file open
 with changes; and a project carried through quit restart.
 
 A finding is vulpen ending or hanging; a validation message or sanitizer report (RVK00,
@@ -170,7 +170,7 @@ SCRAP = "scrap.txt"    # a file at each project's top, which no node holds
 @dataclass(frozen=True)
 class State:
     """A state a person reaches from a new vulpen: the ide hosted or not, projects loaded,
-    the view current (none: the view vulpen started with), lines run after, and whether
+    the view current (none: the start view), lines run after, and whether
     quit restart then carries it on."""
     name: str
     ide: bool = True
@@ -963,8 +963,8 @@ def hosted(vulpen: Vulpen) -> list[str]:
 
 
 def put_back(copy: Copy, vulpen: Vulpen, state: State) -> Vulpen:
-    """The state again after an edit: the projects loaded as built, unless the view
-    vulpen started with or the ide was edited, or a view went that none can bring back,
+    """The state again after an edit: the projects loaded as built, unless the start
+    view or the ide was edited, or a view went that none can bring back,
     where a new vulpen starts."""
     if not vulpen.alive():
         vulpen.end()
