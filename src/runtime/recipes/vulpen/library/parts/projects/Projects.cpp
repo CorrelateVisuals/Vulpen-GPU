@@ -47,8 +47,8 @@ void check_buildable(std::string_view name) {
         name));
 }
 
-// The name the view a command addresses is hosted by beside this one. The view vulpen
-// started with cannot go, and a view a project hosts goes with that project.
+// The name the view a command addresses is hosted by beside this one. The start view
+// cannot go, and a view a project hosts goes with that project.
 std::string hosted_name(VP::Call &call) {
   const VP::View &view = call.view();
   const VP::View &top = *call.view("");

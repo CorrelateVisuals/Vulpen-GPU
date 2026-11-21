@@ -76,8 +76,8 @@ public:
   // replaces, it takes what the build left alone: operators whose module stayed,
   // pipelines of unchanged SPIR-V that still fit what they draw into, and buffers of
   // unchanged shape and the images dispatches store into, contents included. The view
-  // must outlive it. name: the view's, as a line addresses it, empty for the one vulpen
-  // started with, which each line about one of its nodes keeps.
+  // must outlive it. name: the view's, as a line addresses it, empty for the start view;
+  // each line about one of its nodes keeps it.
   // project: the view is a project, whose nodes' commands are its own, a line from it
   // reaching them first, so two projects' nodes of one name both register theirs; an
   // app's, as the cli's and the ide's, every view shares.

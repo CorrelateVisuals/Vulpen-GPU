@@ -44,8 +44,8 @@ public:
   // running schedule points into the old view until then, so a change never edits a view
   // in place.
   virtual void replace(std::string_view name, View view) = 0;
-  // The name of the view whose manifest names the hosted view, empty for the one vulpen
-  // started with; none when no view of that name is hosted.
+  // The name of the view whose manifest names the hosted view, empty for the start view;
+  // none when no view of that name is hosted.
   virtual std::optional<std::string> host_of(std::string_view name) = 0;
   // Throws naming what the running schedule's next bind would refuse of the params and
   // connections of a view, as a line names them (Schedule::check); nothing before the
@@ -229,8 +229,7 @@ public:
   void changes(std::string_view view);
   // The file and line running, as `script.txt:7`; empty for a line typed or sent.
   std::string where() const;
-  // The name of the view the running command addresses; empty for the one vulpen
-  // started with.
+  // The name of the view the running command addresses; empty for the start view.
   std::string_view addressed() const;
   std::size_t done() const override;
   // A group undo took back, or redo brought back (CommandLog::take_back).
