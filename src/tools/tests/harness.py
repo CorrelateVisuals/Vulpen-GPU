@@ -19,10 +19,14 @@ DEVICE = re.compile(r"\{gpu\} runs on (.*)$")
 def environment(headless: bool = True) -> dict[str, str]:
     """A headless run takes the driver the build chose for tests (lavapipe), when it
     found one; a window takes the machine's own GPU, and so does every run when
-    VULPEN_OWN_GPU is set."""
+    VULPEN_OWN_GPU is set, even one whose caller named a driver, as a nightly that keeps
+    the rest on lavapipe does: the preset that sets it is there to test the GPU."""
     env = dict(os.environ)
     driver = env.get("VULPEN_TEST_DRIVER")
-    if headless and driver and not env.get("VULPEN_OWN_GPU"):
+    if env.get("VULPEN_OWN_GPU"):
+        for named in ("VK_DRIVER_FILES", "VK_ICD_FILENAMES"):
+            env.pop(named, None)
+    elif headless and driver:
         env["VK_DRIVER_FILES"] = driver
     return env
 
