@@ -90,6 +90,11 @@ def zoom(steps: int) -> list[str]:
     return ["ide: zoom in"] * steps
 
 
+def zoom_out(steps: int) -> list[str]:
+    """The text a step smaller each, as control and - draw it."""
+    return ["ide: zoom out"] * steps
+
+
 def ratio(split: str, value: float) -> list[str]:
     """The share of a dock its first half takes: ide.dock's the panels over the terminal,
     ide.top's the editor beside the rest, ide.side's the graph over the Perform panel."""
@@ -112,6 +117,24 @@ def scroll(x: int, y: int, rows: int, width: int) -> list[str]:
     return [f"input pointer {x} {y}", f"input wheel 0 {rows}", *park(width)]
 
 
+def fit(x: int, y: int, steps: int, width: int) -> list[str]:
+    """The wheel turned away from the graph over a point, so a level shows whole.
+
+    The graph draws at the text's zoom. A level too big for its area shows from its top
+    left, and zoom in grows the graph about the area's middle. So a scene zooms the text
+    out first, where home puts the level in the middle, turns the wheel there, then zooms
+    the text in. The bars grow with the text, so the point sits a little off the middle.
+    A level home shows from its left or top needs a point measured on a retake. 17 steps
+    are the most before the wheel leaves the level."""
+    return scroll(x, y, -steps, width)
+
+
+def pause(lines: int) -> list[str]:
+    """Lines that change nothing, a few frames each. A level just shown needs them to lay
+    out its boxes, and so its home, before the wheel turns it."""
+    return ["ide: focus"] * lines
+
+
 CLEAR = ["input key down control", "input key down l", "input key up l",
          "input key up control"]
 INSIDE_IDE = ["ide: param unset ide.graph.relations folder", "view switch ide",
@@ -128,17 +151,22 @@ HELD = ["param set spin speed 0", "param set orbit frames_per_turn 0",
 # The cover: a node's C++ beside the project's graph and what it draws, wide. The text
 # small enough that a narrow editor shows the code's width, the graph and the project
 # wider; the wheel over the Perform panel zooms the project in until it fills the panel's
-# width, so no bars show beside it, the cubes kept in view.
+# width, so no bars show beside it, the cubes kept in view. With interact on, the project
+# takes the wheel, so the scene turns it off for that, as the button under the panel
+# does, and on again.
 HERO = {
     "hero": [*CLEAR, *typed("view load ray-cubes"), *HELD, *typed("open Orbit.cpp"),
-             *typed("info orbit"), *zoom(5), *panels("hide", "terminal"),
-             *ratio("top", 0.4), *ratio("side", 0.46), *scroll(500, 400, -7, 2400),
-             *scroll(1680, 717, 7.5, 2400), "ide: focus"],
+             *typed("info orbit"), *panels("hide", "terminal"), *ratio("top", 0.4),
+             *ratio("side", 0.46), *zoom_out(7), *fit(1682, 193, 13, 2400),
+             "ide: zoom reset", *zoom(5), "ide: param unset ide.panes interact",
+             *scroll(500, 400, -7, 2400), *scroll(1680, 717, 8.5, 2400),
+             "ide: param set ide.panes interact yes", "ide: focus"],
 }
 # Three squares side by side: the graph, a shader and the terminal, each given the window.
 TILES = {
-    "tile-graph": [*CLEAR, "view load ray-cubes", *HELD, "cd bounce1", *zoom(9),
-                   *panels("maximize", "graph"), "ide: focus"],
+    "tile-graph": [*CLEAR, "view load ray-cubes", *HELD, "cd bounce1",
+                   *panels("maximize", "graph"), *zoom_out(2), *fit(600, 586, 11, 1200),
+                   "ide: zoom reset", *zoom(9), "ide: focus"],
     "tile-code": [*panels("maximize", "graph"), "cd ..", "open Rays.comp",
                   *panels("maximize", "editor"), "ide: focus"],
     "tile-terminal": [*panels("maximize", "editor"), *panels("maximize", "terminal"),
@@ -147,27 +175,43 @@ TILES = {
 }
 # The sections' pictures: the manifest beside its graph, the project in the whole window,
 # the command line, the repository's top in the graph, and the ide inside its own graph.
+# Ray-cubes is held from the perform picture on, as the hold's lines show in the manifest
+# the editor holds. The ide's graph is wider than the window's shape, so its picture has
+# the text three steps smaller, where 17 steps of the wheel fit it.
 DETAILS = {
-    "manifest": [*CLEAR, "view load ray-cubes", *HELD, *zoom(5), "open",
-                 *panels("hide", "perform", "terminal"), "ide: focus"],
-    "perform": ["ide: mode perform"],
+    "manifest": [*CLEAR, "view load ray-cubes", "open",
+                 *panels("hide", "perform", "terminal"), *zoom_out(7),
+                 *fit(1385, 527, 17, 1920), "ide: zoom reset", *zoom(5), "ide: focus"],
+    "perform": [*HELD, "ide: mode perform"],
     "cli": ["ide: mode edit", *panels("maximize", "terminal"),
             "ide: focus ide.terminal.command-line", *CLEAR, *typed("help"), *typed("ls"),
             *typed("info rays"), "ide: focus"],
     "graph-repository": [*panels("maximize", "terminal", "graph"), *graph("../../")],
-    "graph-ide": INSIDE_IDE,
+    "graph-ide": [*zoom_out(3), *INSIDE_IDE, *pause(5), *fit(82, 364, 17, 1920), "ide: focus"],
 }
+
+
+def level(folder: str, steps: int) -> list[str]:
+    """A level of the dive, shown with the text at its height, where each fits. The wheel
+    waits for the relations part, which adds columns as it reads the level's files. Then
+    the text grows four steps, so the bars read in the README's column. A level that fits
+    at that zoom keeps its home."""
+    return [*graph(folder), *pause(60), *(fit(1200, 441, steps, 2400) if steps else []),
+            *zoom(4)]
+
+
 # A dive through the repository in the graph, a level a frame, down to the part that draws
-# the graph, and the ide inside its own graph.
+# the graph, and the ide inside its own graph. Each level starts with the text at its
+# height again.
 DIVE = {
-    "level-0": [*zoom(4), *panels("maximize", "graph"), *graph("./")],
-    "level-1": graph("src/"),
-    "level-2": graph("src/runtime/"),
-    "level-3": graph("src/runtime/recipes/vulpen/"),
-    "level-4": graph("src/runtime/recipes/vulpen/library/"),
-    "level-5": graph("src/runtime/recipes/vulpen/library/parts/"),
-    "level-6": graph("src/runtime/recipes/vulpen/library/parts/graph/"),
-    "level-7": INSIDE_IDE,
+    "level-0": [*panels("maximize", "graph"), *level("./", 4)],
+    "level-1": ["ide: zoom reset", *level("src/", 0)],
+    "level-2": ["ide: zoom reset", *level("src/runtime/", 1)],
+    "level-3": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/", 0)],
+    "level-4": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/library/", 0)],
+    "level-5": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/library/parts/", 4)],
+    "level-6": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/library/parts/graph/", 1)],
+    "level-7": [*INSIDE_IDE, *pause(5), *fit(160, 168, 17, 2400), "ide: focus"],
 }
 README = Pictures(IMAGES, (Run(HERO, size="2400x860"), Run(TILES, size="1200x1200"),
                            Run(DETAILS), Run(DIVE, size="2400x860")),
