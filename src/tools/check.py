@@ -7,7 +7,10 @@ names hidden as MSVC refuses them and GCC lets pass (hidden-names.py). About a m
 full: quick, then every example made again by typing (examples-replay.py), every command
 swept in each state with the menus and keys (command-sweep.py's sweep and gui), the
 address sanitizer's build and tests, and ctest's window tests under an Xvfb of the run's
-own. About half an hour; a round runs it before it lands.
+own. Once the debug build is made, three chains run side by side: its checks, the
+examples and then the sanitizer's tests, as each runs vulpen in this tree; the sweep, in
+copies of its own (--jobs); and the sanitizer's build, with a share of the threads.
+About ten minutes; a round runs it before it lands.
 nightly: every preset built and tested, GPU-assisted validation, the nightly tests (the
 soaks, the long fuzz, examples-replay), the whole command sweep, and the simulated
 testers where docs/logs/beta-sim/ holds them, in a tree of their own. Some hours; its
@@ -20,9 +23,10 @@ source download holds it, and main's own lines run on main's build and this one
 docs/reports/ under the commit's name. Some hours.
 install-hook: a git pre-push hook running quick, which stops a push it fails (opt-in).
 
-Each step runs unless the step it needs did not pass, and the run fails unless every step
-passed. What each said is kept in out/check/<tier>-<time>/, with a report of each step's
-result and, for one that failed, its errors and its last lines.
+Each step runs unless the step it needs did not pass, once that step ended, and the run
+fails unless every step passed: one that raised failed, and one never reached is skipped.
+What each said is kept in out/check/<tier>-<time>/, with a report of each step's result
+and, for one that failed, its errors and its last lines.
 full, nightly and release run the Linux presets (asan, tsan) and Linux's tools.
 
 Usage: python3 src/tools/check.py quick|full|nightly|release|install-hook
@@ -34,7 +38,9 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import threading
 import time
+import traceback
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,6 +58,12 @@ STAMP = re.compile(r"\{run\} vulpen (\S+)")  # the commit a vulpen says it was b
 # every compile at once, as a fresh tree's or every module's after an engine header
 # changed. The machine's threads, near what Ninja starts by default.
 JOBS = str(os.cpu_count() or 1)
+# full's sweep: copies of the tree side by side (command-sweep.py --jobs), which runs
+# fewer where the machine's memory holds fewer.
+COPIES = "6"
+# A build beside the sweep's copies, which share the machine's threads among them: a
+# quarter more compiles at once, rather than twice one build's.
+BESIDE = str(max(1, (os.cpu_count() or 1) // 4))
 TAIL = 30  # lines of a failed step's log the report shows, after those naming an error
 HOOK = """#!/bin/sh
 # Written by src/tools/check.py install-hook: each push runs its quick checks first, and
@@ -62,19 +74,24 @@ exec python3 "$(git rev-parse --show-toplevel)/src/tools/check.py" quick
 
 class Step:
     """A command, or a function given the log, run once the step it needs passed; env: the
-    command's environment, if not this one's."""
+    command's environment, if not this one's; chain: the steps that run one after another
+    beside the other chains, once every step of no chain ran."""
 
-    def __init__(self, name, run, needs=None, env=None):
+    def __init__(self, name, run, needs=None, env=None, chain=None):
         self.name, self.run, self.needs, self.env = name, run, needs, env
+        self.chain = chain
         self.result, self.seconds = "skipped", 0.0
+        self.ended = threading.Event()
 
 
-def preset(name: str, window: dict[str, str] | None = None) -> list[Step]:
-    return [Step(f"configure {name}", ["cmake", "--preset", name]),
+def preset(name: str, window: dict[str, str] | None = None, jobs: str = JOBS,
+           chain: str | None = None) -> list[Step]:
+    return [Step(f"configure {name}", ["cmake", "--preset", name], chain=chain),
             Step(f"build {name}",
-                 ["cmake", "--build", "--preset", name, "--parallel", JOBS],
-                 f"configure {name}"),
-            Step(f"test {name}", ["ctest", "--preset", name], f"build {name}", window)]
+                 ["cmake", "--build", "--preset", name, "--parallel", jobs],
+                 f"configure {name}", chain=chain),
+            Step(f"test {name}", ["ctest", "--preset", name], f"build {name}", window,
+                 chain)]
 
 
 def test_driver() -> str:
@@ -210,13 +227,19 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
     if tier == "quick":
         return quick
     if tier == "full":
+        # After the debug build, one chain of what runs vulpen in this tree, whose ide
+        # keeps its panels' layout there for the next run: so one at a time.
+        asan = preset("asan", window, BESIDE, "asan")
+        for step in [*quick[2:], asan[2]]:
+            step.chain = "tree"
         return [*quick,
                 Step("examples", [python, TOOLS / "examples-replay.py",
                                   ROOT / "out/build/debug/vulpen", "--said",
-                                  out / "examples-replay.log"], "build debug"),
+                                  out / "examples-replay.log"], "build debug", chain="tree"),
                 Step("commands", [python, TOOLS / "command-sweep.py", "--only",
-                                  "sweep,gui", "--report", out / "command-sweep.md"]),
-                *preset("asan", window)]
+                                  "sweep,gui", "--jobs", COPIES, "--report",
+                                  out / "command-sweep.md"], chain="sweep"),
+                *asan]
     if tier == "release":
         return [*steps("nightly", out, window),
                 Step("lines counted", counted, "build debug"),
@@ -239,6 +262,36 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
 
 def log_of(step: Step, out: Path) -> Path:
     return out / f"{step.name.replace(' ', '-')}.log"
+
+
+def take(step: Step, out: Path, by_name: dict[str, Step], alone: bool) -> None:
+    """The step, once the step it needs ended, unless that did not pass; an error in it
+    fails it, its traceback in its log. A step alone says how it went on its own line, as
+    it runs; one beside others, a line as it starts and one as it ends. A step of no chain
+    needs only steps before it, which ended already, so it never waits on a chain."""
+    try:
+        needed = by_name.get(step.needs) if step.needs else None
+        if needed and not alone:
+            needed.ended.wait()
+        if step.needs and (needed is None or needed.result != "passed"):
+            print(f"{step.name}: skipped, as {step.needs} did not pass", flush=True)
+            return
+        print(f"{step.name}: " + ("" if alone else "started\n"), end="", flush=True)
+        try:
+            run(step, out)
+        except Exception:
+            step.result = "failed"
+            with log_of(step, out).open("a") as log:
+                log.write(traceback.format_exc())
+        print(("" if alone else f"{step.name}: ") +
+              f"{step.result} in {step.seconds:.0f} s", flush=True)
+    finally:
+        step.ended.set()
+
+
+def chained(chain: list[Step], out: Path, by_name: dict[str, Step]) -> None:
+    for step in chain:
+        take(step, out, by_name, alone=False)
 
 
 def run(step: Step, out: Path) -> None:
@@ -289,11 +342,13 @@ def released(out: Path, named: str) -> list[str]:
                     "squash, so what people get is what ran."]
 
 
-def report(tier: str, done: list[Step], out: Path, began: datetime, named: str) -> str:
+def report(tier: str, done: list[Step], out: Path, began: datetime, named: str,
+           took: float) -> str:
     lines = [f"# check {tier} at {named}, {began:%Y-%m-%d %H:%M} UTC", "",
              "| Step | Result | Time |", "| --- | --- | --: |"]
     lines += [f"| {step.name} | {step.result} | {step.seconds:.0f} s |"
               for step in done]
+    lines += ["", f"In all: {took / 60:.1f} minutes."]
     for step in done:
         if step.result == "failed":
             said = log_of(step, out).read_text(errors="replace").splitlines()
@@ -314,19 +369,23 @@ def check(tier: str) -> int:
     named = commit()  # before the builds, which rewrite the statistics
     out = ROOT / "out" / "check" / f"{tier}-{began:%Y%m%dT%H%M%SZ}"
     out.mkdir(parents=True)
-    passed = set()
+    started = time.monotonic()
     with screen(tier != "quick") as window:
         done = steps(tier, out, window)
+        by_name = {step.name: step for step in done}
+        chains: dict[str, list[Step]] = {}
         for step in done:
-            if step.needs and step.needs not in passed:
-                print(f"{step.name}: skipped, as {step.needs} did not pass", flush=True)
-                continue
-            print(f"{step.name}: ", end="", flush=True)
-            run(step, out)
-            print(f"{step.result} in {step.seconds:.0f} s", flush=True)
-            if step.result == "passed":
-                passed.add(step.name)
-    text = report(tier, done, out, began, named)
+            if step.chain:
+                chains.setdefault(step.chain, []).append(step)
+            else:
+                take(step, out, by_name, alone=True)
+        beside = [threading.Thread(target=chained, args=(chain, out, by_name), daemon=True)
+                  for chain in chains.values()]
+        for thread in beside:
+            thread.start()
+        for thread in beside:
+            thread.join()
+    text = report(tier, done, out, began, named, time.monotonic() - started)
     (out / "report.md").write_text(text)
     if tier in ("nightly", "release"):
         REPORTS.mkdir(parents=True, exist_ok=True)
