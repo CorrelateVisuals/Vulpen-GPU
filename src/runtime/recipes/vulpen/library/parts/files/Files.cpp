@@ -25,12 +25,13 @@ constexpr std::string_view manifest = "view.vlp";
 constexpr std::array<std::string_view, 2> shared_folders{"contracts", "shared"};
 // What new starts a file with, by its extension: the start file of that extension in the
 // start folder, the least that builds and runs, a draw stage's handing its color on, so
-// a draw's starts made one at a time in any order draw together, and each other way data
-// goes between the node's files commented out, naming the stages it joins, for the
-// person to uncomment what they use; Name in it becoming the class the file's stem
-// names; and the word its node needs to run it, which the node gets where it has none:
-// the three corners of the start's triangle, and one workgroup of its threads. A file of
-// any other extension starts empty. New makes only the files a line names.
+// a draw's starts made one at a time in any order draw together. Each other way data
+// goes between the node's files is commented out, its lines numbered alike in every
+// start, for the person to uncomment what they use. In it Name becomes the class the
+// file's stem names, Name.cpp the node's C++ and <node> the node. Then the word its node
+// needs to run it, which the node gets where it has none: the three corners of the
+// start's triangle, and one workgroup of its threads. A file of any other extension
+// starts empty. New makes only the files a line names.
 struct Start {
   std::string_view extension;
   std::string_view word; // as node set takes it; empty for none
@@ -48,6 +49,14 @@ constexpr std::array<Start, 8> starts{{{".vert", "vertex_count=3"},
 constexpr std::array<std::string_view, 7> run_by_nodes{
     ".vert", ".tesc", ".tese", ".geom", ".frag", ".comp", ".cpp"};
 constexpr std::string_view start_name = "Name";
+constexpr std::string_view start_cpp = "Name.cpp";
+constexpr std::string_view start_node = "<node>";
+// The ways a .cpp and a shader one line makes beside it come joined by, by their numbers
+// in the starts: a .comp reads the C++'s value and hands its results back, [2] and [5];
+// a .vert reads the value, [2]. So the node runs joined at once, the least that shows
+// C++ and a shader talking.
+constexpr std::string_view dispatch_ways = "25";
+constexpr std::string_view draw_ways = "2";
 // Where a remove keeps what it takes, under the .vulpen/ of the view holding it, a folder
 // the time it went, so undo brings it back and a person finds it there; git ignores it.
 constexpr std::string_view kept_folder = ".vulpen";
@@ -133,6 +142,138 @@ std::string class_named(const std::filesystem::path &file) {
                                          "letter first",
                                          shown(file)));
   return class_of(stem);
+}
+
+// Each `from` in the text becomes `to`, as a start's placeholders do, which no word
+// holds.
+std::string filled(std::string text, std::string_view from, std::string_view to) {
+  for (std::size_t at = text.find(from); at != std::string::npos;
+       at = text.find(from, at + to.size()))
+    text.replace(at, from.size(), to);
+  return text;
+}
+
+// A row of a start's way: commented out, and the comment after its code begins with the
+// way's number, or with two, as `// pass.results.at[i] = 0.0; // [2] [5]`. Where its //
+// is, where that comment is, and the numbers; none for any other row.
+struct WayRow {
+  std::size_t mark = 0;
+  std::size_t comment = 0;
+  std::string numbers;
+};
+
+std::optional<WayRow> way_row(std::string_view row) {
+  const std::size_t mark = row.find_first_not_of(' ');
+  if (mark == std::string_view::npos || !row.substr(mark).starts_with("// "))
+    return std::nullopt;
+  WayRow found{.mark = mark, .comment = row.find("// [", mark + 3)};
+  if (found.comment == std::string_view::npos)
+    return std::nullopt;
+  for (std::size_t at = found.comment + 3;
+       at + 2 < row.size() && row[at] == '[' && row[at + 2] == ']';
+       at += 4)
+    found.numbers.push_back(row[at + 1]);
+  if (found.numbers.empty())
+    return std::nullopt;
+  return found;
+}
+
+// A row commented out, with no number, whose code opens a block, or closes one, as a
+// pass block's first and last rows.
+bool block_row(std::string_view row, bool opens) {
+  const std::size_t mark = row.find_first_not_of(' ');
+  if (mark == std::string_view::npos || !row.substr(mark).starts_with("// ") ||
+      way_row(row))
+    return false;
+  const std::string_view code = row.substr(mark + 3);
+  return opens ? code.ends_with('{') : code.starts_with('}');
+}
+
+// The rows of a text, without their line breaks, the last after the last break.
+std::vector<std::string> rows_of(std::string_view text) {
+  std::vector<std::string> rows;
+  for (std::size_t at = 0; at <= text.size();) {
+    const std::size_t end = std::min(text.find('\n', at), text.size());
+    rows.emplace_back(text.substr(at, end - at));
+    at = end + 1;
+  }
+  return rows;
+}
+
+// A start with the ways given joined: each row of a way whose numbers are all given
+// uncommented, its comment kept in its column, three on as the // before its code goes,
+// and around them the rows commented out that open and close their block.
+std::string joined(std::string_view text, std::string_view ways) {
+  std::vector<std::string> rows = rows_of(text);
+  std::vector<bool> taken(rows.size());
+  for (std::size_t at = 0; at < rows.size(); ++at)
+    if (const std::optional<WayRow> way = way_row(rows[at]);
+        way && std::ranges::all_of(way->numbers, [&](char number) {
+          return ways.find(number) != std::string_view::npos;
+        })) {
+      const std::string &row = rows[at];
+      rows[at] = std::format("{}{}   {}",
+                             row.substr(0, way->mark),
+                             row.substr(way->mark + 3, way->comment - way->mark - 3),
+                             row.substr(way->comment));
+      taken[at] = true;
+    }
+  for (std::size_t open = 0; open < rows.size(); ++open) {
+    if (!block_row(rows[open], true))
+      continue;
+    std::size_t close = open + 1;
+    while (close < rows.size() && !block_row(rows[close], false))
+      ++close;
+    const auto inside = taken.begin() + static_cast<std::ptrdiff_t>(open);
+    const auto after = taken.begin() + static_cast<std::ptrdiff_t>(close);
+    if (close < rows.size() && std::find(inside, after, true) != after)
+      for (const std::size_t at : {open, close})
+        rows[at].erase(rows[at].find("// "), 3);
+  }
+  std::string start;
+  for (std::size_t at = 0; at < rows.size(); ++at)
+    start.append(at == 0 ? "" : "\n").append(rows[at]);
+  return start;
+}
+
+// The ways a start comes joined by: a .cpp and a .comp or .vert one line makes in the
+// same folder, as one node's, read each other at once, with no line to uncomment; none
+// beside more C++ than one, whose classes would bind the same names.
+std::string_view joined_ways(const std::filesystem::path &file,
+                             std::span<const std::filesystem::path> line) {
+  const auto made = [&](std::string_view extension) {
+    return std::ranges::count_if(line, [&](const std::filesystem::path &path) {
+      return path.parent_path() == file.parent_path() && path.extension() == extension;
+    });
+  };
+  if (made(".cpp") != 1)
+    return {};
+  const std::string extension = file.extension().string();
+  if (extension == ".cpp")
+    return made(".comp") != 0 ? dispatch_ways : made(".vert") != 0 ? draw_ways : "";
+  return extension == ".comp" ? dispatch_ways : extension == ".vert" ? draw_ways : "";
+}
+
+// The C++ a shader's start names as its node's: the .cpp the line makes beside it, else
+// the first its folder holds, else one of the shader's name, as new would make it.
+std::string cpp_beside(VP::FilePort &files,
+                       const std::filesystem::path &file,
+                       std::span<const std::filesystem::path> line) {
+  const auto beside = [&](const std::filesystem::path &path) {
+    return path.parent_path() == file.parent_path() && path.extension() == ".cpp";
+  };
+  if (const auto made = std::ranges::find_if(line, beside); made != line.end())
+    return made->filename().string();
+  for (const std::string &name : files.list(file.parent_path().string()))
+    if (beside(file.parent_path() / name))
+      return name;
+  return file.stem().string() + ".cpp";
+}
+
+// Whether a path new is given names a folder: one ending in / or with no extension, as a
+// node's name has none.
+bool folder_word(std::string_view word) {
+  return std::filesystem::path(word).filename().empty() || !bare(word).has_extension();
 }
 
 // Where a path lies in a view vulpen hosts: the name lines address the view with, the
@@ -569,7 +710,9 @@ class Files final : public VP::Operator {
     _new = node.command("new [<file>...]",
                         "makes files and folders, and the folders they are in: a path "
                         "ending in / or with no extension a folder, else a file, a "
-                        "shader's or C++'s with the least code that builds and runs; "
+                        "shader's or C++'s with the least code that builds and runs, "
+                        "and each way data takes commented out, numbered alike in every "
+                        "file; a .cpp and a .comp or .vert made in one line come joined; "
                         "in a view a folder is a node, which it adds, a draw's with its "
                         "vertex_count and a dispatch's with its invocations, and a "
                         "shader or C++ file at a project's top makes the top node root; "
@@ -712,6 +855,10 @@ class Files final : public VP::Operator {
   // its start has it. In a view each folder made is a node the line adds, a node a start
   // needs a word of gets it where it has none, and each view is saved once.
   void make(VP::Call &call) const {
+    std::vector<std::filesystem::path> line; // the files it makes, which a start joins
+    for (const std::string_view word : call.arguments())
+      if (!folder_word(word))
+        line.push_back(bare(word));
     std::vector<std::pair<std::filesystem::path, std::optional<std::string>>> made;
     std::vector<Graphed> graphs;
     const auto taken = [&](const std::filesystem::path &path) {
@@ -727,14 +874,13 @@ class Files final : public VP::Operator {
       for (std::string &node : adopted(call, held, folder, std::nullopt))
         if (std::ranges::find(graph->adds, node, &Words::node) == graph->adds.end())
           graph->adds.push_back({std::move(node), {}});
-      made.emplace_back(path,
-                        folder ? std::nullopt
-                               : std::optional(started(call.files(), path, held, graph)));
+      made.emplace_back(
+          path,
+          folder ? std::nullopt
+                 : std::optional(started(call.files(), path, line, held, graph)));
     };
-    for (const std::string_view word : call.arguments()) {
-      const std::filesystem::path path = bare(word);
-      add(path, std::filesystem::path(word).filename().empty() || !path.has_extension());
-    }
+    for (const std::string_view word : call.arguments())
+      add(bare(word), folder_word(word));
     std::string names;
     for (const auto &[path, text] : made) {
       if (text)
@@ -746,10 +892,13 @@ class Files final : public VP::Operator {
     call.reply(std::format("made {}{}", names, edit(call, graphs)));
   }
 
-  // A file's start, by its extension, its class named by the file's stem where the start
-  // names one, and the word it needs given to the node whose folder holds the file.
+  // A file's start, by its extension: a shader's naming its node's C++, C++'s its class
+  // by the file's stem where the start names one, and each naming its node in the lines
+  // its comments give; joined to the C++ or shader the line makes beside it; and the word
+  // it needs given to the node whose folder holds the file.
   std::string started(VP::FilePort &files,
                       const std::filesystem::path &file,
+                      std::span<const std::filesystem::path> line,
                       const std::optional<Held> &held,
                       Graphed *graph) const {
     const auto start =
@@ -758,14 +907,21 @@ class Files final : public VP::Operator {
       return {};
     const auto at = static_cast<std::size_t>(start - starts.begin());
     std::string text(files.text(_starts[at]));
-    if (text.find(start_name) != std::string::npos)
+    if (std::ranges::find(VP::stages, start->extension) != VP::stages.end())
+      text = filled(std::move(text), start_cpp, cpp_beside(files, file, line));
+    else if (text.find(start_name) != std::string::npos)
       text = replaced(std::move(text), start_name, class_named(file));
     std::optional<std::string> node =
         held ? node_of(held->inside.parent_path()) : std::nullopt;
     if (node && node->empty() && VP::is_top(*held->view, VP::top_node))
       node = VP::top_node; // the top folder's
-    if (node && !node->empty() && !start->word.empty())
-      give(*graph, *held->view, *node, start->word);
+    if (node && !node->empty()) {
+      text = filled(std::move(text), start_node, *node);
+      if (!start->word.empty())
+        give(*graph, *held->view, *node, start->word);
+    }
+    if (const std::string_view ways = joined_ways(file, line); !ways.empty())
+      text = joined(text, ways);
     return text;
   }
 

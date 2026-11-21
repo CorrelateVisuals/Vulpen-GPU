@@ -1,38 +1,48 @@
 #include "runtime/Operator.h"
 
-// #include <iostream>
-// #include <vector>
+// #include <iostream> // [5]
+// #include <vector>   // [6]
 
 namespace {
 
-// What the node does on the CPU: bind as its view is built, cook each frame. Each way data
-// goes between this C++ and the node's shaders is below, commented out: uncomment a way
-// here and its field in the shader's pass block, both by one name, and delete the rest.
+// What node <node> does on the CPU: bind runs once as its view is built, cook every frame
+// before its shaders run.
+//
+// Each way data goes between this C++ and the node's shaders is commented out, its lines
+// numbered alike in every file of the node. To use one, uncomment its lines here and in
+// the shader, and delete the rest. A line with two numbers needs both. Examples: [1] [3]
+// triangle, [2] [5] wave, [6] the image-file part.
 class Name final : public VP::Operator {
   void bind([[maybe_unused]] VP::Bind &node) override {
-    // _speed = node.param<float>("speed");             // from you: param=speed=0.02
-    // _phase = node.value<float>("phase");             // to a shader: float phase;
-    // _points = node.upload<glm::vec4>("points");      // to a shader: Vec4sIn points;
-    // _picture = node.texture<glm::u8vec4>("picture"); // to a shader: Texture picture;
-    // _results = node.readback<float>("results");      // from a .comp: FloatsOut results;
+    // _speed = node.param<float>("speed");             // [1] param set <node> speed 0.5
+    // _phase = node.value<float>("phase");             // [2] the shader's float phase;
+    // _points = node.upload<glm::vec4>("points");      // [3] its Vec4sIn points;
+    // _results = node.readback<float>("results");      // [5] its FloatsOut results;
+    // _picture = node.texture<glm::u8vec4>("picture"); // [6] its Texture picture;
   }
 
   void cook([[maybe_unused]] VP::Cook &frame) override {
-    // frame.set(_phase, _speed * static_cast<float>(frame.index()));
-    // for (glm::vec4 &point : frame.write(_points)) // one a vertex, or an invocation
-    //   point = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    // if (frame.empty(_picture)) // once: the image keeps its pixels
-    //   frame.upload(_picture, std::vector(16, glm::u8vec4(255, 128, 0, 255)), {4, 4});
-    // const std::span<const float> results = frame.read(_results); // a frame late
-    // if (!results.empty() && frame.index() % 60 == 0) // once a second at 60 fps
-    //   std::cout << "results[0] = " << results[0] << std::endl; // under the node's name
+    // frame.set(_phase, static_cast<float>(frame.seconds()));          // [2] the time
+    // frame.set(_phase, _speed * static_cast<float>(frame.seconds())); // [1] [2]
+    // for (glm::vec4 &point : frame.write(_points)) // [3] one a vertex or invocation
+    //   point = glm::vec4(0.25f, 0.0f, 0.0f, 0.0f);  // [3] a .vert's corner, moved right
+    // if (frame.index() % 60 == 0) {                 // [5] every 60 frames
+    //   const std::span<const float> results = frame.read(_results); // [5]
+    //   for (std::size_t at = 0; at < results.size(); at += 8) // [5] empty at first
+    //     std::cout << results[at] << ' ';           // [5] every 8th
+    //   std::cout << std::endl;                      // [5] a line under the node's name
+    // }                                              // [5]
+    // if (frame.empty(_picture)) {                   // [6] once: it keeps its pixels
+    //   const std::vector orange(16, glm::u8vec4(255, 128, 0, 255)); // [6]
+    //   frame.upload(_picture, orange, {4, 4});      // [6] 4 by 4 pixels
+    // }                                              // [6]
   }
 
-  // float _speed = 0;
-  // VP::Value<float> _phase;
-  // VP::Upload<glm::vec4> _points;
-  // VP::Texture<glm::u8vec4> _picture;
-  // VP::Readback<float> _results;
+  // float _speed = 0;                  // [1]
+  // VP::Value<float> _phase;           // [2]
+  // VP::Upload<glm::vec4> _points;     // [3]
+  // VP::Readback<float> _results;      // [5]
+  // VP::Texture<glm::u8vec4> _picture; // [6]
 };
 
 } // namespace

@@ -75,6 +75,20 @@ cd Vulpen
 
 In the ide's terminal, type `view load ray-cubes`, then double-click a file in the graph to open it. Save a C++ or GLSL file while it runs and the running project swaps the change in. <kbd>F1</kbd> gives the project the whole window, and <kbd>F1</kbd> or <kbd>Shift</kbd>+<kbd>Esc</kbd> takes it back, as <kbd>Esc</kbd> alone is the project's; <kbd>F2</kbd> to <kbd>F5</kbd> put the keys in the terminal, the graph, the editor and the Perform panel.
 
+### Your own node
+
+```text
+view new hello
+new sway/Sway.cpp sway/Sway.vert sway/Sway.frag
+```
+
+`view new` makes a project and sends your lines to it. `new` makes a node, `sway`: a folder whose files are its code. Made in one line, the C++ and the shaders come joined, and a triangle sways in the Perform panel, as the C++ hands the vertex shader the time each frame. Two rules carry all data:
+
+- **Inside a node, files join by name.** `node.value<float>("phase")` in `Sway.cpp` fills `float phase;` in `Sway.vert`.
+- **Between nodes, a wire joins them.** `connect wave.results echo.values` hands node `wave`'s results to node `echo`, and `view save` writes it into the manifest.
+
+Every other way data can take is already in the files, commented out and numbered alike in each: `[1]` a param from you, `[2]` a value from C++, `[3]` a buffer from C++, `[4]` a buffer from another node, `[5]` results back to C++, `[6]` and `[7]` images, `[8]` what a draw's stages hand on. Uncomment a number's lines in each file and save. `new wave/Wave.cpp wave/Wave.comp` starts a compute node instead, whose C++ prints what it computed.
+
 > [!NOTE]
 > Vulpen needs a GPU and driver with Vulkan 1.2, descriptor indexing and buffer device address.
 

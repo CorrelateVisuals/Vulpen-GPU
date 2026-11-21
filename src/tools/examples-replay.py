@@ -299,6 +299,60 @@ def declare_checked(example: Example, run: "Run", findings: list["Finding"]) -> 
     run.send(gone(example.copy))
 
 
+# The files of joined, a .cpp made in one line with a .comp and one with a draw, by path:
+# the rows of the ways each pair is joined by, live once each, a row's code without its
+# comment; and what its comments name, its node in the lines they give and, in a shader,
+# its C++.
+JOINED = {
+    "wave/Wave.cpp": (["#include <iostream>", '_phase = node.value<float>("phase");',
+                       '_results = node.readback<float>("results");',
+                       "frame.set(_phase, static_cast<float>(frame.seconds()));",
+                       "VP::Value<float> _phase;", "VP::Readback<float> _results;"],
+                      ["param set wave speed 0.5", "class Wave final"]),
+    "wave/Wave.comp": (["pass.results.at[i] = sin(pass.phase + 0.1 * float(i));"],
+                       ["param set wave speed 0.5", "from Wave.cpp"]),
+    "sway/Sway.cpp": (['_phase = node.value<float>("phase");',
+                       "frame.set(_phase, static_cast<float>(frame.seconds()));",
+                       "VP::Value<float> _phase;"],
+                      ["param set sway speed 0.5", "class Sway final"]),
+    "sway/Sway.vert": (["gl_Position.x += 0.25 * sin(pass.phase);"],
+                       ["param set sway scale 0.5", "from Sway.cpp"]),
+    "sway/Sway.frag": ([], ["param set sway tint 0.5", "from Sway.cpp"]),
+}
+JOINED_FIELDS = {"wave/Wave.comp": [("float", "phase"), ("FloatsOut", "results")],
+                 "sway/Sway.vert": [("float", "phase")], "sway/Sway.frag": []}
+
+
+def joined_checked(example: Example, run: "Run", findings: list["Finding"],
+                   shot: Path) -> None:
+    """Once built, both pairs bind with nothing to say; each file holds live the rows of
+    the ways it was joined by, once each, and its pass block only their fields; its
+    comments name its node and its C++, no placeholder left; and the draw drew."""
+    said = run.send(settled(f"param set shot file {shot}"))
+    if problems := bound(said, example.copy):
+        findings.append(Finding(example.name, "a joined node met a problem once built",
+                                problems))
+    folder = PROJECTS / example.copy
+    for name, (rows, named) in JOINED.items():
+        text = (folder / name).read_text()
+        live = [row.split("//")[0].strip() for row in text.splitlines()
+                if not row.strip().startswith("//")]
+        findings.extend(Finding(example.name, f"{name} holds {row!r} live "
+                                f"{live.count(row)} times, not once", [])
+                        for row in rows if live.count(row) != 1)
+        findings.extend(Finding(example.name, f"{name} names no {words!r}", [])
+                        for words in named if words not in text)
+        findings.extend(Finding(example.name, f"{name} still holds {left!r}", [])
+                        for left in ("<node>", "Name.cpp", "class Name ") if left in text)
+    for name, fields in JOINED_FIELDS.items():
+        if (held := fields_of(folder / name)) != fields:
+            findings.append(Finding(example.name, f"{name}'s pass block differs",
+                                    [f"wanted {fields}", f"holds {held}"]))
+    if not shot.exists() or not drew(shot):
+        findings.append(Finding(example.name, "the joined draw drew no picture", [str(shot)]))
+    run.send(gone(example.copy))
+
+
 def examples(scratch: Path) -> list[Example]:
     """Each example as a person might make it again, a different way each, with the
     mistakes a person makes on the way: a line refused at once, or one taken that a
@@ -755,8 +809,9 @@ def examples(scratch: Path) -> list[Example]:
     # lone .frag's node, writing its .vert. Then into C++: a param, set in the frame its
     # line runs, and an output of a contract copied in, in a .cpp alone; a value and a
     # readback of its node's shaders' fields, typed and by the menu, which lists only
-    # those nothing fills; an input of the output, which a connect before names, then
-    # connected; and the lines a .cpp may not take refused.
+    # those nothing fills, the .cpp made a line after its .comp, so the two come apart
+    # (joined has them made in one); an input of the output, which a connect before
+    # names, then connected; and the lines a .cpp may not take refused.
     e = Example("declare", compared=False)
     vert, frag = at(e.copy, "n", "N.vert"), at(e.copy, "n", "N.frag")
     writer, reader = at(e.copy, "a", "A.comp"), at(e.copy, "b", "B.comp")
@@ -809,7 +864,8 @@ def examples(scratch: Path) -> list[Example]:
         typed("cd .."),
         ok(f"copy {at('triangle-files', 'contracts', 'Corner.h')} "
            f"{at(e.copy, 'contracts', 'Corner.h')}"),
-        ok(f"new {alone} {shaded} {beside}"),
+        ok(f"new {alone} {shaded}"),
+        ok(f"new {beside}"),
         settled(f"param declare {shaded} float phase",
                 f"param declare {shaded} FloatsOut results"),
         ok(f"param declare {alone} float speed", "param set w speed 0.5"),
@@ -830,6 +886,21 @@ def examples(scratch: Path) -> list[Example]:
         ok("view save"),
     ]
     e.check = declare_checked
+    every.append(e)
+
+    # joined: a .cpp and a .comp made in one line come joined, the compute reading the
+    # C++'s value and handing its results back, and a .cpp and a draw in the same line,
+    # the draw swaying by the value; the draw drawn into a snapshot.
+    e = Example("joined", compared=False)
+    shot = scratch / "joined.png"
+    e.steps = [
+        ok(f"view new {e.copy}"),
+        ok("new " + " ".join(at(e.copy, name) for name in JOINED)),
+        ok("recipe drop snapshot shot"),
+        settled("connect sway.pixel shot.picture", f"param set shot file {shot}"),
+    ]
+    e.check = lambda example, run, found, shot=shot: joined_checked(example, run, found,
+                                                                    shot)
     every.append(e)
 
     # surprises: what a person does that the lines before did not see coming. A view hosted

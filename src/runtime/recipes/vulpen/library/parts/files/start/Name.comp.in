@@ -1,28 +1,35 @@
-// What each of the node's invocations does, 64 to a workgroup.
+// What each of node <node>'s invocations does every frame, 64 to a workgroup.
 //
-// Each way data reaches here and leaves is commented out: uncomment what you use and
-// delete the rest; a pass block field nothing fills is refused.
+// Each way data comes in or goes out is commented out, its lines numbered alike in every
+// file of the node. To use one, uncomment its lines here and in Name.cpp, with the
+// block's first and last lines, and delete the rest. A line with two numbers needs both;
+// a field nothing fills is refused. Examples: [1] triangle-params, [2] [5] wave,
+// [3] triangle-cpp-raster, [4] triangle-wire, [6] [7] triangle-compute.
 #include "baseclasses/GpuLayout.glsl" // the pass block's types, sample_linear, store
+// VP_READS(Vec4sIn, vec4); // [3]
 // layout(set = 1, binding = 0) uniform Pass {
-//   float speed;       // from you, no C++: node set <node> param=speed=0.5
-//   float phase;       // from C++, each frame: node.value<float>("phase")
-//   FloatsIn values;   // from another node: connect <name> <its node>.values <node>.values
-//   FloatsOut results; // to C++, a frame later: node.readback<float>("results")
-//   Texture picture;   // an image to sample: from C++, or another node's by a connection
-//   Image canvas;      // an image to store into, which another node samples by a connection
+//   float speed;       // [1] from you: param set <node> speed 0.5
+//   float phase;       // [2] from Name.cpp, each frame
+//   Vec4sIn points;    // [3] from Name.cpp, one an invocation
+//   FloatsIn values;   // [4] from a node: connect <writer>.results <node>.values
+//   FloatsOut results; // [5] to Name.cpp, a frame later, or to a node as [4]
+//   Texture picture;   // [6] from Name.cpp, or: connect <writer>.canvas <node>.picture
+//   Image canvas;      // [7] to a node: connect <node>.canvas <reader>.picture
 // } pass;
 layout(local_size_x = 64) in;
 
 void main() {
-  // const uint i = gl_GlobalInvocationID.x; // one an invocation, as many as invocations
-  // pass.results.at[i] = pass.speed * float(i) + sin(pass.phase);
-  // pass.results.at[i] = pass.values.at[i];
-  // pass.results.at[i] = sample_linear(pass.picture, vec2(0.5)).r;
-  // const ivec2 size = image_size(pass.canvas); // the frame's, every pixel of it, each
-  // const uint invocations = gl_NumWorkGroups.x * gl_WorkGroupSize.x; // a share of them
-  // for (uint pixel = i; pixel < uint(size.x * size.y); pixel += invocations) {
-  //   const ivec2 at = ivec2(pixel % uint(size.x), pixel / uint(size.x));
-  //   const vec2 uv = vec2(at) / vec2(size); // 0 to 1, across and down
-  //   store(pass.canvas, at, vec4(uv, 0.5 + 0.5 * sin(frame.time), 1.0));
-  // }
+  const uint i = gl_GlobalInvocationID.x; // one an invocation, as many as invocations
+  // pass.results.at[i] = pass.speed * float(i);                    // [1] [5]
+  // pass.results.at[i] = sin(pass.phase + 0.1 * float(i));         // [2] [5] a wave
+  // pass.results.at[i] = pass.points.at[i].x;                      // [3] [5]
+  // pass.results.at[i] = pass.values.at[i];                        // [4] [5]
+  // pass.results.at[i] = sample_linear(pass.picture, vec2(0.5)).r; // [5] [6]
+  // const ivec2 size = image_size(pass.canvas);                                 // [7]
+  // const uint invocations = gl_NumWorkGroups.x * gl_WorkGroupSize.x;           // [7]
+  // for (uint pixel = i; pixel < uint(size.x * size.y); pixel += invocations) { // [7]
+  //   const ivec2 at = ivec2(pixel % uint(size.x), pixel / uint(size.x));       // [7]
+  //   const vec2 uv = vec2(at) / vec2(size); // 0 to 1, across and down        // [7]
+  //   store(pass.canvas, at, vec4(uv, 0.5 + 0.5 * sin(frame.time), 1.0));       // [7]
+  // }                                                                           // [7]
 }
