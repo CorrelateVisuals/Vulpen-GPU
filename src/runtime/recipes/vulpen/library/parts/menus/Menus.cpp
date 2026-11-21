@@ -85,30 +85,13 @@ struct Look {
   VP::FilePort &files;
 };
 
-// The menus menu.ini gives, by the kind of thing a right press is on, each a line as the
-// terminal takes it (V06), so a menu teaches the line it sends: its words a column each,
-// the first column holding the first words, and the pointer on a word opening beside it
-// the words that may follow it, as Tab lists them, and in place of a placeholder that
-// stands for a few known words, as <recipe>, what the terminal's complete answers, or,
-// past listed_most of them, the placeholder itself; or, for what the menus find, what the
-// view's ports, connections and files give, as <link>. The lines of the sections named
-// after the first follow it, muted, as a background's for the whole project. A press on
-// the word that ends a line hands the line to the terminal's type, as a key's line goes
-// too: run there, as if typed, so the terminal shows it and its answer, or, when it wants
-// a word, as <name>, begun up to it, the terminal's panel shown and the focus on it, for
-// the person to finish, what may come there listed for a placeholder pressed; a word no
-// column listed, which no pointer could press, is refused, naming those listed (A02).
-// With several things pressed, a line joining them runs once, and under a rule after
-// those, a line that wants no word typed runs once for each. A part that knows what was
-// pressed opens the menu for it with menu <kind> [<section>...] for <name>..., as the
-// graph and a tab do; while it shows it holds the pointer, so nothing under it takes a
-// press, and the focus, so escape shuts it; a press anywhere but on a word shuts it too,
-// giving the focus back. A key presses a whole line with no menu showing, menu press
-// <kind> <word>... for <name>..., as the graph's Delete presses remove, so the key runs
-// what the menu would, shown in the terminal as a press is. A change takes effect the
-// next frame, as the focus does, so a press on a word reaches its hit before the words
-// go. The file is read again once it changes; a mistake in it stops the node, naming the
-// line (A02).
+// The menus menu.ini gives, by the kind of thing a right press is on. Each line is a
+// command as the terminal takes it (V06), shown a word a column, so a menu teaches the
+// line it sends. A press on the word that ends a line hands it to the terminal's type,
+// which runs it as if typed, so the terminal shows it and its answer. A part that knows
+// what was pressed opens a menu with menu <kind> [<section>...] for <name>..., as the
+// graph and a tab do. menu.ini says at its top what its lines may hold; a mistake in it
+// stops the node, naming the line (A02).
 class Menus final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _menu = node.command(
@@ -664,7 +647,8 @@ class Menus final : public VP::Operator {
   // The words pressed end a line, or a value a column lists ends it, as the second of a
   // node's link does; any other press opens the words after them, as the pointer coming
   // onto them does, and keeps the menus shown, though the press reached them as any press
-  // does, which shuts them.
+  // does, which shuts them. A word no column listed, which no pointer could press, is
+  // refused, naming those listed (A02).
   void press(VP::Call &call, std::string group, std::vector<std::string> words) {
     std::optional<std::string> unlisted; // why a word no column listed is refused
     for (std::size_t at = 0; at < _lines.size(); ++at) {
@@ -760,6 +744,10 @@ class Menus final : public VP::Operator {
     hand(call, *line, std::nullopt);
   }
 
+  // What a line changes shows from the next frame, as the focus does, so a press on a
+  // word reaches its hit before the words go. menu press runs a line with no menu
+  // showing, as the graph's delete key presses remove, so a key runs what the menu would,
+  // shown in the terminal as a press is.
   void command(VP::Call &call) override {
     if (!call.is(_menu))
       return;
