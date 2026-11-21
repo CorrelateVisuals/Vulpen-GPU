@@ -10,7 +10,7 @@ address sanitizer's build and tests, and ctest's window tests under an Xvfb of t
 own. Once the debug build is made, three chains run side by side: its checks, the
 examples and then the sanitizer's tests, as each runs vulpen in this tree; the sweep, in
 copies of its own (--jobs); and the sanitizer's build, with a share of the threads.
-About ten minutes; a round runs it before it lands.
+About twenty minutes on 16 threads; a round runs it before it lands.
 nightly: every preset built and tested, GPU-assisted validation, the nightly tests (the
 soaks, the long fuzz, examples-replay), the whole command sweep, and the simulated
 testers where docs/logs/beta-sim/ holds them, in a tree of their own. Some hours; its

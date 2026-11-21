@@ -13,7 +13,7 @@ What a coding agent needs in this repository on top of what people read. The [RE
 - Once the [prerequisites](README.md#prerequisites) are installed, `python3 src/tools/check.py quick` configures, builds and tests in about a minute. On Windows, use `python src\tools\check.py quick` and `.\run.ps1`, with the same flags as `./run.sh`.
 - The tests run on lavapipe, Mesa's Vulkan on the CPU (`sudo apt install mesa-vulkan-drivers`), so a container or a CI runner needs no GPU.
 - Set `DISPLAY=` and `WAYLAND_DISPLAY=` empty for builds and test runs. Otherwise some tests open windows on the person's screen.
-- A change to the engine (`src/baseclasses/`, or `src/runtime/` outside `recipes/`) also needs `check.py full`, which takes about half an hour.
+- A change to the engine (`src/baseclasses/`, or `src/runtime/` outside `recipes/`) also needs `check.py full`, which takes about twenty minutes and most of the machine.
 
 ## Drive Vulpen as text
 
