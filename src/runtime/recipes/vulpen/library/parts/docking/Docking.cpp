@@ -336,40 +336,12 @@ VP_VIEW::Rect half_at(const VP_VIEW::Rect &area, std::string_view side) {
   return side == "left" || side == "top" ? split.first : split.second;
 }
 
-// Moves a panel of a dock beside another, at its left, right, top or bottom, as edits of
-// the docks that seat them in its own view's manifest: the dock seating the panel moves
-// with it, its other half taking its place, into the place of the panel dropped on, and
-// holds the two, halved; one log group, which a save keeps and a replay rebuilds (V08).
-// Into another's middle, the panel's content joins the other's in a stack, which holds
-// both under one strip, and the panel goes; from a panel holding several, the content it
-// shows leaves, into a panel of its own when dropped beside one, which it adds before
-// itself, as it lists before what draws over the panels. A drag of a panel's tab strip
-// onto another panel sends it, the side the edge of that panel the pointer is nearest,
-// or the middle well inside it; one holding several, dropped on its own edge, splits, the
-// one it shows going into a panel of its own there; of a deck, the view it shows goes
-// into a deck of its own, or into the deck in the target's middle, so a pane and what it
-// holds stay; let go on its own strip, a panel does nothing, as a tab let go on another
-// moves among them there. An editor or a deck it added goes with its panel once it holds
-// nothing, as its last tab closes or leaves, and the manifest's own hide with theirs, a
-// file opened showing its editor's panel again. It hides a panel and shows it again,
-// as its dock's ratio gives its half no room and back, and hands on a button a panel,
-// lit while it shows, whose press hides or shows it. It finds where each
-// panel and its strip show as the splits and the bars lay them out, from the Rect its
-// area gives, which its host also hands the outermost dock, a seam being dragged too, as
-// its split follows it, and while a drag goes on it frames where a drop would put the
-// panel dragged. Of an editor holding several files,
-// as the editors its host connects say, the file it shows moves: into a new editor, or
-// into the editor in the target's middle. It keeps the panels as a person left them in
-// .vulpen/layout.log beside the view's manifest, saved as they change, as the edits that
-// make the manifest's panels these, and as the view starts as its manifest has it,
-// arranges them so again, by panel restore, so they last between runs, though not
-// their tabs. A double click on a panel's strip, as on one of its tabs, gives it the
-// docks' whole room, the others none, by panel maximize, and another gives them their
-// room back. At the end of each strip it draws a close
-// mark, whose press hides the panel, as its button does. Where the bar its area is the
-// rest of parts its strip from it by a seam, as the menubar's, it draws that seam as a
-// divider: a drag on it up past the middle of the strip hides the bar, its size 0, and
-// down past it shows it again, at the size it had, the strip's size never changing.
+// Moves, hides, shows and maximizes the panels of its own view, each as edits of the
+// docks that seat them in the view's manifest: one log group, which a save keeps and a
+// replay rebuilds (V08). It finds where each panel and its strip show, from its area,
+// which its host also hands the outermost dock. It keeps the panels as a person left
+// them in .vulpen/layout.log beside the manifest, so they last between runs, though not
+// their tabs.
 class Docking final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string name = node.name();
@@ -618,20 +590,19 @@ class Docking final : public VP::Operator {
     _saved = std::move(text);
   }
 
-  // The kept file's lines on this view, as a script's run; the first a change refuses
-  // stops it, the lines before staying, as a file kept before the manifest changed past
-  // it may hold one, and the next change saves them as they are. No tab comes back, so a
-  // panel the docking part added goes, as a last tab closed takes it: an editor's at
-  // once, a Perform panel's as the sweep finds its deck holding none. A line naming an
-  // editor's file, as a file kept while tabs came back holds, is left out. The docks go
-  // in the order they nest, as a file kept before moves ordered them may list them
-  // otherwise.
-  // Its lines change the panels as the manifest has them, so panels the file keeps as
-  // they are need none, and panels moved otherwise are refused before a line changes
-  // them. The panels are as the manifest has them when no edit makes them so, as the
-  // file is written: the view as edited holds a param the manifest sets on a node inside
-  // a panel's on the panel's own, so it never reads the same as the manifest's view,
-  // which the file port hands unfolded.
+  // Runs the kept file's lines on this view, as a script runs. The first line a change
+  // refuses stops it, the lines before it staying, as a file kept before the manifest
+  // changed may hold one; the next change saves the panels as they are then. No tab comes
+  // back, so a panel the docking part added goes, as a last tab closed takes it: an
+  // editor's at once, a Perform panel's once the sweep finds its deck holding none. A
+  // line naming an editor's file, which a file kept while tabs came back may hold, is
+  // left out. The docks go in the order they nest, since a file kept before moves ordered
+  // them may list them otherwise.
+  // The lines change the panels as the manifest has them, so panels moved otherwise are
+  // refused before a line changes them. The panels count as the manifest's when no edit
+  // makes them so, not when the views read the same: the view as edited holds, on the
+  // panel's own node, a param the manifest sets on a node inside the panel, so it never
+  // reads the same as the manifest's view, which the file port hands unfolded.
   void restore(VP::Call &call) {
     const std::filesystem::path kept(_kept);
     const std::vector<std::string> names = call.files().list(kept.parent_path().string());
@@ -845,9 +816,11 @@ class Docking final : public VP::Operator {
   }
 
   // A press on a strip grabs its panel, a drag past a few pixels takes it, and letting go
-  // on another panel moves it there; a press on its close mark hides it. A seam pressed,
-  // which its split's drag moves, moves the panels beside it as it goes, their strips and
-  // marks with them, as the split works out its ratio, which it sets as it is let go.
+  // on another panel moves it there; a press on its close mark hides it, as its button
+  // does. A double click on a strip, as on one of its tabs, maximizes its panel, and
+  // another gives the others their room back. A seam pressed, which its split's drag
+  // moves, moves the panels beside it as it goes, their strips and marks with them, as
+  // the split works out its ratio, which it sets as it is let go.
   void follow(VP::Cook &frame, const VP::Event &event, glm::uvec2 cell) {
     if (event.kind == VP::Event::Kind::pointer) {
       _pointer = event.at;
