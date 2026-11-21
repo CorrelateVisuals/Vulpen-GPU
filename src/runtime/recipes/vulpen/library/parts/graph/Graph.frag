@@ -26,6 +26,9 @@ float covered(vec2 at, float apart) {
   return max(cover.x, cover.y);
 }
 
+// "I am come a light into the world, that whosoever believeth on me should not abide in
+// darkness." John 12:46
+
 // From each pixel's top left, as a Rect counts, worked out from the zoom with no
 // derivatives, so every GPU draws the same lines (GLSL02).
 void main() {

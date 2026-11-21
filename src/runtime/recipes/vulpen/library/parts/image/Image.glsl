@@ -13,3 +13,6 @@ layout(set = 1, binding = 0) uniform Pass {
                    // contracts/Still.glsl says; nothing while none reaches it
   uint holds;      // from its C++: 1 while the still holds it, which then shows instead
 } pass;
+
+// "Believe me that I am in the Father, and the Father in me: or else believe me for the
+// very works' sake." John 14:11

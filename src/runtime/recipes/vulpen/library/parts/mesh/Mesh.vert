@@ -16,6 +16,8 @@ vec4 seen(vec3 at) {
   return vec4(view.x * lens.x, -view.y * lens.y, view.z - pass.near, view.z);
 }
 
+// "For in him dwelleth all the fulness of the Godhead bodily." Colossians 2:9
+
 void main() {
   const Triangle triangle = pass.triangles.at[gl_InstanceIndex];
   const int corner = gl_VertexIndex;

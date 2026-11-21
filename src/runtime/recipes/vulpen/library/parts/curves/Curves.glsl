@@ -12,6 +12,9 @@ layout(set = 1, binding = 0) uniform Pass {
   Palette palette; // a connection: a color a role
 } pass;
 
+// "And the glory which thou gavest me I have given them; that they may be one, even as we
+// are one:" John 17:22
+
 // A curve is a strip of quads along its length, as many as view.vlp's vertex_count holds.
 const int segments = 16;
 const float half_width = 1.0; // in pixels

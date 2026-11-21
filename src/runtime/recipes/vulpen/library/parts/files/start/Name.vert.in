@@ -22,6 +22,10 @@ const vec3 colors[3] =
 layout(location = 0) out vec3 color;
 // layout(location = 1) out vec2 uv; // [8]
 
+// "For the Lamb which is in the midst of the throne shall feed them, and shall lead them
+// unto living fountains of waters: and God shall wipe away all tears from their eyes."
+// Revelation 7:17
+
 void main() {
   gl_Position = vec4(corners[gl_VertexIndex % 3], 0.0, 1.0);
   // gl_Position.xy *= pass.scale;                        // [1]

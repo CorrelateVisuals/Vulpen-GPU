@@ -7,5 +7,8 @@
 [manifest]
 version = 1
 
+# "For whom he did foreknow, he also did predestinate to be conformed to the image of his
+# Son, that he might be the firstborn among many brethren." Romans 8:29
+
 [node "image-file"]
 image = picture=R8G8B8A8_SRGB

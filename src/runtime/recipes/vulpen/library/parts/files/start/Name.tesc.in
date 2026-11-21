@@ -19,6 +19,9 @@ layout(location = 0) out vec3 colors[];
 // layout(location = 1) in vec2 uv[];   // [8]
 // layout(location = 1) out vec2 uvs[]; // [8]
 
+// "Now are we sure that thou knowest all things, and needest not that any man should ask
+// thee: by this we believe that thou camest forth from God." John 16:30
+
 void main() {
   gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
   colors[gl_InvocationID] = color[gl_InvocationID];

@@ -21,6 +21,9 @@ layout(location = 0) in vec3 colors[];
 layout(location = 0) out vec3 color;
 // layout(location = 1) out vec2 uv; // [8]
 
+// "For where two or three are gathered together in my name, there am I in the midst of
+// them." Matthew 18:20
+
 void main() {
   const vec3 near = gl_TessCoord; // to each corner, together 1
   gl_Position = near.x * gl_in[0].gl_Position + near.y * gl_in[1].gl_Position +

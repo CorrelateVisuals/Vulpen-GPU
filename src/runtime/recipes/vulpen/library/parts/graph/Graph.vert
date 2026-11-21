@@ -4,6 +4,9 @@ layout(location = 0) flat out vec2 origin;
 layout(location = 1) flat out vec4 ink;
 layout(location = 2) flat out int filled; // a box's inside, not the area's lines
 
+// "He that descended is the same also that ascended up far above all heavens, that he
+// might fill all things.)" Ephesians 4:10
+
 // A quad over the area, whose every pixel the fragment shader finds the ground's lines
 // for, so they cover it whole at any zoom. With no zoom yet it folds to a point and
 // draws nothing, since the zero would divide there (GLSL02).

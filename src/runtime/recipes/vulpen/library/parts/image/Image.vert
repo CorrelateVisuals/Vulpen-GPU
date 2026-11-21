@@ -9,6 +9,10 @@ Texture showing() {
   return Texture(pass.holds != 0u ? pass.held.index : pass.picture.index);
 }
 
+// "That which we have seen and heard declare we unto you, that ye also may have
+// fellowship with us: and truly our fellowship is with the Father, and with his Son Jesus
+// Christ." 1 John 1:3
+
 // Letterboxed: as large as fits in the Rect at the image's own aspect, and centered, so
 // what is behind the Rect shows beside it; then moved and zoomed about the Rect's top
 // left, as its C++ says. Each corner is kept inside the Rect, its image coordinate moved

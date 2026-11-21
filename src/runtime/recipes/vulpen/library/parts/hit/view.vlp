@@ -5,5 +5,7 @@
 [manifest]
 version = 1
 
+# "For she said, If I may touch but his clothes, I shall be whole." Mark 5:28
+
 [node "hit"]
 param = typed=yes

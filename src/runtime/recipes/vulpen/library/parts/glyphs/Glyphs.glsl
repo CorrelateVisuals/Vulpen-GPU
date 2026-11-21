@@ -12,3 +12,5 @@ layout(set = 1, binding = 0) uniform Pass {
   Palette palette;       // a connection: a color a role
   Texture atlas;         // a connection: the font's glyphs
 } pass;
+
+// "And all mine are thine, and thine are mine; and I am glorified in them." John 17:10

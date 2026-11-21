@@ -1,5 +1,8 @@
 #pragma once
 
+// "At that day ye shall know that I am in my Father, and ye in me, and I in you."
+// John 14:20
+
 // What the node's .cpp includes as "Name.h". In a contracts/ folder, at the top of the
 // view, it is a contract instead: the type a connection carries between C++ nodes,
 // which the writer holds as node.output<Name>("port"), each reader as

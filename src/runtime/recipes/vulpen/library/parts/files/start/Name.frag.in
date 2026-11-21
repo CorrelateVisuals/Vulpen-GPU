@@ -20,6 +20,8 @@ layout(location = 0) in vec3 color;
 // hands what it sees back to C++, as [5].
 layout(location = 0) out vec4 pixel;
 
+// "In him was life; and the life was the light of men." John 1:4
+
 void main() {
   pixel = vec4(color, 1.0);
   // pixel.rgb *= pass.tint;                  // [1]

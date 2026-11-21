@@ -22,6 +22,9 @@ layout(location = 0) in vec3 colors[];
 layout(location = 0) out vec3 color;
 // layout(location = 1) out vec2 uv; // [8]
 
+// "He was in the world, and the world was made by him, and the world knew him not."
+// John 1:10
+
 void main() {
   const float middle =
       (gl_in[0].gl_Position.y + gl_in[1].gl_Position.y + gl_in[2].gl_Position.y) / 3.0;

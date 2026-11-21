@@ -4,6 +4,9 @@
 [manifest]
 version = 1
 
+# "He said, I am the voice of one crying in the wilderness, Make straight the way of the
+# Lord, as said the prophet Esaias." John 1:23
+
 [node "curves"]
 vertex_count   = 96         # 16 segments of 6 vertices, as Curves.glsl counts them
 instance_count = curves

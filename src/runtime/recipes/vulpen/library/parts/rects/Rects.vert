@@ -2,6 +2,9 @@
 
 layout(location = 0) flat out vec4 fill;
 
+// "For other foundation can no man lay than that is laid, which is Jesus Christ."
+// 1 Corinthians 3:11
+
 void main() {
   const Rect rect = pass.rects.at[gl_InstanceIndex];
   gl_Position =

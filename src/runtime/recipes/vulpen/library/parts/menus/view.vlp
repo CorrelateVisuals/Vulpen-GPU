@@ -11,4 +11,7 @@
 [manifest]
 version = 1
 
+# "So then after the Lord had spoken unto them, he was received up into heaven, and sat on
+# the right hand of God." Mark 16:19
+
 [node "menus"]

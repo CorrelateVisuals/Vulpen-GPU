@@ -12,3 +12,6 @@ layout(set = 1, binding = 0) uniform Pass {
   float near;          // how near the eye a point may lie and still show
   DepthWrite depth;    // a triangle hides what lies behind it
 } pass;
+
+// "But if I do, though ye believe not me, believe the works: that ye may know, and
+// believe, that the Father is in me, and I in him." John 10:38

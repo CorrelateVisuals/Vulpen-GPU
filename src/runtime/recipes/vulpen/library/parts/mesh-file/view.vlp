@@ -6,5 +6,8 @@
 [manifest]
 version = 1
 
+# "But made himself of no reputation, and took upon him the form of a servant, and was
+# made in the likeness of men:" Philippians 2:7
+
 [node "mesh-file"]
 param = most=65536

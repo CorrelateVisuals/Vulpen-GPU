@@ -7,6 +7,9 @@
 [manifest]
 version = 1
 
+# "Hereby know ye the Spirit of God: Every spirit that confesseth that Jesus Christ is
+# come in the flesh is of God:" 1 John 4:2
+
 [node "mesh"]
 vertex_count   = 3
 instance_count = triangles

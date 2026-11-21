@@ -3,6 +3,10 @@
 layout(location = 0) flat out vec4 fill;
 layout(location = 1) flat out vec4 room; // the area's left, top, right and bottom
 
+// "But thou, Beth-lehem Ephratah, though thou be little among the thousands of Judah, yet
+// out of thee shall he come forth unto me that is to be ruler in Israel; whose goings
+// forth have been from of old, from everlasting." Micah 5:2
+
 // Along the cubic its writer's handles shape, a quad a segment, half_width either side.
 void main() {
   const Curve curve = pass.curves.at[gl_InstanceIndex];

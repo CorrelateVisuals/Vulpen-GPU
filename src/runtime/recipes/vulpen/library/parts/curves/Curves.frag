@@ -4,6 +4,8 @@ layout(location = 0) flat in vec4 fill;
 layout(location = 1) flat in vec4 room;
 layout(location = 0) out vec4 color;
 
+// "And the light shineth in darkness; and the darkness comprehended it not." John 1:5
+
 // Nothing past the area's edge, where a pixel's center counts as a Rect counts a point;
 // every draw blends premultiplied, so nothing there leaves what is drawn as it was, and
 // no fragment is discarded.

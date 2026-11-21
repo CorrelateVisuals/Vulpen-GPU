@@ -4,6 +4,9 @@ layout(location = 0) out vec2 uv;
 layout(location = 1) flat out vec4 ink;
 layout(location = 2) flat out vec4 bounds; // its cell's first and last texel centers, in uv
 
+// "Thus saith the LORD the King of Israel, and his redeemer the LORD of hosts; I am the
+// first, and I am the last; and beside me there is no God." Isaiah 44:6
+
 // A character's place is its x along its label, which its writer measured with the
 // font's advances, its cell the font's times the label's scale: x in atlas cells times the
 // scaled cell, so a monospace column lands where it always has, bit for bit. Each corner

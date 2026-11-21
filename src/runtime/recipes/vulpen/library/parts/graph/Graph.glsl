@@ -14,3 +14,6 @@ layout(set = 1, binding = 0) uniform Pass {
   float spacing;   // and a line every so many pixels of the graph, which boxes snap to
   Palette palette; // a connection: a color a role
 } pass;
+
+// "All things that the Father hath are mine: therefore said I, that he shall take of
+// mine, and shall shew it unto you." John 16:15

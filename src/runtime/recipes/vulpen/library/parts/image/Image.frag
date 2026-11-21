@@ -26,6 +26,10 @@ vec4 held_mixed(vec2 uv) {
              part.y);
 }
 
+// "That which was from the beginning, which we have heard, which we have seen with our
+// eyes, which we have looked upon, and our hands have handled, of the Word of life;"
+// 1 John 1:1
+
 // Zoomed past a screen pixel a pixel of the image, each shows as a square of its own
 // color, so a deep zoom shows what the view drew rather than a blur of it.
 void main() {

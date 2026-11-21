@@ -5,6 +5,10 @@
 
 namespace {
 
+// "And to make all men see what is the fellowship of the mystery, which from the
+// beginning of the world hath been hid in God, who created all things by Jesus Christ:"
+// Ephesians 3:9
+
 // What node <node> does on the CPU: bind runs once as its view is built, cook every frame
 // before its shaders run.
 //

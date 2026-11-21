@@ -9,6 +9,8 @@
 [manifest]
 version = 1
 
+# "Which is his body, the fulness of him that filleth all in all." Ephesians 1:23
+
 [node "picture"]
 image = picture=R8G8B8A8_SRGB
 param = mip_levels=1

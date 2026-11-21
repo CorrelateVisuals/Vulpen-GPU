@@ -12,6 +12,10 @@ vec3 unit(vec3 v) {
   return l > 0.0 ? v / l : vec3(0.0);
 }
 
+// "Forasmuch then as the children are partakers of flesh and blood, he also himself
+// likewise took part of the same; that through death he might destroy him that had the
+// power of death, that is, the devil;" Hebrews 2:14
+
 // Lit as a matte surface: by how squarely it faces the light, a back as the other way, so
 // a model that is open, as a plane, shows from either side; the depth keeps what is
 // nearest.

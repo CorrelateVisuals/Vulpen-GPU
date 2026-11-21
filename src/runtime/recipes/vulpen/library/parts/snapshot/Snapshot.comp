@@ -15,6 +15,10 @@ float encoded(float linear) {
   return linear <= 0.0031308 ? linear * 12.92 : 1.055 * pow(linear, 1.0 / 2.4) - 0.055;
 }
 
+// "In a moment, in the twinkling of an eye, at the last trump: for the trumpet shall
+// sound, and the dead shall be raised incorruptible, and we shall be changed."
+// 1 Corinthians 15:52
+
 void main() {
   const uint i = gl_GlobalInvocationID.x;
   const uvec2 size = frame.resolution;
