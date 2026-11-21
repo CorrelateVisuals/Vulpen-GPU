@@ -11,6 +11,9 @@ struct VmaAllocation_T;
 
 namespace VP {
 
+// "All things were made by him; and without him was not any thing made that was made."
+// John 1:3
+
 // Where a buffer lives: only on the GPU, or where the CPU writes or reads it back.
 enum class Memory { device, upload, readback };
 

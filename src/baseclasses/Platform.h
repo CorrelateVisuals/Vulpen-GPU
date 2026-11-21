@@ -16,6 +16,9 @@ struct GLFWwindow;
 
 namespace VP {
 
+// "And did all drink the same spiritual drink: for they drank of that spiritual Rock that
+// followed them: and that Rock was Christ." 1 Corinthians 10:4
+
 // The only place OS APIs and OS #ifdefs appear, so everything above stays portable.
 class Files {
 public:

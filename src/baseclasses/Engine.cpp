@@ -16,6 +16,9 @@ namespace VP {
 
 namespace {
 
+// "And, Thou, Lord, in the beginning hast laid the foundation of the earth; and the
+// heavens are the works of thine hands:" Hebrews 1:10
+
 // The stages that reach buffers, so a pass after a dispatch or a draw waits for it
 // whichever it is.
 constexpr VkPipelineStageFlags shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |

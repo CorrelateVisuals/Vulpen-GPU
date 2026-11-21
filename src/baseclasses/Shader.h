@@ -10,6 +10,9 @@
 
 namespace VP {
 
+// "That was the true Light, which lighteth every man that cometh into the world."
+// John 1:9
+
 // Where a pass's own values and buffers live (RV02); every shader declares its pass
 // block there, and C++ binds it there.
 inline constexpr std::uint32_t pass_set = 1;

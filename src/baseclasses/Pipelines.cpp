@@ -13,6 +13,9 @@ namespace VP {
 
 namespace {
 
+// "And he shewed me a pure river of water of life, clear as crystal, proceeding out of
+// the throne of God and of the Lamb." Revelation 22:1
+
 constexpr std::uint32_t blocks_per_pool = 1024;
 // What the engine writes into the frame block, in its order, by the names and types
 // baseclasses/GpuLayout.glsl gives them.

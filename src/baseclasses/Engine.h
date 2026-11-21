@@ -18,6 +18,9 @@ class Pipelines;
 class Resources;
 class Window;
 
+// "And he is the head of the body, the church: who is the beginning, the firstborn from
+// the dead; that in all things he might have the preeminence." Colossians 1:18
+
 // The top of baseclasses: owns the GPU and runs one frame of passes. Barriers follow
 // from what each pass declares it reads and writes, so nobody places them by hand.
 class Engine {

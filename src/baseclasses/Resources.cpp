@@ -19,6 +19,9 @@ namespace VP {
 
 namespace {
 
+// "But my God shall supply all your need according to his riches in glory by Christ
+// Jesus." Philippians 4:19
+
 constexpr double bytes_a_gigabyte = 1e9; // as a person reads a size
 
 // Every allocation stays within what the GPU has free, so one it cannot hold fails before

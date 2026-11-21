@@ -15,6 +15,9 @@ class Mechanics;
 class Resources;
 class Window;
 
+// "Looking for that blessed hope, and the glorious appearing of the great God and our
+// Saviour Jesus Christ;" Titus 2:13
+
 // The window image one frame renders into, and what orders the frame around it.
 struct Target {
   std::uint32_t image = 0;

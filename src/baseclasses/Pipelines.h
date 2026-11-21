@@ -12,6 +12,10 @@
 
 namespace VP {
 
+// "Who being the brightness of his glory, and the express image of his person, and
+// upholding all things by the word of his power, when he had by himself purged our sins,
+// sat down on the right hand of the Majesty on high;" Hebrews 1:3
+
 // Where every image a shader samples or stores into lives, and the static samplers,
 // which are samplers[0] to samplers[3] (RV02).
 inline constexpr std::uint32_t images_set = 0;

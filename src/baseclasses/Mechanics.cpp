@@ -20,6 +20,9 @@ namespace VP {
 
 namespace {
 
+// "Where there is neither Greek nor Jew, circumcision nor uncircumcision, Barbarian,
+// Scythian, bond nor free: but Christ is all, and in all." Colossians 3:11
+
 constexpr auto no_timeout = std::numeric_limits<std::uint64_t>::max();
 constexpr float queue_priority = 1.0f;
 constexpr const char *validation_layer = "VK_LAYER_KHRONOS_validation";

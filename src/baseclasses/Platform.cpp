@@ -44,6 +44,9 @@ namespace VP {
 
 namespace {
 
+// "Look unto me, and be ye saved, all the ends of the earth: for I am God, and there is
+// none else." Isaiah 45:22
+
 constexpr std::size_t input_chunk = 4096;  // bytes of standard input one read takes
 constexpr std::size_t common_columns = 80; // as a terminal starts
 // At most this much input a frame, so input that never pauses cannot hold a frame.

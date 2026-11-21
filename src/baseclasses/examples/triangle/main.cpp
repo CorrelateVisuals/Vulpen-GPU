@@ -16,6 +16,8 @@
 // commands, so the GPU layer is shown whole by itself (RA00).
 namespace {
 
+// "The beginning of the gospel of Jesus Christ, the Son of God;" Mark 1:1
+
 constexpr VkExtent2D window_size{.width = 1280, .height = 720};
 constexpr std::uint32_t corners = 3;
 

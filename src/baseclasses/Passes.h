@@ -8,6 +8,9 @@
 
 namespace VP {
 
+// "I am the door: by me if any man enter in, he shall be saved, and shall go in and out,
+// and find pasture." John 10:9
+
 // An image draws render into instead of the window, in one render pass: a draw's own,
 // or the window of a view that the view hosting it takes. Its format's render pass, its
 // framebuffer and its size; with no framebuffer, as while it has no size, its draws

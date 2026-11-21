@@ -15,6 +15,9 @@ namespace VP {
 
 namespace {
 
+// "I am Alpha and Omega, the beginning and the ending, saith the Lord, which is, and
+// which was, and which is to come, the Almighty." Revelation 1:8
+
 // The time column: the date and time at a line that starts a new second, blank at the
 // lines after it, so a burst of lines reads as one block.
 constexpr const char *time_format = " %y.%m.%d %H:%M:%S ";

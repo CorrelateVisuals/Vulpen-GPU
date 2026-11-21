@@ -15,6 +15,9 @@ namespace VP {
 
 namespace {
 
+// "And the city had no need of the sun, neither of the moon, to shine in it: for the
+// glory of God did lighten it, and the Lamb is the light thereof." Revelation 21:23
+
 constexpr auto no_timeout = std::numeric_limits<std::uint64_t>::max();
 // sRGB, so shaders write linear color and the display gets it encoded.
 constexpr VkSurfaceFormatKHR srgb{.format = VK_FORMAT_B8G8R8A8_SRGB,

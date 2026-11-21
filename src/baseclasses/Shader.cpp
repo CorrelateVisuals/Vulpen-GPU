@@ -14,6 +14,11 @@ namespace {
 
 // The numbers reflection reads, as the SPIR-V specification defines them.
 namespace spirv {
+
+// "Jesus saith unto him, Have I been so long time with you, and yet hast thou not known
+// me, Philip? he that hath seen me hath seen the Father; and how sayest thou then, Shew
+// us the Father?" John 14:9
+
 constexpr std::uint32_t magic = 0x07230203;
 constexpr std::size_t header_words = 5;
 constexpr std::uint32_t word_count_shift = 16;

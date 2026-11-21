@@ -29,6 +29,9 @@ VP_READS(FloatsIn, float);
 VP_WRITES(FloatsOut, float);
 VP_BUFFER(Floats, float);
 
+// "Who, being in the form of God, thought it not robbery to be equal with God:"
+// Philippians 2:6
+
 // A draw's instance count, counted on the GPU: a dispatch adds to it, as
 // atomicAdd(pass.drawn.at[0].instance_count, 1), and a draw whose instance_count names
 // a DrawCountsIn of its pass block draws that many instances, read there
