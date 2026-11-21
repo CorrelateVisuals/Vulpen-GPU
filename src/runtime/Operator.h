@@ -44,6 +44,9 @@ class Engine;
 // compiles without its headers.
 struct View;
 
+// "And Jesus came and spake unto them, saying, All power is given unto me in heaven and
+// in earth." Matthew 28:18
+
 // The GLSL name of each type C++ may put in a pass block; the loader compares it with
 // the type the shader declares. glm's vectors are GLSL's, name for name.
 template <class T> inline constexpr std::string_view glsl_type{};

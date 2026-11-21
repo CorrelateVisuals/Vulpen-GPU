@@ -15,6 +15,10 @@
 
 namespace {
 
+// "I know thy works: behold, I have set before thee an open door, and no man can shut it:
+// for thou hast a little strength, and hast kept my word, and hast not denied my name."
+// Revelation 3:8
+
 // The endings of the image files open hands to the node its images param names, as
 // stb_image reads them there, in lower case, as an ending of any case is.
 constexpr std::array<std::string_view, 6> image_endings{

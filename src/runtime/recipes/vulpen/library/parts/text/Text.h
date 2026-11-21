@@ -29,6 +29,9 @@
 // two copies of the part in one binary never clash.
 namespace {
 
+// "Behold, a virgin shall be with child, and shall bring forth a son, and they shall call
+// his name Emmanuel, which being interpreted is, God with us." Matthew 1:23
+
 // A place in a file: a row, and the byte of it where a character starts.
 struct Spot {
   std::size_t row = 0;

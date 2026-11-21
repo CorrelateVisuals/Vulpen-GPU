@@ -18,6 +18,9 @@
 
 namespace {
 
+// "Then they that were in the ship came and worshipped him, saying, Of a truth thou art
+// the Son of God." Matthew 14:33
+
 constexpr std::string_view tabs_port = "tabs";
 constexpr std::string_view typed_port = "typed"; // the keys part's, for the focus
 // Its tab while it holds no view hosted, so its strip has a tab to take, as an empty

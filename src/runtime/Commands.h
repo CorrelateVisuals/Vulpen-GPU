@@ -11,6 +11,9 @@
 
 namespace VP {
 
+// "Teaching them to observe all things whatsoever I have commanded you: and, lo, I am
+// with you alway, even unto the end of the world. Amen." Matthew 28:20
+
 // Finds the view a command addresses by name (`triangle: node add …`). The views' owner
 // implements it, so the port reaches a view without including its owner.
 class ViewLookup {

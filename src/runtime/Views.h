@@ -23,6 +23,10 @@ struct Pass;
 struct Recipes;
 struct Wiring;
 
+// "Believest thou not that I am in the Father, and the Father in me? the words that I
+// speak unto you I speak not of myself: but the Father that dwelleth in me, he doeth the
+// works." John 14:10
+
 // Every view this process runs: the one it started with and the views it hosts (V03),
 // each with its schedule. A view's manifest names the views it hosts, so hosting follows
 // its edits and its manifest; a command reaches a hosted view by its name.

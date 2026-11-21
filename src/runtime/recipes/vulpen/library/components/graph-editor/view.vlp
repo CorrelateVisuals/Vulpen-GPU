@@ -11,6 +11,9 @@
 [manifest]
 version = 1
 
+# "I am the vine, ye are the branches: He that abideth in me, and I in him, the same
+# bringeth forth much fruit: for without me ye can do nothing." John 15:5
+
 [node "graph-editor"]
 
 [node "graph-editor.relations"]

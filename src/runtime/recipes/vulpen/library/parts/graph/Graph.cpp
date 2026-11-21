@@ -23,6 +23,8 @@
 
 namespace {
 
+// "I am the true vine, and my Father is the husbandman." John 15:1
+
 // A box is its border, then its fill, then its name's band, and one holding boxes is that
 // over its rows, then its sides and its bottom round the boxes inside it, which show
 // through; then a mark a port, where its curves land: a square where it writes, an

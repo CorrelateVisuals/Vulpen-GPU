@@ -19,6 +19,9 @@
 
 namespace {
 
+// "Therefore if any man be in Christ, he is a new creature: old things are passed away;
+// behold, all things are become new." 2 Corinthians 5:17
+
 constexpr std::string_view manifest = "view.vlp";
 // The folders at a view's top that hold what its nodes share (RV05, RV09), so neither is
 // a node's, nor any folder in them.

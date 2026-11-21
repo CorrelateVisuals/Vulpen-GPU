@@ -35,6 +35,9 @@
 // two copies of the part in one binary never clash.
 namespace {
 
+// "His eyes were as a flame of fire, and on his head were many crowns; and he had a name
+// written, that no man knew, but he himself." Revelation 19:12
+
 // A box a drag on a corner pulls, as it was when the corner was pressed: its place, from
 // the top left of the boxes inside the box holding it and from the graph's top left, its
 // size, the least it may be and the size its rows need.

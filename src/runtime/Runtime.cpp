@@ -33,6 +33,10 @@ namespace VP {
 
 namespace {
 
+// "And the seventh angel sounded; and there were great voices in heaven, saying, The
+// kingdoms of this world are become the kingdoms of our Lord, and of his Christ; and he
+// shall reign for ever and ever." Revelation 11:15
+
 constexpr const char *usage =
     "usage: vulpen <view.vlp> [<view.vlp>...] [--frames N] [--first-frame N] [--fps N]\n"
     "              [--size WxH] [--log error|warn|info|debug] [--log-file FILE]\n"

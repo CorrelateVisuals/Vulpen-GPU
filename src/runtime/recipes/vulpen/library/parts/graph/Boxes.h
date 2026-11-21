@@ -27,6 +27,9 @@
 // connections and the relations between them.
 namespace {
 
+// "In my Father's house are many mansions: if it were not so, I would have told you. I go
+// to prepare a place for you." John 14:2
+
 constexpr std::uint32_t node_room = 256; // boxes shown at most; the rest are cut
 // The nodes, folders and files a box lists, at most, as large as its rows need; a row
 // more stands for the rest, which the pointer over it shows, so a folder of many files

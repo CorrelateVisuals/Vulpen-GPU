@@ -17,6 +17,9 @@
 
 namespace {
 
+// "And he saith unto him, Verily, verily, I say unto you, Hereafter ye shall see heaven
+// open, and the angels of God ascending and descending upon the Son of man." John 1:51
+
 constexpr std::string_view typed_port = "typed"; // the keys part's, which panes take too
 // The connections bringing a view's window to its pane while that view is not the one
 // presented, named for the pane, and what a pane's name, and its room's connection's,

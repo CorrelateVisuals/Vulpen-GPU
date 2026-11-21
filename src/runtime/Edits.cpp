@@ -29,6 +29,9 @@ namespace {
 
 using Arguments = std::span<const std::string_view>;
 
+// "And as a vesture shalt thou fold them up, and they shall be changed: but thou art the
+// same, and thy years shall not fail." Hebrews 1:12
+
 // What an edit knows besides the view and its words: the file and line it comes from,
 // which a node it changes keeps, and the views hosted beside the view, whose windows a
 // connection may take as it takes those of the views the view hosts.

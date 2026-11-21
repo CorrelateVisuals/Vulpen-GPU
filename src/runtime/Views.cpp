@@ -27,6 +27,9 @@ namespace VP {
 
 namespace {
 
+// "That they all may be one; as thou, Father, art in me, and I in thee, that they also
+// may be one in us: that the world may believe that thou hast sent me." John 17:21
+
 // When the file was last written. One that is gone reads as never written, so the next
 // build tries it again.
 std::filesystem::file_time_type stamp(const std::filesystem::path &file) {

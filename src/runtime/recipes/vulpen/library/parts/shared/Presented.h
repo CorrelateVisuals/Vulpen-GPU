@@ -15,6 +15,9 @@ namespace {
 // projects' windows, the deck part, which shows one of those it holds, and the docking
 // part, which moves them between decks, agree (RV09).
 
+// "In the body of his flesh through death, to present you holy and unblameable and
+// unreproveable in his sight:" Colossians 1:22
+
 // The connection that presents a view, from the window of the view it shows.
 constexpr std::string_view presenting = "present";
 // The deck part's recipe, and its params: the views it holds, by name, joined by commas,

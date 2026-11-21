@@ -17,6 +17,9 @@
 
 namespace {
 
+// "He shall be great, and shall be called the Son of the Highest: and the Lord God shall
+// give unto him the throne of his father David:" Luke 1:32
+
 constexpr std::string_view picture = "picture"; // the port its shaders sample
 constexpr std::string_view still = "still"; // where a still says whether it holds a frame
 // As near as the wheel zooms it: ten times the graph's, so a view's pixels show whole

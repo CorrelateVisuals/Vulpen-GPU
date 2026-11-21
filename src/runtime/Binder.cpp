@@ -19,6 +19,8 @@ namespace VP {
 
 namespace {
 
+// "And he is before all things, and by him all things consist." Colossians 1:17
+
 // Views own their copies (V03), so the build names a node's module "view/folder".
 std::string module_of(const View &view, const Node &node) {
   return std::format("{}/{}", view.name, node.module.generic_string());

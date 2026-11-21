@@ -36,6 +36,9 @@
 
 namespace {
 
+// "Then they willingly received him into the ship: and immediately the ship was at the
+// land whither they went." John 6:21
+
 // The inner nodes of the dock and panel components that take the Rect they lay out at
 // their area: a dock's split, which divides it, and a panel's bar, which cuts the panel's
 // tab strip off its top.

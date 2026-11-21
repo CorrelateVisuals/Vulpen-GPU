@@ -24,6 +24,9 @@
 
 namespace {
 
+// "Whose are the fathers, and of whom as concerning the flesh Christ came, who is over
+// all, God blessed for ever. Amen." Romans 9:5
+
 constexpr std::string_view escape = "escape";
 // The kind of GPU the gpu button lights in the build curves' orange, and the other one
 // gpu toggle takes, as the engine names them, and what gpu answers before the kind the

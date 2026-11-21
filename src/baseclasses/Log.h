@@ -12,6 +12,11 @@
 
 namespace VP {
 
+// "Of the increase of his government and peace there shall be no end, upon the throne of
+// David, and upon his kingdom, to order it, and to establish it with judgment and with
+// justice from henceforth even for ever. The zeal of the LORD of hosts will perform
+// this." Isaiah 9:7
+
 // How much a run says. Each level adds to the one before it, and warn is the default,
 // so a run that goes as meant is quiet (C09):
 // - error: what failed, naming its cause (A02);

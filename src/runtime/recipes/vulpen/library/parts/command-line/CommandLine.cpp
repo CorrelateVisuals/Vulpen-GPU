@@ -38,6 +38,9 @@
 
 namespace {
 
+// "When Jesus therefore had received the vinegar, he said, It is finished: and he bowed
+// his head, and gave up the ghost." John 19:30
+
 constexpr std::string_view clear_screen = "\x1b[2J\x1b[H"; // ANSI: erase it, then home
 // Between the columns the terminal prints: a usage and what it does, or candidates.
 constexpr std::string_view column_gap = "  ";

@@ -13,6 +13,8 @@
 [manifest]
 version = 1
 
+# "The Father loveth the Son, and hath given all things into his hand." John 3:35
+
 [node "graph"]
 vertex_count   = 6
 instance_count = ground

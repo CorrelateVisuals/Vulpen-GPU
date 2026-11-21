@@ -28,6 +28,8 @@
 // off.
 namespace {
 
+// "For our God is a consuming fire." Hebrews 12:29
+
 // What the boxes show the cost of, as the heat param names it: the GPU's or the CPU's,
 // against the costliest box beside it, or against a budget in milliseconds.
 struct Heat {

@@ -25,6 +25,10 @@
 
 namespace {
 
+// "I am the living bread which came down from heaven: if any man eat of this bread, he
+// shall live for ever: and the bread that I will give is my flesh, which I will give for
+// the life of the world." John 6:51
+
 // How a path from the prompt's folder starts when it names a file there or the folder.
 constexpr std::string_view here = "./";
 // The terminal's command a pressed line goes through.

@@ -41,6 +41,9 @@ struct Bound;
 struct Held;
 struct Picture;
 
+// "But when the fulness of the time was come, God sent forth his Son, made of a woman,
+// made under the law," Galatians 4:4
+
 // What every schedule borrows from the modules that own it (A01). Runtime.cpp fills it
 // once, and whoever builds a schedule passes it on, so no builder includes those owners.
 struct Wiring {

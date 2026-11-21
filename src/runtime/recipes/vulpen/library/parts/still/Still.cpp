@@ -13,6 +13,9 @@
 
 namespace {
 
+// "And he arose, and rebuked the wind, and said unto the sea, Peace, be still. And the
+// wind ceased, and there was a great calm." Mark 4:39
+
 constexpr std::string_view picture = "picture"; // the port its shader copies from
 constexpr std::string_view held_port = "held";  // and stores the frame into
 constexpr std::string_view hold_key = "space";

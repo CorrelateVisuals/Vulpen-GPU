@@ -21,6 +21,9 @@
 // and two copies of the part in one binary never clash.
 namespace {
 
+// "Whosoever denieth the Son, the same hath not the Father: but he that acknowledgeth the
+// Son hath the Father also." 1 John 2:23
+
 // A name a node's C++ binds, as upload<glm::vec2>("corners"), by the file and the line
 // that bind it: in its shaders' pass block, which the shader declaring it takes, or a
 // port of a C++ connection, input or output; and whether the data leaves the C++ there,

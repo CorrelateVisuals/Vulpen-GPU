@@ -24,6 +24,9 @@
 
 namespace {
 
+// "Saying with a loud voice, Worthy is the Lamb that was slain to receive power, and
+// riches, and wisdom, and strength, and honour, and glory, and blessing." Revelation 5:12
+
 constexpr std::uint32_t row_room = 64;         // Items shown at most; the rest are cut
 constexpr std::uint32_t character_room = 4096; // their labels together
 constexpr std::int32_t margin = 3;             // between a column's rows and its frame
