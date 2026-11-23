@@ -287,7 +287,10 @@ inline std::filesystem::path folder_in(const View &view, std::string_view node) 
 // Whether a draw of the view renders into its window, so the view needs one, as the
 // engine opens a window by it and a GUI tells a project with something to show: a draw no
 // connection starts from, by the node holding its .frag, a fragment node's for a draw
-// split over two. One whose output is connected renders into an image instead.
+// split over two. One whose output is connected renders into an image instead. A
+// connection from its depth counts too, as a manifest does not tell a depth from a color:
+// a view whose only draw into the window has its depth connected opens none, and the
+// schedule refuses that draw for drawing into no window, which names the same fix.
 inline bool draws_into_window(const View &view) {
   return std::ranges::any_of(view.nodes, [&](const Node &node) {
     return holds_stage(node, fragment_stage) &&
