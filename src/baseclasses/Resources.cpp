@@ -319,18 +319,22 @@ Image Resources::image(VkExtent2D extent,
 // Every format an image may take can be sampled on most GPUs, but some cannot filter
 // 32-bit floats, and a linear sampler there reads what each vendor likes (GLSL02). Every
 // draw blends, and some GPUs cannot blend into 32-bit floats either. A store indexes
-// images[], which some GPUs cannot, and which the device then does not enable.
+// images[], which some GPUs cannot, and which the device then does not enable. A depth
+// is a draw's attachment, read nearest, as some GPUs filter none.
 bool Resources::samples(VkFormat format, Fill fill) const {
   VkFormatProperties properties{};
   vkGetPhysicalDeviceFormatProperties(_physical_device, format, &properties);
   const VkFormatFeatureFlags needed =
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
-      (fill == Fill::draw ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-                                VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
+      (fill == Fill::depth  ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+       : fill == Fill::draw ? VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+                                  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                                  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
        : fill == Fill::store
-           ? VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT
-           : VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
+           ? VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+                 VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT
+           : VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+                 VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
   VkPhysicalDeviceFeatures features{};
   vkGetPhysicalDeviceFeatures(_physical_device, &features);
   return (properties.optimalTilingFeatures & needed) == needed &&

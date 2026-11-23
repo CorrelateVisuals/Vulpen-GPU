@@ -117,7 +117,8 @@ public:
               Fill fill = Fill::copy,
               std::uint32_t mip_levels = 1) const;
   // Whether shaders may sample, filtered, an image of the format filled so; a draw also
-  // blends into it, and a dispatch stores into it from images[].
+  // blends into it, and a dispatch stores into it from images[]. A depth is sampled
+  // nearest, and a draw tests and writes it.
   bool samples(VkFormat format, Fill fill = Fill::copy) const;
   // The format every depth image takes: the first of D32_SFLOAT, X8_D24_UNORM_PACK32 and
   // D16_UNORM a draw tests and a shader samples on this GPU, as Vulkan promises the last.
