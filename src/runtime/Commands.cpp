@@ -372,6 +372,12 @@ struct Commands::Spec {
                               std::filesystem::path(word).has_parent_path());
   }
 
+  // A project's path counts from where vulpen started, not from the folder the prompt
+  // shows, so view load ../x names the same folder from every view it is typed in.
+  bool from_start(std::size_t argument) const {
+    return placeholders[std::min(argument, placeholders.size() - 1)] == "project";
+  }
+
   // Whether a line left its name out: the first word given is already of the next kind,
   // a word=value by its =, a file by its / or ., which no name holds; its command chooses
   // one (Call::keep_name). A connection's name may be dotted, as a drop's inside its
@@ -588,12 +594,15 @@ std::string Commands::view_named(std::vector<std::string_view> &words) const {
 std::vector<std::string> Commands::resolve(const Spec &spec,
                                            std::vector<std::string_view> &arguments,
                                            const std::filesystem::path &from) const {
+  const std::filesystem::path start = paths_from({});
   std::vector<std::string> paths;
   paths.reserve(arguments.size());
   for (std::size_t index = 0; index < arguments.size(); ++index)
-    if (spec.names_file(index, arguments[index]))
+    if (spec.names_file(index, arguments[index])) {
+      const std::filesystem::path &base = spec.from_start(index) ? start : from;
       arguments[index] =
-          paths.emplace_back(resolved_from(from, arguments[index]).string());
+          paths.emplace_back(resolved_from(base, arguments[index]).string());
+    }
   return paths;
 }
 
@@ -985,7 +994,8 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words,
 
 // A relative path names a file beside the one running (RP02), so a script and the files
 // it reads and writes move together; in a line typed, in the folder it was typed at, as
-// its prompt shows it, as in a shell; in any other, from where vulpen started.
+// its prompt shows it, as in a shell, but for a project (Spec::from_start); in any other,
+// from where vulpen started.
 std::filesystem::path Commands::paths_from(std::string_view typed_at) const {
   return _sourcing.empty() ? std::filesystem::path(typed_at)
                            : _sourcing.back().file.parent_path();

@@ -193,15 +193,19 @@ std::vector<std::string_view> lines_of(std::string_view text) {
 }
 
 // The folders and files where a path begun points, each as the whole word, from where the
-// line asking counts, as its <file> would resolve: the folder a person typed it at. A
-// name with a blank would split into two words, so it is left out, and a hidden one shows
-// once the name begun starts with a dot, as in a shell. A folder that cannot be listed,
-// as a file followed by /, is refused by the file port, naming why.
-std::vector<std::string> paths(VP::Call &call, std::string_view begun) {
+// line asking counts, as its <file> would resolve: the folder a person typed it at, or
+// for a <project>, where vulpen started, as its line resolves one. A name with a blank
+// would split into two words, so it is left out, and a hidden one shows once the name
+// begun starts with a dot, as in a shell. A folder that cannot be listed, as a file
+// followed by /, is refused by the file port, naming why.
+std::vector<std::string> paths(VP::Call &call, std::string_view begun, bool from_start) {
   const std::string_view folder = begun.substr(0, begun.find_last_of(separators) + 1);
   const bool hidden = begun.substr(folder.size()).starts_with('.');
+  const std::string listed =
+      from_start ? (std::filesystem::current_path() / folder).lexically_normal().string()
+                 : call.resolved(folder);
   std::vector<std::string> paths;
-  for (const std::string &name : call.files().list(call.resolved(folder)))
+  for (const std::string &name : call.files().list(listed))
     if ((hidden || !name.starts_with('.')) && name.find(' ') == std::string::npos)
       paths.push_back(std::string(folder).append(name));
   return paths;
@@ -214,7 +218,7 @@ std::vector<std::string> paths(VP::Call &call, std::string_view begun) {
 std::vector<std::string> folders(VP::Call &call, std::string_view begun) {
   const bool typed = std::filesystem::path(begun).has_parent_path();
   std::vector<std::string> folders;
-  for (std::string &path : paths(call, begun))
+  for (std::string &path : paths(call, begun, false))
     if (path.ends_with('/'))
       folders.push_back(typed ? std::move(path) : path.substr(0, path.size() - 1));
   const auto bare = [](std::filesystem::path path) {
@@ -407,7 +411,7 @@ std::vector<std::string> names(std::string_view word,
     names = ports_for(call, typed);
   } else if (kind == "<file>" || ((kind == "<project>" || kind == "<path>") &&
                                   std::filesystem::path(begun).has_parent_path())) {
-    names = paths(call, begun);
+    names = paths(call, begun, kind == "<project>");
   } else if (kind == "<project>") {
     names = listed_names(call, "view list projects");
   } else if (kind == "<path>") {
@@ -586,7 +590,7 @@ class CommandLine final : public VP::Operator {
   // started, as a shell names one, or where a graph is, as a connection to its place
   // brings it, the folder shown or a node's whose inside shows; the view vulpen started
   // with has none to show. A line typed counts its relative paths from that folder, as a
-  // shell does, and with none from where vulpen started.
+  // shell does, and with none from where vulpen started, as it counts a project's always.
   void follow(VP::Cook &frame) {
     const std::string_view now = frame.commands().current();
     const bool moved = _place && _place->folder != _placed;

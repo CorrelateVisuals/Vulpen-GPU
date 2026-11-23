@@ -82,13 +82,14 @@ class Projects final : public VP::Operator {
                 .lexically_normal();
     _new = node.command("view new [<project>]",
                         "hosts a new, empty view, a project's by name or a folder's by "
-                        "path, with none project1 on, the first free, and saves its "
-                        "view.vlp");
+                        "path from where vulpen started, with none project1 on, the "
+                        "first free, and saves its view.vlp");
     _load =
         node.command("view load <project>",
-                     "hosts the view of a project by name, or of a folder by path, "
-                     "or of the one folder in it holding a view, as a repository's; "
-                     "an app's name, as ide, hosts the app beside the projects again");
+                     "hosts the view of a project by name, or of a folder by path "
+                     "from where vulpen started, or of the one folder in it holding a "
+                     "view, as a repository's; an app's name, as ide, hosts the app "
+                     "beside the projects again");
     _save_as = node.command("view save as [<name>]",
                             "copies the view, its edits too, into a new project, with no "
                             "name the view's numbered on, as wave2, and works on the "

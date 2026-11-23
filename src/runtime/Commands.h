@@ -173,9 +173,9 @@ public:
   // Before the command's handler goes, so no run reaches it after.
   void remove(Command command);
   // A line from outside the port, in a group of its own; returns what its command
-  // answers. typed_at: the folder a person typed it at, which its relative paths count
-  // from, as send_typed's. Throws naming the mistake: a command nobody registered, or
-  // words its usage does not take.
+  // answers. typed_at: the folder a person typed it at, which its relative paths but a
+  // project's count from, as send_typed's. Throws naming the mistake: a command nobody
+  // registered, or words its usage does not take.
   std::string run(std::string_view line, std::string_view typed_at = {});
   std::string send(std::string_view line) override;
   std::string send_typed(std::string_view line, std::string_view folder) override;
