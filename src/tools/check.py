@@ -15,16 +15,16 @@ nightly: every preset built and tested, GPU-assisted validation, the nightly tes
 soaks, the long fuzz, examples-replay), the whole command sweep, and the simulated
 testers where docs/logs/beta-sim/ holds them, in a tree of their own. Once every preset
 is built, alone, the sweep runs beside the rest, in a copy of its own, as full's does.
-Some hours; its report also goes to docs/reports/.
+About an hour on 16 threads; its report also goes to docs/reports/.
 release: before main moves to this commit, run in a tree that holds the commit alone, as
 git worktree add makes one, with main behind it, so main fast-forwards to exactly what ran:
 nightly, then LOC.md as the builds count it (committed), the commit built as GitHub's
 source download holds it, and main's own lines run on main's build and this one
 (compare-main.py). Its report adds what they found and what to try by hand, and goes to
-docs/reports/ under the commit's name. Some hours. Before it, run the sweep's tab, walks
-and seen at the commit (command-sweep.py --only tab,walk,seen), about eight minutes: no
-other tier runs them, and a tool bug they find moves the commit, so the whole release
-would run again.
+docs/reports/ under the commit's name. About seventy minutes. Before it, run the sweep's
+tab, walks and seen at the commit (command-sweep.py --only tab,walk,seen), about eight
+minutes: no other tier runs them, and a tool bug they find moves the commit, so the
+whole release would run again.
 install-hook: a git pre-push hook running quick, which stops a push it fails (opt-in).
 
 Each step runs unless the step it needs did not pass, once that step ended, and the run
