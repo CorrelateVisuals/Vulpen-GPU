@@ -591,7 +591,9 @@ void Schedule::upload(const Bound &writer,
   const std::uint32_t levels = levels_of(filled, extent, mip_levels);
   const Image &image = image_for(writer, filled.name, extent, format, levels);
   std::vector<std::byte> chain(mip_level_offset(extent, format.bytes, levels));
-  std::ranges::copy(pixels, chain.begin());
+  // The image's pixels only: bytes past them, short of a whole pixel, would land past
+  // the chain of one level.
+  std::ranges::copy(pixels.first(count * format.bytes), chain.begin());
   make_mip_levels(chain, extent, format.format, levels);
   Buffer staged = _wiring.resources.buffer(
       chain.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::upload);
