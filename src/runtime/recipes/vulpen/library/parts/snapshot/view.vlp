@@ -2,7 +2,11 @@
 # file, wait frames after its file param names one, so what the lines before it changed
 # has drawn. Its host connects an image to its picture: the window of a view it hosts, as
 # from = ide:, or the image a draw renders into, both at the frame's size, up to 1920 by
-# 1080 pixels, one an invocation.
+# 1080 pixels, one an invocation. With frames above 1 it records: that many frames in a
+# row, at most 3600, each file numbered before its ending as wide as the count, as
+# shot-001.png to shot-450.png. Time counts frames at the run's rate (--fps, else 60), so
+# ffmpeg joins them at that rate, as browsers play it:
+# ffmpeg -framerate 60 -i shot-%03d.png -pix_fmt yuv420p -movflags +faststart shot.mp4
 [manifest]
 version = 1
 
@@ -12,3 +16,4 @@ version = 1
 [node "snapshot"]
 invocations = 2073600
 param       = wait=30
+param       = frames=1

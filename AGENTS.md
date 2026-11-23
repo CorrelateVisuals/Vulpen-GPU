@@ -23,7 +23,7 @@ Every action is a command (V06), and every command answers (RV10).
 - Flags: `--source <file>` runs a file of lines first, `--frames <n>` ends the run after n frames, `--size <w>x<h>` gives a run without a window its frame size, and `--log info` makes the run say more.
 - `log save <file>` writes the session as lines. `--source <file>` replays them to the same graph (V08), so a bug report can carry one.
 - To get numbers, run `./run.sh --wave --log info`: it fills a buffer on the GPU, and its `probe` node prints it. `probe stats` prints what each node costs per frame on the CPU and the GPU.
-- To get pictures, use the [`snapshot`](src/runtime/recipes/vulpen/library/parts/snapshot) part: it saves a PNG to the path in its `file` param, with no window open. [`update-readme-images.py`](src/tools/update-readme-images.py) and [`examples-replay.py`](src/tools/examples-replay.py) both drive headless runs by lines, so copy from them.
+- To get pictures, use the [`snapshot`](src/runtime/recipes/vulpen/library/parts/snapshot) part: it saves a PNG to the path in its `file` param, with no window open, and with `frames=N` it records N frames in a row for a video. [`update-readme-images.py`](src/tools/update-readme-images.py) and [`examples-replay.py`](src/tools/examples-replay.py) both drive headless runs by lines, so copy from them.
 
 ## Take care
 
