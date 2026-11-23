@@ -13,14 +13,18 @@ copies of its own (--jobs); and the sanitizer's build, with a share of the threa
 About twenty minutes on 16 threads; a change to the engine runs it before it lands.
 nightly: every preset built and tested, GPU-assisted validation, the nightly tests (the
 soaks, the long fuzz, examples-replay), the whole command sweep, and the simulated
-testers where docs/logs/beta-sim/ holds them, in a tree of their own. Some hours; its
-report also goes to docs/reports/.
+testers where docs/logs/beta-sim/ holds them, in a tree of their own. Once every preset
+is built, alone, the sweep runs beside the rest, in a copy of its own, as full's does.
+Some hours; its report also goes to docs/reports/.
 release: before main moves to this commit, run in a tree that holds the commit alone, as
 git worktree add makes one, with main behind it, so main fast-forwards to exactly what ran:
 nightly, then LOC.md as the builds count it (committed), the commit built as GitHub's
 source download holds it, and main's own lines run on main's build and this one
 (compare-main.py). Its report adds what they found and what to try by hand, and goes to
-docs/reports/ under the commit's name. Some hours.
+docs/reports/ under the commit's name. Some hours. Before it, run the sweep's tab, walks
+and seen at the commit (command-sweep.py --only tab,walk,seen), about eight minutes: no
+other tier runs them, and a tool bug they find moves the commit, so the whole release
+would run again.
 install-hook: a git pre-push hook running quick, which stops a push it fails (opt-in).
 
 Each step runs unless the step it needs did not pass, once that step ended, and the run
@@ -65,6 +69,10 @@ COPIES = "6"
 # A build beside the sweep's copies, which share the machine's threads among them: a
 # quarter more compiles at once, rather than twice one build's.
 BESIDE = str(max(1, (os.cpu_count() or 1) // 4))
+# Lavapipe's threads for nightly's sweep, one copy drawing beside the runs of vulpen in
+# this tree: as many as each of full's copies draws with, so the runs beside it keep the
+# rest. A sweep's rows are the same on any count.
+SWEEP_THREADS = str(max(1, (os.cpu_count() or 1) // int(COPIES)))
 TAIL = 30  # lines of a failed step's log the report shows, after those naming an error
 HOOK = """#!/bin/sh
 # Written by src/tools/check.py install-hook: each push runs its quick checks first, and
@@ -219,6 +227,18 @@ def unreleasable() -> str | None:
     return None
 
 
+def beside_sweep(steps: list[Step]) -> list[Step]:
+    """nightly's and release's steps, run as full runs its own: every configure and build
+    first, alone, as the release build times wave and takes the README's pictures; then
+    the runs of vulpen in this tree one at a time, in their order, beside the whole sweep,
+    whose copy lies outside out/, where no check for another vulpen of this tree looks."""
+    built = [step for step in steps if step.name.split()[0] in ("configure", "build")]
+    for step in steps:
+        step.chain = (None if step in built else
+                      "sweep" if step.name == "commands" else "tree")
+    return built + [step for step in steps if step not in built]
+
+
 def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
     python = sys.executable
     quick = preset("debug", window)
@@ -242,11 +262,12 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
                                   out / "command-sweep.md"], chain="sweep"),
                 *asan]
     if tier == "release":
-        return [*steps("nightly", out, window),
-                Step("lines counted", counted, "build debug"),
-                Step("download", lambda log: download(log, out)),
-                Step("compare main", [python, TOOLS / "compare-main.py", "--base", MAIN,
-                                      "--out", out / "compare-main"], "build debug")]
+        return beside_sweep([*steps("nightly", out, window),
+                             Step("lines counted", counted, "build debug"),
+                             Step("download", lambda log: download(log, out)),
+                             Step("compare main", [python, TOOLS / "compare-main.py",
+                                                   "--base", MAIN, "--out",
+                                                   out / "compare-main"], "build debug")])
     presets = ("debug", "release", "asan", "tsan")
     nightly = [*quick, *(step for name in presets[1:] for step in preset(name, window))]
     nightly += [Step("test gpu-validation", ["ctest", "--preset", "gpu-validation"],
@@ -255,10 +276,11 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
                 Step("test asan-nightly", ["ctest", "--preset", "asan-nightly"],
                      "build asan"),
                 Step("commands", [python, TOOLS / "command-sweep.py", "--report",
-                                  out / "command-sweep.md"])]
+                                  out / "command-sweep.md"],
+                     env={**os.environ, "LP_NUM_THREADS": SWEEP_THREADS})]
     if SIMULATION.exists():
         nightly.append(Step("simulation", lambda log: simulate(log, out)))
-    return nightly
+    return beside_sweep(nightly)
 
 
 def log_of(step: Step, out: Path) -> Path:
