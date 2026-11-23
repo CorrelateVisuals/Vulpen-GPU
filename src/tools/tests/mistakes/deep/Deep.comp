@@ -1,0 +1,10 @@
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(set = 1, binding = 0) uniform Pass {
+  DepthWrite depth; // a dispatch tests no depth, so its pass block may declare none
+} pass;
+
+void main() {
+}

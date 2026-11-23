@@ -1,0 +1,15 @@
+#include "baseclasses/GpuLayout.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(set = 1, binding = 0) uniform Pass {
+  Texture depth; // a connection: crowd's depth, kept for this pass
+} pass;
+
+// Reads the depth crowd left, nearest, as a pass after a draw does; what it reads stays
+// here, as only the reading is checked.
+void main() {
+  const float near = sample_nearest(pass.depth, vec2(0.5)).r;
+  if (near < 0.0)
+    return;
+}

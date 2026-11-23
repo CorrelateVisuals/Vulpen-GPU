@@ -17,8 +17,10 @@ than the image's format takes, a format there is not, image clear of a port that
 no image, a key there is not, a buffer C++ fills for another node's shader whose members
 sit elsewhere, given no room, or that nothing reads, a draw's image taken to no Texture,
 or given a format there is not, a draw that stores into an image, an image a dispatch
-stores into given another format than images[] declares or taken to no Texture, a draw
-whose .frag reads what its .vert writes nothing to, a draw split over two nodes whose
+stores into given another format than images[] declares, a size that is no width and
+height, or taken to no Texture, a draw's depth taken on from the window it draws into, a
+dispatch that declares a depth, a DrawCount C++ writes, a draw whose .frag reads what
+its .vert writes nothing to, a draw split over two nodes whose
 varyings meet at other locations or types or leave an input unreached, or whose
 fragment node declares a pass block, and a
 view's window taken from a view the view does not host, taken to a view, or taken to no
@@ -35,8 +37,10 @@ C++ fills an image with reach a shader pixel for pixel, through the node's own T
 through a connection and as 16-bit floats, stay through a rebuild, and come back after
 image clear when the node fills them again. The image a draw renders into reaches a
 dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
-with no window, and so does the image a dispatch stores into, that of a draw split over
-a vertex node and a fragment node, and the window of a view its host takes, drawn that
+with no window, and so does the image a dispatch stores into, that of a draw whose
+instances a dispatch counted on the GPU, whose depth a later pass samples, that of a
+draw split over a vertex node and a fragment node, and the window of a view its host
+takes, drawn that
 frame, and
 that of a view one beside it takes, as a GUI presents a project, though hosted after it,
 which a save of the view taking it leaves out (V03). The
@@ -87,6 +91,11 @@ PAINT = '[node "paint"]\nvertex_count = 3\n'
 LOOK = '[node "look"]\noperator = Look\ninvocations = 64\n'
 STAMP = '[node "stamp"]\ninvocations = 64\n'
 BRUSH = '[node "brush"]\nvertex_count = 3\n'
+COUNT = '[node "count"]\ninvocations = 4\n'
+CROWD = '[node "crowd"]\nvertex_count = 3\ninstance_count = drawn\n'
+SEEN = '[node "seen"]\ninvocations = 64\n'
+DEEP = '[node "deep"]\ninvocations = 64\n'
+TALLY = '[node "tally"]\noperator = Tally\nvertex_count = 3\ninstance_count = drawn\n'
 
 
 def split(fragment: str, *varyings: str) -> str:
@@ -124,6 +133,8 @@ def operator(name: str) -> str:
 MADE = SHAPE.replace("Shapes", "Sums") + connection("shapes", "maker.shapes", "shape.shapes")
 # The image paint draws, which look samples.
 PAINTED = connection("painted", "paint.color", "look.painted")
+# The instances count adds up on the GPU, which crowd draws.
+COUNTED = connection("counts", "count.drawn", "crowd.drawn")
 
 # What each view gets wrong, and what its error must say.
 CASES = {
@@ -213,6 +224,19 @@ CASES = {
                      "image canvas=R8_UNORM: a dispatch stores into R8G8B8A8_UNORM (images[]), R32_SFLOAT"),
     "store-reader": (HEAD + STAMP + SUM + connection("stamped", "stamp.canvas", "sum.values"),
                      "connection stamped: stamp stores an image, which values is no Texture"),
+    "store-size": (HEAD + STAMP + "param = canvas=big\n",
+                   "param canvas = big: an Image's size is its width and height in pixels"),
+    # paint opens the window: a view whose only draw into it has its depth connected
+    # opens none, as draws_into_window takes any connection from a draw for its image.
+    "depth-window": (HEAD + PAINT + COUNT + CROWD + SEEN + COUNTED
+                     + connection("deep", "crowd.depth", "seen.depth"),
+                     "connection deep: its depth reaches a later pass only from an image it "
+                     "draws into"),
+    "depth-dispatch": (HEAD + DEEP,
+                       "its pass block declares a depth, which only a draw tests"),
+    "count-written": (HEAD + TALLY + LOOK + connection("tallied", "tally.color", "look.painted"),
+                      "instance_count = drawn: a DrawCount counts on the GPU, which a "
+                      "dispatch adds to"),
     "varying-unwritten": (HEAD + '[node "rub"]\nvertex_count = 3\n' + LOOK
                           + connection("rubbed", "rub.color", "look.painted"),
                           "node rub: tint: its .frag reads a vec3 at location 1, which its "
@@ -227,7 +251,8 @@ CASES = {
     "fragment-block": (split("blot", "uv", "shade"),
                        "node blot: a fragment node declares no pass block yet"),
 }
-WINDOWED = {"draw-writes", "draw-counts"}
+# Draws into the window, which a run with no display refuses before what they check.
+WINDOWED = {"draw-writes", "draw-counts", "depth-window"}
 
 # Recipes of manifests only, for the recipe cases: each runs as the view at its path from
 # the recipes' folder, a part in vulpen's library, an app beside it, or a recipe of
@@ -488,6 +513,19 @@ def stored(vulpen: str, folder: Path) -> str | None:
     return None
 
 
+def counted(vulpen: str, folder: Path) -> str | None:
+    """Why a draw whose instance count count added up on the GPU did not reach look pixel
+    for pixel, or its depth did not reach seen, at the size --size gives a run with no
+    window, or None. With no instance drawn, look reads the cleared image."""
+    view = view_in(folder, "counted", HEAD + COUNT + CROWD + LOOK + SEEN + COUNTED
+                   + connection("crowded", "crowd.color", "look.painted")
+                   + connection("deep", "crowd.depth", "seen.depth"))
+    code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
+    if code != 0 or problems(output):
+        return f"counted: expected each pixel crowd drew, got exit {code}:\n{output}"
+    return None
+
+
 def halves(vulpen: str, folder: Path) -> str | None:
     """Why the image of a draw split over a vertex node and a fragment node, brush's
     varyings reaching ink, did not reach a dispatch after it in the same frame, pixel for
@@ -731,6 +769,7 @@ def main() -> None:
                             text(vulpen, folder),
                             offscreen(vulpen, folder),
                             stored(vulpen, folder),
+                            counted(vulpen, folder),
                             halves(vulpen, folder),
                             presented(vulpen, folder),
                             beside(vulpen, folder),
