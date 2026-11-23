@@ -1302,8 +1302,10 @@ UNWALKED = ("quit", "input", "help", "clear", "complete", "probe", "menu", "focu
             "panel", "mode", "gpu", "log save", "source", "jump", "find", "arrange")
 # Usages whose lines write files: the log keeps the graph edits they make, as recipe drop's
 # node add, not the files, so a log replayed where they are not rebuilds the graph alone.
+# A declare writes its field into a shader or a .cpp, as the file's own line.
 WRITES = ("new", "remove", "rename", "recipe", "view new", "view save",
-          "view rename", "view remove", "copy", "write")
+          "view rename", "view remove", "copy", "write", "param declare",
+          "connect declare")
 
 
 def walk(copy: Copy, seed: int, steps: int) -> None:
