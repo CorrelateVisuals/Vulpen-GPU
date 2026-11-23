@@ -56,8 +56,9 @@ endif()
 # Every view's modules and shaders, which the full build builds. vulpen needs only the
 # library's, so ./run.sh builds those and the projects it opens, and the live build each
 # view vulpen hosts, a target each, vulpen_view_<name>: a project that fails to build then
-# holds back no other, nor the start. The include map guards each like every build (A00):
-# the library by the gates over src/, a project by the gates over its own folder.
+# holds back no other, nor the start. The include map guards each like every build (A00),
+# each by the gates over its own folder: the library's over the recipes, all its live
+# build compiles, as vulpen's own build runs them over src/.
 add_custom_target(vulpen_modules ALL)
 add_dependencies(vulpen_modules gates)
 target_compile_definitions(runtime PRIVATE
@@ -136,8 +137,11 @@ endfunction()
 function(vulpen_recipes folder)
   vulpen_name(library ${folder})
   set_property(GLOBAL APPEND PROPERTY vulpen_read ${folder})
+  add_custom_target(vulpen_view_library_gates
+    COMMAND ${Python3_EXECUTABLE} ${tools}/gates.py ${CMAKE_BINARY_DIR} --view ${folder}
+    VERBATIM)
   add_custom_target(vulpen_view_library)
-  add_dependencies(vulpen_view_library gates)
+  add_dependencies(vulpen_view_library vulpen_view_library_gates)
   add_dependencies(vulpen_modules vulpen_view_library)
   add_dependencies(vulpen vulpen_view_library)
   set(vulpen ${folder}/vulpen)
