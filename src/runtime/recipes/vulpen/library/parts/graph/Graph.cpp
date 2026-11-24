@@ -718,10 +718,10 @@ void Graph::name_tab(VP::Cook &frame) {
   _tabs->back().command.clear();
 }
 
-// The boxes at the font's zoom, so their text is the size the editor's is, the font's
-// glyphs one to one: in the middle of the area while they fit in it with a margin round
-// them, else from their left or their top, as the wheel zooms out to see them all. Whole
-// pixels from the area's top left, so text stays as sharp as the font drew it.
+// Every box in the middle of the area, a margin round them, whatever the area's shape: at
+// the font's zoom, so their text is the size the editor's is, the font's glyphs one to
+// one, or as much farther as the boxes need to fit, wide or tall. Whole pixels from the
+// area's top left, so text at the font's zoom stays as sharp as the font drew it.
 void Graph::home() {
   _pan_zoom.home();
   _homed = _area->extent;
@@ -735,11 +735,11 @@ void Graph::home() {
     high = glm::max(high, box.at + glm::ivec2(box.extent));
   }
   const glm::vec2 room(_area->extent);
-  const glm::vec2 margin(margin_of());
-  const glm::vec2 size(high - low);
-  _pan_zoom.zoom = _drawn;
-  _pan_zoom.pan = glm::round(glm::max((room - size * _pan_zoom.zoom) / 2.0f, margin) -
-                             glm::vec2(low) * _pan_zoom.zoom);
+  const glm::vec2 size(glm::max(high - low, glm::ivec2(1)));
+  const glm::vec2 fits = glm::max(room - 2.0f * glm::vec2(margin_of()), 1.0f) / size;
+  _pan_zoom.zoom = std::min({_drawn, fits.x, fits.y});
+  _pan_zoom.pan =
+      glm::round((room - size * _pan_zoom.zoom) / 2.0f - glm::vec2(low) * _pan_zoom.zoom);
 }
 
 // The font's zoom, as zoom in changes it, is the graph's too, as a browser's zoom is the

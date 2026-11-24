@@ -118,14 +118,15 @@ def scroll(x: int, y: int, rows: int, width: int) -> list[str]:
 
 
 def fit(x: int, y: int, steps: int, width: int) -> list[str]:
-    """The wheel turned away from the graph over a point, so a level shows whole.
+    """The wheel turned away from the graph over a point, so a level shows smaller than
+    home shows it.
 
-    The graph draws at the text's zoom. A level too big for its area shows from its top
-    left, and zoom in grows the graph about the area's middle. So a scene zooms the text
+    The graph draws at the text's zoom, and home zooms out only as far as the level needs
+    to fit its area, while zoom in grows the graph about the area's middle once the wheel
+    has turned. So a scene that wants the bars' text larger than the level's zooms the text
     out first, where home puts the level in the middle, turns the wheel there, then zooms
     the text in. The bars grow with the text, so the point sits a little off the middle.
-    A level home shows from its left or top needs a point measured on a retake. 17 steps
-    are the most before the wheel leaves the level."""
+    17 steps are the most before the wheel leaves the level."""
     return scroll(x, y, -steps, width)
 
 
@@ -176,12 +177,11 @@ TILES = {
 # The sections' pictures: the manifest beside its graph, the project in the whole window,
 # the command line, the repository's top in the graph, and the ide inside its own graph.
 # Ray-cubes is held from the perform picture on, as the hold's lines show in the manifest
-# the editor holds. The ide's graph is wider than the window's shape, so its picture has
-# the text three steps smaller, where 17 steps of the wheel fit it.
+# the editor holds. The manifest's graph and the ide's are too wide for their areas, so
+# home fits each, and the ide's picture has the text three steps smaller, for its bars.
 DETAILS = {
     "manifest": [*CLEAR, "view load ray-cubes", "open",
-                 *panels("hide", "perform", "terminal"), *zoom_out(7),
-                 *fit(1385, 527, 17, 1920), "ide: zoom reset", *zoom(5), "ide: focus"],
+                 *panels("hide", "perform", "terminal"), *zoom(5), "ide: focus"],
     "perform": [*HELD, "ide: mode perform"],
     "cli": ["ide: mode edit", *panels("maximize", "terminal"),
             "ide: focus ide.terminal.command-line", *CLEAR, *typed("help"), *typed("ls"),
@@ -189,7 +189,7 @@ DETAILS = {
     "graph-repository": [*panels("maximize", "terminal", "graph"), *zoom_out(7),
                          *graph("../../"), *pause(60), *fit(960, 560, 4, 1920),
                          "ide: zoom reset", *zoom(5), "ide: focus"],
-    "graph-ide": [*zoom_out(3), *INSIDE_IDE, *pause(5), *fit(82, 364, 17, 1920), "ide: focus"],
+    "graph-ide": [*zoom_out(3), *INSIDE_IDE, *pause(5), "ide: focus"],
 }
 
 
@@ -213,7 +213,7 @@ DIVE = {
     "level-4": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/library/", 0)],
     "level-5": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/library/parts/", 4)],
     "level-6": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/library/parts/graph/", 1)],
-    "level-7": [*INSIDE_IDE, *pause(5), *fit(160, 168, 17, 2400), "ide: focus"],
+    "level-7": [*INSIDE_IDE, *pause(5), "ide: focus"],
 }
 README = Pictures(IMAGES, (Run(HERO, size="2400x860"), Run(TILES, size="1200x1200"),
                            Run(DETAILS), Run(DIVE, size="2400x860")),
