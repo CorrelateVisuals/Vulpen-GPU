@@ -561,6 +561,13 @@ class Copy:
         return [line[3:] for line in status.splitlines()
                 if ".vulpen/" not in line and "docs/statistics/" not in line]
 
+    def held(self) -> dict[str, str]:
+        """What each file changed outside the projects holds now, by its hash, empty for
+        one gone; so a walk, which puts nothing back between its lines, judges a line by
+        what it changed, not by the recipe an earlier recipe make wrote."""
+        return {path: hashlib.sha1((self.tree / path).read_bytes()).hexdigest()
+                if (self.tree / path).is_file() else "" for path in self.changed()}
+
     def start(self, state: State) -> Vulpen:
         """A new vulpen in the state, the copy put back first."""
         self.put_back()
@@ -945,14 +952,18 @@ def try_line(copy: Copy, vulpen: Vulpen, state: State, usage: Usage, variant: st
     return said
 
 
-def damage(copy: Copy, state: State, usage: Usage, lines: list[str]) -> bool:
+def damage(copy: Copy, state: State, usage: Usage, lines: list[str],
+           held: dict[str, str] | None = None) -> bool:
     """Files outside the projects that a line changed, which none of the lines named; a
     recipe make writes the recipe it names into the recipes' folder, and a view save force
-    an app's view.vlp there, as their help says."""
+    an app's view.vlp there, as their help says. held is what they held before the lines,
+    as Copy.held gives it, where the copy was not put back since."""
     named = [Path(word) for line in lines for word in line.split() if "/" in word]
     if any(line.startswith(("recipe make ", "view save force")) for line in lines):
         named.append(RECIPES)
-    changed = [path for path in copy.changed() if not path.startswith("projects/") and
+    held = held or {}
+    changed = [path for path, holds in copy.held().items()
+               if not path.startswith("projects/") and held.get(path) != holds and
                not any((copy.tree / path).is_relative_to((copy.tree / name).resolve())
                        for name in named)]
     if changed:
@@ -1339,13 +1350,14 @@ def walk(copy: Copy, seed: int, steps: int) -> None:
             # display, which no person's run has; the sweep tries it.
             if any("snapshot" in text for text in [*before, line]):
                 continue
+            held = copy.held()
             said = try_line(copy, vulpen, state, usage, variant, before, line)
             for text in said:
                 if found := re.search(r"command: view switch ?(\S*)$", text):
                     current = found.group(1)
                 elif found := re.search(r"command: view close (\S+)$", text):
                     current = "" if found.group(1) == current else current
-            damage(copy, state, usage, [*before, line])
+            damage(copy, state, usage, [*before, line], held)
         vulpen.idle()
         before = signature(vulpen)
         log = copy.said.parent / f"walk-{seed}.log"
