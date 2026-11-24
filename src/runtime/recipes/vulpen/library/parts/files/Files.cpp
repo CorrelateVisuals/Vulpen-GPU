@@ -236,11 +236,38 @@ void each_below(VP::FilePort &files,
     }
 }
 
+// The node a folder in a view is, which the nodes a line adds take unless a node or a
+// folder before it is that node already. A folder whose name no node's could be is
+// refused before anything is written (A02).
+void add_folder(std::vector<std::string> &nodes,
+                const Held &held,
+                const std::filesystem::path &inside) {
+  const VP::View &view = *held.view;
+  const std::optional<std::string> node = node_of(inside);
+  if (node == VP::top_node && VP::is_top(view, *node))
+    throw std::runtime_error(std::format(
+        "{}/ at the top of view {} would be a node named {}, which is the top "
+        "folder's: name the folder otherwise",
+        inside.generic_string(),
+        view.name,
+        *node));
+  if (!node || named(view, *node) || std::ranges::find(nodes, *node) != nodes.end())
+    return;
+  if (!VP::is_name(inside.filename().string()))
+    throw std::runtime_error(
+        std::format("{}/ in view {} would be node {}'s folder, as every folder in a "
+                    "view is a node's "
+                    "(RV08), but a node's name holds letters, digits, _ and -",
+                    inside.generic_string(),
+                    view.name,
+                    *node));
+  nodes.push_back(*node);
+}
+
 // Every folder in a view is a node's (RV08), so the folders a line makes there are nodes
 // the line adds: each folder on the way to the path no node names, and, for a folder
 // brought there, the path itself and every folder below it, as a copy or a move brings
-// them, parents first. A folder whose name no node's could be is refused before anything
-// is written (A02).
+// them, parents first.
 std::vector<std::string> nodes_for(VP::FilePort &files,
                                    const Held &held,
                                    bool folder,
@@ -248,25 +275,7 @@ std::vector<std::string> nodes_for(VP::FilePort &files,
   std::vector<std::string> nodes;
   const VP::View &view = *held.view;
   const auto add = [&](const std::filesystem::path &inside) {
-    const std::optional<std::string> node = node_of(inside);
-    if (node == VP::top_node && VP::is_top(view, *node))
-      throw std::runtime_error(std::format(
-          "{}/ at the top of view {} would be a node named {}, which is the top "
-          "folder's: name the folder otherwise",
-          inside.generic_string(),
-          view.name,
-          *node));
-    if (!node || named(view, *node) || std::ranges::find(nodes, *node) != nodes.end())
-      return;
-    if (!VP::is_name(inside.filename().string()))
-      throw std::runtime_error(
-          std::format("{}/ in view {} would be node {}'s folder, as every folder in a "
-                      "view is a node's "
-                      "(RV08), but a node's name holds letters, digits, _ and -",
-                      inside.generic_string(),
-                      held.view->name,
-                      *node));
-    nodes.push_back(*node);
+    add_folder(nodes, held, inside);
   };
   std::filesystem::path inside;
   for (const std::filesystem::path &part : held.inside) {
@@ -554,24 +563,39 @@ class Files final : public VP::Operator {
     call.reply("copied what the part in focus has selected");
   }
 
+  // A path a line makes, and the start a file is saved with; none for a folder.
+  using Made = std::pair<std::filesystem::path, std::optional<std::string>>;
+
   // Each path, all checked before one is made, so a line refused makes nothing: a folder
   // for one ending in / or with no extension, as a node's name has none, else a file, as
   // its start has it. In a view each folder made is a node the line adds, a node a start
   // needs a word of gets it where it has none, and each view is saved once.
   void make(VP::Call &call) const {
+    std::vector<Graphed> graphs;
+    std::string names;
+    for (const auto &[path, text] : to_make(call, graphs)) {
+      if (text)
+        call.files().save(path.string(), *text);
+      else
+        call.files().make(path.string());
+      names.append(names.empty() ? "" : ", ").append(shown(path)).append(text ? "" : "/");
+    }
+    call.reply(std::format("made {}{}", names, edit(call, graphs)));
+  }
+
+  // What a line makes, each path with its start, and the nodes it adds to each view's
+  // graph; refused for a path there already, or named twice.
+  std::vector<Made> to_make(VP::Call &call, std::vector<Graphed> &graphs) const {
     std::vector<std::filesystem::path> line; // the files it makes, which a start joins
     for (const std::string_view word : call.arguments())
       if (!folder_word(word))
         line.push_back(bare(word));
-    std::vector<std::pair<std::filesystem::path, std::optional<std::string>>> made;
-    std::vector<Graphed> graphs;
-    const auto taken = [&](const std::filesystem::path &path) {
-      return there(call.files(), path) || std::ranges::any_of(made, [&](const auto &one) {
-               return one.first == path;
-             });
-    };
-    const auto add = [&](const std::filesystem::path &path, bool folder) {
-      if (taken(path))
+    std::vector<Made> made;
+    for (const std::string_view word : call.arguments()) {
+      const std::filesystem::path path = bare(word);
+      const bool folder = folder_word(word);
+      if (there(call.files(), path) ||
+          std::ranges::find(made, path, &Made::first) != made.end())
         throw std::runtime_error(std::format("{} is there already", shown(path)));
       const std::optional<Held> held = held_by(call, path);
       Graphed *const graph = held ? &graphed(graphs, held->name) : nullptr;
@@ -582,18 +606,8 @@ class Files final : public VP::Operator {
           path,
           folder ? std::nullopt
                  : std::optional(started(call.files(), path, line, held, graph)));
-    };
-    for (const std::string_view word : call.arguments())
-      add(bare(word), folder_word(word));
-    std::string names;
-    for (const auto &[path, text] : made) {
-      if (text)
-        call.files().save(path.string(), *text);
-      else
-        call.files().make(path.string());
-      names.append(names.empty() ? "" : ", ").append(shown(path)).append(text ? "" : "/");
     }
-    call.reply(std::format("made {}{}", names, edit(call, graphs)));
+    return made;
   }
 
   // A file's start, by its extension: a shader's naming its node's C++, C++'s its class
