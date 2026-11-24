@@ -595,6 +595,100 @@ void file_boxes(Boxes &boxes, Building &building, const VP::Node &folder) {
   }
 }
 
+// The boxes of the nodes inside the scope, or at the top for none, each titled past the
+// scope's name, as many as there is room for.
+void node_boxes(Boxes &boxes,
+                Building &building,
+                const VP::View &flat,
+                std::size_t inside) {
+  const std::size_t past = boxes.scope.empty() ? 0 : boxes.scope.size() + 1;
+  for (std::size_t at = 0; at < flat.nodes.size(); ++at) {
+    if (building.parents[at] != inside || boxes.boxes.size() >= node_room)
+      continue;
+    const VP::Node &node = flat.nodes[at];
+    building.box_of_node[at] = boxes.boxes.size();
+    boxes.boxes.push_back({.name = node.name,
+                           .title = node.name.substr(past),
+                           .role = !building.folders ? VP_VIEW::role("node")
+                                   : node.name.substr(past).starts_with('.')
+                                       ? VP_VIEW::role("hidden")
+                                       : VP_VIEW::role("folder"),
+                           .has_inside = true});
+  }
+}
+
+// The boxes at the top that are no node's: the manifest's, which opens it, and one each
+// view it hosts.
+void top_boxes(Boxes &boxes, const VP::View &edited, bool folders) {
+  if (const std::string manifest = edited.file.filename().generic_string();
+      !folders && !manifest.empty() && boxes.boxes.size() < node_room)
+    boxes.boxes.push_back({.name = std::format("/{}", manifest),
+                           .title = manifest,
+                           .role = file_role(manifest),
+                           .opens = edited.file});
+  for (const VP::Child &child : edited.children)
+    if (boxes.boxes.size() < node_room)
+      boxes.boxes.push_back({.name = child.name,
+                             .title = child.name,
+                             .role = VP_VIEW::role("view"),
+                             .view = true});
+}
+
+// The strays' boxes: a file's, which opens it, and a folder's, named as a node inside the
+// scope would be.
+void stray_boxes(Boxes &boxes,
+                 const VP::View &edited,
+                 std::span<const std::string> strays) {
+  for (const std::string &stray : strays) {
+    if (boxes.boxes.size() >= node_room)
+      break;
+    if (!stray.ends_with('/')) {
+      boxes.boxes.push_back({.name = std::format("/{}", stray),
+                             .title = stray,
+                             .role = file_role(stray),
+                             .opens = edited.file.parent_path() / stray});
+      continue;
+    }
+    const std::string bare = stray.substr(0, stray.size() - 1);
+    boxes.boxes.push_back(
+        {.name = boxes.scope.empty() ? bare : std::format("{}.{}", boxes.scope, bare),
+         .title = stray,
+         .role = VP_VIEW::role("hidden"),
+         .stray = true});
+  }
+}
+
+// Each box's rows, a hosted view's listing its top nodes.
+void list_every_row(Boxes &boxes,
+                    const Building &building,
+                    const VP::View &flat,
+                    const VP::View &edited,
+                    std::span<const VP::View *const> hosted) {
+  for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
+    const auto child = static_cast<std::size_t>(
+        std::ranges::find(edited.children, boxes.boxes[box].name, &VP::Child::name) -
+        edited.children.begin());
+    const bool view = boxes.boxes[box].view && child < edited.children.size();
+    list_rows(boxes,
+              box,
+              building,
+              flat,
+              view ? &edited.children[child] : nullptr,
+              view && child < hosted.size() ? hosted[child] : nullptr);
+  }
+}
+
+// Each row's layers, those of the ends written from it and read into it.
+void layer_rows(Boxes &boxes) {
+  for (const End &end : boxes.ends) {
+    const auto layer = std::uint32_t{1} << static_cast<std::size_t>(end.layer);
+    if (end.from_row < boxes.boxes[end.from].ports)
+      boxes.rows[boxes.boxes[end.from].first + end.from_row].written_layers |= layer;
+    if (end.to_row < boxes.boxes[end.to].ports)
+      boxes.rows[boxes.boxes[end.to].first + end.to_row].read_layers |= layer;
+  }
+}
+
 // The boxes of a view as it runs, each recipe a node uses unfolded, or of a folder, a
 // level at a time. With a scope: the boxes of the nodes and files inside it, named from
 // it, none for an empty one; and beside them what lies outside it, where connections and
@@ -624,77 +718,18 @@ Boxes boxes_of(const VP::View &edited,
   const std::size_t inside = scope_of(flat, scope);
   if (inside != no_box)
     boxes.scope = flat.nodes[inside].name;
-  const std::size_t past = boxes.scope.empty() ? 0 : boxes.scope.size() + 1;
-  const auto add = [&](std::size_t at) {
-    if (boxes.boxes.size() >= node_room)
-      return;
-    const VP::Node &node = flat.nodes[at];
-    building.box_of_node[at] = boxes.boxes.size();
-    boxes.boxes.push_back({.name = node.name,
-                           .title = node.name.substr(past),
-                           .role = !folders ? VP_VIEW::role("node")
-                                   : node.name.substr(past).starts_with('.')
-                                       ? VP_VIEW::role("hidden")
-                                       : VP_VIEW::role("folder"),
-                           .has_inside = true});
-  };
-  for (std::size_t at = 0; at < flat.nodes.size(); ++at)
-    if (building.parents[at] == inside)
-      add(at);
+  node_boxes(boxes, building, flat, inside);
   if (inside != no_box)
     file_boxes(boxes, building, flat.nodes[inside]);
-  if (const std::string manifest = edited.file.filename().generic_string();
-      !folders && inside == no_box && !manifest.empty() && boxes.boxes.size() < node_room)
-    boxes.boxes.push_back({.name = std::format("/{}", manifest),
-                           .title = manifest,
-                           .role = file_role(manifest),
-                           .opens = edited.file});
-  for (const VP::Child &child : edited.children)
-    if (inside == no_box && boxes.boxes.size() < node_room)
-      boxes.boxes.push_back({.name = child.name,
-                             .title = child.name,
-                             .role = VP_VIEW::role("view"),
-                             .view = true});
-  for (const std::string &stray : strays) {
-    if (boxes.boxes.size() >= node_room)
-      break;
-    if (!stray.ends_with('/')) {
-      boxes.boxes.push_back({.name = std::format("/{}", stray),
-                             .title = stray,
-                             .role = file_role(stray),
-                             .opens = edited.file.parent_path() / stray});
-      continue;
-    }
-    const std::string bare = stray.substr(0, stray.size() - 1);
-    boxes.boxes.push_back(
-        {.name = boxes.scope.empty() ? bare : std::format("{}.{}", boxes.scope, bare),
-         .title = stray,
-         .role = VP_VIEW::role("hidden"),
-         .stray = true});
-  }
+  else
+    top_boxes(boxes, edited, folders);
+  stray_boxes(boxes, edited, strays);
   building.ports.resize(boxes.boxes.size());
   connect(boxes, building, flat);
   loose_ports(boxes, building, flat, ports);
   relate(boxes, building, relations, flat.connections.size());
-  for (std::size_t box = 0; box < boxes.boxes.size(); ++box) {
-    const auto child = static_cast<std::size_t>(
-        std::ranges::find(edited.children, boxes.boxes[box].name, &VP::Child::name) -
-        edited.children.begin());
-    const bool view = boxes.boxes[box].view && child < edited.children.size();
-    list_rows(boxes,
-              box,
-              building,
-              flat,
-              view ? &edited.children[child] : nullptr,
-              view && child < hosted.size() ? hosted[child] : nullptr);
-  }
-  for (const End &end : boxes.ends) {
-    const auto layer = std::uint32_t{1} << static_cast<std::size_t>(end.layer);
-    if (end.from_row < boxes.boxes[end.from].ports)
-      boxes.rows[boxes.boxes[end.from].first + end.from_row].written_layers |= layer;
-    if (end.to_row < boxes.boxes[end.to].ports)
-      boxes.rows[boxes.boxes[end.to].first + end.to_row].read_layers |= layer;
-  }
+  list_every_row(boxes, building, flat, edited, hosted);
+  layer_rows(boxes);
   return boxes;
 }
 
