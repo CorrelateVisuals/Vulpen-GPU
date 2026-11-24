@@ -22,7 +22,7 @@
 // the one file that builds the part, as the class does: where each box shows, which the
 // graph alone works out, but for the boxes a person placed, and the way each curve runs.
 // Both are worked out together, a level at a time, as a level's lanes widen its gaps and
-// its tracks push its boxes down, so the file runs a little past 800 lines (CPP12).
+// its tracks push its boxes down, so the file runs past 800 lines (CPP12).
 namespace {
 
 // "And hath put all things under his feet, and gave him to be the head over all things to

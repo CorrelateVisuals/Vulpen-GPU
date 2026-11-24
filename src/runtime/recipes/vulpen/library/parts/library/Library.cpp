@@ -1,3 +1,6 @@
+// The library part's operator. It runs past 800 lines (CPP12), as a class in the unnamed
+// namespace, so that two copies of the part never clash, keeps its methods to one file:
+// list, drop, sync and make; what a drop copies is in Copies.h beside it.
 #include "Copies.h"
 
 #include "runtime/Operator.h"

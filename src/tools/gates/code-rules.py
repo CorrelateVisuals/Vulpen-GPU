@@ -22,6 +22,9 @@
 - RC08: no comment there runs past 15 lines, so a class's comment stays what the class is
   for, and what the code does is said where it does it, rather than growing a clause
   with each feature (C07).
+- CPP12: a C++ file past 800 lines says why at its top, naming CPP12 in its first
+  comment, so a file that grows past what one reads whole is split or kept so on
+  purpose, when it crosses the line rather than when someone counts.
 
 Comments and string literals are left out of every other rule, so prose and log text
 never trip one.
@@ -58,6 +61,7 @@ DOCS = ROOT / "docs" / "architecture"
 # RC05 and RC08 read the comments of these; the other rules hold for C++ alone.
 COMMENTED = ("*.h", "*.cpp", "*.in", "*.glsl", "*.comp", "*.vert", "*.frag")
 LONGEST_COMMENT = 15  # lines a comment may run (RC08)
+LONGEST_FILE = 800  # lines a C++ file runs without saying why (CPP12)
 DEFINED = re.compile(r"\*\*([A-Z]+\d+)\b")
 CITED = re.compile(r"\(([^()\n]*)\)")
 ID = re.compile(r"\b[A-Z]+\d+\b")
@@ -100,6 +104,24 @@ def long_comments(name: str, text: str) -> list[str]:
                          "rest where the code does it (RC08)")
         run = 0
     return found
+
+
+def long_file(name: str, text: str) -> list[str]:
+    """A file past LONGEST_FILE lines whose first comment, the first run of lines that
+    hold only one, does not name CPP12."""
+    lines = text.splitlines()
+    if len(lines) <= LONGEST_FILE:
+        return []
+    first = []
+    for line in lines:
+        if line.lstrip().startswith("//"):
+            first.append(line)
+        elif first:
+            break
+    if any("CPP12" in line for line in first):
+        return []
+    return [f"{name}: {len(lines)} lines, past {LONGEST_FILE}: split it, or say why at its "
+            "top, naming CPP12 in its first comment (CPP12)"]
 
 
 def citations(name: str, text: str, ids: set[str]) -> list[str]:
@@ -166,6 +188,7 @@ def main() -> None:
         found += long_comments(name_of(file), text)
         if file.suffix in (".h", ".cpp"):
             found += problems(file)
+            found += long_file(name_of(file), text)
     if found:
         sys.exit("\n".join(found))
 

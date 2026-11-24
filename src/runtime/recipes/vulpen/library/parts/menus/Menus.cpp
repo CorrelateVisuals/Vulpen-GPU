@@ -1,3 +1,7 @@
+// The menus part's operator. It runs past 800 lines (CPP12), as a class in the unnamed
+// namespace, so that two copies of the part never clash, keeps its methods to one file:
+// opening a menu, the words its columns find and the line a press hands on; how menu.ini
+// reads is in Lines.h beside it.
 #include "Lines.h"
 
 #include "contracts/Item.h"

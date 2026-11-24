@@ -1,3 +1,6 @@
+// How a schedule binds and cooks its nodes' operators. It runs past 800 lines (CPP12):
+// the Bind and the Cook an operator reaches are two classes of the schedule's, each whole
+// in one place, beside the binds and the cooks that hand them to a node.
 #include "runtime/Schedule.h"
 
 #include "runtime/Bound.h"

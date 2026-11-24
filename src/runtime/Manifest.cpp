@@ -1,3 +1,7 @@
+// The .vlp text of a view, both ways. It runs past 800 lines (CPP12): the reader, the
+// writer that puts back what a person wrote around each line, and the unfolding of the
+// recipes a view uses each follow the same sections and words (V04), so a change to the
+// language changes them side by side.
 #include "runtime/Manifest.h"
 
 #include "baseclasses/Platform.h"

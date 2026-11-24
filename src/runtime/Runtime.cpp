@@ -1,3 +1,7 @@
+// The top of the tree, which owns every module and runs the loop. It runs past 800 lines
+// (CPP12): the flags a run starts with, the loop with its rebuilds and swaps, and the
+// commands that choose a GPU and how windows show all reach the modules only it holds
+// (A01).
 #include "runtime/Runtime.h"
 
 #include "baseclasses/Engine.h"

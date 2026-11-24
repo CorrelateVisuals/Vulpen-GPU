@@ -1,3 +1,7 @@
+// A schedule's checks of a view as it binds. It runs past 800 lines (CPP12): the checks
+// of each node's stages and fields, of each connection and of the ports none joins share
+// the search for a port alike, so an error names the line that fixes it (A02), and so
+// does the list of ports a part reads.
 #include "runtime/Schedule.h"
 
 #include "runtime/Bound.h"

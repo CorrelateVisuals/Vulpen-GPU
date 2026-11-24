@@ -1,3 +1,6 @@
+// The general ports a node reads besides commands. It runs past 800 lines (CPP12): input,
+// files, the terminal and sound are each fed to every node by one owner, so each frame's
+// events reach them all alike (A01).
 #include "runtime/Ports.h"
 
 #include "baseclasses/Log.h"
