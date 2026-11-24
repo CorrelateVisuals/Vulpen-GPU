@@ -109,9 +109,7 @@ class Panes final : public VP::Operator {
                top,
                _view,
                frame.commands().current(),
-               shown_by(*frame.view(_view)),
-               _started);
-    _started = true;
+               shown_by(*frame.view(_view)));
     if (now != _selected) {
       _previous = std::exchange(_selected, std::string(now));
       _joining.push_back(_selected);
@@ -471,7 +469,6 @@ class Panes final : public VP::Operator {
   const VP::View *_seen = nullptr;    // its view, as the frame before found it
   std::string _selected;              // the view presented, or about to be
   std::string _previous;              // the one before it
-  bool _started = false;  // after the first frame, which may present the one hosted last
   bool _cooked = false;   // once, so the frame after the first lets go of what none hosts
   bool _let_go = false;   // of the views the decks held that no line hosts
   bool _dirty = true;     // the panes, their rooms and the windows follow what is

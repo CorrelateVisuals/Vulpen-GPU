@@ -65,20 +65,21 @@ project_of(const Find &view_of, Projects &&projects, std::string_view current) {
   return {};
 }
 
-// The project to present: the current view's project; at the first frame, while none is
-// presented, the one hosted last, so a run hosting projects shows one at once; else the
-// one presented, while the current view is none of them, as the GUI's own or the cli.
-// It points into the views, so it is copied before a line replaces them.
+// The project to present: the current view's project; else the one presented, while the
+// current view is none of them, as the GUI's own or the cli; else the one hosted last, so
+// a run hosting projects shows one at once, and so does one whose presented view closed
+// as lines went on to a view of none, as a replay of its log, which starts with none
+// presented, does too (V08). It points into the views, so it is copied before a line
+// replaces them.
 template <class Find>
 std::string_view wanted(const Find &view_of,
                         const VP::View &top,
                         std::string_view own,
                         std::string_view current,
-                        std::string_view presented,
-                        bool started) {
+                        std::string_view presented) {
   auto hosted = projects(top, own);
   const std::string_view project = project_of(view_of, hosted, current);
-  if (!project.empty() || started || !presented.empty())
+  if (!project.empty() || !presented.empty())
     return !project.empty() ? project : presented;
   std::string_view newest;
   for (const VP::Child &child : hosted)

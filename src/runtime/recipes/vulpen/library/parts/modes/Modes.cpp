@@ -91,8 +91,7 @@ class Modes final : public VP::Operator {
                *call.view(""),
                _view,
                call.commands().current(),
-               presented,
-               _started)
+               presented)
             .empty()) {
       _unperformed = true;
       return;
@@ -121,8 +120,7 @@ class Modes final : public VP::Operator {
                *frame.view(""),
                _view,
                frame.commands().current(),
-               presented,
-               _started);
+               presented);
     const bool none = next.empty();
     watch_buttons(frame, presented.empty() && none);
     const bool loaded =
@@ -294,7 +292,7 @@ class Modes final : public VP::Operator {
   std::string _name;
   std::string _view;      // the one it runs in, which its lines change
   std::string _returning; // in focus as perform mode began, and again in edit mode
-  bool _started = false;  // after the first frame, which may present the view hosted last
+  bool _started = false;  // after the first frame, whose views a run starts with
   const VP_VIEW::Rect *_area = nullptr;
   const VP_VIEW::Typed *_typed = nullptr;
   VP_VIEW::Rect *_edit = nullptr;
