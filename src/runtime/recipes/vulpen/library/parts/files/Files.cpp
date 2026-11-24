@@ -158,7 +158,12 @@ std::string filled(std::string text, std::string_view from, std::string_view to)
 
 // A row of a start's way: commented out, and the comment after its code begins with the
 // way's number, or with two, as `// pass.results.at[i] = 0.0; // [2] [5]`. Where its //
-// is, where that comment is, and the numbers; none for any other row.
+// is, where that comment is, and the numbers; none for any other row. Each number is a
+// digit in brackets and a space.
+constexpr std::string_view comment_mark = "// ";
+constexpr std::string_view way_comment = "// [";
+constexpr std::size_t way_number_width = 4; // as `[2] `
+
 struct WayRow {
   std::size_t mark = 0;
   std::size_t comment = 0;
@@ -167,14 +172,15 @@ struct WayRow {
 
 std::optional<WayRow> way_row(std::string_view row) {
   const std::size_t mark = row.find_first_not_of(' ');
-  if (mark == std::string_view::npos || !row.substr(mark).starts_with("// "))
+  if (mark == std::string_view::npos || !row.substr(mark).starts_with(comment_mark))
     return std::nullopt;
-  WayRow found{.mark = mark, .comment = row.find("// [", mark + 3)};
+  WayRow found{.mark = mark,
+               .comment = row.find(way_comment, mark + comment_mark.size())};
   if (found.comment == std::string_view::npos)
     return std::nullopt;
-  for (std::size_t at = found.comment + 3;
+  for (std::size_t at = found.comment + comment_mark.size();
        at + 2 < row.size() && row[at] == '[' && row[at + 2] == ']';
-       at += 4)
+       at += way_number_width)
     found.numbers.push_back(row[at + 1]);
   if (found.numbers.empty())
     return std::nullopt;
@@ -185,40 +191,32 @@ std::optional<WayRow> way_row(std::string_view row) {
 // pass block's first and last rows.
 bool block_row(std::string_view row, bool opens) {
   const std::size_t mark = row.find_first_not_of(' ');
-  if (mark == std::string_view::npos || !row.substr(mark).starts_with("// ") ||
+  if (mark == std::string_view::npos || !row.substr(mark).starts_with(comment_mark) ||
       way_row(row))
     return false;
-  const std::string_view code = row.substr(mark + 3);
+  const std::string_view code = row.substr(mark + comment_mark.size());
   return opens ? code.ends_with('{') : code.starts_with('}');
-}
-
-// The rows of a text, without their line breaks, the last after the last break.
-std::vector<std::string> rows_of(std::string_view text) {
-  std::vector<std::string> rows;
-  for (std::size_t at = 0; at <= text.size();) {
-    const std::size_t end = std::min(text.find('\n', at), text.size());
-    rows.emplace_back(text.substr(at, end - at));
-    at = end + 1;
-  }
-  return rows;
 }
 
 // A start with the ways given joined: each row of a way whose numbers are all given
 // uncommented, its comment kept in its column, three on as the // before its code goes,
 // and around them the rows commented out that open and close their block.
 std::string joined(std::string_view text, std::string_view ways) {
-  std::vector<std::string> rows = rows_of(text);
+  std::vector<std::string> rows = rows_of_text(text);
   std::vector<bool> taken(rows.size());
+  const std::size_t width = comment_mark.size(); // what uncommenting takes off
   for (std::size_t at = 0; at < rows.size(); ++at)
     if (const std::optional<WayRow> way = way_row(rows[at]);
         way && std::ranges::all_of(way->numbers, [&](char number) {
           return ways.find(number) != std::string_view::npos;
         })) {
       const std::string &row = rows[at];
-      rows[at] = std::format("{}{}   {}",
-                             row.substr(0, way->mark),
-                             row.substr(way->mark + 3, way->comment - way->mark - 3),
-                             row.substr(way->comment));
+      rows[at] =
+          std::format("{}{}{}{}",
+                      row.substr(0, way->mark),
+                      row.substr(way->mark + width, way->comment - way->mark - width),
+                      std::string(width, ' '),
+                      row.substr(way->comment));
       taken[at] = true;
     }
   for (std::size_t open = 0; open < rows.size(); ++open) {
@@ -231,7 +229,7 @@ std::string joined(std::string_view text, std::string_view ways) {
     const auto after = taken.begin() + static_cast<std::ptrdiff_t>(close);
     if (close < rows.size() && std::find(inside, after, true) != after)
       for (const std::size_t at : {open, close})
-        rows[at].erase(rows[at].find("// "), 3);
+        rows[at].erase(rows[at].find(comment_mark), width);
   }
   std::string start;
   for (std::size_t at = 0; at < rows.size(); ++at)

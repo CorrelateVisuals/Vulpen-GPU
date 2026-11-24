@@ -59,6 +59,7 @@ constexpr float corner_reach = 12.0f;
 constexpr float corner_out = 6.0f;
 constexpr float corner_arm = 12.0f;
 constexpr float corner_width = 2.0f;
+constexpr float corner_share = 0.25f; // of the box's shorter side, the most either takes
 // Zoomed in this near, the graph shows the inside of the box under the pointer, however
 // many boxes home made room for, so a box is gone into as close at
 // every level; zoomed out to this share of as near as home is, as far as the wheel goes
@@ -265,6 +266,13 @@ VP_VIEW::Rect between(glm::vec2 from, glm::vec2 to, std::uint32_t role) {
   return {.offset = low,
           .extent = glm::uvec2(glm::max(high - low, glm::ivec2(0))),
           .role = role};
+}
+
+// How far a corner reaches into a box, as its press or its mark's arms: as far as given,
+// never past the corner's share of the box's shorter side.
+float corner_in(const VP_VIEW::Rect &box, float most) {
+  return std::min(
+      most, static_cast<float>(std::min(box.extent.x, box.extent.y)) * corner_share);
 }
 
 } // namespace
@@ -1756,8 +1764,7 @@ void Graph::write_corners(std::span<VP_VIEW::Rect> rects, std::uint32_t &written
   const VP_VIEW::Rect shown = box(_hovered.box);
   const glm::vec2 low(shown.offset);
   const glm::vec2 high = low + glm::vec2(shown.extent);
-  const float arm = std::min(
-      corner_arm, static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
+  const float arm = corner_in(shown, corner_arm);
   for (const bool left : {true, false})
     for (const bool top : {true, false}) {
       const std::uint32_t role = _hovered.corner == glm::bvec2(left, top) ? pulled : arms;
@@ -2113,9 +2120,7 @@ Under Graph::under(glm::vec2 point) const {
     const VP_VIEW::Rect shown = box(at);
     const glm::vec2 low(shown.offset);
     const glm::vec2 high = low + glm::vec2(shown.extent);
-    const float reach =
-        std::min(corner_reach,
-                 static_cast<float>(std::min(shown.extent.x, shown.extent.y)) / 4.0f);
+    const float reach = corner_in(shown, corner_reach);
     const bool left = point.x < low.x + reach;
     const bool top = point.y < low.y + reach;
     const bool near = point.x >= low.x - corner_out && point.x < high.x + corner_out &&

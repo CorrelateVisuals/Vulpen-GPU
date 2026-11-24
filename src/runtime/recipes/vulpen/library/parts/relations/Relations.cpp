@@ -102,6 +102,10 @@ std::string_view trim(std::string_view text) {
 
 // An id as a document defines it and a file cites it: capitals, then two digits or
 // three, as RV00 or CPP12.
+constexpr std::size_t id_letters_most = 5;
+constexpr std::size_t id_digits_least = 2;
+constexpr std::size_t id_digits_most = 3;
+
 std::size_t id_length(std::string_view text, std::size_t at) {
   std::size_t end = at;
   while (end < text.size() && text[end] >= 'A' && text[end] <= 'Z')
@@ -112,8 +116,10 @@ std::size_t id_length(std::string_view text, std::size_t at) {
   const std::size_t digits = end - at - letters;
   const bool word =
       end == text.size() || !std::isalnum(static_cast<unsigned char>(text[end]));
-  return letters > 0 && letters <= 5 && (digits == 2 || digits == 3) && word ? end - at
-                                                                             : 0;
+  return letters > 0 && letters <= id_letters_most && digits >= id_digits_least &&
+                 digits <= id_digits_most && word
+             ? end - at
+             : 0;
 }
 
 // The ids a document defines, each to the document: a bullet that starts with one in

@@ -29,6 +29,19 @@ constexpr std::size_t extended_format_bytes = 40;
 constexpr std::size_t extensible_format = 24;
 constexpr std::uint32_t wave_header = 44; // RIFF, fmt and data heads, as written
 constexpr std::uint32_t wave_format_bytes = 16;
+// The RIFF layout: a file opens with RIFF, the size after it and WAVE, then chunks, each
+// an id of four letters and its size before its body. Its fields are little-endian, of
+// two bytes or four. In the fmt chunk's body, where the channels, the rate and the bits
+// of a sample lie, after the format.
+constexpr std::size_t riff_id = 4;
+constexpr std::size_t riff_kind = 8;    // where WAVE lies
+constexpr std::size_t riff_chunks = 12; // where the first chunk starts
+constexpr std::size_t chunk_head = 8;   // an id and a size
+constexpr std::size_t short_field = sizeof(std::uint16_t);
+constexpr std::size_t long_field = sizeof(std::uint32_t);
+constexpr std::size_t fmt_channels = 2;
+constexpr std::size_t fmt_rate = 4;
+constexpr std::size_t fmt_bits = 14;
 
 inline std::uint32_t wave_word(std::string_view bytes, std::size_t at, std::size_t size) {
   std::uint32_t word = 0;
@@ -62,24 +75,26 @@ inline std::vector<float> wave_read(std::string_view bytes, std::string_view fil
   const auto refuse = [&](std::string_view why) {
     return std::runtime_error(std::format("{} is no WAV file this reads: {}", file, why));
   };
-  if (bytes.size() < 12 || bytes.substr(0, 4) != "RIFF" || bytes.substr(8, 4) != "WAVE")
+  if (bytes.size() < riff_chunks || bytes.substr(0, riff_id) != "RIFF" ||
+      bytes.substr(riff_kind, riff_id) != "WAVE")
     throw refuse("it holds no RIFF WAVE header");
   std::uint16_t format = 0, channels = 0, bits = 0;
   std::uint32_t rate = 0;
-  for (std::size_t at = 12; at + 8 <= bytes.size();) {
-    const std::string_view id = bytes.substr(at, 4);
-    const std::size_t size = wave_word(bytes, at + 4, 4);
-    const std::size_t body = at + 8;
+  for (std::size_t at = riff_chunks; at + chunk_head <= bytes.size();) {
+    const std::string_view id = bytes.substr(at, riff_id);
+    const std::size_t size = wave_word(bytes, at + riff_id, long_field);
+    const std::size_t body = at + chunk_head;
     if (body + size > bytes.size())
       throw refuse(std::format("its {} chunk runs past its end", id));
     if (id == "fmt " && size >= wave_format_bytes) {
-      format = static_cast<std::uint16_t>(wave_word(bytes, body, 2));
+      format = static_cast<std::uint16_t>(wave_word(bytes, body, short_field));
       if (format == wave_extensible && size >= extended_format_bytes)
-        format =
-            static_cast<std::uint16_t>(wave_word(bytes, body + extensible_format, 2));
-      channels = static_cast<std::uint16_t>(wave_word(bytes, body + 2, 2));
-      rate = wave_word(bytes, body + 4, 4);
-      bits = static_cast<std::uint16_t>(wave_word(bytes, body + 14, 2));
+        format = static_cast<std::uint16_t>(
+            wave_word(bytes, body + extensible_format, short_field));
+      channels =
+          static_cast<std::uint16_t>(wave_word(bytes, body + fmt_channels, short_field));
+      rate = wave_word(bytes, body + fmt_rate, long_field);
+      bits = static_cast<std::uint16_t>(wave_word(bytes, body + fmt_bits, short_field));
     } else if (id == "data") {
       const bool integers = format == wave_pcm && (bits == 16 || bits == 24);
       if (!integers && !(format == wave_float && bits == 32))
@@ -113,17 +128,17 @@ inline std::string wave_write(std::span<const float> samples) {
   const auto data = static_cast<std::uint32_t>(samples.size() * sizeof(float));
   const std::uint32_t block = wave_channels * sizeof(float);
   bytes.append("RIFF");
-  word(wave_header - 8 + data, 4);
+  word(wave_header - chunk_head + data, long_field);
   bytes.append("WAVEfmt ");
-  word(wave_format_bytes, 4);
-  word(wave_float, 2);
-  word(wave_channels, 2);
-  word(wave_rate, 4);
-  word(wave_rate * block, 4);
-  word(block, 2);
-  word(8 * sizeof(float), 2);
+  word(wave_format_bytes, long_field);
+  word(wave_float, short_field);
+  word(wave_channels, short_field);
+  word(wave_rate, long_field);
+  word(wave_rate * block, long_field);
+  word(block, short_field);
+  word(8 * sizeof(float), short_field);
   bytes.append("data");
-  word(data, 4);
+  word(data, long_field);
   for (const float sample : samples) {
     std::uint32_t bits = 0;
     std::memcpy(&bits, &sample, sizeof bits);

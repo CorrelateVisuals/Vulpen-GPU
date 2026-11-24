@@ -4,6 +4,7 @@
 #include "runtime/Operator.h"
 #include "runtime/View.h"
 #include "shared/Ini.h"
+#include "shared/Words.h"
 
 #include <algorithm>
 #include <array>
@@ -112,17 +113,6 @@ inline std::optional<BufferType> buffer_declared(std::string_view row, bool comm
                       .commented = commented};
   }
   return std::nullopt;
-}
-
-// The rows of a text, without their line breaks, the last after the last break.
-inline std::vector<std::string> rows_of_text(std::string_view text) {
-  std::vector<std::string> rows;
-  for (std::size_t at = 0; at <= text.size();) {
-    const std::size_t end = std::min(text.find('\n', at), text.size());
-    rows.emplace_back(text.substr(at, end - at));
-    at = end + 1;
-  }
-  return rows;
 }
 
 // What a live #include "..." row names; none for any other row.

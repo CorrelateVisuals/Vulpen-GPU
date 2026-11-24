@@ -16,6 +16,17 @@ namespace {
 // and languages, should serve him: his dominion is an everlasting dominion, which shall
 // not pass away, and his kingdom that which shall not be destroyed." Daniel 7:14
 
+// The rows of a text, without their line breaks, the last after the last break.
+inline std::vector<std::string> rows_of_text(std::string_view text) {
+  std::vector<std::string> rows;
+  for (std::size_t at = 0; at <= text.size();) {
+    const std::size_t end = std::min(text.find('\n', at), text.size());
+    rows.emplace_back(text.substr(at, end - at));
+    at = end + 1;
+  }
+  return rows;
+}
+
 // UTF-8 (RFC 3629): each byte of a character past ASCII is at least this.
 constexpr unsigned char past_ascii = 0x80;
 
