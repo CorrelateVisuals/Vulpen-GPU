@@ -344,53 +344,65 @@ std::optional<std::size_t> draw_stage(const std::filesystem::path &file) {
                                : std::optional(std::size_t(found - stages.begin()));
 }
 
-// What a stage writes out or reads in, a line each: past a layout, whose location it
-// keeps, and the words that say how it is interpolated, in or out, a type and a name,
-// before an array's size; not a block, nor a built-in, nor a compute shader's in, which
-// names no value.
-std::vector<Varying> varyings_of(std::string_view text) {
+// A declaration's words, up to its ; or an array's size, but those that say how its
+// value is interpolated.
+std::vector<std::string_view> declared_words(std::string_view line) {
   static constexpr auto qualifiers = std::to_array<std::string_view>(
       {"flat", "smooth", "noperspective", "centroid", "sample", "patch", "invariant"});
+  std::vector<std::string_view> words;
+  for (std::size_t at = 0; at < line.size();) {
+    const std::size_t end = std::min(line.find_first_of(" \t;[", at), line.size());
+    if (end > at)
+      words.push_back(line.substr(at, end - at));
+    at = line.find_first_not_of(" \t", end);
+    if (at == std::string_view::npos || line[at] == ';' || line[at] == '[')
+      break;
+  }
+  std::erase_if(words, [](std::string_view word) {
+    return std::ranges::find(qualifiers, word) != qualifiers.end();
+  });
+  return words;
+}
+
+// What a line writes out or reads in, if it declares that: past a layout, whose location
+// it keeps, in or out, a type and a name; not a block, nor a built-in, nor a compute
+// shader's in, which names no value.
+std::optional<Varying> varying_in(std::string_view line, std::uint32_t number) {
   constexpr std::string_view location = "location";
+  line = trim(line.substr(0, line.find("//")));
+  if (!line.ends_with(';'))
+    return std::nullopt;
+  Varying varying{.line = number};
+  if (line.starts_with("layout")) {
+    const std::size_t close = line.find(')');
+    const std::size_t at = line.find(location);
+    if (close == std::string_view::npos)
+      return std::nullopt;
+    if (at != std::string_view::npos && at < close) {
+      std::uint32_t value = 0;
+      const std::size_t digits = line.find_first_of("0123456789", at);
+      if (digits < close &&
+          std::from_chars(line.data() + digits, line.data() + close, value).ec ==
+              std::errc{})
+        varying.location = value;
+    }
+    line = trim(line.substr(close + 1));
+  }
+  const std::vector<std::string_view> words = declared_words(line);
+  if (words.size() != 3 || (words[0] != "in" && words[0] != "out") ||
+      words[2].starts_with("gl_"))
+    return std::nullopt;
+  varying.out = words[0] == "out";
+  varying.name = std::string(words[2]);
+  return varying;
+}
+
+// What a stage writes out or reads in, a line each.
+std::vector<Varying> varyings_of(std::string_view text) {
   std::vector<Varying> varyings;
   each_line(text, [&](std::string_view line, std::uint32_t number) {
-    line = trim(line.substr(0, line.find("//")));
-    if (!line.ends_with(';'))
-      return;
-    Varying varying{.line = number};
-    if (line.starts_with("layout")) {
-      const std::size_t close = line.find(')');
-      const std::size_t at = line.find(location);
-      if (close == std::string_view::npos)
-        return;
-      if (at != std::string_view::npos && at < close) {
-        std::uint32_t value = 0;
-        const std::size_t digits = line.find_first_of("0123456789", at);
-        if (digits < close &&
-            std::from_chars(line.data() + digits, line.data() + close, value).ec ==
-                std::errc{})
-          varying.location = value;
-      }
-      line = trim(line.substr(close + 1));
-    }
-    std::vector<std::string_view> words;
-    for (std::size_t at = 0; at < line.size();) {
-      const std::size_t end = std::min(line.find_first_of(" \t;[", at), line.size());
-      if (end > at)
-        words.push_back(line.substr(at, end - at));
-      at = line.find_first_not_of(" \t", end);
-      if (at == std::string_view::npos || line[at] == ';' || line[at] == '[')
-        break;
-    }
-    std::erase_if(words, [](std::string_view word) {
-      return std::ranges::find(qualifiers, word) != qualifiers.end();
-    });
-    if (words.size() != 3 || (words[0] != "in" && words[0] != "out") ||
-        words[2].starts_with("gl_"))
-      return;
-    varying.out = words[0] == "out";
-    varying.name = std::string(words[2]);
-    varyings.push_back(std::move(varying));
+    if (std::optional<Varying> varying = varying_in(line, number))
+      varyings.push_back(std::move(*varying));
   });
   return varyings;
 }
@@ -510,35 +522,47 @@ std::vector<Declared> declared_names(std::string_view text) {
   return names;
 }
 
+// A section's head, which adds the connection it opens, named in quotes. Whether it did,
+// so the keys after it are that connection's.
+bool connection_head(std::string_view line,
+                     const std::filesystem::path &manifest,
+                     std::vector<Wired> &wired) {
+  const std::size_t open = line.find('"');
+  const std::size_t close =
+      open == std::string_view::npos ? open : line.find('"', open + 1);
+  if (!line.starts_with("[connection") || close == std::string_view::npos)
+    return false;
+  wired.push_back({.manifest = manifest,
+                   .name = std::string(line.substr(open + 1, close - open - 1))});
+  return true;
+}
+
+// A key of a connection's section: its writer, with the line naming it, or a reader.
+void connection_key(std::string_view line, std::uint32_t number, Wired &wired) {
+  const std::size_t equals = line.find('=');
+  if (equals == std::string_view::npos)
+    return;
+  const std::string_view key = trim(line.substr(0, equals));
+  const std::string_view value = trim(line.substr(equals + 1));
+  if (key == "from") {
+    wired.from = value;
+    wired.line = number;
+  } else if (key == "to") {
+    wired.to.emplace_back(value);
+  }
+}
+
 // A manifest's connections, each with the line naming its writer, past its comments.
 std::vector<Wired> wired_of(std::string_view text,
                             const std::filesystem::path &manifest) {
   std::vector<Wired> wired;
-  bool inside = false;
+  bool inside = false; // a connection's section
   each_line(text, [&](std::string_view line, std::uint32_t number) {
     line = trim(line.substr(0, line.find('#')));
-    if (line.starts_with('[')) {
-      inside = line.starts_with("[connection");
-      const std::size_t open = line.find('"');
-      const std::size_t close =
-          open == std::string_view::npos ? open : line.find('"', open + 1);
-      if (inside && close != std::string_view::npos)
-        wired.push_back({.manifest = manifest,
-                         .name = std::string(line.substr(open + 1, close - open - 1))});
-      inside = inside && close != std::string_view::npos;
-      return;
-    }
-    const std::size_t equals = line.find('=');
-    if (!inside || equals == std::string_view::npos)
-      return;
-    const std::string_view key = trim(line.substr(0, equals));
-    const std::string_view value = trim(line.substr(equals + 1));
-    if (key == "from") {
-      wired.back().from = value;
-      wired.back().line = number;
-    } else if (key == "to") {
-      wired.back().to.emplace_back(value);
-    }
+    if (line.starts_with('['))
+      inside = connection_head(line, manifest, wired);
+    else if (inside)
+      connection_key(line, number, wired.back());
   });
   return wired;
 }
