@@ -264,22 +264,26 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
 Image Resources::image(VkExtent2D extent,
                        VkFormat format,
                        Fill fill,
-                       std::uint32_t mip_levels) const {
+                       std::uint32_t mip_levels,
+                       VkSampleCountFlagBits samples) const {
   fits(_physical_device, extent, fill);
   const VkImageUsageFlags filled =
       fill == Fill::draw    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
       : fill == Fill::store ? VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
       : fill == Fill::depth ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
                             : VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  const VkImageUsageFlags usage = samples == VK_SAMPLE_COUNT_1_BIT
+                                      ? VK_IMAGE_USAGE_SAMPLED_BIT | filled
+                                      : VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | filled;
   const VkImageCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                                .imageType = VK_IMAGE_TYPE_2D,
                                .format = format,
                                .extent = {extent.width, extent.height, 1},
                                .mipLevels = mip_levels,
                                .arrayLayers = 1,
-                               .samples = VK_SAMPLE_COUNT_1_BIT,
+                               .samples = samples,
                                .tiling = VK_IMAGE_TILING_OPTIMAL,
-                               .usage = VK_IMAGE_USAGE_SAMPLED_BIT | filled};
+                               .usage = usage};
   const VmaAllocationCreateInfo where{.flags = within, .usage = VMA_MEMORY_USAGE_AUTO};
   Image image;
   if (const VkResult result = vmaCreateImage(
@@ -343,6 +347,13 @@ bool Resources::samples(VkFormat format, Fill fill) const {
 
 VkFormat Resources::depth_format() const {
   return _depth_format;
+}
+
+VkSampleCountFlags Resources::sample_counts() const {
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(_physical_device, &properties);
+  return properties.limits.framebufferColorSampleCounts &
+         properties.limits.framebufferDepthSampleCounts;
 }
 
 std::uint32_t Resources::max_compute_work_group_count() const {

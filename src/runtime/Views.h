@@ -55,6 +55,9 @@ public:
   // whose draws into its window go elsewhere now, and drops those of the views no longer
   // hosted. True when any schedule changed.
   bool rebuild();
+  // Every view's schedule is made again at the next rebuild, as when the render passes
+  // its draws record in were made again.
+  void refit();
   // The schedules a frame cooks: the host's first, then the hosted views' in the order
   // they were hosted.
   std::span<Schedule *const> schedules() const;
@@ -171,6 +174,7 @@ private:
   std::vector<std::unique_ptr<Hosted>> _hosted; // the host first
   std::vector<Schedule *> _schedules;           // by _hosted, once built
   const Hosted *_owner = nullptr; // the window's, as the last rebuild chose it
+  bool _refit = false;            // since refit, till the next rebuild
   std::unique_ptr<Undo> _steps;   // the lines undo takes back, and their file port
   // Registered once the views the host names are hosted, so a constructor that throws
   // leaves no command to a handler that is gone.

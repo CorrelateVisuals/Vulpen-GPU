@@ -14,8 +14,9 @@ of another type than its writer's, a C++ struct whose members sit elsewhere than
 shader's, C++ writing more elements than its buffer holds, an image C++ fills that
 nothing samples, C++ uploading other than an image's count of pixels, C++ pixels other
 than the image's format takes, a format there is not, image clear of a port that fills
-no image, a key there is not, a buffer C++ fills for another node's shader whose members
-sit elsewhere, given no room, or that nothing reads, a draw's image taken to no Texture,
+no image, a key there is not, a count of samples the GPU draws no window with, a buffer
+C++ fills for another node's shader whose members sit elsewhere, given no room, or that
+nothing reads, a draw's image taken to no Texture,
 or given a format there is not, a draw that stores into an image, an image a dispatch
 stores into given another format than images[] declares, a size that is no width and
 height, or taken to no Texture, a draw's depth taken on from the window it draws into, a
@@ -41,7 +42,7 @@ with no window, and so does the image a dispatch stores into, that of a draw who
 instances a dispatch counted on the GPU, whose depth a later pass samples, that of a
 draw split over a vertex node and a fragment node, and the window of a view its host
 takes, drawn that
-frame, and
+frame, with one sample a pixel or four, and
 that of a view one beside it takes, as a GUI presents a project, though hosted after it,
 which a save of the view taking it leaves out (V03). The
 library's palette, font, rects and glyphs draw the fixture's sign in
@@ -201,6 +202,8 @@ CASES = {
     "clear-nothing": (HEAD + PICTURE, "picture.nothing is no image a node's C++ fills",
                       "image clear picture.nothing\n"),
     "input-key": (HEAD + FILL, "enterr is no key", "input key down enterr\n"),
+    "window-samples": (HEAD + FILL, "3 is no count of samples this GPU draws a window with",
+                       "window samples 3\n"),
     "made-members": (HEAD + MAKER.replace("Maker", "Mismade") + MADE,
                      "connection shapes: shapes: member size is a float at byte 12 in C++, "
                      "but a float at byte 8"),
@@ -537,15 +540,20 @@ def halves(vulpen: str, folder: Path) -> str | None:
     return None
 
 
-def presented(vulpen: str, folder: Path) -> str | None:
+def presented(vulpen: str, folder: Path, samples: int = 1) -> str | None:
     """Why the window of a view its host takes did not reach the host's dispatch, pixel
     for pixel and drawn that frame, at the size --size gives a run with no window, or
     None. The hosted view's scene flips its red every frame, so a dispatch that sampled
     the frame before would find it flipped. The hosted view's folder in the build tree is
-    a link to the fixture's, where scene's shaders are built."""
+    a link to the fixture's, where scene's shaders are built. With samples past one, its
+    draws go into that many samples a pixel, and the scene covering every pixel, the
+    resolve hands the host the same pixels."""
     stage = "mistakes-stage"
-    view = view_in(folder, "presented", HEAD + f'[view "{stage}"]\n'
+    name = "presented" if samples == 1 else f"presented-{samples}"
+    view = view_in(folder, name, HEAD + f'[view "{stage}"]\n'
                    + LOOK.replace("Look", "Watch") + connection("stage", f"{stage}:", "look.painted"))
+    lines = view.parent / "samples.txt"
+    lines.write_text(f"window samples {samples}\n", encoding="utf-8")
     (view.parent / stage).mkdir()
     link_folder(view.parent / stage / "scene", FIXTURE / "scene")
     (view.parent / stage / "view.vlp").write_text(
@@ -553,11 +561,12 @@ def presented(vulpen: str, folder: Path) -> str | None:
     built = mirror(vulpen).parent / stage
     try:
         link_folder(built, mirror(vulpen))
-        code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
+        code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48",
+                                    "--source", lines])
     finally:
         built.unlink(missing_ok=True)
     if code != 0 or problems(output):
-        return f"presented: expected each pixel scene drew that frame, got exit {code}:\n{output}"
+        return f"{name}: expected each pixel scene drew that frame, got exit {code}:\n{output}"
     return None
 
 
@@ -772,6 +781,7 @@ def main() -> None:
                             counted(vulpen, folder),
                             halves(vulpen, folder),
                             presented(vulpen, folder),
+                            presented(vulpen, folder, samples=4),
                             beside(vulpen, folder),
                             input_lines(vulpen, folder),
                             children(vulpen, folder),

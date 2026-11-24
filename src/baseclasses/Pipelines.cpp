@@ -146,23 +146,44 @@ VkDescriptorPool image_pool(VkDevice device) {
 // the layout sampling takes; earlier frames are behind the fence already. A depth image
 // clears to the far plane; dropped once the pass ends, a tile-based GPU never writes it
 // out, and kept, the passes after it sample it as they sample the colors. The last
-// frame's tests on it finish before this frame's start.
-VkRenderPass
-make_render_pass(VkDevice device, VkFormat format, VkFormat depth_format, Depth use) {
+// frame's tests on it finish before this frame's start. With samples past one, the
+// draws go into a color of that many samples, which the pass resolves into the image as
+// it ends and then drops, as it drops the depth: a kept depth would need resolving too.
+VkRenderPass make_render_pass(VkDevice device,
+                              VkFormat format,
+                              VkFormat depth_format,
+                              Depth use,
+                              VkSampleCountFlagBits samples) {
   const bool depth = use != Depth::none;
   const bool kept = use == Depth::kept;
-  const std::array attachments{
+  const bool resolves = samples != VK_SAMPLE_COUNT_1_BIT;
+  if (kept && resolves)
+    throw std::runtime_error("a depth that later passes sample is drawn with one sample "
+                             "a pixel");
+  const VkAttachmentDescription resolved{
+      .format = format,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+  std::array attachments{
       VkAttachmentDescription{.format = format,
-                              .samples = VK_SAMPLE_COUNT_1_BIT,
+                              .samples = samples,
                               .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                              .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                              .storeOp = resolves ? VK_ATTACHMENT_STORE_OP_DONT_CARE
+                                                  : VK_ATTACHMENT_STORE_OP_STORE,
                               .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                               .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
                               .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                              .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+                              .finalLayout =
+                                  resolves ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                           : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
       VkAttachmentDescription{
           .format = depth_format,
-          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .samples = samples,
           .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp =
               kept ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -170,14 +191,21 @@ make_render_pass(VkDevice device, VkFormat format, VkFormat depth_format, Depth 
           .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
           .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
           .finalLayout = kept ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                              : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}};
+                              : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL},
+      resolved};
+  // The color, then the depth and the resolve where there are: no gap between them.
+  const std::uint32_t at_resolve = depth ? 2U : 1U;
+  attachments[at_resolve] = resolved;
   const VkAttachmentReference target{.attachment = 0,
                                      .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
   const VkAttachmentReference tested{
       .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+  const VkAttachmentReference into{.attachment = at_resolve,
+                                   .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
   const VkSubpassDescription subpass{.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
                                      .colorAttachmentCount = 1,
                                      .pColorAttachments = &target,
+                                     .pResolveAttachments = resolves ? &into : nullptr,
                                      .pDepthStencilAttachment =
                                          depth ? &tested : nullptr};
   const VkPipelineStageFlags tests = depth ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
@@ -205,7 +233,7 @@ make_render_pass(VkDevice device, VkFormat format, VkFormat depth_format, Depth 
           .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | kept_written,
           .dstAccessMask = VK_ACCESS_SHADER_READ_BIT}};
   const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                    .attachmentCount = depth ? 2U : 1U,
+                                    .attachmentCount = at_resolve + (resolves ? 1U : 0U),
                                     .pAttachments = attachments.data(),
                                     .subpassCount = 1,
                                     .pSubpasses = &subpass,
@@ -285,9 +313,11 @@ VkDeviceAddress Pipelines::frame() const {
   return _frame ? _frame->buffer.address() : 0;
 }
 
-VkRenderPass Pipelines::render_pass(VkFormat format, Depth depth) const {
+VkRenderPass Pipelines::render_pass(VkFormat format,
+                                    Depth depth,
+                                    VkSampleCountFlagBits samples) const {
   const auto found = std::ranges::find_if(_render_passes, [&](const Made &made) {
-    return made.format == format && made.depth == depth;
+    return made.format == format && made.depth == depth && made.samples == samples;
   });
   if (found != _render_passes.end())
     return found->render_pass;
@@ -296,10 +326,11 @@ VkRenderPass Pipelines::render_pass(VkFormat format, Depth depth) const {
     throw std::runtime_error("this GPU tests depth in none of D32_SFLOAT, "
                              "X8_D24_UNORM_PACK32 and D16_UNORM");
   return _render_passes
-      .emplace_back(
-          Made{.format = format,
-               .depth = depth,
-               .render_pass = make_render_pass(_device, format, depth_format, depth)})
+      .emplace_back(Made{
+          .format = format,
+          .depth = depth,
+          .samples = samples,
+          .render_pass = make_render_pass(_device, format, depth_format, depth, samples)})
       .render_pass;
 }
 
@@ -418,7 +449,8 @@ Pipeline::Pipeline(const Pipelines &pipelines, const Shader &compute)
 // without them. A deque, as a shader module does not move.
 Pipeline::Pipeline(const Pipelines &pipelines,
                    std::span<const ShaderStage> stages,
-                   VkRenderPass render_pass)
+                   VkRenderPass render_pass,
+                   VkSampleCountFlagBits samples)
     : _device(pipelines._device) {
   std::deque<ShaderModule> modules;
   std::vector<VkPipelineShaderStageCreateInfo> infos;
@@ -452,7 +484,7 @@ Pipeline::Pipeline(const Pipelines &pipelines,
       .lineWidth = line_width};
   const VkPipelineMultisampleStateCreateInfo multisample{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-      .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT};
+      .rasterizationSamples = samples};
   // A draw whose pass block declares a DepthTest or a DepthWrite keeps a fragment as near
   // as what its target holds or nearer, so of two at one depth the later draw covers the
   // earlier, as draws stack; any other leaves the depth alone.
@@ -609,25 +641,37 @@ std::uint32_t Sampled::slot() const {
   return _slot;
 }
 
-Drawn::Drawn(const Pipelines &pipelines, Image image, Depth depth)
+Drawn::Drawn(const Pipelines &pipelines,
+             Image image,
+             Depth depth,
+             VkSampleCountFlagBits samples)
     : _sampled(pipelines, std::move(image)), _device(pipelines._device) {
   const Image &drawn = _sampled.image();
+  // First, as it refuses a kept depth of many samples before any image is made.
+  const VkRenderPass render_pass = pipelines.render_pass(drawn.format(), depth, samples);
+  const Resources &resources = pipelines._resources;
   const auto made = [&] {
-    return pipelines._resources.image(
-        drawn.extent(), pipelines._resources.depth_format(), Fill::depth);
+    return resources.image(
+        drawn.extent(), resources.depth_format(), Fill::depth, 1, samples);
   };
+  if (samples != VK_SAMPLE_COUNT_1_BIT)
+    _samples.emplace(
+        resources.image(drawn.extent(), drawn.format(), Fill::draw, 1, samples));
   if (depth == Depth::dropped)
     _dropped.emplace(made());
   else if (depth == Depth::kept)
     _kept.emplace(pipelines, made());
-  const VkImageView tested = _dropped ? _dropped->view()
-                             : _kept  ? _kept->image().view()
-                                      : VK_NULL_HANDLE;
-  const std::array views{drawn.view(), tested};
+  // In the render pass's order: what the draws color, the depth, and the resolve.
+  std::array<VkImageView, 3> views{};
+  std::uint32_t count = 0;
+  views.at(count++) = _samples ? _samples->view() : drawn.view();
+  if (_dropped || _kept)
+    views.at(count++) = _dropped ? _dropped->view() : _kept->image().view();
+  if (_samples)
+    views.at(count++) = drawn.view();
   const VkFramebufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                                     .renderPass =
-                                         pipelines.render_pass(drawn.format(), depth),
-                                     .attachmentCount = depth == Depth::none ? 1U : 2U,
+                                     .renderPass = render_pass,
+                                     .attachmentCount = count,
                                      .pAttachments = views.data(),
                                      .width = drawn.extent().width,
                                      .height = drawn.extent().height,
@@ -637,12 +681,14 @@ Drawn::Drawn(const Pipelines &pipelines, Image image, Depth depth)
 }
 
 Drawn::Drawn(Drawn &&other) noexcept
-    : _sampled(std::move(other._sampled)), _dropped(std::move(other._dropped)),
-      _kept(std::move(other._kept)), _device(other._device),
+    : _sampled(std::move(other._sampled)), _samples(std::move(other._samples)),
+      _dropped(std::move(other._dropped)), _kept(std::move(other._kept)),
+      _device(other._device),
       _framebuffer(std::exchange(other._framebuffer, VK_NULL_HANDLE)) {}
 
 Drawn &Drawn::operator=(Drawn &&other) noexcept {
   std::swap(_sampled, other._sampled);
+  std::swap(_samples, other._samples);
   std::swap(_dropped, other._dropped);
   std::swap(_kept, other._kept);
   std::swap(_device, other._device);

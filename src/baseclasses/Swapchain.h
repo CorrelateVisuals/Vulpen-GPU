@@ -29,20 +29,32 @@ struct Target {
 
 // The window output: one output next to files and streams, never needed to run. It
 // remakes its images when the window's size changes, a depth image with them, which the
-// window's draws share; its render pass stays, so the draws' pipelines stay too.
+// window's draws share; its render pass stays, so the draws' pipelines stay too, until
+// the samples a pixel change.
 class Swapchain {
 public:
   // Makes the window's surface. Throws, naming why, when the device cannot present to
-  // it. The window must outlive it.
+  // it. The window must outlive it. samples: a pixel's, as samples() takes them; vsync:
+  // as vsync() takes it.
   Swapchain(const Log &log,
             const Mechanics &mechanics,
             const Resources &resources,
-            const Window &window);
+            const Window &window,
+            VkSampleCountFlagBits samples,
+            bool vsync);
   ~Swapchain();
   Swapchain(const Swapchain &) = delete;
   Swapchain &operator=(const Swapchain &) = delete;
 
   VkRenderPass render_pass() const;
+  // With vsync, FIFO, a frame each refresh; without, mailbox where the window offers it,
+  // which never holds the frame loop for the display (VK02), else FIFO. The images are
+  // made again as the next frame acquires one. The mode it presents in.
+  VkPresentModeKHR vsync(bool on);
+  // The draws go into images of that many samples a pixel, resolved into the window's
+  // as the render pass ends. Between frames: it makes its render pass again, so every
+  // pipeline that draws into the window is made again too.
+  void samples(VkSampleCountFlagBits samples);
   // Nothing while the window is minimized, or while its images are being remade.
   std::optional<Target> acquire();
   // Starts the render pass on the target, clearing it and the depth.
@@ -63,8 +75,9 @@ private:
   const VkQueue _queue;
   const VkSurfaceKHR _surface;
   const VkSurfaceFormatKHR _format;
-  const VkPresentModeKHR _present_mode;
-  const VkRenderPass _render_pass;
+  VkPresentModeKHR _present_mode;
+  VkSampleCountFlagBits _samples;
+  VkRenderPass _render_pass;
   const VkSemaphore _acquired; // one frame in flight, so one is enough
   VkSwapchainKHR _swapchain = VK_NULL_HANDLE;
   VkExtent2D _extent{};
@@ -72,6 +85,7 @@ private:
   bool _stale = false;
   std::vector<VkImageView> _views;
   std::unique_ptr<Image> _depth; // the window's size, as its images are
+  std::unique_ptr<Image> _color; // with samples past one, what the draws go into
   std::vector<VkFramebuffer> _framebuffers;
   // One per image: presenting holds its semaphore until that image shows, which no
   // fence tells the CPU.

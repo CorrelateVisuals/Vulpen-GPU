@@ -184,7 +184,7 @@ struct Engine::Gpu {
                   ? ~std::uint64_t{0}
                   : (std::uint64_t{1} << mechanics.timestamp_bits()) - 1) {
     if (window)
-      swapchain.emplace(engine_log, mechanics, resources, *window);
+      swapchain.emplace(engine_log, mechanics, resources, *window, samples, vsync);
   }
   ~Gpu() {
     vkDestroyQueryPool(mechanics.device(), queries, nullptr);
@@ -205,6 +205,9 @@ struct Engine::Gpu {
   Resources resources;
   Pipelines pipelines;
   std::optional<Swapchain> swapchain;
+  // What the window takes, and a window opened later too.
+  VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
+  bool vsync = false;
   Hazards hazards;
   // Two timestamps a pass, read back once the frame's fence passed (VK02); none where
   // the queue keeps no time.
@@ -248,7 +251,8 @@ const Pipelines &Engine::pipelines() const {
 }
 
 void Engine::open(const Window &window) {
-  _gpu->swapchain.emplace(_gpu->log, _gpu->mechanics, _gpu->resources, window);
+  _gpu->swapchain.emplace(
+      _gpu->log, _gpu->mechanics, _gpu->resources, window, _gpu->samples, _gpu->vsync);
 }
 
 void Engine::close() {
@@ -257,6 +261,23 @@ void Engine::close() {
 
 VkRenderPass Engine::render_pass() const {
   return _gpu->swapchain ? _gpu->swapchain->render_pass() : VK_NULL_HANDLE;
+}
+
+std::string Engine::vsync(bool on) {
+  _gpu->vsync = on;
+  if (!_gpu->swapchain)
+    return {};
+  return _gpu->swapchain->vsync(on) == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "FIFO";
+}
+
+void Engine::samples(VkSampleCountFlagBits samples) {
+  if (_gpu->swapchain)
+    _gpu->swapchain->samples(samples);
+  _gpu->samples = samples;
+}
+
+VkSampleCountFlags Engine::sample_counts() const {
+  return _gpu->resources.sample_counts();
 }
 
 void Engine::wait() {

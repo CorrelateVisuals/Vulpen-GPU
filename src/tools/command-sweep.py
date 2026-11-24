@@ -661,6 +661,10 @@ VALID = {
     "window fullscreen off": "window fullscreen off",
     "window pointer lock": "window pointer lock ;; window pointer free",
     "window pointer free": "window pointer free",
+    # 4 samples a pixel, which Vulkan promises every GPU draws.
+    "window samples <value>": "window samples 4 ;; window samples 1",
+    "window vsync on": "window vsync on ;; window vsync off",
+    "window vsync off": "window vsync off",
     "log save <file>": "log save {tree}/../decoy/{fresh}.log",
     "ls": "ls",
     "node add [<name>] [<word=value>...]": "node add {fresh} log=info",

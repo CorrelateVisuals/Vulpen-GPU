@@ -15,6 +15,7 @@
 #include "runtime/Views.h"
 
 #include <algorithm>
+#include <bit>
 #include <charconv>
 #include <chrono>
 #include <cmath>
@@ -234,6 +235,80 @@ private:
   Command _toggle;
 };
 
+// How the windows show what is drawn: the samples a pixel of every view's window, the
+// window or the image a host shows one in, and whether the window waits for the display.
+// Beside the window command's other forms, which the input port answers, as these reach
+// the GPU. A new count waits for the next frame's prepare, since no frame may record
+// with pipelines made for the render pass it replaces.
+class Presenting final : public CommandHandler {
+public:
+  Presenting(Commands &commands, Engine &engine)
+      : _engine(engine),
+        _vsync_on(commands.add("window vsync on",
+                               "presents a frame each refresh of the display, in FIFO "
+                               "mode",
+                               *this)),
+        _vsync_off(
+            commands.add("window vsync off",
+                         "presents as fast as the GPU draws, in mailbox mode where "
+                         "the window offers it",
+                         *this)),
+        _samples(commands.add("window samples <value>",
+                              "draws every window with that many samples a pixel, "
+                              "resolved as its draws end, so their edges come out "
+                              "smooth: 1, 2, 4 or 8, of those the GPU offers",
+                              *this)) {}
+
+  // What the windows take from the next frame.
+  VkSampleCountFlagBits samples() const {
+    return _wanted;
+  }
+  // The count kept, when the GPU had no room for the one asked for.
+  void keep(VkSampleCountFlagBits samples) {
+    _wanted = samples;
+  }
+
+private:
+  void command(Call &call) override {
+    if (call.is(_samples))
+      return call.reply(sample(call.arguments().front()));
+    const bool on = call.is(_vsync_on);
+    const std::string mode = _engine.vsync(on);
+    if (mode.empty())
+      return call.reply(std::format(
+          "set vsync {}; no window is open, so it waits for one", on ? "on" : "off"));
+    call.reply(on ? "made the window present a frame each refresh, in FIFO mode"
+               : mode == "FIFO" ? "made the window present in FIFO mode still, as it "
+                                  "offers no mailbox mode"
+                                : "made the window present as fast as the GPU draws, in "
+                                  "mailbox mode");
+  }
+
+  std::string sample(std::string_view word) {
+    const VkSampleCountFlags counts = _engine.sample_counts();
+    const std::optional<std::uint32_t> count = number_in<std::uint32_t>(word);
+    if (!count || !std::has_single_bit(*count) || (counts & *count) == 0) {
+      std::string offered;
+      constexpr auto least = static_cast<std::uint32_t>(VK_SAMPLE_COUNT_1_BIT);
+      constexpr auto most = static_cast<std::uint32_t>(VK_SAMPLE_COUNT_64_BIT);
+      for (std::uint32_t bit = least; bit <= most; bit <<= 1)
+        if ((counts & bit) != 0)
+          offered += std::format("{}{}", offered.empty() ? "" : ", ", bit);
+      throw std::runtime_error(std::format(
+          "{} is no count of samples this GPU draws a window with: {}", word, offered));
+    }
+    _wanted = static_cast<VkSampleCountFlagBits>(*count);
+    return std::format(
+        "set every window to {} sample{} a pixel", *count, *count == 1 ? "" : "s");
+  }
+
+  Engine &_engine;
+  VkSampleCountFlagBits _wanted = VK_SAMPLE_COUNT_1_BIT;
+  Command _vsync_on;
+  Command _vsync_off;
+  Command _samples;
+};
+
 // Owns every module and runs the loop.
 class Runtime {
 public:
@@ -314,6 +389,7 @@ private:
   std::optional<Views> _views;
   std::optional<Edits> _edits;           // goes before the views it changes
   std::optional<Preference> _preference; // goes before the engine it names
+  std::optional<Presenting> _presenting; // and this before the engine it changes
   std::optional<Relaunch> _relaunch;
   // Every view's, in the order a frame runs them; the passes are gathered only when a
   // schedule changed, so a frame allocates nothing for them (CPP10).
@@ -472,11 +548,13 @@ bool Runtime::start() {
   std::string prefer = Preference::read(choice);
   _engine.emplace(_log, _window ? &*_window : nullptr, prefer);
   _preference.emplace(_commands, _log, *_engine, choice, std::move(prefer));
+  _presenting.emplace(_commands, *_engine);
   _restart = std::make_unique<Restart>(_commands, _log, build);
   _wiring.emplace(Wiring{.engine = *_engine,
                          .pipelines = _engine->pipelines(),
                          .resources = _engine->resources(),
                          .render_pass = _engine->render_pass(),
+                         .samples = VK_SAMPLE_COUNT_1_BIT,
                          .modules = _modules,
                          .log = _log,
                          .views = _mirror,
@@ -678,6 +756,26 @@ void Runtime::prepare() {
       _ports.attach(_window ? &*_window : nullptr);
     }
     _wiring->render_pass = _engine->render_pass();
+  }
+  // New samples for the windows make their render passes again, so every view's draws
+  // get pipelines that fit them before this frame records any.
+  if (const VkSampleCountFlagBits samples = _presenting->samples();
+      samples != _wiring->samples) {
+    try {
+      _engine->samples(samples);
+      _wiring->samples = samples;
+    } catch (const std::runtime_error &failure) {
+      _log.write(Level::error,
+                 Tag::gpu,
+                 std::format("window samples {}: {}; every window keeps {}",
+                             static_cast<std::uint32_t>(samples),
+                             failure.what(),
+                             static_cast<std::uint32_t>(_wiring->samples)));
+      _engine->samples(_wiring->samples);
+      _presenting->keep(_wiring->samples);
+    }
+    _wiring->render_pass = _engine->render_pass();
+    _views->refit();
   }
   // Before the ports go on to this frame, which forgets what the frame before read.
   const bool rebuilt = _views->rebuild();

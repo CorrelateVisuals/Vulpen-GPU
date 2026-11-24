@@ -51,8 +51,11 @@ struct Wiring {
   const Pipelines &pipelines;
   const Resources &resources;
   // What draws render into; null without a window. Runtime.cpp sets it again whenever
-  // the window opens or closes.
+  // the window opens or closes, or the samples change.
   VkRenderPass render_pass;
+  // The samples a pixel every view's window takes, the window or an image its host
+  // shows; Runtime.cpp sets it, and then has every schedule made again.
+  VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
   Modules &modules;
   const Log &log;
   // The build tree's mirror of the views, where modules and SPIR-V land.
@@ -181,6 +184,7 @@ private:
   void fit_pipeline(Bound &bound, Bound *old, bool unchanged);
   VkRenderPass target_of(Bound &bound) const;
   void make_pipeline(Bound &bound, VkRenderPass render_pass) const;
+  VkSampleCountFlagBits samples_of(VkRenderPass render_pass) const;
   Depth depth_of(const Bound &bound) const;
   const Buffer &indirect_for(const Bound &bound);
   void pair_draws(Schedule *replaced);

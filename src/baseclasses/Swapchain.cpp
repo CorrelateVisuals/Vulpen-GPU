@@ -42,48 +42,69 @@ VkSurfaceFormatKHR pick_format(VkPhysicalDevice device, VkSurfaceKHR surface) {
 }
 
 // Mailbox never holds the frame loop for the display (VK02); FIFO, which every device
-// offers, may.
-VkPresentModeKHR pick_present_mode(VkPhysicalDevice device, VkSurfaceKHR surface) {
+// offers, may, and does with vsync, a frame each refresh.
+VkPresentModeKHR
+pick_present_mode(VkPhysicalDevice device, VkSurfaceKHR surface, bool vsync) {
   std::uint32_t count = 0;
   vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
   std::vector<VkPresentModeKHR> modes(count);
   vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, modes.data());
-  return std::ranges::find(modes, VK_PRESENT_MODE_MAILBOX_KHR) != modes.end()
+  return !vsync && std::ranges::find(modes, VK_PRESENT_MODE_MAILBOX_KHR) != modes.end()
              ? VK_PRESENT_MODE_MAILBOX_KHR
              : VK_PRESENT_MODE_FIFO_KHR;
 }
 
 // The depth is dropped once the pass ends, so a tile-based GPU never writes it out; the
-// last frame's tests on it finish before this frame's start.
-VkRenderPass make_render_pass(VkDevice device, VkFormat format, VkFormat depth_format) {
+// last frame's tests on it finish before this frame's start. With samples past one, the
+// draws go into a color of that many samples, which the pass resolves into the window's
+// image as it ends, and drops.
+VkRenderPass make_render_pass(VkDevice device,
+                              VkFormat format,
+                              VkFormat depth_format,
+                              VkSampleCountFlagBits samples) {
   if (depth_format == VK_FORMAT_UNDEFINED)
     throw std::runtime_error("this GPU tests depth in none of D32_SFLOAT, "
                              "X8_D24_UNORM_PACK32 and D16_UNORM");
+  const bool resolves = samples != VK_SAMPLE_COUNT_1_BIT;
   const std::array attachments{
       VkAttachmentDescription{.format = format,
-                              .samples = VK_SAMPLE_COUNT_1_BIT,
+                              .samples = samples,
                               .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                              .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                              .storeOp = resolves ? VK_ATTACHMENT_STORE_OP_DONT_CARE
+                                                  : VK_ATTACHMENT_STORE_OP_STORE,
                               .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                               .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
                               .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                              .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR},
+                              .finalLayout =
+                                  resolves ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                           : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR},
       VkAttachmentDescription{.format = depth_format,
-                              .samples = VK_SAMPLE_COUNT_1_BIT,
+                              .samples = samples,
                               .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
                               .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
                               .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                               .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
                               .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                               .finalLayout =
-                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}};
+                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL},
+      VkAttachmentDescription{.format = format,
+                              .samples = VK_SAMPLE_COUNT_1_BIT,
+                              .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                              .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                              .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                              .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                              .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}};
   const VkAttachmentReference target{.attachment = 0,
                                      .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
   const VkAttachmentReference tested{
       .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+  const VkAttachmentReference shown{.attachment = 2,
+                                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
   const VkSubpassDescription subpass{.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
                                      .colorAttachmentCount = 1,
                                      .pColorAttachments = &target,
+                                     .pResolveAttachments = resolves ? &shown : nullptr,
                                      .pDepthStencilAttachment = &tested};
   // The image's layout changes only once it is acquired, which the submit waits for at
   // this stage.
@@ -98,8 +119,7 @@ VkRenderPass make_render_pass(VkDevice device, VkFormat format, VkFormat depth_f
       .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
                        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT};
   const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                    .attachmentCount =
-                                        static_cast<std::uint32_t>(attachments.size()),
+                                    .attachmentCount = resolves ? 3U : 2U,
                                     .pAttachments = attachments.data(),
                                     .subpassCount = 1,
                                     .pSubpasses = &subpass,
@@ -133,13 +153,16 @@ VkSemaphore make_semaphore(VkDevice device) {
 Swapchain::Swapchain(const Log &log,
                      const Mechanics &mechanics,
                      const Resources &resources,
-                     const Window &window)
+                     const Window &window,
+                     VkSampleCountFlagBits samples,
+                     bool vsync)
     : _log(log), _resources(resources), _window(window), _instance(mechanics.instance()),
       _physical_device(mechanics.physical_device()), _device(mechanics.device()),
       _queue(mechanics.queue()), _surface(make_surface(mechanics, window)),
       _format(pick_format(_physical_device, _surface)),
-      _present_mode(pick_present_mode(_physical_device, _surface)),
-      _render_pass(make_render_pass(_device, _format.format, resources.depth_format())),
+      _present_mode(pick_present_mode(_physical_device, _surface, vsync)),
+      _samples(samples), _render_pass(make_render_pass(
+                             _device, _format.format, resources.depth_format(), samples)),
       _acquired(make_semaphore(_device)) {
   if (_format.format != srgb.format || _format.colorSpace != srgb.colorSpace)
     _log.write(Level::warn,
@@ -151,11 +174,13 @@ Swapchain::Swapchain(const Log &log,
   _log.write(
       Level::info,
       Tag::swp,
-      std::format("presents {} images of {}x{} in {} mode",
+      std::format("presents {} images of {}x{} in {} mode, {} sample{} a pixel",
                   _views.size(),
                   _extent.width,
                   _extent.height,
-                  _present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "FIFO"));
+                  _present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "FIFO",
+                  static_cast<std::uint32_t>(_samples),
+                  _samples == VK_SAMPLE_COUNT_1_BIT ? "" : "s"));
 }
 
 // Unchecked, as Mechanics' own: a lost device was said by the frame that lost it, and a
@@ -171,6 +196,24 @@ Swapchain::~Swapchain() {
 
 VkRenderPass Swapchain::render_pass() const {
   return _render_pass;
+}
+
+VkPresentModeKHR Swapchain::vsync(bool on) {
+  const VkPresentModeKHR mode = pick_present_mode(_physical_device, _surface, on);
+  _stale = _stale || mode != _present_mode;
+  _present_mode = mode;
+  return mode;
+}
+
+void Swapchain::samples(VkSampleCountFlagBits samples) {
+  check(vkDeviceWaitIdle(_device), "vkDeviceWaitIdle");
+  release();
+  vkDestroyRenderPass(_device, _render_pass, nullptr);
+  _render_pass = VK_NULL_HANDLE; // so a throw below leaves none to destroy twice
+  _render_pass =
+      make_render_pass(_device, _format.format, _resources.depth_format(), samples);
+  _samples = samples;
+  make_images();
 }
 
 std::optional<Target> Swapchain::acquire() {
@@ -281,7 +324,10 @@ void Swapchain::make_images() {
   std::vector<VkImage> images(count);
   vkGetSwapchainImagesKHR(_device, _swapchain, &count, images.data());
   _depth = std::make_unique<Image>(
-      _resources.image(_extent, _resources.depth_format(), Fill::depth));
+      _resources.image(_extent, _resources.depth_format(), Fill::depth, 1, _samples));
+  if (_samples != VK_SAMPLE_COUNT_1_BIT)
+    _color = std::make_unique<Image>(
+        _resources.image(_extent, _format.format, Fill::draw, 1, _samples));
   for (const VkImage image : images) {
     const VkImageViewCreateInfo view{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -292,11 +338,13 @@ void Swapchain::make_images() {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
     check(vkCreateImageView(_device, &view, nullptr, &_views.emplace_back()),
           "vkCreateImageView");
-    const std::array attachments{_views.back(), _depth->view()};
+    // In the render pass's order: what the draws color, the depth, and the resolve.
+    const std::array attachments{
+        _color ? _color->view() : _views.back(), _depth->view(), _views.back()};
     const VkFramebufferCreateInfo framebuffer{
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = _render_pass,
-        .attachmentCount = static_cast<std::uint32_t>(attachments.size()),
+        .attachmentCount = _color ? 3U : 2U,
         .pAttachments = attachments.data(),
         .width = _extent.width,
         .height = _extent.height,
@@ -320,6 +368,7 @@ void Swapchain::release() {
   _framebuffers.clear();
   _views.clear();
   _depth.reset();
+  _color.reset();
 }
 
 } // namespace VP

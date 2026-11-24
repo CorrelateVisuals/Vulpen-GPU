@@ -113,6 +113,7 @@ struct Schedule::Rendered {
   std::string name;
   const PixelFormat *format = nullptr;
   VkRenderPass render_pass = VK_NULL_HANDLE; // which its draws' pipelines fit
+  VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT; // a view's window's, as wired
   // A view's window's is dropped; a draw's image has one while the draw declares it,
   // kept while a connection takes it to a later pass, by depth_name.
   Depth depth = Depth::none;
@@ -183,7 +184,8 @@ Schedule::Schedule(const Wiring &wiring,
     : _wiring(wiring), _name(name), _view(view), _joined(joined_of(view)),
       _window(into == Into::image
                   ? wiring.pipelines.render_pass(pixel_format(window_format)->format,
-                                                 Depth::dropped)
+                                                 Depth::dropped,
+                                                 wiring.samples)
               : into == Into::window ? wiring.render_pass
                                      : VK_NULL_HANDLE),
       _into(into), _project(project) {
@@ -310,9 +312,11 @@ void Schedule::read_shaders(Bound &bound) const {
 void Schedule::fit_pipeline(Bound &bound, Bound *old, bool unchanged) {
   const VkRenderPass render_pass =
       is_draw(*bound.node) ? target_of(bound) : VK_NULL_HANDLE;
-  if (unchanged && old->pipeline && old->render_pass == render_pass) {
+  if (unchanged && old->pipeline && old->render_pass == render_pass &&
+      old->samples == samples_of(render_pass)) {
     bound.pipeline = std::move(old->pipeline);
     bound.render_pass = render_pass;
+    bound.samples = old->samples;
     log(Level::debug, Tag::nod, bound, "keeps its pipeline");
   } else if (render_pass || !is_draw(*bound.node)) {
     make_pipeline(bound, render_pass);
@@ -360,6 +364,12 @@ Depth Schedule::depth_of(const Bound &bound) const {
                                                                       : Depth::dropped;
 }
 
+// A draw into the view's window takes the samples every window does; one into an image
+// a connection takes, one sample a pixel, as its readers sample it.
+VkSampleCountFlagBits Schedule::samples_of(VkRenderPass render_pass) const {
+  return render_pass && render_pass == _window ? _wiring.samples : VK_SAMPLE_COUNT_1_BIT;
+}
+
 // A draw's pipeline fits the render pass it records in.
 void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
   std::string from = joined(bound.shaders_named, " and ");
@@ -377,7 +387,8 @@ void Schedule::make_pipeline(Bound &bound, VkRenderPass render_pass) const {
           holds_stage(*holder.node, stage.extension))
         shaders.push_back(
             {.stage = stage.stage, .shader = &holder.stage(stage.extension)});
-    bound.pipeline.emplace(_wiring.pipelines, shaders, render_pass);
+    bound.samples = samples_of(render_pass);
+    bound.pipeline.emplace(_wiring.pipelines, shaders, render_pass, bound.samples);
     if (bound.fragment)
       from +=
           std::format(" and {}'s {}", colors.node->name, colors.shaders_named.front());
@@ -679,11 +690,13 @@ void Schedule::make_targets() {
   const PixelFormat *const window = pixel_format(window_format);
   for (const Connection &connection : _view.connections)
     if (connection.from.view())
-      _rendered.push_back(std::make_unique<Rendered>(Rendered{
-          .name = connection.from.text(),
-          .format = window,
-          .render_pass = _wiring.pipelines.render_pass(window->format, Depth::dropped),
-          .depth = Depth::dropped}));
+      _rendered.push_back(std::make_unique<Rendered>(
+          Rendered{.name = connection.from.text(),
+                   .format = window,
+                   .render_pass = _wiring.pipelines.render_pass(
+                       window->format, Depth::dropped, _wiring.samples),
+                   .samples = _wiring.samples,
+                   .depth = Depth::dropped}));
 }
 
 // To the frame's size, before any pass runs: an image of another size goes, and its
@@ -701,7 +714,8 @@ void Schedule::size_targets(VkExtent2D size) {
       const Drawn &drawn = rendered->drawn.emplace(
           _wiring.pipelines,
           _wiring.resources.image(size, format.format, Fill::draw),
-          rendered->depth);
+          rendered->depth,
+          rendered->samples);
       rendered->offscreen = {.render_pass = rendered->render_pass,
                              .framebuffer = drawn.framebuffer(),
                              .extent = size,

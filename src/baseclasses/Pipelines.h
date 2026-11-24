@@ -47,8 +47,11 @@ public:
                    std::array<float, 2> cursor) const;
   // The render pass a draw into an image of the format records in, with a depth image
   // as depth asks, made the first time it is asked for and kept, so every pipeline that
-  // draws into such an image fits it.
-  VkRenderPass render_pass(VkFormat format, Depth depth = Depth::none) const;
+  // draws into such an image fits it. With samples past one, its draws go into images of
+  // that many samples a pixel, which the pass resolves into the image as it ends.
+  VkRenderPass render_pass(VkFormat format,
+                           Depth depth = Depth::none,
+                           VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT) const;
 
 private:
   friend class Pipeline;
@@ -96,6 +99,7 @@ private:
   struct Made {
     VkFormat format = VK_FORMAT_UNDEFINED;
     Depth depth = Depth::none;
+    VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
     VkRenderPass render_pass = VK_NULL_HANDLE;
   };
   mutable std::vector<Made> _render_passes;
@@ -107,14 +111,16 @@ struct ShaderStage {
   const Shader *shader = nullptr;
 };
 
-// A dispatch's pipeline, or a draw's for a render pass, its stages in the order its data
-// goes through them, the vertex shader first and the fragment shader last.
+// A dispatch's pipeline, or a draw's for a render pass and the samples a pixel it draws
+// with, its stages in the order its data goes through them, the vertex shader first and
+// the fragment shader last.
 class Pipeline {
 public:
   Pipeline(const Pipelines &pipelines, const Shader &compute);
   Pipeline(const Pipelines &pipelines,
            std::span<const ShaderStage> stages,
-           VkRenderPass render_pass);
+           VkRenderPass render_pass,
+           VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
   Pipeline(Pipeline &&other) noexcept;
   Pipeline &operator=(Pipeline &&other) noexcept;
   ~Pipeline();
@@ -167,10 +173,14 @@ private:
 // An image a draw renders into and passes then sample: its slot in textures[], and the
 // framebuffer its draw records through, in its format's render pass; with depth, a depth
 // image of its size beside it, which its draws test and write, and which has a slot of
-// its own while it is kept for later passes.
+// its own while it is kept for later passes. With samples past one, its draws go into a
+// color and a depth of that many samples, resolved into the image; the depth is dropped.
 class Drawn {
 public:
-  Drawn(const Pipelines &pipelines, Image image, Depth depth = Depth::none);
+  Drawn(const Pipelines &pipelines,
+        Image image,
+        Depth depth = Depth::none,
+        VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
   Drawn(Drawn &&other) noexcept;
   Drawn &operator=(Drawn &&other) noexcept;
   ~Drawn();
@@ -182,6 +192,7 @@ public:
 
 private:
   Sampled _sampled;
+  std::optional<Image> _samples; // drawn into, then resolved into _sampled's image
   std::optional<Image> _dropped;
   std::optional<Sampled> _kept;
   VkDevice _device = VK_NULL_HANDLE;

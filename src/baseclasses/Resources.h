@@ -112,10 +112,13 @@ public:
   // A buffer or an image is made only within the memory the GPU has free, so one it
   // cannot hold throws, naming its size and what is free, before any memory is taken.
   Buffer buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const;
+  // With samples past one, a draw's color or depth that the render pass resolves or
+  // drops, which no shader samples; a tile-based GPU may keep it on the chip.
   Image image(VkExtent2D extent,
               VkFormat format,
               Fill fill = Fill::copy,
-              std::uint32_t mip_levels = 1) const;
+              std::uint32_t mip_levels = 1,
+              VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT) const;
   // Whether shaders may sample, filtered, an image of the format filled so; a draw also
   // blends into it, and a dispatch stores into it from images[]. A depth is sampled
   // nearest, and a draw tests and writes it.
@@ -123,6 +126,9 @@ public:
   // The format every depth image takes: the first of D32_SFLOAT, X8_D24_UNORM_PACK32 and
   // D16_UNORM a draw tests and a shader samples on this GPU, as Vulkan promises the last.
   VkFormat depth_format() const;
+  // The samples a pixel this GPU draws with into both a color and a depth; Vulkan
+  // promises 1 and 4.
+  VkSampleCountFlags sample_counts() const;
   // The most workgroups a dispatch runs along x on this GPU.
   std::uint32_t max_compute_work_group_count() const;
   // The most bytes a uniform block holds on this GPU; Vulkan guarantees 16,384.

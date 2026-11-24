@@ -382,7 +382,7 @@ bool Views::rebuild() {
                                       hosted.name,
                                       hosted.view->file.string()));
       changed = true;
-    } else if (into != hosted.into) {
+    } else if (into != hosted.into || (_refit && hosted.schedule)) {
       // The same view, its draws' pipelines made again for what they draw into now.
       hosted.schedule = std::make_unique<Schedule>(_wiring,
                                                    hosted.name,
@@ -395,12 +395,17 @@ bool Views::rebuild() {
     hosted.into = into;
     ++at;
   }
+  _refit = false;
   if (changed) {
     _schedules.clear();
     for (const std::unique_ptr<Hosted> &hosted : _hosted)
       _schedules.push_back(hosted->schedule.get());
   }
   return changed;
+}
+
+void Views::refit() {
+  _refit = true;
 }
 
 std::span<Schedule *const> Views::schedules() const {

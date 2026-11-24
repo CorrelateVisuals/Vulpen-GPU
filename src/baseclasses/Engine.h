@@ -47,6 +47,16 @@ public:
   void close();
   // What draws render into; null without a window.
   VkRenderPass render_pass() const;
+  // How the window presents, now and once one opens: with vsync a frame each refresh,
+  // without as fast as the GPU draws where the window lets it. The present mode it got,
+  // as the log names it, or empty while no window is open.
+  std::string vsync(bool on);
+  // The samples a pixel the window's draws go into, resolved as their render pass ends:
+  // one of Resources::sample_counts. Between frames, as the window's render pass is made
+  // again, and every pipeline that draws into it must be too.
+  void samples(VkSampleCountFlagBits samples);
+  // The samples a pixel this GPU draws a window with, as Vulkan's flags.
+  VkSampleCountFlags sample_counts() const;
   // Before each run, and before what a frame used goes: one frame is in flight, and the
   // next records over its commands. Then it reads how long the last run's passes took.
   void wait();

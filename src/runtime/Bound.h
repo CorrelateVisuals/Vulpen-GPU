@@ -285,6 +285,9 @@ struct Bound {
   std::uint32_t block_size = 0;
   std::optional<Pipeline> pipeline;
   VkRenderPass render_pass = VK_NULL_HANDLE; // a draw's, which its pipeline fits
+  // The samples a pixel it draws with, as a new count may come in a remade render pass
+  // with the old one's handle.
+  VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
   // A draw's color, by the name its fragment shader gives it, and while a connection
   // takes it to a Texture, the format of the image it renders into; null for the window.
   // A fragment node holds its draw's, as the port is its own.
