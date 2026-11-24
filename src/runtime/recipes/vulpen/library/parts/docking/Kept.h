@@ -150,57 +150,76 @@ std::string_view kept_for(std::string_view text) {
   return rest.substr(0, rest.find('\n'));
 }
 
-// The lines that make the manifest's panels the panels now, whatever edits made them so,
-// in an order a replay takes: the panels' nodes gone removed, the connections their nodes
-// are part of let go of or made otherwise, their nodes added, every node moved to the
-// order it draws in, those connections made, and the params of the manifest's own panels'
-// nodes changed. So a panel added and gone again leaves no line, and the file is as long
-// as the panels' changes, not as their history. The manifest's view comes unfolded, as
-// the file port reads it, so of it only what the manifest writes counts, not what a
-// recipe its nodes use brings, and a param it sets is read where it went, on the node
-// inside; the view now comes as edited. A connection's ends on nodes neither the
-// manifest writes nor a panel is made of, as the panes another part adds as projects
-// come, which that part adds again, the file leaves out.
-std::vector<std::string> edits_from(const VP::View &written, const VP::View &now) {
-  const auto brought = [&](std::string_view name) { return ::brought(written, name); };
-  std::vector<std::string_view> panels; // the panels' nodes, the manifest's or now's
+// The panels' nodes, the manifest's or now's.
+std::vector<std::string_view> panels_of(const VP::View &written, const VP::View &now) {
+  std::vector<std::string_view> panels;
   for (const VP::View *view : {&written, &now})
     for (const VP::Node &node : view->nodes)
       if (laid(node))
         panels.push_back(node.name);
-  const auto known = [&](const VP::Endpoint &end) {
-    return end.view() || node_in(written, end.node) ||
-           std::ranges::any_of(panels, [&](std::string_view panel) {
-             return VP::within(end.node, panel);
-           });
+  return panels;
+}
+
+// Whether an end is at a node a panel is made of, as the view's own end is not.
+bool in_panels(std::span<const std::string_view> panels, const VP::Endpoint &end) {
+  return !end.view() && std::ranges::any_of(panels, [&](std::string_view panel) {
+    return VP::within(end.node, panel);
+  });
+}
+
+// Whether there is a connection, and it has an end at a node a panel is made of.
+bool ours(std::span<const std::string_view> panels, const VP::Connection *connection) {
+  const auto of = [&](const VP::Endpoint &end) { return in_panels(panels, end); };
+  return connection && (of(connection->from) || std::ranges::any_of(connection->to, of));
+}
+
+// Now's connections with only their ends the file keeps: at the view, a node the
+// manifest writes or a node a panel is made of. One left with no reader goes.
+std::vector<VP::Connection> known_connections(const VP::View &written,
+                                              const VP::View &now,
+                                              std::span<const std::string_view> panels) {
+  const auto unknown = [&](const VP::Endpoint &end) {
+    return !end.view() && !node_in(written, end.node) && !in_panels(panels, end);
   };
-  std::vector<VP::Connection> kept_now;
+  std::vector<VP::Connection> known;
   for (const VP::Connection &connection : now.connections) {
-    if (!known(connection.from))
+    if (unknown(connection.from))
       continue;
     VP::Connection kept = connection;
-    std::erase_if(kept.to, [&](const VP::Endpoint &end) { return !known(end); });
+    std::erase_if(kept.to, unknown);
     if (!kept.to.empty())
-      kept_now.push_back(std::move(kept));
+      known.push_back(std::move(kept));
   }
-  const auto ours = [&](const VP::Connection *connection) {
-    const auto of = [&](const VP::Endpoint &end) {
-      return !end.view() && std::ranges::any_of(panels, [&](std::string_view panel) {
-        return VP::within(end.node, panel);
-      });
-    };
-    return connection &&
-           (of(connection->from) || std::ranges::any_of(connection->to, of));
+  return known;
+}
+
+// The connections as removing a node leaves them: each end inside it gone, and a
+// connection it writes, or one left with no reader, gone whole.
+void let_go(std::vector<VP::Connection> &connections, std::string_view node) {
+  const auto goes = [&](const VP::Endpoint &end) {
+    return !end.view() && VP::within(end.node, node);
   };
-  std::vector<std::string> lines;
-  std::vector<VP::Connection> left; // the manifest's own, as the removals leave them
+  for (VP::Connection &connection : connections)
+    std::erase_if(connection.to, goes);
+  std::erase_if(connections, [&](const VP::Connection &connection) {
+    return goes(connection.from) || connection.to.empty();
+  });
+}
+
+// The manifest's panels' nodes gone now, each removed once, with what is inside it. The
+// nodes that stay go into the order, and the manifest's own connections come back as the
+// removals leave them.
+std::vector<VP::Connection> remove_gone(const VP::View &written,
+                                        const VP::View &now,
+                                        std::vector<std::string> &order,
+                                        std::vector<std::string> &lines) {
+  std::vector<VP::Connection> left;
   for (const VP::Connection &connection : written.connections)
-    if (!brought(connection.name))
+    if (!brought(written, connection.name))
       left.push_back(connection);
-  std::vector<std::string> order;
   std::vector<std::string> removed;
   for (const VP::Node &node : written.nodes) {
-    if (brought(node.name))
+    if (brought(written, node.name))
       continue;
     if (node_in(now, node.name) || !laid(node)) {
       order.push_back(node.name);
@@ -212,20 +231,30 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
       continue;
     removed.push_back(node.name);
     lines.push_back(std::format("node remove keep {}", node.name));
-    const auto goes = [&](const VP::Endpoint &end) {
-      return !end.view() && VP::within(end.node, node.name);
-    };
-    for (VP::Connection &connection : left)
-      std::erase_if(connection.to, goes);
-    std::erase_if(left, [&](const VP::Connection &connection) {
-      return goes(connection.from) || connection.to.empty();
-    });
+    let_go(left, node.name);
   }
+  return left;
+}
+
+// A connection of the manifest's left, with an end at a panel's node then or now, let go
+// of where now has none of its name or one with other ends.
+void disconnect_changed(std::span<const VP::Connection> left,
+                        std::span<const VP::Connection> known,
+                        std::span<const std::string_view> panels,
+                        std::vector<std::string> &lines) {
   for (const VP::Connection &connection : left)
-    if (const VP::Connection *const now_is = connection_in(kept_now, connection.name);
-        (ours(&connection) || ours(now_is)) &&
+    if (const VP::Connection *const now_is = connection_in(known, connection.name);
+        (ours(panels, &connection) || ours(panels, now_is)) &&
         (!now_is || !same_ends(*now_is, connection)))
       lines.push_back(std::format("disconnect {}", connection.name));
+}
+
+// Now's panels' nodes the manifest does not write, added with the params the file keeps,
+// and last in the order.
+void add_new(const VP::View &written,
+             const VP::View &now,
+             std::vector<std::string> &order,
+             std::vector<std::string> &lines) {
   for (const VP::Node &node : now.nodes)
     if (laid(node) && !node_in(written, node.name)) {
       std::string line = std::format("node add {} recipe={}", node.name, node.recipe);
@@ -235,11 +264,19 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
       lines.push_back(std::move(line));
       order.push_back(node.name);
     }
-  move_into_order(order, now, lines);
-  for (const VP::Connection &connection : kept_now)
+}
+
+// A connection now, with an end at a panel's node now or as the manifest wrote it, made
+// where the removals left none of its name or one with other ends.
+void connect_changed(const VP::View &written,
+                     std::span<const VP::Connection> left,
+                     std::span<const VP::Connection> known,
+                     std::span<const std::string_view> panels,
+                     std::vector<std::string> &lines) {
+  for (const VP::Connection &connection : known)
     if (const VP::Connection *const was = connection_in(left, connection.name);
-        (ours(&connection) ||
-         ours(connection_in(written.connections, connection.name))) &&
+        (ours(panels, &connection) ||
+         ours(panels, connection_in(written.connections, connection.name))) &&
         (!was || !same_ends(*was, connection))) {
       std::string line =
           std::format("connect {} {}", connection.name, connection.from.text());
@@ -247,7 +284,12 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
         line += ' ' + to.text();
       lines.push_back(std::move(line));
     }
-  // A param of a panel's node, as split.ratio, the manifest set on the node inside it.
+}
+
+// A param of a panel's node, as split.ratio, the manifest set on the node inside it.
+void set_params(const VP::View &written,
+                const VP::View &now,
+                std::vector<std::string> &lines) {
   for (const VP::Node &node : now.nodes) {
     if (!laid(node) || !node_in(written, node.name))
       continue;
@@ -265,6 +307,30 @@ std::vector<std::string> edits_from(const VP::View &written, const VP::View &now
         lines.push_back(std::format("param set {} {} {}", inside, key, param.value));
     }
   }
+}
+
+// The lines that make the manifest's panels the panels now, whatever edits made them so,
+// in an order a replay takes: the panels' nodes gone removed, the connections their nodes
+// are part of let go of or made otherwise, their nodes added, every node moved to the
+// order it draws in, those connections made, and the params of the manifest's own panels'
+// nodes changed. So a panel added and gone again leaves no line, and the file is as long
+// as the panels' changes, not as their history. The manifest's view comes unfolded, as
+// the file port reads it, so of it only what the manifest writes counts, not what a
+// recipe its nodes use brings, and a param it sets is read where it went, on the node
+// inside; the view now comes as edited. A connection's ends on nodes neither the
+// manifest writes nor a panel is made of, as the panes another part adds as projects
+// come, which that part adds again, the file leaves out.
+std::vector<std::string> edits_from(const VP::View &written, const VP::View &now) {
+  const std::vector<std::string_view> panels = panels_of(written, now);
+  const std::vector<VP::Connection> known = known_connections(written, now, panels);
+  std::vector<std::string> lines;
+  std::vector<std::string> order; // the nodes as they stand once the removals are done
+  const std::vector<VP::Connection> left = remove_gone(written, now, order, lines);
+  disconnect_changed(left, known, panels, lines);
+  add_new(written, now, order, lines);
+  move_into_order(order, now, lines);
+  connect_changed(written, left, known, panels, lines);
+  set_params(written, now, lines);
   return lines;
 }
 
