@@ -179,6 +179,24 @@ std::string end_fix(std::span<const NodePort> ports,
   return {};
 }
 
+// A node's ports as its bind listed them: the params it reads, or the rest.
+std::vector<const NodePort *>
+listed_ports(std::span<const NodePort> ports, std::string_view node, bool values) {
+  std::vector<const NodePort *> listed;
+  for (const NodePort &port : ports)
+    if (port.node == node && (port.kind == "value") == values)
+      listed.push_back(&port);
+  return listed;
+}
+
+// The ports' names, as a refusal lists them; none for none.
+std::string port_names(std::span<const NodePort *const> ports) {
+  std::string text;
+  for (const NodePort *const port : ports)
+    text.append(text.empty() ? "" : ", ").append(port->name);
+  return text.empty() ? std::string("none") : text;
+}
+
 } // namespace
 
 // Resolves an operator's names against its node while it binds. A name that does not
@@ -677,75 +695,73 @@ void Schedule::drop_operators(const std::vector<std::string> &modules) {
 // at a node whose operator read the view as it bound, as it may ask for that port once a
 // connection names it. A buffer its shader only reads, its C++ may fill, and so write.
 void Schedule::check(const View &view) const {
-  const auto bound = [&](std::string_view node) -> const Bound * {
-    const auto found = std::ranges::find_if(
-        _bound, [&](const Bound &each) { return each.node->name == node; });
-    return found != _bound.end() && found->whole() && !saved_since_built(*found)
-               ? &*found
-               : nullptr;
-  };
-  const auto listed = [&](std::string_view node, bool values) {
-    std::vector<const NodePort *> ports;
-    for (const NodePort &port : _ports)
-      if (port.node == node && (port.kind == "value") == values)
-        ports.push_back(&port);
-    return ports;
-  };
-  const auto names = [](const std::vector<const NodePort *> &ports) {
-    std::string text;
-    for (const NodePort *const port : ports)
-      text.append(text.empty() ? "" : ", ").append(port->name);
-    return text.empty() ? std::string("none") : text;
-  };
-  for (const Node &node : view.nodes) {
-    if (!bound(node.name))
-      continue;
-    const std::vector<const NodePort *> values = listed(node.name, true);
-    for (const Param &param : node.params) {
-      if (param.key.find('.') != std::string::npos)
-        continue;
-      const auto value = std::ranges::find_if(
-          values, [&](const NodePort *port) { return port->name == param.key; });
-      if (value == values.end())
-        throw std::runtime_error(std::format("param {}: node {} reads no param of that "
-                                             "name; the params it reads are {}{}",
-                                             param.key,
-                                             node.name,
-                                             names(values),
-                                             as_word(node.name, param)));
-      if (!(*value)->holds.empty() && !write_value(param.value, (*value)->holds, nullptr))
-        throw std::runtime_error(std::format(
-            "param {} = {} is not a {}", param.key, param.value, (*value)->holds));
-    }
+  for (const Node &node : view.nodes)
+    if (checkable(node.name))
+      check_params(node);
+  for (const Connection &connection : view.connections) {
+    check_end(view, connection, connection.from);
+    for (const Endpoint &end : connection.to)
+      check_end(view, connection, end);
   }
-  for (const Connection &connection : view.connections)
-    for (std::size_t at = 0; at <= connection.to.size(); ++at) {
-      const bool writes = at == 0;
-      const Endpoint &end = writes ? connection.from : connection.to[at - 1];
-      const Bound *const node = end.view() ? nullptr : bound(end.node);
-      if (!node || node->asked_view)
-        continue;
-      std::vector<const NodePort *> ports = listed(end.node, false);
-      const auto port = std::ranges::find_if(
-          ports, [&](const NodePort *each) { return each->name == end.port; });
-      if (port != ports.end() &&
-          (!writes || (*port)->writes || node->uploads_to(end.port)))
-        continue;
-      if (const std::string fix = end_fix(_ports, view, connection, end, *node);
-          !fix.empty())
-        throw std::runtime_error(fix);
-      const std::string_view why = port == ports.end()
-                                       ? "names no port of its node"
-                                       : "is a port its node reads, not one it writes";
-      std::erase_if(ports, [&](const NodePort *each) { return each->writes != writes; });
-      throw std::runtime_error(std::format("connection {}: {} {}; the ports {} {} are {}",
-                                           connection.name,
-                                           end.text(),
-                                           why,
-                                           end.node,
-                                           writes ? "writes" : "reads",
-                                           names(ports)));
-    }
+}
+
+// The node bound whole and not saved since it was built, so its bind listed every port
+// and param; null for any other.
+const Bound *Schedule::checkable(std::string_view node) const {
+  const auto found = std::ranges::find_if(
+      _bound, [&](const Bound &each) { return each.node->name == node; });
+  return found != _bound.end() && found->whole() && !saved_since_built(*found) ? &*found
+                                                                               : nullptr;
+}
+
+// Each param the node sets on itself: one it reads, holding a value of its type.
+void Schedule::check_params(const Node &node) const {
+  const std::vector<const NodePort *> values = listed_ports(_ports, node.name, true);
+  for (const Param &param : node.params) {
+    if (param.key.find('.') != std::string::npos)
+      continue;
+    const auto value = std::ranges::find_if(
+        values, [&](const NodePort *port) { return port->name == param.key; });
+    if (value == values.end())
+      throw std::runtime_error(std::format("param {}: node {} reads no param of that "
+                                           "name; the params it reads are {}{}",
+                                           param.key,
+                                           node.name,
+                                           port_names(values),
+                                           as_word(node.name, param)));
+    if (!(*value)->holds.empty() && !write_value(param.value, (*value)->holds, nullptr))
+      throw std::runtime_error(std::format(
+          "param {} = {} is not a {}", param.key, param.value, (*value)->holds));
+  }
+}
+
+// One end of a connection: a port its node writes, or C++ fills, for the writer, and one
+// it has at all for a reader.
+void Schedule::check_end(const View &view,
+                         const Connection &connection,
+                         const Endpoint &end) const {
+  const bool writes = &end == &connection.from;
+  const Bound *const node = end.view() ? nullptr : checkable(end.node);
+  if (!node || node->asked_view)
+    return;
+  std::vector<const NodePort *> ports = listed_ports(_ports, end.node, false);
+  const auto port = std::ranges::find_if(
+      ports, [&](const NodePort *each) { return each->name == end.port; });
+  if (port != ports.end() && (!writes || (*port)->writes || node->uploads_to(end.port)))
+    return;
+  if (const std::string fix = end_fix(_ports, view, connection, end, *node); !fix.empty())
+    throw std::runtime_error(fix);
+  const std::string_view why = port == ports.end()
+                                   ? "names no port of its node"
+                                   : "is a port its node reads, not one it writes";
+  std::erase_if(ports, [&](const NodePort *each) { return each->writes != writes; });
+  throw std::runtime_error(std::format("connection {}: {} {}; the ports {} {} are {}",
+                                       connection.name,
+                                       end.text(),
+                                       why,
+                                       end.node,
+                                       writes ? "writes" : "reads",
+                                       port_names(ports)));
 }
 
 // A dispatch's threads, as its word gives them, or as the buffer at the port it names

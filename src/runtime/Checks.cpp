@@ -401,49 +401,24 @@ std::string draws_nothing(const Bound &bound, bool vertex) {
                               "its inputs");
 }
 
+// Whether a connection reaches the node.
+bool reached(const View &view, std::string_view node) {
+  return std::ranges::any_of(view.connections, [&](const Connection &connection) {
+    return std::ranges::find(connection.to, node, &Endpoint::node) != connection.to.end();
+  });
+}
+
 } // namespace
 
 // A vertex node draws with the fragment node its varyings reach, once both are bound, as
-// one draw: its own pass, of its pass block and counts, and the fragment node's color. It
-// keeps its pipeline while the build left both shaders alone and it fits what it draws
-// into. A fragment node no vertex node draws with draws nothing: refused where a
-// connection reaches it, as the vertex node says why, else warned of, as either alone is.
+// one draw: its own pass, of its pass block and counts, and the fragment node's color. A
+// fragment node no vertex node draws with draws nothing: refused where a connection
+// reaches it, as the vertex node says why, else warned of, as either alone is. One whose
+// vertex node the build has not made yet draws with it once built.
 void Schedule::pair_draws(Schedule *replaced) {
-  for (Bound &bound : _bound) {
-    if (!is_vertex(*bound.node) || !bound.loaded())
-      continue;
-    bound.fragment = fragment_of(bound);
-    if (!bound.fragment)
-      continue;
-    Bound *const old = replaced ? replaced->find(bound.node->name) : nullptr;
-    const bool unchanged = old && old->fragment && old->spirv == bound.spirv &&
-                           old->built == bound.built &&
-                           old->fragment->spirv == bound.fragment->spirv &&
-                           old->fragment->built == bound.fragment->built;
-    try {
-      fit_pipeline(bound, old, unchanged);
-    } catch (const std::exception &failure) {
-      bound.errors.emplace_back(failure.what());
-    }
-  }
-  // A vertex node its varyings come from that the build has not made yet draws with it
-  // once built.
-  const auto unbuilt_writer = [&](const Bound &reader) -> const Bound * {
-    for (const Connection &connection : _view.connections) {
-      const Bound *const writer = find(connection.from.node);
-      if (writer && writer->unbuilt &&
-          std::ranges::find(connection.to, reader.node->name, &Endpoint::node) !=
-              connection.to.end())
-        return writer;
-    }
-    return nullptr;
-  };
-  const auto reached = [&](std::string_view node) {
-    return std::ranges::any_of(_view.connections, [&](const Connection &connection) {
-      return std::ranges::find(connection.to, node, &Endpoint::node) !=
-             connection.to.end();
-    });
-  };
+  for (Bound &bound : _bound)
+    if (is_vertex(*bound.node) && bound.loaded())
+      pair_vertex(bound, replaced);
   for (Bound &bound : _bound)
     if (is_fragment(*bound.node) && bound.loaded() && bound.errors.empty() &&
         std::ranges::none_of(
@@ -452,12 +427,43 @@ void Schedule::pair_draws(Schedule *replaced) {
         waits(bound,
               std::format("waits for the vertex node {}, which the live build builds",
                           vertex->node->name));
-      else if (reached(bound.node->name))
+      else if (reached(_view, bound.node->name))
         bound.errors.emplace_back("no vertex node draws with it: a fragment node draws "
                                   "with the vertex node whose varyings reach its inputs");
       else
         bound.warnings.push_back(draws_nothing(bound, false));
     }
+}
+
+// The vertex node's fragment node and its pipeline, which it keeps while the build left
+// both shaders alone and it fits what it draws into.
+void Schedule::pair_vertex(Bound &vertex, Schedule *replaced) {
+  vertex.fragment = fragment_of(vertex);
+  if (!vertex.fragment)
+    return;
+  Bound *const old = replaced ? replaced->find(vertex.node->name) : nullptr;
+  const bool unchanged = old && old->fragment && old->spirv == vertex.spirv &&
+                         old->built == vertex.built &&
+                         old->fragment->spirv == vertex.fragment->spirv &&
+                         old->fragment->built == vertex.fragment->built;
+  try {
+    fit_pipeline(vertex, old, unchanged);
+  } catch (const std::exception &failure) {
+    vertex.errors.emplace_back(failure.what());
+  }
+}
+
+// The vertex node the reader's varyings come from, while the build has not made it yet;
+// null for none.
+const Bound *Schedule::unbuilt_writer(const Bound &reader) {
+  for (const Connection &connection : _view.connections) {
+    const Bound *const writer = find(connection.from.node);
+    if (writer && writer->unbuilt &&
+        std::ranges::find(connection.to, reader.node->name, &Endpoint::node) !=
+            connection.to.end())
+      return writer;
+  }
+  return nullptr;
 }
 
 // The fragment node a vertex node's varyings reach, which makes one draw with it, or

@@ -27,6 +27,7 @@ class Ports;
 struct Connection;
 struct Copy;
 struct Cost;
+struct Endpoint;
 struct Field; // in baseclasses/Shader.h
 struct Node;
 struct NodePort;
@@ -188,7 +189,13 @@ private:
   VkSampleCountFlagBits samples_of(VkRenderPass render_pass) const;
   Depth depth_of(const Bound &bound) const;
   const Buffer &indirect_for(const Bound &bound);
+  const Bound *checkable(std::string_view node) const;
+  void check_params(const Node &node) const;
+  void
+  check_end(const View &view, const Connection &connection, const Endpoint &end) const;
   void pair_draws(Schedule *replaced);
+  void pair_vertex(Bound &vertex, Schedule *replaced);
+  const Bound *unbuilt_writer(const Bound &reader);
   Bound *fragment_of(Bound &vertex);
   void check_varyings(const Bound &vertex,
                       Bound &fragment,
