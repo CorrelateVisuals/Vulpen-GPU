@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <format>
+#include <functional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -88,6 +89,26 @@ void reads(const Shader &writer,
 bool holds_alike(const Field &written, bool by_cpp, const Field &read) {
   return by_cpp ? disagreements(written, read, "writes").empty()
                 : written.stride == read.stride && written.type == read.type;
+}
+
+// What a field a shader reads holds unlike what a writer writes, as holds_alike weighs
+// them, each as a connection's error says it after the connection's name.
+std::vector<std::string> unlike(const Field &written,
+                                bool by_cpp,
+                                const Field &read,
+                                const Connection &connection,
+                                const Endpoint &to) {
+  if (by_cpp)
+    return disagreements(written, read, "writes");
+  if (holds_alike(written, false, read))
+    return {};
+  return {std::format("{} writes {}-byte {}, {} reads {}-byte {}",
+                      connection.from.node,
+                      written.stride,
+                      written.type,
+                      to.port,
+                      read.stride,
+                      read.type)};
 }
 
 // The buffers no connection joins that other nodes write, holding what a loose field
@@ -586,131 +607,133 @@ void Schedule::check_fields(Bound &bound) const {
                       runs_operator(*bound.node) ? ", or set it from the operator" : ""));
 }
 
+// Each connection, then the ports no connection joins: a read buffer, and a buffer C++
+// fills. A port no connection joins names the line that joins it, where another node's
+// port holds the same the other way round (A02): what to type, beside what is wrong.
 void Schedule::check_connections() {
-  // An image reaches only Textures. A reader whose shaders did not load says why on its
-  // own; one with none has no Texture to sample.
-  const auto sampled = [&](const Connection &connection, std::string_view drawn) {
-    for (const Endpoint &to : connection.to) {
-      Bound &reader = *find(to.node);
-      const Field *const in = reader.field(to.port);
-      if ((reader.loaded() || reader.shaders_named.empty()) && (!in || !in->texture()))
-        reader.errors.push_back(
-            std::format("connection {}: {} an image, which {} is no Texture to sample",
-                        connection.name,
-                        drawn,
-                        to.port));
-    }
-  };
-  for (const Connection &connection : _view.connections) {
-    if (connection.from.view()) {
-      sampled(connection, std::format("view {} draws", connection.from.node));
-      continue;
-    }
-    Bound &writer = *find(connection.from.node);
-    // Its readers wait for a writer the build has not made yet, which the build starts.
-    if (writer.unbuilt) {
-      for (const Endpoint &to : connection.to)
-        waits(*find(to.node),
-              std::format("connection {}: waits for {}, which the live build builds",
-                          connection.name,
-                          writer.node->name));
-      continue;
-    }
-    if (std::ranges::find(writer.outputs, connection.from.port) != writer.outputs.end()) {
-      check_inputs(connection);
-      continue;
-    }
-    // A varying, which pair_draws checked, or one of a vertex node that did not load,
-    // which says why on its own.
-    if (is_vertex(*writer.node) &&
-        (!writer.loaded() ||
-         std::ranges::find(writer.stage(vertex_stage).outputs(),
-                           connection.from.port,
-                           &Varying::name) != writer.stage(vertex_stage).outputs().end()))
-      continue;
-    // A buffer C++ fills at a port no shader of its node holds reaches shaders that hold
-    // its element as C++ writes it.
-    const Bound::Written *const filled = writer.upload(connection.from.port);
-    if (filled && !writer.field(connection.from.port)) {
-      for (const Endpoint &to : connection.to) {
-        Bound &reader = *find(to.node);
-        const Field *const in = reader.field(to.port);
-        if (!reader.loaded() && !reader.shaders_named.empty())
-          continue;
-        if (filled->count == 0)
-          reader.errors.push_back(
-              std::format("connection {}: nothing writes it", connection.name));
-        else if (!in || !in->buffer() || !reads(in->access))
-          reader.errors.push_back(
-              std::format("connection {}: {} is not a buffer its shader reads",
-                          connection.name,
-                          to.port));
-        else
-          for (const std::string &disagreement :
-               disagreements(filled->element, *in, "writes"))
-            reader.errors.push_back(
-                std::format("connection {}: {}", connection.name, disagreement));
-      }
-      continue;
-    }
-    const bool drawn = writer.drawn && connection.from.port == writer.output;
-    const Field *const out = writer.field(connection.from.port);
-    if (out && out->depth()) {
-      if (!writer.drawn && !(writer.fragment && writer.fragment->drawn))
-        writer.errors.push_back(std::format(
-            "connection {}: its depth reaches a later pass only from an image it draws "
-            "into; a connection from its color to a Texture draws it into one",
-            connection.name));
-      sampled(connection, std::format("{} draws the depth of", connection.from.node));
-      continue;
-    }
-    if (writer.fills(connection.from.port) || drawn || (out && out->image())) {
-      sampled(connection,
-              std::format("{} {}",
-                          connection.from.node,
-                          drawn                 ? "draws"
-                          : out && out->image() ? "stores"
-                                                : "fills"));
-      continue;
-    }
-    const bool written = out && out->buffer() &&
-                         (writes(out->access) || writer.uploads_to(connection.from.port));
-    if (writer.loaded() && !written)
-      writer.errors.push_back(
-          std::format("connection {}: {} is not a buffer its shader or operator writes",
-                      connection.name,
-                      connection.from.port));
-    for (const Endpoint &to : connection.to) {
-      Bound &reader = *find(to.node);
-      const Field *const in = reader.field(to.port);
-      if (!reader.loaded())
-        continue;
-      if (!written)
-        reader.errors.push_back(
-            std::format("connection {}: nothing writes it", connection.name));
-      else if (!in || !in->buffer() || !reads(in->access))
-        reader.errors.push_back(
-            std::format("connection {}: {} is not a buffer its shader reads",
-                        connection.name,
-                        to.port));
-      else if (in->stride != out->stride || in->type != out->type)
-        reader.errors.push_back(
-            std::format("connection {}: {} writes {}-byte {}, {} reads "
-                        "{}-byte {}",
-                        connection.name,
-                        connection.from.node,
-                        out->stride,
-                        out->type,
-                        to.port,
-                        in->stride,
-                        in->type));
-    }
+  for (const Connection &connection : _view.connections)
+    check_connection(connection);
+  check_loose_reads();
+  check_loose_uploads();
+}
+
+// A connection by who writes it: a view, a writer the build has not made yet, objects
+// between operators, a varying; else by what it writes.
+void Schedule::check_connection(const Connection &connection) {
+  if (connection.from.view()) {
+    check_sampled(connection, std::format("view {} draws", connection.from.node));
+    return;
   }
-  // A port no connection joins names the line that joins it, where another node's port
-  // holds the same the other way round (A02): what to type, beside what is wrong.
-  const auto loose = [&](const Bound &bound, std::string_view port) {
-    return !connection_of(bound.node->name, port);
-  };
+  Bound &writer = *find(connection.from.node);
+  // Its readers wait for a writer the build has not made yet, which the build starts.
+  if (writer.unbuilt) {
+    for (const Endpoint &to : connection.to)
+      waits(*find(to.node),
+            std::format("connection {}: waits for {}, which the live build builds",
+                        connection.name,
+                        writer.node->name));
+    return;
+  }
+  if (std::ranges::find(writer.outputs, connection.from.port) != writer.outputs.end()) {
+    check_inputs(connection);
+    return;
+  }
+  // A varying, which pair_draws checked, or one of a vertex node that did not load,
+  // which says why on its own.
+  if (is_vertex(*writer.node) &&
+      (!writer.loaded() ||
+       std::ranges::find(writer.stage(vertex_stage).outputs(),
+                         connection.from.port,
+                         &Varying::name) != writer.stage(vertex_stage).outputs().end()))
+    return;
+  check_written(connection, writer);
+}
+
+// A connection by what its writer writes: a buffer C++ fills, a depth, an image, or a
+// buffer of its shader.
+void Schedule::check_written(const Connection &connection, Bound &writer) {
+  // A buffer C++ fills at a port no shader of its node holds reaches shaders that hold
+  // its element as C++ writes it.
+  const Bound::Written *const filled = writer.upload(connection.from.port);
+  if (filled && !writer.field(connection.from.port)) {
+    check_readers(connection, filled->count == 0 ? nullptr : &filled->element, true);
+    return;
+  }
+  const bool drawn = writer.drawn && connection.from.port == writer.output;
+  const Field *const out = writer.field(connection.from.port);
+  if (out && out->depth()) {
+    if (!writer.drawn && !(writer.fragment && writer.fragment->drawn))
+      writer.errors.push_back(std::format(
+          "connection {}: its depth reaches a later pass only from an image it draws "
+          "into; a connection from its color to a Texture draws it into one",
+          connection.name));
+    check_sampled(connection, std::format("{} draws the depth of", connection.from.node));
+    return;
+  }
+  if (writer.fills(connection.from.port) || drawn || (out && out->image())) {
+    check_sampled(connection,
+                  std::format("{} {}",
+                              connection.from.node,
+                              drawn                 ? "draws"
+                              : out && out->image() ? "stores"
+                                                    : "fills"));
+    return;
+  }
+  const bool written = out && out->buffer() &&
+                       (writes(out->access) || writer.uploads_to(connection.from.port));
+  if (writer.loaded() && !written)
+    writer.errors.push_back(
+        std::format("connection {}: {} is not a buffer its shader or operator writes",
+                    connection.name,
+                    connection.from.port));
+  check_readers(connection, written ? out : nullptr, false);
+}
+
+// An image reaches only Textures. A reader whose shaders did not load says why on its
+// own; one with none has no Texture to sample.
+void Schedule::check_sampled(const Connection &connection, std::string_view drawn) {
+  for (const Endpoint &to : connection.to) {
+    Bound &reader = *find(to.node);
+    const Field *const in = reader.field(to.port);
+    if ((reader.loaded() || reader.shaders_named.empty()) && (!in || !in->texture()))
+      reader.errors.push_back(
+          std::format("connection {}: {} an image, which {} is no Texture to sample",
+                      connection.name,
+                      drawn,
+                      to.port));
+  }
+}
+
+// A buffer reaches only buffers a shader reads, which hold what its writer writes, by
+// its C++ or by its shader, as holds_alike weighs them; none written, nothing writes it.
+// A reader whose shaders did not load says why on its own, and one with none is a
+// reader only of what C++ fills.
+void Schedule::check_readers(const Connection &connection,
+                             const Field *written,
+                             bool by_cpp) {
+  for (const Endpoint &to : connection.to) {
+    Bound &reader = *find(to.node);
+    const Field *const in = reader.field(to.port);
+    if (!reader.loaded() && (!by_cpp || !reader.shaders_named.empty()))
+      continue;
+    if (!written)
+      reader.errors.push_back(
+          std::format("connection {}: nothing writes it", connection.name));
+    else if (!in || !in->buffer() || !reads(in->access))
+      reader.errors.push_back(
+          std::format("connection {}: {} is not a buffer its shader reads",
+                      connection.name,
+                      to.port));
+    else
+      for (const std::string &difference : unlike(*written, by_cpp, *in, connection, to))
+        reader.errors.push_back(
+            std::format("connection {}: {}", connection.name, difference));
+  }
+}
+
+// Each buffer a shader reads is joined by a connection or filled by its C++, and not by
+// both, unless the connection is from itself.
+void Schedule::check_loose_reads() {
   for (Bound &bound : _bound)
     for (const Field &field : bound.fields) {
       if (!field.buffer() || field.access != Access::read)
@@ -718,8 +741,10 @@ void Schedule::check_connections() {
       const Connection *const connection = connection_of(bound.node->name, field.name);
       const bool uploaded = bound.uploads_to(field.name);
       const std::vector<std::string> writers =
-          connection || uploaded ? std::vector<std::string>()
-                                 : writers_alike(_bound, bound, field, loose);
+          connection || uploaded
+              ? std::vector<std::string>()
+              : writers_alike(
+                    _bound, bound, field, std::bind_front(&Schedule::loose, this));
       const std::string reader = std::format("{}.{}", bound.node->name, field.name);
       if (!connection && !uploaded && writers.empty())
         bound.errors.push_back(
@@ -741,13 +766,17 @@ void Schedule::check_connections() {
                         field.name,
                         connection->name));
     }
+}
+
+// Each buffer C++ fills at a port no shader of its node holds is joined by a connection.
+void Schedule::check_loose_uploads() {
   for (Bound &bound : _bound)
     for (const Bound::Written &written : bound.uploads) {
       if (bound.field(written.port) || written.count == 0 ||
           connection_of(bound.node->name, written.port))
         continue;
-      const std::vector<std::string> readers =
-          readers_alike(_bound, bound, written.element, true, loose);
+      const std::vector<std::string> readers = readers_alike(
+          _bound, bound, written.element, true, std::bind_front(&Schedule::loose, this));
       bound.errors.push_back(
           readers.empty()
               ? std::format("the operator writes {}, which nothing reads: connect it to "
@@ -759,6 +788,11 @@ void Schedule::check_connections() {
                                     std::format("{}.{}", bound.node->name, written.port),
                                     readers)));
     }
+}
+
+// Whether no connection joins a node's port, as writers_alike and readers_alike ask it.
+bool Schedule::loose(const Bound &bound, std::string_view port) const {
+  return !connection_of(bound.node->name, port);
 }
 
 // Every image a node's C++ fills is sampled, by its own shaders or through a connection;
@@ -851,9 +885,7 @@ void Schedule::check_inputs(const Connection &connection) {
 // them. Then each value a param may set: one of its pass block that its C++ does not set,
 // and one its C++ reads, joined while the node sets it.
 void Schedule::list_ports() {
-  const auto loose = [&](const Bound &bound, std::string_view port) {
-    return !connection_of(bound.node->name, port);
-  };
+  const auto loose = std::bind_front(&Schedule::loose, this);
   for (const Bound &bound : _bound) {
     const auto add = [&](std::string_view name,
                          std::string_view kind,

@@ -27,6 +27,7 @@ class Ports;
 struct Connection;
 struct Copy;
 struct Cost;
+struct Field; // in baseclasses/Shader.h
 struct Node;
 struct NodePort;
 struct Offscreen;
@@ -196,6 +197,13 @@ private:
   void check_shaders(const Bound &bound) const;
   void check_fields(Bound &bound) const;
   void check_connections();
+  void check_connection(const Connection &connection);
+  void check_written(const Connection &connection, Bound &writer);
+  void check_sampled(const Connection &connection, std::string_view drawn);
+  void check_readers(const Connection &connection, const Field *written, bool by_cpp);
+  void check_loose_reads();
+  void check_loose_uploads();
+  bool loose(const Bound &bound, std::string_view port) const;
   void check_inputs(const Connection &connection);
   void check_images();
   void list_ports();
