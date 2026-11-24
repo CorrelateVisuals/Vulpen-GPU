@@ -403,6 +403,24 @@ void write_number(Labels &written,
   }
 }
 
+// A run of one role on a row shown, in the Label before it where that one is the row's,
+// from first on, and in the run's role, else in a Label of its own. Whether the room held
+// it.
+bool write_run(Labels &written,
+               const Grid &grid,
+               std::uint32_t first,
+               VP_VIEW::Label label,
+               std::string_view run) {
+  if (written.label_count > first &&
+      written.labels[written.label_count - 1].role == label.role)
+    written.append(run);
+  else if (!written.add(label, run))
+    return false;
+  VP_VIEW::Label &last = written.labels[written.label_count - 1];
+  last.extent = extent_of(grid, last.count);
+  return true;
+}
+
 } // namespace
 
 namespace {
@@ -876,21 +894,12 @@ void Text::write_lines(VP::Cook &frame,
          [&](std::size_t from, std::size_t to, std::uint32_t role) {
            from = std::max(from, left);
            to = std::min({to, right, from + room - written.character_count});
-           if (cut || from >= to)
-             return;
-           const std::string_view run = line.substr(from, to - from);
-           // A run in the role of the one before it on the row joins its Label.
-           if (written.label_count > first &&
-               written.labels[written.label_count - 1].role == role) {
-             written.append(run);
-           } else if (!written.add(
-                          {.offset = cell_at(grid, shown, from - left), .role = role},
-                          run)) {
-             cut = true;
-             return;
-           }
-           VP_VIEW::Label &label = written.labels[written.label_count - 1];
-           label.extent = extent_of(grid, label.count);
+           if (!cut && from < to)
+             cut = !write_run(written,
+                              grid,
+                              first,
+                              {.offset = cell_at(grid, shown, from - left), .role = role},
+                              line.substr(from, to - from));
          });
   }
   frame.write(_labels, written.label_count);
@@ -1070,18 +1079,15 @@ void Text::jump(VP::Call &call) {
   show_source(call, editor, round ? found.front() : *(here + 1));
 }
 
-// The places the files declare or define the name, in the order jump looks in them.
-std::vector<Source> Text::sources(VP::FilePort &files,
-                                  Listed &listed,
-                                  const std::string &file,
-                                  std::span<const std::string> rows,
-                                  std::string_view name) const {
-  std::vector<std::string> looked{file};
-  std::vector<std::vector<std::string>> read{
-      std::vector<std::string>(rows.begin(), rows.end())};
-  const auto add = [&](const std::string &path) {
-    if (path.empty() || looked.size() >= source_room ||
-        std::ranges::find(looked, path) != looked.end())
+// The files jump looks in, each once, with its lines, while there is room.
+struct Looked {
+  std::vector<std::string> paths;
+  std::vector<std::vector<std::string>> lines;
+
+  // One more, unless it is looked in already, a folder, gone or past source_largest.
+  void add(VP::FilePort &files, const std::string &path) {
+    if (path.empty() || paths.size() >= source_room ||
+        std::ranges::find(paths, path) != paths.end())
       return;
     std::string text;
     try {
@@ -1091,33 +1097,52 @@ std::vector<Source> Text::sources(VP::FilePort &files,
     }
     if (text.size() > source_largest)
       return;
-    looked.push_back(path);
-    read.push_back(lines_of(text));
-  };
+    paths.push_back(path);
+    lines.push_back(lines_of(text));
+  }
+
+  // The places they declare or define the name, in the order they were looked in.
+  std::vector<Source> declaring(std::string_view name) const {
+    std::vector<Source> found;
+    for (std::size_t at = 0; at < paths.size(); ++at)
+      for (std::size_t line = 0; line < lines[at].size(); ++line)
+        if (const auto declared = declares(lines[at][line], name, syntax_of(paths[at])))
+          found.push_back({.file = paths[at],
+                           .row = line,
+                           .column = declared->first,
+                           .length = declared->second});
+    return found;
+  }
+};
+
+// The places the files declare or define the name, in the order jump looks in them.
+std::vector<Source> Text::sources(VP::FilePort &files,
+                                  Listed &listed,
+                                  const std::string &file,
+                                  std::span<const std::string> rows,
+                                  std::string_view name) const {
+  Looked looked{.paths = {file},
+                .lines = {std::vector<std::string>(rows.begin(), rows.end())}};
   for (std::size_t from = 0, depth = 0; depth < include_depth; ++depth) {
-    const std::size_t to = looked.size();
+    const std::size_t to = looked.paths.size();
     for (std::size_t at = from; at < to; ++at)
-      for (const std::string &line : read[at])
+      for (const std::string &line : looked.lines[at])
         if (const std::string_view header = included(line); !header.empty()) {
-          const std::string beside = resolved(
-              listed, std::filesystem::path(looked[at]).parent_path(), header, true);
-          add(beside.empty() ? resolved(listed, _library, header, true) : beside);
+          const std::string beside =
+              resolved(listed,
+                       std::filesystem::path(looked.paths[at]).parent_path(),
+                       header,
+                       true);
+          looked.add(files,
+                     beside.empty() ? resolved(listed, _library, header, true) : beside);
         }
     from = to;
   }
   const std::filesystem::path folder = std::filesystem::path(file).parent_path();
   for (const std::string &beside : listed.names(folder.string()))
     if (!beside.ends_with('/') && syntax_of(beside) == syntax_of(file))
-      add((folder / beside).generic_string());
-  std::vector<Source> found;
-  for (std::size_t at = 0; at < looked.size(); ++at)
-    for (std::size_t line = 0; line < read[at].size(); ++line)
-      if (const auto declared = declares(read[at][line], name, syntax_of(looked[at])))
-        found.push_back({.file = looked[at],
-                         .row = line,
-                         .column = declared->first,
-                         .length = declared->second});
-  return found;
+      looked.add(files, (folder / beside).generic_string());
+  return looked.declaring(name);
 }
 
 // In the editor holding its file, or in the one jump acted on, which takes the focus.
