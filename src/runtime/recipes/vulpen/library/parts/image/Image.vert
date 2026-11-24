@@ -18,14 +18,22 @@ Texture showing() {
 // left, as its C++ says. Each corner is kept inside the Rect, its image coordinate moved
 // as far, so a zoomed image is cut at the Rect's edge without a discard (GLSL02). With no
 // image yet, no room or no zoom, it folds to a point and draws nothing, since the zeros
-// would divide below.
+// would divide below. While its view loads, it covers the Rect, uv across it, for the
+// loader.
 void main() {
   const Rect rect = pass.place.at[gl_InstanceIndex];
   gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
   uv = vec2(0.0);
   texel = 0.0;
+  if (rect.extent.x == 0u || rect.extent.y == 0u)
+    return;
+  if (pass.loading != 0u) {
+    uv = quad_corner(gl_VertexIndex);
+    gl_Position = pixel_clip(vec2(rect.offset) + uv * vec2(rect.extent));
+    return;
+  }
   const Texture image = showing();
-  if (image.index == 0u || rect.extent.x == 0u || rect.extent.y == 0u || pass.zoom <= 0.0)
+  if (image.index == 0u || pass.zoom <= 0.0)
     return;
   const vec2 size =
       vec2(textureSize(sampler2D(textures[image.index], samplers[linear_clamp]), 0));

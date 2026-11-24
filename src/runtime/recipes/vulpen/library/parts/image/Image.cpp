@@ -31,7 +31,8 @@ constexpr float nearest = 10.0f * PanZoom::most;
 // room costs no draw. With moves = yes, a drag and the wheel move and zoom it, as in the
 // graph; with interact = yes too, they go to the view whose window it shows instead. A
 // still connected to it shows its held frame in place of the picture, moved and zoomed
-// as the picture was, so the frame is looked at where it was.
+// as the picture was, so the frame is looked at where it was. Until a view whose window
+// it shows has shown it, as one just loaded waits for its build, a loader turns there.
 class Image final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _area = &node.input<VP_VIEW::Rect>("area");
@@ -52,6 +53,7 @@ class Image final : public VP::Operator {
     // Only an image a still hands frames to reads whether one is held, so any other
     // needs no connection for it.
     _holds = node.value<std::uint32_t>("holds");
+    _loading = node.value<std::uint32_t>("loading");
     const auto reaches = [&](const VP::Connection &connection) {
       return std::ranges::any_of(connection.to, [&](const VP::Endpoint &to) {
         return to.node == _name && to.port == still;
@@ -71,8 +73,8 @@ class Image final : public VP::Operator {
     const std::span<VP_VIEW::Rect> place = frame.write(_place, room ? 1 : 0);
     if (room)
       place.front() = *_area;
+    follow(frame.view());
     if (_moves) {
-      follow(frame.view());
       keys(frame);
       if (_interact)
         hand(frame);
@@ -82,22 +84,46 @@ class Image final : public VP::Operator {
     frame.set(_pan, _view.pan);
     frame.set(_zoom, _view.zoom);
     frame.set(_holds, static_cast<std::uint32_t>(_still && _still->holds));
+    frame.set(_loading, static_cast<std::uint32_t>(loading(frame)));
   }
 
   // The writer of the connection that reaches its picture, as it was last, copied only
   // when another comes, so a frame allocates nothing for it. Another writer's picture, as
-  // another view presented, starts at home. A picture that goes and comes back from the
-  // same writer, as a pane's view shown again, stays where it was moved and zoomed.
+  // another view presented, starts at home, not yet shown. A picture that goes and comes
+  // back from the same writer, as a pane's view shown again, stays where it was moved and
+  // zoomed.
   void follow(const VP::View &view) {
     const VP::Endpoint *from = nullptr;
     for (const VP::Connection &connection : view.connections)
       for (const VP::Endpoint &to : connection.to)
         if (to.node == _name && to.port == picture)
           from = &connection.from;
+    _reached = from != nullptr;
     if (!from || (from->node == _from.node && from->port == _from.port))
       return;
     _from = *from;
     _view.home();
+    _shown = false;
+  }
+
+  // Until the view whose window reaches its picture has shown it: while that view has
+  // yet to run, or a node of it waits for the live build to make its code, as each node
+  // of a view loaded before it was ever built does. A view once shown keeps its last
+  // frame through a rebuild, so the loader turns only as a view comes, and again when it
+  // goes and comes back.
+  bool loading(const VP::Cook &frame) {
+    const VP::View *const view =
+        _reached && _from.view() ? frame.view(_from.node) : nullptr;
+    if (!view) {
+      _shown = false;
+      return false;
+    }
+    const std::span<const VP::Cost> costs = frame.costs(_from.node);
+    _shown = _shown || view->nodes.empty() ||
+             (!costs.empty() && std::ranges::none_of(costs, [](const VP::Cost &cost) {
+               return cost.waits;
+             }));
+    return !_shown;
   }
 
   // h brings the image home, letterboxed again, interacting or not. Escape lets go of
@@ -176,8 +202,11 @@ class Image final : public VP::Operator {
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;
   VP::Value<std::uint32_t> _holds;
+  VP::Value<std::uint32_t> _loading;
   PanZoom _view;
   VP::Endpoint _from;     // what reached its picture last
+  bool _reached = false;  // whether a connection reaches its picture this frame
+  bool _shown = false;    // whether the view _from names has shown its window since
   glm::vec2 _pointer{};   // as the events so far left it
   bool _moves = false;    // whether a drag and the wheel move it
   bool _interact = false; // whether they go to the view it shows instead

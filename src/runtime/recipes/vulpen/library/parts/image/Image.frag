@@ -30,10 +30,35 @@ vec4 held_mixed(vec2 uv) {
 // eyes, which we have looked upon, and our hands have handled, of the Word of life;"
 // 1 John 1:1
 
+// The loader: an arc of a ring in the middle of the Rect, turning, in a grey that shows
+// on a dark theme and a light one alike, as the part reads no palette.
+const float loader_radius = 16.0; // pixels
+const float loader_width = 3.0;   // pixels
+const float loader_arc = 0.3;     // of a turn
+const float loader_turns = 1.0;   // a second
+const vec4 loader_grey = vec4(0.5, 0.5, 0.5, 1.0);
+const float turn_radians = 6.2831853;
+
+// The arc where uv lies in the Rect, turning with the frame's time, which counts frames,
+// so a replay draws it alike (C01). Its edges fade over a pixel. Away from the ring it
+// returns before atan, which no GPU defines at the middle (GLSL02).
+vec4 loader(vec2 uv) {
+  const vec2 at = (uv - 0.5) * vec2(pass.place.at[0].extent);
+  const float across = abs(length(at) - loader_radius);
+  if (across > loader_width)
+    return vec4(0.0);
+  const float turn = fract(atan(at.y, at.x) / turn_radians - frame.time * loader_turns);
+  const float along = min(turn, loader_arc - turn) * turn_radians * loader_radius;
+  return loader_grey * clamp(loader_width * 0.5 - across + 0.5, 0.0, 1.0) *
+         clamp(along + 0.5, 0.0, 1.0);
+}
+
 // Zoomed past a screen pixel a pixel of the image, each shows as a square of its own
 // color, so a deep zoom shows what the view drew rather than a blur of it.
 void main() {
-  if (pass.holds != 0u)
+  if (pass.loading != 0u)
+    color = loader(uv);
+  else if (pass.holds != 0u)
     color = texel > 1.0 ? held_at(uv) : held_mixed(uv);
   else
     color = texel > 1.0 ? sample_nearest(pass.picture, uv)

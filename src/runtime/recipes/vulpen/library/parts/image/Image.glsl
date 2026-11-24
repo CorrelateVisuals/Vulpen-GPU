@@ -12,6 +12,8 @@ layout(set = 1, binding = 0) uniform Pass {
   Texture held;    // a connection: the frame a still holds of the picture, encoded as
                    // contracts/Still.glsl says; nothing while none reaches it
   uint holds;      // from its C++: 1 while the still holds it, which then shows instead
+  uint loading;    // from its C++: 1 until the view whose window the picture is shows
+                   // it, as its code waits for the live build; a loader turns instead
 } pass;
 
 // "Believe me that I am in the Father, and the Father in me: or else believe me for the

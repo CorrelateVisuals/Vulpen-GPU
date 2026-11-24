@@ -9,6 +9,8 @@
 # With interact = yes too, the view whose window it shows takes the presses and the wheel
 # in its area, while it has the focus, in place of the drag and the wheel moving it, the
 # pointer over its window where the picture shows it, at its edge where the picture's is.
+# Until a view whose window it shows has shown it, as one just loaded waits for its build,
+# a loader turns in its area.
 [manifest]
 version = 1
 
