@@ -76,6 +76,12 @@ TIMEOUT_S = 90         # for a frame to pass, or a restart's build
 JOBS = str(os.cpu_count() or 1)  # a build's count of jobs, as check.py's
 POLL_S = 0.005
 FRAMES_A_LINE = 2      # at least, from one line to the next
+# What a walk leaves after each line, as a person typing does: vulpen counts a part's
+# line of the 3 frames after a person's (answer_frames, in Commands.cpp) as that line's
+# answer, which undo takes back with it, or keeps none of after an undo; a line sooner
+# would have the parts' answers to the one before counted as its, and the log would
+# replay to other views (V08).
+WALK_FRAMES = 4
 SETTLE_S = 0.4         # between looks at whether the live build is idle
 SETTLE_ROUNDS = 150
 QUIT_S = 5
@@ -267,6 +273,8 @@ class Vulpen:
         self.last = "the start"
         self.building = False
         self.problems: list[tuple[str, list[str]]] = []
+        # Warnings an earlier line asked for, by what they say, as a walk keeps them.
+        self.asked: list[str] = []
         script = said.with_suffix(".setup")
         script.write_text("".join(line + "\n" for line in setup))
         env = {key: value for key, value in os.environ.items()
@@ -351,7 +359,8 @@ class Vulpen:
             if FAILED.search(line):
                 failed(said[at + 1:], self.problems)
             elif (WARNING in line and not EXPECTED_WARNINGS.search(line) and
-                  not BOUND_WARNING.search(line)):
+                  not BOUND_WARNING.search(line) and
+                  not any(asked in line for asked in self.asked)):
                 self.problems.append(("a warning", [line.strip()]))
             elif PROBLEM.search(line):
                 self.problems.append(("a validation message or sanitizer report",
@@ -937,17 +946,17 @@ def judge(copy: Copy, state: str, usage: Usage, variant: str, line: str,
 
 
 def try_line(copy: Copy, vulpen: Vulpen, state: State, usage: Usage, variant: str,
-             before: list[str], line: str) -> list[str]:
+             before: list[str], line: str, frames: int = FRAMES_A_LINE) -> list[str]:
     """The line after those that set up what it works on, judged by its own answer; what
-    the lines before said no line asked for is theirs."""
+    the lines before said no line asked for is theirs. Each takes frames at least."""
     for first in before:
-        vulpen.send(first)
+        vulpen.send(first, frames=frames)
     if before:
         vulpen.frames(1)
         for what, lines in vulpen.problems:
             copy.find(state.name, what, before[-1], lines)
         vulpen.problems.clear()
-    said = vulpen.send(line)
+    said = vulpen.send(line, frames=frames)
     judge(copy, state.name, usage, variant, line, said, vulpen)
     return said
 
@@ -1351,7 +1360,13 @@ def walk(copy: Copy, seed: int, steps: int) -> None:
             if any("snapshot" in text for text in [*before, line]):
                 continue
             held = copy.held()
-            said = try_line(copy, vulpen, state, usage, variant, before, line)
+            said = try_line(copy, vulpen, state, usage, variant, before, line,
+                            WALK_FRAMES)
+            # node remove keep leaves the node's folder, as its help says, which every
+            # read of the view since warns is no node's (RV08): what the line asked for.
+            if (words := line.split())[:3] == ["node", "remove", "keep"] and \
+                    len(words) == 4 and not refusals(said):
+                vulpen.asked.append(f"folder {words[3].replace('.', '/')}/ is no node's")
             for text in said:
                 if found := re.search(r"command: view switch ?(\S*)$", text):
                     current = found.group(1)
