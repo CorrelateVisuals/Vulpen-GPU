@@ -70,6 +70,9 @@ private:
   past(const Step &step, std::size_t at, std::filesystem::path &path, bool again);
   bool holds(const std::filesystem::path &file, std::string_view text) const;
   static void check_made(const Step &step);
+  static bool made_by(const Step &step,
+                      std::size_t made,
+                      const std::filesystem::directory_entry &entry);
   void take_files_back(const Step &step);
   void bring_files_again(Step &step);
   void remove_tree(const std::filesystem::path &path);

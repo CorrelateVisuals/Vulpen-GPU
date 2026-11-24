@@ -308,6 +308,13 @@ std::optional<std::filesystem::path> first_not(const std::filesystem::path &root
   return std::nullopt;
 }
 
+// Whether the path is the folder or inside it.
+bool inside(const std::filesystem::path &path, const std::filesystem::path &folder) {
+  const std::filesystem::path relative =
+      path.lexically_normal().lexically_relative(folder.lexically_normal());
+  return !relative.empty() && *relative.begin() != "..";
+}
+
 } // namespace
 
 // The files first, so a view the line closed comes back with its manifest there, then the
@@ -466,33 +473,16 @@ bool Undo::holds(const std::filesystem::path &file, std::string_view text) const
 // nor a later one of the step made, as a file saved there since, is refused.
 void Undo::check_made(const Step &step) {
   using ChangeKind = Step::Change::Kind;
-  const auto inside = [](const std::filesystem::path &path,
-                         const std::filesystem::path &folder) {
-    const std::filesystem::path relative =
-        path.lexically_normal().lexically_relative(folder.lexically_normal());
-    return !relative.empty() && *relative.begin() != "..";
-  };
   for (std::size_t made = 0; made < step.changes.size(); ++made) {
     const Step::Change &change = step.changes[made];
     if (change.kind != ChangeKind::copy && change.kind != ChangeKind::make)
       continue;
-    const auto own = [&](const std::filesystem::directory_entry &entry) {
-      std::error_code unread;
-      const auto brought = change.brought.find(entry.path());
-      if (brought != change.brought.end() &&
-          (!brought->second || brought->second == entry.last_write_time(unread)))
-        return true;
-      return std::ranges::any_of(
-          step.changes | std::views::drop(made + 1), [&](const Step::Change &later) {
-            const bool moved =
-                later.kind == ChangeKind::copy || later.kind == ChangeKind::rename;
-            return later.kind != ChangeKind::remove &&
-                   inside(entry.path(), moved ? later.to : later.path);
-          });
-    };
     const std::filesystem::path &root =
         change.kind == ChangeKind::copy ? change.to : change.path;
-    if (const std::optional<std::filesystem::path> since = first_not(root, own))
+    if (const std::optional<std::filesystem::path> since =
+            first_not(root, [&](const std::filesystem::directory_entry &entry) {
+              return made_by(step, made, entry);
+            }))
       throw std::runtime_error(
           std::format("{} is new or changed since the line {}, and undo would delete it "
                       "with {}; nothing changed",
@@ -500,6 +490,27 @@ void Undo::check_made(const Step &step) {
                       line_of(step.line, step.hosted),
                       root.string()));
   }
+}
+
+// Whether the step's change at made brought the entry as it is, or a later change put
+// something where it is.
+bool Undo::made_by(const Step &step,
+                   std::size_t made,
+                   const std::filesystem::directory_entry &entry) {
+  using ChangeKind = Step::Change::Kind;
+  const Step::Change &change = step.changes[made];
+  std::error_code unread;
+  const auto brought = change.brought.find(entry.path());
+  if (brought != change.brought.end() &&
+      (!brought->second || brought->second == entry.last_write_time(unread)))
+    return true;
+  return std::ranges::any_of(step.changes | std::views::drop(made + 1),
+                             [&](const Step::Change &later) {
+                               const bool moved = later.kind == ChangeKind::copy ||
+                                                  later.kind == ChangeKind::rename;
+                               return later.kind != ChangeKind::remove &&
+                                      inside(entry.path(), moved ? later.to : later.path);
+                             });
 }
 
 // The last change first. A hosted view's manifest is the view's, written as it comes

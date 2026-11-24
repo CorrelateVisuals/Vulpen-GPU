@@ -244,6 +244,19 @@ bool colors(const Bound &bound, std::string_view name) {
   return std::ranges::find(written, name, &Varying::name) != written.end();
 }
 
+// What a node counts that the shaders it runs do not, or lacks that they do; empty where
+// its counts fit.
+std::string_view miscounted(const Node &node, bool dispatch) {
+  if (dispatch && (node.vertex_count != 0 || !node.counts_invocations()))
+    return "it runs a .comp, so it counts its invocations, and no vertex_count";
+  if (is_draw(node) && (node.counts_invocations() || node.vertex_count == 0))
+    return "it draws, so it counts its vertex_count, and no invocations";
+  if (is_fragment(node) && (node.counts_invocations() || node.vertex_count != 0 ||
+                            !node.instance_count.empty()))
+    return "a fragment node counts nothing: the vertex node it draws with counts";
+  return {};
+}
+
 } // namespace
 
 // What the node's shaders make it, and whether it counts what that runs: a dispatch
@@ -256,8 +269,6 @@ bool Schedule::check_counts(Bound &bound) const {
   const std::vector<std::string> &shaders = bound.shaders_named;
   const auto count = [&](std::string_view stage) { return count_stage(shaders, stage); };
   const bool dispatch = shaders.size() == 1 && count(compute_stage) == 1;
-  const bool fragment = is_fragment(node);
-  const bool draw = is_draw(node);
   const std::size_t before = bound.errors.size();
   if (shaders.empty()) {
     if (node.counts_invocations() || node.vertex_count != 0 ||
@@ -273,18 +284,10 @@ bool Schedule::check_counts(Bound &bound) const {
                                        joined(shaders, " and ")));
   } else if (lacks_stages(node)) {
     bound.warnings.push_back(lacks(bound));
-  } else if (dispatch && (node.vertex_count != 0 || !node.counts_invocations())) {
-    bound.errors.emplace_back(
-        "it runs a .comp, so it counts its invocations, and no vertex_count");
+  } else if (const std::string_view wrong = miscounted(node, dispatch); !wrong.empty()) {
+    bound.errors.emplace_back(wrong);
   } else if (dispatch && bound.invocations == 0) {
     return false; // its port counted none, as counted said, and it makes no buffers
-  } else if (draw && (node.counts_invocations() || node.vertex_count == 0)) {
-    bound.errors.emplace_back(
-        "it draws, so it counts its vertex_count, and no invocations");
-  } else if (fragment && (node.counts_invocations() || node.vertex_count != 0 ||
-                          !node.instance_count.empty())) {
-    bound.errors.emplace_back(
-        "a fragment node counts nothing: the vertex node it draws with counts");
   }
   return !shaders.empty() && bound.errors.size() == before;
 }
