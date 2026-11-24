@@ -103,6 +103,7 @@ private:
   void show_view(VP::CommandPort &commands) const;
   void show_folder(VP::CommandPort &commands, const std::filesystem::path &folder) const;
   void home();
+  std::optional<std::pair<glm::vec2, glm::vec2>> reach() const;
   void follow_font();
   void follow(VP::Cook &frame, bool room, const VP::Event &event);
   void press(VP::Cook &frame, std::uint32_t presses);
