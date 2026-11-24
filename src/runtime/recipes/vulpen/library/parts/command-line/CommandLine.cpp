@@ -771,15 +771,16 @@ class CommandLine final : public VP::Operator {
   // caret; or with character, the start of the character it is on.
   Mark mark_at(const Grid &grid, bool character = false) const {
     const glm::vec2 cell(_font->font.cell);
-    const std::size_t shown = rows_shown(grid);
+    const std::size_t shown = rows_from_first(grid);
     if (shown == 0) // cleared, or given no room, while dragged
       return _end;
     const glm::vec2 from(static_cast<float>(grid.left),
                          static_cast<float>(grid.bottom) -
                              static_cast<float>(shown) * cell.y);
     const glm::vec2 cells = (_pointer - from) / cell;
+    const float down = std::isfinite(cells.y) ? std::floor(cells.y) : 0.0f;
     const auto row = static_cast<std::size_t>(
-        std::clamp(std::floor(cells.y), 0.0f, static_cast<float>(shown - 1)));
+        std::clamp(down, 0.0f, static_cast<float>(shown - 1)));
     const std::size_t index = _scroll.first() + row;
     const float across = character ? std::floor(cells.x) : std::round(cells.x);
     const std::size_t column =
@@ -792,6 +793,13 @@ class CommandLine final : public VP::Operator {
   std::size_t rows_shown(const Grid &grid) const {
     const auto rows = grid.above / static_cast<std::int32_t>(_font->font.cell.y);
     return std::min({static_cast<std::size_t>(rows), _scrollback.size(), rows_most});
+  }
+
+  // Of those, the ones from the first the scroll shows: the scroll was fit to the rows
+  // and the area as they were, and a row past the newest is none to point at or draw.
+  std::size_t rows_from_first(const Grid &grid) const {
+    const std::size_t first = std::min(_scroll.first(), _scrollback.size());
+    return std::min(rows_shown(grid), _scrollback.size() - first);
   }
 
   // The selection as text, a break between its rows; what the scrollback dropped since
@@ -1378,7 +1386,7 @@ class CommandLine final : public VP::Operator {
     Labels text{frame.write(_labels),
                 frame.write(_characters),
                 static_cast<float>(_font->font.cell.x)};
-    const std::size_t shown = rows_shown(grid());
+    const std::size_t shown = rows_from_first(grid());
     const glm::uvec2 row_extent(static_cast<std::uint32_t>(columns * cell.x), cell.y);
     const std::size_t first = _columns.first();
     for (std::size_t row = 0; row < shown; ++row) {
