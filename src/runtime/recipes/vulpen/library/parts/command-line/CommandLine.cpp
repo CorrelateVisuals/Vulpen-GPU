@@ -738,7 +738,7 @@ class CommandLine final : public VP::Operator {
   // scroll on, as the editor's do, and the selection with them.
   void drift() {
     const Grid grid = this->grid();
-    const std::size_t shown = rows_shown(grid);
+    const std::size_t shown = rows_from_first(grid);
     if (!grid.room || shown == 0)
       return;
     const glm::vec2 cell(_font->font.cell);
@@ -779,8 +779,8 @@ class CommandLine final : public VP::Operator {
                              static_cast<float>(shown) * cell.y);
     const glm::vec2 cells = (_pointer - from) / cell;
     const float down = std::isfinite(cells.y) ? std::floor(cells.y) : 0.0f;
-    const auto row = static_cast<std::size_t>(
-        std::clamp(down, 0.0f, static_cast<float>(shown - 1)));
+    const auto row =
+        static_cast<std::size_t>(std::clamp(down, 0.0f, static_cast<float>(shown - 1)));
     const std::size_t index = _scroll.first() + row;
     const float across = character ? std::floor(cells.x) : std::round(cells.x);
     const std::size_t column =
