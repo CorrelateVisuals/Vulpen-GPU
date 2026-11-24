@@ -237,6 +237,8 @@ public:
   std::size_t done() const override;
   // A group undo took back, or redo brought back (CommandLog::take_back).
   void take_back(std::size_t group, bool taken);
+  // Lines go to the view, as view switch moves them, and undo puts them back.
+  void switch_to(std::string_view name);
 
 private:
   struct Spec;
@@ -263,7 +265,6 @@ private:
   std::vector<std::string> resolve(const Spec &spec,
                                    std::vector<std::string_view> &arguments,
                                    const std::filesystem::path &from) const;
-  void switch_to(std::string_view name);
   std::filesystem::path paths_from(std::string_view typed_at) const;
   std::filesystem::path resolved(const std::filesystem::path &file) const;
 

@@ -79,6 +79,8 @@ struct Undo::Step {
   std::optional<std::size_t> group; // of the session log, which its primitives joined
   std::vector<std::string> hosted;  // the views hosted as the line began
   std::vector<std::string> left;    // and as it ended
+  std::string went;                 // the view lines went to as the line began
+  std::string goes;                 // and as it ended
   std::vector<Viewed> views;
   std::vector<Change> changes;
   std::vector<std::function<void(bool again)>> joined; // the owners' own changes
@@ -210,8 +212,9 @@ Undo::Undo(FilePort &files, ViewLookup &views, Commands &port)
 Undo::~Undo() = default;
 
 void Undo::begin(std::string_view line) {
-  _step =
-      std::make_unique<Step>(Step{.line = std::string(line), .hosted = _views.names()});
+  _step = std::make_unique<Step>(Step{.line = std::string(line),
+                                      .hosted = _views.names(),
+                                      .went = std::string(_port.current())});
 }
 
 void Undo::note(std::string_view name, bool project, const View &before) {
@@ -237,6 +240,7 @@ void Undo::end(std::optional<std::size_t> group) {
       viewed.after = *found;
   step->group = group;
   step->left = _views.names();
+  step->goes = std::string(_port.current());
   if (step->views.empty() && step->changes.empty() && step->joined.empty())
     return;
   _done.push_back(std::move(*step));
@@ -355,6 +359,13 @@ void Undo::take_back(Call &call, bool again) {
   for (const Step::Viewed &viewed : step.views)
     if (viewed.project)
       _views.write(viewed.name);
+  // A line that moved where lines go, as view new and view close do, has them put back,
+  // not handed to the view beside one undo closes. The parts answer the undo by the view
+  // lines go to, and keep none of it, so it must be the one a replay without the line
+  // leaves (V08).
+  if (const std::string &to = again ? step.goes : step.went;
+      step.goes != step.went && (to.empty() || _views.find(to)))
+    _port.switch_to(to);
   if (step.group)
     _port.take_back(*step.group, !again);
   call.reply(std::format("{} {}", again ? "redid" : "undid", step.line));
