@@ -1,5 +1,11 @@
+// The files part's operator. It runs past 800 lines (CPP12): its class keeps its methods
+// to one file, in the unnamed namespace so two copies of the part never clash, with the
+// helpers that find where a path lies in a hosted view; the starts' ways and what
+// follows a rename are in Ways.h and Follow.h beside it.
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "Follow.h"
+#include "Ways.h"
 #include "shared/Words.h"
 
 #include <algorithm>
@@ -54,12 +60,6 @@ constexpr std::array<std::string_view, 7> run_by_nodes{
 constexpr std::string_view start_name = "Name";
 constexpr std::string_view start_cpp = "Name.cpp";
 constexpr std::string_view start_node = "<node>";
-// The ways a .cpp and a shader one line makes beside it come joined by, by their numbers
-// in the starts: a .comp reads the C++'s value and hands its results back, [2] and [5];
-// a .vert reads the value, [2]. So the node runs joined at once, the least that shows
-// C++ and a shader talking.
-constexpr std::string_view dispatch_ways = "25";
-constexpr std::string_view draw_ways = "2";
 // Where a remove keeps what it takes, under the .vulpen/ of the view holding it, a folder
 // the time it went, so undo brings it back and a person finds it there; git ignores it.
 constexpr std::string_view kept_folder = ".vulpen";
@@ -93,12 +93,6 @@ std::string shown(const std::filesystem::path &path) {
   return path.lexically_proximate(std::filesystem::current_path()).generic_string();
 }
 
-// Without the / that may end a folder's path, so its name is its last part.
-std::filesystem::path bare(const std::filesystem::path &path) {
-  const std::filesystem::path normal = path.lexically_normal();
-  return normal.filename().empty() ? normal.parent_path() : normal;
-}
-
 // What its folder lists of a path: a file's name, a folder's with a / after it.
 bool listed(VP::FilePort &files,
             const std::filesystem::path &path,
@@ -110,11 +104,6 @@ bool listed(VP::FilePort &files,
 
 bool there(VP::FilePort &files, const std::filesystem::path &path) {
   return listed(files, path, "") || listed(files, path, "/");
-}
-
-bool word_letter(char letter) {
-  return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') ||
-         (letter >= '0' && letter <= '9') || letter == '_';
 }
 
 // Each whole word `from` in the text, whether code or a comment's, becomes `to`.
@@ -154,121 +143,6 @@ std::string filled(std::string text, std::string_view from, std::string_view to)
        at = text.find(from, at + to.size()))
     text.replace(at, from.size(), to);
   return text;
-}
-
-// A row of a start's way: commented out, and the comment after its code begins with the
-// way's number, or with two, as `// pass.results.at[i] = 0.0; // [2] [5]`. Where its //
-// is, where that comment is, and the numbers; none for any other row. Each number is a
-// digit in brackets and a space.
-constexpr std::string_view comment_mark = "// ";
-constexpr std::string_view way_comment = "// [";
-constexpr std::size_t way_number_width = 4; // as `[2] `
-
-struct WayRow {
-  std::size_t mark = 0;
-  std::size_t comment = 0;
-  std::string numbers;
-};
-
-std::optional<WayRow> way_row(std::string_view row) {
-  const std::size_t mark = row.find_first_not_of(' ');
-  if (mark == std::string_view::npos || !row.substr(mark).starts_with(comment_mark))
-    return std::nullopt;
-  WayRow found{.mark = mark,
-               .comment = row.find(way_comment, mark + comment_mark.size())};
-  if (found.comment == std::string_view::npos)
-    return std::nullopt;
-  for (std::size_t at = found.comment + comment_mark.size();
-       at + 2 < row.size() && row[at] == '[' && row[at + 2] == ']';
-       at += way_number_width)
-    found.numbers.push_back(row[at + 1]);
-  if (found.numbers.empty())
-    return std::nullopt;
-  return found;
-}
-
-// A row commented out, with no number, whose code opens a block, or closes one, as a
-// pass block's first and last rows.
-bool block_row(std::string_view row, bool opens) {
-  const std::size_t mark = row.find_first_not_of(' ');
-  if (mark == std::string_view::npos || !row.substr(mark).starts_with(comment_mark) ||
-      way_row(row))
-    return false;
-  const std::string_view code = row.substr(mark + comment_mark.size());
-  return opens ? code.ends_with('{') : code.starts_with('}');
-}
-
-// A start with the ways given joined: each row of a way whose numbers are all given
-// uncommented, its comment kept in its column, three on as the // before its code goes,
-// and around them the rows commented out that open and close their block.
-std::string joined(std::string_view text, std::string_view ways) {
-  std::vector<std::string> rows = rows_of_text(text);
-  std::vector<bool> taken(rows.size());
-  const std::size_t width = comment_mark.size(); // what uncommenting takes off
-  for (std::size_t at = 0; at < rows.size(); ++at)
-    if (const std::optional<WayRow> way = way_row(rows[at]);
-        way && std::ranges::all_of(way->numbers, [&](char number) {
-          return ways.find(number) != std::string_view::npos;
-        })) {
-      const std::string &row = rows[at];
-      rows[at] =
-          std::format("{}{}{}{}",
-                      row.substr(0, way->mark),
-                      row.substr(way->mark + width, way->comment - way->mark - width),
-                      std::string(width, ' '),
-                      row.substr(way->comment));
-      taken[at] = true;
-    }
-  for (std::size_t open = 0; open < rows.size(); ++open) {
-    if (!block_row(rows[open], true))
-      continue;
-    std::size_t close = open + 1;
-    while (close < rows.size() && !block_row(rows[close], false))
-      ++close;
-    const auto inside = taken.begin() + static_cast<std::ptrdiff_t>(open);
-    const auto after = taken.begin() + static_cast<std::ptrdiff_t>(close);
-    if (close < rows.size() && std::find(inside, after, true) != after)
-      for (const std::size_t at : {open, close})
-        rows[at].erase(rows[at].find(comment_mark), width);
-  }
-  std::string start;
-  for (std::size_t at = 0; at < rows.size(); ++at)
-    start.append(at == 0 ? "" : "\n").append(rows[at]);
-  return start;
-}
-
-// The ways a start comes joined by: a .cpp and a .comp or .vert one line makes in the
-// same folder, as one node's, read each other at once, with no line to uncomment; none
-// beside more C++ than one, whose classes would bind the same names.
-std::string_view joined_ways(const std::filesystem::path &file,
-                             std::span<const std::filesystem::path> line) {
-  const auto made = [&](std::string_view extension) {
-    return std::ranges::count_if(line, [&](const std::filesystem::path &path) {
-      return path.parent_path() == file.parent_path() && path.extension() == extension;
-    });
-  };
-  if (made(".cpp") != 1)
-    return {};
-  const std::string extension = file.extension().string();
-  if (extension == ".cpp")
-    return made(".comp") != 0 ? dispatch_ways : made(".vert") != 0 ? draw_ways : "";
-  return extension == ".comp" ? dispatch_ways : extension == ".vert" ? draw_ways : "";
-}
-
-// The C++ a shader's start names as its node's: the .cpp the line makes beside it, else
-// the first its folder holds, else one of the shader's name, as new would make it.
-std::string cpp_beside(VP::FilePort &files,
-                       const std::filesystem::path &file,
-                       std::span<const std::filesystem::path> line) {
-  const auto beside = [&](const std::filesystem::path &path) {
-    return path.parent_path() == file.parent_path() && path.extension() == ".cpp";
-  };
-  if (const auto made = std::ranges::find_if(line, beside); made != line.end())
-    return made->filename().string();
-  for (const std::string &name : files.list(file.parent_path().string()))
-    if (beside(file.parent_path() / name))
-      return name;
-  return file.stem().string() + ".cpp";
 }
 
 // Whether a path new is given names a folder: one ending in / or with no extension, as a
@@ -346,111 +220,6 @@ std::optional<std::string> node_of(const std::filesystem::path &inside) {
 
 bool named(const VP::View &view, std::string_view node) {
   return std::ranges::find(view.nodes, node, &VP::Node::name) != view.nodes.end();
-}
-
-// The sources below a folder, at any depth but the hidden folders', that may include a
-// header or a GLSL file: C++'s and the shaders'.
-void sources_below(VP::FilePort &files,
-                   const std::filesystem::path &folder,
-                   std::vector<std::filesystem::path> &found) {
-  constexpr std::array<std::string_view, 10> sources{".cpp",
-                                                     ".h",
-                                                     ".hpp",
-                                                     ".comp",
-                                                     ".vert",
-                                                     ".tesc",
-                                                     ".tese",
-                                                     ".geom",
-                                                     ".frag",
-                                                     ".glsl"};
-  for (const std::string &name : files.list(folder.string()))
-    if (name.starts_with('.'))
-      continue;
-    else if (name.ends_with('/'))
-      sources_below(files, folder / bare(name), found);
-    else if (std::ranges::find(sources,
-                               std::filesystem::path(name).extension().string()) !=
-             sources.end())
-      found.push_back(folder / name);
-}
-
-// A header or a GLSL file renamed in a view keeps its includers building, as a contract
-// or shared code is included by many (RV05, RV09): each #include "..." of the view's
-// sources that named it, from the including file's folder or from the view's top, names
-// the new path the same way. How many sources changed.
-std::size_t follow_includes(VP::FilePort &files,
-                            const std::filesystem::path &top,
-                            const std::filesystem::path &from,
-                            const std::filesystem::path &to) {
-  constexpr std::string_view include = "#include \"";
-  std::vector<std::filesystem::path> sources;
-  sources_below(files, top, sources);
-  std::size_t changed = 0;
-  for (const std::filesystem::path &source : sources) {
-    std::string text = files.read(source.string());
-    bool named = false;
-    for (std::size_t at = text.find(include); at != std::string::npos;
-         at = text.find(include, at + 1)) {
-      const std::size_t open = at + include.size();
-      const std::size_t close = text.find('"', open);
-      if (close == std::string::npos)
-        break;
-      const std::filesystem::path written(text.substr(open, close - open));
-      for (const std::filesystem::path &base : {source.parent_path(), top})
-        if ((base / written).lexically_normal() == from) {
-          text.replace(open, close - open, to.lexically_relative(base).generic_string());
-          named = true;
-          break;
-        }
-    }
-    if (named) {
-      files.save(source.string(), text);
-      ++changed;
-    }
-  }
-  return changed;
-}
-
-// A C++ file named for its class, as new starts one, Clock.cpp holding class Clock,
-// renamed renames the class in it, each whole word, its registration too, so the file
-// still names its class; whether it did. Not a header: its includers name its type too.
-bool follow_class(VP::FilePort &files,
-                  const std::filesystem::path &from,
-                  const std::filesystem::path &to) {
-  const std::string old_name = from.stem().string();
-  const std::string new_name = to.stem().string();
-  const auto identifier = [](std::string_view name) {
-    return !name.empty() && !(name.front() >= '0' && name.front() <= '9') &&
-           std::ranges::all_of(name, word_letter);
-  };
-  if (to.extension() != ".cpp" || old_name == new_name || !identifier(old_name) ||
-      !identifier(new_name))
-    return false;
-  std::string text = files.read(to.string());
-  const auto whole = [&](std::size_t at, std::size_t size) {
-    return (at == 0 || !word_letter(text[at - 1])) &&
-           (at + size == text.size() || !word_letter(text[at + size]));
-  };
-  const auto declares = [&](std::string_view kind) {
-    const std::string declared = std::format("{} {}", kind, old_name);
-    for (std::size_t at = text.find(declared); at != std::string::npos;
-         at = text.find(declared, at + 1))
-      if (whole(at, declared.size()))
-        return true;
-    return false;
-  };
-  if (!declares("class") && !declares("struct"))
-    return false;
-  for (std::size_t at = text.find(old_name); at != std::string::npos;
-       at = text.find(old_name, at))
-    if (whole(at, old_name.size())) {
-      text.replace(at, old_name.size(), new_name);
-      at += new_name.size();
-    } else {
-      at += old_name.size();
-    }
-  files.save(to.string(), text);
-  return true;
 }
 
 // Each folder a folder holds, at any depth, as the path at holds it once brought there,
@@ -565,72 +334,6 @@ std::optional<std::string> node_at(const std::optional<Held> &held) {
     return std::nullopt;
   std::optional<std::string> node = node_of(held->inside);
   return node && named(*held->view, *node) ? node : std::nullopt;
-}
-
-// A command's words carry no blanks, so a value holding one cannot be sent.
-std::string sendable(std::string_view key, std::string_view value) {
-  if (value.find_first_of(" \t") != std::string_view::npos)
-    throw std::runtime_error(std::format(
-        "{} {} holds a blank, which a command's word cannot carry", key, value));
-  return std::format(" {}={}", key, value);
-}
-
-// The graph's side of a node's rename, as the edits a person would type, so a replay
-// renames it alike (V08): the connections reaching the node or the nodes inside it out,
-// the node out, and each of them back under the new name with the words it had, in the
-// order they were, back where the node was among the others, and the connections back,
-// those named inside it renamed too.
-std::vector<std::string>
-renames(const VP::View &view, const std::string &from, const std::string &to) {
-  const auto moved = [&](std::string_view name) -> std::optional<std::string> {
-    if (!VP::within(name, from))
-      return std::nullopt;
-    return std::format("{}{}", to, name.substr(from.size()));
-  };
-  const auto end = [&](VP::Endpoint endpoint) {
-    if (!endpoint.view())
-      endpoint.node = moved(endpoint.node).value_or(endpoint.node);
-    return endpoint.text();
-  };
-  std::vector<std::string> lines;
-  std::vector<const VP::Connection *> reaching;
-  for (const VP::Connection &connection : view.connections) {
-    const auto inside = [&](const VP::Endpoint &endpoint) {
-      return !endpoint.view() && moved(endpoint.node);
-    };
-    if (inside(connection.from) || std::ranges::any_of(connection.to, inside)) {
-      reaching.push_back(&connection);
-      lines.push_back(std::format("disconnect {}", connection.name));
-    }
-  }
-  lines.push_back(std::format("node remove keep {}", from));
-  std::optional<std::string> after;
-  bool past = false;
-  for (const VP::Node &node : view.nodes) {
-    if (const std::optional<std::string> name = moved(node.name)) {
-      past = true;
-      std::string line = std::format("node add {}", *name);
-      for (const VP::Word &word : VP::words_of(node))
-        line += sendable(word.key, word.value);
-      lines.push_back(std::move(line));
-    } else if (past && !after) {
-      after = node.name;
-    }
-  }
-  if (after)
-    lines.push_back(std::format("node move {} {}", to, *after));
-  // Only a name inside the node's is the node's, as a drop names a connection inside the
-  // recipe; one named as the node is, as corners carrying corners, keeps its name.
-  for (const VP::Connection *const connection : reaching) {
-    const std::string &name = connection->name;
-    std::string line = std::format("connect {} {}",
-                                   name == from ? name : moved(name).value_or(name),
-                                   end(connection->from));
-    for (const VP::Endpoint &reader : connection->to)
-      line += ' ' + end(reader);
-    lines.push_back(std::move(line));
-  }
-  return lines;
 }
 
 // A node and the words a line gives it, each after a blank, as node add and node set
