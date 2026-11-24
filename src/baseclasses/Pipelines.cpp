@@ -22,6 +22,9 @@ constexpr std::uint32_t blocks_per_pool = 1024;
 enum FrameMember : std::size_t { resolution, cursor, time, frame_index };
 constexpr std::array<std::pair<std::string_view, std::string_view>, 4> frame_members{
     {{"resolution", "uvec2"}, {"cursor", "vec2"}, {"time", "float"}, {"index", "uint"}}};
+// A frame block's address keeps the alignment a buffer_reference takes by default, so
+// one buffer holds a block a slot.
+constexpr std::uint32_t frame_alignment = 16;
 constexpr float line_width = 1.0f; // the only width without the wideLines feature
 // A tessellated draw's patch: a triangle's corners, three vertices of its vertex_count.
 constexpr std::uint32_t patch_points = 3;
@@ -309,8 +312,20 @@ VkDescriptorSet Pipelines::images() const {
   return _image_set;
 }
 
-VkDeviceAddress Pipelines::frame() const {
-  return _frame ? _frame->buffer.address() : 0;
+VkDeviceAddress Pipelines::frame(std::uint32_t slot) const {
+  return _frame ? _frame->buffer.address() + VkDeviceSize{slot} * _frame->stride : 0;
+}
+
+void Pipelines::frame_slots(std::uint32_t count) const {
+  if (!_frame || count <= _frame->slots)
+    return;
+  Buffer buffer = _resources.buffer(VkDeviceSize{count} * _frame->stride,
+                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                    Memory::upload);
+  std::ranges::fill(buffer.bytes(), std::byte{});
+  buffer.flush();
+  _frame->buffer = std::move(buffer);
+  _frame->slots = count;
 }
 
 VkRenderPass Pipelines::render_pass(VkFormat format,
@@ -338,18 +353,23 @@ VkRenderPass Pipelines::render_pass(VkFormat format,
 void Pipelines::write_frame(std::uint64_t index,
                             double time,
                             VkExtent2D resolution,
-                            std::array<float, 2> cursor) const {
+                            std::array<float, 2> cursor,
+                            std::span<const VkExtent2D> sizes) const {
   if (!_frame)
     return;
-  const std::array<std::uint32_t, 2> size{resolution.width, resolution.height};
   const auto seconds = static_cast<float>(time);
   const auto frame = static_cast<std::uint32_t>(index);
-  std::byte *const bytes = _frame->buffer.bytes().data();
   const std::vector<Field> &fields = _frame->fields;
-  std::memcpy(bytes + fields[FrameMember::resolution].offset, size.data(), sizeof size);
-  std::memcpy(bytes + fields[FrameMember::cursor].offset, cursor.data(), sizeof cursor);
-  std::memcpy(bytes + fields[FrameMember::time].offset, &seconds, sizeof seconds);
-  std::memcpy(bytes + fields[FrameMember::frame_index].offset, &frame, sizeof frame);
+  const std::size_t slots = std::min<std::size_t>(1 + sizes.size(), _frame->slots);
+  for (std::size_t slot = 0; slot < slots; ++slot) {
+    const VkExtent2D extent = slot == 0 ? resolution : sizes[slot - 1];
+    const std::array<std::uint32_t, 2> size{extent.width, extent.height};
+    std::byte *const bytes = _frame->buffer.bytes().data() + slot * _frame->stride;
+    std::memcpy(bytes + fields[FrameMember::resolution].offset, size.data(), sizeof size);
+    std::memcpy(bytes + fields[FrameMember::cursor].offset, cursor.data(), sizeof cursor);
+    std::memcpy(bytes + fields[FrameMember::time].offset, &seconds, sizeof seconds);
+    std::memcpy(bytes + fields[FrameMember::frame_index].offset, &frame, sizeof frame);
+  }
   _frame->buffer.flush();
 }
 
@@ -371,11 +391,13 @@ void Pipelines::take_frame(const Shader &shader) const {
     throw std::runtime_error("its frame block is not the one the engine writes: uvec2 "
                              "resolution, vec2 cursor, float time and uint index, as "
                              "baseclasses/GpuLayout.glsl declares them (RV02)");
-  Buffer buffer = _resources.buffer(
-      shader.frame_size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, Memory::upload);
+  const std::uint32_t stride =
+      (shader.frame_size() + frame_alignment - 1) / frame_alignment * frame_alignment;
+  Buffer buffer =
+      _resources.buffer(stride, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, Memory::upload);
   std::ranges::fill(buffer.bytes(), std::byte{});
   buffer.flush();
-  _frame.emplace(Frame{std::move(buffer), fields});
+  _frame.emplace(Frame{.buffer = std::move(buffer), .fields = fields, .stride = stride});
 }
 
 // Counted, not left to the pool: past maxSets one driver fails and another does not

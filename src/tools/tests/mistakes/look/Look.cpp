@@ -15,6 +15,8 @@ constexpr std::uint64_t first_read = 2;   // a readback lags a frame behind its 
 constexpr glm::uvec2 stride{37, 23};      // between the pixels, as Look.comp steps
 constexpr std::uint32_t byte_mask = 255;
 constexpr std::uint32_t block_shift = 3; // scene's blocks are 8 pixels wide
+// ink's image when fail-loud.py's sized gives it a size, against the frame's 64 by 48.
+constexpr glm::uvec2 gauged{40, 24};
 
 // Stops when a pixel paint drew reads back as another, or when nothing reads back: the
 // image a draw renders into must reach a dispatch after it in the same frame, at the
@@ -32,7 +34,7 @@ public:
         throw std::runtime_error("nothing read back: look's dispatch never ran");
       return;
     }
-    const glm::uvec2 size = frame.resolution();
+    const glm::uvec2 size = size_of(frame);
     if (size.x == 0 || size.y == 0)
       throw std::runtime_error("no size to draw at: a run with no window takes --size");
     for (std::uint32_t i = 0; i < texels.size(); ++i) {
@@ -53,6 +55,11 @@ public:
   }
 
 private:
+  // The image's size, which Look.comp samples across: the frame's, unless a param gives
+  // the draw's image one.
+  virtual glm::uvec2 size_of(VP::Cook &frame) const {
+    return frame.resolution();
+  }
   // Each pixel's place, the same every frame, as bytes R8G8B8A8_UNORM holds exactly.
   virtual glm::vec2 drawn_at(glm::uvec2 pixel, std::uint64_t) const {
     return glm::vec2(pixel & byte_mask) / unorm;
@@ -91,6 +98,18 @@ class Inked final : public Look {
   }
 };
 
+// The same, for ink's image when its param gives it a size of its own: ink works each
+// pixel's place out from the resolution, so a draw that read the frame's would draw
+// another pixel there.
+class Gauged final : public Look {
+  glm::uvec2 size_of(VP::Cook &) const override {
+    return gauged;
+  }
+  std::string_view drawer() const override {
+    return "ink, at 40 by 24 pixels";
+  }
+};
+
 } // namespace
 
 VP_OPERATORS(registry) {
@@ -98,4 +117,5 @@ VP_OPERATORS(registry) {
   registry.add<Watch>("Watch");
   registry.add<Stamped>("Stamped");
   registry.add<Inked>("Inked");
+  registry.add<Gauged>("Gauged");
 }

@@ -71,7 +71,8 @@ public:
   // next, in the order given, the draws that follow one another into one image in one
   // render pass; the draws into the window, which nothing reads, follow in one render
   // pass. frame, time and cursor: what the frame block tells every pass (RV02); size: its
-  // resolution while no window is open, zero for none.
+  // resolution while no window is open, zero for none. A draw into an image reads the
+  // image's size as its resolution instead.
   void run(std::span<const VkBuffer> clears,
            std::span<const Copy> copies,
            std::span<const Pass> passes,

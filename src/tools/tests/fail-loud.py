@@ -18,7 +18,9 @@ no image, a key there is not, a count of samples the GPU draws no window with, a
 C++ fills for another node's shader whose members sit elsewhere, given no room, or that
 nothing reads, a draw's image taken to no Texture,
 or given a format there is not, a draw that stores into an image, an image a dispatch
-stores into given another format than images[] declares, a size that is no width and
+stores into given another format than images[] declares, a draw's image given a size
+that is no width and height, or a size while it draws into the window, a size that is no
+width and
 height, or taken to no Texture, a draw's depth taken on from the window it draws into, a
 dispatch that declares a depth, a DrawCount C++ writes, a draw whose .frag reads what
 its .vert writes nothing to, a draw split over two nodes whose
@@ -40,7 +42,9 @@ image clear when the node fills them again. The image a draw renders into reache
 dispatch after it in the same frame, pixel for pixel, at the size --size gives a run
 with no window, and so does the image a dispatch stores into, that of a draw whose
 instances a dispatch counted on the GPU, whose depth a later pass samples, that of a
-draw split over a vertex node and a fragment node, and the window of a view its host
+draw split over a vertex node and a fragment node, that of one whose param gives its
+image a size of its own, which it reads as its resolution, and the window of a view its
+host
 takes, drawn that
 frame, with one sample a pixel or four, and
 that of a view one beside it takes, as a GUI presents a project, though hosted after it,
@@ -229,6 +233,12 @@ CASES = {
                      "connection stamped: stamp stores an image, which values is no Texture"),
     "store-size": (HEAD + STAMP + "param = canvas=big\n",
                    "param canvas = big: an Image's size is its width and height in pixels"),
+    "draw-size": (HEAD + PAINT + "param = color=big\n" + LOOK + PAINTED,
+                  "param color = big: a draw's image's size is its width and height in "
+                  "pixels"),
+    "draw-size-window": (HEAD + PAINT + "param = color=40,24\n",
+                         "param color: only an image takes a size, and color draws into "
+                         "the window"),
     # paint opens the window: a view whose only draw into it has its depth connected
     # opens none, as draws_into_window takes any connection from a draw for its image.
     "depth-window": (HEAD + PAINT + COUNT + CROWD + SEEN + COUNTED
@@ -502,6 +512,19 @@ def offscreen(vulpen: str, folder: Path) -> str | None:
     code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
     if code != 0 or problems(output):
         return f"offscreen: expected each pixel paint drew, got exit {code}:\n{output}"
+    return None
+
+
+def sized(vulpen: str, folder: Path) -> str | None:
+    """Why the image of a draw whose param gives it 40 by 24 pixels, against the frame's
+    64 by 48, did not reach a dispatch after it pixel for pixel, or None. ink works each
+    pixel's place out from the frame block's resolution, so it shows the draw read its
+    image's size there."""
+    view = view_in(folder, "sized", split("ink", "uv", "shade").replace("Look", "Gauged")
+                   .replace('[node "ink"]\n', '[node "ink"]\nparam = color=40,24\n'))
+    code, output = run(vulpen, [view, "--frames", 4, "--fps", 0, "--size", "64x48"])
+    if code != 0 or problems(output):
+        return f"sized: expected each pixel ink drew at 40 by 24, got exit {code}:\n{output}"
     return None
 
 
@@ -780,6 +803,7 @@ def main() -> None:
                             stored(vulpen, folder),
                             counted(vulpen, folder),
                             halves(vulpen, folder),
+                            sized(vulpen, folder),
                             presented(vulpen, folder),
                             presented(vulpen, folder, samples=4),
                             beside(vulpen, folder),

@@ -10,12 +10,16 @@ layout(set = 1, binding = 0) uniform Pass {
 } pass;
 
 // Each invocation samples the middle of one pixel, at a place apart from the others',
-// across the whole frame; as Look.cpp places it. With no size there is no pixel to take,
-// and the remainder below would divide by zero (GLSL02).
+// across the whole image, the frame's size or the one a draw's param gives it; as
+// Look.cpp places it. With no image, or no size, there is no pixel to take, and the
+// remainder below would divide by zero (GLSL02).
 void main() {
   const uint i = gl_GlobalInvocationID.x;
-  const uvec2 size = frame.resolution;
   pass.texels.at[i] = vec2(0.0);
+  if (pass.painted.index == 0u)
+    return;
+  const uvec2 size = uvec2(
+      textureSize(sampler2D(textures[pass.painted.index], samplers[nearest_clamp]), 0));
   if (size.x == 0u || size.y == 0u)
     return;
   const uvec2 pixel = uvec2(i * 37u, i * 23u) % size;

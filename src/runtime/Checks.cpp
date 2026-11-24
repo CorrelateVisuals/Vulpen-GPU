@@ -210,6 +210,15 @@ std::string lacks(const Bound &bound) {
                      missing.size() == 1 ? "one" : "them");
 }
 
+// Whether the node's .frag writes a color of the name, whose image a param of the name
+// sizes: check_images checks the size once the draws are paired.
+bool colors(const Bound &bound, std::string_view name) {
+  if (!holds_stage(*bound.node, fragment_stage) || !bound.loaded())
+    return false;
+  const std::vector<Varying> &written = bound.stage(fragment_stage).outputs();
+  return std::ranges::find(written, name, &Varying::name) != written.end();
+}
+
 } // namespace
 
 // What the node's shaders make it, and whether it counts what that runs: a dispatch
@@ -559,7 +568,7 @@ void Schedule::check_fields(Bound &bound) const {
       else if (!write_value(param.value, field->type, nullptr))
         bound.errors.push_back(std::format(
             "param {} = {} is not a {}", param.key, param.value, field->type));
-    } else if (!bound.read_by_operator.contains(param.key)) {
+    } else if (!bound.read_by_operator.contains(param.key) && !colors(bound, param.key)) {
       bound.errors.push_back(std::format(
           "param {}: nothing reads it{}", param.key, as_word(bound.node->name, param)));
     }
@@ -759,6 +768,20 @@ void Schedule::check_images() {
   for (Bound &bound : _bound) {
     if (bound.unbuilt)
       continue;
+    // A draw's color takes a size only into an image a connection takes it to.
+    if (const Param *const sized =
+            bound.output.empty() ? nullptr : bound.param(bound.output);
+        sized && !connection_of(bound.node->name, bound.output))
+      bound.errors.push_back(std::format("param {}: only an image takes a size, and {} "
+                                         "draws into the window; a connection to a "
+                                         "Texture draws it into an image",
+                                         sized->key,
+                                         bound.output));
+    else if (sized && !stored_size(sized->value))
+      bound.errors.push_back(std::format("param {} = {}: a draw's image's size is its "
+                                         "width and height in pixels, as 256,256",
+                                         sized->key,
+                                         sized->value));
     for (const Field &field : bound.fields) {
       if (!field.texture())
         continue;

@@ -47,7 +47,8 @@ VP_BUFFER(DrawCounts, DrawCount);
 // What every pass may read about the frame; the push constant holds its address (RV02).
 // The engine writes each member by its name, at the offset reflection gives it (RA03).
 layout(buffer_reference, std430) readonly buffer FrameBlock {
-  uvec2 resolution; // of the window in pixels, or without one --size's; else zero
+  uvec2 resolution; // a draw's image's in pixels, else the window's, or without one
+                    // --size's; else zero
   vec2 cursor;      // the pointer, in pixels from the top left; zero until it moves
   float time;       // seconds, from the frame index at the run's rate, so a replay
                     // matches (C01); a float steps coarser than a frame after about 3 days
@@ -179,9 +180,9 @@ vec2 quad_corner(int vertex) {
   return quad_corners[vertex % quad_vertices];
 }
 
-// A point in pixels from the window's top left, where clip space puts it. Only a draw
-// asks, and a draw runs only into a window or an image of the frame's size, so its
-// resolution is never zero here.
+// A point in pixels from the top left of what the draw renders into, where clip space
+// puts it. Only a draw asks, and its resolution is the size of what it renders into, so
+// never zero here.
 vec4 pixel_clip(vec2 pixels) {
   return vec4(pixels / vec2(frame.resolution) * 2.0 - 1.0, 0.0, 1.0);
 }

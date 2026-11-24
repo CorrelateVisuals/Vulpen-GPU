@@ -119,7 +119,9 @@ struct Schedule::Rendered {
   Depth depth = Depth::none;
   std::string depth_name;
   const Bound *writer = nullptr; // null for a view's window
-  std::optional<Drawn> drawn;    // none while there is no size
+  // A draw's, as the param named for its color gives it; none for the frame's.
+  VkExtent2D size{};
+  std::optional<Drawn> drawn; // none while there is no size
   Offscreen offscreen;
 };
 
@@ -665,17 +667,20 @@ void Schedule::make_targets() {
     if (!bound.errors.empty() || !bound.pipeline)
       continue;
     const Bound &colors = bound.fragment ? *bound.fragment : bound;
+    const Param *const drawn_size = colors.param(colors.output);
     if (colors.drawn)
-      _rendered.push_back(std::make_unique<Rendered>(
-          Rendered{.name = std::format("{}.{}", colors.node->name, colors.output),
-                   .format = colors.drawn,
-                   .render_pass = bound.render_pass,
-                   .depth = depth_of(bound),
-                   .depth_name = depth_of(bound) == Depth::kept
-                                     ? image_name(depth_holder(bound)->node->name,
-                                                  depth_field(*depth_holder(bound)).name)
-                                     : "",
-                   .writer = &bound}));
+      _rendered.push_back(std::make_unique<Rendered>(Rendered{
+          .name = std::format("{}.{}", colors.node->name, colors.output),
+          .format = colors.drawn,
+          .render_pass = bound.render_pass,
+          .depth = depth_of(bound),
+          .depth_name = depth_of(bound) == Depth::kept
+                            ? image_name(depth_holder(bound)->node->name,
+                                         depth_field(*depth_holder(bound)).name)
+                            : "",
+          .writer = &bound,
+          .size = drawn_size ? stored_size(drawn_size->value).value_or(VkExtent2D{})
+                             : VkExtent2D{}}));
     for (const Field &field : bound.fields)
       if (field.image()) {
         const Param *const sized = bound.param(field.name);
@@ -699,29 +704,30 @@ void Schedule::make_targets() {
                    .depth = Depth::dropped}));
 }
 
-// To the frame's size, before any pass runs: an image of another size goes, and its
-// readers sample nothing until the new one is drawn. With no size there is none, so its
-// draws record nothing: no room, no work.
+// To the frame's size, or a draw's to the size its param gives it, before any pass runs:
+// an image of another size goes, and its readers sample nothing until the new one is
+// drawn. With no size there is none, so its draws record nothing: no room, no work.
 void Schedule::size_targets(VkExtent2D size) {
   for (const std::unique_ptr<Rendered> &rendered : _rendered) {
+    const VkExtent2D wanted = rendered->size.width != 0 ? rendered->size : size;
     const VkExtent2D now = rendered->offscreen.extent;
-    if (now.width == size.width && now.height == size.height)
+    if (now.width == wanted.width && now.height == wanted.height)
       continue;
     rendered->offscreen = {};
     rendered->drawn.reset();
     const PixelFormat &format = *rendered->format;
-    if (size.width != 0 && size.height != 0) {
+    if (wanted.width != 0 && wanted.height != 0) {
       const Drawn &drawn = rendered->drawn.emplace(
           _wiring.pipelines,
-          _wiring.resources.image(size, format.format, Fill::draw),
+          _wiring.resources.image(wanted, format.format, Fill::draw),
           rendered->depth,
           rendered->samples);
       rendered->offscreen = {.render_pass = rendered->render_pass,
                              .framebuffer = drawn.framebuffer(),
-                             .extent = size,
+                             .extent = wanted,
                              .depth = rendered->depth != Depth::none};
       const std::string pixels =
-          std::format("{} by {} pixels of {}", size.width, size.height, format.name);
+          std::format("{} by {} pixels of {}", wanted.width, wanted.height, format.name);
       if (rendered->writer)
         log(Level::info,
             Tag::mem,

@@ -45,9 +45,12 @@ void barrier(VkCommandBuffer commands,
       commands, source_stage, target_stage, 0, 1, &memory, 0, nullptr, 0, nullptr);
 }
 
-void bind(VkCommandBuffer commands, const Pipelines &pipelines, const Pass &pass) {
+// frame: the frame block the pass reads, whose resolution is what it draws into.
+void bind(VkCommandBuffer commands,
+          const Pipelines &pipelines,
+          const Pass &pass,
+          VkDeviceAddress frame) {
   const VkPipelineLayout layout = pipelines.layout();
-  const VkDeviceAddress frame = pipelines.frame();
   const VkDescriptorSet images = pipelines.images();
   vkCmdBindPipeline(commands, pass.bind_point, pass.pipeline);
   vkCmdPushConstants(commands, layout, VK_SHADER_STAGE_ALL, 0, sizeof frame, &frame);
@@ -192,6 +195,7 @@ struct Engine::Gpu {
   Gpu(const Gpu &) = delete;
   Gpu &operator=(const Gpu &) = delete;
 
+  void place_frames(std::span<const Pass> passes);
   void record(VkCommandBuffer commands, std::span<const Pass> passes);
   void draw(VkCommandBuffer commands,
             const Target &target,
@@ -219,6 +223,10 @@ struct Engine::Gpu {
   // Kept between frames, so a frame allocates nothing for them (CPP10).
   std::vector<std::uint64_t> stamps;
   std::vector<float> times;
+  // The sizes of the images draws render into, one frame block each past the frame's,
+  // and the frame block each pass reads, by its place among the passes.
+  std::vector<VkExtent2D> sizes;
+  std::vector<std::uint32_t> slots;
 };
 
 Engine::Engine(const Log &log, const Window *window, std::string_view prefer)
@@ -313,6 +321,7 @@ void Engine::run(std::span<const VkBuffer> clears,
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
   for (const Copy &copy : copies)
     upload(commands, copy);
+  _gpu->place_frames(passes);
   _gpu->record(commands, passes);
   std::optional<Swapchain> &swapchain = _gpu->swapchain;
   const std::optional<Target> target =
@@ -320,7 +329,8 @@ void Engine::run(std::span<const VkBuffer> clears,
   if (target)
     _gpu->draw(commands, *target, passes);
   // After acquiring, so a resized window's frame already holds its new size.
-  _gpu->pipelines.write_frame(frame, time, target ? target->extent : size, cursor);
+  _gpu->pipelines.write_frame(
+      frame, time, target ? target->extent : size, cursor, _gpu->sizes);
   // Readbacks: the CPU reads this frame's writes after its fence (VK03).
   barrier(commands,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -333,6 +343,27 @@ void Engine::run(std::span<const VkBuffer> clears,
   }
   mechanics.submit(target->acquired, target->rendered);
   swapchain->present(*target);
+}
+
+// A draw into an image reads the image's size as its resolution, as one into the window
+// reads the window's: a frame block for each size the images have, past the frame's own.
+void Engine::Gpu::place_frames(std::span<const Pass> passes) {
+  sizes.clear();
+  slots.assign(passes.size(), 0);
+  for (std::size_t at = 0; at < passes.size(); ++at) {
+    const Offscreen *const into = passes[at].offscreen;
+    if (!into || into->extent.width == 0)
+      continue;
+    const auto same = [&](const VkExtent2D &size) {
+      return size.width == into->extent.width && size.height == into->extent.height;
+    };
+    const auto found = std::ranges::find_if(sizes, same);
+    const auto slot = static_cast<std::uint32_t>(found - sizes.begin());
+    if (found == sizes.end())
+      sizes.push_back(into->extent);
+    slots[at] = 1 + slot;
+  }
+  pipelines.frame_slots(1 + static_cast<std::uint32_t>(sizes.size()));
 }
 
 // In order, so each pass runs after those that write what it reads. The draws that
@@ -368,7 +399,7 @@ void Engine::Gpu::record(VkCommandBuffer commands, std::span<const Pass> passes)
     for (std::size_t each = 0; each < run.size(); ++each) {
       stamp(commands, at + each, false);
       if (records && run[each].pipeline) {
-        bind(commands, pipelines, run[each]);
+        bind(commands, pipelines, run[each], pipelines.frame(slots[at + each]));
         if (!draw)
           vkCmdDispatch(commands, run[each].groups, 1, 1);
         else
@@ -462,7 +493,7 @@ void Engine::Gpu::draw(VkCommandBuffer commands,
       continue;
     stamp(commands, at, false);
     if (pass.pipeline && (pass.indirect || instances_of(pass) != 0)) {
-      bind(commands, pipelines, pass);
+      bind(commands, pipelines, pass, pipelines.frame());
       VP::draw(commands, pass);
     }
     stamp(commands, at, true);

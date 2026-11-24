@@ -37,14 +37,22 @@ public:
   VkPipelineLayout layout() const;
   // Set 0, which every pass binds.
   VkDescriptorSet images() const;
-  // The frame block's address, which every pass pushes (RV02); 0 until a shader declares
-  // the block.
-  VkDeviceAddress frame() const;
-  // Before a frame runs: what the frame block holds (C01).
+  // The address of a frame block, which every pass pushes (RV02); 0 until a shader
+  // declares the block. Slot 0 holds the frame's resolution, which every dispatch and
+  // every draw into the window reads; each slot past it, the size of an image draws
+  // render into, as write_frame lists them.
+  VkDeviceAddress frame(std::uint32_t slot = 0) const;
+  // Room for that many frame blocks, between frames, before a pass binds one: the
+  // blocks move when they outgrow their buffer, which the frame in flight no longer
+  // reads.
+  void frame_slots(std::uint32_t count) const;
+  // Before a frame runs: what the frame blocks hold (C01), the same but for the
+  // resolution: the frame's in slot 0, then each of sizes, in order.
   void write_frame(std::uint64_t index,
                    double time,
                    VkExtent2D resolution,
-                   std::array<float, 2> cursor) const;
+                   std::array<float, 2> cursor,
+                   std::span<const VkExtent2D> sizes = {}) const;
   // The render pass a draw into an image of the format records in, with a depth image
   // as depth asks, made the first time it is asked for and kept, so every pipeline that
   // draws into such an image fits it. With samples past one, its draws go into images of
@@ -63,6 +71,8 @@ private:
   struct Frame {
     Buffer buffer;
     std::vector<Field> fields;
+    std::uint32_t stride = 0; // bytes from a block to the next
+    std::uint32_t slots = 1;  // blocks the buffer holds
   };
 
   // Throws naming the mismatch when the shader's block is not the one the engine writes,
