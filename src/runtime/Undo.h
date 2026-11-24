@@ -62,6 +62,13 @@ private:
   class Recorded;
 
   void check(const Step &step, bool again);
+  static void check_renames(const Step &step, bool again);
+  void check_kept(const Step &step, std::size_t index, bool again);
+  static std::optional<std::filesystem::path>
+  now_at(const Step &step, std::size_t index, std::filesystem::path path, bool again);
+  static bool
+  past(const Step &step, std::size_t at, std::filesystem::path &path, bool again);
+  bool holds(const std::filesystem::path &file, std::string_view text) const;
   static void check_made(const Step &step);
   void take_files_back(const Step &step);
   void bring_files_again(Step &step);
