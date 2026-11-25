@@ -174,19 +174,14 @@ if(NOT MSVC) # it reads the objects with objdump
   # build makes as modules vulpen does not wait for.
   add_dependencies(globals vulpen vulpen_modules baseclasses-triangle barriers)
 endif()
-# Both list the files with git, and keep the repository's records, which a download
-# has no history to keep them in.
+# It lists the files with git, and keeps the repository's records, which a download has
+# no history to keep them in; so do the README's pictures, after the tests.
 if(NOT archived)
   add_custom_target(statistics ALL
     COMMAND ${Python3_EXECUTABLE} ${tools}/fetch-statistics.py
             "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
     COMMAND_EXPAND_LISTS VERBATIM)
   add_dependencies(statistics vulpen)
-  add_custom_target(images ALL
-    COMMAND ${Python3_EXECUTABLE} ${tools}/update-readme-images.py
-            "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
-    COMMAND_EXPAND_LISTS VERBATIM)
-  add_dependencies(images statistics)
 endif()
 
 # GLSL to SPIR-V at <out>/<name>.spv, as Shader loads it; the arguments after out are the
@@ -285,3 +280,20 @@ vulpen_link_modules(${generated}/linked-modules.h)
 vulpen_list_views()
 
 include(src/tools/tests/tests.cmake)
+
+# The README's pictures, which a release build takes again as it counts the lines, on the
+# driver the tests take where the build names one. Every machine then takes the same
+# bytes, so a release run that takes a picture other than the commit's found a stale one,
+# not another driver's (C01).
+if(NOT archived)
+  set(pictures_driver "")
+  if(VULPEN_TEST_DRIVER)
+    set(pictures_driver VK_DRIVER_FILES=${VULPEN_TEST_DRIVER})
+  endif()
+  add_custom_target(images ALL
+    COMMAND ${CMAKE_COMMAND} -E env ${pictures_driver}
+            ${Python3_EXECUTABLE} ${tools}/update-readme-images.py
+            "$<$<CONFIG:Release>:--binary;$<TARGET_FILE:vulpen>>"
+    COMMAND_EXPAND_LISTS VERBATIM)
+  add_dependencies(images statistics)
+endif()

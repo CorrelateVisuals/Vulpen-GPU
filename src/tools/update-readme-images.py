@@ -8,7 +8,8 @@ in a theme of its own, from a copy of the repository, so no person's .vulpen/ ar
 shows and nothing the run saves reaches the tree. Each scene is lines a person could type
 (V06), sent on standard input; then the snapshot part saves the ide's window as a PNG. An
 animation joins pictures a run took into one animated PNG. A picture is written only when
-its bytes changed.
+its bytes changed. The build runs it on the driver its tests take, where it names one, so
+every machine takes the same bytes; run by hand, it takes the caller's (VK_DRIVER_FILES).
 
 Usage: python3 src/tools/update-readme-images.py [--binary PATH]
 """

@@ -16,14 +16,14 @@ soaks, the long fuzz, examples-replay), and the whole command sweep. Once every 
 is built, alone, the sweep runs beside the rest, in a copy of its own, as full's does.
 About an hour on 16 threads; its report also goes to docs/reports/.
 release: before main moves to this commit, run in a tree that holds the commit alone, as
-git worktree add makes one, with main behind it, so main fast-forwards to exactly what ran:
-nightly, then LOC.md as the builds count it (committed), the commit built as GitHub's
-source download holds it, and main's own lines run on main's build and this one
-(compare-main.py). Its report adds what they found and what to try by hand, and goes to
-docs/reports/ under the commit's name. About seventy minutes. Before it, run the sweep's
-tab, walks and seen at the commit (command-sweep.py --only tab,walk,seen), about eight
-minutes: no other tier runs them, and a tool bug they find moves the commit, so the
-whole release would run again.
+git worktree add makes one, with main behind it, so main fast-forwards to exactly what
+ran: nightly, then LOC.md as the builds count it and the README's pictures as the release
+build takes them (both committed), the commit built as GitHub's source download holds it,
+and main's own lines run on main's build and this one (compare-main.py). Its report adds
+what they found and what to try by hand, and goes to docs/reports/ under the commit's
+name. About seventy minutes. Before it, run the sweep's tab, walks and seen at the commit
+(command-sweep.py --only tab,walk,seen), about eight minutes: no other tier runs them, and
+a tool bug they find moves the commit, so the whole release would run again.
 install-hook: a git pre-push hook running quick, which stops a push it fails (opt-in).
 
 Each step runs unless the step it needs did not pass, once that step ended, and the run
@@ -99,10 +99,10 @@ def preset(name: str, window: dict[str, str] | None = None, jobs: str = JOBS,
                  chain)]
 
 
-def test_driver() -> str:
-    """The Vulkan driver the debug build's tests take, lavapipe, which the goldens were
-    made on; none before a configure."""
-    cache = ROOT / "out" / "build" / "debug" / "CMakeCache.txt"
+def test_driver(preset: str = "debug") -> str:
+    """The Vulkan driver a build's tests take, and a release build's pictures: lavapipe,
+    which the goldens were made on; none before a configure."""
+    cache = ROOT / "out" / "build" / preset / "CMakeCache.txt"
     return next((line.split("=", 1)[1] for line in cache.read_text().splitlines()
                  if line.startswith("VULPEN_TEST_DRIVER:")), "") if cache.is_file() else ""
 
@@ -146,6 +146,20 @@ def counted(log) -> bool:
     said = subprocess.run(["git", "diff", "--stat", "HEAD", "--", LINES], cwd=ROOT,
                           capture_output=True, text=True).stdout
     log.write(said or f"{LINES} is as committed\n")
+    return not said
+
+
+def pictured(log) -> bool:
+    """The README's pictures as the release build took them again: the commit's own, else
+    a change moved what a scene shows and its pictures were not taken again. The build
+    takes them on the tests' driver, so a difference is never another driver's."""
+    if not test_driver("release"):
+        log.write("the release build names no VULPEN_TEST_DRIVER, so its pictures are the "
+                  "machine's own GPU's\n")
+        return False
+    said = subprocess.run(["git", "status", "--porcelain", "--", PICTURES], cwd=ROOT,
+                          capture_output=True, text=True).stdout
+    log.write(said or f"{PICTURES} is as committed\n")
     return not said
 
 
@@ -243,6 +257,7 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
     if tier == "release":
         return beside_sweep([*steps("nightly", out, window),
                              Step("lines counted", counted, "build debug"),
+                             Step("pictures taken", pictured, "build release"),
                              Step("download", lambda log: download(log, out)),
                              Step("compare main", [python, TOOLS / "compare-main.py",
                                                    "--base", MAIN, "--out",
@@ -324,12 +339,13 @@ def released(out: Path, named: str) -> list[str]:
     here runs, to try by hand before main moves."""
     pictures = subprocess.run(["git", "status", "--porcelain", "--", PICTURES], cwd=ROOT,
                               capture_output=True, text=True).stdout.splitlines()
-    driver = os.environ.get("VK_DRIVER_FILES") or "the machine's own GPU"
+    driver = test_driver("release") or "the machine's own GPU"
     lines = ["", "## The README's pictures", "",
              f"The release build took them on {driver}, each as the commit holds it."]
     if pictures:
         lines[-1] = (f"The release build took these on {driver} otherwise than the commit "
-                     "holds them; a driver other than the one that took them changes each:")
+                     "holds them, so they are stale: take them again with this commit's "
+                     "release build, and commit them:")
         lines += ["", *(f"- {line[3:]}" for line in pictures)]
     compared = out / "compare-main" / "compare-main.md"
     said = compared.read_text().splitlines() if compared.exists() else [
