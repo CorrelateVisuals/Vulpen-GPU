@@ -297,7 +297,11 @@ void cases(Bench &bench) {
                            "x;\n// } pass;\n"),
           std::string_view("layout(set = 1, binding = 0) uniform Pass { float x; } "
                            "pass;\nvoid main() {\n  "
-                           "float local;\n}\n")})
+                           "float local;\n}\n"),
+          std::string_view("layout(set = 1, binding = 0) uniform Pass { float x;\n"
+                           "  vec2 y;\n} pass;\n"),
+          std::string_view("layout(set = 1, binding = 0) uniform Pass\n{ float x;\n"
+                           "  vec2 y; }\npass;\n")})
       rows.row(
           std::format("{} -> {}", escaped(text), show(live_fields(text), rows.names())));
   });

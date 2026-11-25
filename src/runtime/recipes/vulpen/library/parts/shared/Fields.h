@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <format>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -224,20 +225,25 @@ inline bool opens_block(std::string_view code) {
 }
 
 // The fields a shader's live pass block declares, in their order; none for a text whose
-// block is commented out, or not closed.
+// block is commented out, or not closed. A field may share its row with the block's
+// braces, as in a block written on one row, so a row is read from its { to its }.
 inline std::vector<Declared> live_fields(std::string_view text) {
   std::vector<Declared> fields;
   bool inside = false;
   for (const std::string &row : rows_of_text(text)) {
-    const std::string_view code = trim(row);
-    if (code.starts_with("//"))
+    const std::string_view line = row;
+    std::string_view code = trim(line.substr(0, line.find("//")));
+    if (!inside && !(inside = opens_block(code)))
       continue;
-    if (!inside)
-      inside = opens_block(code);
-    else if (code.starts_with('}'))
+    if (const std::size_t open = code.find('{'); open != std::string_view::npos)
+      code.remove_prefix(open + 1);
+    const std::size_t close = code.find('}');
+    for (const auto declared : std::views::split(code.substr(0, close), ';'))
+      if (std::optional<Declared> field =
+              field_of(std::string(declared.begin(), declared.end()) + ';'))
+        fields.push_back(std::move(*field));
+    if (close != std::string_view::npos)
       return fields;
-    else if (std::optional<Declared> field = field_of(code))
-      fields.push_back(std::move(*field));
   }
   return {};
 }
