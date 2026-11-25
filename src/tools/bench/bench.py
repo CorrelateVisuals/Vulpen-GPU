@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""The bench's runner: every engine function run on its own, in every context,
-against the records committed beside it.
+"""The bench's runner: every engine function, and every function of the library's shared
+code, run on its own, in every context, against the records committed beside it.
 
 A bench per case file in cases/ (bench.cmake builds them; bench/Bench.h says what a row
 holds) prints a row per call. This script runs each function's rows in a process of its
@@ -71,10 +71,13 @@ CASES = HERE / "cases"
 RECORDS = HERE / "records"
 OUT = ROOT / "out" / "bench"
 ENGINE = ("runtime", "baseclasses")
-# The folders a case may name a file of: the engine's, and the bench's own core, whose
-# Shown.h every row goes through, so a fault there, which would hide a change in every
-# record, shows in a record of its own.
-CASED = (*ENGINE, "tools/bench")
+# The library's shared code (RV09): each part that includes a header holds its own copy,
+# so a fault there is in every one of them, and in every view a part was dropped into.
+SHARED = "runtime/recipes/vulpen/library/parts/shared"
+# The folders a case may name a file of: the engine's, the shared code's, and the bench's
+# own core, whose Shown.h every row goes through, so a fault there, which would hide a
+# change in every record, shows in a record of its own.
+CASED = (*ENGINE, SHARED, "tools/bench")
 TIMEOUT = 300  # seconds a function's rows may take in one process
 # A build's count of jobs, as check.py's JOBS: with none, Unix Makefiles start every
 # compile at once.
@@ -191,8 +194,8 @@ def benches(names: list[str]) -> list[Bench]:
                    if any((SOURCE / folder / f"{case.stem}{suffix}").is_file()
                           for suffix in (".h", ".cpp"))]
         if len(folders) != 1:
-            sys.exit(f"{case.name}: names no one file in src/runtime, src/baseclasses "
-                     "or src/tools/bench")
+            sys.exit(f"{case.name}: names no one file in src/runtime, src/baseclasses, "
+                     f"src/{SHARED} or src/tools/bench")
         found.append(Bench(case.stem, folders[0]))
     unknown = set(names) - {bench.name for bench in found}
     if unknown:

@@ -2,9 +2,11 @@
 # the bench's core and every engine object but the one its case includes. A case named
 # like an engine .cpp includes that file, so it reaches the file's unnamed namespace,
 # compiled as the engine compiles it; the engine's own objects stay as the engine builds
-# them. Outside ALL, so a build of vulpen never waits for it; bench.py builds the review
+# them. A case named like a header of the library's shared code includes it, as a part
+# does. Outside ALL, so a build of vulpen never waits for it; bench.py builds the review
 # target. Included by the top-level CMakeLists.txt once every target is defined.
 set(bench ${PROJECT_SOURCE_DIR}/src/tools/bench)
+set(library ${PROJECT_SOURCE_DIR}/src/runtime/recipes/vulpen/library)
 add_library(bench-core OBJECT EXCLUDE_FROM_ALL ${bench}/Bench.cpp
                                                 ${bench}/main.cpp)
 target_include_directories(bench-core PUBLIC ${PROJECT_SOURCE_DIR}/src ${generated})
@@ -60,10 +62,17 @@ foreach(case IN LISTS bench_cases)
      AND VULPEN_PULSE)
     target_link_libraries(bench-${name} PRIVATE ${VULPEN_PULSE_SIMPLE} ${VULPEN_PULSE})
   endif()
-  foreach(library baseclasses runtime)
+  foreach(engine_library baseclasses runtime)
     target_compile_definitions(bench-${name} PRIVATE
-                               $<TARGET_PROPERTY:${library},COMPILE_DEFINITIONS>)
+                               $<TARGET_PROPERTY:${engine_library},COMPILE_DEFINITIONS>)
   endforeach()
+  # contracts/ and shared/ resolve from the library, as for its parts (nodes.cmake), and
+  # the contracts' types go in a namespace of the bench's own, as each view's go in its
+  # own, so a release build's linked parts keep theirs.
+  if(EXISTS ${library}/parts/shared/${name}.h)
+    target_include_directories(bench-${name} PRIVATE ${library} ${library}/parts)
+    target_compile_definitions(bench-${name} PRIVATE VP_VIEW=vp_bench)
+  endif()
   # As vulpen exports its symbols to the node modules a live build loads, which some
   # call, a bench that loads them does.
   set_target_properties(bench-${name} PROPERTIES COMPILE_WARNING_AS_ERROR ON

@@ -1,0 +1,192 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/shared/Presented.h, a call each (src/tools/bench/bench.py).
+
+## Presented.h/deck_shows
+holds "", shown "a", presented "a" -> ""
+holds "a,,b", shown "", presented "" -> "a"
+holds "a,b,c", shown "", presented "" -> "a"
+holds "a,b,c", shown "b", presented "c" -> "c"
+holds "a,b,c", shown "b", presented "x" -> "b"
+holds "a,b,c", shown "x", presented "" -> "a"
+holds "closed", shown "", presented "" -> ""
+holds "closed,b", shown "", presented "closed" -> "b"
+holds "closed,b", shown "closed", presented "" -> "b"
+
+## Presented.h/holds
+"" holds "" -> true
+"game" holds "" -> false
+"game" holds "game" -> true
+"game" holds "level" -> true
+"game" holds "room" -> true
+"gone" holds "gone" -> true
+"gone" holds "room" -> false
+"room" holds "game" -> false
+"wave" holds "room" -> false
+
+## Presented.h/joined_names
+(["", "a"]) -> "a"
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747)) -> "a,, ,ab,a b, a,a ,\t,\r,\n,a\n,a\r\n,\na,a\nb,\x00,a\x00b,\xc3\x...aaaaaaaaaaaaaaaa" (402 characters, hash de169703b2f059c9)
+(["a", ""]) -> "a,"
+(["a", "a"]) -> "a,a"
+(["a"]) -> "a"
+([]) -> ""
+holds: split, the names joined are the names, while none is empty or holds a comma, over 48 rows
+~([" \xff# z_/\rA\xff ", "##\xa909/\xc3\n\xc3", "a\xc3\r \x00", "\xc3=/=\xff"]) -> " \xff# z_/\rA\xff ,##\xa909/\xc3\n\xc3,a\xc3\r \x00,\xc3=/=\xff"
+~([",", "0\x00z .0=a\r", "", " 0=\xc3"]) -> ",,0\x00z .0=a\r,, 0=\xc3"
+~([",#_.0 0#A\\"]) -> ",#_.0 0#A\\"
+~([",0\r\\\xc3//\"AaA"]) -> ",0\r\\\xc3//\"AaA"
+~(["-\xff#\r", ",_", "=A/\xc3#z", "=\t0/ 9#"]) -> "-\xff#\r,,_,=A/\xc3#z,=\t0/ 9#"
+~([".\xc3a", "A\ra,-/09\"\n\\", "\xff"]) -> ".\xc3a,A\ra,-/09\"\n\\,\xff"
+~(["/\t_z\"\xa9_=\xc3"]) -> "/\t_z\"\xa9_=\xc3"
+~(["/zA\n \r-\\a", "_\"##\", ,#\xc3_", "z_#", "9-A\xff\"a,."]) -> "/zA\n \r-\\a,_\"##\", ,#\xc3_,z_#,9-A\xff\"a,."
+~(["0/\n,\t.._#Az"]) -> "0/\n,\t.._#Az"
+~(["9 z00\xa9 \n\"", "#0.", ",_\r\\/z.\xff.#", "\t\r\xc3 \xffzA9\xc3,", "a\\#9\xa9\x00\xc3# .0"]) -> "9 z00\xa9 \n\",#0.,,_\r\\/z.\xff.#,\t\r\xc3 \xffzA9\xc3,,a\\#9\xa9\x00\xc3# .0"
+~(["9_\\\"", "\xc3\xc3#\n,=\xc3./", "\\ \\\xc3"]) -> "9_\\\",\xc3\xc3#\n,=\xc3./,\\ \\\xc3"
+~(["=  \\_9A#", "\x00_\r9,"]) -> "=  \\_9A#,\x00_\r9,"
+~(["A#0_\t#\x00\x00\t ", ".", "\n0\\ \" "]) -> "A#0_\t#\x00\x00\t ,.,\n0\\ \" "
+~(["A,", " 0\xa9z--", "\xa9.z\t", "", "\"-a/z\n0"]) -> "A,, 0\xa9z--,\xa9.z\t,,\"-a/z\n0"
+~(["A\r_/ \xc3aa\\=a"]) -> "A\r_/ \xc3aa\\=a"
+~(["A_ \x00#a", ".\xa9zz\x00\xc3-A\xc3=_"]) -> "A_ \x00#a,.\xa9zz\x00\xc3-A\xc3=_"
+~(["\"0\r=\xc3,a0", "#z\xa9", ""]) -> "\"0\r=\xc3,a0,#z\xa9,"
+~(["\\=\xa9,0\"\xc3.\xff", "", "0\n", "a\t\x00A_/ \r0\\ "]) -> "\\=\xa9,0\"\xc3.\xff,,0\n,a\t\x00A_/ \r0\\ "
+~(["\n__\xc30\xc3.9\r\xa9\r", "\x00A/0\xc3", "=\xa9\x00_0#,\xff", ""]) -> "\n__\xc30\xc3.9\r\xa9\r,\x00A/0\xc3,=\xa9\x00_0#,\xff,"
+~(["\r", "\t\"0.- ", "\r/\""]) -> "\r,\t\"0.- ,\r/\""
+~(["\r9\x00_\xff.", "_\t__0. ", "0a\xa9=-", ",-0", "\"\n\xa9,\""]) -> "\r9\x00_\xff.,_\t__0. ,0a\xa9=-,,-0,\"\n\xa9,\""
+~(["\r\xa9\xc3z#="]) -> "\r\xa9\xc3z#="
+~(["\t\"\x00=", "9=A\x009_0\t=\xff", "-z\xc3#0zA"]) -> "\t\"\x00=,9=A\x009_0\t=\xff,-z\xc3#0zA"
+~(["\x009", "\n\"09a\"=.a"]) -> "\x009,\n\"09a\"=.a"
+~(["\x00\x000\xc3=#zA\x00-\"", "z", "/\r.\xff\"#,"]) -> "\x00\x000\xc3=#zA\x00-\",z,/\r.\xff\"#,"
+~(["\xa9/-z. \n\\\"\xff", "\x00./ _\"a\xff,", " A\x00\xa9z \\az\"", "=z/a\\"]) -> "\xa9/-z. \n\\\"\xff,\x00./ _\"a\xff,, A\x00\xa9z \\az\",=z/a\\"
+~(["\xc3 A\"", "/./9_a\t", "", "\n\t.", " z"]) -> "\xc3 A\",/./9_a\t,,\n\t., z"
+~(["\xc3,/. \r\xa9.\t=\xc3", " \xff 9", "  "]) -> "\xc3,/. \r\xa9.\t=\xc3, \xff 9,  "
+~(["\xc3/\"A", "#z9\\, ", "#"]) -> "\xc3/\"A,#z9\\, ,#"
+~(["\xc3\xc3-", "0.,\xa9\r\t\xc3,#", "\n"]) -> "\xc3\xc3-,0.,\xa9\r\t\xc3,#,\n"
+~(["_=9-,\"\t\t="]) -> "_=9-,\"\t\t="
+~(["_A/9,\xff\xff", "\x00", "_\r\xff"]) -> "_A/9,\xff\xff,\x00,_\r\xff"
+~(["a#\xc3\xff =\\", "A_\xa9#\xa9a", "\xff\t,", "\xa9  \r="]) -> "a#\xc3\xff =\\,A_\xa9#\xa9a,\xff\t,,\xa9  \r="
+~(["a0\xa9#0 a"]) -> "a0\xa9#0 a"
+~(["a_a/\\0,a", "\n.-\n\r.\x00\xc3# \\"]) -> "a_a/\\0,a,\n.-\n\r.\x00\xc3# \\"
+~(["z /-\\/9", " \n\x00-\xc3", "\",\".\t\xffa._"]) -> "z /-\\/9, \n\x00-\xc3,\",\".\t\xffa._"
+~(["z/A0", "_a"]) -> "z/A0,_a"
+~(["z\\--", "\t\".9zA=\"", ",,,=", "/.\xa9\xa9A\n\"", "#/z"]) -> "z\\--,\t\".9zA=\",,,,=,/.\xa9\xa9A\n\",#/z"
+
+## Presented.h/param_value
+"" -> ""
+"gone" -> ""
+"holds" -> "a,b"
+"shown" -> ""
+
+## Presented.h/project_of
+current "" -> ""
+current "game" -> "game"
+current "gone" -> ""
+current "ide" -> ""
+current "room" -> "game"
+current "wave" -> "wave"
+
+## Presented.h/projects
+beside "" -> ["ide", "wave", "game"]
+beside "gone" -> ["ide", "wave", "game"]
+beside "ide" -> ["wave", "game"]
+beside "wave" -> ["ide", "game"]
+
+## Presented.h/shown_by
+a node's port named present -> ""
+a view presented -> "wave"
+another connection -> ""
+none -> ""
+two presenting, the first taken -> "wave"
+
+## Presented.h/split_names
+"" -> []
+"," -> []
+",a," -> ["a"]
+"a b,c" -> ["a b", "c"]
+"a" -> ["a"]
+"a,,b" -> ["a", "b"]
+"a,b" -> ["a", "b"]
+(" 1") -> [" 1"]
+("") -> []
+("+1") -> ["+1"]
+("-0") -> ["-0"]
+("-1") -> ["-1"]
+("-2147483648") -> ["-2147483648"]
+("-inf") -> ["-inf"]
+(".5") -> [".5"]
+("0") -> ["0"]
+("01") -> ["01"]
+("0x10") -> ["0x10"]
+("1 ") -> ["1 "]
+("1") -> ["1"]
+("1,2") -> ["1", "2"]
+("1.5") -> ["1.5"]
+("18446744073709551615") -> ["18446744073709551615"]
+("18446744073709551616") -> ["18446744073709551616"]
+("1\n") -> ["1\n"]
+("1\r") -> ["1\r"]
+("1_0") -> ["1_0"]
+("1e") -> ["1e"]
+("1e-40") -> ["1e-40"]
+("1e-50") -> ["1e-50"]
+("1e3") -> ["1e3"]
+("3.4028235e38") -> ["3.4028235e38"]
+("3.4028236e38") -> ["3.4028236e38"]
+("4294967295") -> ["4294967295"]
+("4294967296") -> ["4294967296"]
+("5.") -> ["5."]
+("=") -> ["="]
+("\xd9\xa1") -> ["\xd9\xa1"]
+("\xef\xbc\x91") -> ["\xef\xbc\x91"]
+("a") -> ["a"]
+("a=b") -> ["a=b"]
+("inf") -> ["inf"]
+("nan") -> ["nan"]
+~(" b") -> [" b"]
+~(" eae823 ") -> [" eae823 "]
+~("+") -> ["+"]
+~("+.ee_4,") -> ["+.ee_4"]
+~("+414e_a") -> ["+414e_a"]
+~(",2_") -> ["2_"]
+~(",705+2") -> ["705+2"]
+~(",x.79E") -> ["x.79E"]
+~("--51_8-4") -> ["--51_8-4"]
+~(". 2-1") -> [". 2-1"]
+~(".") -> ["."]
+~("07e164") -> ["07e164"]
+~("0ax") -> ["0ax"]
+~("2b313") -> ["2b313"]
+~("4") -> ["4"]
+~("4,5+30e") -> ["4", "5+30e"]
+~("424 e,4") -> ["424 e", "4"]
+~("5x2E-5") -> ["5x2E-5"]
+~("5xb") -> ["5xb"]
+~("7") -> ["7"]
+~("753b_3b") -> ["753b_3b"]
+~("82258_7a") -> ["82258_7a"]
+~("8366exe") -> ["8366exe"]
+~("8b.09") -> ["8b.09"]
+~("9") -> ["9"]
+~("922154+9") -> ["922154+9"]
+~("9E.ea,3_") -> ["9E.ea", "3_"]
+~("9a") -> ["9a"]
+~("E") -> ["E"]
+~("E03E,a") -> ["E03E", "a"]
+~("E5+.") -> ["E5+."]
+~("_+") -> ["_+"]
+~("_6b85_") -> ["_6b85_"]
+~("_9949x") -> ["_9949x"]
+~("_a5x9ee ") -> ["_a5x9ee "]
+~("_e ") -> ["_e "]
+~("a0,.3b") -> ["a0", ".3b"]
+~("b,3e-1") -> ["b", "3e-1"]
+~("b51") -> ["b51"]
+~("xa5E1_") -> ["xa5E1_"]
+~("xe-a97") -> ["xe-a97"]
+
+## Presented.h/wanted
+current "", presented "" -> "game"
+current "gone", presented "game" -> "game"
+current "ide", presented "" -> "game"
+current "ide", presented "wave" -> "wave"
+current "room", presented "" -> "game"
+current "room", presented "wave" -> "game"
+no project beside the ide -> ""

@@ -1,0 +1,316 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/shared/Params.h, a call each (src/tools/bench/bench.py).
+
+## Params.h/check_word
+("", "") -> "taken / taken / taken"
+("", "-1") -> "throws runtime_error: \"param  = -1: on\" / throws runtime_error: \"param  = -1: x or y\" / throws runtime_error: \"param  = -1: left, right or middle\""
+("", "-2147483648") -> "throws runtime_error: \"param  = -2147483648: on\" / throws runt...ight or middle\"" (179 characters, hash e35279677c72be89)
+("", ".5") -> "throws runtime_error: \"param  = .5: on\" / throws runtime_error: \"param  = .5: x or y\" / throws runtime_error: \"param  = .5: left, right or middle\""
+("", "1 ") -> "throws runtime_error: \"param  = 1 : on\" / throws runtime_error: \"param  = 1 : x or y\" / throws runtime_error: \"param  = 1 : left, right or middle\""
+("", "1") -> "throws runtime_error: \"param  = 1: on\" / throws runtime_error: \"param  = 1: x or y\" / throws runtime_error: \"param  = 1: left, right or middle\""
+("", "1\r") -> "throws runtime_error: \"param  = 1\\r: on\" / throws runtime_error: \"param  = 1\\r: x or y\" / throws runtime_error: \"param  = 1\\r: left, right or middle\""
+("", "1e") -> "throws runtime_error: \"param  = 1e: on\" / throws runtime_error: \"param  = 1e: x or y\" / throws runtime_error: \"param  = 1e: left, right or middle\""
+("", "1e-40") -> "throws runtime_error: \"param  = 1e-40: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 1994bc4de67388e6)
+("", "4294967296") -> "throws runtime_error: \"param  = 4294967296: on\" / throws runti...ight or middle\"" (176 characters, hash 71c83c238ba55e69)
+("", "\xef\xbc\x91") -> "throws runtime_error: \"param  = \\xef\\xbc\\x91: on\" / throws ...ight or middle\"" (191 characters, hash 2871f5772bea395b)
+("", "a=b") -> "throws runtime_error: \"param  = a=b: on\" / throws runtime_error: \"param  = a=b: x or y\" / throws runtime_error: \"param  = a=b: left, right or middle\""
+("", "inf") -> "throws runtime_error: \"param  = inf: on\" / throws runtime_error: \"param  = inf: x or y\" / throws runtime_error: \"param  = inf: left, right or middle\""
+("-", "+1") -> "throws runtime_error: \"param - = +1: on\" / throws runtime_error: \"param - = +1: x or y\" / throws runtime_error: \"param - = +1: left, right or middle\""
+("-", "-inf") -> "throws runtime_error: \"param - = -inf: on\" / throws runtime_er...ight or middle\"" (161 characters, hash bceab229eedc6f0e)
+("-", "0") -> "throws runtime_error: \"param - = 0: on\" / throws runtime_error: \"param - = 0: x or y\" / throws runtime_error: \"param - = 0: left, right or middle\""
+("-", "01") -> "throws runtime_error: \"param - = 01: on\" / throws runtime_error: \"param - = 01: x or y\" / throws runtime_error: \"param - = 01: left, right or middle\""
+("-", "0x10") -> "throws runtime_error: \"param - = 0x10: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 9685307cb2901331)
+("-", "1") -> "throws runtime_error: \"param - = 1: on\" / throws runtime_error: \"param - = 1: x or y\" / throws runtime_error: \"param - = 1: left, right or middle\""
+("-", "1,2") -> "throws runtime_error: \"param - = 1,2: on\" / throws runtime_error: \"param - = 1,2: x or y\" / throws runtime_error: \"param - = 1,2: left, right or middle\""
+("-", "18446744073709551615") -> "throws runtime_error: \"param - = 18446744073709551615: on\" / t...ight or middle\"" (209 characters, hash 8557476e902f7279)
+("-", "1\n") -> "throws runtime_error: \"param - = 1\\n: on\" / throws runtime_er...ight or middle\"" (161 characters, hash d46b9ed3ff6ab04f)
+("-", "1e-50") -> "throws runtime_error: \"param - = 1e-50: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 1b1a6da076faf4a8)
+("-", "3.4028235e38") -> "throws runtime_error: \"param - = 3.4028235e38: on\" / throws ru...ight or middle\"" (185 characters, hash 46f59c353a7b118d)
+("-", "5.") -> "throws runtime_error: \"param - = 5.: on\" / throws runtime_error: \"param - = 5.: x or y\" / throws runtime_error: \"param - = 5.: left, right or middle\""
+("-", "=") -> "throws runtime_error: \"param - = =: on\" / throws runtime_error: \"param - = =: x or y\" / throws runtime_error: \"param - = =: left, right or middle\""
+(".", "") -> "taken / taken / taken"
+(".", "-1") -> "throws runtime_error: \"param . = -1: on\" / throws runtime_error: \"param . = -1: x or y\" / throws runtime_error: \"param . = -1: left, right or middle\""
+(".", "-2147483648") -> "throws runtime_error: \"param . = -2147483648: on\" / throws run...ight or middle\"" (182 characters, hash 25b44b68d9bbecc1)
+(".", ".5") -> "throws runtime_error: \"param . = .5: on\" / throws runtime_error: \"param . = .5: x or y\" / throws runtime_error: \"param . = .5: left, right or middle\""
+(".", "1 ") -> "throws runtime_error: \"param . = 1 : on\" / throws runtime_error: \"param . = 1 : x or y\" / throws runtime_error: \"param . = 1 : left, right or middle\""
+(".", "1") -> "throws runtime_error: \"param . = 1: on\" / throws runtime_error: \"param . = 1: x or y\" / throws runtime_error: \"param . = 1: left, right or middle\""
+(".", "1\r") -> "throws runtime_error: \"param . = 1\\r: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 3b5d94f734358540)
+(".", "1e") -> "throws runtime_error: \"param . = 1e: on\" / throws runtime_error: \"param . = 1e: x or y\" / throws runtime_error: \"param . = 1e: left, right or middle\""
+(".", "1e-40") -> "throws runtime_error: \"param . = 1e-40: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 1da78f0be7756d68)
+(".", "4294967296") -> "throws runtime_error: \"param . = 4294967296: on\" / throws runt...ight or middle\"" (179 characters, hash dde65e09439e55f1)
+(".", "\xef\xbc\x91") -> "throws runtime_error: \"param . = \\xef\\xbc\\x91: on\" / throws...ight or middle\"" (194 characters, hash 511c805b92193eb7)
+(".", "a=b") -> "throws runtime_error: \"param . = a=b: on\" / throws runtime_error: \"param . = a=b: x or y\" / throws runtime_error: \"param . = a=b: left, right or middle\""
+(".", "inf") -> "throws runtime_error: \"param . = inf: on\" / throws runtime_error: \"param . = inf: x or y\" / throws runtime_error: \"param . = inf: left, right or middle\""
+("1", "+1") -> "throws runtime_error: \"param 1 = +1: on\" / throws runtime_error: \"param 1 = +1: x or y\" / throws runtime_error: \"param 1 = +1: left, right or middle\""
+("1", "-inf") -> "throws runtime_error: \"param 1 = -inf: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 3d00276e9ef94a5a)
+("1", "0") -> "throws runtime_error: \"param 1 = 0: on\" / throws runtime_error: \"param 1 = 0: x or y\" / throws runtime_error: \"param 1 = 0: left, right or middle\""
+("1", "01") -> "throws runtime_error: \"param 1 = 01: on\" / throws runtime_error: \"param 1 = 01: x or y\" / throws runtime_error: \"param 1 = 01: left, right or middle\""
+("1", "0x10") -> "throws runtime_error: \"param 1 = 0x10: on\" / throws runtime_er...ight or middle\"" (161 characters, hash e75e64024d28f4ad)
+("1", "1") -> "throws runtime_error: \"param 1 = 1: on\" / throws runtime_error: \"param 1 = 1: x or y\" / throws runtime_error: \"param 1 = 1: left, right or middle\""
+("1", "1,2") -> "throws runtime_error: \"param 1 = 1,2: on\" / throws runtime_error: \"param 1 = 1,2: x or y\" / throws runtime_error: \"param 1 = 1,2: left, right or middle\""
+("1", "18446744073709551615") -> "throws runtime_error: \"param 1 = 18446744073709551615: on\" / t...ight or middle\"" (209 characters, hash d08a089bcc497195)
+("1", "1\n") -> "throws runtime_error: \"param 1 = 1\\n: on\" / throws runtime_er...ight or middle\"" (161 characters, hash ed26eb522f7d2263)
+("1", "1e-50") -> "throws runtime_error: \"param 1 = 1e-50: on\" / throws runtime_e...ight or middle\"" (164 characters, hash e7f58b51da9180a4)
+("1", "3.4028235e38") -> "throws runtime_error: \"param 1 = 3.4028235e38: on\" / throws ru...ight or middle\"" (185 characters, hash 8b89d65a217c53b1)
+("1", "5.") -> "throws runtime_error: \"param 1 = 5.: on\" / throws runtime_error: \"param 1 = 5.: x or y\" / throws runtime_error: \"param 1 = 5.: left, right or middle\""
+("1", "=") -> "throws runtime_error: \"param 1 = =: on\" / throws runtime_error: \"param 1 = =: x or y\" / throws runtime_error: \"param 1 = =: left, right or middle\""
+("A9", "") -> "taken / taken / taken"
+("A9", "-1") -> "throws runtime_error: \"param A9 = -1: on\" / throws runtime_error: \"param A9 = -1: x or y\" / throws runtime_error: \"param A9 = -1: left, right or middle\""
+("A9", "-2147483648") -> "throws runtime_error: \"param A9 = -2147483648: on\" / throws ru...ight or middle\"" (185 characters, hash a202e82e863f36ef)
+("A9", ".5") -> "throws runtime_error: \"param A9 = .5: on\" / throws runtime_error: \"param A9 = .5: x or y\" / throws runtime_error: \"param A9 = .5: left, right or middle\""
+("A9", "1 ") -> "throws runtime_error: \"param A9 = 1 : on\" / throws runtime_error: \"param A9 = 1 : x or y\" / throws runtime_error: \"param A9 = 1 : left, right or middle\""
+("A9", "1") -> "throws runtime_error: \"param A9 = 1: on\" / throws runtime_error: \"param A9 = 1: x or y\" / throws runtime_error: \"param A9 = 1: left, right or middle\""
+("A9", "1\r") -> "throws runtime_error: \"param A9 = 1\\r: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 3ec675c984c4b490)
+("A9", "1e") -> "throws runtime_error: \"param A9 = 1e: on\" / throws runtime_error: \"param A9 = 1e: x or y\" / throws runtime_error: \"param A9 = 1e: left, right or middle\""
+("A9", "1e-40") -> "throws runtime_error: \"param A9 = 1e-40: on\" / throws runtime_...ight or middle\"" (167 characters, hash 5319af56c6e5c690)
+("A9", "4294967296") -> "throws runtime_error: \"param A9 = 4294967296: on\" / throws run...ight or middle\"" (182 characters, hash 91615e1eec9ee12f)
+("A9", "\xef\xbc\x91") -> "throws runtime_error: \"param A9 = \\xef\\xbc\\x91: on\" / throw...ight or middle\"" (197 characters, hash ecd2549cb051d981)
+("A9", "a=b") -> "throws runtime_error: \"param A9 = a=b: on\" / throws runtime_er...ight or middle\"" (161 characters, hash a23d0e4349a74a19)
+("A9", "inf") -> "throws runtime_error: \"param A9 = inf: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 85d8c14f5bd0b4d6)
+("\xc3\xa9", " 1") -> "throws runtime_error: \"param \\xc3\\xa9 =  1: on\" / throws run...ight or middle\"" (182 characters, hash 81d5c48586a91202)
+("\xc3\xa9", "-0") -> "throws runtime_error: \"param \\xc3\\xa9 = -0: on\" / throws run...ight or middle\"" (182 characters, hash e92851c2e75c7e58)
+("\xc3\xa9", "1") -> "throws runtime_error: \"param \\xc3\\xa9 = 1: on\" / throws runt...ight or middle\"" (179 characters, hash fe1598143bdca128)
+("\xc3\xa9", "1.5") -> "throws runtime_error: \"param \\xc3\\xa9 = 1.5: on\" / throws ru...ight or middle\"" (185 characters, hash 5601c767ed1477ad)
+("\xc3\xa9", "18446744073709551616") -> "throws runtime_error: \"param \\xc3\\xa9 = 18446744073709551616:...ight or middle\"" (236 characters, hash e3d57f4adbbf9b0f)
+("\xc3\xa9", "1_0") -> "throws runtime_error: \"param \\xc3\\xa9 = 1_0: on\" / throws ru...ight or middle\"" (185 characters, hash 5c99fbf6159c8bf3)
+("\xc3\xa9", "1e3") -> "throws runtime_error: \"param \\xc3\\xa9 = 1e3: on\" / throws ru...ight or middle\"" (185 characters, hash 383a099903e80e28)
+("\xc3\xa9", "3.4028236e38") -> "throws runtime_error: \"param \\xc3\\xa9 = 3.4028236e38: on\" / ...ight or middle\"" (212 characters, hash 91fc92c63dd3bdb9)
+("\xc3\xa9", "4294967295") -> "throws runtime_error: \"param \\xc3\\xa9 = 4294967295: on\" / th...ight or middle\"" (206 characters, hash 90fa6d63dd321852)
+("\xc3\xa9", "\xd9\xa1") -> "throws runtime_error: \"param \\xc3\\xa9 = \\xd9\\xa1: on\" / th...ight or middle\"" (206 characters, hash 239a8c1f894f89ce)
+("\xc3\xa9", "a") -> "throws runtime_error: \"param \\xc3\\xa9 = a: on\" / throws runt...ight or middle\"" (179 characters, hash 4aafb4c7413dd2f8)
+("\xc3\xa9", "nan") -> "throws runtime_error: \"param \\xc3\\xa9 = nan: on\" / throws ru...ight or middle\"" (185 characters, hash a1b4b4d0d5b9a77a)
+("_", " 1") -> "throws runtime_error: \"param _ =  1: on\" / throws runtime_error: \"param _ =  1: x or y\" / throws runtime_error: \"param _ =  1: left, right or middle\""
+("_", "-0") -> "throws runtime_error: \"param _ = -0: on\" / throws runtime_error: \"param _ = -0: x or y\" / throws runtime_error: \"param _ = -0: left, right or middle\""
+("_", "1") -> "throws runtime_error: \"param _ = 1: on\" / throws runtime_error: \"param _ = 1: x or y\" / throws runtime_error: \"param _ = 1: left, right or middle\""
+("_", "1.5") -> "throws runtime_error: \"param _ = 1.5: on\" / throws runtime_error: \"param _ = 1.5: x or y\" / throws runtime_error: \"param _ = 1.5: left, right or middle\""
+("_", "18446744073709551616") -> "throws runtime_error: \"param _ = 18446744073709551616: on\" / t...ight or middle\"" (209 characters, hash 025e42014476b02e)
+("_", "1_0") -> "throws runtime_error: \"param _ = 1_0: on\" / throws runtime_error: \"param _ = 1_0: x or y\" / throws runtime_error: \"param _ = 1_0: left, right or middle\""
+("_", "1e3") -> "throws runtime_error: \"param _ = 1e3: on\" / throws runtime_error: \"param _ = 1e3: x or y\" / throws runtime_error: \"param _ = 1e3: left, right or middle\""
+("_", "3.4028236e38") -> "throws runtime_error: \"param _ = 3.4028236e38: on\" / throws ru...ight or middle\"" (185 characters, hash 7362e1847857f5f8)
+("_", "4294967295") -> "throws runtime_error: \"param _ = 4294967295: on\" / throws runt...ight or middle\"" (179 characters, hash 044d9a746d3e0485)
+("_", "\xd9\xa1") -> "throws runtime_error: \"param _ = \\xd9\\xa1: on\" / throws runt...ight or middle\"" (179 characters, hash 532b53a0c3d1f141)
+("_", "a") -> "throws runtime_error: \"param _ = a: on\" / throws runtime_error: \"param _ = a: x or y\" / throws runtime_error: \"param _ = a: left, right or middle\""
+("_", "nan") -> "throws runtime_error: \"param _ = nan: on\" / throws runtime_error: \"param _ = nan: x or y\" / throws runtime_error: \"param _ = nan: left, right or middle\""
+("a b", " 1") -> "throws runtime_error: \"param a b =  1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash b7eccc7954486449)
+("a b", "-0") -> "throws runtime_error: \"param a b = -0: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 5d99e810a050924f)
+("a b", "1") -> "throws runtime_error: \"param a b = 1: on\" / throws runtime_error: \"param a b = 1: x or y\" / throws runtime_error: \"param a b = 1: left, right or middle\""
+("a b", "1.5") -> "throws runtime_error: \"param a b = 1.5: on\" / throws runtime_e...ight or middle\"" (164 characters, hash c35bb9b77b07ac3c)
+("a b", "18446744073709551616") -> "throws runtime_error: \"param a b = 18446744073709551616: on\" /...ight or middle\"" (215 characters, hash ebd615a42f241452)
+("a b", "1_0") -> "throws runtime_error: \"param a b = 1_0: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 97eee5c158da195a)
+("a b", "1e3") -> "throws runtime_error: \"param a b = 1e3: on\" / throws runtime_e...ight or middle\"" (164 characters, hash eb63ed02962f82ff)
+("a b", "3.4028236e38") -> "throws runtime_error: \"param a b = 3.4028236e38: on\" / throws ...ight or middle\"" (191 characters, hash 190894a75edb9624)
+("a b", "4294967295") -> "throws runtime_error: \"param a b = 4294967295: on\" / throws ru...ight or middle\"" (185 characters, hash 42d8006a869fb509)
+("a b", "\xd9\xa1") -> "throws runtime_error: \"param a b = \\xd9\\xa1: on\" / throws ru...ight or middle\"" (185 characters, hash 42b21c5975d90285)
+("a b", "a") -> "throws runtime_error: \"param a b = a: on\" / throws runtime_error: \"param a b = a: x or y\" / throws runtime_error: \"param a b = a: left, right or middle\""
+("a b", "nan") -> "throws runtime_error: \"param a b = nan: on\" / throws runtime_e...ight or middle\"" (164 characters, hash ad88a90691ac9dbd)
+("a", " 1") -> "throws runtime_error: \"param a =  1: on\" / throws runtime_error: \"param a =  1: x or y\" / throws runtime_error: \"param a =  1: left, right or middle\""
+("a", "") -> "taken / taken / taken"
+("a", "+1") -> "throws runtime_error: \"param a = +1: on\" / throws runtime_error: \"param a = +1: x or y\" / throws runtime_error: \"param a = +1: left, right or middle\""
+("a", "-0") -> "throws runtime_error: \"param a = -0: on\" / throws runtime_error: \"param a = -0: x or y\" / throws runtime_error: \"param a = -0: left, right or middle\""
+("a", "-1") -> "throws runtime_error: \"param a = -1: on\" / throws runtime_error: \"param a = -1: x or y\" / throws runtime_error: \"param a = -1: left, right or middle\""
+("a", "-2147483648") -> "throws runtime_error: \"param a = -2147483648: on\" / throws run...ight or middle\"" (182 characters, hash 9130e92ccd143392)
+("a", "-inf") -> "throws runtime_error: \"param a = -inf: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 9b45471413b99eaa)
+("a", ".5") -> "throws runtime_error: \"param a = .5: on\" / throws runtime_error: \"param a = .5: x or y\" / throws runtime_error: \"param a = .5: left, right or middle\""
+("a", "0") -> "throws runtime_error: \"param a = 0: on\" / throws runtime_error: \"param a = 0: x or y\" / throws runtime_error: \"param a = 0: left, right or middle\""
+("a", "01") -> "throws runtime_error: \"param a = 01: on\" / throws runtime_error: \"param a = 01: x or y\" / throws runtime_error: \"param a = 01: left, right or middle\""
+("a", "0x10") -> "throws runtime_error: \"param a = 0x10: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 0f258e42c7ac08dd)
+("a", "1 ") -> "throws runtime_error: \"param a = 1 : on\" / throws runtime_error: \"param a = 1 : x or y\" / throws runtime_error: \"param a = 1 : left, right or middle\""
+("a", "1") -> "throws runtime_error: \"param a = 1: on\" / throws runtime_error: \"param a = 1: x or y\" / throws runtime_error: \"param a = 1: left, right or middle\""
+("a", "1,2") -> "throws runtime_error: \"param a = 1,2: on\" / throws runtime_error: \"param a = 1,2: x or y\" / throws runtime_error: \"param a = 1,2: left, right or middle\""
+("a", "1.5") -> "throws runtime_error: \"param a = 1.5: on\" / throws runtime_error: \"param a = 1.5: x or y\" / throws runtime_error: \"param a = 1.5: left, right or middle\""
+("a", "18446744073709551615") -> "throws runtime_error: \"param a = 18446744073709551615: on\" / t...ight or middle\"" (209 characters, hash 513de2d29bc69ea5)
+("a", "18446744073709551616") -> "throws runtime_error: \"param a = 18446744073709551616: on\" / t...ight or middle\"" (209 characters, hash 1aa7e5aa68a6f95c)
+("a", "1\n") -> "throws runtime_error: \"param a = 1\\n: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 421909ac48236ff3)
+("a", "1\r") -> "throws runtime_error: \"param a = 1\\r: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 1332fa1f81bfaa7f)
+("a", "1_0") -> "throws runtime_error: \"param a = 1_0: on\" / throws runtime_error: \"param a = 1_0: x or y\" / throws runtime_error: \"param a = 1_0: left, right or middle\""
+("a", "1e") -> "throws runtime_error: \"param a = 1e: on\" / throws runtime_error: \"param a = 1e: x or y\" / throws runtime_error: \"param a = 1e: left, right or middle\""
+("a", "1e-40") -> "throws runtime_error: \"param a = 1e-40: on\" / throws runtime_e...ight or middle\"" (164 characters, hash c60c10e9b6559a3b)
+("a", "1e-50") -> "throws runtime_error: \"param a = 1e-50: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 97649806c31ce894)
+("a", "1e3") -> "throws runtime_error: \"param a = 1e3: on\" / throws runtime_error: \"param a = 1e3: x or y\" / throws runtime_error: \"param a = 1e3: left, right or middle\""
+("a", "3.4028235e38") -> "throws runtime_error: \"param a = 3.4028235e38: on\" / throws ru...ight or middle\"" (185 characters, hash 42782c7d30f7fde1)
+("a", "3.4028236e38") -> "throws runtime_error: \"param a = 3.4028236e38: on\" / throws ru...ight or middle\"" (185 characters, hash 6eaa894064812ada)
+("a", "4294967295") -> "throws runtime_error: \"param a = 4294967295: on\" / throws runt...ight or middle\"" (179 characters, hash 8e3db107db5f6c07)
+("a", "4294967296") -> "throws runtime_error: \"param a = 4294967296: on\" / throws runt...ight or middle\"" (179 characters, hash 5a6f6022a5767fe6)
+("a", "5.") -> "throws runtime_error: \"param a = 5.: on\" / throws runtime_error: \"param a = 5.: x or y\" / throws runtime_error: \"param a = 5.: left, right or middle\""
+("a", "=") -> "throws runtime_error: \"param a = =: on\" / throws runtime_error: \"param a = =: x or y\" / throws runtime_error: \"param a = =: left, right or middle\""
+("a", "\xd9\xa1") -> "throws runtime_error: \"param a = \\xd9\\xa1: on\" / throws runt...ight or middle\"" (179 characters, hash 181670323b9eba3b)
+("a", "\xef\xbc\x91") -> "throws runtime_error: \"param a = \\xef\\xbc\\x91: on\" / throws...ight or middle\"" (194 characters, hash 6ce42cefde68bc84)
+("a", "a") -> "throws runtime_error: \"param a = a: on\" / throws runtime_error: \"param a = a: x or y\" / throws runtime_error: \"param a = a: left, right or middle\""
+("a", "a=b") -> "throws runtime_error: \"param a = a=b: on\" / throws runtime_error: \"param a = a=b: x or y\" / throws runtime_error: \"param a = a=b: left, right or middle\""
+("a", "inf") -> "throws runtime_error: \"param a = inf: on\" / throws runtime_error: \"param a = inf: x or y\" / throws runtime_error: \"param a = inf: left, right or middle\""
+("a", "nan") -> "throws runtime_error: \"param a = nan: on\" / throws runtime_error: \"param a = nan: x or y\" / throws runtime_error: \"param a = nan: left, right or middle\""
+("a-b", "+1") -> "throws runtime_error: \"param a-b = +1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 82dcb13d08e9d619)
+("a-b", "-inf") -> "throws runtime_error: \"param a-b = -inf: on\" / throws runtime_...ight or middle\"" (167 characters, hash 8a5d06137ef9c9bb)
+("a-b", "0") -> "throws runtime_error: \"param a-b = 0: on\" / throws runtime_error: \"param a-b = 0: x or y\" / throws runtime_error: \"param a-b = 0: left, right or middle\""
+("a-b", "01") -> "throws runtime_error: \"param a-b = 01: on\" / throws runtime_er...ight or middle\"" (161 characters, hash df7b16bfe98344f2)
+("a-b", "0x10") -> "throws runtime_error: \"param a-b = 0x10: on\" / throws runtime_...ight or middle\"" (167 characters, hash 562d4c3f79df0674)
+("a-b", "1") -> "throws runtime_error: \"param a-b = 1: on\" / throws runtime_error: \"param a-b = 1: x or y\" / throws runtime_error: \"param a-b = 1: left, right or middle\""
+("a-b", "1,2") -> "throws runtime_error: \"param a-b = 1,2: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 0ae0e420541bf796)
+("a-b", "18446744073709551615") -> "throws runtime_error: \"param a-b = 18446744073709551615: on\" /...ight or middle\"" (215 characters, hash 0c327c48c24eecdc)
+("a-b", "1\n") -> "throws runtime_error: \"param a-b = 1\\n: on\" / throws runtime_...ight or middle\"" (167 characters, hash 94ce1d9e9ca8ccae)
+("a-b", "1e-50") -> "throws runtime_error: \"param a-b = 1e-50: on\" / throws runtime...ight or middle\"" (170 characters, hash 695fb27d492cc5ed)
+("a-b", "3.4028235e38") -> "throws runtime_error: \"param a-b = 3.4028235e38: on\" / throws ...ight or middle\"" (191 characters, hash 926b2a5598d89bb0)
+("a-b", "5.") -> "throws runtime_error: \"param a-b = 5.: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 707bf9c0432ac46a)
+("a-b", "=") -> "throws runtime_error: \"param a-b = =: on\" / throws runtime_error: \"param a-b = =: x or y\" / throws runtime_error: \"param a-b = =: left, right or middle\""
+("a.b", "+1") -> "throws runtime_error: \"param a.b = +1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash dd3464a884a0dae8)
+("a.b", "-inf") -> "throws runtime_error: \"param a.b = -inf: on\" / throws runtime_...ight or middle\"" (167 characters, hash bccc67c47780662e)
+("a.b", "0") -> "throws runtime_error: \"param a.b = 0: on\" / throws runtime_error: \"param a.b = 0: x or y\" / throws runtime_error: \"param a.b = 0: left, right or middle\""
+("a.b", "01") -> "throws runtime_error: \"param a.b = 01: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 1adf2b6b0bcd2f87)
+("a.b", "0x10") -> "throws runtime_error: \"param a.b = 0x10: on\" / throws runtime_...ight or middle\"" (167 characters, hash e46d0efc6ca8e4cd)
+("a.b", "1") -> "throws runtime_error: \"param a.b = 1: on\" / throws runtime_error: \"param a.b = 1: x or y\" / throws runtime_error: \"param a.b = 1: left, right or middle\""
+("a.b", "1,2") -> "throws runtime_error: \"param a.b = 1,2: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 368cf63175798157)
+("a.b", "18446744073709551615") -> "throws runtime_error: \"param a.b = 18446744073709551615: on\" /...ight or middle\"" (215 characters, hash 3f840ffcc0ab67d5)
+("a.b", "1\n") -> "throws runtime_error: \"param a.b = 1\\n: on\" / throws runtime_...ight or middle\"" (167 characters, hash 03f37013f40061c3)
+("a.b", "1e-50") -> "throws runtime_error: \"param a.b = 1e-50: on\" / throws runtime...ight or middle\"" (170 characters, hash 70d9c6282b03da00)
+("a.b", "3.4028235e38") -> "throws runtime_error: \"param a.b = 3.4028235e38: on\" / throws ...ight or middle\"" (191 characters, hash 385615bf7c3aca59)
+("a.b", "5.") -> "throws runtime_error: \"param a.b = 5.: on\" / throws runtime_er...ight or middle\"" (161 characters, hash e28ce36df825e687)
+("a.b", "=") -> "throws runtime_error: \"param a.b = =: on\" / throws runtime_error: \"param a.b = =: x or y\" / throws runtime_error: \"param a.b = =: left, right or middle\""
+("a/b", "+1") -> "throws runtime_error: \"param a/b = +1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash bebcf38fd7134873)
+("a/b", "-inf") -> "throws runtime_error: \"param a/b = -inf: on\" / throws runtime_...ight or middle\"" (167 characters, hash d1fcc9b674e9c0b1)
+("a/b", "0") -> "throws runtime_error: \"param a/b = 0: on\" / throws runtime_error: \"param a/b = 0: x or y\" / throws runtime_error: \"param a/b = 0: left, right or middle\""
+("a/b", "01") -> "throws runtime_error: \"param a/b = 01: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 9d80bfc0da0359b4)
+("a/b", "0x10") -> "throws runtime_error: \"param a/b = 0x10: on\" / throws runtime_...ight or middle\"" (167 characters, hash aa07d04bdfae6042)
+("a/b", "1") -> "throws runtime_error: \"param a/b = 1: on\" / throws runtime_error: \"param a/b = 1: x or y\" / throws runtime_error: \"param a/b = 1: left, right or middle\""
+("a/b", "1,2") -> "throws runtime_error: \"param a/b = 1,2: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 33f01ababb05d4d4)
+("a/b", "18446744073709551615") -> "throws runtime_error: \"param a/b = 18446744073709551615: on\" /...ight or middle\"" (215 characters, hash 992fff2af61a03aa)
+("a/b", "1\n") -> "throws runtime_error: \"param a/b = 1\\n: on\" / throws runtime_...ight or middle\"" (167 characters, hash 0dabfe08e3ff8ba8)
+("a/b", "1e-50") -> "throws runtime_error: \"param a/b = 1e-50: on\" / throws runtime...ight or middle\"" (170 characters, hash 19a404399ed4aa33)
+("a/b", "3.4028235e38") -> "throws runtime_error: \"param a/b = 3.4028235e38: on\" / throws ...ight or middle\"" (191 characters, hash b43766435e73074e)
+("a/b", "5.") -> "throws runtime_error: \"param a/b = 5.: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 8aba9c98a8c37294)
+("a/b", "=") -> "throws runtime_error: \"param a/b = =: on\" / throws runtime_error: \"param a/b = =: x or y\" / throws runtime_error: \"param a/b = =: left, right or middle\""
+("a:b", "") -> "taken / taken / taken"
+("a:b", "-1") -> "throws runtime_error: \"param a:b = -1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 833bf9d7bc03830e)
+("a:b", "-2147483648") -> "throws runtime_error: \"param a:b = -2147483648: on\" / throws r...ight or middle\"" (188 characters, hash b9c30bd5a29cfb7a)
+("a:b", ".5") -> "throws runtime_error: \"param a:b = .5: on\" / throws runtime_er...ight or middle\"" (161 characters, hash f7e0ff33fee3af4d)
+("a:b", "1 ") -> "throws runtime_error: \"param a:b = 1 : on\" / throws runtime_er...ight or middle\"" (161 characters, hash c412faabfcb9f1d1)
+("a:b", "1") -> "throws runtime_error: \"param a:b = 1: on\" / throws runtime_error: \"param a:b = 1: x or y\" / throws runtime_error: \"param a:b = 1: left, right or middle\""
+("a:b", "1\r") -> "throws runtime_error: \"param a:b = 1\\r: on\" / throws runtime_...ight or middle\"" (167 characters, hash df39a897316ad663)
+("a:b", "1e") -> "throws runtime_error: \"param a:b = 1e: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 9e39b72e5bd0f636)
+("a:b", "1e-40") -> "throws runtime_error: \"param a:b = 1e-40: on\" / throws runtime...ight or middle\"" (170 characters, hash 1451e93d099d803f)
+("a:b", "4294967296") -> "throws runtime_error: \"param a:b = 4294967296: on\" / throws ru...ight or middle\"" (185 characters, hash 26ec23d615e4dd86)
+("a:b", "\xef\xbc\x91") -> "throws runtime_error: \"param a:b = \\xef\\xbc\\x91: on\" / thro...ight or middle\"" (200 characters, hash b9822c103359da44)
+("a:b", "a=b") -> "throws runtime_error: \"param a:b = a=b: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 2f4e7b137ce8852c)
+("a:b", "inf") -> "throws runtime_error: \"param a:b = inf: on\" / throws runtime_e...ight or middle\"" (164 characters, hash c343833641916201)
+("a\r", "") -> "taken / taken / taken"
+("a\r", "-1") -> "throws runtime_error: \"param a\\r = -1: on\" / throws runtime_e...ight or middle\"" (164 characters, hash ae4816d03f161d12)
+("a\r", "-2147483648") -> "throws runtime_error: \"param a\\r = -2147483648: on\" / throws ...ight or middle\"" (191 characters, hash 181ea75d205b3062)
+("a\r", ".5") -> "throws runtime_error: \"param a\\r = .5: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 2090ace7eb42f99f)
+("a\r", "1 ") -> "throws runtime_error: \"param a\\r = 1 : on\" / throws runtime_e...ight or middle\"" (164 characters, hash cbfaf0ef4731f6d7)
+("a\r", "1") -> "throws runtime_error: \"param a\\r = 1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 8e3c56285587b89f)
+("a\r", "1\r") -> "throws runtime_error: \"param a\\r = 1\\r: on\" / throws runtime...ight or middle\"" (170 characters, hash 6e3e078870d90225)
+("a\r", "1e") -> "throws runtime_error: \"param a\\r = 1e: on\" / throws runtime_e...ight or middle\"" (164 characters, hash bf9ba3cd2b76cf32)
+("a\r", "1e-40") -> "throws runtime_error: \"param a\\r = 1e-40: on\" / throws runtim...ight or middle\"" (173 characters, hash c83f682c0a5a6379)
+("a\r", "4294967296") -> "throws runtime_error: \"param a\\r = 4294967296: on\" / throws r...ight or middle\"" (188 characters, hash 90f208ca86172116)
+("a\r", "\xef\xbc\x91") -> "throws runtime_error: \"param a\\r = \\xef\\xbc\\x91: on\" / thr...ight or middle\"" (203 characters, hash 09e42111cf286740)
+("a\r", "a=b") -> "throws runtime_error: \"param a\\r = a=b: on\" / throws runtime_...ight or middle\"" (167 characters, hash 96e2d65e6211a500)
+("a\r", "inf") -> "throws runtime_error: \"param a\\r = inf: on\" / throws runtime_...ight or middle\"" (167 characters, hash f5d7602ff0e4be63)
+("a\t", " 1") -> "throws runtime_error: \"param a\\t =  1: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 4254c6d4db6f685b)
+("a\t", "-0") -> "throws runtime_error: \"param a\\t = -0: on\" / throws runtime_e...ight or middle\"" (164 characters, hash ccfe08a686294819)
+("a\t", "1") -> "throws runtime_error: \"param a\\t = 1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash 7a1c8c4a77310559)
+("a\t", "1.5") -> "throws runtime_error: \"param a\\t = 1.5: on\" / throws runtime_...ight or middle\"" (167 characters, hash 40e2036c4c454cb8)
+("a\t", "18446744073709551616") -> "throws runtime_error: \"param a\\t = 18446744073709551616: on\" ...ight or middle\"" (218 characters, hash 23651e6035acfe22)
+("a\t", "1_0") -> "throws runtime_error: \"param a\\t = 1_0: on\" / throws runtime_...ight or middle\"" (167 characters, hash e1200a6dc40a41f6)
+("a\t", "1e3") -> "throws runtime_error: \"param a\\t = 1e3: on\" / throws runtime_...ight or middle\"" (167 characters, hash 0d995ceb2f203f31)
+("a\t", "3.4028236e38") -> "throws runtime_error: \"param a\\t = 3.4028236e38: on\" / throws...ight or middle\"" (194 characters, hash 0a9b706ae5fffc1c)
+("a\t", "4294967295") -> "throws runtime_error: \"param a\\t = 4294967295: on\" / throws r...ight or middle\"" (188 characters, hash 3ef6a5c25486ec43)
+("a\t", "\xd9\xa1") -> "throws runtime_error: \"param a\\t = \\xd9\\xa1: on\" / throws r...ight or middle\"" (188 characters, hash 776616abf14ffce7)
+("a\t", "a") -> "throws runtime_error: \"param a\\t = a: on\" / throws runtime_er...ight or middle\"" (161 characters, hash eea2a8b68333a369)
+("a\t", "nan") -> "throws runtime_error: \"param a\\t = nan: on\" / throws runtime_...ight or middle\"" (167 characters, hash 94e33b9f804326fb)
+("a_b", " 1") -> "throws runtime_error: \"param a_b =  1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash d60a910c10cce494)
+("a_b", "-0") -> "throws runtime_error: \"param a_b = -0: on\" / throws runtime_er...ight or middle\"" (161 characters, hash ec903f6357939726)
+("a_b", "1") -> "throws runtime_error: \"param a_b = 1: on\" / throws runtime_error: \"param a_b = 1: x or y\" / throws runtime_error: \"param a_b = 1: left, right or middle\""
+("a_b", "1.5") -> "throws runtime_error: \"param a_b = 1.5: on\" / throws runtime_e...ight or middle\"" (164 characters, hash c87d32ef13521e55)
+("a_b", "18446744073709551616") -> "throws runtime_error: \"param a_b = 18446744073709551616: on\" /...ight or middle\"" (215 characters, hash 164f8bbca0c6d5e3)
+("a_b", "1_0") -> "throws runtime_error: \"param a_b = 1_0: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 567ad58c8ab7ea47)
+("a_b", "1e3") -> "throws runtime_error: \"param a_b = 1e3: on\" / throws runtime_e...ight or middle\"" (164 characters, hash b7380c2a00d3c262)
+("a_b", "3.4028236e38") -> "throws runtime_error: \"param a_b = 3.4028236e38: on\" / throws ...ight or middle\"" (191 characters, hash 48a10c71ca3613f9)
+("a_b", "4294967295") -> "throws runtime_error: \"param a_b = 4294967295: on\" / throws ru...ight or middle\"" (185 characters, hash da6bb89321fc5ce4)
+("a_b", "\xd9\xa1") -> "throws runtime_error: \"param a_b = \\xd9\\xa1: on\" / throws ru...ight or middle\"" (185 characters, hash 7b51863415757648)
+("a_b", "a") -> "throws runtime_error: \"param a_b = a: on\" / throws runtime_error: \"param a_b = a: x or y\" / throws runtime_error: \"param a_b = a: left, right or middle\""
+("a_b", "nan") -> "throws runtime_error: \"param a_b = nan: on\" / throws runtime_e...ight or middle\"" (164 characters, hash d00ce72d7aa93c04)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "+1") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1052 characters, hash 14d00074faf37f47)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "-inf") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1058 characters, hash 2d0b50c2388b8725)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "0") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1049 characters, hash 4ca50f6990239c2b)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "01") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1052 characters, hash f4f8476d89a5b1b6)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "0x10") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1058 characters, hash 62e8ff267357c238)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1049 characters, hash e238d8fb90d33c64)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1,2") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1055 characters, hash e9ea22afb8f09ff2)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "18446744073709551615") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1106 characters, hash 02f52567caf502d8)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1\n") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1058 characters, hash e868c017bbd2e88e)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1e-50") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1061 characters, hash 78361fcdb0eeee03)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "3.4028235e38") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1082 characters, hash 1c137495345f3cd4)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "5.") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1052 characters, hash 470df6baafd90b92)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "=") -> "throws runtime_error: \"param aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ight or middle\"" (1049 characters, hash fd2975ef8e5f4638)
+("root", "") -> "taken / taken / taken"
+("root", "-1") -> "throws runtime_error: \"param root = -1: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 6e38cc56249af26d)
+("root", "-2147483648") -> "throws runtime_error: \"param root = -2147483648: on\" / throws ...ight or middle\"" (191 characters, hash bab894e6b625dd95)
+("root", ".5") -> "throws runtime_error: \"param root = .5: on\" / throws runtime_e...ight or middle\"" (164 characters, hash f615824d8014b49c)
+("root", "1 ") -> "throws runtime_error: \"param root = 1 : on\" / throws runtime_e...ight or middle\"" (164 characters, hash 499157d968e538c4)
+("root", "1") -> "throws runtime_error: \"param root = 1: on\" / throws runtime_er...ight or middle\"" (161 characters, hash a5d3bf839f4a2a9c)
+("root", "1\r") -> "throws runtime_error: \"param root = 1\\r: on\" / throws runtime...ight or middle\"" (170 characters, hash 6ce6e108fbb8de82)
+("root", "1e") -> "throws runtime_error: \"param root = 1e: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 8875205bedbbac55)
+("root", "1e-40") -> "throws runtime_error: \"param root = 1e-40: on\" / throws runtim...ight or middle\"" (173 characters, hash 9be2f2f2105f8c86)
+("root", "4294967296") -> "throws runtime_error: \"param root = 4294967296: on\" / throws r...ight or middle\"" (188 characters, hash 1c91d416f75f6b09)
+("root", "\xef\xbc\x91") -> "throws runtime_error: \"param root = \\xef\\xbc\\x91: on\" / thr...ight or middle\"" (203 characters, hash 41275543c2d8ed4b)
+("root", "a=b") -> "throws runtime_error: \"param root = a=b: on\" / throws runtime_...ight or middle\"" (167 characters, hash f04616386021e0eb)
+("root", "inf") -> "throws runtime_error: \"param root = inf: on\" / throws runtime_...ight or middle\"" (167 characters, hash ca1ca2fd74c5b778)
+axis = " x" of x, y -> throws runtime_error: "param axis =  x: x or y"
+axis = "" of x, y -> taken
+axis = "X" of x, y -> throws runtime_error: "param axis = X: x or y"
+axis = "x " of x, y -> throws runtime_error: "param axis = x : x or y"
+axis = "x" of x, y -> taken
+axis = "x,y" of x, y -> throws runtime_error: "param axis = x,y: x or y"
+axis = "y" of x, y -> taken
+axis = "z" of x, y -> throws runtime_error: "param axis = z: x or y"
+button = "left" of left, right, middle -> taken
+button = "mid" of left, right, middle -> throws runtime_error: "param button = mid: left, right or middle"
+button = "middle" of left, right, middle -> taken
+button = "right" of left, right, middle -> taken
+holds: a refusal names the key, the value and every word, over 299 rows
+~(" .:.", "eE Ea b9") -> "throws runtime_error: \"param  .:. = eE Ea b9: on\" / throws run...ight or middle\"" (182 characters, hash 8d1a5e59a0e9ff7a)
+~(" 0/-", "30_2990") -> "throws runtime_error: \"param  0/- = 30_2990: on\" / throws runt...ight or middle\"" (179 characters, hash c7aa9f3b4fb5231f)
+~("", "+") -> "throws runtime_error: \"param  = +: on\" / throws runtime_error: \"param  = +: x or y\" / throws runtime_error: \"param  = +: left, right or middle\""
+~("", "-") -> "throws runtime_error: \"param  = -: on\" / throws runtime_error: \"param  = -: x or y\" / throws runtime_error: \"param  = -: left, right or middle\""
+~("", "-x") -> "throws runtime_error: \"param  = -x: on\" / throws runtime_error: \"param  = -x: x or y\" / throws runtime_error: \"param  = -x: left, right or middle\""
+~("", "0") -> "throws runtime_error: \"param  = 0: on\" / throws runtime_error: \"param  = 0: x or y\" / throws runtime_error: \"param  = 0: left, right or middle\""
+~("", "4 8576.") -> "throws runtime_error: \"param  = 4 8576.: on\" / throws runtime_...ight or middle\"" (167 characters, hash f32f7b78c936a9e3)
+~("", "b 5-193") -> "throws runtime_error: \"param  = b 5-193: on\" / throws runtime_...ight or middle\"" (167 characters, hash 9a6587de07035434)
+~("", "x") -> "throws runtime_error: \"param  = x: on\" / taken / throws runtime_error: \"param  = x: left, right or middle\""
+~("", "x1.4") -> "throws runtime_error: \"param  = x1.4: on\" / throws runtime_error: \"param  = x1.4: x or y\" / throws runtime_error: \"param  = x1.4: left, right or middle\""
+~("-", ",3E2") -> "throws runtime_error: \"param - = ,3E2: on\" / throws runtime_er...ight or middle\"" (161 characters, hash c6275a5205623e9e)
+~("--", "4 51") -> "throws runtime_error: \"param -- = 4 51: on\" / throws runtime_e...ight or middle\"" (164 characters, hash d17f2ddd953a3f3f)
+~("-99/a", "E3x1") -> "throws runtime_error: \"param -99/a = E3x1: on\" / throws runtim...ight or middle\"" (173 characters, hash 57a5f63a7eeaac89)
+~("-_", "98012.") -> "throws runtime_error: \"param -_ = 98012.: on\" / throws runtime...ight or middle\"" (170 characters, hash f242e4db30ba7b71)
+~(". .", "17") -> "throws runtime_error: \"param . . = 17: on\" / throws runtime_er...ight or middle\"" (161 characters, hash b814183ef2518ca5)
+~(". 9.-", "E.09") -> "throws runtime_error: \"param . 9.- = E.09: on\" / throws runtim...ight or middle\"" (173 characters, hash 3b1a7a2bc9742091)
+~("..", "4_661") -> "throws runtime_error: \"param .. = 4_661: on\" / throws runtime_...ight or middle\"" (167 characters, hash 5e420fd26038e98b)
+~(".9Z", "+b895") -> "throws runtime_error: \"param .9Z = +b895: on\" / throws runtime...ight or middle\"" (170 characters, hash c15fef57d9ca9af1)
+~("._Z:0", "2+_8x2+-") -> "throws runtime_error: \"param ._Z:0 = 2+_8x2+-: on\" / throws ru...ight or middle\"" (185 characters, hash 14c6e8858b1edbfc)
+~("._a", "381") -> "throws runtime_error: \"param ._a = 381: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 7bf8d41f8a3210b5)
+~(".a0", "83+_b") -> "throws runtime_error: \"param .a0 = 83+_b: on\" / throws runtime...ight or middle\"" (170 characters, hash 90d94391f4d3e215)
+~("/", "2,02b") -> "throws runtime_error: \"param / = 2,02b: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 6d0e7a189d926978)
+~("0", "02.") -> "throws runtime_error: \"param 0 = 02.: on\" / throws runtime_error: \"param 0 = 02.: x or y\" / throws runtime_error: \"param 0 = 02.: left, right or middle\""
+~("0", "4a4,-+1") -> "throws runtime_error: \"param 0 = 4a4,-+1: on\" / throws runtime...ight or middle\"" (170 characters, hash 75820872e4443c97)
+~("09", "") -> "taken / taken / taken"
+~("0Z9", "ebb+-83") -> "throws runtime_error: \"param 0Z9 = ebb+-83: on\" / throws runti...ight or middle\"" (176 characters, hash c847b5abb1f384dc)
+~("0_0_", " x_e .1") -> "throws runtime_error: \"param 0_0_ =  x_e .1: on\" / throws runt...ight or middle\"" (179 characters, hash 8254f47b6531a062)
+~("9 Z_-0", "1+_1.") -> "throws runtime_error: \"param 9 Z_-0 = 1+_1.: on\" / throws runt...ight or middle\"" (179 characters, hash 9bc7ad7fcb205dfe)
+~("9/", "12+4") -> "throws runtime_error: \"param 9/ = 12+4: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 88397718f862967f)
+~("90_9aa", "") -> "taken / taken / taken"
+~(": ", "41_") -> "throws runtime_error: \"param :  = 41_: on\" / throws runtime_er...ight or middle\"" (161 characters, hash f82c594d0ce2b18d)
+~(":-./9 ", "8") -> "throws runtime_error: \"param :-./9  = 8: on\" / throws runtime_...ight or middle\"" (167 characters, hash c499c67b318af9a8)
+~("::", "4765 0xb") -> "throws runtime_error: \"param :: = 4765 0xb: on\" / throws runti...ight or middle\"" (176 characters, hash 7b73e85feef0395d)
+~("::_09a", "") -> "taken / taken / taken"
+~(":a9", "8b,") -> "throws runtime_error: \"param :a9 = 8b,: on\" / throws runtime_e...ight or middle\"" (164 characters, hash e70569c232dc016f)
+~("Z-.-", "7,553.8E") -> "throws runtime_error: \"param Z-.- = 7,553.8E: on\" / throws run...ight or middle\"" (182 characters, hash 83ef53a55fb971a6)
+~("Z/", "x") -> "throws runtime_error: \"param Z/ = x: on\" / taken / throws runtime_error: \"param Z/ = x: left, right or middle\""
+~("Z9_  ", "_07e,E b") -> "throws runtime_error: \"param Z9_   = _07e,E b: on\" / throws ru...ight or middle\"" (185 characters, hash 1f2176dc7848f94d)
+~("Z:", "7,EeE,E5") -> "throws runtime_error: \"param Z: = 7,EeE,E5: on\" / throws runti...ight or middle\"" (176 characters, hash 342e449d003f2789)
+~("Za...:", "0556") -> "throws runtime_error: \"param Za...: = 0556: on\" / throws runti...ight or middle\"" (176 characters, hash 94bb75df1470b28a)
+~("_.-", "0.3a,ae.") -> "throws runtime_error: \"param _.- = 0.3a,ae.: on\" / throws runt...ight or middle\"" (179 characters, hash b489396bdc4060eb)
+~("_9..a", "+") -> "throws runtime_error: \"param _9..a = +: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 838f1bee1ad67367)
+~("a .", "-xx") -> "throws runtime_error: \"param a . = -xx: on\" / throws runtime_e...ight or middle\"" (164 characters, hash f674572b8e720ddb)
+~("a ..09", "bE_63+") -> "throws runtime_error: \"param a ..09 = bE_63+: on\" / throws run...ight or middle\"" (182 characters, hash ef71288743d302e3)
+~("a /.", "") -> "taken / taken / taken"
+~("a 9:", "6e") -> "throws runtime_error: \"param a 9: = 6e: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 503c311bcb651cc2)
+~("a:0aZ", "92") -> "throws runtime_error: \"param a:0aZ = 92: on\" / throws runtime_...ight or middle\"" (167 characters, hash a6287a5cefddac18)
+~("a:a", "e_3") -> "throws runtime_error: \"param a:a = e_3: on\" / throws runtime_e...ight or middle\"" (164 characters, hash 787577541d86ca70)

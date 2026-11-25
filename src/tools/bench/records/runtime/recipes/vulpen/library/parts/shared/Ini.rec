@@ -1,0 +1,406 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/shared/Ini.h, a call each (src/tools/bench/bench.py).
+
+## Ini.h/key_value
+(" ") -> none
+(" a") -> none
+("") -> none
+("#") -> none
+(",") -> none
+("-1") -> none
+(".") -> none
+("..") -> none
+("/") -> none
+("1") -> none
+("\"") -> none
+("\\") -> none
+("\n") -> none
+("\na") -> none
+("\r") -> none
+("\t") -> none
+("\x00") -> none
+("\xc3\xa9") -> none
+("\xff") -> none
+("a ") -> none
+("a b") -> none
+("a") -> none
+("a.b") -> none
+("a=b") -> ("a", "b")
+("a\n") -> none
+("a\nb") -> none
+("a\r\n") -> none
+("a\x00b") -> none
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> none
+("ab") -> none
+holds: split at the first =, either side trimmed, over 71 rows
+~("#\xc3-") -> none
+~(", a,") -> none
+~(",# ") -> none
+~(",.z__a\x00") -> none
+~(",/\x00\xa9#\n_") -> none
+~(",0-AA0\xffA=") -> (",0-AA0\xffA", "")
+~(",0\xff=\x00\t\xa9zA\xff") -> (",0\xff", "\x00\t\xa9zA\xff")
+~(",\xff\x00_-a\"\\") -> none
+~(",a\x00/a\\/") -> none
+~("-0a-\n_ ") -> none
+~(".#,\raz#a-") -> none
+~("/\xa9 \t_\t") -> none
+~("0") -> none
+~("0,") -> none
+~("0\\a\xc3//9") -> none
+~("9_") -> none
+~("=9\n\xff--") -> ("", "9\n\xff--")
+~("=\xa9\\ \n9.\r_\"") -> ("", "\xa9\\ \n9.\r_\"")
+~("=a.=") -> ("", "a.=")
+~("\\\xc3.\t/") -> none
+~("\\a#0a=0-=") -> ("\\a#0a", "0-=")
+~("\r\xc3") -> none
+~("\r\xc3,/.") -> none
+~("\t9\n\"\x00") -> none
+~("\t\n0\\\xa9\r#=0") -> ("\n0\\\xa9\r#", "0")
+~("\x00/") -> none
+~("\x00\" \xa9\tA\xff \rA") -> none
+~("\x00\r. \x00") -> none
+~("\x00_-#A") -> none
+~("\xa9/=A/9_\x00") -> ("\xa9/", "A/9_\x00")
+~("\xa90\"Aa\xc3\"\"") -> none
+~("\xa9\"0#") -> none
+~("\xa9\xa9") -> none
+~("\xff\n") -> none
+~("\xff\xa9\t0\t\n0") -> none
+~("_0z#- zz") -> none
+~("_A") -> none
+~("_\"#.\x00/\xff_") -> none
+~("_z.\x00") -> none
+~("a\x00\xc3") -> none
+~("z\x00a\xffA#") -> none
+~("z\xc3\xa9z0") -> none
+
+## Ini.h/numbers_of
+" 0.5\t1e3 " -> [0.5, 1000]
+"" -> []
+"+1" -> []
+"-1" -> [-1]
+".5" -> [0.5]
+"0x10" -> []
+"1 2 3" -> [1, 2, 3]
+"1 2\r" -> [1, 2]
+"1 x" -> []
+"1,2" -> []
+"1." -> [1]
+"1e40" -> []
+"inf" -> [inf]
+"nan" -> [nan]
+(" 1") -> [1]
+("") -> []
+("+1") -> []
+("-0") -> [-0]
+("-1") -> [-1]
+("-2147483648") -> [-2147483648]
+("-inf") -> [-inf]
+(".5") -> [0.5]
+("0") -> [0]
+("01") -> [1]
+("0x10") -> []
+("1 ") -> [1]
+("1") -> [1]
+("1,2") -> []
+("1.5") -> [1.5]
+("18446744073709551615") -> [1.8446744e+19]
+("18446744073709551616") -> [1.8446744e+19]
+("1\n") -> []
+("1\r") -> [1]
+("1_0") -> []
+("1e") -> []
+("1e-40") -> [1e-40]
+("1e-50") -> []
+("1e3") -> [1000]
+("3.4028235e38") -> [3.4028235e+38]
+("3.4028236e38") -> []
+("4294967295") -> [4294967296]
+("4294967296") -> [4294967296]
+("5.") -> [5]
+("=") -> []
+("\xd9\xa1") -> []
+("\xef\xbc\x91") -> []
+("a") -> []
+("a=b") -> []
+("inf") -> [inf]
+("nan") -> [nan]
+holds: finite numbers written out read back as they were, over 45 rows
+~(" ") -> []
+~(" ._7-0_") -> []
+~(" 5, E_a") -> []
+~("++87") -> []
+~("+563++ ") -> []
+~(",x5E1+e8") -> []
+~("-,0.") -> []
+~("-E_27") -> []
+~("-x") -> []
+~(". 8") -> []
+~(".++.1a47") -> []
+~(".8") -> [0.8]
+~(".8.a8xe") -> []
+~(".a7b") -> []
+~("0438") -> [438]
+~("06x a5") -> []
+~("0a+4E0") -> []
+~("1-_27.x") -> []
+~("12ax") -> []
+~("17-.-") -> []
+~("2,835") -> []
+~("2b7") -> []
+~("33.,+78") -> []
+~("3_23") -> []
+~("3abbe4e1") -> []
+~("4 eea 0") -> []
+~("4,x ") -> []
+~("47001b89") -> []
+~("4_x,x131") -> []
+~("5") -> [5]
+~("7,83b8") -> []
+~("7_") -> []
+~("8b84ba") -> []
+~("93+b16x2") -> []
+~("E") -> []
+~("aE9ab9") -> []
+~("b, 0eb") -> []
+~("e") -> []
+~("e85") -> []
+~("x 30x") -> []
+~("x,b558") -> []
+~("x4x_") -> []
+
+## Ini.h/registered
+"" -> true
+"param set a b 1" -> true
+"param" -> false
+"quit force" -> true
+"quit now" -> true
+"quit" -> true
+"quits" -> false
+"view close ide" -> true
+"view close" -> true
+"view closed" -> false
+"view" -> false
+"window fullscreen off" -> false
+"window fullscreen on" -> true
+"window" -> false
+"x" -> false
+(" 1") -> true
+("") -> true
+("+1") -> false
+("-0") -> false
+("-1") -> false
+("-2147483648") -> false
+("-inf") -> false
+(".5") -> false
+("0") -> false
+("01") -> false
+("0x10") -> false
+("1 ") -> false
+("1") -> false
+("1,2") -> false
+("1.5") -> false
+("18446744073709551615") -> false
+("18446744073709551616") -> false
+("1\n") -> false
+("1\r") -> false
+("1_0") -> false
+("1e") -> false
+("1e-40") -> false
+("1e-50") -> false
+("1e3") -> false
+("3.4028235e38") -> false
+("3.4028236e38") -> false
+("4294967295") -> false
+("4294967296") -> false
+("5.") -> false
+("=") -> false
+("\xd9\xa1") -> false
+("\xef\xbc\x91") -> false
+("a") -> false
+("a=b") -> false
+("inf") -> false
+("nan") -> false
+quit with none registered -> false
+~(" e+ e") -> true
+~("+") -> false
+~("+_1ebeE7") -> false
+~("+ex7+43") -> false
+~(", 1,6") -> false
+~(",") -> false
+~(",-+") -> false
+~(",ab3,") -> false
+~(". 92b") -> false
+~(".1b63") -> false
+~("047") -> false
+~("04e7.06_") -> false
+~("0E,ax3") -> false
+~("0e04bE") -> false
+~("126_8E") -> false
+~("1E41x3") -> false
+~("1a239") -> false
+~("20+4") -> false
+~("28_5-") -> false
+~("2_ -e27") -> false
+~("3-6,") -> false
+~("3.x") -> false
+~("35-6") -> false
+~("41959b") -> false
+~("499E45") -> false
+~("6.b") -> false
+~("6e9") -> false
+~("7") -> false
+~("7575") -> false
+~("92") -> false
+~("989 x36 ") -> false
+~("E,--284x") -> false
+~("E-. 66") -> false
+~("E07-a") -> false
+~("E82Ebx65") -> false
+~("_1") -> false
+~("_54-2_98") -> false
+~("_82") -> false
+~("a ") -> false
+~("e8+5") -> false
+~("ee08") -> false
+
+## Ini.h/rows_of
+("  a  \n") -> [1: "a"]
+(" \n") -> []
+("") -> []
+("\n") -> []
+("\n\n") -> []
+("\r") -> []
+("\r\n") -> []
+("\r\r\n") -> []
+("\ta\n") -> [1: "a"]
+("\xef\xbb\xbfa\n") -> [1: "\xef\xbb\xbfa"]
+("a") -> [1: "a"]
+("a\n") -> [1: "a"]
+("a\n\nb") -> [1: "a", 3: "b"]
+("a\n\r\nb") -> [1: "a", 3: "b"]
+("a\nb") -> [1: "a", 2: "b"]
+("a\r") -> [1: "a"]
+("a\r\nb\r\n") -> [1: "a", 2: "b"]
+("a\r\r\n") -> [1: "a"]
+("a\x00b\n") -> [1: "a\x00b"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b)) -> [1: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)]
+holds: its rows hold no comment, no line break and no blank at an end, their lines rising, over 64 rows
+~(" = ==aab\n\t\r#\r#a ") -> [1: "= ==aab"]
+~(" =\r\n=a\rb=#a#a") -> [1: "=", 2: "=a\rb="]
+~(" a\n=b \r\n\n\t\t\r ") -> [1: "a", 2: "=b"]
+~(" abb##ab#a\n") -> [1: "abb"]
+~("#") -> []
+~("##=#") -> []
+~("#\r \ra\n\raa") -> [2: "aa"]
+~("#\t#\t#\t\r\r\ta\r\t") -> []
+~("#b\rb==#\tb= ") -> []
+~("#b\t\tb\t\r=\n\nab=a ") -> [3: "ab=a"]
+~("=") -> [1: "="]
+~("==b\nb#b \n##=#") -> [1: "==b", 2: "b"]
+~("=\r=#=\r\r=") -> [1: "=\r="]
+~("=\tbbbb\t\t\r") -> [1: "=\tbbbb"]
+~("\n=\t\t==ba=a") -> [2: "=\t\t==ba=a"]
+~("\n\r# ") -> []
+~("\n\r\ra") -> [2: "a"]
+~("\n\t=\r  # \n\t b b\t\r") -> [2: "=", 3: "b b"]
+~("\nb=\t\n\na\r#") -> [2: "b=", 4: "a"]
+~("\nb\n=b=a=\n") -> [2: "b", 3: "=b=a="]
+~("\nb\n\r\r") -> [2: "b"]
+~("\r# \t\tb=b\rb") -> []
+~("\r= =") -> [1: "= ="]
+~("\r\r\n ") -> []
+~("\t ") -> []
+~("\t\nb=b a\n\r=") -> [2: "b=b a", 3: "="]
+~("\t\t\nb\ta\t==") -> [2: "b\ta\t=="]
+~("\ta\n\n\nab=\r\ta=") -> [1: "a", 4: "ab=\r\ta="]
+~("a \r\r=") -> [1: "a \r\r="]
+~("a b\t\t\r\ra # #b=#") -> [1: "a b\t\t\r\ra"]
+~("a#aa\t #a=") -> [1: "a"]
+~("a\n\t\n #a=\ra\n") -> [1: "a"]
+~("a\r# =") -> [1: "a"]
+~("a\t#\r\n\rb") -> [1: "a", 2: "b"]
+~("aa \t\tba#\r\t") -> [1: "aa \t\tba"]
+~("b #") -> [1: "b"]
+~("b") -> [1: "b"]
+~("b#") -> [1: "b"]
+~("b\na\t\r\rb=\n") -> [1: "b", 2: "a\t\r\rb="]
+~("ba\r\ta \t#aba=#=#") -> [1: "ba\r\ta"]
+
+## Ini.h/trim
+(" ") -> ""
+(" a") -> "a"
+("") -> ""
+("#") -> "#"
+(",") -> ","
+("-1") -> "-1"
+(".") -> "."
+("..") -> ".."
+("/") -> "/"
+("1") -> "1"
+("\"") -> "\""
+("\\") -> "\\"
+("\n") -> "\n"
+("\na") -> "\na"
+("\r") -> ""
+("\t") -> ""
+("\x00") -> "\x00"
+("\xc3\xa9") -> "\xc3\xa9"
+("\xff") -> "\xff"
+("a ") -> "a"
+("a b") -> "a b"
+("a") -> "a"
+("a.b") -> "a.b"
+("a=b") -> "a=b"
+("a\n") -> "a\n"
+("a\nb") -> "a\nb"
+("a\r\n") -> "a\r\n"
+("a\x00b") -> "a\x00b"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)
+("ab") -> "ab"
+holds: no blank at either end, a view into the text, over 72 rows
+holds: trim twice is trim once, over 72 rows
+~(" _a9/\xc3\n_") -> "_a9/\xc3\n_"
+~(" a\xc3") -> "a\xc3"
+~("#=a\xff \\_\r") -> "#=a\xff \\_"
+~("#\n-\xa9\xff0\\") -> "#\n-\xa9\xff0\\"
+~(",,") -> ",,"
+~(",=\xc3\xffA=#") -> ",=\xc3\xffA=#"
+~(",\",\n\x00z/A\"\x00A") -> ",\",\n\x00z/A\"\x00A"
+~(",\r= \xa9\t,\xff\\") -> ",\r= \xa9\t,\xff\\"
+~(",\xff\n0.0\\/aa") -> ",\xff\n0.0\\/aa"
+~("-9\r") -> "-9"
+~("./\n\r0\\") -> "./\n\r0\\"
+~(".0=.\xa9.\r") -> ".0=.\xa9."
+~(".a_\t") -> ".a_"
+~(".z\xc3") -> ".z\xc3"
+~("==\n\t900") -> "==\n\t900"
+~("=\t_\xc3 a") -> "=\t_\xc3 a"
+~("=\xc3A\r -") -> "=\xc3A\r -"
+~("A\xa9\r\\z_#9") -> "A\xa9\r\\z_#9"
+~("A\xffz\\\xa9\xff/\xa90.") -> "A\xffz\\\xa9\xff/\xa90."
+~("\"\\\n=z\x000") -> "\"\\\n=z\x000"
+~("\\9_.\t0z\"\x00z\xa9") -> "\\9_.\t0z\"\x00z\xa9"
+~("\\\"\\") -> "\\\"\\"
+~("\n\xa9z-\"\xa9-A#") -> "\n\xa9z-\"\xa9-A#"
+~("\n\xc3,0aa\x00") -> "\n\xc3,0aa\x00"
+~("\r#\xa9_\\9/\x00") -> "#\xa9_\\9/\x00"
+~("\rz_9z\"/A.,0") -> "z_9z\"/A.,0"
+~("\t#\xc3") -> "#\xc3"
+~("\t\xa9\t") -> "\xa9"
+~("\x00\t\n\xff") -> "\x00\t\n\xff"
+~("\xa9#\"\\z9,\xa9.") -> "\xa9#\"\\z9,\xa9."
+~("\xa9\xffA") -> "\xa9\xffA"
+~("\xc3.-z\t\"\r") -> "\xc3.-z\t\""
+~("\xc3\xff9\"_0/") -> "\xc3\xff9\"_0/"
+~("\xff/_/./-9#z,") -> "\xff/_/./-9#z,"
+~("\xff9\xc3,\xc3\"\r\xff") -> "\xff9\xc3,\xc3\"\r\xff"
+~("\xff\x00\t\\\x00\xc3-#") -> "\xff\x00\t\\\x00\xc3-#"
+~("_0 0,/90\r=\"") -> "_0 0,/90\r=\""
+~("_\xff\t9\t\xa9 \xa9A") -> "_\xff\t9\t\xa9 \xa9A"
+~("a/\\\"\"") -> "a/\\\"\""
+~("a\xc3") -> "a\xc3"
+~("aa,9#\xa9\xa99\r,A") -> "aa,9#\xa9\xa99\r,A"
+~("z=a\t.\\\r.#") -> "z=a\t.\\\r.#"
+~("z_-9 a") -> "z_-9 a"

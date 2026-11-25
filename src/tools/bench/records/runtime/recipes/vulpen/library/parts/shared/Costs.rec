@@ -1,0 +1,157 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/shared/Costs.h, a call each (src/tools/bench/bench.py).
+
+## Costs.h/add
+a -> cpu 0.5 (0.75 last) gpu 0 (0 last) cooks problem ""
+a alone -> cpu 0.5 (0.75 last) gpu 0 (0 last) cooks problem ""
+ab -> cpu 0.5 (0.75 last) gpu 0.25 (0.5 last) cooks runs problem ""
+abc -> cpu 0.5 (0.75 last) gpu 0.25 (0.5 last) cooks runs untimed problem ""
+abcd -> cpu 0.5 (0.75 last) gpu 0.25 (0.5 last) cooks runs untimed problem ""
+abcde -> cpu 0.5 (0.75 last) gpu 0.25 (0.5 last) cooks runs untimed problem "waits for the live build" waits
+abcdef -> cpu 0.5 (0.75 last) gpu 0.25 (0.5 last) cooks runs untimed problem "draws nothing yet" warns
+abcdefg -> cpu 0.5 (0.75 last) gpu 0.25 (0.5 last) cooks runs untimed problem "no such port"
+abcdefgh -> cpu 0.5 (0.75 last) gpu 0.25 (0.5 last) cooks runs untimed problem "no such port"
+abcdefghi -> cpu 0.625 (0.75 last) gpu 1.25 (0.5 last) cooks runs untimed problem "no such port"
+all, last to first -> cpu 0.625 (0.75 last) gpu 1.25 (0.5 last) cooks runs untimed problem "no such port"
+b alone -> cpu 0 (0 last) gpu 0.25 (0.5 last) runs problem ""
+c alone -> cpu 0 (0 last) gpu 0 (0 last) runs untimed problem ""
+d alone -> cpu 0 (0 last) gpu 0 (0 last) problem ""
+e alone -> cpu 0 (0 last) gpu 0 (0 last) problem "waits for the live build" waits
+f alone -> cpu 0 (0 last) gpu 0 (0 last) problem "draws nothing yet" warns
+g alone -> cpu 0 (0 last) gpu 0 (0 last) problem "no such port"
+h alone -> cpu 0 (0 last) gpu 0 (0 last) problem "waits too" waits warns
+i alone -> cpu 0.125 (0 last) gpu 1 (0 last) cooks runs problem ""
+
+## Costs.h/weight_of
+(" ", false, true) -> 2
+(" ", true, false) -> 1
+(" ", true, true) -> 1
+(" a", false, true) -> 2
+(" a", true, false) -> 1
+(" a", true, true) -> 1
+("", false, true) -> 0
+("", true, false) -> 0
+("", true, true) -> 0
+("#", false, true) -> 2
+("#", true, false) -> 1
+("#", true, true) -> 1
+(",", false, true) -> 2
+(",", true, false) -> 1
+(",", true, true) -> 1
+("-1", false, true) -> 2
+("-1", true, false) -> 1
+("-1", true, true) -> 1
+(".", false, true) -> 2
+(".", true, false) -> 1
+(".", true, true) -> 1
+("..", false, true) -> 2
+("..", true, false) -> 1
+("..", true, true) -> 1
+("/", false, true) -> 2
+("/", true, false) -> 1
+("/", true, true) -> 1
+("1", false, true) -> 2
+("1", true, false) -> 1
+("1", true, true) -> 1
+("\"", false, true) -> 2
+("\"", true, false) -> 1
+("\"", true, true) -> 1
+("\\", false, true) -> 2
+("\\", true, false) -> 1
+("\\", true, true) -> 1
+("\n", false, true) -> 2
+("\n", true, false) -> 1
+("\n", true, true) -> 1
+("\na", false, true) -> 2
+("\na", true, false) -> 1
+("\na", true, true) -> 1
+("\r", false, true) -> 2
+("\r", true, false) -> 1
+("\r", true, true) -> 1
+("\t", false, true) -> 2
+("\t", true, false) -> 1
+("\t", true, true) -> 1
+("\x00", false, true) -> 2
+("\x00", true, false) -> 1
+("\x00", true, true) -> 1
+("\xc3\xa9", false, true) -> 2
+("\xc3\xa9", true, false) -> 1
+("\xc3\xa9", true, true) -> 1
+("\xff", false, true) -> 2
+("\xff", true, false) -> 1
+("\xff", true, true) -> 1
+("a ", false, true) -> 2
+("a ", true, false) -> 1
+("a ", true, true) -> 1
+("a b", false, true) -> 2
+("a b", true, false) -> 1
+("a b", true, true) -> 1
+("a", false, false) -> 3
+("a", false, true) -> 2
+("a", true, false) -> 1
+("a", true, true) -> 1
+("a.b", false, true) -> 2
+("a.b", true, false) -> 1
+("a.b", true, true) -> 1
+("a=b", false, true) -> 2
+("a=b", true, false) -> 1
+("a=b", true, true) -> 1
+("a\n", false, true) -> 2
+("a\n", true, false) -> 1
+("a\n", true, true) -> 1
+("a\nb", false, true) -> 2
+("a\nb", true, false) -> 1
+("a\nb", true, true) -> 1
+("a\r\n", false, true) -> 2
+("a\r\n", true, false) -> 1
+("a\r\n", true, true) -> 1
+("a\x00b", false, true) -> 2
+("a\x00b", true, false) -> 1
+("a\x00b", true, true) -> 1
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), false, true) -> 2
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), true, false) -> 1
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), true, true) -> 1
+("ab", false, true) -> 2
+("ab", true, false) -> 1
+("ab", true, true) -> 1
+an error over a warning over a wait over none: true
+~(" \n\"\\\x00", true, true) -> 1
+~("", false, false) -> 0
+~("#\xc3\xa9 ,./a\"", true, true) -> 1
+~(",\"/\\", false, true) -> 2
+~("-=\r\xa9\t /", false, true) -> 2
+~(".\r\"\"", true, false) -> 1
+~(".\t\xff\na=\xff_\\", false, true) -> 2
+~("/\xa9=\xa99z\x00", true, true) -> 1
+~("0#", false, true) -> 2
+~("9\xff\ra\xff\xa9A0\t\"\xc3", false, false) -> 3
+~("=-\n\n", false, true) -> 2
+~("=/\n", false, true) -> 2
+~("=\n.", true, true) -> 1
+~("=_a\"", true, true) -> 1
+~("A \n9\tz\"\xa9\xff/0", true, true) -> 1
+~("\"_a\xa9\n aAa\r", false, true) -> 2
+~("\\.\t 0_\"A\\/", false, true) -> 2
+~("\\/.z_--=", false, false) -> 3
+~("\\0za#\t-", false, true) -> 2
+~("\\\\\\", true, false) -> 1
+~("\\z\xffa.\r_,", true, false) -> 1
+~("\n\xa9z\xc3\" ", true, true) -> 1
+~("\r,0_\t\t\xff", false, false) -> 3
+~("\r9\r\t", true, false) -> 1
+~("\r\xc3\x00#0", true, true) -> 1
+~("\t9#\xa9", true, false) -> 1
+~("\x00 ", false, true) -> 2
+~("\x00\t/-,0\",\xa9", true, true) -> 1
+~("\xa9\r9.", true, true) -> 1
+~("\xc3\r", true, false) -> 1
+~("\xc3\xa9/\xa9\\\xff", false, false) -> 3
+~("\xff\xa9\t\t_/z\xa9#a\\", true, false) -> 1
+~("\xff\xff9=", true, true) -> 1
+~("_#A\n-9#\x00z", true, true) -> 1
+~("_=# /9z", false, false) -> 3
+~("a0\\_ \xff\\-a\xc3", true, true) -> 1
+~("a9\"\"A\xffa\xffA#_", true, false) -> 1
+~("a\t/\xff_\x00\xc3/z", false, true) -> 2
+~("z", true, true) -> 1
+~("z#9\r\t\r", true, true) -> 1
+~("z=", false, true) -> 2

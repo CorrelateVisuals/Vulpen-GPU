@@ -1,0 +1,71 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/shared/Paths.h, a call each (src/tools/bench/bench.py).
+
+## Paths.h/Listed::Listed
+made: 0 folders kept, 0 listed
+
+## Paths.h/Listed::names
+closed -> []; 3 listed, 3 kept
+gone -> []; 2 listed, 2 kept
+gone -> []; 2 listed, 2 kept
+projects/a -> ["contracts/", "node/", "parts/", "view.vlp"]; 1 listed, 1 kept
+projects/a -> ["contracts/", "node/", "parts/", "view.vlp"]; 1 listed, 1 kept
+
+## Paths.h/Listed::there
+. -> false
+5 folders listed
+closed/secret.txt -> false
+gone/a -> false
+projects -> true
+projects/a/gone -> false
+projects/a/node -> true
+projects/a/node/ -> false
+projects/a/view.vlp -> true
+
+## Paths.h/names_in
+. -> ["closed/", "library/", "projects/"]
+closed -> []
+gone -> []
+projects/a -> ["contracts/", "node/", "parts/", "view.vlp"]
+projects/a/node -> ["Node.frag", "Node.glsl", "inner/"]
+projects/a/view.vlp -> []
+
+## Paths.h/recipe
+"" from projects/a -> "<here>/projects/a/parts"
+"gone" from projects/a -> ""
+"ide" from projects/a -> "<here>/library/components/ide"
+"image" from projects/a -> "<here>/library/parts/image"
+"image@1a2b" from projects/a -> ""
+"list" from projects/a -> "<here>/library/parts/list"
+"own" from projects/a -> "<here>/projects/a/parts/own"
+
+## Paths.h/resolved
+"" -> ""
+"", climbing -> ""
+"." -> "<here>/projects/a/node/inner"
+".", climbing -> "<here>/projects/a/node/inner"
+".." -> "<here>/projects/a/node"
+"..", climbing -> "<here>/projects/a/node"
+"../../../.." -> "<here>"
+"../../../..", climbing -> "<here>"
+"../../a/view.vlp" -> ""
+"../../a/view.vlp", climbing -> "<here>/projects/a/view.vlp"
+"../Node.glsl" -> "<here>/projects/a/node/Node.glsl"
+"../Node.glsl", climbing -> "<here>/projects/a/node/Node.glsl"
+"/" -> ""
+"/", climbing -> ""
+"Inner.vert" -> "<here>/projects/a/node/inner/Inner.vert"
+"Inner.vert", climbing -> "<here>/projects/a/node/inner/Inner.vert"
+"Node.glsl" -> ""
+"Node.glsl", climbing -> "<here>/projects/a/node/Node.glsl"
+"contracts/Spin.h" -> ""
+"contracts/Spin.h", climbing -> "<here>/projects/a/contracts/Spin.h"
+"gone.h" -> ""
+"gone.h", climbing -> ""
+"inner//" -> ""
+"inner//", climbing -> "<here>/projects/a/node/inner"
+"node" -> ""
+"node", climbing -> "<here>/projects/a/node"
+"node/" -> ""
+"node/", climbing -> "<here>/projects/a/node"
+"projects/a/view.vlp" -> ""
+"projects/a/view.vlp", climbing -> "<here>/projects/a/view.vlp"

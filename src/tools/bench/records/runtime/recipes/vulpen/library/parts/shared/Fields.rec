@@ -1,0 +1,730 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/shared/Fields.h, a call each (src/tools/bench/bench.py).
+
+## Fields.h/Declared::operator==
+float x == float x: true, == float y: false, == uint x: false
+
+## Fields.h/buffer_declared
+"  VP_BUFFER( Both , uint ) ;" -> Both of uint reads writes
+"  VP_BUFFER( Both , uint ) ;" as a hint -> none
+"// VP_BUFFER(Hints, vec4);" -> none
+"// VP_BUFFER(Hints, vec4);" as a hint -> Hints of vec4 reads writes commented
+"VP_READ(A, b);" -> none
+"VP_READ(A, b);" as a hint -> none
+"VP_READS(, float);" ->  of float reads
+"VP_READS(, float);" as a hint -> none
+"VP_READS(A);" -> none
+"VP_READS(A);" as a hint -> none
+"VP_READS(A, B, C);" -> A of B, C reads
+"VP_READS(A, B, C);" as a hint -> none
+"VP_READS(A, b) // VP_WRITES(C, d)" -> A of b reads
+"VP_READS(A, b) // VP_WRITES(C, d)" as a hint -> none
+"VP_READS(Bad;" -> none
+"VP_READS(Bad;" as a hint -> none
+"VP_READS(Corners, Corner);" -> Corners of Corner reads
+"VP_READS(Corners, Corner);" as a hint -> none
+"VP_WRITES(Totals, float);" -> Totals of float writes
+"VP_WRITES(Totals, float);" as a hint -> none
+"x VP_READS(A, b);" -> none
+"x VP_READS(A, b);" as a hint -> none
+(" 1", false) -> none
+(" 1", true) -> none
+("", false) -> none
+("", true) -> none
+("+1", false) -> none
+("+1", true) -> none
+("-0", false) -> none
+("-0", true) -> none
+("-1", false) -> none
+("-1", true) -> none
+("-2147483648", false) -> none
+("-2147483648", true) -> none
+("-inf", false) -> none
+("-inf", true) -> none
+(".5", false) -> none
+(".5", true) -> none
+("0", false) -> none
+("0", true) -> none
+("01", false) -> none
+("01", true) -> none
+("0x10", false) -> none
+("0x10", true) -> none
+("1 ", false) -> none
+("1 ", true) -> none
+("1", false) -> none
+("1", true) -> none
+("1,2", false) -> none
+("1,2", true) -> none
+("1.5", false) -> none
+("1.5", true) -> none
+("18446744073709551615", false) -> none
+("18446744073709551615", true) -> none
+("18446744073709551616", false) -> none
+("18446744073709551616", true) -> none
+("1\n", false) -> none
+("1\n", true) -> none
+("1\r", false) -> none
+("1\r", true) -> none
+("1_0", false) -> none
+("1_0", true) -> none
+("1e", false) -> none
+("1e", true) -> none
+("1e-40", false) -> none
+("1e-40", true) -> none
+("1e-50", false) -> none
+("1e-50", true) -> none
+("1e3", false) -> none
+("1e3", true) -> none
+("3.4028235e38", false) -> none
+("3.4028235e38", true) -> none
+("3.4028236e38", false) -> none
+("3.4028236e38", true) -> none
+("4294967295", false) -> none
+("4294967295", true) -> none
+("4294967296", false) -> none
+("4294967296", true) -> none
+("5.", false) -> none
+("5.", true) -> none
+("=", false) -> none
+("=", true) -> none
+("\xd9\xa1", false) -> none
+("\xd9\xa1", true) -> none
+("\xef\xbc\x91", false) -> none
+("\xef\xbc\x91", true) -> none
+("a", false) -> none
+("a", true) -> none
+("a=b", false) -> none
+("a=b", true) -> none
+("inf", false) -> none
+("inf", true) -> none
+("nan", false) -> none
+("nan", true) -> none
+~(" +ab79", true) -> none
+~(" .2, ", false) -> none
+~(" 0a", true) -> none
+~(" 9 01", false) -> none
+~("+", false) -> none
+~("+3b-8E", true) -> none
+~("+x_", false) -> none
+~(",,a6_", false) -> none
+~(",-.", true) -> none
+~(",-b.", false) -> none
+~("-", true) -> none
+~("-22", false) -> none
+~("-e2E6_4", false) -> none
+~(".", false) -> none
+~("00", true) -> none
+~("1 +", true) -> none
+~("160+", true) -> none
+~("1a..9517", true) -> none
+~("2986.7", true) -> none
+~("2bexE1,x", false) -> none
+~("3+_9+", false) -> none
+~("30.Ea13,", true) -> none
+~("4 e7", true) -> none
+~("4", true) -> none
+~("4,1", false) -> none
+~("5-bex9_a", false) -> none
+~("5E.", false) -> none
+~("5ba", true) -> none
+~("7", true) -> none
+~("7420xb6", true) -> none
+~("810_e88", false) -> none
+~("9a724x4", false) -> none
+~("Ex", false) -> none
+~("Ex7e_51", false) -> none
+~("_", true) -> none
+~("ae5e8bxa", true) -> none
+~("b+x 9a41", true) -> none
+~("bE 1axa9", true) -> none
+~("ba3e", true) -> none
+~("bb-", false) -> none
+~("e1,.", false) -> none
+~("e3 3x_", true) -> none
+~("e6beb6", true) -> none
+~("x0-", true) -> none
+~("xE35b4.", false) -> none
+
+## Fields.h/buffers_of
+draw/Draw.frag -> [FloatsIn of float reads, FloatsOut of float writes, Floats of float reads writes]
+lone/Lone.frag -> [FloatsIn of float reads, FloatsOut of float writes, Floats of float reads writes]
+sum/Sum.comp -> [FloatsIn of float reads, FloatsOut of float writes, Floats of float reads writes, Corners of Corner reads, Totals of float writes, Hints of vec4 reads writes commented]
+
+## Fields.h/contract_type
+"  struct Inner {" -> none
+"// struct Hidden {" -> none
+"struct 9x {" -> none
+"struct Base final {};" -> "Base"
+"struct Derived : Base {" -> "Derived"
+"struct Later;" -> none
+"struct Spin {" -> "Spin"
+"struct Spin" -> none
+"struct alignas(16 Broken {" -> none
+"struct alignas(16) Spin {" -> "Spin"
+"struct {" -> none
+"using Spin= int;" -> "Spin"
+"using Spins = std::vector<Spin>;" -> "Spins"
+"using namespace std;" -> none
+(" 1") -> none
+("") -> none
+("+1") -> none
+("-0") -> none
+("-1") -> none
+("-2147483648") -> none
+("-inf") -> none
+(".5") -> none
+("0") -> none
+("01") -> none
+("0x10") -> none
+("1 ") -> none
+("1") -> none
+("1,2") -> none
+("1.5") -> none
+("18446744073709551615") -> none
+("18446744073709551616") -> none
+("1\n") -> none
+("1\r") -> none
+("1_0") -> none
+("1e") -> none
+("1e-40") -> none
+("1e-50") -> none
+("1e3") -> none
+("3.4028235e38") -> none
+("3.4028236e38") -> none
+("4294967295") -> none
+("4294967296") -> none
+("5.") -> none
+("=") -> none
+("\xd9\xa1") -> none
+("\xef\xbc\x91") -> none
+("a") -> none
+("a=b") -> none
+("inf") -> none
+("nan") -> none
+~(" 6 xE") -> none
+~(" 73") -> none
+~(" _63") -> none
+~(" x541.") -> none
+~("+.") -> none
+~(",, 815") -> none
+~(",-e ,a_3") -> none
+~(",9b8e") -> none
+~(",e8x,,6+") -> none
+~("-+7") -> none
+~("-.04-1") -> none
+~("-.58 e-") -> none
+~("-4 +7+ ") -> none
+~("-4") -> none
+~(".2 b,5") -> none
+~(".56_5a-") -> none
+~(".9") -> none
+~("1+6a") -> none
+~("2+538x,E") -> none
+~("22") -> none
+~("28x415") -> none
+~("4a697bea") -> none
+~("5114a332") -> none
+~("5E2.") -> none
+~("6-") -> none
+~("7-") -> none
+~("7-27E469") -> none
+~("79bb-") -> none
+~("7x") -> none
+~("8-4,+x74") -> none
+~("82e ae7") -> none
+~("84b.b_E5") -> none
+~("9") -> none
+~("9_1x+0bE") -> none
+~("E2.,4x") -> none
+~("Ee- 4E6a") -> none
+~("_") -> none
+~("b.E6x ") -> none
+~("b0,17ex0") -> none
+~("b3") -> none
+~("e 43") -> none
+~("e ab39") -> none
+~("e") -> none
+~("e486-.") -> none
+~("ebaax 36") -> none
+
+## Fields.h/cpp_contracts
+Top.cpp -> [Spin in contracts/Spin.h, Spins in contracts/Spin.h, Base in contracts/Spin.h, Derived in contracts/Spin.h]
+contracts/Spin.h -> [Spin in contracts/Spin.h, Spins in contracts/Spin.h, Base in contracts/Spin.h, Derived in contracts/Spin.h]
+sum/Sum.cpp -> [Spin in contracts/Spin.h, Spins in contracts/Spin.h, Base in contracts/Spin.h, Derived in contracts/Spin.h]
+
+## Fields.h/cpp_fields
+bare/Bare.cpp -> []
+draw/Draw.cpp -> [vec4 tint, Texture picture]
+lone/Lone.cpp -> []
+sum/Sum.cpp -> [float speed (Sum.cpp names it already), Image target (target is an Image, which its dispatch stores into), Corners corners (connection corners fills it), uint count (param count of sum sets it), Totals totals]
+sum/Sum.h -> []
+
+## Fields.h/field_of
+"  vec2   at ;  // why" -> vec2 at
+"Texture picture; // one; two" -> Texture picture
+"\tuint\tcount;" -> uint count
+"float a, b;" -> none
+"float speed;" -> float speed
+"float x" -> none
+"float x; // a; b" -> float x
+"float;" -> none
+"highp float x;" -> none
+"uint steps[4];" -> none
+"vec2 gl_place;" -> none
+"} pass;" -> none
+(" 1") -> none
+("") -> none
+("+1") -> none
+("-0") -> none
+("-1") -> none
+("-2147483648") -> none
+("-inf") -> none
+(".5") -> none
+("0") -> none
+("01") -> none
+("0x10") -> none
+("1 ") -> none
+("1") -> none
+("1,2") -> none
+("1.5") -> none
+("18446744073709551615") -> none
+("18446744073709551616") -> none
+("1\n") -> none
+("1\r") -> none
+("1_0") -> none
+("1e") -> none
+("1e-40") -> none
+("1e-50") -> none
+("1e3") -> none
+("3.4028235e38") -> none
+("3.4028236e38") -> none
+("4294967295") -> none
+("4294967296") -> none
+("5.") -> none
+("=") -> none
+("\xd9\xa1") -> none
+("\xef\xbc\x91") -> none
+("a") -> none
+("a=b") -> none
+("inf") -> none
+("nan") -> none
+~(" ") -> none
+~(" x0") -> none
+~("+0x455") -> none
+~("+4x") -> none
+~("+x3") -> none
+~(", 4b02_") -> none
+~(",") -> none
+~(",+178.") -> none
+~(",+3,78-") -> none
+~(",0,+8.") -> none
+~("-0ebxb8b") -> none
+~("-E3E5") -> none
+~("..5 a_,E") -> none
+~("0 6_Ex47") -> none
+~("0726,") -> none
+~("0b_b7x7a") -> none
+~("3") -> none
+~("3Ea-9") -> none
+~("4-89993a") -> none
+~("45") -> none
+~("6-") -> none
+~("7 48x7") -> none
+~("71") -> none
+~("72") -> none
+~("7xe_4") -> none
+~("8") -> none
+~("82xx1-") -> none
+~("85") -> none
+~("87xb 75b") -> none
+~("9") -> none
+~("948") -> none
+~("E") -> none
+~("E2") -> none
+~("_ bb") -> none
+~("_080 ,") -> none
+~("a5") -> none
+~("b19") -> none
+~("b6b,4.e") -> none
+~("ex211") -> none
+~("x8") -> none
+~("x_-4") -> none
+~("xxE+x8a") -> none
+
+## Fields.h/field_types
+draw/Draw.frag -> ["float", "vec2", "vec3", "vec4", "int", "uint", "ivec2", "ivec3", ..., "uvec3", "uvec4", "Texture", "FloatsIn"] (14 items, those between #02d0a92e6c097c9b)
+draw/Draw.vert -> ["float", "vec2", "vec3", "vec4", "int", "uint", "ivec2", "ivec3", ..., "uvec3", "uvec4", "Texture", "FloatsIn"] (14 items, those between #02d0a92e6c097c9b)
+lone/Lone.frag -> []
+sum/Gone.comp -> []
+sum/Sum.comp -> ["float", "vec2", "vec3", "vec4", "int", "uint", "ivec2", "ivec3", ..., "Floats", "Corners", "Totals", "Hints"] (20 items, those between #2daad90bbb7ee811)
+sum/Sum.cpp -> ["float", "vec2", "vec3", "vec4", "int", "uint", "ivec2", "ivec3", ..., "Spin", "Spins", "Base", "Derived"] (17 items, those between #8099592eae3a1c39)
+sum/Sum.h -> []
+view.vlp -> []
+
+## Fields.h/free_fields
+draw/Draw.cpp -> ["tint", "picture"]
+gone/Gone.cpp -> []
+sum/Sum.cpp -> ["totals"]
+
+## Fields.h/glsl_name
+"" -> false
+"9x" -> false
+"Ab_9" -> true
+"\xc3\xa9" -> false
+"_x" -> true
+"a b" -> false
+"a__b" -> true
+"gl" -> true
+"gl_x" -> false
+"speed" -> true
+"x9" -> true
+("") -> false
+("-") -> false
+(".") -> false
+("1") -> false
+("A9") -> true
+("\xc3\xa9") -> false
+("_") -> true
+("a b") -> false
+("a") -> true
+("a-b") -> false
+("a.b") -> false
+("a/b") -> false
+("a:b") -> false
+("a\r") -> false
+("a\t") -> false
+("a_b") -> true
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> true
+("root") -> true
+~(" ") -> false
+~(" .9Z::") -> false
+~(" :") -> false
+~("-/- Z") -> false
+~("-aaZ") -> false
+~("..9_Za") -> false
+~(".0Za..") -> false
+~(".9/..") -> false
+~(".Z9a/") -> false
+~("._.9a/") -> false
+~("/-//a") -> false
+~("/-ZZ") -> false
+~("//:") -> false
+~("/0 _:") -> false
+~("0") -> false
+~("0:aa") -> false
+~("0_") -> false
+~("9 :") -> false
+~("9") -> false
+~("9-9") -> false
+~("9-_-0/") -> false
+~("9/") -> false
+~(": ._") -> false
+~(":-__:a") -> false
+~(":9") -> false
+~("::") -> false
+~("Z :") -> false
+~("Z-") -> false
+~("Z/:Z/9") -> false
+~("Z9") -> true
+~("ZZ") -> true
+~("Za9") -> true
+~("_.Z:") -> false
+~("__./_/") -> false
+~("a. _") -> false
+~("a///.") -> false
+~("a9") -> true
+~("a:/") -> false
+
+## Fields.h/include_of
+"  #include \"contracts/Rect.h\"  // why" -> "contracts/Rect.h"
+"#  include \"a.glsl\"" -> none
+"#include <vector>" -> none
+"#include \"\"" -> ""
+"#include \"a.glsl\"" -> "a.glsl"
+"#include \"open" -> none
+"// #include \"a.glsl\"" -> none
+(" 1") -> none
+("") -> none
+("+1") -> none
+("-0") -> none
+("-1") -> none
+("-2147483648") -> none
+("-inf") -> none
+(".5") -> none
+("0") -> none
+("01") -> none
+("0x10") -> none
+("1 ") -> none
+("1") -> none
+("1,2") -> none
+("1.5") -> none
+("18446744073709551615") -> none
+("18446744073709551616") -> none
+("1\n") -> none
+("1\r") -> none
+("1_0") -> none
+("1e") -> none
+("1e-40") -> none
+("1e-50") -> none
+("1e3") -> none
+("3.4028235e38") -> none
+("3.4028236e38") -> none
+("4294967295") -> none
+("4294967296") -> none
+("5.") -> none
+("=") -> none
+("\xd9\xa1") -> none
+("\xef\xbc\x91") -> none
+("a") -> none
+("a=b") -> none
+("inf") -> none
+("nan") -> none
+~(" ") -> none
+~(" -") -> none
+~(" 3-e44") -> none
+~(",4 E,-5") -> none
+~(",_a20ex") -> none
+~("-eaa5x-") -> none
+~(".25bx") -> none
+~(".8 4a53") -> none
+~("._-b3b9") -> none
+~(".aea") -> none
+~(".x7") -> none
+~("0-1__0,") -> none
+~("0x1b,") -> none
+~("118a0") -> none
+~("148._1E") -> none
+~("1axba") -> none
+~("29b4x4.") -> none
+~("3E6742") -> none
+~("4") -> none
+~("4616-") -> none
+~("49,x57") -> none
+~("5 +6-") -> none
+~("58.053 ") -> none
+~("6 ") -> none
+~("6,.+.") -> none
+~("6x +b") -> none
+~("7.eab") -> none
+~("77E_") -> none
+~("8") -> none
+~("8160_ 7") -> none
+~("8a22x7") -> none
+~("8xe- 37") -> none
+~("9a2768") -> none
+~("E,e722+") -> none
+~("a3239+-") -> none
+~("ab,30") -> none
+~("b7") -> none
+~("e3.0.57") -> none
+~("x1-") -> none
+~("x6370169") -> none
+
+## Fields.h/layout_buffers
+[FloatsIn of float reads, FloatsOut of float writes, Floats of float reads writes]
+
+## Fields.h/listed_file
+gone/Sum.comp -> false
+sum -> false
+sum/Gone.comp -> false
+sum/Sum.comp -> true
+
+## Fields.h/live_fields
+"#include \"baseclasses/GpuLayout.glsl\"\n#include \"contracts/Co...loat local;\n}\n" (513 characters, hash 3bd2a9bfbd1e6647) -> [float speed, Image target, Corners corners, uint count, Totals totals]
+"#include \"baseclasses/GpuLayout.glsl\"\nlayout(set = 1, binding = 0) uniform Pass {\n  vec4 tint;\n  Texture picture;\n} pass;\n" -> [vec4 tint, Texture picture]
+"// layout(set = 1, binding = 0) uniform Pass {\n//  float x;\n// } pass;\n" -> []
+"layout(set = 1, binding = 0) uniform Pass { float x; } pass;\nvoid main() {\n  float local;\n}\n" -> [float local]
+"layout(set = 1, binding = 0) uniform Pass {\n  float x;\n" -> []
+"struct Corner { vec2 at; };\nVP_READS(Corners, Corner);\n" -> []
+("  a  \n") -> []
+(" \n") -> []
+("") -> []
+("\n") -> []
+("\n\n") -> []
+("\r") -> []
+("\r\n") -> []
+("\r\r\n") -> []
+("\ta\n") -> []
+("\xef\xbb\xbfa\n") -> []
+("a") -> []
+("a\n") -> []
+("a\n\nb") -> []
+("a\n\r\nb") -> []
+("a\nb") -> []
+("a\r") -> []
+("a\r\nb\r\n") -> []
+("a\r\r\n") -> []
+("a\x00b\n") -> []
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b)) -> []
+~(" =a#a=#\r= a\n\na=\r") -> []
+~(" \r =\r=a\nb#=\r\n\r==") -> []
+~(" a\r=\r#=\r\r#") -> []
+~("##\n\nab\t  ba#") -> []
+~("#= =\r\n= \r") -> []
+~("#=a==\nb=\t\r\r\n\tbb") -> []
+~("#\ta#=\n=b=\rb=a\r") -> []
+~("#a\t\nb\n\n\r") -> []
+~("#b") -> []
+~("#b\n= b\tb#\r#\n\r\t") -> []
+~("=\n\t\n\r#\r\r#\tb # \n\r") -> []
+~("=\t\tb ==\nb\t \n \t") -> []
+~("=b\n#=") -> []
+~("=b\r#=\n\t\na ") -> []
+~("\n#b\r==\t \r \t\n ") -> []
+~("\n=") -> []
+~("\n=\r") -> []
+~("\n\t# \r=#") -> []
+~("\r#\nabbb\n#=") -> []
+~("\r#\r= \tb") -> []
+~("\r\n\rb \rb\taa\tb#aa\t") -> []
+~("\r\na= =a =ba =\tb\r") -> []
+~("\r\r# \t\ra\r\n\rb#ba\n\r") -> []
+~("\t=\r  #\r=\n  \tb") -> []
+~("\ta") -> []
+~("\tb") -> []
+~("\tb\taa=b") -> []
+~("a ##\na") -> []
+~("a \r\t\ta") -> []
+~("a=\n #\n ") -> []
+~("a\tb \t#\r#a") -> []
+~("ab #\n\n\n \r") -> []
+~("ab b\ta\n\nb ") -> []
+~("ab=\t\n==#b") -> []
+~("ab\na\nb\r\r=") -> []
+~("ab\rb\ta=== \t") -> []
+~("b #\r =\r \t\n\n") -> []
+~("b \r# =a\t\n") -> []
+~("b b#\t\n\t##a\r \t\n") -> []
+~("b\r") -> []
+~("b\ta##\ra\n\t  a#") -> []
+~("ba\tb\n\r") -> []
+~("bb") -> []
+
+## Fields.h/lone_fragment
+["A.comp", "A.frag"] -> true
+["A.geom", "A.frag"] -> false
+["A.vert", "A.frag"] -> false
+["A.vert"] -> false
+["Lone.frag", "Lone.cpp"] -> true
+["Lone.frag"] -> true
+[] -> false
+
+## Fields.h/node_fields
+bare -> path "" []
+draw -> path "<here>/draw/Draw.frag" [vec4 tint, Texture picture]
+gone -> path "" []
+lone -> path "" []
+sum -> path "<here>/sum/Sum.comp" [float speed, Image target, Corners corners, uint count, Totals totals]
+
+## Fields.h/node_named
+"<here>/../Outside.cpp" -> none
+"<here>/./sum/../draw/Draw.cpp" -> none
+"<here>/Top.cpp" -> "root"
+"<here>/gone/X.cpp" -> none
+"<here>/sum/Sum.cpp" -> "sum"
+"<here>/sum/inner/X.cpp" -> none
+"sum/Sum.cpp" -> none
+
+## Fields.h/opens_block
+"  layout(set = 1, binding = 0) uniform Passes {" -> true
+"layout(push_constant) uniform Frame {" -> false
+"layout(set = 1, binding = 0) uniform Pass {" -> true
+"layout(std140) uniform Pass" -> true
+"uniform Pass {" -> false
+
+## Fields.h/resolved_include
+../draw/Draw.glsl from draw/Draw.frag -> path "<here>/draw/Draw.glsl"
+Draw.glsl from draw/Draw.frag -> path "<here>/draw/Draw.glsl"
+Missing.glsl from draw/Draw.frag -> none
+contracts/Corner.glsl from draw/Draw.frag -> path "<here>/contracts/Corner.glsl"
+contracts/Spin.h from draw/Draw.frag -> path "<here>/contracts/Spin.h"
+
+## Fields.h/uncommented
+"  //VP_READS(A, float);" -> "  VP_READS(A, float);"
+"" -> none
+"/ / no" -> none
+"//  two blanks" -> " two blanks"
+"// VP_READS(A, float);" -> "VP_READS(A, float);"
+"//" -> ""
+"code; // after" -> none
+("  a  \n") -> none
+(" \n") -> none
+("") -> none
+("\n") -> none
+("\n\n") -> none
+("\r") -> none
+("\r\n") -> none
+("\r\r\n") -> none
+("\ta\n") -> none
+("\xef\xbb\xbfa\n") -> none
+("a") -> none
+("a\n") -> none
+("a\n\nb") -> none
+("a\n\r\nb") -> none
+("a\nb") -> none
+("a\r") -> none
+("a\r\nb\r\n") -> none
+("a\r\r\n") -> none
+("a\x00b\n") -> none
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b)) -> none
+~("  \rb") -> none
+~(" \r=\t #=a") -> none
+~(" \r\n\t\tb\r\n") -> none
+~(" a#\r\r#\t\t\n=a \n=") -> none
+~(" b\n\n \t\t") -> none
+~("# ") -> none
+~("#") -> none
+~("##\n\r \t#b aa\t\n## ") -> none
+~("#=\n\taba\r\n\t#\t\t=") -> none
+~("#\n \n#aa") -> none
+~("#\n\r") -> none
+~("#\t \r=b\r =") -> none
+~("#a\r b\nb\r") -> none
+~("#b#\t=\tb\n=\t\t\r") -> none
+~("#b\n\t\n") -> none
+~("== =b=\r #") -> none
+~("=\r\n=") -> none
+~("=\t \r#b\rb") -> none
+~("=b#a") -> none
+~("=b\nb=\r\n\tb=ab#b=") -> none
+~("=b\t aab\r\n\nabaa") -> none
+~("\n a\r  ==\r\n") -> none
+~("\n#=\n\n") -> none
+~("\n\r\n\t#=\tb") -> none
+~("\na") -> none
+~("\naa \n ") -> none
+~("\r#bb#a\n\r#b#\r\nb\n") -> none
+~("\r=#== a#\n=\r\n#\n\t") -> none
+~("\r=\n#\nb=") -> none
+~("\r=\n=") -> none
+~("\r=\t# #\r\ta ") -> none
+~("\t \r#=\r\r\t") -> none
+~("\t\t#\nb=a") -> none
+~("\t\ta  \raa# \t\t\r\r\n") -> none
+~("\ta") -> none
+~("\ta\r\t\t") -> none
+~("a \n b") -> none
+~("a#\t\t #\n\t#\rba#=b") -> none
+~("a\t=b \nab") -> none
+~("aa=a\t ") -> none
+~("b =\na#\raa\r =\r\t#") -> none
+~("b\n\n\r=\ta#b") -> none
+~("b\r") -> none
+~("b\rb\n\nb\tb =\r\t") -> none
+~("b\t a= \t a\ta  \n \n") -> none
+~("ba  ") -> none
+~("bb\r\n\n\n\r\r#b") -> none
+
+## Fields.h/value_type
+and a word: string as std::string
+float as float
+int as std::int32_t
+ivec2 as glm::ivec2
+ivec3 as glm::ivec3
+ivec4 as glm::ivec4
+uint as std::uint32_t
+uvec2 as glm::uvec2
+uvec3 as glm::uvec3
+uvec4 as glm::uvec4
+vec2 as glm::vec2
+vec3 as glm::vec3
+vec4 as glm::vec4

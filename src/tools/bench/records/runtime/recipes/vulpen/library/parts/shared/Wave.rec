@@ -1,0 +1,352 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/shared/Wave.h, a call each (src/tools/bench/bench.py).
+
+## Wave.h/wave_read
+("  a  \n", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("  a  \n", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("  a  \n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("  a  \n", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("  a  \n", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("  a  \n", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("  a  \n", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("  a  \n", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("  a  \n", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("  a  \n", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+(" \n", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("\n", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("\n\n", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("\r", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("\r", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\n", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("\r\r\n", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("\ta\n", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("\xef\xbb\xbfa\n", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("\xef\xbb\xbfa\n", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("a", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("a\n", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\nb", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("a\n\nb", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\n\r\nb", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("a\n\r\nb", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\nb", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\nb\r\n", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("a\r\nb\r\n", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\r\r\n", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("a\r\r\n", "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", ".") -> throws runtime_error: ". is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", "1") -> throws runtime_error: "1 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", "A9") -> throws runtime_error: "A9 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", "a b") -> throws runtime_error: "a b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", "a-b") -> throws runtime_error: "a-b is no WAV file this reads: it holds no RIFF WAVE header"
+("a\x00b\n", "a\r") -> throws runtime_error: "a\r is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "a") -> throws runtime_error: "a is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "a.b") -> throws runtime_error: "a.b is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "a/b") -> throws runtime_error: "a/b is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "a:b") -> throws runtime_error: "a:b is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "a\t") -> throws runtime_error: "a\t is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "a_b") -> throws runtime_error: "a_b is no WAV file this reads: it holds no RIFF WAVE header"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...RIFF WAVE header" (356 characters, hash 047907b311e445bc)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b), "root") -> throws runtime_error: "root is no WAV file this reads: it holds no RIFF WAVE header"
+16-bit mono -> [0.9999695, 0.9999695, -1, -1, 0, 0, 3.0517578e-05, 3.0517578e-05]
+16-bit stereo -> [0.5, -0.5]
+24-bit stereo -> [0.9999999, -1, 0.5, -1.1920929e-07]
+32-bit integers -> throws runtime_error: "a.wav is no WAV file this reads: its samples are format 1 of 32 bits"
+44100 Hz -> throws runtime_error: "a.wav is no WAV file this reads: it plays at 44100 Hz, not 48000 Hz"
+64-bit floats -> throws runtime_error: "a.wav is no WAV file this reads: its samples are format 3 of 64 bits"
+8-bit -> throws runtime_error: "a.wav is no WAV file this reads: its samples are format 1 of 8 bits"
+RIFF alone -> throws runtime_error: "a.wav is no WAV file this reads: it holds no RIFF WAVE header"
+a frame cut off at the end -> [3.0517578e-05, 6.1035156e-05]
+a list chunk of odd size first -> [0.5, -0.5, 1, -1]
+a short fmt -> throws runtime_error: "a.wav is no WAV file this reads: its samples are format 0 of 0 bits"
+a size past the end of a chunk passed over -> throws runtime_error: "a.wav is no WAV file this reads: its LIST chunk runs past its end"
+as written -> [0.25, -0.25, 0, 1]
+data before fmt -> throws runtime_error: "a.wav is no WAV file this reads: its samples are format 0 of 0 bits"
+data past the end -> throws runtime_error: "a.wav is no WAV file this reads: its data chunk runs past its end"
+empty -> throws runtime_error: "a.wav is no WAV file this reads: it holds no RIFF WAVE header"
+extensible 24-bit -> [0.9999999, -1]
+extensible floats -> [0.5, -0.5, 1, -1]
+extensible of too short a size -> throws runtime_error: "a.wav is no WAV file this reads: its samples are format 65534 of 32 bits"
+floats -> [0.5, -0.5, 1, -1]
+no WAVE -> throws runtime_error: "a.wav is no WAV file this reads: it holds no RIFF WAVE header"
+no channels -> throws runtime_error: "a.wav is no WAV file this reads: it has 0 channels"
+no data -> throws runtime_error: "a.wav is no WAV file this reads: it holds no data chunk"
+three channels -> throws runtime_error: "a.wav is no WAV file this reads: it has 3 channels"
+~(" ", "-/0 ") -> throws runtime_error: "-/0  is no WAV file this reads: it holds no RIFF WAVE header"
+~(" #=  =\n#\n\t#a", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+~(" ==a\n\t#a\n", "/:9a") -> throws runtime_error: "/:9a is no WAV file this reads: it holds no RIFF WAVE header"
+~(" \n=aa", "a09") -> throws runtime_error: "a09 is no WAV file this reads: it holds no RIFF WAVE header"
+~(" a \r\n\t=\n ", "_ ") -> throws runtime_error: "_  is no WAV file this reads: it holds no RIFF WAVE header"
+~(" a\naa\t", "_") -> throws runtime_error: "_ is no WAV file this reads: it holds no RIFF WAVE header"
+~("", "9.-") -> throws runtime_error: "9.- is no WAV file this reads: it holds no RIFF WAVE header"
+~("", "Z :. ") -> throws runtime_error: "Z :.  is no WAV file this reads: it holds no RIFF WAVE header"
+~("#  ba\n\t=\na\t#bb#b", ":: -") -> throws runtime_error: ":: - is no WAV file this reads: it holds no RIFF WAVE header"
+~("# \n\t# b  \n", "0:Z_9/") -> throws runtime_error: "0:Z_9/ is no WAV file this reads: it holds no RIFF WAVE header"
+~("#", " -") -> throws runtime_error: " - is no WAV file this reads: it holds no RIFF WAVE header"
+~("#=# \r ", " :_Z.") -> throws runtime_error: " :_Z. is no WAV file this reads: it holds no RIFF WAVE header"
+~("#\r\ra\rb\na\r\rab##", "a_") -> throws runtime_error: "a_ is no WAV file this reads: it holds no RIFF WAVE header"
+~("#b ", " a ") -> throws runtime_error: " a  is no WAV file this reads: it holds no RIFF WAVE header"
+~("=", "- ") -> throws runtime_error: "-  is no WAV file this reads: it holds no RIFF WAVE header"
+~("=#\n b\t#\nb=#\t", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+~("=\n", ":/.0_ ") -> throws runtime_error: ":/.0_  is no WAV file this reads: it holds no RIFF WAVE header"
+~("=\n\n\r ", "09.-.") -> throws runtime_error: "09.-. is no WAV file this reads: it holds no RIFF WAVE header"
+~("=\t\r", " .") -> throws runtime_error: " . is no WAV file this reads: it holds no RIFF WAVE header"
+~("\n", "/:.9/") -> throws runtime_error: "/:.9/ is no WAV file this reads: it holds no RIFF WAVE header"
+~("\n#\rb\t", "._9") -> throws runtime_error: "._9 is no WAV file this reads: it holds no RIFF WAVE header"
+~("\n=", "a.Z0_") -> throws runtime_error: "a.Z0_ is no WAV file this reads: it holds no RIFF WAVE header"
+~("\n\rb", "aa0") -> throws runtime_error: "aa0 is no WAV file this reads: it holds no RIFF WAVE header"
+~("\n\t=a\ta=\r\r#\r", "-a_ ") -> throws runtime_error: "-a_  is no WAV file this reads: it holds no RIFF WAVE header"
+~("\nb#\t=\r\n #=b\t#bb", "--Z-Z") -> throws runtime_error: "--Z-Z is no WAV file this reads: it holds no RIFF WAVE header"
+~("\r a\nb", " Z") -> throws runtime_error: " Z is no WAV file this reads: it holds no RIFF WAVE header"
+~("\r", ".- /") -> throws runtime_error: ".- / is no WAV file this reads: it holds no RIFF WAVE header"
+~("\r####\tab#", "__") -> throws runtime_error: "__ is no WAV file this reads: it holds no RIFF WAVE header"
+~("\r\n\r\r=b=", "aZ0/") -> throws runtime_error: "aZ0/ is no WAV file this reads: it holds no RIFF WAVE header"
+~("\ra=\r#b#\n \n a ", "Z") -> throws runtime_error: "Z is no WAV file this reads: it holds no RIFF WAVE header"
+~("\rb#b", "Za.._0") -> throws runtime_error: "Za.._0 is no WAV file this reads: it holds no RIFF WAVE header"
+~("\t", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+~("\t\n#\n#\ra=# \r=", "aaZZ:") -> throws runtime_error: "aaZZ: is no WAV file this reads: it holds no RIFF WAVE header"
+~("\t\n\nb\tba= =", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+~("\taa", "a.a-/") -> throws runtime_error: "a.a-/ is no WAV file this reads: it holds no RIFF WAVE header"
+~("a", "-9__") -> throws runtime_error: "-9__ is no WAV file this reads: it holds no RIFF WAVE header"
+~("a#  aa#\r=\n\r=a\n", " ::aZZ") -> throws runtime_error: " ::aZZ is no WAV file this reads: it holds no RIFF WAVE header"
+~("a=", "/Z/") -> throws runtime_error: "/Z/ is no WAV file this reads: it holds no RIFF WAVE header"
+~("a\n #", "/-") -> throws runtime_error: "/- is no WAV file this reads: it holds no RIFF WAVE header"
+~("a\r=#", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+~("a\t\t\n\r\ra#=b #\n\t\r", ".9:") -> throws runtime_error: ".9: is no WAV file this reads: it holds no RIFF WAVE header"
+~("aa b=#", "") -> throws runtime_error: " is no WAV file this reads: it holds no RIFF WAVE header"
+~("aa\n#", " ") -> throws runtime_error: "  is no WAV file this reads: it holds no RIFF WAVE header"
+~("b \n\t \t b\t #a ", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+~("b\n", "-") -> throws runtime_error: "- is no WAV file this reads: it holds no RIFF WAVE header"
+~("b\r #=#\t\r\t \n", "0.Z") -> throws runtime_error: "0.Z is no WAV file this reads: it holds no RIFF WAVE header"
+~("ba=b=a# ==a=b \t", "9") -> throws runtime_error: "9 is no WAV file this reads: it holds no RIFF WAVE header"
+~("bb\t=", "9 /.0") -> throws runtime_error: "9 /.0 is no WAV file this reads: it holds no RIFF WAVE header"
+
+## Wave.h/wave_sample
+"\x00\x00" of format 1 and 16 bits -> 0
+"\x00\x00@?" of format 3 and 32 bits -> 0.75
+"\x00\x00\x00\xc0" of format 3 and 32 bits -> -2
+"\x00\x00\x80" of format 1 and 24 bits -> -1
+"\x00\x80" of format 1 and 16 bits -> -1
+"\x01\x00\x00" of format 1 and 24 bits -> 1.1920929e-07
+"\xff\x7f" of format 1 and 16 bits -> 0.9999695
+"\xff\xff" of format 1 and 16 bits -> -3.0517578e-05
+"\xff\xff\x7f" of format 1 and 24 bits -> 0.9999999
+
+## Wave.h/wave_word
+1 bytes at 0 -> 0x1
+1 bytes at 1 -> 0x2
+1 bytes at 2 -> 0x80
+1 bytes at 3 -> 0xff
+1 bytes at 4 -> 0x0
+1 bytes at 5 -> 0x7f
+2 bytes at 0 -> 0x201
+2 bytes at 1 -> 0x8002
+2 bytes at 2 -> 0xff80
+2 bytes at 3 -> 0xff
+2 bytes at 4 -> 0x7f00
+3 bytes at 0 -> 0x800201
+3 bytes at 1 -> 0xff8002
+3 bytes at 2 -> 0xff80
+3 bytes at 3 -> 0x7f00ff
+4 bytes at 0 -> 0xff800201
+4 bytes at 1 -> 0xff8002
+4 bytes at 2 -> 0x7f00ff80
+
+## Wave.h/wave_write
+([0, 1]) -> "RIFF,\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?"
+([1, 0, -0, -1, 0.5, 0.1, 2, 1e+06, ..., 1.1920929e-07, inf, -inf, nan] (16 items, those between #06e8f2bbda7d069a)) -> "RIFFd\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...\x00\x00\xc0\x7f" (351 characters, hash 020d01a5230e5ed8)
+([1, 0]) -> "RIFF,\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x08\x00\x00\x00\x00\x00\x80?\x00\x00\x00\x00"
+([1, 1]) -> "RIFF,\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x08\x00\x00\x00\x00\x00\x80?\x00\x00\x80?"
+([1]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00\x00\x00\x80?"
+([]) -> "RIFF$\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x00\x00\x00\x00"
+holds: what it writes reads back bit for bit, while its samples make whole frames, over 45 rows
+~([-0.23]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00\x1f\x85k\xbe"
+~([-2.05, 1.001579e-19, -5.91]) -> "RIFF0\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...\xb8\x1e\xbd\xc0" (161 characters, hash 102fd6b9db4f4317)
+~([-2.2836677e+22, 5.9604645e-08, -7.13, 7.275958e-12]) -> "RIFF4\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...xc0\x00\x00\x00-" (174 characters, hash 3955c7a4f3610caa)
+~([-2.41]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00q=\x1a\xc0"
+~([-2.5]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00\x00\x00 \xc0"
+~([-4.21, -9.95, 4.7683716e-07, 1.4901161e-08, 4.86]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...802\x1f\x85\x9b@" (184 characters, hash 4ef73f9ca1eb8365)
+~([-4.661352e+22]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00\xc9\xee\x1d\xe5"
+~([-5.76, 274877906944, -8.802114e-18, 4.7683716e-07]) -> "RIFF4\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...xa3\x00\x00\x005" (172 characters, hash db5b0f84e7265163)
+~([-7.3, 9.536743e-07, 32, 7.34]) -> "RIFF4\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...0\x00BH\xe1\xea@" (174 characters, hash 91fccc45b5795ba7)
+~([-7.85, -6.1, -7.196307e-13, 1048576, -1.6976463e-13]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...\x00\x80IS#?\xaa" (175 characters, hash 9d61d428f2d0ecfb)
+~([-9.77, -8.635859e+18, 7.450581e-09]) -> "RIFF0\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...xde\x00\x00\x002" (161 characters, hash f66e2b31423657fd)
+~([0.00024414062, 0.00048828125, 5.03]) -> "RIFF0\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...00:\xc3\xf5\xa0@" (161 characters, hash de79021820660d8c)
+~([0.015625, -144462448, 33554432]) -> "RIFF0\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x0c\x00\x00\x00\x00\x00\x80<'\xc5\t\xcd\x00\x00\x00L"
+~([0.015625, 5.791844e-15, -6.26, 1.5429478e-31]) -> "RIFF4\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...Q\xc8\xc0<IH\x0c" (165 characters, hash 78032d16afba64f2)
+~([0.3, 1.5258789e-05, 3.99, 3.7252903e-09]) -> "RIFF4\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...7f@\x00\x00\x801" (169 characters, hash f1bb283a65eba919)
+~([0.5, -9.02, -25668.537, 0.16422014, 6.95]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...8\xc6S)(>ff\xde@" (175 characters, hash b91bf1d64184ae74)
+~([1.1920929e-07, 16384, 536870912, 8.11874e-39, 6.98]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...begX\x00)\\\xdf@" (179 characters, hash b43ece02d2e19dd6)
+~([1.5258789e-05, 17179869184, 0.03125, -8.88]) -> "RIFF4\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...00={\x14\x0e\xc1" (174 characters, hash 89ca02ee201d0f98)
+~([1048576, 8589934592]) -> "RIFF,\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x08\x00\x00\x00\x00\x00\x80I\x00\x00\x00P"
+~([1073741824, 549755813888, 4]) -> "RIFF0\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...00S\x00\x00\x80@" (161 characters, hash 7bd5d6546cb9cc22)
+~([131072, 5.2008815]) -> "RIFF,\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x08\x00\x00\x00\x00\x00\x00H\x9fm\xa6@"
+~([1816950016, -4.67, 1.3315747e+19]) -> "RIFF0\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x0c\x00\x00\x00\xea\x98\xd8N\xa4p\x95\xc0\t\xcb8_"
+~([2.31, 6.7, -4408606720]) -> "RIFF0\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x0c\x00\x00\x00\n\xd7\x13@ff\xd6@\x00c\x83\xcf"
+~([262144, 4104.962, 3.7924826e+22, 3.53, 7.450581e-09]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...ba@\x00\x00\x002" (178 characters, hash e5b39f9f00abea61)
+~([274877906944, 1.4568454e+32]) -> "RIFF,\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x08\x00\x00\x00\x00\x00\x80R\x84\xd9\xe5t"
+~([3.637979e-12, 0.0078125, 9.6170635e-30, 8192, 524288]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...00F\x00\x00\x00I" (187 characters, hash 29dfcbca5d39656d)
+~([3.8146973e-06, 4294967296]) -> "RIFF,\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x08\x00\x00\x00\x00\x00\x806\x00\x00\x80O"
+~([3.8146973e-06, 8.5, 0.03]) -> "RIFF0\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...08A\x8f\xc2\xf5<" (161 characters, hash 836b64b4f21c8b96)
+~([32, -4.5864258e+33, 2.2734875e-37, 512]) -> "RIFF4\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...x02\x00\x00\x00D" (174 characters, hash a122b37724818e00)
+~([4.49]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00\x14\xae\x8f@"
+~([4096, 1.0615345e-27, -5.1242194, -1.5566638e-31]) -> "RIFF4\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...xc0\x07\x11J\x8c" (177 characters, hash fb3143743ea4b0dd)
+~([5.2392462e-23, 17179869184]) -> "RIFF,\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x08\x00\x00\x00\xbaZ}\x1a\x00\x00\x80P"
+~([5.59, -5.39, 0.21, -55778.594, 2.2929084e-06]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...xc7\xde\xdf\x196" (176 characters, hash 4dd4df0efef88524)
+~([7.02, 256, -9.83, 8.483804e+18, 1.05520126e+15]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...y\xeb^\xcc\xecoX" (181 characters, hash 1c25dfdb15cf552a)
+~([7.275958e-12]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00\x00\x00\x00-"
+~([7.6293945e-06]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00\x00\x00\x007"
+~([8.098988e+13]) -> "RIFF(\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xbb\x00\x00\x00\xdc\x05\x00\x08\x00 \x00data\x04\x00\x00\x00\xdaQ\x93V"
+~([9.14, 3.3362007e-16, 64, -9.4630587e+27, -3.2481212e+18]) -> "RIFF8\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x03\x00\x02\x00\x80\xb...f4\xed\x94N4\xde" (175 characters, hash 371d48c45e5c1a60)
