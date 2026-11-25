@@ -178,7 +178,7 @@ def windows(vulpen: str, count: int) -> None:
         samples = [one.sample()]
         for index in range(count):
             view.write_text(NOTHING if index % 2 == 0 else drawn, encoding="utf-8")
-            if "{!!!}" in one.wait_for("so the window", SWAP_TIMEOUT):
+            if "{!!!}" in one.wait_for("draws into the window, so it", SWAP_TIMEOUT):
                 break
             samples.append(one.sample())
         one.stop()

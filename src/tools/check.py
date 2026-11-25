@@ -251,7 +251,10 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
     nightly = [*quick, *(step for name in presets[1:] for step in preset(name, window))]
     nightly += [Step("test gpu-validation", ["ctest", "--preset", "gpu-validation"],
                      "build debug"),
-                Step("test nightly", ["ctest", "--preset", "nightly"], "build debug"),
+                # On the run's own display, as the other test steps, so window-soak and
+                # the soak's windowed half run rather than skip.
+                Step("test nightly", ["ctest", "--preset", "nightly"], "build debug",
+                     window),
                 Step("test asan-nightly", ["ctest", "--preset", "asan-nightly"],
                      "build asan"),
                 Step("commands", [python, TOOLS / "command-sweep.py", "--report",
