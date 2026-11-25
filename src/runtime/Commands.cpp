@@ -366,8 +366,7 @@ struct Commands::Spec {
   // too, as its command finds a name where it is. A folder is named by either separator
   // the system knows, as Windows takes \ beside /.
   bool names_file(std::size_t argument, std::string_view word) const {
-    const std::string_view kind =
-        placeholders[std::min(argument, placeholders.size() - 1)];
+    const std::string_view kind = kind_of(argument);
     return kind == "file" || ((kind == "project" || kind == "path" || kind == "folder") &&
                               std::filesystem::path(word).has_parent_path());
   }
@@ -375,7 +374,13 @@ struct Commands::Spec {
   // A project's path counts from where vulpen started, not from the folder the prompt
   // shows, so view load ../x names the same folder from every view it is typed in.
   bool from_start(std::size_t argument) const {
-    return placeholders[std::min(argument, placeholders.size() - 1)] == "project";
+    return kind_of(argument) == "project";
+  }
+
+  // The placeholder an argument fills; the last one for every argument past it, as a
+  // trailing <value>... takes them all.
+  std::string_view kind_of(std::size_t argument) const {
+    return placeholders[std::min(argument, placeholders.size() - 1)];
   }
 
   // Whether a line left its name out: the first word given is already of the next kind,
