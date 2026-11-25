@@ -1,5 +1,6 @@
 #include "contracts/Camera.h"
 #include "runtime/Operator.h"
+#include "shared/Params.h"
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -34,26 +35,6 @@ constexpr float steepest_tilt = 0.5f * std::numbers::pi_v<float> - 0.01f;
 // A press of the left button again soon after, as a double click's second.
 constexpr std::uint32_t double_press = 2;
 
-enum class Turn { ball, level };
-
-// Whether a double left click brings the camera home, or is left to the view, as for a
-// game whose double click acts on what it lands on.
-bool homes_of(const std::string &word) {
-  if (word == "home")
-    return true;
-  if (word == "none")
-    return false;
-  throw std::runtime_error(std::format("double_click is home or none, not {}", word));
-}
-
-Turn turn_of(const std::string &word) {
-  if (word == "ball")
-    return Turn::ball;
-  if (word == "level")
-    return Turn::level;
-  throw std::runtime_error(std::format("turn is ball or level, not {}", word));
-}
-
 // A camera a person turns and pans about a target with the pointer: a left drag turns
 // the scene, as a ball under the pointer rolls or, with turn level, about up and across
 // the picture, a right or middle drag moves the target across the picture, the scene
@@ -73,8 +54,15 @@ class Camera final : public VP::Operator {
     _home_eye = node.param<glm::vec3>("eye");
     _home_up = node.param<glm::vec3>("up");
     _lens = node.param<float>("lens");
-    _turn = turn_of(node.param<std::string>("turn"));
-    _homes = homes_of(node.param<std::string>("double_click"));
+    if (!(_lens > 0.0f)) // pan divides by it
+      throw std::runtime_error(std::format("param lens = {}: beyond 0", _lens));
+    const std::string turn = node.param<std::string>("turn");
+    check_word("turn", turn, {"ball", "level"});
+    _level = turn == "level";
+    // none leaves a double click to the view, as a game's that acts on what it lands on.
+    const std::string double_click = node.param<std::string>("double_click");
+    check_word("double_click", double_click, {"home", "none"});
+    _homes = double_click != "none";
     _frames_per_turn = node.param<std::uint32_t>("frames_per_turn");
     _near = node.param<float>("near");
     _far = node.param<float>("far");
@@ -92,9 +80,10 @@ class Camera final : public VP::Operator {
   void cook(VP::Cook &frame) override {
     const glm::vec2 size(frame.resolution());
     const float across = std::max(std::min(size.x, size.y), 1.0f);
+    const glm::quat spin = glm::angleAxis(-spin_at(frame.index()), _up);
     for (const VP::Event &event : frame.input().events())
-      follow(event, across);
-    const glm::quat spun = glm::angleAxis(-spin_at(frame.index()), _up) * _turned;
+      follow(event, across, spin);
+    const glm::quat spun = spin * _turned;
     frame.write(_camera)[0] = {
         .eye = glm::vec4(_target + spun * glm::vec3(0.0f, 0.0f, _distance), 1.0f),
         .ahead = glm::vec4(spun * glm::vec3(0.0f, 0.0f, -1.0f), _lens),
@@ -123,16 +112,16 @@ class Camera final : public VP::Operator {
     _homed = _distance;
   }
 
-  void follow(const VP::Event &event, float across) {
+  void follow(const VP::Event &event, float across, const glm::quat &spin) {
     if (event.kind == VP::Event::Kind::pointer) {
       const glm::vec2 moved = event.at - _pointer;
       _pointer = event.at;
-      if (_turning && _turn == Turn::ball)
+      if (_turning && !_level)
         roll(moved, across);
       else if (_turning)
         level(moved, across);
       else if (_panning)
-        pan(moved, across);
+        pan(moved, across, spin * _turned);
     } else if (event.kind == VP::Event::Kind::button) {
       if (event.name == "left" && event.down && event.presses == double_press && _homes)
         home();
@@ -173,11 +162,13 @@ class Camera final : public VP::Operator {
   }
 
   // The target moves across the picture, so the scene at its depth follows the pointer:
-  // at the target, the shorter side spans 2 * distance / lens.
-  void pan(glm::vec2 moved, float across) {
+  // at the target, the shorter side spans 2 * distance / lens. Along the frame shown,
+  // spun by frames_per_turn too: roll and level turn the scene in the camera's own frame
+  // or about up, which the spin leaves alike, but the target moves in the world's.
+  void pan(glm::vec2 moved, float across, const glm::quat &shown) {
     const float pixel = 2.0f * _distance / (_lens * across);
-    const glm::vec3 right = _turned * glm::vec3(1.0f, 0.0f, 0.0f);
-    const glm::vec3 up = _turned * glm::vec3(0.0f, 1.0f, 0.0f);
+    const glm::vec3 right = shown * glm::vec3(1.0f, 0.0f, 0.0f);
+    const glm::vec3 up = shown * glm::vec3(0.0f, 1.0f, 0.0f);
     _target -= (right * moved.x - up * moved.y) * pixel;
   }
 
@@ -186,8 +177,8 @@ class Camera final : public VP::Operator {
   glm::vec3 _home_eye{};
   glm::vec3 _home_up{};
   float _lens = 0.0f;
-  Turn _turn = Turn::ball;
-  bool _homes = true; // a double click brings it home
+  bool _level = false; // turn level, else ball
+  bool _homes = true;  // a double click brings it home
   std::uint32_t _frames_per_turn = 0;
   float _near = 0.0f;
   float _far = 0.0f;
