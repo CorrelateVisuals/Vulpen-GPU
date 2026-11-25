@@ -20,7 +20,7 @@ Requirements must never conflict; if two do, fix this file.
 - **RV07** A part or a component is named for its job, never for its first user (`list`, not `menubar`); only an app carries a product's name.
 - **RV08** A node's folder is its name as a path: `ui.panel` is `ui/panel/` in its view. The files in that folder are its files, which its manifest section does not list, and the nodes inside it are its subfolders. Each folder's C++ builds as one module.
 - **RV09** Shared code is a header in the library's `parts/shared/`, for a job too small to be a node, which each part that needs it includes. A `.cpp` of the same name, if any, holds its definitions, and the header includes it at its end, so a part includes only the header. It reaches no port and registers no command: the part hands it what it needs. Its code is in the unnamed namespace, so each part that includes it holds its own copy, and two views' copies never clash in one binary. Dropping a recipe copies the shared code it includes into the view's `shared/`, beside its `contracts/` (V03).
-- **RV10** Every command answers. A line that works answers one line naming what it changed (`saved projects/x/view.vlp`); a refused line names its cause (A02). Only lines a front end sends at a high rate stay silent (`input`, `log save`, `focus`, `panel move`, `zoom`), and those that hand on a line of their own, which answers itself (`type`, `menu point`, `menu press`).
+- **RV10** Every command answers. A line that works answers one line naming what it changed (`saved projects/x/view.vlp`); a refused line names its cause (A02). Only lines a front end sends at a high rate stay silent, and lines that hand on a line of their own, which answers itself.
 
 ### GPU layout
 
