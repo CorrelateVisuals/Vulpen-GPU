@@ -86,6 +86,9 @@ vulpen_test(barriers ${launch} $<TARGET_FILE:barriers>)
 # Its nodes build only as modules.
 if(VULPEN_LIVE)
   vulpen_test(fail-loud ${python} ${tests}/fail-loud.py ${vulpen_file})
+  # A failed live build is named while files beside its view change, not built again
+  # unsaid.
+  vulpen_test(live ${python} ${tests}/live.py ${vulpen_file})
 endif()
 if(VULPEN_SANITIZERS MATCHES address)
   vulpen_test(fuzz ${python} ${tests}/fuzz.py ${vulpen_file} --count 300)

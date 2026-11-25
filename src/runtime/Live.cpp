@@ -254,11 +254,16 @@ std::filesystem::file_time_type newest(const std::filesystem::path &folder) {
   return newest;
 }
 
-std::filesystem::file_time_type newest(std::span<const std::filesystem::path> folders) {
+// When a view was last made, moved or gone in one of the folders, the newest: each
+// folder's own time, not its files', which each view's own scan watches. A project hosted
+// from its own repository makes that repository such a folder, where a log or a save may
+// be written all the time, and every failed build would then seem to have met files
+// moving, and build again, never saying why.
+std::filesystem::file_time_type listed(std::span<const std::filesystem::path> folders) {
   // Not file_time_type{}: libstdc++ puts the file clock's epoch in the year 2174.
   auto time = std::filesystem::file_time_type::min();
   for (const std::filesystem::path &folder : folders)
-    time = std::max(time, newest(folder));
+    time = std::max(time, written(folder));
   return time;
 }
 
@@ -295,7 +300,7 @@ struct Live::Scan {
   std::vector<View> views;
   Builder builder;
   const std::vector<std::filesystem::path> read;   // as the build lists them
-  std::filesystem::file_time_type read_from;       // their newest as the last build began
+  std::filesystem::file_time_type read_from;       // listed() as the last build began
   const std::vector<std::filesystem::path> engine; // as the build lists them
   std::filesystem::file_time_type engine_said;     // the newest engine file's, once said
   std::filesystem::path engine_change;
@@ -320,7 +325,7 @@ Live::Build Live::poll() {
     // from, as a line renames them, may have failed on a file gone mid-build, as the
     // build reads every view's folders, so it builds again once they settle, and its
     // failure is said once it fails on files that stayed.
-    const bool moved = newest(scan.read) != scan.read_from ||
+    const bool moved = listed(scan.read) != scan.read_from ||
                        std::ranges::any_of(scan.views, [](const Scan::View &view) {
                          return newest(view.folder) != view.built_from;
                        });
@@ -364,7 +369,7 @@ Live::Build Live::poll() {
       targets.insert(targets.begin(), library);
     if (!targets.empty()) {
       scan.built = std::move(built);
-      scan.read_from = newest(scan.read);
+      scan.read_from = listed(scan.read);
       scan.builder.start(std::move(targets), std::move(hosted));
       build = Build::started;
     }
