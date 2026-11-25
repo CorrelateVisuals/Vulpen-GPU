@@ -372,6 +372,8 @@ void Graph::cook(VP::Cook &frame) {
       _hosted != _built_hosted || ports.data() != _built_ports.data() ||
       ports.size() != _built_ports.size())
     build(frame.files(), edited, flat, ports);
+  else if (_relations->asked != _placed)
+    place(edited, flat);
   if (!std::exchange(_tab_named, true))
     name_tab(frame);
   const glm::uvec2 cell = _font->font.base;
@@ -1528,12 +1530,14 @@ void Graph::cd(VP::Call &call) {
   }
 }
 
-// The folder of what shows, as it changes: the folder shown, or the folder of the node
-// whose inside shows, which holds its files and the nodes inside it (RV08), or of the
-// view; none at the top of the start view, as a terminal with no graph has
-// none there, so lines typed count from where vulpen started, as ../ from its top.
+// The folder of what shows, as it changes: the folder asked, as soon as a line asks it,
+// as ls lists it, not once it is read, which takes seconds for a repository; or the
+// folder of the node whose inside shows, which holds its files and the nodes inside it
+// (RV08), or of the view; none at the top of the start view, as a terminal with no graph
+// has none there, so lines typed count from where vulpen started, as ../ from its top.
 void Graph::place(const VP::View *edited, const VP::View *flat) {
-  std::filesystem::path folder(_relations->folder);
+  _placed = _relations->asked;
+  std::filesystem::path folder(_relations->asked);
   if (folder.empty() && edited && flat) {
     const auto scope = std::ranges::find(flat->nodes, _boxes.scope, &VP::Node::name);
     const bool top = _boxes.scope.empty() || scope == flat->nodes.end();

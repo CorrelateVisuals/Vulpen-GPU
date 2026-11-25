@@ -206,6 +206,7 @@ private:
   VP::Command _find;
   VP::Command _cd;
   VP_VIEW::Place *_place = nullptr;  // where it is, for a terminal's prompt
+  std::string _placed;               // the folder asked as the place last followed it
   VP::Upload<VP_VIEW::Rect> _ground; // its area, which its own shaders draw lines on
   VP::Value<glm::vec2> _pan;
   VP::Value<float> _zoom;

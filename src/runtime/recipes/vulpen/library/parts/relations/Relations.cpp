@@ -677,6 +677,8 @@ void Relations::cook(VP::Cook &frame) {
     _read_view = view;
     _shown = shown;
     start(frame.files(), view);
+    // The top, as start finds it at once, so cd / goes there while the folder is read.
+    _relations->top = _top;
     _holding = !_folder.empty();
     if (step(frame.files(), now + first_time))
       publish(frame);
