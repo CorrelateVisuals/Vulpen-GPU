@@ -45,7 +45,7 @@
 <b>Programs are graphs.</b> A small manifest names the nodes and the connections between them. The graph is that manifest as it runs, and Vulpen places every Vulkan barrier from it.
 </td>
 <td width="33%" valign="top">
-<img src="docs/images/tile-code.png" alt="Rays.comp, the compute shader that casts a ray a pixel in the ray-cubes example, its pass block's connections from orbit and to the first bounce" /><br />
+<img src="docs/images/tile-code.png" alt="Rays.comp, the compute shader that casts a ray a pixel in the ray-cubes example, its pass block's connections from the camera and to the first bounce" /><br />
 <b>C++ and GLSL meet by name.</b> A node's C++ asks for its shaders' values, buffers and images by the names the shaders give them, checked against SPIR-V reflection before the first frame.
 </td>
 <td width="33%" valign="top">

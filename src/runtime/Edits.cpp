@@ -780,7 +780,7 @@ View named_by(bool param, const View &edited, Arguments arguments) {
 
 // The name a line left out, as its edit chooses it, which the log keeps (V08): a node's
 // node1 on, the first free; a connection's its writer's port, or the view whose window
-// it takes; a view's its folder; each numbered on while taken, as arcball2.
+// it takes; a view's its folder; each numbered on while taken, as camera2.
 std::string
 chosen_name(Change change, const View &view, Arguments arguments, ViewLookup &views) {
   const std::vector<std::string> hosted = views.names();

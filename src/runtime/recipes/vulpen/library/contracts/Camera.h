@@ -10,8 +10,8 @@ namespace VP_VIEW {
 // power and coming of our Lord Jesus Christ, but were eyewitnesses of his majesty."
 // 2 Peter 1:16
 
-// contracts/Camera.glsl's Camera, member for member, as arcball writes it; the loader
-// holds it to the shader's (RA03). Four vec4s, so std430 and C++ lay it out alike.
+// contracts/Camera.glsl's Camera, member for member, as the camera part writes it; the
+// loader holds it to the shader's (RA03). Four vec4s, so std430 and C++ lay it out alike.
 struct Camera {
   glm::vec4 eye{};
   glm::vec4 ahead{};

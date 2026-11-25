@@ -142,7 +142,7 @@ INSIDE_IDE = ["ide: param unset ide.graph.relations folder", "view switch ide",
               "ide: param set ide.graph.graph inside ide", "ide: focus"]
 # Ray-cubes held still: the cubes, the camera and the lamp each where it is at frame 0,
 # however many frames the lines before took, so it draws alike on every run (C01).
-HELD = ["param set spin speed 0", "param set orbit frames_per_turn 0",
+HELD = ["param set spin speed 0", "param set camera frames_per_turn 0",
         "param set lamp frames_per_turn 0"]
 # Each picture, by its file's name, and the lines that make it, from where the scene
 # before left the ide. Whatever turns is held still, and each ends with no focus, so no
@@ -156,8 +156,8 @@ HELD = ["param set spin speed 0", "param set orbit frames_per_turn 0",
 # takes the wheel, so the scene turns it off for that, as the button under the panel
 # does, and on again.
 HERO = {
-    "hero": [*CLEAR, *typed("view load ray-cubes"), *HELD, *typed("open Orbit.cpp"),
-             *typed("info orbit"), *panels("hide", "terminal"), *ratio("top", 0.4),
+    "hero": [*CLEAR, *typed("view load ray-cubes"), *HELD, *typed("open Camera.cpp"),
+             *typed("info camera"), *panels("hide", "terminal"), *ratio("top", 0.4),
              *ratio("side", 0.46), *zoom_out(7), *fit(1682, 193, 13, 2400),
              "ide: zoom reset", *zoom(5), "ide: param unset ide.panes interact",
              *scroll(500, 400, -7, 2400), *scroll(1680, 717, 8.5, 2400),

@@ -10,7 +10,7 @@ layout(local_size_x = 64) in; // a pixel an invocation: size.x * size.y of them
 
 layout(set = 1, binding = 0) uniform Pass {
   uvec2 size;         // a param: the picture's pixels across and down
-  Cameras camera;     // a connection: orbit's
+  Cameras camera;     // a connection: the camera's
   RaysOut rays;       // a connection: to the first bounce
   ColorsOut gathered; // a connection: to the first bounce's shade
 } pass;

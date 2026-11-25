@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <format>
 #include <numbers>
 #include <stdexcept>
+#include <string>
 
 namespace {
 
@@ -18,6 +20,7 @@ namespace {
 
 // How far a drag across the picture's shorter side turns the scene: half a turn.
 constexpr float drag_turn = std::numbers::pi_v<float>;
+constexpr float whole_turn = 2.0f * std::numbers::pi_v<float>;
 // How much nearer a step of the wheel brings the eye, and how near and far it goes, as a
 // share of where the params put it.
 constexpr float wheel_step = 1.1f;
@@ -25,25 +28,58 @@ constexpr float nearest_share = 0.01f;
 constexpr float farthest_share = 100.0f;
 // Below this, the eye, the target and up lie on one line, which leaves no frame.
 constexpr float straight = 1e-6f;
+// Level turning tilts the eye at most this far above or below the target's horizon, short
+// of straight up or down, where the line of sight would run along up and leave no frame.
+constexpr float steepest_tilt = 0.5f * std::numbers::pi_v<float> - 0.01f;
 // A press of the left button again soon after, as a double click's second.
 constexpr std::uint32_t double_press = 2;
 
-// A camera a person turns and pans about a target with the pointer, as an arcball does: a
-// left drag turns the scene as if a ball under the pointer were pressed and rolled, a
-// right or middle drag moves the target across the picture, the scene following the
-// pointer, the wheel draws the eye nearer or farther, and a double left press brings it
-// home, where its params put it: at eye, looking at target, up pointing up the picture,
-// lens how far the picture is from the eye for a half height of 1. It reads the presses
-// only where a GUI hands its view the pointer: in perform mode, or in a Perform pane
-// while that panel's interact is on. It writes what ray-cubes' rays read, one element a
-// frame: the eye, the frame it looks along, and the lens.
-class Arcball final : public VP::Operator {
+enum class Turn { ball, level };
+
+// Whether a double left click brings the camera home, or is left to the view, as for a
+// game whose double click acts on what it lands on.
+bool homes_of(const std::string &word) {
+  if (word == "home")
+    return true;
+  if (word == "none")
+    return false;
+  throw std::runtime_error(std::format("double_click is home or none, not {}", word));
+}
+
+Turn turn_of(const std::string &word) {
+  if (word == "ball")
+    return Turn::ball;
+  if (word == "level")
+    return Turn::level;
+  throw std::runtime_error(std::format("turn is ball or level, not {}", word));
+}
+
+// A camera a person turns and pans about a target with the pointer: a left drag turns
+// the scene, as a ball under the pointer rolls or, with turn level, about up and across
+// the picture, a right or middle drag moves the target across the picture, the scene
+// following the pointer, the wheel draws the eye nearer or farther, and a double left
+// press brings it home, unless double_click is none, where its params put it: at eye,
+// looking at target, up pointing up the picture, lens how far the picture is from the eye
+// for a half height of 1. It reads the presses only where a GUI hands its view the
+// pointer: in perform mode, or in a Perform pane while that panel's interact is on. On
+// top, it turns about up by itself every frames_per_turn frames, counted from the frame
+// index so it never drifts (C01). It writes one Camera a frame: the eye, the frame it
+// looks along, the lens, and in the two spare members near and far, which a draw's depth
+// counts from and to.
+class Camera final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _camera = node.upload<VP_VIEW::Camera>("camera", 1);
     _home_target = node.param<glm::vec3>("target");
     _home_eye = node.param<glm::vec3>("eye");
     _home_up = node.param<glm::vec3>("up");
     _lens = node.param<float>("lens");
+    _turn = turn_of(node.param<std::string>("turn"));
+    _homes = homes_of(node.param<std::string>("double_click"));
+    _frames_per_turn = node.param<std::uint32_t>("frames_per_turn");
+    _near = node.param<float>("near");
+    _far = node.param<float>("far");
+    if (!(_near > 0.0f && _far > _near))
+      throw std::runtime_error("near must lie beyond 0, and far beyond near");
     const glm::vec3 ahead = _home_target - _home_eye;
     if (glm::length(ahead) < straight ||
         glm::length(glm::cross(glm::normalize(ahead), _home_up)) < straight)
@@ -58,12 +94,21 @@ class Arcball final : public VP::Operator {
     const float across = std::max(std::min(size.x, size.y), 1.0f);
     for (const VP::Event &event : frame.input().events())
       follow(event, across);
-    const glm::vec3 eye = _target + _turned * glm::vec3(0.0f, 0.0f, _distance);
+    const glm::quat spun = glm::angleAxis(-spin_at(frame.index()), _up) * _turned;
     frame.write(_camera)[0] = {
-        .eye = glm::vec4(eye, 1.0f),
-        .ahead = glm::vec4(_turned * glm::vec3(0.0f, 0.0f, -1.0f), _lens),
-        .right = glm::vec4(_turned * glm::vec3(1.0f, 0.0f, 0.0f), 0.0f),
-        .up = glm::vec4(_turned * glm::vec3(0.0f, 1.0f, 0.0f), 0.0f)};
+        .eye = glm::vec4(_target + spun * glm::vec3(0.0f, 0.0f, _distance), 1.0f),
+        .ahead = glm::vec4(spun * glm::vec3(0.0f, 0.0f, -1.0f), _lens),
+        .right = glm::vec4(spun * glm::vec3(1.0f, 0.0f, 0.0f), _near),
+        .up = glm::vec4(spun * glm::vec3(0.0f, 1.0f, 0.0f), _far)};
+  }
+
+  // How far a whole turn every frames_per_turn frames has come at a frame; none while
+  // frames_per_turn is 0.
+  float spin_at(std::uint64_t frame) const {
+    if (_frames_per_turn == 0)
+      return 0.0f;
+    return whole_turn * static_cast<float>(frame % _frames_per_turn) /
+           static_cast<float>(_frames_per_turn);
   }
 
   // As the params put it: the frame looking from eye at target, as a rotation from the
@@ -73,6 +118,7 @@ class Arcball final : public VP::Operator {
     const glm::vec3 right = glm::normalize(glm::cross(ahead, _home_up));
     _turned = glm::quat_cast(glm::mat3(right, glm::cross(right, ahead), -ahead));
     _target = _home_target;
+    _up = glm::normalize(_home_up);
     _distance = glm::length(_home_target - _home_eye);
     _homed = _distance;
   }
@@ -81,12 +127,14 @@ class Arcball final : public VP::Operator {
     if (event.kind == VP::Event::Kind::pointer) {
       const glm::vec2 moved = event.at - _pointer;
       _pointer = event.at;
-      if (_turning)
-        turn(moved, across);
+      if (_turning && _turn == Turn::ball)
+        roll(moved, across);
+      else if (_turning)
+        level(moved, across);
       else if (_panning)
         pan(moved, across);
     } else if (event.kind == VP::Event::Kind::button) {
-      if (event.name == "left" && event.down && event.presses == double_press)
+      if (event.name == "left" && event.down && event.presses == double_press && _homes)
         home();
       else if (event.name == "left")
         _turning = event.down;
@@ -102,13 +150,26 @@ class Arcball final : public VP::Operator {
   // The scene turns about the axis across the drag, in the camera's frame, so the side
   // the pointer pressed moves with it, a drag across the picture's shorter side half a
   // turn; the eye goes the other way round the target.
-  void turn(glm::vec2 moved, float across) {
+  void roll(glm::vec2 moved, float across) {
     const float length = glm::length(moved);
     if (length == 0.0f)
       return;
     const glm::vec3 axis = glm::normalize(glm::vec3(moved.y, moved.x, 0.0f));
     _turned =
         glm::normalize(_turned * glm::angleAxis(-drag_turn * length / across, axis));
+  }
+
+  // A drag across turns the scene about up through the target, a drag down tilts the eye
+  // up over it, both as roll turns them, but about up and the picture's horizontal only,
+  // which stays level, so the horizon never tips; the tilt stops short of straight down.
+  void level(glm::vec2 moved, float across) {
+    const glm::vec3 ahead = _turned * glm::vec3(0.0f, 0.0f, -1.0f);
+    const float tilt = std::asin(std::clamp(glm::dot(ahead, _up), -1.0f, 1.0f));
+    const float tilted =
+        std::clamp(tilt - drag_turn * moved.y / across, -steepest_tilt, steepest_tilt);
+    const glm::vec3 right = _turned * glm::vec3(1.0f, 0.0f, 0.0f);
+    _turned = glm::normalize(glm::angleAxis(-drag_turn * moved.x / across, _up) *
+                             glm::angleAxis(tilted - tilt, right) * _turned);
   }
 
   // The target moves across the picture, so the scene at its depth follows the pointer:
@@ -125,8 +186,14 @@ class Arcball final : public VP::Operator {
   glm::vec3 _home_eye{};
   glm::vec3 _home_up{};
   float _lens = 0.0f;
+  Turn _turn = Turn::ball;
+  bool _homes = true; // a double click brings it home
+  std::uint32_t _frames_per_turn = 0;
+  float _near = 0.0f;
+  float _far = 0.0f;
   glm::quat _turned{};    // from the camera's own frame to the world's
   glm::vec3 _target{};    // what it turns about
+  glm::vec3 _up{};        // what turning by itself and level turning turn about, unit
   float _distance = 0.0f; // of the eye from the target
   float _homed = 0.0f;    // as the params put it, which the wheel's reach counts from
   glm::vec2 _pointer{};   // as the events so far left it
@@ -136,4 +203,4 @@ class Arcball final : public VP::Operator {
 
 } // namespace
 
-VP_OPERATOR(Arcball);
+VP_OPERATOR(Camera);

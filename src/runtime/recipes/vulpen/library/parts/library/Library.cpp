@@ -39,7 +39,7 @@ class Library final : public VP::Operator {
                          "custom's");
     _drop = node.command("recipe drop <recipe> [<name>]",
                          "copies a recipe, by its name, or its group, a slash and its "
-                         "name, as custom/arcball, into the view as a node of that name, "
+                         "name, as custom/<name>, into the view as a node of that name, "
                          "with none the recipe's, numbered on while the view has it, "
                          "with the nodes inside it and the contracts and shared code "
                          "they include, or by a path a node's folder from any view, with "
@@ -190,7 +190,7 @@ class Library final : public VP::Operator {
   // A new node's name: free in the view, inside a node the view has when it holds a dot,
   // and naming a folder that is not there yet, since the node's folder is its own.
   // A drop's name when the line gives none: the recipe's, as its word or its path ends,
-  // numbered on while the view has a node or a folder of it, as arcball2.
+  // numbered on while the view has a node or a folder of it, as camera2.
   static std::string
   free_node(VP::Call &call, const std::filesystem::path &view, std::string_view recipe) {
     const std::filesystem::path word(recipe);

@@ -671,15 +671,16 @@ def examples(scratch: Path) -> list[Example]:
                   for node in ("trace", "shadow", "shade", "reflect"))]
 
     params = " ".join(word for word in words["lamp"].split() if word.startswith("param="))
+    # The camera is the library's part, dropped, then given the example's params.
+    camera = " ".join(word for word in words["camera"].split() if word.startswith("param="))
     e.steps = [
         ok(f"view new {e.copy}"),
         no(f"copy {at(e.name, 'contract')}/ {at(e.copy, 'contracts')}/", "contract"),
         ok(f"copy {at(e.name, 'contracts')}/ {at(e.copy, 'contracts')}/",
            f"copy {at(e.name, 'shared')}/ {at(e.copy, 'shared')}/"),
-        *made(e.name, "orbit"),
-        settled(f"node set orbit {words['orbit'].replace('distance=14', 'distance=fourteen')}",
-                refused="fourteen"),
-        ok(f"node set orbit {words['orbit']}"),
+        ok("recipe drop camera camera"),
+        settled(f"node set camera {camera.replace('lens=1.8', 'lens=wide')}", refused="wide"),
+        ok(f"node set camera {camera}"),
         ok(copied("lamp", "lmap")),
         ok(f"rename {at(e.copy, 'lmap')}/ {at(e.copy, 'lamp')}/"),
         settled(f"node set lamp invocations= {params}", refused="invocations"),

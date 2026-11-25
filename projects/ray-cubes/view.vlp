@@ -1,6 +1,6 @@
 # Mirror cubes, ray traced, as a chain of small nodes, a file or two each: each does one
 # step and hands what it made to the next through a connection, a buffer that stays on the
-# GPU. The scene: orbit, the camera, C++ alone; lamp, the one light; grid lays the cubes
+# GPU. The scene: camera, the library's part; lamp, the one light; grid lays the cubes
 # out, spin moves them, floor makes one flat cube more, join lists them all, place works
 # out each one's frame, one unit cube instanced. Then rays casts a ray a pixel, and each
 # bounce, a group of four, traces where its rays meet a cube, shadows the hits, shades
@@ -9,20 +9,25 @@
 # and meter reads it back.
 # The shared code is in shared/, what the connections carry in contracts/. Run
 # ./run.sh --ray-cubes, then type `param set spin speed 0` to hold the cubes, `param set
-# orbit frames_per_turn 0` the camera, or `meter read` for the light at eight spots.
+# camera frames_per_turn 0` the camera, or `meter read` for the light at eight spots.
 
 [manifest]
 version = 1
 
-# The camera, on a circle about the target, a whole circle every frames_per_turn frames,
-# and 0 holds it still; lens, how far the picture is from the eye, so the longer, the
-# narrower the view.
-[node "orbit"]
-param = target=0,0.6,0
-param = distance=14
-param = height=6
-param = lens=1.8
-param = frames_per_turn=3600
+# The camera, the library's part dropped in: round the target by itself, a whole circle
+# every frames_per_turn frames, and 0 holds it still; in perform mode a drag turns it
+# too. lens, how far the picture is from the eye, so the longer, the narrower the view.
+[node "camera"]
+recipe = camera@26f789e5
+param  = target=0,0.6,0
+param  = eye=14,6.6,0
+param  = up=0,1,0
+param  = lens=1.8
+param  = turn=ball
+param  = frames_per_turn=3600
+param  = near=0.01
+param  = far=1000
+param  = double_click=home
 
 [node "lamp"]
 invocations = 1
@@ -143,7 +148,7 @@ param       = size=1920,1080
 
 # The scene, into the bounces.
 [connection "camera"]
-from = orbit.camera
+from = camera.camera
 to   = rays.camera
 
 [connection "light"]
