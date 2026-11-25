@@ -4,9 +4,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <iterator>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -16,6 +18,12 @@ namespace {
 
 // "And this is the record, that God hath given to us eternal life, and this life is in
 // his Son." 1 John 5:11
+
+// A WAV file's sizes are 32 bits (Wave.h), so it holds a little over three hours of the
+// port's sound; a longer recording would save a file whose sizes wrapped.
+constexpr std::size_t longest_seconds =
+    (std::numeric_limits<std::uint32_t>::max() - wave_header) /
+    (std::size_t{VP::SoundPort::sample_rate} * VP::SoundPort::channels * sizeof(float));
 
 // Records what each frame played, read a frame after, as the port hands it on, until it
 // holds seconds of it, then saves it to the file its file param names, once each time
@@ -32,8 +40,11 @@ class SoundRecord final : public VP::Operator {
     }
     _folder = node.folder();
     const float seconds = node.param<float>("seconds");
-    if (!(seconds > 0.0f))
-      throw std::runtime_error(std::format("seconds = {} records nothing", seconds));
+    if (!(seconds > 0.0f && seconds <= static_cast<float>(longest_seconds)))
+      throw std::runtime_error(std::format(
+          "seconds = {}: above 0, and at most {}, as a WAV file holds no more",
+          seconds,
+          longest_seconds));
     _wanted =
         static_cast<std::size_t>(std::lround(seconds * VP::SoundPort::sample_rate)) *
         VP::SoundPort::channels;
