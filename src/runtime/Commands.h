@@ -63,6 +63,9 @@ public:
   virtual FilePort &files() = 0;
   // How many steps undo can take back now.
   virtual std::size_t done() const = 0;
+  // Whether every view hosted is a project, no app as the cli or the ide: a run that
+  // plays them, as a project vulpen started with alone, rather than edits them.
+  virtual bool played() = 0;
 
 protected:
   ~ViewLookup() = default;

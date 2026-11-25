@@ -922,15 +922,21 @@ void Commands::command(Call &call) {
 // The run ends before its next frame, unless quit finds what the end would lose, each
 // named: work a node holds, and a project's files no view save kept (1c). quit force
 // ends it anyway, each such project's files put back as its last view save left them.
+// A run of projects alone, as a project vulpen started with and no app as the cli or the
+// ide, plays them rather than edits them: their files, changed meanwhile in an editor or
+// by a bake, are no work the end loses, and none is put back, by quit force either
+// (RA04). Work a node holds keeps any run.
 void Commands::quit(bool force) {
   const std::vector<std::string_view> held = holding();
   std::vector<std::string> lost(held.begin(), held.end());
+  const bool played = _views && _views->played();
   std::vector<std::string> unkept; // the projects whose files no view save kept
   for (const std::string &view : _views ? _views->names() : std::vector<std::string>())
     if (const std::vector<std::string> files = _views->unkept(view); !files.empty()) {
-      unkept.push_back(view);
-      lost.push_back(std::format(
-          "{}: {}", view.empty() ? "the view vulpen started with" : view, joined(files)));
+      const std::string named = view.empty() ? "the view vulpen started with" : view;
+      unkept.push_back(played ? named : view);
+      if (!played)
+        lost.push_back(std::format("{}: {}", named, joined(files)));
     }
   if (!force && !lost.empty())
     throw std::runtime_error(
@@ -940,14 +946,20 @@ void Commands::quit(bool force) {
                     "no undo brings back, as the run ends; the window's close button "
                     "pressed again does that too:\n{}",
                     joined(lost, "\n")));
-  for (const std::string &view : unkept)
+  for (const std::string &view : played ? std::vector<std::string>() : unkept)
     try {
       _views->put_back(view);
     } catch (const std::runtime_error &failure) {
       _log.write(Level::error, Tag::run, failure.what());
     }
   _quitting = true;
-  _log.write(Level::info, Tag::run, "quit: the run ends before its next frame");
+  _log.write(Level::info,
+             Tag::run,
+             played && !unkept.empty()
+                 ? std::format("quit: the run ends before its next frame; it plays "
+                               "projects alone, so their files stay as they are: {}",
+                               joined(unkept))
+                 : "quit: the run ends before its next frame");
 }
 
 // The longest name the line starts with, so a name may begin another (`view`,

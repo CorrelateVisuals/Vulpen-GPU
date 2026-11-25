@@ -1034,6 +1034,12 @@ std::vector<std::string> Views::names() {
   return names;
 }
 
+bool Views::played() {
+  return std::ranges::all_of(_hosted, [](const std::unique_ptr<Hosted> &hosted) {
+    return hosted->removed || project(hosted->current());
+  });
+}
+
 std::vector<std::string> Views::unkept(std::string_view name) {
   const Hosted *const found = hosted(name);
   if (!found || !project(found->current()))

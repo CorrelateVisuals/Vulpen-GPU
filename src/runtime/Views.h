@@ -120,6 +120,7 @@ private:
   void end_step(std::optional<std::size_t> group) override;
   FilePort &files() override;
   std::size_t done() const override;
+  bool played() override;
   void command(Call &call) override;
   Hosted *hosted(std::string_view name) const;
   // A change of a project's save point that undo takes back with the line running.

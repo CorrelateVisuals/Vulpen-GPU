@@ -89,6 +89,8 @@ if(VULPEN_LIVE)
   # A failed live build is named while files beside its view change, not built again
   # unsaid.
   vulpen_test(live ${python} ${tests}/live.py ${vulpen_file})
+  # A project run alone ends at quit whatever its files hold, which stay as they are.
+  vulpen_test(played ${python} ${tests}/played.py ${vulpen_file})
 endif()
 if(VULPEN_SANITIZERS MATCHES address)
   vulpen_test(fuzz ${python} ${tests}/fuzz.py ${vulpen_file} --count 300)
