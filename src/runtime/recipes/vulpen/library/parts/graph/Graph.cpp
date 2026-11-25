@@ -482,12 +482,18 @@ void Graph::command(VP::Call &call) {
       named.append(named.empty() ? "" : ", ").append(name);
     call.reply(named.empty() ? "let go of the selection" : "selected " + named);
   } else if (call.is(_selected)) {
+    std::size_t named = 0;
     for (const std::string &name : _selection)
       if (const auto box = std::ranges::find(_boxes.boxes, name, &Box::name);
-          box != _boxes.boxes.end())
+          box != _boxes.boxes.end()) {
         call.reply(line_name(static_cast<std::size_t>(box - _boxes.boxes.begin())));
-      else if (boxed(name))
+        ++named;
+      } else if (boxed(name)) {
         call.reply(name);
+        ++named;
+      }
+    if (named == 0)
+      call.reply("nothing is selected");
   }
 }
 

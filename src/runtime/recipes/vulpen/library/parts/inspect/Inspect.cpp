@@ -266,8 +266,11 @@ class Inspect final : public VP::Operator {
   // lists them, each recipe unfolded, as the graph shows it; or the view whole.
   void here(VP::Call &call) const {
     if (const std::optional<std::string> folder = param_there(call, _folders, "folder")) {
-      for (const std::string &name : call.files().list(*folder))
+      const std::vector<std::string> names = call.files().list(*folder);
+      for (const std::string &name : names)
         call.reply(name);
+      if (names.empty())
+        call.reply("the folder holds nothing");
       return;
     }
     const std::optional<std::string> inside = param_there(call, _graph, "inside");
@@ -308,8 +311,10 @@ class Inspect final : public VP::Operator {
     reply_rows(call, rows);
   }
 
-  // What each folder is reads down one column.
+  // What each folder is reads down one column; none says so, as every line answers.
   static void reply_rows(VP::Call &call, std::span<const Rows::value_type> rows) {
+    if (rows.empty())
+      return call.reply("nothing is here: no node, file or view hosted");
     std::size_t width = 0;
     for (const auto &[folder, note] : rows)
       if (!note.empty())
