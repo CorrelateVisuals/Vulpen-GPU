@@ -12,8 +12,7 @@ examples and then the sanitizer's tests, as each runs vulpen in this tree; the s
 copies of its own (--jobs); and the sanitizer's build, with a share of the threads.
 About twenty minutes on 16 threads; a change to the engine runs it before it lands.
 nightly: every preset built and tested, GPU-assisted validation, the nightly tests (the
-soaks, the long fuzz, examples-replay), the whole command sweep, and the simulated
-testers where docs/logs/beta-sim/ holds them, in a tree of their own. Once every preset
+soaks, the long fuzz, examples-replay), and the whole command sweep. Once every preset
 is built, alone, the sweep runs beside the rest, in a copy of its own, as full's does.
 About an hour on 16 threads; its report also goes to docs/reports/.
 release: before main moves to this commit, run in a tree that holds the commit alone, as
@@ -51,9 +50,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "src" / "tools"
-# The simulated testers are private, in a folder git ignores; nightly runs them where
-# they exist.
-SIMULATION = ROOT / "docs" / "logs" / "beta-sim" / "sim.py"
 REPORTS = ROOT / "docs" / "reports"
 MAIN = "main"  # the branch a release moves, only ever fast-forwarded
 LINES = "docs/statistics/LOC.md"  # every build counts them again
@@ -142,23 +138,6 @@ def screen(wanted: bool):
     finally:
         server.terminate()
         server.wait()
-
-
-def simulate(log, out: Path) -> bool:
-    """The testers make and remove a project and the ide's kept session, so they run in
-    a tree of their own, at this commit."""
-    tree = out / "simulation-tree"
-
-    def run(command, cwd=ROOT) -> bool:
-        said = subprocess.run(command, cwd=cwd, stdout=log, stderr=subprocess.STDOUT)
-        return said.returncode == 0
-
-    passed = (run(["git", "worktree", "add", "--detach", str(tree), "HEAD"])
-              and run(["cmake", "--preset", "debug"], tree)
-              and run(["cmake", "--build", "--preset", "debug", "--parallel", JOBS], tree)
-              and run([sys.executable, SIMULATION, tree, out / "simulation"]))
-    run(["git", "worktree", "remove", "--force", str(tree)])
-    return passed
 
 
 def counted(log) -> bool:
@@ -278,8 +257,6 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
                 Step("commands", [python, TOOLS / "command-sweep.py", "--report",
                                   out / "command-sweep.md"],
                      env={**os.environ, "LP_NUM_THREADS": SWEEP_THREADS})]
-    if SIMULATION.exists():
-        nightly.append(Step("simulation", lambda log: simulate(log, out)))
     return beside_sweep(nightly)
 
 
