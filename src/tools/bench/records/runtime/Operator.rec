@@ -1,0 +1,1291 @@
+# The rows of src/runtime/Operator.h, a call each (src/tools/bench/bench.py).
+
+## Operator.h/Bind::param<float>
+(" ") -> "0; asked [\"param x read as float, refused\"]"
+(" 1") -> "0; asked [\"param x read as float, refused\"]"
+("") -> "0; asked [\"param x read as float, refused\"]"
+("+1") -> "0; asked [\"param x read as float, refused\"]"
+(",") -> "0; asked [\"param x read as float, refused\"]"
+("-0") -> "-0; asked [\"param x read as float\"]"
+("-1") -> "-1; asked [\"param x read as float\"]"
+("-1e40") -> "0; asked [\"param x read as float, refused\"]"
+("-inf") -> "0; asked [\"param x read as float, refused\"]"
+(".5") -> "0.5; asked [\"param x read as float\"]"
+("0") -> "0; asked [\"param x read as float\"]"
+("0.1") -> "0.1; asked [\"param x read as float\"]"
+("01") -> "1; asked [\"param x read as float\"]"
+("0x10") -> "0; asked [\"param x read as float, refused\"]"
+("1 ") -> "0; asked [\"param x read as float, refused\"]"
+("1") -> "1; asked [\"param x read as float\"]"
+("1,2") -> "0; asked [\"param x read as float, refused\"]"
+("1.5") -> "1.5; asked [\"param x read as float\"]"
+("1\n") -> "0; asked [\"param x read as float, refused\"]"
+("1\r") -> "0; asked [\"param x read as float, refused\"]"
+("1\x002") -> "0; asked [\"param x read as float, refused\"]"
+("1_0") -> "0; asked [\"param x read as float, refused\"]"
+("1e") -> "0; asked [\"param x read as float, refused\"]"
+("1e-40") -> "0; asked [\"param x read as float, refused\"]"
+("1e-50") -> "0; asked [\"param x read as float, refused\"]"
+("1e3") -> "1000; asked [\"param x read as float\"]"
+("1e40") -> "0; asked [\"param x read as float, refused\"]"
+("3.4028235e38") -> "3.4028235e+38; asked [\"param x read as float\"]"
+("3.4028236e38") -> "0; asked [\"param x read as float, refused\"]"
+("5.") -> "5; asked [\"param x read as float\"]"
+("\xd9\xa1") -> "0; asked [\"param x read as float, refused\"]"
+("e1") -> "0; asked [\"param x read as float, refused\"]"
+("inf") -> "0; asked [\"param x read as float, refused\"]"
+("nan") -> "0; asked [\"param x read as float, refused\"]"
+~(" 908") -> "0; asked [\"param x read as float, refused\"]"
+~("+-97-,") -> "0; asked [\"param x read as float, refused\"]"
+~("+e521605+") -> "0; asked [\"param x read as float, refused\"]"
+~(",,52a+a927") -> "0; asked [\"param x read as float, refused\"]"
+~("-4") -> "-4; asked [\"param x read as float\"]"
+~(".+5a+2") -> "0; asked [\"param x read as float, refused\"]"
+~(".125-0") -> "0; asked [\"param x read as float, refused\"]"
+~(".6+1") -> "0; asked [\"param x read as float, refused\"]"
+~(".904_+,-7_") -> "0; asked [\"param x read as float, refused\"]"
+~("0-72ea4_07") -> "0; asked [\"param x read as float, refused\"]"
+~("2_E8abE ,") -> "0; asked [\"param x read as float, refused\"]"
+~("2xe 42x6") -> "0; asked [\"param x read as float, refused\"]"
+~("3 .x") -> "0; asked [\"param x read as float, refused\"]"
+~("3") -> "3; asked [\"param x read as float\"]"
+~("3-E1") -> "0; asked [\"param x read as float, refused\"]"
+~("35") -> "35; asked [\"param x read as float\"]"
+~("39.") -> "39; asked [\"param x read as float\"]"
+~("498x ,b,03") -> "0; asked [\"param x read as float, refused\"]"
+~("5601") -> "5601; asked [\"param x read as float\"]"
+~("6") -> "6; asked [\"param x read as float\"]"
+~("7") -> "7; asked [\"param x read as float\"]"
+~("7.ba_8") -> "0; asked [\"param x read as float, refused\"]"
+~("8") -> "8; asked [\"param x read as float\"]"
+~("83,E+") -> "0; asked [\"param x read as float, refused\"]"
+~("83a") -> "0; asked [\"param x read as float, refused\"]"
+~("90") -> "90; asked [\"param x read as float\"]"
+~("91a,3") -> "0; asked [\"param x read as float, refused\"]"
+~("94E") -> "0; asked [\"param x read as float, refused\"]"
+~("E-,517.") -> "0; asked [\"param x read as float, refused\"]"
+~("E-Ex") -> "0; asked [\"param x read as float, refused\"]"
+~("E16") -> "0; asked [\"param x read as float, refused\"]"
+~("E200x598-") -> "0; asked [\"param x read as float, refused\"]"
+~("EE") -> "0; asked [\"param x read as float, refused\"]"
+~("_Eb+50") -> "0; asked [\"param x read as float, refused\"]"
+~("a_ab") -> "0; asked [\"param x read as float, refused\"]"
+~("b,51") -> "0; asked [\"param x read as float, refused\"]"
+~("e.11") -> "0; asked [\"param x read as float, refused\"]"
+~("x") -> "0; asked [\"param x read as float, refused\"]"
+~("x16_9.59-_") -> "0; asked [\"param x read as float, refused\"]"
+~("xE+") -> "0; asked [\"param x read as float, refused\"]"
+
+## Operator.h/Bind::param<string>
+(" ") -> "\" \"; asked []"
+(" a") -> "\" a\"; asked []"
+("") -> "\"\"; asked []"
+("#") -> "\"#\"; asked []"
+(",") -> "\",\"; asked []"
+("-1") -> "\"-1\"; asked []"
+(".") -> "\".\"; asked []"
+("..") -> "\"..\"; asked []"
+("/") -> "\"/\"; asked []"
+("1") -> "\"1\"; asked []"
+("\"") -> "\"\\\"\"; asked []"
+("\\") -> "\"\\\\\"; asked []"
+("\n") -> "\"\\n\"; asked []"
+("\na") -> "\"\\na\"; asked []"
+("\r") -> "\"\\r\"; asked []"
+("\t") -> "\"\\t\"; asked []"
+("\x00") -> "\"\\x00\"; asked []"
+("\xc3\xa9") -> "\"\\xc3\\xa9\"; asked []"
+("\xff") -> "\"\\xff\"; asked []"
+("a ") -> "\"a \"; asked []"
+("a b") -> "\"a b\"; asked []"
+("a") -> "\"a\"; asked []"
+("a.b") -> "\"a.b\"; asked []"
+("a=b") -> "\"a=b\"; asked []"
+("a\n") -> "\"a\\n\"; asked []"
+("a\nb") -> "\"a\\nb\"; asked []"
+("a\r\n") -> "\"a\\r\\n\"; asked []"
+("a\x00b") -> "\"a\\x00b\"; asked []"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaa\"; asked []" (314 characters, hash 44ea4b3da18943da)
+("ab") -> "\"ab\"; asked []"
+~("#0\r\xa9z") -> "\"#0\\r\\xa9z\"; asked []"
+~("#_\\,.") -> "\"#_\\\\,.\"; asked []"
+~("#z#_\r\xa9=9\t_") -> "\"#z#_\\r\\xa9=9\\t_\"; asked []"
+~(",\r\xa90") -> "\",\\r\\xa90\"; asked []"
+~(",zz#z\r\xffz0") -> "\",zz#z\\r\\xffz0\"; asked []"
+~("-") -> "\"-\"; asked []"
+~("--\xa9Aa\r\"") -> "\"--\\xa9Aa\\r\\\"\"; asked []"
+~("-\xff\xc3/_") -> "\"-\\xff\\xc3/_\"; asked []"
+~(".-\nA\xa90\xc3z") -> "\".-\\nA\\xa90\\xc3z\"; asked []"
+~(".=") -> "\".=\"; asked []"
+~(".\xc3z\xff\n\x00\n\\\\,.") -> "\".\\xc3z\\xff\\n\\x00\\n\\\\\\\\,.\"; asked []"
+~("/\xc3\"\n9#\xc3") -> "\"/\\xc3\\\"\\n9#\\xc3\"; asked []"
+~("09_A,\xc3\xa9\xff#") -> "\"09_A,\\xc3\\xa9\\xff#\"; asked []"
+~("9\r\\\xc390,.") -> "\"9\\r\\\\\\xc390,.\"; asked []"
+~("=") -> "\"=\"; asked []"
+~("=,\t\xa9Aa") -> "\"=,\\t\\xa9Aa\"; asked []"
+~("=z\xff") -> "\"=z\\xff\"; asked []"
+~("A0\xa9 0.a\xa9\x00#\x00") -> "\"A0\\xa9 0.a\\xa9\\x00#\\x00\"; asked []"
+~("A_") -> "\"A_\"; asked []"
+~("\"#\x00\x00-0.z9,") -> "\"\\\"#\\x00\\x00-0.z9,\"; asked []"
+~("\"9AA") -> "\"\\\"9AA\"; asked []"
+~("\"\x00zz\xa90\x00 -\x00#") -> "\"\\\"\\x00zz\\xa90\\x00 -\\x00#\"; asked []"
+~("\\z-=-0\r") -> "\"\\\\z-=-0\\r\"; asked []"
+~("\n/-_") -> "\"\\n/-_\"; asked []"
+~("\n\\Aa\t\xc3.a") -> "\"\\n\\\\Aa\\t\\xc3.a\"; asked []"
+~("\r\xa9\",z\t\n/A") -> "\"\\r\\xa9\\\",z\\t\\n/A\"; asked []"
+~("\r\xc3\xc3a=\n0a\xa9") -> "\"\\r\\xc3\\xc3a=\\n0a\\xa9\"; asked []"
+~("\t-__\r,9") -> "\"\\t-__\\r,9\"; asked []"
+~("\x00A#-z") -> "\"\\x00A#-z\"; asked []"
+~("\xa9\"A\xff\r/\xff=") -> "\"\\xa9\\\"A\\xff\\r/\\xff=\"; asked []"
+~("\xc3.\x00a\\\xa9\xff0\\") -> "\"\\xc3.\\x00a\\\\\\xa9\\xff0\\\\\"; asked []"
+~("\xc3=\xc3a\xa9/") -> "\"\\xc3=\\xc3a\\xa9/\"; asked []"
+~("\xc3\t-\"0\r") -> "\"\\xc3\\t-\\\"0\\r\"; asked []"
+~("\xc3_=z/_\r\xa9") -> "\"\\xc3_=z/_\\r\\xa9\"; asked []"
+~("\xc3a") -> "\"\\xc3a\"; asked []"
+~("\xffAa,.A=/.\n") -> "\"\\xffAa,.A=/.\\n\"; asked []"
+~("_,za") -> "\"_,za\"; asked []"
+~("a9=\\9\xc3") -> "\"a9=\\\\9\\xc3\"; asked []"
+~("a\xc3\xc3_\t\t==_,") -> "\"a\\xc3\\xc3_\\t\\t==_,\"; asked []"
+~("z9\xa99A9\"\"_#\r") -> "\"z9\\xa99A9\\\"\\\"_#\\r\"; asked []"
+~("z_\xc3") -> "\"z_\\xc3\"; asked []"
+
+## Operator.h/Bind::param<uint>
+(" ") -> "0; asked [\"param x read as uint, refused\"]"
+(" 1") -> "0; asked [\"param x read as uint, refused\"]"
+("") -> "0; asked [\"param x read as uint, refused\"]"
+("+1") -> "0; asked [\"param x read as uint, refused\"]"
+(",") -> "0; asked [\"param x read as uint, refused\"]"
+("-0") -> "0; asked [\"param x read as uint, refused\"]"
+("-1") -> "0; asked [\"param x read as uint, refused\"]"
+("-inf") -> "0; asked [\"param x read as uint, refused\"]"
+("0") -> "0; asked [\"param x read as uint\"]"
+("01") -> "1; asked [\"param x read as uint\"]"
+("0x10") -> "0; asked [\"param x read as uint, refused\"]"
+("1 ") -> "0; asked [\"param x read as uint, refused\"]"
+("1") -> "1; asked [\"param x read as uint\"]"
+("1,2") -> "0; asked [\"param x read as uint, refused\"]"
+("1.0") -> "0; asked [\"param x read as uint, refused\"]"
+("1.5") -> "0; asked [\"param x read as uint, refused\"]"
+("1\n") -> "0; asked [\"param x read as uint, refused\"]"
+("1\r") -> "0; asked [\"param x read as uint, refused\"]"
+("1\x002") -> "0; asked [\"param x read as uint, refused\"]"
+("1_0") -> "0; asked [\"param x read as uint, refused\"]"
+("1e3") -> "0; asked [\"param x read as uint, refused\"]"
+("4294967295") -> "4294967295; asked [\"param x read as uint\"]"
+("4294967296") -> "0; asked [\"param x read as uint, refused\"]"
+("\xd9\xa1") -> "0; asked [\"param x read as uint, refused\"]"
+("inf") -> "0; asked [\"param x read as uint, refused\"]"
+("nan") -> "0; asked [\"param x read as uint, refused\"]"
+~("+024") -> "0; asked [\"param x read as uint, refused\"]"
+~("+0_.") -> "0; asked [\"param x read as uint, refused\"]"
+~("+2") -> "0; asked [\"param x read as uint, refused\"]"
+~("+38-_ _b,9") -> "0; asked [\"param x read as uint, refused\"]"
+~(",72_5e9 ,b") -> "0; asked [\"param x read as uint, refused\"]"
+~("--3e") -> "0; asked [\"param x read as uint, refused\"]"
+~(".885") -> "0; asked [\"param x read as uint, refused\"]"
+~(".Eee.") -> "0; asked [\"param x read as uint, refused\"]"
+~("0Eb8") -> "0; asked [\"param x read as uint, refused\"]"
+~("16b93 ") -> "0; asked [\"param x read as uint, refused\"]"
+~("342_7,2") -> "0; asked [\"param x read as uint, refused\"]"
+~("3774830") -> "3774830; asked [\"param x read as uint\"]"
+~("4_") -> "0; asked [\"param x read as uint, refused\"]"
+~("52,") -> "0; asked [\"param x read as uint, refused\"]"
+~("55") -> "55; asked [\"param x read as uint\"]"
+~("61.796e.") -> "0; asked [\"param x read as uint, refused\"]"
+~("6x98-.eE") -> "0; asked [\"param x read as uint, refused\"]"
+~("7 e+ 2be5 ") -> "0; asked [\"param x read as uint, refused\"]"
+~("73b6,") -> "0; asked [\"param x read as uint, refused\"]"
+~("779") -> "779; asked [\"param x read as uint\"]"
+~("8,") -> "0; asked [\"param x read as uint, refused\"]"
+~("8253  5") -> "0; asked [\"param x read as uint, refused\"]"
+~("89") -> "89; asked [\"param x read as uint\"]"
+~("9 19") -> "0; asked [\"param x read as uint, refused\"]"
+~("E9a") -> "0; asked [\"param x read as uint, refused\"]"
+~("EE2..3") -> "0; asked [\"param x read as uint, refused\"]"
+~("_") -> "0; asked [\"param x read as uint, refused\"]"
+~("_9+_- -") -> "0; asked [\"param x read as uint, refused\"]"
+~("___.e66xe") -> "0; asked [\"param x read as uint, refused\"]"
+~("a0.0661x") -> "0; asked [\"param x read as uint, refused\"]"
+~("a6") -> "0; asked [\"param x read as uint, refused\"]"
+~("a87,a_4x.") -> "0; asked [\"param x read as uint, refused\"]"
+~("aEe-1+93x") -> "0; asked [\"param x read as uint, refused\"]"
+~("e") -> "0; asked [\"param x read as uint, refused\"]"
+~("eE ") -> "0; asked [\"param x read as uint, refused\"]"
+~("e_b") -> "0; asked [\"param x read as uint, refused\"]"
+~("x") -> "0; asked [\"param x read as uint, refused\"]"
+~("x2x+_") -> "0; asked [\"param x read as uint, refused\"]"
+~("x751x-85") -> "0; asked [\"param x read as uint, refused\"]"
+
+## Operator.h/Bind::param<vec3>
+("") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+(",") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+(",1") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1 ,2") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1, 2") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,,2") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1, ") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1, 1") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,+1") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,-0") -> "(1,1,-0); asked [\"param x read as vec3\"]"
+("1,1,-1") -> "(1,1,-1); asked [\"param x read as vec3\"]"
+("1,1,-1e40") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,-inf") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,.5") -> "(1,1,0.5); asked [\"param x read as vec3\"]"
+("1,1,0") -> "(1,1,0); asked [\"param x read as vec3\"]"
+("1,1,0.1") -> "(1,1,0.1); asked [\"param x read as vec3\"]"
+("1,1,01") -> "(1,1,1); asked [\"param x read as vec3\"]"
+("1,1,0x10") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1 ") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1") -> "(1,1,1); asked [\"param x read as vec3\"]"
+("1,1,1.5") -> "(1,1,1.5); asked [\"param x read as vec3\"]"
+("1,1,1\n") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1\r") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1\x002") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1_0") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1e") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1e-40") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1e-50") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,1e3") -> "(1,1,1000); asked [\"param x read as vec3\"]"
+("1,1,1e40") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,3.4028235e38") -> "(1,1,3.4028235e+38); asked [\"param x read as vec3\"]"
+("1,1,3.4028236e38") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,5.") -> "(1,1,5); asked [\"param x read as vec3\"]"
+("1,1,\xd9\xa1") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,e1") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,inf") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,1,nan") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,2,3") -> "(1,2,3); asked [\"param x read as vec3\"]"
+("1,2,3,") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,2,3,9") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+("1,x,3") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~(" ,.b") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~(" _") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("+-7.") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("+297") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("+3_3_") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("+bae028,_x") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~(",+0477062") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~(",a2E46,1a") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("-3,6e_77") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("-35x_") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~(".b") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("0") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("0+8x") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("1 a") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("10.b06..") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("2+8,702 ") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("2.7.900E") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("23-4 +56") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("3._.26+ab5") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("4") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("44+92") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("45a6,") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("46E_") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("5") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("53e,,") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("68+800e,1") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("70e76--a2 ") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("7bE5E b8 ") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("8b 67ab0") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("921 +1++92") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("_0bb-a+3") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("__7777") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("a8-0a1") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("b8a..2b2") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("e") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("ea32+40") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("ee.00a0") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("x") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+~("x760") -> "(0,0,0); asked [\"param x read as vec3, refused\"]"
+
+## Operator.h/parse_param<float>
+(" ", 7) -> false; #2 = 7
+(" 1", 7) -> false; #2 = 7
+("", 7) -> false; #2 = 7
+("+1", 7) -> false; #2 = 7
+(",", 7) -> false; #2 = 7
+("-0", 7) -> true; #2 = -0
+("-1", 7) -> true; #2 = -1
+("-1e40", 7) -> false; #2 = 7
+("-inf", 7) -> false; #2 = 7
+(".5", 7) -> true; #2 = 0.5
+("0", 7) -> true; #2 = 0
+("0.1", 7) -> true; #2 = 0.1
+("01", 7) -> true; #2 = 1
+("0x10", 7) -> false; #2 = 7
+("1 ", 7) -> false; #2 = 7
+("1", 7) -> true; #2 = 1
+("1,2", 7) -> false; #2 = 7
+("1.5", 7) -> true; #2 = 1.5
+("1\n", 7) -> false; #2 = 7
+("1\r", 7) -> false; #2 = 7
+("1\x002", 7) -> false; #2 = 7
+("1_0", 7) -> false; #2 = 7
+("1e", 7) -> false; #2 = 7
+("1e-40", 7) -> false; #2 = 7
+("1e-50", 7) -> false; #2 = 7
+("1e3", 7) -> true; #2 = 1000
+("1e40", 7) -> false; #2 = 7
+("3.4028235e38", 7) -> true; #2 = 3.4028235e+38
+("3.4028236e38", 7) -> false; #2 = 7
+("5.", 7) -> true; #2 = 5
+("\xd9\xa1", 7) -> false; #2 = 7
+("e1", 7) -> false; #2 = 7
+("inf", 7) -> false; #2 = 7
+("nan", 7) -> false; #2 = 7
+holds: a refused text leaves the value as it was, over 76 rows
+~(" a7 13-78E", 7) -> false; #2 = 7
+~(" x08", 7) -> false; #2 = 7
+~("+-701243", 7) -> false; #2 = 7
+~("+068789", 7) -> false; #2 = 7
+~("+e 8b5E", 7) -> false; #2 = 7
+~(",,0e59", 7) -> false; #2 = 7
+~("-", 7) -> false; #2 = 7
+~(".", 7) -> false; #2 = 7
+~(".a,EE", 7) -> false; #2 = 7
+~(".xb", 7) -> false; #2 = 7
+~("0-E13+4E", 7) -> false; #2 = 7
+~("0a ,8e8", 7) -> false; #2 = 7
+~("0ee.7", 7) -> false; #2 = 7
+~("1+51", 7) -> false; #2 = 7
+~("143a_", 7) -> false; #2 = 7
+~("1a_1", 7) -> false; #2 = 7
+~("2,", 7) -> false; #2 = 7
+~("26-+80-", 7) -> false; #2 = 7
+~("2e _E_aab", 7) -> false; #2 = 7
+~("2e4e", 7) -> false; #2 = 7
+~("2x20_b13,", 7) -> false; #2 = 7
+~("3", 7) -> true; #2 = 3
+~("522b6eb3x", 7) -> false; #2 = 7
+~("538_60", 7) -> false; #2 = 7
+~("61e.b.e", 7) -> false; #2 = 7
+~("7 04", 7) -> false; #2 = 7
+~("7", 7) -> true; #2 = 7
+~("8", 7) -> true; #2 = 8
+~("845b.", 7) -> false; #2 = 7
+~("85E63+ ,", 7) -> false; #2 = 7
+~("8x5 28", 7) -> false; #2 = 7
+~("9", 7) -> true; #2 = 9
+~("94E7 8 1x", 7) -> false; #2 = 7
+~("E ", 7) -> false; #2 = 7
+~("EE4", 7) -> false; #2 = 7
+~("_- 87.E,7+", 7) -> false; #2 = 7
+~("a", 7) -> false; #2 = 7
+~("a.13ex 3+5", 7) -> false; #2 = 7
+~("a393b831,", 7) -> false; #2 = 7
+~("a52b4", 7) -> false; #2 = 7
+~("a7 6a,ea ", 7) -> false; #2 = 7
+~("a8x0+013E", 7) -> false; #2 = 7
+~("b225b", 7) -> false; #2 = 7
+~("b8", 7) -> false; #2 = 7
+~("e5e8", 7) -> false; #2 = 7
+~("e8a,06238x", 7) -> false; #2 = 7
+~("xe", 7) -> false; #2 = 7
+
+## Operator.h/parse_param<int>
+(" ", 7) -> false; #2 = 7
+(" 1", 7) -> false; #2 = 7
+("", 7) -> false; #2 = 7
+("+1", 7) -> false; #2 = 7
+(",", 7) -> false; #2 = 7
+("-0", 7) -> true; #2 = 0
+("-1", 7) -> true; #2 = -1
+("-2147483648", 7) -> true; #2 = -2147483648
+("-2147483649", 7) -> false; #2 = 7
+("-inf", 7) -> false; #2 = 7
+("0", 7) -> true; #2 = 0
+("01", 7) -> true; #2 = 1
+("0x10", 7) -> false; #2 = 7
+("1 ", 7) -> false; #2 = 7
+("1", 7) -> true; #2 = 1
+("1,2", 7) -> false; #2 = 7
+("1.0", 7) -> false; #2 = 7
+("1.5", 7) -> false; #2 = 7
+("1\n", 7) -> false; #2 = 7
+("1\r", 7) -> false; #2 = 7
+("1\x002", 7) -> false; #2 = 7
+("1_0", 7) -> false; #2 = 7
+("1e0", 7) -> false; #2 = 7
+("1e3", 7) -> false; #2 = 7
+("2147483647", 7) -> true; #2 = 2147483647
+("2147483648", 7) -> false; #2 = 7
+("\xd9\xa1", 7) -> false; #2 = 7
+("inf", 7) -> false; #2 = 7
+("nan", 7) -> false; #2 = 7
+~(" +a", 7) -> false; #2 = 7
+~(" 0_0", 7) -> false; #2 = 7
+~(" e684", 7) -> false; #2 = 7
+~("+39., 5b", 7) -> false; #2 = 7
+~(",++3", 7) -> false; #2 = 7
+~(",+- ._,4-3", 7) -> false; #2 = 7
+~(",-x4,", 7) -> false; #2 = 7
+~("-2", 7) -> true; #2 = -2
+~(".1E8", 7) -> false; #2 = 7
+~("0 ,3e29E8", 7) -> false; #2 = 7
+~("00_ ", 7) -> false; #2 = 7
+~("0e4_93a ", 7) -> false; #2 = 7
+~("16xE__5-9", 7) -> false; #2 = 7
+~("18_161", 7) -> false; #2 = 7
+~("1E3e+e85", 7) -> false; #2 = 7
+~("1e9a3_7b", 7) -> false; #2 = 7
+~("2,.8", 7) -> false; #2 = 7
+~("20b8", 7) -> false; #2 = 7
+~("222,-b", 7) -> false; #2 = 7
+~("2a88,9b1E", 7) -> false; #2 = 7
+~("3+b4E+", 7) -> false; #2 = 7
+~("3x8.", 7) -> false; #2 = 7
+~("434", 7) -> true; #2 = 434
+~("4e8x+exe-", 7) -> false; #2 = 7
+~("5+e25e", 7) -> false; #2 = 7
+~("50 6aE2E,8", 7) -> false; #2 = 7
+~("6+7.ex40E2", 7) -> false; #2 = 7
+~("696+e-xa,,", 7) -> false; #2 = 7
+~("6a2e1,", 7) -> false; #2 = 7
+~("7,E004_5.", 7) -> false; #2 = 7
+~("7.94898", 7) -> false; #2 = 7
+~("7_576", 7) -> false; #2 = 7
+~("802", 7) -> true; #2 = 802
+~("83_360 4", 7) -> false; #2 = 7
+~("8637386", 7) -> true; #2 = 8637386
+~("8x0", 7) -> false; #2 = 7
+~("E_4", 7) -> false; #2 = 7
+~("Eb", 7) -> false; #2 = 7
+~("_x+eb.0Ea9", 7) -> false; #2 = 7
+~("a,eb0_4,6", 7) -> false; #2 = 7
+~("aa0 -xx0e", 7) -> false; #2 = 7
+~("b73", 7) -> false; #2 = 7
+~("e _ 9,04x3", 7) -> false; #2 = 7
+~("x0 0,e67", 7) -> false; #2 = 7
+
+## Operator.h/parse_param<ivec2>
+("", (7,7)) -> false; #2 = (7,7)
+(",", (7,7)) -> false; #2 = (7,7)
+(",1", (7,7)) -> false; #2 = (7,7)
+("1 ,2", (7,7)) -> false; #2 = (7,7)
+("1", (7,7)) -> false; #2 = (7,7)
+("1, ", (7,7)) -> false; #2 = (7,7)
+("1, 1", (7,7)) -> false; #2 = (7,7)
+("1, 2", (7,7)) -> false; #2 = (7,7)
+("1,", (7,7)) -> false; #2 = (7,7)
+("1,+1", (7,7)) -> false; #2 = (7,7)
+("1,,2", (7,7)) -> false; #2 = (7,7)
+("1,-0", (7,7)) -> true; #2 = (1,0)
+("1,-1", (7,7)) -> true; #2 = (1,-1)
+("1,-2147483648", (7,7)) -> true; #2 = (1,-2147483648)
+("1,-2147483649", (7,7)) -> false; #2 = (7,7)
+("1,-inf", (7,7)) -> false; #2 = (7,7)
+("1,0", (7,7)) -> true; #2 = (1,0)
+("1,01", (7,7)) -> true; #2 = (1,1)
+("1,0x10", (7,7)) -> false; #2 = (7,7)
+("1,1 ", (7,7)) -> false; #2 = (7,7)
+("1,1", (7,7)) -> true; #2 = (1,1)
+("1,1.0", (7,7)) -> false; #2 = (7,7)
+("1,1.5", (7,7)) -> false; #2 = (7,7)
+("1,1\n", (7,7)) -> false; #2 = (7,7)
+("1,1\r", (7,7)) -> false; #2 = (7,7)
+("1,1\x002", (7,7)) -> false; #2 = (7,7)
+("1,1_0", (7,7)) -> false; #2 = (7,7)
+("1,1e0", (7,7)) -> false; #2 = (7,7)
+("1,1e3", (7,7)) -> false; #2 = (7,7)
+("1,2", (7,7)) -> true; #2 = (1,2)
+("1,2,", (7,7)) -> false; #2 = (7,7)
+("1,2,9", (7,7)) -> false; #2 = (7,7)
+("1,2147483647", (7,7)) -> true; #2 = (1,2147483647)
+("1,2147483648", (7,7)) -> false; #2 = (7,7)
+("1,\xd9\xa1", (7,7)) -> false; #2 = (7,7)
+("1,inf", (7,7)) -> false; #2 = (7,7)
+("1,nan", (7,7)) -> false; #2 = (7,7)
+("1,x", (7,7)) -> false; #2 = (7,7)
+~(" ", (7,7)) -> false; #2 = (7,7)
+~(" 1_", (7,7)) -> false; #2 = (7,7)
+~(" 2 ", (7,7)) -> false; #2 = (7,7)
+~(" 20+a8E1_0", (7,7)) -> false; #2 = (7,7)
+~("+e0x.6E9x4", (7,7)) -> false; #2 = (7,7)
+~(",+5", (7,7)) -> false; #2 = (7,7)
+~("-2-2e,a9", (7,7)) -> false; #2 = (7,7)
+~("-4,,67397.", (7,7)) -> false; #2 = (7,7)
+~("-4b.", (7,7)) -> false; #2 = (7,7)
+~("-a", (7,7)) -> false; #2 = (7,7)
+~(".", (7,7)) -> false; #2 = (7,7)
+~(".a1a+_18E", (7,7)) -> false; #2 = (7,7)
+~("00 1-_.", (7,7)) -> false; #2 = (7,7)
+~("2", (7,7)) -> false; #2 = (7,7)
+~("21e,0", (7,7)) -> false; #2 = (7,7)
+~("25E0-", (7,7)) -> false; #2 = (7,7)
+~("37", (7,7)) -> false; #2 = (7,7)
+~("399_", (7,7)) -> false; #2 = (7,7)
+~("3E85e-71", (7,7)) -> false; #2 = (7,7)
+~("4 +", (7,7)) -> false; #2 = (7,7)
+~("4a, 88", (7,7)) -> false; #2 = (7,7)
+~("5", (7,7)) -> false; #2 = (7,7)
+~("507694", (7,7)) -> false; #2 = (7,7)
+~("68a31", (7,7)) -> false; #2 = (7,7)
+~("6b,", (7,7)) -> false; #2 = (7,7)
+~("748+", (7,7)) -> false; #2 = (7,7)
+~("750_5.e7b", (7,7)) -> false; #2 = (7,7)
+~("87", (7,7)) -> false; #2 = (7,7)
+~("90", (7,7)) -> false; #2 = (7,7)
+~("914633437", (7,7)) -> false; #2 = (7,7)
+~("E4 b6bE7E4", (7,7)) -> false; #2 = (7,7)
+~("E907.x2E", (7,7)) -> false; #2 = (7,7)
+~("Eb", (7,7)) -> false; #2 = (7,7)
+~("_,E2b,8-7,", (7,7)) -> false; #2 = (7,7)
+~("_1694,-1_", (7,7)) -> false; #2 = (7,7)
+~("a 0aE 7", (7,7)) -> false; #2 = (7,7)
+~("a7x-", (7,7)) -> false; #2 = (7,7)
+~("aE", (7,7)) -> false; #2 = (7,7)
+~("b11b", (7,7)) -> false; #2 = (7,7)
+~("b66-8e.a", (7,7)) -> false; #2 = (7,7)
+~("b8", (7,7)) -> false; #2 = (7,7)
+~("e_-E", (7,7)) -> false; #2 = (7,7)
+~("x", (7,7)) -> false; #2 = (7,7)
+
+## Operator.h/parse_param<ivec3>
+("", (7,7,7)) -> false; #2 = (7,7,7)
+(",", (7,7,7)) -> false; #2 = (7,7,7)
+(",1", (7,7,7)) -> false; #2 = (7,7,7)
+("1 ,2", (7,7,7)) -> false; #2 = (7,7,7)
+("1", (7,7,7)) -> false; #2 = (7,7,7)
+("1, 2", (7,7,7)) -> false; #2 = (7,7,7)
+("1,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,,2", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1, ", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1, 1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,+1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,-0", (7,7,7)) -> true; #2 = (1,1,0)
+("1,1,-1", (7,7,7)) -> true; #2 = (1,1,-1)
+("1,1,-2147483648", (7,7,7)) -> true; #2 = (1,1,-2147483648)
+("1,1,-2147483649", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,-inf", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,0", (7,7,7)) -> true; #2 = (1,1,0)
+("1,1,01", (7,7,7)) -> true; #2 = (1,1,1)
+("1,1,0x10", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1 ", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1", (7,7,7)) -> true; #2 = (1,1,1)
+("1,1,1.0", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1.5", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1\n", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1\r", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1\x002", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1_0", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1e0", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1e3", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,2147483647", (7,7,7)) -> true; #2 = (1,1,2147483647)
+("1,1,2147483648", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,\xd9\xa1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,inf", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,nan", (7,7,7)) -> false; #2 = (7,7,7)
+("1,2,3", (7,7,7)) -> true; #2 = (1,2,3)
+("1,2,3,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,2,3,9", (7,7,7)) -> false; #2 = (7,7,7)
+("1,x,3", (7,7,7)) -> false; #2 = (7,7,7)
+~(" 5,-5870+,", (7,7,7)) -> false; #2 = (7,7,7)
+~(" 6__5E94_a", (7,7,7)) -> false; #2 = (7,7,7)
+~("+-8ax6a39", (7,7,7)) -> false; #2 = (7,7,7)
+~("+E3Ea4+ 1", (7,7,7)) -> false; #2 = (7,7,7)
+~(",3-5-1xax9", (7,7,7)) -> false; #2 = (7,7,7)
+~(",98", (7,7,7)) -> false; #2 = (7,7,7)
+~("-", (7,7,7)) -> false; #2 = (7,7,7)
+~("-+ 07", (7,7,7)) -> false; #2 = (7,7,7)
+~("-.", (7,7,7)) -> false; #2 = (7,7,7)
+~("-3e40,093-", (7,7,7)) -> false; #2 = (7,7,7)
+~("-4+8x,", (7,7,7)) -> false; #2 = (7,7,7)
+~("-exeexe", (7,7,7)) -> false; #2 = (7,7,7)
+~(".,", (7,7,7)) -> false; #2 = (7,7,7)
+~(".7065ae", (7,7,7)) -> false; #2 = (7,7,7)
+~(".74Ex4b9+", (7,7,7)) -> false; #2 = (7,7,7)
+~("0032 62", (7,7,7)) -> false; #2 = (7,7,7)
+~("01e24 ,E", (7,7,7)) -> false; #2 = (7,7,7)
+~("1_98  ", (7,7,7)) -> false; #2 = (7,7,7)
+~("1e64", (7,7,7)) -> false; #2 = (7,7,7)
+~("2", (7,7,7)) -> false; #2 = (7,7,7)
+~("3304a 0,E", (7,7,7)) -> false; #2 = (7,7,7)
+~("397x9", (7,7,7)) -> false; #2 = (7,7,7)
+~("4", (7,7,7)) -> false; #2 = (7,7,7)
+~("445049b_b6", (7,7,7)) -> false; #2 = (7,7,7)
+~("4a a_7", (7,7,7)) -> false; #2 = (7,7,7)
+~("4axb", (7,7,7)) -> false; #2 = (7,7,7)
+~("51E+x39++8", (7,7,7)) -> false; #2 = (7,7,7)
+~("54E", (7,7,7)) -> false; #2 = (7,7,7)
+~("6  8", (7,7,7)) -> false; #2 = (7,7,7)
+~("6", (7,7,7)) -> false; #2 = (7,7,7)
+~("6.,7a", (7,7,7)) -> false; #2 = (7,7,7)
+~("8", (7,7,7)) -> false; #2 = (7,7,7)
+~("8a0E2", (7,7,7)) -> false; #2 = (7,7,7)
+~("9.+xE+6", (7,7,7)) -> false; #2 = (7,7,7)
+~("_8", (7,7,7)) -> false; #2 = (7,7,7)
+~("_b69", (7,7,7)) -> false; #2 = (7,7,7)
+~("a 88e75_x", (7,7,7)) -> false; #2 = (7,7,7)
+~("b.4898", (7,7,7)) -> false; #2 = (7,7,7)
+~("b3,b54", (7,7,7)) -> false; #2 = (7,7,7)
+~("e89a+bE4", (7,7,7)) -> false; #2 = (7,7,7)
+~("eb99b.54-+", (7,7,7)) -> false; #2 = (7,7,7)
+
+## Operator.h/parse_param<ivec4>
+("", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+(",", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+(",1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1 ,2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1, 2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,,2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1, ", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1, 1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,+1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,-0", (7,7,7,7)) -> true; #2 = (1,1,1,0)
+("1,1,1,-1", (7,7,7,7)) -> true; #2 = (1,1,1,-1)
+("1,1,1,-2147483648", (7,7,7,7)) -> true; #2 = (1,1,1,-2147483648)
+("1,1,1,-2147483649", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,-inf", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,0", (7,7,7,7)) -> true; #2 = (1,1,1,0)
+("1,1,1,01", (7,7,7,7)) -> true; #2 = (1,1,1,1)
+("1,1,1,0x10", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1 ", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1", (7,7,7,7)) -> true; #2 = (1,1,1,1)
+("1,1,1,1.0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1.5", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1\n", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1\r", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1\x002", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1_0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1e0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1e3", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,2147483647", (7,7,7,7)) -> true; #2 = (1,1,1,2147483647)
+("1,1,1,2147483648", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,\xd9\xa1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,inf", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,nan", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,2,3,4", (7,7,7,7)) -> true; #2 = (1,2,3,4)
+("1,2,3,4,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,2,3,4,9", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,x,3,4", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(" +", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(" a774+.a+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("+719", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(",.4", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(",314_,_83", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(",87E52-a24", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("-6a_..19-", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("-b9E718-04", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".4,.E,_2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".60+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".a72", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("0.50-b2540", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("15", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("1e68eb853-", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("2250", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("2E+0ae", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("3a+0E", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("3x_9", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("5++", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("5+-9570 ", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("52", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("6.87043a", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("64,. 7_0+.", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("67bE", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("70b31x808", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("824x", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("88x6+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("8b", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("9+e82", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("99+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("E9Exaa_,x5", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("Ex912,3_", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("_-+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("_8E,b", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("a 4", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("b", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("b--", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("e004", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("e1b2,31a", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("x+b466", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("x0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("xx1_axa750", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+
+## Operator.h/parse_param<uint>
+(" ", 7) -> false; #2 = 7
+(" 1", 7) -> false; #2 = 7
+("", 7) -> false; #2 = 7
+("+1", 7) -> false; #2 = 7
+(",", 7) -> false; #2 = 7
+("-0", 7) -> false; #2 = 7
+("-1", 7) -> false; #2 = 7
+("-inf", 7) -> false; #2 = 7
+("0", 7) -> true; #2 = 0
+("01", 7) -> true; #2 = 1
+("0x10", 7) -> false; #2 = 7
+("1 ", 7) -> false; #2 = 7
+("1", 7) -> true; #2 = 1
+("1,2", 7) -> false; #2 = 7
+("1.0", 7) -> false; #2 = 7
+("1.5", 7) -> false; #2 = 7
+("1\n", 7) -> false; #2 = 7
+("1\r", 7) -> false; #2 = 7
+("1\x002", 7) -> false; #2 = 7
+("1_0", 7) -> false; #2 = 7
+("1e3", 7) -> false; #2 = 7
+("4294967295", 7) -> true; #2 = 4294967295
+("4294967296", 7) -> false; #2 = 7
+("\xd9\xa1", 7) -> false; #2 = 7
+("inf", 7) -> false; #2 = 7
+("nan", 7) -> false; #2 = 7
+~("  24_1", 7) -> false; #2 = 7
+~(" 18.-", 7) -> false; #2 = 7
+~(" E9b", 7) -> false; #2 = 7
+~("+1,7.8", 7) -> false; #2 = 7
+~("+72e_", 7) -> false; #2 = 7
+~("+ba,36254", 7) -> false; #2 = 7
+~(", ", 7) -> false; #2 = 7
+~(",2b5ba61", 7) -> false; #2 = 7
+~(",E", 7) -> false; #2 = 7
+~("-7378-b", 7) -> false; #2 = 7
+~("-7__Ee2", 7) -> false; #2 = 7
+~("-x7120x8", 7) -> false; #2 = 7
+~(".0_bb90", 7) -> false; #2 = 7
+~("2", 7) -> true; #2 = 2
+~("2+06+axeb-", 7) -> false; #2 = 7
+~("23332a", 7) -> false; #2 = 7
+~("2_8E6x", 7) -> false; #2 = 7
+~("2x_95", 7) -> false; #2 = 7
+~("3", 7) -> true; #2 = 3
+~("3,", 7) -> false; #2 = 7
+~("3762e6a", 7) -> false; #2 = 7
+~("39+3 8", 7) -> false; #2 = 7
+~("5 E3b", 7) -> false; #2 = 7
+~("5742..6", 7) -> false; #2 = 7
+~("67 8", 7) -> false; #2 = 7
+~("67-x7", 7) -> false; #2 = 7
+~("6x90a0bE25", 7) -> false; #2 = 7
+~("7 69", 7) -> false; #2 = 7
+~("7", 7) -> true; #2 = 7
+~("78 306eb+a", 7) -> false; #2 = 7
+~("79+,_- 7", 7) -> false; #2 = 7
+~("8ee+", 7) -> false; #2 = 7
+~("9", 7) -> true; #2 = 9
+~("933", 7) -> true; #2 = 933
+~("946+x4", 7) -> false; #2 = 7
+~("9E_9436_E2", 7) -> false; #2 = 7
+~("9x439,7", 7) -> false; #2 = 7
+~("E776", 7) -> false; #2 = 7
+~("E_", 7) -> false; #2 = 7
+~("a7", 7) -> false; #2 = 7
+~("bE8x4x2+6E", 7) -> false; #2 = 7
+~("e", 7) -> false; #2 = 7
+~("e_E98 ,+78", 7) -> false; #2 = 7
+~("x+a8+ ", 7) -> false; #2 = 7
+
+## Operator.h/parse_param<uvec2>
+("", (7,7)) -> false; #2 = (7,7)
+(",", (7,7)) -> false; #2 = (7,7)
+(",1", (7,7)) -> false; #2 = (7,7)
+("1 ,2", (7,7)) -> false; #2 = (7,7)
+("1", (7,7)) -> false; #2 = (7,7)
+("1, ", (7,7)) -> false; #2 = (7,7)
+("1, 1", (7,7)) -> false; #2 = (7,7)
+("1, 2", (7,7)) -> false; #2 = (7,7)
+("1,", (7,7)) -> false; #2 = (7,7)
+("1,+1", (7,7)) -> false; #2 = (7,7)
+("1,,2", (7,7)) -> false; #2 = (7,7)
+("1,-0", (7,7)) -> false; #2 = (7,7)
+("1,-1", (7,7)) -> false; #2 = (7,7)
+("1,-inf", (7,7)) -> false; #2 = (7,7)
+("1,0", (7,7)) -> true; #2 = (1,0)
+("1,01", (7,7)) -> true; #2 = (1,1)
+("1,0x10", (7,7)) -> false; #2 = (7,7)
+("1,1 ", (7,7)) -> false; #2 = (7,7)
+("1,1", (7,7)) -> true; #2 = (1,1)
+("1,1.0", (7,7)) -> false; #2 = (7,7)
+("1,1.5", (7,7)) -> false; #2 = (7,7)
+("1,1\n", (7,7)) -> false; #2 = (7,7)
+("1,1\r", (7,7)) -> false; #2 = (7,7)
+("1,1\x002", (7,7)) -> false; #2 = (7,7)
+("1,1_0", (7,7)) -> false; #2 = (7,7)
+("1,1e3", (7,7)) -> false; #2 = (7,7)
+("1,2", (7,7)) -> true; #2 = (1,2)
+("1,2,", (7,7)) -> false; #2 = (7,7)
+("1,2,9", (7,7)) -> false; #2 = (7,7)
+("1,4294967295", (7,7)) -> true; #2 = (1,4294967295)
+("1,4294967296", (7,7)) -> false; #2 = (7,7)
+("1,\xd9\xa1", (7,7)) -> false; #2 = (7,7)
+("1,inf", (7,7)) -> false; #2 = (7,7)
+("1,nan", (7,7)) -> false; #2 = (7,7)
+("1,x", (7,7)) -> false; #2 = (7,7)
+~("+_4x02-.x", (7,7)) -> false; #2 = (7,7)
+~(",0Ex", (7,7)) -> false; #2 = (7,7)
+~("-_8013", (7,7)) -> false; #2 = (7,7)
+~("-b6, 82bb0", (7,7)) -> false; #2 = (7,7)
+~("008_a63a", (7,7)) -> false; #2 = (7,7)
+~("009bEE  ", (7,7)) -> false; #2 = (7,7)
+~("0xb416bxa", (7,7)) -> false; #2 = (7,7)
+~("16+0Ee0.", (7,7)) -> false; #2 = (7,7)
+~("16bx._", (7,7)) -> false; #2 = (7,7)
+~("18x8__5E_", (7,7)) -> false; #2 = (7,7)
+~("1be22x3", (7,7)) -> false; #2 = (7,7)
+~("2,7_0a", (7,7)) -> false; #2 = (7,7)
+~("2429", (7,7)) -> false; #2 = (7,7)
+~("3 ", (7,7)) -> false; #2 = (7,7)
+~("3 .,._6548", (7,7)) -> false; #2 = (7,7)
+~("3-42ba", (7,7)) -> false; #2 = (7,7)
+~("3.Ea,+0aEa", (7,7)) -> false; #2 = (7,7)
+~("39 e", (7,7)) -> false; #2 = (7,7)
+~("3x87_2+ax,", (7,7)) -> false; #2 = (7,7)
+~("52e_.+0a", (7,7)) -> false; #2 = (7,7)
+~("5b-.9b", (7,7)) -> false; #2 = (7,7)
+~("6e ", (7,7)) -> false; #2 = (7,7)
+~("7e.x", (7,7)) -> false; #2 = (7,7)
+~("7x+0", (7,7)) -> false; #2 = (7,7)
+~("8", (7,7)) -> false; #2 = (7,7)
+~("81E64 -", (7,7)) -> false; #2 = (7,7)
+~("83e1e9x+1-", (7,7)) -> false; #2 = (7,7)
+~("8_a_e.e0", (7,7)) -> false; #2 = (7,7)
+~("924+", (7,7)) -> false; #2 = (7,7)
+~("E7e._56+,a", (7,7)) -> false; #2 = (7,7)
+~("E94x", (7,7)) -> false; #2 = (7,7)
+~("E9be8ae5", (7,7)) -> false; #2 = (7,7)
+~("_5 9b", (7,7)) -> false; #2 = (7,7)
+~("a,E7", (7,7)) -> false; #2 = (7,7)
+~("a9e1+E6 _6", (7,7)) -> false; #2 = (7,7)
+~("b", (7,7)) -> false; #2 = (7,7)
+~("b07. E2xb,", (7,7)) -> false; #2 = (7,7)
+~("b1e4x3.-", (7,7)) -> false; #2 = (7,7)
+~("b58 1", (7,7)) -> false; #2 = (7,7)
+~("bxE0+b3_4_", (7,7)) -> false; #2 = (7,7)
+~("x-0a", (7,7)) -> false; #2 = (7,7)
+~("x98", (7,7)) -> false; #2 = (7,7)
+
+## Operator.h/parse_param<uvec3>
+("", (7,7,7)) -> false; #2 = (7,7,7)
+(",", (7,7,7)) -> false; #2 = (7,7,7)
+(",1", (7,7,7)) -> false; #2 = (7,7,7)
+("1 ,2", (7,7,7)) -> false; #2 = (7,7,7)
+("1", (7,7,7)) -> false; #2 = (7,7,7)
+("1, 2", (7,7,7)) -> false; #2 = (7,7,7)
+("1,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,,2", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1, ", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1, 1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,+1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,-0", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,-1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,-inf", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,0", (7,7,7)) -> true; #2 = (1,1,0)
+("1,1,01", (7,7,7)) -> true; #2 = (1,1,1)
+("1,1,0x10", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1 ", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1", (7,7,7)) -> true; #2 = (1,1,1)
+("1,1,1.0", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1.5", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1\n", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1\r", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1\x002", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1_0", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1e3", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,4294967295", (7,7,7)) -> true; #2 = (1,1,4294967295)
+("1,1,4294967296", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,\xd9\xa1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,inf", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,nan", (7,7,7)) -> false; #2 = (7,7,7)
+("1,2,3", (7,7,7)) -> true; #2 = (1,2,3)
+("1,2,3,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,2,3,9", (7,7,7)) -> false; #2 = (7,7,7)
+("1,x,3", (7,7,7)) -> false; #2 = (7,7,7)
+~(" a13", (7,7,7)) -> false; #2 = (7,7,7)
+~("+_x+5_-", (7,7,7)) -> false; #2 = (7,7,7)
+~("+eb 4-", (7,7,7)) -> false; #2 = (7,7,7)
+~(", 2aE130e_", (7,7,7)) -> false; #2 = (7,7,7)
+~(",,11", (7,7,7)) -> false; #2 = (7,7,7)
+~(",8-", (7,7,7)) -> false; #2 = (7,7,7)
+~("-+", (7,7,7)) -> false; #2 = (7,7,7)
+~("-,53-5E5b2", (7,7,7)) -> false; #2 = (7,7,7)
+~("--04", (7,7,7)) -> false; #2 = (7,7,7)
+~("-_E+", (7,7,7)) -> false; #2 = (7,7,7)
+~("-b5-", (7,7,7)) -> false; #2 = (7,7,7)
+~("-e _", (7,7,7)) -> false; #2 = (7,7,7)
+~("-x0E.x", (7,7,7)) -> false; #2 = (7,7,7)
+~(".13e-50", (7,7,7)) -> false; #2 = (7,7,7)
+~(".5", (7,7,7)) -> false; #2 = (7,7,7)
+~("06e1", (7,7,7)) -> false; #2 = (7,7,7)
+~("1 342+a3", (7,7,7)) -> false; #2 = (7,7,7)
+~("2", (7,7,7)) -> false; #2 = (7,7,7)
+~("270.7", (7,7,7)) -> false; #2 = (7,7,7)
+~("3 b687884", (7,7,7)) -> false; #2 = (7,7,7)
+~("3", (7,7,7)) -> false; #2 = (7,7,7)
+~("4_.", (7,7,7)) -> false; #2 = (7,7,7)
+~("5, 3,E2,", (7,7,7)) -> false; #2 = (7,7,7)
+~("56-,E+5 ", (7,7,7)) -> false; #2 = (7,7,7)
+~("5627", (7,7,7)) -> false; #2 = (7,7,7)
+~("58E2 3E48+", (7,7,7)) -> false; #2 = (7,7,7)
+~("5E,+x155", (7,7,7)) -> false; #2 = (7,7,7)
+~("6+421e0x", (7,7,7)) -> false; #2 = (7,7,7)
+~("7668", (7,7,7)) -> false; #2 = (7,7,7)
+~("78+8E", (7,7,7)) -> false; #2 = (7,7,7)
+~("79b+aE54", (7,7,7)) -> false; #2 = (7,7,7)
+~("8", (7,7,7)) -> false; #2 = (7,7,7)
+~("8x9e.E.6", (7,7,7)) -> false; #2 = (7,7,7)
+~("91E2,a", (7,7,7)) -> false; #2 = (7,7,7)
+~("E,.Ebb", (7,7,7)) -> false; #2 = (7,7,7)
+~("_-,8 2_", (7,7,7)) -> false; #2 = (7,7,7)
+~("a", (7,7,7)) -> false; #2 = (7,7,7)
+~("x 6", (7,7,7)) -> false; #2 = (7,7,7)
+~("x", (7,7,7)) -> false; #2 = (7,7,7)
+
+## Operator.h/parse_param<uvec4>
+("", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+(",", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+(",1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1 ,2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1, 2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,,2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1, ", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1, 1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,+1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,-0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,-1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,-inf", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,0", (7,7,7,7)) -> true; #2 = (1,1,1,0)
+("1,1,1,01", (7,7,7,7)) -> true; #2 = (1,1,1,1)
+("1,1,1,0x10", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1 ", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1", (7,7,7,7)) -> true; #2 = (1,1,1,1)
+("1,1,1,1.0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1.5", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1\n", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1\r", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1\x002", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1_0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1e3", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,4294967295", (7,7,7,7)) -> true; #2 = (1,1,1,4294967295)
+("1,1,1,4294967296", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,\xd9\xa1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,inf", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,nan", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,2,3,4", (7,7,7,7)) -> true; #2 = (1,2,3,4)
+("1,2,3,4,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,2,3,4,9", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,x,3,4", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".+2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".3", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".35 -1.x", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".8e", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".x0b83,x", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("0_b4._-E5", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("15246x255", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("1b91-xb5 E", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("2a 0e3", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("2b+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("330", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("3_3_1xE95", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("3b5 2e41", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("3ea2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("4+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("42Ea48e", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("43.E6-", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("45aeE", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("5b506-", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("60a4,8", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("61406", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("62", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("76", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("8", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("831x-x", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("861+,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("8e", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("8x", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("9,.58", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("91.6", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("945,.4_1x", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("E +0 98", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("_-.ax60625", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("_19", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("a575x2e", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("abx+8aa026", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("b6bb8ee", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("b_a2.e", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("e", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("e4e3 b", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("xa07722", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("xx-e.", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+
+## Operator.h/parse_param<vec2>
+("", (7,7)) -> false; #2 = (7,7)
+(",", (7,7)) -> false; #2 = (7,7)
+(",1", (7,7)) -> false; #2 = (7,7)
+("1 ,2", (7,7)) -> false; #2 = (7,7)
+("1", (7,7)) -> false; #2 = (7,7)
+("1, ", (7,7)) -> false; #2 = (7,7)
+("1, 1", (7,7)) -> false; #2 = (7,7)
+("1, 2", (7,7)) -> false; #2 = (7,7)
+("1,", (7,7)) -> false; #2 = (7,7)
+("1,+1", (7,7)) -> false; #2 = (7,7)
+("1,,2", (7,7)) -> false; #2 = (7,7)
+("1,-0", (7,7)) -> true; #2 = (1,-0)
+("1,-1", (7,7)) -> true; #2 = (1,-1)
+("1,-1e40", (7,7)) -> false; #2 = (7,7)
+("1,-inf", (7,7)) -> false; #2 = (7,7)
+("1,.5", (7,7)) -> true; #2 = (1,0.5)
+("1,0", (7,7)) -> true; #2 = (1,0)
+("1,0.1", (7,7)) -> true; #2 = (1,0.1)
+("1,01", (7,7)) -> true; #2 = (1,1)
+("1,0x10", (7,7)) -> false; #2 = (7,7)
+("1,1 ", (7,7)) -> false; #2 = (7,7)
+("1,1", (7,7)) -> true; #2 = (1,1)
+("1,1.5", (7,7)) -> true; #2 = (1,1.5)
+("1,1\n", (7,7)) -> false; #2 = (7,7)
+("1,1\r", (7,7)) -> false; #2 = (7,7)
+("1,1\x002", (7,7)) -> false; #2 = (7,7)
+("1,1_0", (7,7)) -> false; #2 = (7,7)
+("1,1e", (7,7)) -> false; #2 = (7,7)
+("1,1e-40", (7,7)) -> false; #2 = (7,7)
+("1,1e-50", (7,7)) -> false; #2 = (7,7)
+("1,1e3", (7,7)) -> true; #2 = (1,1000)
+("1,1e40", (7,7)) -> false; #2 = (7,7)
+("1,2", (7,7)) -> true; #2 = (1,2)
+("1,2,", (7,7)) -> false; #2 = (7,7)
+("1,2,9", (7,7)) -> false; #2 = (7,7)
+("1,3.4028235e38", (7,7)) -> true; #2 = (1,3.4028235e+38)
+("1,3.4028236e38", (7,7)) -> false; #2 = (7,7)
+("1,5.", (7,7)) -> true; #2 = (1,5)
+("1,\xd9\xa1", (7,7)) -> false; #2 = (7,7)
+("1,e1", (7,7)) -> false; #2 = (7,7)
+("1,inf", (7,7)) -> false; #2 = (7,7)
+("1,nan", (7,7)) -> false; #2 = (7,7)
+("1,x", (7,7)) -> false; #2 = (7,7)
+~(",79e9004", (7,7)) -> false; #2 = (7,7)
+~(",9_", (7,7)) -> false; #2 = (7,7)
+~(",_-2", (7,7)) -> false; #2 = (7,7)
+~("- -7,-4", (7,7)) -> false; #2 = (7,7)
+~("-.8,.+E56,", (7,7)) -> false; #2 = (7,7)
+~("-431b", (7,7)) -> false; #2 = (7,7)
+~("0+", (7,7)) -> false; #2 = (7,7)
+~("0E_0", (7,7)) -> false; #2 = (7,7)
+~("0b", (7,7)) -> false; #2 = (7,7)
+~("1e_71", (7,7)) -> false; #2 = (7,7)
+~("20+4b2", (7,7)) -> false; #2 = (7,7)
+~("2b1", (7,7)) -> false; #2 = (7,7)
+~("45.", (7,7)) -> false; #2 = (7,7)
+~("5-9a-+4,", (7,7)) -> false; #2 = (7,7)
+~("5239278", (7,7)) -> false; #2 = (7,7)
+~("59", (7,7)) -> false; #2 = (7,7)
+~("5b7960e.,", (7,7)) -> false; #2 = (7,7)
+~("63,e840+", (7,7)) -> false; #2 = (7,7)
+~("67a", (7,7)) -> false; #2 = (7,7)
+~("7", (7,7)) -> false; #2 = (7,7)
+~("7,a90e6", (7,7)) -> false; #2 = (7,7)
+~("72,5e839", (7,7)) -> false; #2 = (7,7)
+~("79be8..620", (7,7)) -> false; #2 = (7,7)
+~("7b.b_-,09_", (7,7)) -> false; #2 = (7,7)
+~("80 82633 ", (7,7)) -> false; #2 = (7,7)
+~("9 6-aa88-", (7,7)) -> false; #2 = (7,7)
+~("9", (7,7)) -> false; #2 = (7,7)
+~("9a67", (7,7)) -> false; #2 = (7,7)
+~("9x ", (7,7)) -> false; #2 = (7,7)
+~("E_7-8,E+2", (7,7)) -> false; #2 = (7,7)
+~("E_ax", (7,7)) -> false; #2 = (7,7)
+~("_,+-0xEe", (7,7)) -> false; #2 = (7,7)
+~("a089", (7,7)) -> false; #2 = (7,7)
+~("a7 +a_b", (7,7)) -> false; #2 = (7,7)
+~("b.277+", (7,7)) -> false; #2 = (7,7)
+~("b7E_1Eax5", (7,7)) -> false; #2 = (7,7)
+~("bb53+", (7,7)) -> false; #2 = (7,7)
+~("e", (7,7)) -> false; #2 = (7,7)
+~("ee", (7,7)) -> false; #2 = (7,7)
+~("x-", (7,7)) -> false; #2 = (7,7)
+~("x.", (7,7)) -> false; #2 = (7,7)
+~("x1,4.7", (7,7)) -> false; #2 = (7,7)
+~("x36", (7,7)) -> false; #2 = (7,7)
+~("xx", (7,7)) -> false; #2 = (7,7)
+
+## Operator.h/parse_param<vec3>
+("", (7,7,7)) -> false; #2 = (7,7,7)
+(",", (7,7,7)) -> false; #2 = (7,7,7)
+(",1", (7,7,7)) -> false; #2 = (7,7,7)
+("1 ,2", (7,7,7)) -> false; #2 = (7,7,7)
+("1", (7,7,7)) -> false; #2 = (7,7,7)
+("1, 2", (7,7,7)) -> false; #2 = (7,7,7)
+("1,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,,2", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1, ", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1, 1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,+1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,-0", (7,7,7)) -> true; #2 = (1,1,-0)
+("1,1,-1", (7,7,7)) -> true; #2 = (1,1,-1)
+("1,1,-1e40", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,-inf", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,.5", (7,7,7)) -> true; #2 = (1,1,0.5)
+("1,1,0", (7,7,7)) -> true; #2 = (1,1,0)
+("1,1,0.1", (7,7,7)) -> true; #2 = (1,1,0.1)
+("1,1,01", (7,7,7)) -> true; #2 = (1,1,1)
+("1,1,0x10", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1 ", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1", (7,7,7)) -> true; #2 = (1,1,1)
+("1,1,1.5", (7,7,7)) -> true; #2 = (1,1,1.5)
+("1,1,1\n", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1\r", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1\x002", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1_0", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1e", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1e-40", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1e-50", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,1e3", (7,7,7)) -> true; #2 = (1,1,1000)
+("1,1,1e40", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,3.4028235e38", (7,7,7)) -> true; #2 = (1,1,3.4028235e+38)
+("1,1,3.4028236e38", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,5.", (7,7,7)) -> true; #2 = (1,1,5)
+("1,1,\xd9\xa1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,e1", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,inf", (7,7,7)) -> false; #2 = (7,7,7)
+("1,1,nan", (7,7,7)) -> false; #2 = (7,7,7)
+("1,2,3", (7,7,7)) -> true; #2 = (1,2,3)
+("1,2,3,", (7,7,7)) -> false; #2 = (7,7,7)
+("1,2,3,9", (7,7,7)) -> false; #2 = (7,7,7)
+("1,x,3", (7,7,7)) -> false; #2 = (7,7,7)
+holds: a refused text leaves the value as it was, over 87 rows
+~(" .b.9070e", (7,7,7)) -> false; #2 = (7,7,7)
+~(" 0-,3", (7,7,7)) -> false; #2 = (7,7,7)
+~(" Eb-", (7,7,7)) -> false; #2 = (7,7,7)
+~("+", (7,7,7)) -> false; #2 = (7,7,7)
+~(",,62x.", (7,7,7)) -> false; #2 = (7,7,7)
+~(",5a_a", (7,7,7)) -> false; #2 = (7,7,7)
+~(",a6", (7,7,7)) -> false; #2 = (7,7,7)
+~(",e,-+6x_", (7,7,7)) -> false; #2 = (7,7,7)
+~("-", (7,7,7)) -> false; #2 = (7,7,7)
+~(".262E,", (7,7,7)) -> false; #2 = (7,7,7)
+~("037x-x", (7,7,7)) -> false; #2 = (7,7,7)
+~("11Ex", (7,7,7)) -> false; #2 = (7,7,7)
+~("2-E44.x3", (7,7,7)) -> false; #2 = (7,7,7)
+~("27x-6", (7,7,7)) -> false; #2 = (7,7,7)
+~("30xb_ ,_2-", (7,7,7)) -> false; #2 = (7,7,7)
+~("4.9", (7,7,7)) -> false; #2 = (7,7,7)
+~("49EEx", (7,7,7)) -> false; #2 = (7,7,7)
+~("4a18", (7,7,7)) -> false; #2 = (7,7,7)
+~("545", (7,7,7)) -> false; #2 = (7,7,7)
+~("55745 1302", (7,7,7)) -> false; #2 = (7,7,7)
+~("5578E9e-", (7,7,7)) -> false; #2 = (7,7,7)
+~("7+79_ ,-9", (7,7,7)) -> false; #2 = (7,7,7)
+~("7.6 470,_", (7,7,7)) -> false; #2 = (7,7,7)
+~("713633+ ", (7,7,7)) -> false; #2 = (7,7,7)
+~("7E12b6866", (7,7,7)) -> false; #2 = (7,7,7)
+~("8,2+9", (7,7,7)) -> false; #2 = (7,7,7)
+~("81E69", (7,7,7)) -> false; #2 = (7,7,7)
+~("87_8", (7,7,7)) -> false; #2 = (7,7,7)
+~("880a-4", (7,7,7)) -> false; #2 = (7,7,7)
+~("9", (7,7,7)) -> false; #2 = (7,7,7)
+~("926eEx86b", (7,7,7)) -> false; #2 = (7,7,7)
+~("E,9  e0b6", (7,7,7)) -> false; #2 = (7,7,7)
+~("E-", (7,7,7)) -> false; #2 = (7,7,7)
+~("E6E73E .", (7,7,7)) -> false; #2 = (7,7,7)
+~("a-+69b0", (7,7,7)) -> false; #2 = (7,7,7)
+~("b560298e.", (7,7,7)) -> false; #2 = (7,7,7)
+~("b72,", (7,7,7)) -> false; #2 = (7,7,7)
+~("e67219123E", (7,7,7)) -> false; #2 = (7,7,7)
+~("x,.", (7,7,7)) -> false; #2 = (7,7,7)
+~("x-___2E47", (7,7,7)) -> false; #2 = (7,7,7)
+~("x9", (7,7,7)) -> false; #2 = (7,7,7)
+~("xb-87", (7,7,7)) -> false; #2 = (7,7,7)
+
+## Operator.h/parse_param<vec4>
+("", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+(",", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+(",1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1 ,2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1, 2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,,2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1, ", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1, 1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,+1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,-0", (7,7,7,7)) -> true; #2 = (1,1,1,-0)
+("1,1,1,-1", (7,7,7,7)) -> true; #2 = (1,1,1,-1)
+("1,1,1,-1e40", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,-inf", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,.5", (7,7,7,7)) -> true; #2 = (1,1,1,0.5)
+("1,1,1,0", (7,7,7,7)) -> true; #2 = (1,1,1,0)
+("1,1,1,0.1", (7,7,7,7)) -> true; #2 = (1,1,1,0.1)
+("1,1,1,01", (7,7,7,7)) -> true; #2 = (1,1,1,1)
+("1,1,1,0x10", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1 ", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1", (7,7,7,7)) -> true; #2 = (1,1,1,1)
+("1,1,1,1.5", (7,7,7,7)) -> true; #2 = (1,1,1,1.5)
+("1,1,1,1\n", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1\r", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1\x002", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1_0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1e", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1e-40", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1e-50", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,1e3", (7,7,7,7)) -> true; #2 = (1,1,1,1000)
+("1,1,1,1e40", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,3.4028235e38", (7,7,7,7)) -> true; #2 = (1,1,1,3.4028235e+38)
+("1,1,1,3.4028236e38", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,5.", (7,7,7,7)) -> true; #2 = (1,1,1,5)
+("1,1,1,\xd9\xa1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,e1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,inf", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,1,1,nan", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,2,3,4", (7,7,7,7)) -> true; #2 = (1,2,3,4)
+("1,2,3,4,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,2,3,4,9", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+("1,x,3,4", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(" +4-89", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(" 4", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(" 8", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(" 88", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("+0.0-2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("+a2,4", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("+bE", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(",311axb", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("--e7_E", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("-6-2E+3b2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".-", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".30b8. .", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".3a46,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~(".5", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("._b9,40", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("0.", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("1a02_x", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("2.E53,2", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("2_ax735a0+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("3 56", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("4+-1,34b", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("5,b8", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("526E32", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("52e.", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("565", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("5723.bx", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("59", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("5_494+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("5x ea_0", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("6-Ex5b", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("6.e ..030.", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("6b24", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("70E_05", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("7x_2+xba,", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("8+3e89E69", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("8,1", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("9", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("939e.x5", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("E1-7b55x ", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("E2E 5-7E-+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("E3. x,e", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("a.bb.", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("ab7,x557x", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("b33727", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("e-4-,2b5+", (7,7,7,7)) -> false; #2 = (7,7,7,7)
+~("e05--2x", (7,7,7,7)) -> false; #2 = (7,7,7,7)

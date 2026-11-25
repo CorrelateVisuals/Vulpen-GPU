@@ -20,14 +20,21 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "src"
 PROJECTS = ROOT / "projects"  # built into vulpen as src/ is, in a release build
 VENDORED = SOURCE / "external-libraries"
+# The bench's targets build only when bench.py asks, so their objects are read
+# where they exist.
+BENCH = SOURCE / "tools" / "bench"
 THREAD_LOCAL = (".tdata", ".tbss")
 WRITABLE = (".data", ".bss", *THREAD_LOCAL)
 # Relocated once at load, then read-only.
 NOT_MUTABLE = (".data.rel.ro",)
-# The compiler's own: pointers for unwinding, and AddressSanitizer's markers.
-GENERATED = ("DW.ref.", "__odr_asan")
+# The compiler's own: pointers for unwinding, AddressSanitizer's markers, and the
+# counters gcov's instrumentation adds in the bench's coverage build.
+GENERATED = ("DW.ref.", "__odr_asan", "__gcov")
 VISIBILITY = (".hidden ", ".protected ", ".internal ")
 ALLOWED = {
+    # The bench's operator new counts every allocation of its process, which only
+    # a global can (src/tools/bench/main.cpp).
+    "VP::bench::(anonymous namespace)::counted",
     "VmaBufferImageUsage::UNKNOWN",  # vk_mem_alloc.h, compiled into Resources.cpp
     # stb_image.h, compiled into the image-file part's ImageFile.cpp: its settings, which
     # the part never changes, its failure's reason, a thread's own, and its tables.
@@ -100,8 +107,10 @@ def main() -> None:
         if ((SOURCE in source.parents or PROJECTS in source.parents)
                 and VENDORED not in source.parents):
             name = source.relative_to(ROOT).as_posix()
-            found += [f"{name}: {symbol}"
-                      for symbol in writable(Path(entry["directory"]) / entry["output"])]
+            built = Path(entry["directory"]) / entry["output"]
+            if BENCH in source.parents and not built.is_file():
+                continue
+            found += [f"{name}: {symbol}" for symbol in writable(built)]
     if found:
         sys.exit("mutable globals (C13):\n  " + "\n  ".join(found))
 

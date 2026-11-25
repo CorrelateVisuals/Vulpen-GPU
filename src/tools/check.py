@@ -5,23 +5,31 @@ quick: configure, build and test the debug preset, as CI does on every push; the
 runs the gates, the mutable-globals check and the statistics. Then, but on Windows, the
 names hidden as MSVC refuses them and GCC lets pass (hidden-names.py). About a minute.
 full: quick, then every example made again by typing (examples-replay.py), every command
-swept in each state with the menus and keys (command-sweep.py's sweep and gui), the
-address sanitizer's build and tests, and ctest's window tests under an Xvfb of the run's
-own. Once the debug build is made, three chains run side by side: its checks, the
-examples and then the sanitizer's tests, as each runs vulpen in this tree; the sweep, in
-copies of its own (--jobs); and the sanitizer's build, with a share of the threads.
-About twenty minutes on 16 threads; a change to the engine runs it before it lands.
+swept in each state with the menus and keys (command-sweep.py's sweep and gui), every
+engine function's rows against the bench's records (bench.py compare), the address
+sanitizer's build and tests, and ctest's window tests under an Xvfb of the run's own.
+Once the debug build is made, three chains run side by side: its checks, the examples and
+the sanitizer's tests, as each runs vulpen in this tree, then the bench's compare, whose
+benches build with every thread once the others are about done; the sweep, in copies of
+its own (--jobs); and the sanitizer's build, with a share of the threads. About
+twenty-five minutes on 16 threads; a change to the engine runs it before it lands.
 nightly: every preset built and tested, GPU-assisted validation, the nightly tests (the
-soaks, the long fuzz, examples-replay), and the whole command sweep. Once every preset
-is built, alone, the sweep runs beside the rest, in a copy of its own, as full's does.
-About an hour on 16 threads; its report also goes to docs/reports/.
+soaks, the long fuzz, examples-replay), the whole command sweep, every engine function's
+rows in each context and build (bench.py run), with a canary per context that must move, a
+fault planted for each of the bench's guards (bench.py planted), the engine's lines no row
+or test runs against the bench's record (bench.py coverage), and thirty mutants in a tree
+of their own of a file whose functions wait for a verdict, else of the day's engine file
+(bench.py mutants, survivors in mutants.md), and, where the review's private notes are,
+the engine functions waiting for a verdict (unjudged.md). Once every preset is built,
+alone, the sweep runs beside the rest, in a copy of its own, as full's does. Some hours;
+its report also goes to docs/reports/.
 release: before main moves to this commit, run in a tree that holds the commit alone, as
 git worktree add makes one, with main behind it, so main fast-forwards to exactly what
 ran: nightly, then LOC.md as the builds count it and the README's pictures as the release
 build takes them (both committed), the commit built as GitHub's source download holds it,
 and main's own lines run on main's build and this one (compare-main.py). Its report adds
 what they found and what to try by hand, and goes to docs/reports/ under the commit's
-name. About seventy minutes. Before it, run the sweep's tab, walks and seen at the commit
+name. Some hours. Before it, run the sweep's tab, walks and seen at the commit
 (command-sweep.py --only tab,walk,seen), about eight minutes: no other tier runs them, and
 a tool bug they find moves the commit, so the whole release would run again.
 install-hook: a git pre-push hook running quick, which stops a push it fails (opt-in).
@@ -35,6 +43,8 @@ full, nightly and release run the Linux presets (asan, tsan) and Linux's tools.
 Usage: python3 src/tools/check.py quick|full|nightly|release|install-hook
 """
 import argparse
+import csv
+import json
 import os
 import re
 import shutil
@@ -54,6 +64,9 @@ REPORTS = ROOT / "docs" / "reports"
 MAIN = "main"  # the branch a release moves, only ever fast-forwarded
 LINES = "docs/statistics/LOC.md"  # every build counts them again
 PICTURES = "docs/images"  # the README's, which a release build takes again
+# The review's notes, ledger and pages.py, which git ignores: where they are, nightly says
+# which engine functions wait for a verdict; a clone has none.
+PRIVATE = ROOT / "docs" / "logs" / "code-review"
 STAMP = re.compile(r"\{run\} vulpen (\S+)")  # the commit a vulpen says it was built from
 # A build's count of jobs: with none, CMake hands Unix Makefiles make -j, which starts
 # every compile at once, as a fresh tree's or every module's after an engine header
@@ -70,6 +83,7 @@ BESIDE = str(max(1, (os.cpu_count() or 1) // 4))
 # rest. A sweep's rows are the same on any count.
 SWEEP_THREADS = str(max(1, (os.cpu_count() or 1) // int(COPIES)))
 TAIL = 30  # lines of a failed step's log the report shows, after those naming an error
+MUTANTS = 30  # of the day's engine file, nightly
 HOOK = """#!/bin/sh
 # Written by src/tools/check.py install-hook: each push runs its quick checks first, and
 # one failing stops the push; git push --no-verify pushes anyway.
@@ -101,7 +115,7 @@ def preset(name: str, window: dict[str, str] | None = None, jobs: str = JOBS,
 
 def test_driver(preset: str = "debug") -> str:
     """The Vulkan driver a build's tests take, and a release build's pictures: lavapipe,
-    which the goldens were made on; none before a configure."""
+    which the records and the goldens were made on; none before a configure."""
     cache = ROOT / "out" / "build" / preset / "CMakeCache.txt"
     return next((line.split("=", 1)[1] for line in cache.read_text().splitlines()
                  if line.startswith("VULPEN_TEST_DRIVER:")), "") if cache.is_file() else ""
@@ -138,6 +152,90 @@ def screen(wanted: bool):
     finally:
         server.terminate()
         server.wait()
+
+
+def ran(log, command, cwd=ROOT) -> bool:
+    said = subprocess.run([str(word) for word in command], cwd=cwd, stdout=log,
+                          stderr=subprocess.STDOUT)
+    return said.returncode == 0
+
+
+def waiting() -> list[dict[str, str]]:
+    """The engine's functions new or changed since the review's verdict, as its ledger holds
+    them once bench.py inventory ran; none without a ledger."""
+    ledger = PRIVATE / "ledger.tsv"
+    if not ledger.is_file():
+        return []
+    with ledger.open(encoding="utf-8") as rows:
+        return [row for row in csv.DictReader(rows, delimiter="\t")
+                if not row["file"].startswith("tools/") and (row["status"] == "-" or (
+                    row["status"] in ("reviewed", "finding") and row["reviewed_hash"]
+                    and row["hash"] != row["reviewed_hash"]))]
+
+
+def unjudged(log, out: Path) -> bool:
+    """bench.py inventory, then unjudged.md beside the report: each engine function new or
+    changed since its verdict, with the commit that last changed its lines, for the round
+    the lead asks for by hand (the plan's 5.3). A function waiting fails nothing."""
+    if not ran(log, [sys.executable, TOOLS / "bench" / "bench.py", "inventory"]):
+        return False
+    inventory = json.loads((ROOT / "out" / "bench" / "inventory.json").read_text())
+    ends = {(each["file"], each["line"]): each["end"]
+            for each in inventory["functions"].values()}
+    lines = ["# Engine functions waiting for a verdict", ""]
+    for row in waiting():
+        line = int(row["line"])
+        said = subprocess.run(["git", "log", "-1", "--format=commit %h %s", "-L",
+                               f"{line},{ends.get((row['file'], line), line)}:"
+                               f"src/{row['file']}"], cwd=ROOT, capture_output=True,
+                              text=True).stdout
+        last = next((each[len("commit "):] for each in said.splitlines()
+                     if each.startswith("commit ")), "no commit found")
+        new = "new" if row["status"] == "-" else "changed"
+        lines.append(f"- `{row['function']}` ({new}), last by {last}")
+    if len(lines) == 2:
+        lines.append("None: every engine function has its verdict.")
+    (out / "unjudged.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    log.write(f"{len(lines) - 2} engine functions wait for a verdict: unjudged.md\n")
+    return True
+
+
+def mutate(log, out: Path) -> bool:
+    """MUTANTS mutants of one engine file, the day's pick (bench.py mutants, the plan's
+    7.3), in a tree of their own at this commit, as they rewrite the file while they run,
+    on the driver this tree's debug build takes, which the records were made on. What
+    survives is in mutants.md, for a round to give inputs: a survivor fails nothing. A
+    file whose functions wait for a verdict goes first, as its new code is what the next
+    round reads; else the day's file of the rotation."""
+    tree = out / "mutants-tree"
+    cased = sorted(case.stem for case in (TOOLS / "bench" / "cases").glob("*.cpp")
+                   if any((ROOT / "src" / folder / case.name).is_file()
+                          for folder in ("runtime", "baseclasses")))
+    # A file whose functions another bench runs too, as Views' sessions run Edits' and
+    # Commands', Schedule's bind runs Checks' and reflects every project's shaders, is run
+    # by both, its own bench named first.
+    also = {"Checks": "Schedule", "Commands": "Views", "Edits": "Views",
+            "Shader": "Schedule"}
+    picks = [(f"{stem},{also[stem]}" if stem in also else stem, None) for stem in cased]
+    picks.append(("Schedule", "runtime/Binder.cpp"))
+    day = datetime.now(timezone.utc).date().toordinal()
+    pending = {Path(row["file"]).stem for row in waiting()}
+    first = [pick for pick in picks
+             if Path(pick[1] or pick[0].split(",")[0]).stem in pending] or picks
+    bench, source = first[day % len(first)]
+    driver = test_driver()
+    passed = (ran(log, ["git", "worktree", "add", "--detach", tree, "HEAD"])
+              and ran(log, ["cmake", "--preset", "debug", f"-DVULPEN_TEST_DRIVER={driver}"],
+                      tree)
+              and ran(log, ["cmake", "--build", "--preset", "debug", "--parallel", JOBS], tree)
+              and ran(log, [sys.executable, tree / "src/tools/bench/bench.py", "mutants",
+                            bench, "--limit", MUTANTS, "--seed", day,
+                            *(["--source", source] if source else [])], tree))
+    found = tree / "out" / "bench" / "mutants" / f"{Path(source or bench.split(',')[0]).stem}.md"
+    if found.is_file():
+        shutil.copy(found, out / "mutants.md")
+    ran(log, ["git", "worktree", "remove", "--force", tree])
+    return passed
 
 
 def counted(log) -> bool:
@@ -253,7 +351,11 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
                 Step("commands", [python, TOOLS / "command-sweep.py", "--only",
                                   "sweep,gui", "--jobs", COPIES, "--report",
                                   out / "command-sweep.md"], chain="sweep"),
-                *asan]
+                *asan,
+                # Last in the tree's chain: its benches build with every thread, once
+                # the sweep's copies and the sanitizer's build are about done.
+                Step("bench", [python, TOOLS / "bench" / "bench.py", "compare"],
+                     "build debug", chain="tree")]
     if tier == "release":
         return beside_sweep([*steps("nightly", out, window),
                              Step("lines counted", counted, "build debug"),
@@ -274,7 +376,15 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
                      "build asan"),
                 Step("commands", [python, TOOLS / "command-sweep.py", "--report",
                                   out / "command-sweep.md"],
-                     env={**os.environ, "LP_NUM_THREADS": SWEEP_THREADS})]
+                     env={**os.environ, "LP_NUM_THREADS": SWEEP_THREADS}),
+                Step("bench", [python, TOOLS / "bench" / "bench.py", "run", "--presets",
+                                "release,asan,odd"], "build debug"),
+                Step("planted", [python, TOOLS / "bench" / "bench.py", "planted"],
+                     "build debug"),
+                Step("coverage", [python, TOOLS / "bench" / "bench.py", "coverage"]),
+                *([Step("unjudged", lambda log: unjudged(log, out), "build debug")]
+                  if (PRIVATE / "pages.py").is_file() else []),
+                Step("mutants", lambda log: mutate(log, out))]
     return beside_sweep(nightly)
 
 

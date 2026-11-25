@@ -1,0 +1,304 @@
+# The rows of src/runtime/Runtime.h and src/runtime/Runtime.cpp, a call each (src/tools/bench/bench.py).
+
+## Runtime.cpp/Feed
+1 a press: pointer 10,10, button "left" down x1
+2 let go and pressed again where it was: button "left" up, button "left" down x2
+3 a third: button "left" up, button "left" down x3
+4 a fourth, 6 pixels off either way: pointer 16,4, button "left" up, button "left" down x4
+5 7 pixels off: pointer 23,4, button "left" up, button "left" down x1
+6 another button between: button "right" down x1, button "right" up, button "left" down x1
+7 past the interval: button "left" up, button "left" down x1
+8 keys, text, the wheel and focus: key "a" down, text "\xc3\xa9", wheel 0,-1, focus off, focus on, key "a" up
+9 the frame after: nothing
+
+## Runtime.cpp/Preference::read
+("  prefer  =  discrete  \n") -> "takes \"discrete\""
+("") -> "none named"
+("# The kind of GPU vulpen takes first here; gpu toggle writes it.\nprefer = integrated\n") -> "takes \"integrated\""
+("PREFER = discrete\n") -> "none named"
+("\xef\xbb\xbfprefer = discrete\n") -> "none named"
+("prefer = Discrete\n") -> "throws \"<here>/gpu.ini: prefer = Discrete is no kind of GPU: integrated or discrete\""
+("prefer = discrete # the fast one\n") -> "throws \"<here>/gpu.ini: prefer = discrete # the fast one is no kind of GPU: integrated or discrete\""
+("prefer = discrete\n") -> "takes \"discrete\""
+("prefer = discrete\nprefer = integrated\n") -> "takes \"discrete\""
+("prefer = discrete\r\n") -> "takes \"discrete\""
+("prefer = gpu\n") -> "throws \"<here>/gpu.ini: prefer = gpu is no kind of GPU: integrated or discrete\""
+("prefer =\n") -> "throws \"<here>/gpu.ini: prefer =  is no kind of GPU: integrated or discrete\""
+("prefer discrete\n") -> "none named"
+("prefer=integrated") -> "takes \"integrated\""
+("preferred = discrete\n") -> "none named"
+("x = 1\nprefer = integrated\n") -> "takes \"integrated\""
+~("  prefer  =  discrete  \n  prefer  =  discrete  \n") -> "takes \"discrete\""
+~("  prefer  =  discrete  \nprefer =\n") -> "takes \"discrete\""
+~("# The kind of GPU vulpen takes first here; gpu toggle writes it.\nprefer = integrated\n  prefer  =  discrete  \n") -> "takes \"integrated\""
+~("PREFER = discrete\nprefer=integrated") -> "takes \"integrated\""
+~("\xef\xbb\xbfprefer = discrete\n  prefer  =  discrete  \n") -> "takes \"discrete\""
+~("\xef\xbb\xbfprefer = discrete\nprefer = discrete\nprefer = integrated\n") -> "takes \"discrete\""
+~("prefer = Discrete\nprefer=integrated") -> "throws \"<here>/gpu.ini: prefer = Discrete is no kind of GPU: integrated or discrete\""
+~("prefer = discrete # the fast one\n# The kind of GPU vulpen takes first here; gpu toggle writes it.\nprefer = integrated\n") -> "throws \"<here>/gpu.ini: prefer = discrete # the fast one is no kind of GPU: integrated or discrete\""
+~("prefer = discrete # the fast one\nprefer = discrete\n") -> "throws \"<here>/gpu.ini: prefer = discrete # the fast one is no kind of GPU: integrated or discrete\""
+~("prefer = discrete # the fast one\nprefer = discrete\nprefer = integrated\n") -> "throws \"<here>/gpu.ini: prefer = discrete # the fast one is no kind of GPU: integrated or discrete\""
+~("prefer = discrete # the fast one\nprefer =\n") -> "throws \"<here>/gpu.ini: prefer = discrete # the fast one is no kind of GPU: integrated or discrete\""
+~("prefer = discrete\nprefer = gpu\n") -> "takes \"discrete\""
+~("prefer = discrete\nprefer = integrated\nprefer = Discrete\n") -> "takes \"discrete\""
+~("prefer = discrete\nprefer = integrated\nprefer = discrete\n") -> "takes \"discrete\""
+~("prefer = discrete\nprefer = integrated\nprefer = discrete\nprefer = integrated\n") -> "takes \"discrete\""
+~("prefer = discrete\nprefer = integrated\nprefer = discrete\r\n") -> "takes \"discrete\""
+~("prefer = discrete\nprefer = integrated\npreferred = discrete\n") -> "takes \"discrete\""
+~("prefer = discrete\nprefer = integrated\nx = 1\nprefer = integrated\n") -> "takes \"discrete\""
+~("prefer = discrete\nprefer =\n") -> "takes \"discrete\""
+~("prefer = discrete\nx = 1\nprefer = integrated\n") -> "takes \"discrete\""
+~("prefer = discrete\r\nPREFER = discrete\n") -> "takes \"discrete\""
+~("prefer = gpu\nprefer = discrete # the fast one\n") -> "throws \"<here>/gpu.ini: prefer = gpu is no kind of GPU: integrated or discrete\""
+~("prefer = gpu\nprefer = discrete\r\n") -> "throws \"<here>/gpu.ini: prefer = gpu is no kind of GPU: integrated or discrete\""
+~("prefer =\nprefer=integrated") -> "throws \"<here>/gpu.ini: prefer =  is no kind of GPU: integrated or discrete\""
+~("prefer discrete\n# The kind of GPU vulpen takes first here; gpu toggle writes it.\nprefer = integrated\n") -> "takes \"integrated\""
+~("prefer discrete\n\xef\xbb\xbfprefer = discrete\n") -> "none named"
+~("prefer discrete\nprefer = Discrete\n") -> "throws \"<here>/gpu.ini: prefer = Discrete is no kind of GPU: integrated or discrete\""
+~("prefer discrete\nprefer = gpu\n") -> "throws \"<here>/gpu.ini: prefer = gpu is no kind of GPU: integrated or discrete\""
+~("prefer discrete\nprefer discrete\n") -> "none named"
+~("prefer discrete\nx = 1\nprefer = integrated\n") -> "takes \"integrated\""
+~("prefer=integratedprefer = discrete # the fast one\n") -> "throws \"<here>/gpu.ini: prefer = integratedprefer = discrete # the fast one is no kind of GPU: integrated or discrete\""
+~("prefer=integratedpreferred = discrete\n") -> "throws \"<here>/gpu.ini: prefer = integratedpreferred = discrete is no kind of GPU: integrated or discrete\""
+~("prefer=integratedx = 1\nprefer = integrated\n") -> "throws \"<here>/gpu.ini: prefer = integratedx = 1 is no kind of GPU: integrated or discrete\""
+~("preferred = discrete\nPREFER = discrete\n") -> "none named"
+~("preferred = discrete\nprefer = discrete\r\n") -> "takes \"discrete\""
+~("x = 1\nprefer = integrated\nprefer = gpu\n") -> "takes \"integrated\""
+
+## Runtime.cpp/Preference::read, no file
+a launch with no gpu.ini takes the fastest
+
+## Runtime.cpp/Runtime::parse
+(["--frames", "2"]) -> "manifest \"\" hosted [] frames 2 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "--"]) -> "throws \"unknown argument --\""
+(["a.vlp", "--first-frame", "18446744073709551615"]) -> "manifest \"a.vlp\" hosted [] frames 0 first 18446744073709551615 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "--fps", "0"]) -> "manifest \"a.vlp\" hosted [] frames 0 first 0 fps 0 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "--fps", "4294967296"]) -> "throws \"--fps 4294967296 is not a whole number\""
+(["a.vlp", "--frames", "-1"]) -> "throws \"--frames -1 is not a whole number\""
+(["a.vlp", "--frames", "1e3"]) -> "throws \"--frames 1e3 is not a whole number\""
+(["a.vlp", "--frames", "2", "--frames", "3"]) -> "throws \"--frames is given twice\""
+(["a.vlp", "--frames", "2"]) -> "manifest \"a.vlp\" hosted [] frames 2 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "--frames"]) -> "throws \"--frames needs a value\""
+(["a.vlp", "--frames=2"]) -> "throws \"unknown argument --frames=2; a value follows its flag after a blank, as --frames 2\""
+(["a.vlp", "--log", "DEBUG"]) -> "throws \"--log DEBUG is no level\""
+(["a.vlp", "--log", "debug"]) -> "manifest \"a.vlp\" hosted [] frames 0 first 0 fps 60 size 0x0 log 3 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "--log", "nope"]) -> "throws \"--log nope is no level\""
+(["a.vlp", "--log-file", ""]) -> "manifest \"a.vlp\" hosted [] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "--nope", "x"]) -> "throws \"unknown argument --nope\""
+(["a.vlp", "--size", "0x0"]) -> "manifest \"a.vlp\" hosted [] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "--size", "1280"]) -> "throws \"--size 1280 is no size: a width and a height, as 1280x720\""
+(["a.vlp", "--size", "1280X720"]) -> "throws \"--size 1280X720 is no size: a width and a height, as 1280x720\""
+(["a.vlp", "--size", "1280x"]) -> "throws \"--size 1280x is no size: a width and a height, as 1280x720\""
+(["a.vlp", "--size", "1280x720"]) -> "manifest \"a.vlp\" hosted [] frames 0 first 0 fps 60 size 1280x720 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "--size", "1280x720x3"]) -> "throws \"--size 1280x720x3 is no size: a width and a height, as 1280x720\""
+(["a.vlp", "--size", "x"]) -> "throws \"--size x is no size: a width and a height, as 1280x720\""
+(["a.vlp", "--source", "s.txt", "--restart", "r.log"]) -> "manifest \"a.vlp\" hosted [] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"s.txt\" restart \"r.log\""
+(["a.vlp", "-frames", "2"]) -> "manifest \"a.vlp\" hosted [-frames 2] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp", "b.vlp", "c.vlp"]) -> "manifest \"a.vlp\" hosted [b.vlp c.vlp] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+(["a.vlp"]) -> "manifest \"a.vlp\" hosted [] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+([]) -> "manifest \"\" hosted [] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "--", "a.vlp", "--source", "s.txt", "--restart", "r.log"]) -> "throws \"unknown argument --\""
+~(["a.vlp", "--first-frame", "18446744073709551615", "a.vlp", "--frames", "1e3"]) -> "throws \"--frames 1e3 is not a whole number\""
+~(["a.vlp", "--first-frame", "18446744073709551615", "a.vlp", "--size", "1280X720"]) -> "throws \"--size 1280X720 is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--fps", "0", "a.vlp", "--frames", "1e3"]) -> "throws \"--frames 1e3 is not a whole number\""
+~(["a.vlp", "--fps", "0", "a.vlp"]) -> "manifest \"a.vlp\" hosted [a.vlp] frames 0 first 0 fps 0 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "--fps", "4294967296", "a.vlp", "--fps", "0"]) -> "throws \"--fps 4294967296 is not a whole number\""
+~(["a.vlp", "--fps", "4294967296", "a.vlp", "--log", "nope"]) -> "throws \"--fps 4294967296 is not a whole number\""
+~(["a.vlp", "--fps", "4294967296", "a.vlp", "b.vlp", "c.vlp"]) -> "throws \"--fps 4294967296 is not a whole number\""
+~(["a.vlp", "--frames", "-1", "a.vlp", "--first-frame", "18446744073709551615"]) -> "throws \"--frames -1 is not a whole number\""
+~(["a.vlp", "--frames", "-1", "a.vlp", "b.vlp", "c.vlp"]) -> "throws \"--frames -1 is not a whole number\""
+~(["a.vlp", "--frames", "1e3", "a.vlp", "--log", "DEBUG"]) -> "throws \"--frames 1e3 is not a whole number\""
+~(["a.vlp", "--frames", "1e3", "a.vlp", "--log", "debug"]) -> "throws \"--frames 1e3 is not a whole number\""
+~(["a.vlp", "--frames", "2", "--frames", "3", "a.vlp", "--size", "1280"]) -> "throws \"--frames is given twice\""
+~(["a.vlp", "--frames", "2", "--frames", "3", "a.vlp", "--source", "s.txt", "--restart", "r.log"]) -> "throws \"--frames is given twice\""
+~(["a.vlp", "--frames", "a.vlp", "--fps", "0"]) -> "throws \"--frames a.vlp is not a whole number\""
+~(["a.vlp", "--frames", "a.vlp", "--frames", "-1"]) -> "throws \"--frames a.vlp is not a whole number\""
+~(["a.vlp", "--frames", "a.vlp", "--size", "1280x720"]) -> "throws \"--frames a.vlp is not a whole number\""
+~(["a.vlp", "--frames=2", "a.vlp", "--source", "s.txt", "--restart", "r.log"]) -> "throws \"unknown argument --frames=2; a value follows its flag after a blank, as --frames 2\""
+~(["a.vlp", "--log", "DEBUG", "a.vlp", "--source", "s.txt", "--restart", "r.log"]) -> "throws \"--log DEBUG is no level\""
+~(["a.vlp", "--log", "debug", "a.vlp", "--"]) -> "throws \"unknown argument --\""
+~(["a.vlp", "--log", "debug", "a.vlp", "--frames", "-1"]) -> "throws \"--frames -1 is not a whole number\""
+~(["a.vlp", "--log", "debug", "a.vlp", "--source", "s.txt", "--restart", "r.log"]) -> "manifest \"a.vlp\" hosted [a.vlp] frames 0 first 0 fps 60 size 0x0 log 3 log-file \"\" source \"s.txt\" restart \"r.log\""
+~(["a.vlp", "--log", "debug", "a.vlp"]) -> "manifest \"a.vlp\" hosted [a.vlp] frames 0 first 0 fps 60 size 0x0 log 3 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "--log", "nope", "--frames", "2"]) -> "throws \"--log nope is no level\""
+~(["a.vlp", "--log", "nope", "a.vlp", "--frames", "2", "--frames", "3"]) -> "throws \"--log nope is no level\""
+~(["a.vlp", "--nope", "x", "--frames", "2"]) -> "throws \"unknown argument --nope\""
+~(["a.vlp", "--nope", "x", "a.vlp", "--log", "nope"]) -> "throws \"unknown argument --nope\""
+~(["a.vlp", "--nope", "x", "a.vlp", "--size", "1280x"]) -> "throws \"unknown argument --nope\""
+~(["a.vlp", "--nope", "x", "a.vlp", "b.vlp", "c.vlp"]) -> "throws \"unknown argument --nope\""
+~(["a.vlp", "--size", "0x0", "a.vlp", "--"]) -> "throws \"unknown argument --\""
+~(["a.vlp", "--size", "0x0", "a.vlp", "--frames", "2"]) -> "manifest \"a.vlp\" hosted [a.vlp] frames 2 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "--size", "1280X720", "a.vlp", "--frames", "1e3"]) -> "throws \"--size 1280X720 is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--size", "1280X720", "a.vlp", "--source", "s.txt", "--restart", "r.log"]) -> "throws \"--size 1280X720 is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--size", "1280x", "a.vlp", "--fps", "4294967296"]) -> "throws \"--size 1280x is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--size", "1280x", "a.vlp", "--frames", "1e3"]) -> "throws \"--size 1280x is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--size", "1280x", "a.vlp", "--frames=2"]) -> "throws \"--size 1280x is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--size", "1280x", "a.vlp", "--size", "x"]) -> "throws \"--size 1280x is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--size", "x", "a.vlp", "--size", "0x0"]) -> "throws \"--size x is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--size", "x", "a.vlp"]) -> "throws \"--size x is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "--source", "s.txt", "--restart", "r.log", "a.vlp", "--size", "1280X720"]) -> "throws \"--size 1280X720 is no size: a width and a height, as 1280x720\""
+~(["a.vlp", "-frames", "2", "a.vlp", "--log", "debug"]) -> "manifest \"a.vlp\" hosted [-frames 2 a.vlp] frames 0 first 0 fps 60 size 0x0 log 3 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "a.vlp", "--log", "debug"]) -> "manifest \"a.vlp\" hosted [a.vlp] frames 0 first 0 fps 60 size 0x0 log 3 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "a.vlp", "b.vlp", "c.vlp"]) -> "manifest \"a.vlp\" hosted [a.vlp b.vlp c.vlp] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "a.vlp"]) -> "manifest \"a.vlp\" hosted [a.vlp] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "b.vlp", "c.vlp", "a.vlp", "--fps", "0"]) -> "manifest \"a.vlp\" hosted [b.vlp c.vlp a.vlp] frames 0 first 0 fps 0 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+~(["a.vlp", "b.vlp", "c.vlp", "a.vlp", "-frames", "2"]) -> "manifest \"a.vlp\" hosted [b.vlp c.vlp a.vlp -frames 2] frames 0 first 0 fps 60 size 0x0 log 1 log-file \"\" source \"\" restart \"\""
+
+## Runtime.cpp/a run
+no view named: 01 {run} bench
+no view named: 02 exit 0
+triangle counting invocations: 01 {run} bench
+triangle counting invocations: 02 {run} view triangle from <here>/triangle/view.vlp: a node draws into the window, so it opens one
+triangle counting invocations: 03 {swp} presents 4 images of 1280x720 in mailbox mode, 1 sample a pixel
+triangle counting invocations: 04 {nod} triangle: new operator Triangle
+triangle counting invocations: 05 {!!!} triangle/view.vlp:4 node triangle: it draws, so it counts its vertex_count, and no invocations
+triangle counting invocations: 06 exit 1
+triangle, a script asking 3 samples a pixel: 01 {run} bench
+triangle, a script asking 3 samples a pixel: 02 {run} view triangle from <here>/triangle/view.vlp: a node draws into the window, so it opens one
+triangle, a script asking 3 samples a pixel: 03 {swp} presents 4 images of 1280x720 in mailbox mode, 1 sample a pixel
+triangle, a script asking 3 samples a pixel: 04 {nod} triangle: pipeline from Triangle.frag and Triangle.vert
+triangle, a script asking 3 samples a pixel: 05 {nod} triangle: new operator Triangle
+triangle, a script asking 3 samples a pixel: 06 {mem} triangle: triangle.corners of 96 bytes written by the CPU
+triangle, a script asking 3 samples a pixel: 07 {mod} live code: a save under <here>/triangle swaps in
+triangle, a script asking 3 samples a pixel: 08 {!!!} <here>/script:1: 3 is no count of samples this GPU draws a window with: 1, 4
+triangle, a script asking 3 samples a pixel: 09 exit 1
+triangle, a script asking fullscreen without vsync: 01 {run} bench
+triangle, a script asking fullscreen without vsync: 02 {run} view triangle from <here>/triangle/view.vlp: a node draws into the window, so it opens one
+triangle, a script asking fullscreen without vsync: 03 {swp} presents 4 images of 1280x720 in mailbox mode, 1 sample a pixel
+triangle, a script asking fullscreen without vsync: 04 {nod} triangle: pipeline from Triangle.frag and Triangle.vert
+triangle, a script asking fullscreen without vsync: 05 {nod} triangle: new operator Triangle
+triangle, a script asking fullscreen without vsync: 06 {mem} triangle: triangle.corners of 96 bytes written by the CPU
+triangle, a script asking fullscreen without vsync: 07 {mod} live code: a save under <here>/triangle swaps in
+triangle, a script asking fullscreen without vsync: 08 {!!!} <here>/script:1: the window fills its monitor only while vsync is on, as a compositor on another GPU may run out of memory copying frames presented faster; window vsync on first
+triangle, a script asking fullscreen without vsync: 09 exit 1
+triangle, a script setting 4 samples a pixel and vsync: 01 {run} bench
+triangle, a script setting 4 samples a pixel and vsync: 02 {run} view triangle from <here>/triangle/view.vlp: a node draws into the window, so it opens one
+triangle, a script setting 4 samples a pixel and vsync: 03 {swp} presents 4 images of 1280x720 in mailbox mode, 1 sample a pixel
+triangle, a script setting 4 samples a pixel and vsync: 04 {nod} triangle: pipeline from Triangle.frag and Triangle.vert
+triangle, a script setting 4 samples a pixel and vsync: 05 {nod} triangle: new operator Triangle
+triangle, a script setting 4 samples a pixel and vsync: 06 {mem} triangle: triangle.corners of 96 bytes written by the CPU
+triangle, a script setting 4 samples a pixel and vsync: 07 {mod} live code: a save under <here>/triangle swaps in
+triangle, a script setting 4 samples a pixel and vsync: 08 {nod} triangle: pipeline from Triangle.frag and Triangle.vert
+triangle, a script setting 4 samples a pixel and vsync: 09 {swp} presents 4 images of 1280x720 in FIFO mode, 4 samples a pixel
+triangle, a script setting 4 samples a pixel and vsync: 10 {run} ran 2 frames
+triangle, a script setting 4 samples a pixel and vsync: 11 exit 0
+triangle: 01 {run} bench
+triangle: 02 {run} view triangle from <here>/triangle/view.vlp: a node draws into the window, so it opens one
+triangle: 03 {swp} presents 4 images of 1280x720 in mailbox mode, 1 sample a pixel
+triangle: 04 {nod} triangle: pipeline from Triangle.frag and Triangle.vert
+triangle: 05 {nod} triangle: new operator Triangle
+triangle: 06 {mem} triangle: triangle.corners of 96 bytes written by the CPU
+triangle: 07 {mod} live code: a save under <here>/triangle swaps in
+triangle: 08 {run} ran 1 frames
+triangle: 09 exit 0
+wave from frame 120, unpaced: 01 {run} bench
+wave from frame 120, unpaced: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave from frame 120, unpaced: 03 {nod} wave: pipeline from Wave.comp
+wave from frame 120, unpaced: 04 {nod} wave: new operator Wave
+wave from frame 120, unpaced: 05 {nod} probe: pipeline from Probe.comp
+wave from frame 120, unpaced: 06 {nod} probe: new operator Probe
+wave from frame 120, unpaced: 07 {mem} wave: values of 4096 bytes on the GPU
+wave from frame 120, unpaced: 08 {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave from frame 120, unpaced: 09 {mod} live code: a save under <here>/wave swaps in
+wave from frame 120, unpaced: 10 {out} probe: frame    120:
+wave from frame 120, unpaced: 11 {run} ran 2 frames
+wave from frame 120, unpaced: 12 exit 0
+wave hosting triangle-compute: 01 {run} bench
+wave hosting triangle-compute: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave hosting triangle-compute: 03 {nod} wave: pipeline from Wave.comp
+wave hosting triangle-compute: 04 {nod} wave: new operator Wave
+wave hosting triangle-compute: 05 {nod} probe: pipeline from Probe.comp
+wave hosting triangle-compute: 06 {nod} probe: new operator Probe
+wave hosting triangle-compute: 07 {mem} wave: values of 4096 bytes on the GPU
+wave hosting triangle-compute: 08 {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave hosting triangle-compute: 09 {mod} live code: a save under <here>/wave swaps in
+wave hosting triangle-compute: 10 {run} a node draws into the window, so it opens
+wave hosting triangle-compute: 11 {swp} presents 4 images of 1280x720 in mailbox mode, 1 sample a pixel
+wave hosting triangle-compute: 12 {nod} raster: pipeline from Raster.comp
+wave hosting triangle-compute: 13 {nod} screen: pipeline from Screen.frag and Screen.vert
+wave hosting triangle-compute: 14 {run} child triangle-compute: hosted from <here>/triangle-compute/view.vlp
+wave hosting triangle-compute: 15 {out} probe: frame      0:
+wave hosting triangle-compute: 16 {mem} raster: raster.canvas: 1280 by 720 pixels of R8G8B8A8_UNORM, which it stores into
+wave hosting triangle-compute: 17 {run} ran 1 frames
+wave hosting triangle-compute: 18 exit 0
+wave, a gpu.ini naming no kind: 01 {run} bench
+wave, a gpu.ini naming no kind: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave, a gpu.ini naming no kind: 03 {!!!} <here>/wave/.vulpen/gpu.ini: prefer = gpu is no kind of GPU: integrated or discrete
+wave, a gpu.ini naming no kind: 04 exit 1
+wave, a restart line that fails: 01 {run} bench
+wave, a restart line that fails: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave, a restart line that fails: 03 {nod} wave: pipeline from Wave.comp
+wave, a restart line that fails: 04 {nod} wave: new operator Wave
+wave, a restart line that fails: 05 {nod} probe: pipeline from Probe.comp
+wave, a restart line that fails: 06 {nod} probe: new operator Probe
+wave, a restart line that fails: 07 {mem} wave: values of 4096 bytes on the GPU
+wave, a restart line that fails: 08 {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave, a restart line that fails: 09 {mod} live code: a save under <here>/wave swaps in
+wave, a restart line that fails: 10 {!!!} <here>/restart.log:1: no node is named nothere; the lines after it of the view vulpen started with are passed over
+wave, a restart line that fails: 11 {run} restarted: replayed <here>/restart.log
+wave, a restart line that fails: 12 {out} probe: frame      0:
+wave, a restart line that fails: 13 {run} ran 1 frames
+wave, a restart line that fails: 14 exit 0
+wave, a restart replayed: 01 {run} bench
+wave, a restart replayed: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave, a restart replayed: 03 {nod} wave: pipeline from Wave.comp
+wave, a restart replayed: 04 {nod} wave: new operator Wave
+wave, a restart replayed: 05 {nod} probe: pipeline from Probe.comp
+wave, a restart replayed: 06 {nod} probe: new operator Probe
+wave, a restart replayed: 07 {mem} wave: values of 4096 bytes on the GPU
+wave, a restart replayed: 08 {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave, a restart replayed: 09 {mod} live code: a save under <here>/wave swaps in
+wave, a restart replayed: 10 {run} restarted: replayed <here>/restart.log
+wave, a restart replayed: 11 {out} probe: frame      0:
+wave, a restart replayed: 12 {run} ran 1 frames
+wave, a restart replayed: 13 exit 0
+wave, a script that changes a param and asks to quit: 01 {run} bench
+wave, a script that changes a param and asks to quit: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave, a script that changes a param and asks to quit: 03 {nod} wave: pipeline from Wave.comp
+wave, a script that changes a param and asks to quit: 04 {nod} wave: new operator Wave
+wave, a script that changes a param and asks to quit: 05 {nod} probe: pipeline from Probe.comp
+wave, a script that changes a param and asks to quit: 06 {nod} probe: new operator Probe
+wave, a script that changes a param and asks to quit: 07 {mem} wave: values of 4096 bytes on the GPU
+wave, a script that changes a param and asks to quit: 08 {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave, a script that changes a param and asks to quit: 09 {mod} live code: a save under <here>/wave swaps in
+wave, a script that changes a param and asks to quit: 10 {run} quit: the run ends before its next frame
+wave, a script that changes a param and asks to quit: 11 {run} ran 0 frames
+wave, a script that changes a param and asks to quit: 12 exit 0
+wave, a script that quits force: 01 {run} bench
+wave, a script that quits force: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave, a script that quits force: 03 {nod} wave: pipeline from Wave.comp
+wave, a script that quits force: 04 {nod} wave: new operator Wave
+wave, a script that quits force: 05 {nod} probe: pipeline from Probe.comp
+wave, a script that quits force: 06 {nod} probe: new operator Probe
+wave, a script that quits force: 07 {mem} wave: values of 4096 bytes on the GPU
+wave, a script that quits force: 08 {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave, a script that quits force: 09 {mod} live code: a save under <here>/wave swaps in
+wave, a script that quits force: 10 {run} quit: the run ends before its next frame
+wave, a script that quits force: 11 {run} ran 0 frames
+wave, a script that quits force: 12 exit 0
+wave, a script toggling the GPU: 01 {run} bench
+wave, a script toggling the GPU: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave, a script toggling the GPU: 03 {nod} wave: pipeline from Wave.comp
+wave, a script toggling the GPU: 04 {nod} wave: new operator Wave
+wave, a script toggling the GPU: 05 {nod} probe: pipeline from Probe.comp
+wave, a script toggling the GPU: 06 {nod} probe: new operator Probe
+wave, a script toggling the GPU: 07 {mem} wave: values of 4096 bytes on the GPU
+wave, a script toggling the GPU: 08 {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave, a script toggling the GPU: 09 {mod} live code: a save under <here>/wave swaps in
+wave, a script toggling the GPU: 10 { ! } gpu toggle: no discrete GPU here meets the Vulkan floor, so the next launch takes the cpu GPU still
+wave, a script toggling the GPU: 11 {out} probe: frame      0:
+wave, a script toggling the GPU: 12 {run} ran 1 frames
+wave, a script toggling the GPU: 13 exit 0
+wave, restarted: 01 {run} bench
+wave, restarted: 02 {run} view wave from <here>/wave/view.vlp: no node draws into the window, so it runs headless
+wave, restarted: 03 {nod} wave: pipeline from Wave.comp
+wave, restarted: 04 {nod} wave: new operator Wave
+wave, restarted: 05 {nod} probe: pipeline from Probe.comp
+wave, restarted: 06 {nod} probe: new operator Probe
+wave, restarted: 07 {mem} wave: values of 4096 bytes on the GPU
+wave, restarted: 08 {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave, restarted: 09 {mod} live code: a save under <here>/wave swaps in
+wave, restarted: 10 {out} probe: frame      0:
+wave, restarted: 11 {run} ran 2 frames
+wave, restarted: 12 exit 0
+wave, restarted: 13 quit restart after a frame would run bench-Runtime <here>/wave/view.vlp --restart <replay> --first-frame 1 --fps 60 --log info --frames 1 --size 64x48 --log-file <here>/run.log

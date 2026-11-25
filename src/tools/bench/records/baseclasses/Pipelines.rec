@@ -1,0 +1,405 @@
+# The rows of src/baseclasses/Pipelines.h and src/baseclasses/Pipelines.cpp, a call each (src/tools/bench/bench.py).
+
+## Pipelines.cpp/Drawn, with depth
+drawn, depth dropped -> a framebuffer true, the old one's false; kept depth none
+drawn, depth kept -> a framebuffer true, the old one's false; kept depth slot 2, 64x32
+drawn, depth none -> a framebuffer true, the old one's false; kept depth none
+render pass, depth dropped -> #1; asked again, the same: true
+render pass, depth kept -> #1; asked again, the same: true
+render pass, depth none -> #1; asked again, the same: true
+the device goes -> done
+
+## Pipelines.cpp/PassBlock
+PassBlock of 0 bytes -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+PassBlock of 1048576 bytes -> set #1, 1048576 bytes mapped; printed "VUID-VkWriteDescriptorSet-descriptorType-00332(ERROR / SPEC): ms... 9, name: NULL\n" (980 characters, hash 14870ddfe404284a)
+PassBlock of 16 bytes -> set #1, 16 bytes mapped
+PassBlock of 16384 bytes -> set #1, 16384 bytes mapped
+PassBlock of 256 bytes -> set #1, 256 bytes mapped
+PassBlock of 4 bytes -> set #1, 4 bytes mapped
+PassBlock of 65536 bytes -> set #1, 65536 bytes mapped
+PassBlock of 65537 bytes -> set #1, 65537 bytes mapped; printed "VUID-VkWriteDescriptorSet-descriptorType-00332(ERROR / SPEC): ms... 9, name: NULL\n" (976 characters, hash 4a49fd5250fe238a)
+the device goes -> done
+this GPU's maxUniformBufferRange -> 65536
+
+## Pipelines.cpp/Pipeline every shader of the build
+baseclasses/examples/triangle/Triangle draw -> made
+the device goes -> done
+the frame block after them: address set
+views/library/start/Name comp -> made
+views/library/start/Name draw -> made
+views/library/vulpen/library/parts/curves/Curves draw -> made
+views/library/vulpen/library/parts/glyphs/Glyphs draw -> made
+views/library/vulpen/library/parts/graph/Graph draw -> made
+views/library/vulpen/library/parts/image/Image draw -> made
+views/library/vulpen/library/parts/mesh/Mesh draw -> made
+views/library/vulpen/library/parts/rects/Rects draw -> made
+views/library/vulpen/library/parts/snapshot/Snapshot comp -> made
+views/library/vulpen/library/parts/still/Still comp -> made
+views/life/cells/Cells draw -> made
+views/life/engine/Engine comp -> made
+views/life/seed-cells/SeedCells comp -> made
+views/mistakes/brush/Brush draw -> made
+views/mistakes/count/Count comp -> made
+views/mistakes/crowd/Crowd draw -> made
+views/mistakes/deep/Deep comp -> made
+views/mistakes/draw/Draw draw -> made
+views/mistakes/fill/Fill comp -> made
+views/mistakes/frame/Frame comp -> made
+views/mistakes/levels/Levels comp -> made
+views/mistakes/look/Look comp -> made
+views/mistakes/paint/Paint draw -> made
+views/mistakes/pairs/Pairs comp -> made
+views/mistakes/picture/Picture comp -> made
+views/mistakes/rub/Rub draw -> made; printed "VUID-RuntimeSpirv-OpEntryPoint-08743(ERROR / SPEC): msgNum: -198...15, name: NULL\n" (1039 characters, hash de5841df06f0b435)
+views/mistakes/scene/Scene draw -> made
+views/mistakes/seen/Seen comp -> made
+views/mistakes/shape/Shape comp -> made
+views/mistakes/smear/Smear draw -> made; printed "VUID-RuntimeSpirv-NonWritable-06340(ERROR / SPEC): msgNum: 26994...15, name: NULL\n" (716 characters, hash d446c6aebd1bfc28)
+views/mistakes/stamp/Stamp comp -> made
+views/mistakes/sum/Sum comp -> made
+views/mistakes/tally/Tally draw -> made
+views/mistakes/wrong/Wrong comp -> made
+views/ray-cubes/bounce1/reflect/Reflect comp -> made
+views/ray-cubes/bounce1/shade/Shade comp -> made
+views/ray-cubes/bounce1/shadow/Shadow comp -> made
+views/ray-cubes/bounce1/trace/Trace comp -> made
+views/ray-cubes/bounce2/reflect/Reflect comp -> made
+views/ray-cubes/bounce2/shade/Shade comp -> made
+views/ray-cubes/bounce2/shadow/Shadow comp -> made
+views/ray-cubes/bounce2/trace/Trace comp -> made
+views/ray-cubes/bounce3/reflect/Reflect comp -> made
+views/ray-cubes/bounce3/shade/Shade comp -> made
+views/ray-cubes/bounce3/shadow/Shadow comp -> made
+views/ray-cubes/bounce3/trace/Trace comp -> made
+views/ray-cubes/floor/Floor comp -> made
+views/ray-cubes/grid/Grid comp -> made
+views/ray-cubes/join/Join comp -> made
+views/ray-cubes/lamp/Lamp comp -> made
+views/ray-cubes/meter/Meter comp -> made
+views/ray-cubes/place/Place comp -> made
+views/ray-cubes/rays/Rays comp -> made
+views/ray-cubes/screen/Screen draw -> made
+views/ray-cubes/sky/Sky comp -> made
+views/ray-cubes/smooth/Smooth comp -> made
+views/ray-cubes/spin/Spin comp -> made
+views/ray-cubes/tone/Tone comp -> made
+views/triangle-compute/raster/Raster comp -> made
+views/triangle-compute/screen/Screen draw -> made
+views/triangle-cpp-raster/raster/Raster comp -> made
+views/triangle-cpp-raster/screen/Screen draw -> made
+views/triangle-files/face/Face draw -> made
+views/triangle-params/triangle/Triangle draw -> made
+views/triangle-points/corners/left/Point comp -> made
+views/triangle-points/corners/right/Point comp -> made
+views/triangle-points/corners/top/Point comp -> made
+views/triangle-points/face/Face draw -> made
+views/triangle-shaders/triangle/Triangle draw -> made
+views/triangle-twin/triangle/Triangle draw -> made
+views/triangle-wire/corners/Corners comp -> made
+views/triangle-wire/face/Face draw -> made
+views/triangle/triangle/Triangle draw -> made
+views/wave/probe/Probe comp -> made
+views/wave/wave/Wave comp -> made
+
+## Pipelines.cpp/Pipelines::pool
+1,000 more -> pools [1024,1]
+1,000 of them gone -> pools [24,1]
+1,025 blocks -> pools [1024,1]
+all gone -> pools [0,0]
+the device goes -> done
+
+## Pipelines.cpp/Pipelines::render_pass
+(B8G8R8A8_SRGB) -> "#1; asked again, the same: true"
+(BC1_RGB_UNORM_BLOCK) -> "#1; asked again, the same: true"; printed "VUID-VkSubpassDescription-pColorAttachments-02648(ERROR / SPEC):...    Objects: 0\n" (949 characters, hash 03b9ac818b04ae1d)
+(D32_SFLOAT) -> "#1; asked again, the same: true"; printed "VUID-VkSubpassDescription-pColorAttachments-02648(ERROR / SPEC):...    Objects: 0\n" (1081 characters, hash 24c13998cb92d26d)
+(R16G16B16A16_SFLOAT) -> "#1; asked again, the same: true"
+(R16G16_SFLOAT) -> "#1; asked again, the same: true"
+(R16_SFLOAT) -> "#1; asked again, the same: true"
+(R32G32B32A32_SFLOAT) -> "#1; asked again, the same: true"
+(R32G32_SFLOAT) -> "#1; asked again, the same: true"
+(R32_SFLOAT) -> "#1; asked again, the same: true"
+(R8G8B8A8_SRGB) -> "#1; asked again, the same: true"
+(R8G8B8A8_UNORM) -> "#1; asked again, the same: true"
+(R8G8_UNORM) -> "#1; asked again, the same: true"
+(R8_UNORM) -> "#1; asked again, the same: true"
+(UNDEFINED) -> "#1; asked again, the same: true"; printed "VUID-VkAttachmentDescription-format-06698(ERROR / SPEC): msgNum:...    Objects: 0\n" (454 characters, hash 5cb0c55790e747e3)
+the device goes -> done
+
+## Pipelines.cpp/Pipelines::take_frame, a block declared otherwise
+the device goes -> done
+time a uint -> throws runtime_error: "its frame block is not the one the engine writes: uvec2 resolution, vec2 cursor, float time and uint index, as baseclasses/GpuLayout.glsl declares them (RV02)"
+time as declared -> made
+time named tame -> throws runtime_error: "its frame block is not the one the engine writes: uvec2 resolution, vec2 cursor, float time and uint index, as baseclasses/GpuLayout.glsl declares them (RV02)"
+
+## Pipelines.cpp/Pipelines::take_slot
+all gone -> 1022 free
+free slots then -> 0
+slot 2 freed, the next takes 2
+taken until refused: 1022 more held, then throws runtime_error: "textures[] holds 1023 images, all taken"
+the device goes -> done
+the first three take slots 1, 2, 3
+
+## Pipelines.cpp/Pipelines::write_frame
+(0, 0, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 0"
+(0, 0.1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0.1 index 0"
+(0, 1, 0x64, (0.5,640.25)) -> "resolution (0,64) cursor (0.5,640.25) time 1 index 0"
+(0, 1, 1x16384, (0.5,640.25)) -> "resolution (1,16384) cursor (0.5,640.25) time 1 index 0"
+(0, 1, 4294967295x4294967295, (0.5,640.25)) -> "resolution (4294967295,4294967295) cursor (0.5,640.25) time 1 index 0"
+(0, 1, 64x64, (0,0)) -> "resolution (64,64) cursor (0,0) time 1 index 0"
+(0, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 0"
+(0, 1, 64x64, (inf,0)) -> "resolution (64,64) cursor (inf,0) time 1 index 0"
+(0, 5e-324, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 0"
+(0, inf, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time inf index 0"
+(1, -0, 0x0, (0.5,640.25)) -> "resolution (0,0) cursor (0.5,640.25) time -0 index 1"
+(1, -0, 16384x1, (0.5,640.25)) -> "resolution (16384,1) cursor (0.5,640.25) time -0 index 1"
+(1, -0, 4294967295x1, (0.5,640.25)) -> "resolution (4294967295,1) cursor (0.5,640.25) time -0 index 1"
+(1, -0, 64x64, (-0,0)) -> "resolution (64,64) cursor (-0,0) time -0 index 1"
+(1, -0, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -0 index 1"
+(1, -0, 64x64, (1e+09,1e+09)) -> "resolution (64,64) cursor (1e+09,1e+09) time -0 index 1"
+(1, -1, 0x64, (0.5,640.25)) -> "resolution (0,64) cursor (0.5,640.25) time -1 index 1"
+(1, -1, 1x16384, (0.5,640.25)) -> "resolution (1,16384) cursor (0.5,640.25) time -1 index 1"
+(1, -1, 4294967295x4294967295, (0.5,640.25)) -> "resolution (4294967295,4294967295) cursor (0.5,640.25) time -1 index 1"
+(1, -1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -1 index 1"
+(1, -1, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time -1 index 1"
+(1, -1.7976931348623157e+308, 0x64, (0.5,640.25)) -> "resolution (0,64) cursor (0.5,640.25) time -inf index 1"
+(1, -1.7976931348623157e+308, 1x16384, (0.5,640.25)) -> "resolution (1,16384) cursor (0.5,640.25) time -inf index 1"
+(1, -1.7976931348623157e+308, 4294967295x4294967295, (0.5,640.25)) -> "resolution (4294967295,4294967295) cursor (0.5,640.25) time -inf index 1"
+(1, -1.7976931348623157e+308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -inf index 1"
+(1, -1.7976931348623157e+308, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time -inf index 1"
+(1, -inf, 0x0, (0.5,640.25)) -> "resolution (0,0) cursor (0.5,640.25) time -inf index 1"
+(1, -inf, 16384x1, (0.5,640.25)) -> "resolution (16384,1) cursor (0.5,640.25) time -inf index 1"
+(1, -inf, 4294967295x1, (0.5,640.25)) -> "resolution (4294967295,1) cursor (0.5,640.25) time -inf index 1"
+(1, -inf, 64x64, (-0,0)) -> "resolution (64,64) cursor (-0,0) time -inf index 1"
+(1, -inf, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -inf index 1"
+(1, -inf, 64x64, (1e+09,1e+09)) -> "resolution (64,64) cursor (1e+09,1e+09) time -inf index 1"
+(1, 0, 1x1, (0.5,640.25)) -> "resolution (1,1) cursor (0.5,640.25) time 0 index 1"
+(1, 0, 1x16385, (0.5,640.25)) -> "resolution (1,16385) cursor (0.5,640.25) time 0 index 1"
+(1, 0, 4096x1, (0.5,640.25)) -> "resolution (4096,1) cursor (0.5,640.25) time 0 index 1"
+(1, 0, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 1"
+(1, 0, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time 0 index 1"
+(1, 0.1, 1x1, (0.5,640.25)) -> "resolution (1,1) cursor (0.5,640.25) time 0.1 index 1"
+(1, 0.1, 1x16385, (0.5,640.25)) -> "resolution (1,16385) cursor (0.5,640.25) time 0.1 index 1"
+(1, 0.1, 4096x1, (0.5,640.25)) -> "resolution (4096,1) cursor (0.5,640.25) time 0.1 index 1"
+(1, 0.1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0.1 index 1"
+(1, 0.1, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time 0.1 index 1"
+(1, 0.5, 16385x1, (0.5,640.25)) -> "resolution (16385,1) cursor (0.5,640.25) time 0.5 index 1"
+(1, 0.5, 64x0, (0.5,640.25)) -> "resolution (64,0) cursor (0.5,640.25) time 0.5 index 1"
+(1, 0.5, 64x64, (-0,0)) -> "resolution (64,64) cursor (-0,0) time 0.5 index 1"
+(1, 0.5, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0.5 index 1"
+(1, 0.5, 64x64, (1e+09,1e+09)) -> "resolution (64,64) cursor (1e+09,1e+09) time 0.5 index 1"
+(1, 1, 0x0, (0.5,640.25)) -> "resolution (0,0) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 0x0, (nan,nan)) -> "resolution (0,0) cursor (nan,nan) time 1 index 1"
+(1, 1, 0x64, (-0,0)) -> "resolution (0,64) cursor (-0,0) time 1 index 1"
+(1, 1, 0x64, (0.5,640.25)) -> "resolution (0,64) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 0x64, (1e+09,1e+09)) -> "resolution (0,64) cursor (1e+09,1e+09) time 1 index 1"
+(1, 1, 16384x1, (0.5,640.25)) -> "resolution (16384,1) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 16384x1, (nan,nan)) -> "resolution (16384,1) cursor (nan,nan) time 1 index 1"
+(1, 1, 16385x1, (0.5,640.25)) -> "resolution (16385,1) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 16385x1, (nan,nan)) -> "resolution (16385,1) cursor (nan,nan) time 1 index 1"
+(1, 1, 1x1, (-0,0)) -> "resolution (1,1) cursor (-0,0) time 1 index 1"
+(1, 1, 1x1, (0.5,640.25)) -> "resolution (1,1) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 1x1, (1e+09,1e+09)) -> "resolution (1,1) cursor (1e+09,1e+09) time 1 index 1"
+(1, 1, 1x16384, (-0,0)) -> "resolution (1,16384) cursor (-0,0) time 1 index 1"
+(1, 1, 1x16384, (0.5,640.25)) -> "resolution (1,16384) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 1x16384, (1e+09,1e+09)) -> "resolution (1,16384) cursor (1e+09,1e+09) time 1 index 1"
+(1, 1, 1x16385, (-0,0)) -> "resolution (1,16385) cursor (-0,0) time 1 index 1"
+(1, 1, 1x16385, (0.5,640.25)) -> "resolution (1,16385) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 1x16385, (1e+09,1e+09)) -> "resolution (1,16385) cursor (1e+09,1e+09) time 1 index 1"
+(1, 1, 4096x1, (-0,0)) -> "resolution (4096,1) cursor (-0,0) time 1 index 1"
+(1, 1, 4096x1, (0.5,640.25)) -> "resolution (4096,1) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 4096x1, (1e+09,1e+09)) -> "resolution (4096,1) cursor (1e+09,1e+09) time 1 index 1"
+(1, 1, 4294967295x1, (0.5,640.25)) -> "resolution (4294967295,1) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 4294967295x1, (nan,nan)) -> "resolution (4294967295,1) cursor (nan,nan) time 1 index 1"
+(1, 1, 4294967295x4294967295, (-0,0)) -> "resolution (4294967295,4294967295) cursor (-0,0) time 1 index 1"
+(1, 1, 4294967295x4294967295, (0.5,640.25)) -> "resolution (4294967295,4294967295) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 4294967295x4294967295, (1e+09,1e+09)) -> "resolution (4294967295,4294967295) cursor (1e+09,1e+09) time 1 index 1"
+(1, 1, 64x0, (0.5,640.25)) -> "resolution (64,0) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 64x0, (nan,nan)) -> "resolution (64,0) cursor (nan,nan) time 1 index 1"
+(1, 1, 64x64, (-0,0)) -> "resolution (64,64) cursor (-0,0) time 1 index 1"
+(1, 1, 64x64, (-1,-1)) -> "resolution (64,64) cursor (-1,-1) time 1 index 1"
+(1, 1, 64x64, (0,0)) -> "resolution (64,64) cursor (0,0) time 1 index 1"
+(1, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 1"
+(1, 1, 64x64, (1e+09,1e+09)) -> "resolution (64,64) cursor (1e+09,1e+09) time 1 index 1"
+(1, 1, 64x64, (inf,0)) -> "resolution (64,64) cursor (inf,0) time 1 index 1"
+(1, 1, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time 1 index 1"
+(1, 1.7976931348623157e+308, 0x0, (0.5,640.25)) -> "resolution (0,0) cursor (0.5,640.25) time inf index 1"
+(1, 1.7976931348623157e+308, 16384x1, (0.5,640.25)) -> "resolution (16384,1) cursor (0.5,640.25) time inf index 1"
+(1, 1.7976931348623157e+308, 4294967295x1, (0.5,640.25)) -> "resolution (4294967295,1) cursor (0.5,640.25) time inf index 1"
+(1, 1.7976931348623157e+308, 64x64, (-0,0)) -> "resolution (64,64) cursor (-0,0) time inf index 1"
+(1, 1.7976931348623157e+308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time inf index 1"
+(1, 1.7976931348623157e+308, 64x64, (1e+09,1e+09)) -> "resolution (64,64) cursor (1e+09,1e+09) time inf index 1"
+(1, 1e+06, 0x64, (0.5,640.25)) -> "resolution (0,64) cursor (0.5,640.25) time 1e+06 index 1"
+(1, 1e+06, 1x16384, (0.5,640.25)) -> "resolution (1,16384) cursor (0.5,640.25) time 1e+06 index 1"
+(1, 1e+06, 4294967295x4294967295, (0.5,640.25)) -> "resolution (4294967295,4294967295) cursor (0.5,640.25) time 1e+06 index 1"
+(1, 1e+06, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1e+06 index 1"
+(1, 1e+06, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time 1e+06 index 1"
+(1, 2, 0x0, (0.5,640.25)) -> "resolution (0,0) cursor (0.5,640.25) time 2 index 1"
+(1, 2, 16384x1, (0.5,640.25)) -> "resolution (16384,1) cursor (0.5,640.25) time 2 index 1"
+(1, 2, 4294967295x1, (0.5,640.25)) -> "resolution (4294967295,1) cursor (0.5,640.25) time 2 index 1"
+(1, 2, 64x64, (-0,0)) -> "resolution (64,64) cursor (-0,0) time 2 index 1"
+(1, 2, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 2 index 1"
+(1, 2, 64x64, (1e+09,1e+09)) -> "resolution (64,64) cursor (1e+09,1e+09) time 2 index 1"
+(1, 2.220446049250313e-16, 16385x1, (0.5,640.25)) -> "resolution (16385,1) cursor (0.5,640.25) time 2.220446e-16 index 1"
+(1, 2.220446049250313e-16, 64x0, (0.5,640.25)) -> "resolution (64,0) cursor (0.5,640.25) time 2.220446e-16 index 1"
+(1, 2.220446049250313e-16, 64x64, (-0,0)) -> "resolution (64,64) cursor (-0,0) time 2.220446e-16 index 1"
+(1, 2.220446049250313e-16, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 2.220446e-16 index 1"
+(1, 2.220446049250313e-16, 64x64, (1e+09,1e+09)) -> "resolution (64,64) cursor (1e+09,1e+09) time 2.220446e-16 index 1"
+(1, 2.2250738585072014e-308, 16385x1, (0.5,640.25)) -> "resolution (16385,1) cursor (0.5,640.25) time 0 index 1"
+(1, 2.2250738585072014e-308, 64x0, (0.5,640.25)) -> "resolution (64,0) cursor (0.5,640.25) time 0 index 1"
+(1, 2.2250738585072014e-308, 64x64, (-0,0)) -> "resolution (64,64) cursor (-0,0) time 0 index 1"
+(1, 2.2250738585072014e-308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 1"
+(1, 2.2250738585072014e-308, 64x64, (1e+09,1e+09)) -> "resolution (64,64) cursor (1e+09,1e+09) time 0 index 1"
+(1, 5e-324, 1x1, (0.5,640.25)) -> "resolution (1,1) cursor (0.5,640.25) time 0 index 1"
+(1, 5e-324, 1x16385, (0.5,640.25)) -> "resolution (1,16385) cursor (0.5,640.25) time 0 index 1"
+(1, 5e-324, 4096x1, (0.5,640.25)) -> "resolution (4096,1) cursor (0.5,640.25) time 0 index 1"
+(1, 5e-324, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 1"
+(1, 5e-324, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time 0 index 1"
+(1, inf, 1x1, (0.5,640.25)) -> "resolution (1,1) cursor (0.5,640.25) time inf index 1"
+(1, inf, 1x16385, (0.5,640.25)) -> "resolution (1,16385) cursor (0.5,640.25) time inf index 1"
+(1, inf, 4096x1, (0.5,640.25)) -> "resolution (4096,1) cursor (0.5,640.25) time inf index 1"
+(1, inf, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time inf index 1"
+(1, inf, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time inf index 1"
+(1, nan, 0x64, (0.5,640.25)) -> "resolution (0,64) cursor (0.5,640.25) time nan index 1"
+(1, nan, 1x16384, (0.5,640.25)) -> "resolution (1,16384) cursor (0.5,640.25) time nan index 1"
+(1, nan, 4294967295x4294967295, (0.5,640.25)) -> "resolution (4294967295,4294967295) cursor (0.5,640.25) time nan index 1"
+(1, nan, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time nan index 1"
+(1, nan, 64x64, (nan,nan)) -> "resolution (64,64) cursor (nan,nan) time nan index 1"
+(18446744073709551614, 0, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 4294967294"
+(18446744073709551614, 0.1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0.1 index 4294967294"
+(18446744073709551614, 1, 0x64, (0.5,640.25)) -> "resolution (0,64) cursor (0.5,640.25) time 1 index 4294967294"
+(18446744073709551614, 1, 1x16384, (0.5,640.25)) -> "resolution (1,16384) cursor (0.5,640.25) time 1 index 4294967294"
+(18446744073709551614, 1, 4294967295x4294967295, (0.5,640.25)) -> "resolution (4294967295,4294967295) cursor (0.5,640.25) time 1 index 4294967294"
+(18446744073709551614, 1, 64x64, (0,0)) -> "resolution (64,64) cursor (0,0) time 1 index 4294967294"
+(18446744073709551614, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 4294967294"
+(18446744073709551614, 1, 64x64, (inf,0)) -> "resolution (64,64) cursor (inf,0) time 1 index 4294967294"
+(18446744073709551614, 5e-324, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 4294967294"
+(18446744073709551614, inf, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time inf index 4294967294"
+(18446744073709551615, 0.5, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0.5 index 4294967295"
+(18446744073709551615, 1, 0x0, (0.5,640.25)) -> "resolution (0,0) cursor (0.5,640.25) time 1 index 4294967295"
+(18446744073709551615, 1, 16384x1, (0.5,640.25)) -> "resolution (16384,1) cursor (0.5,640.25) time 1 index 4294967295"
+(18446744073709551615, 1, 4294967295x1, (0.5,640.25)) -> "resolution (4294967295,1) cursor (0.5,640.25) time 1 index 4294967295"
+(18446744073709551615, 1, 64x64, (-1,-1)) -> "resolution (64,64) cursor (-1,-1) time 1 index 4294967295"
+(18446744073709551615, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 4294967295"
+(18446744073709551615, 2.220446049250313e-16, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 2.220446e-16 index 4294967295"
+(18446744073709551615, 2.2250738585072014e-308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 4294967295"
+(2, -0, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -0 index 2"
+(2, -inf, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -inf index 2"
+(2, 1, 16385x1, (0.5,640.25)) -> "resolution (16385,1) cursor (0.5,640.25) time 1 index 2"
+(2, 1, 64x0, (0.5,640.25)) -> "resolution (64,0) cursor (0.5,640.25) time 1 index 2"
+(2, 1, 64x64, (-1,-1)) -> "resolution (64,64) cursor (-1,-1) time 1 index 2"
+(2, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 2"
+(2, 1.7976931348623157e+308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time inf index 2"
+(2, 2, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 2 index 2"
+(255, -0, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -0 index 255"
+(255, -inf, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -inf index 255"
+(255, 1, 16385x1, (0.5,640.25)) -> "resolution (16385,1) cursor (0.5,640.25) time 1 index 255"
+(255, 1, 64x0, (0.5,640.25)) -> "resolution (64,0) cursor (0.5,640.25) time 1 index 255"
+(255, 1, 64x64, (-1,-1)) -> "resolution (64,64) cursor (-1,-1) time 1 index 255"
+(255, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 255"
+(255, 1.7976931348623157e+308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time inf index 255"
+(255, 2, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 2 index 255"
+(256, -1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -1 index 256"
+(256, -1.7976931348623157e+308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -inf index 256"
+(256, 1, 1x1, (0.5,640.25)) -> "resolution (1,1) cursor (0.5,640.25) time 1 index 256"
+(256, 1, 1x16385, (0.5,640.25)) -> "resolution (1,16385) cursor (0.5,640.25) time 1 index 256"
+(256, 1, 4096x1, (0.5,640.25)) -> "resolution (4096,1) cursor (0.5,640.25) time 1 index 256"
+(256, 1, 64x64, (0,0)) -> "resolution (64,64) cursor (0,0) time 1 index 256"
+(256, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 256"
+(256, 1, 64x64, (inf,0)) -> "resolution (64,64) cursor (inf,0) time 1 index 256"
+(256, 1e+06, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1e+06 index 256"
+(256, nan, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time nan index 256"
+(4294967296, -0, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -0 index 0"
+(4294967296, -inf, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -inf index 0"
+(4294967296, 1, 16385x1, (0.5,640.25)) -> "resolution (16385,1) cursor (0.5,640.25) time 1 index 0"
+(4294967296, 1, 64x0, (0.5,640.25)) -> "resolution (64,0) cursor (0.5,640.25) time 1 index 0"
+(4294967296, 1, 64x64, (-1,-1)) -> "resolution (64,64) cursor (-1,-1) time 1 index 0"
+(4294967296, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 0"
+(4294967296, 1.7976931348623157e+308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time inf index 0"
+(4294967296, 2, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 2 index 0"
+(65535, 0.5, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0.5 index 65535"
+(65535, 1, 0x0, (0.5,640.25)) -> "resolution (0,0) cursor (0.5,640.25) time 1 index 65535"
+(65535, 1, 16384x1, (0.5,640.25)) -> "resolution (16384,1) cursor (0.5,640.25) time 1 index 65535"
+(65535, 1, 4294967295x1, (0.5,640.25)) -> "resolution (4294967295,1) cursor (0.5,640.25) time 1 index 65535"
+(65535, 1, 64x64, (-1,-1)) -> "resolution (64,64) cursor (-1,-1) time 1 index 65535"
+(65535, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 65535"
+(65535, 2.220446049250313e-16, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 2.220446e-16 index 65535"
+(65535, 2.2250738585072014e-308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 65535"
+(65536, 0, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 65536"
+(65536, 0.1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0.1 index 65536"
+(65536, 1, 0x64, (0.5,640.25)) -> "resolution (0,64) cursor (0.5,640.25) time 1 index 65536"
+(65536, 1, 1x16384, (0.5,640.25)) -> "resolution (1,16384) cursor (0.5,640.25) time 1 index 65536"
+(65536, 1, 4294967295x4294967295, (0.5,640.25)) -> "resolution (4294967295,4294967295) cursor (0.5,640.25) time 1 index 65536"
+(65536, 1, 64x64, (0,0)) -> "resolution (64,64) cursor (0,0) time 1 index 65536"
+(65536, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 65536"
+(65536, 1, 64x64, (inf,0)) -> "resolution (64,64) cursor (inf,0) time 1 index 65536"
+(65536, 5e-324, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 0 index 65536"
+(65536, inf, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time inf index 65536"
+(7, -1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -1 index 7"
+(7, -1.7976931348623157e+308, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time -inf index 7"
+(7, 1, 1x1, (0.5,640.25)) -> "resolution (1,1) cursor (0.5,640.25) time 1 index 7"
+(7, 1, 1x16385, (0.5,640.25)) -> "resolution (1,16385) cursor (0.5,640.25) time 1 index 7"
+(7, 1, 4096x1, (0.5,640.25)) -> "resolution (4096,1) cursor (0.5,640.25) time 1 index 7"
+(7, 1, 64x64, (0,0)) -> "resolution (64,64) cursor (0,0) time 1 index 7"
+(7, 1, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1 index 7"
+(7, 1, 64x64, (inf,0)) -> "resolution (64,64) cursor (inf,0) time 1 index 7"
+(7, 1e+06, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time 1e+06 index 7"
+(7, nan, 64x64, (0.5,640.25)) -> "resolution (64,64) cursor (0.5,640.25) time nan index 7"
+before any shader declares the block -> made; no frame block
+the device goes -> done
+~(0, -9.36, 174x128, (67.75,488.25)) -> "resolution (174,128) cursor (67.75,488.25) time -9.36 index 0"
+~(0, 4.27, 156x206, (59,288.75)) -> "resolution (156,206) cursor (59,288.75) time 4.27 index 0"
+~(10, -0.41999999999999993, 159x188, (354.25,467)) -> "resolution (159,188) cursor (354.25,467) time -0.42 index 10"
+~(10, -0.5399999999999991, 45x126, (693.25,315)) -> "resolution (45,126) cursor (693.25,315) time -0.54 index 10"
+~(10, -7.9, 43x246, (933.25,696)) -> "resolution (43,246) cursor (933.25,696) time -7.9 index 10"
+~(10, 0.015625, 102x65, (946.5,0.5)) -> "resolution (102,65) cursor (946.5,0.5) time 0.015625 index 10"
+~(11783287231140275701, -6.4, 14x16, (54,1003)) -> "resolution (14,16) cursor (54,1003) time -6.4 index 1652762101"
+~(12, -1.0000069193575726e+34, 51x208, (225,711.75)) -> "resolution (51,208) cursor (225,711.75) time -1.0000069e+34 index 12"
+~(12, 4.67, 134x230, (318,212.5)) -> "resolution (134,230) cursor (318,212.5) time 4.67 index 12"
+~(12110095905404306444, 0.0001220703125, 192x211, (991,463.5)) -> "resolution (192,211) cursor (991,463.5) time 0.00012207031 index 1569276940"
+~(12328099579151854705, 4.82, 242x252, (227.25,295.25)) -> "resolution (242,252) cursor (227.25,295.25) time 4.82 index 184364145"
+~(1295597137958822818, 0.015625, 118x56, (85.75,1011)) -> "resolution (118,56) cursor (85.75,1011) time 0.015625 index 2349622178"
+~(13373787065728795934, 4.753191083485248e+117, 213x158, (18.5,934.5)) -> "resolution (213,158) cursor (18.5,934.5) time inf index 2591720734"
+~(14, 0.015625, 21x5, (75.75,442)) -> "resolution (21,5) cursor (75.75,442) time 0.015625 index 14"
+~(14, 128, 245x88, (1005.75,851.75)) -> "resolution (245,88) cursor (1005.75,851.75) time 128 index 14"
+~(14402551102060307594, 1.8111132472914336e+206, 143x247, (244.5,792.5)) -> "resolution (143,247) cursor (244.5,792.5) time inf index 1505174666"
+~(14496924200145237779, 5.4217909037932e+186, 172x3, (610.5,266)) -> "resolution (172,3) cursor (610.5,266) time inf index 2238428947"
+~(17392692506418036865, 1.690234866845505e-92, 38x41, (89,1014.25)) -> "resolution (38,41) cursor (89,1014.25) time 0 index 614809729"
+~(17913435204181017774, -8.04, 225x225, (929.25,1018.5)) -> "resolution (225,225) cursor (929.25,1018.5) time -8.04 index 2754593966"
+~(1792828045187794482, 0.0009765625, 19x1, (811.25,401.5)) -> "resolution (19,1) cursor (811.25,401.5) time 0.0009765625 index 3100034610"
+~(18446744073709551605, 2.070092432485006e+294, 14x20, (283.25,982)) -> "resolution (14,20) cursor (283.25,982) time inf index 4294967285"
+~(18446744073709551606, 134217728, 37x151, (845.25,292.75)) -> "resolution (37,151) cursor (845.25,292.75) time 134217728 index 4294967286"
+~(18446744073709551608, -0.8800000000000008, 127x184, (536.5,336)) -> "resolution (127,184) cursor (536.5,336) time -0.88 index 4294967288"
+~(18446744073709551609, 5.779999999999999, 12x170, (60.75,965.75)) -> "resolution (12,170) cursor (60.75,965.75) time 5.78 index 4294967289"
+~(18446744073709551610, 0.0009765625, 25x120, (637.5,285)) -> "resolution (25,120) cursor (637.5,285) time 0.0009765625 index 4294967290"
+~(18446744073709551611, 0.00048828125, 163x187, (146,978.25)) -> "resolution (163,187) cursor (146,978.25) time 0.00048828125 index 4294967291"
+~(18446744073709551611, 1.1641532182693481e-10, 203x99, (581.75,777.75)) -> "resolution (203,99) cursor (581.75,777.75) time 1.1641532e-10 index 4294967291"
+~(18446744073709551611, 9.52, 166x36, (490.25,258)) -> "resolution (166,36) cursor (490.25,258) time 9.52 index 4294967291"
+~(18446744073709551612, -0.08000000000000007, 189x196, (670.5,406)) -> "resolution (189,196) cursor (670.5,406) time -0.08 index 4294967292"
+~(18446744073709551613, 1.7899999999999991, 99x238, (927.5,637.25)) -> "resolution (99,238) cursor (927.5,637.25) time 1.79 index 4294967293"
+~(18446744073709551615, 7.450580596923828e-09, 19x121, (256,322.25)) -> "resolution (19,121) cursor (256,322.25) time 7.450581e-09 index 4294967295"
+~(3, 1.0475905784747137e+219, 121x202, (731.5,651.75)) -> "resolution (121,202) cursor (731.5,651.75) time inf index 3"
+~(3, 2.3283064365386963e-10, 3x206, (318.75,81.5)) -> "resolution (3,206) cursor (318.75,81.5) time 2.3283064e-10 index 3"
+~(4, 1.1920928955078125e-07, 105x52, (559.25,191.5)) -> "resolution (105,52) cursor (559.25,191.5) time 1.1920929e-07 index 4"
+~(4, 2.0199999999999996, 2x167, (160.5,809.25)) -> "resolution (2,167) cursor (160.5,809.25) time 2.02 index 4"
+~(4224368600834092859, 4, 38x56, (29.5,928)) -> "resolution (38,56) cursor (29.5,928) time 4 index 1560784699"
+~(5481904512089097336, -3.7300000000000004, 104x201, (981,427)) -> "resolution (104,201) cursor (981,427) time -3.73 index 4289627256"
+~(5534657221107554066, 32768, 139x120, (151,431.75)) -> "resolution (139,120) cursor (151,431.75) time 32768 index 833263378"
+~(5729871563257555669, 0.00390625, 106x201, (167.75,593)) -> "resolution (106,201) cursor (167.75,593) time 0.00390625 index 546581205"
+~(6, 4.76837158203125e-07, 238x62, (490,962.75)) -> "resolution (238,62) cursor (490,962.75) time 4.7683716e-07 index 6"
+~(6149231479961367894, -0.9499999999999993, 254x210, (106.5,333.75)) -> "resolution (254,210) cursor (106.5,333.75) time -0.95 index 1958688086"
+~(666044379847284692, 7.62939453125e-06, 235x52, (615.5,227.25)) -> "resolution (235,52) cursor (615.5,227.25) time 7.6293945e-06 index 2842777556"
+~(7815191647672797181, 134217728, 157x2, (323.25,467.25)) -> "resolution (157,2) cursor (323.25,467.25) time 134217728 index 2602764285"
+~(8, 3.339389958482809e+179, 156x68, (1008.25,562)) -> "resolution (156,68) cursor (1008.25,562) time inf index 8"
+~(8298083143819880258, -4.859545619797453e-254, 46x203, (300.5,738)) -> "resolution (46,203) cursor (300.5,738) time -0 index 2013947714"
+~(8996258764493551011, -9.68, 136x226, (612.25,685.25)) -> "resolution (136,226) cursor (612.25,685.25) time -9.68 index 2636248483"
+~(9450558231053704005, -5.55484949502585e-70, 103x211, (243.5,211.5)) -> "resolution (103,211) cursor (243.5,211.5) time -0 index 3541670725"
+~(9979131906667470985, -3.5229993004897426e+97, 223x177, (536.25,151.5)) -> "resolution (223,177) cursor (536.25,151.5) time -inf index 4021182601"
+
+## Pipelines.cpp/moves
+Drawn all gone: free slots as before: true
+Drawn moved: the old one's framebuffer null, the kept one's #1
+PassBlock all gone -> pools [0]
+PassBlock moved: the old one's set null, the kept one's 64 bytes
+Sampled all gone: free slots as before: true
+Sampled moved: the old one's slot 0, the kept one's 1
+the device goes -> done

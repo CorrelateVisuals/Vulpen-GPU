@@ -23,13 +23,32 @@
       "name": "tsan",
       "inherits": "debug",
       "cacheVariables": { "VULPEN_SANITIZERS": "thread" }
+    },
+    {
+      "name": "odd",
+      "inherits": "debug",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-ftrivial-auto-var-init=pattern -funsigned-char -D_GLIBCXX_DEBUG"
+      }
+    },
+    {
+      "name": "coverage",
+      "inherits": "debug",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "--coverage -fprofile-update=atomic",
+        "CMAKE_EXE_LINKER_FLAGS": "--coverage",
+        "CMAKE_SHARED_LINKER_FLAGS": "--coverage",
+        "CMAKE_MODULE_LINKER_FLAGS": "--coverage"
+      }
     }
   ],
   "buildPresets": [
     { "name": "debug", "configurePreset": "debug", "configuration": "Debug" },
     { "name": "release", "configurePreset": "release", "configuration": "Release" },
     { "name": "asan", "configurePreset": "asan", "configuration": "Debug" },
-    { "name": "tsan", "configurePreset": "tsan", "configuration": "Debug" }
+    { "name": "tsan", "configurePreset": "tsan", "configuration": "Debug" },
+    { "name": "odd", "configurePreset": "odd", "configuration": "Debug" },
+    { "name": "coverage", "configurePreset": "coverage", "configuration": "Debug" }
   ],
   "testPresets": [
     { "name": "tests", "hidden": true, "output": { "outputOnFailure": true } },
@@ -57,6 +76,7 @@
     },
     { "name": "asan", "inherits": ["debug", "sanitizers"], "configurePreset": "asan" },
     { "name": "tsan", "inherits": ["debug", "sanitizers"], "configurePreset": "tsan" },
+    { "name": "coverage", "inherits": "debug", "configurePreset": "coverage" },
     {
       "name": "gpu-validation",
       "inherits": "debug",

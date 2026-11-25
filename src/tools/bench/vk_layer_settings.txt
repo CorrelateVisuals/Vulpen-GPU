@@ -1,0 +1,8 @@
+# Read by the validation layer in every bench process (bench.py names this file
+# in VK_LAYER_SETTINGS_PATH): synchronization validation on, so a barrier missing between
+# a frame's clears, copies, passes and render passes shows in the row of the call that
+# recorded it (RVK00, V10). It cannot see accesses through buffer addresses, which the
+# barrier test checks. Errors and warnings, each written as it comes.
+khronos_validation.validate_sync = true
+khronos_validation.report_flags = error,warn
+khronos_validation.debug_action = VK_DBG_LAYER_ACTION_LOG_MSG

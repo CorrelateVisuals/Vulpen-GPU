@@ -1,0 +1,628 @@
+# The rows of src/runtime/Manifest.h and src/runtime/Manifest.cpp, a call each (src/tools/bench/bench.py).
+
+## Manifest.cpp/Manifest::empty
+(path "\xc3\xa9/view.vlp") -> "{view \"\\xc3\\xa9\" nodes [] connections [] children []}"
+(path "a b/view.vlp") -> "{view \"a b\" nodes [] connections [] children []}"
+(path "a/") -> "{view \"a\" nodes [] connections [] children []}"
+(path "a/./view.vlp") -> "{view \"a\" nodes [] connections [] children []}"
+(path "a/b/../view.vlp") -> "{view \"a\" nodes [] connections [] children []}"
+(path "a/b/view.vlp") -> "{view \"b\" nodes [] connections [] children []}"
+(path "a/view.vlp") -> "{view \"a\" nodes [] connections [] children []}"
+(path "a/x.vlp") -> "{view \"a\" nodes [] connections [] children []}"
+(path "recipes/custom/mine/view.vlp") -> "{view \"mine\" nodes [] connections [] children []}"
+(path "recipes/vulpen/cli/view.vlp") -> "{view \"cli\" nodes [] connections [] children []}"
+(path "recipes/vulpen/library/parts/p/view.vlp") -> "{view \"p\" nodes [] connections [] children []}"
+
+## Manifest.cpp/Manifest::flatten
+projects/life/view.vlp: 3 nodes, 2 connections, words #acebc4a8167cde85; kept [], read from 0 files; 0 folders no node's
+projects/ray-cubes/view.vlp: 28 nodes, 25 connections, words #9c6d1cb84b06cf05; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle-compute/view.vlp: 2 nodes, 1 connections, words #c170a623a100ef55; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle-cpp-raster/view.vlp: 2 nodes, 1 connections, words #dbf30d814391ef53; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle-files/view.vlp: 4 nodes, 3 connections, words #dadb6843b4ec2e90; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle-params/view.vlp: 1 nodes, 0 connections, words #5563bb66ff52d9f9; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle-points/view.vlp: 5 nodes, 3 connections, words #7d019ba25b24f7b0; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle-shaders/view.vlp: 1 nodes, 0 connections, words #65cffc28a26c8a5d; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle-twin/view.vlp: 1 nodes, 0 connections, words #65cffc28a26c8a5d; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle-wire/view.vlp: 2 nodes, 1 connections, words #2d91024880b73f73; kept [], read from 0 files; 0 folders no node's
+projects/triangles/triangle/view.vlp: 1 nodes, 0 connections, words #65cffc28a26c8a5d; kept [], read from 0 files; 0 folders no node's
+projects/wave/view.vlp: 2 nodes, 1 connections, words #9f7751dcb66012ca; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/cli/view.vlp: 9 nodes, 0 connections, words #249cd07d92481e3f; kept [command-line declare editor files inspect library projects], read from 15 files; 0 folders no node's
+src/runtime/recipes/vulpen/ide/view.vlp: 106 nodes, 131 connections, words #a7b2b400cb13a36b; kept [bar command-line curves deck dock docking find-bar font glyphs graph graph-editor hit image image-file join keys list menu menus modes palette panel panes rects relations split switch switch-tabs terminal text text-area tooltip viewport], read from 130 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/dock/view.vlp: 3 nodes, 1 connections, words #c10d0caa2b137dff; kept [rects split], read from 4 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/find-bar/view.vlp: 4 nodes, 3 connections, words #feb465cba71334d3; kept [command-line glyphs rects], read from 6 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/graph-editor/view.vlp: 15 nodes, 19 connections, words #0c245c0653ce52f1; kept [bar curves glyphs graph hit list rects relations tooltip], read from 24 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/menu/view.vlp: 13 nodes, 17 connections, words #b548844e4ec64e40; kept [glyphs hit list rects], read from 8 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/panel/view.vlp: 6 nodes, 6 connections, words #bb66fe2587bb3795; kept [bar glyphs hit list rects], read from 10 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/stack/view.vlp: 3 nodes, 0 connections, words #5f64f961654d4bd3; kept [switch switch-tabs], read from 4 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/still-image/view.vlp: 3 nodes, 2 connections, words #d1674753a5f18834; kept [image still], read from 4 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/terminal/view.vlp: 4 nodes, 3 connections, words #ecbc6bf17538c34b; kept [command-line glyphs rects], read from 6 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/text-area/view.vlp: 4 nodes, 3 connections, words #b0d7820e70f0da55; kept [glyphs rects text], read from 6 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/components/tooltip/view.vlp: 4 nodes, 3 connections, words #2f032717e3a2c83c; kept [glyphs list rects], read from 6 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/bar/view.vlp: 1 nodes, 0 connections, words #3cfe175cf25696a9; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/camera/view.vlp: 1 nodes, 0 connections, words #5b05e663de3fcb9a; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/command-line/view.vlp: 1 nodes, 0 connections, words #9780261261ea9206; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/curves/view.vlp: 1 nodes, 0 connections, words #d882385314d67370; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/deck/view.vlp: 1 nodes, 0 connections, words #33d1c32bc3998e3f; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/declare/view.vlp: 1 nodes, 0 connections, words #dc5802a60a0f9560; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/docking/view.vlp: 1 nodes, 0 connections, words #6bb394ce29564bf1; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/editor/view.vlp: 1 nodes, 0 connections, words #cbe55943fe4033db; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/files/view.vlp: 2 nodes, 0 connections, words #c575c934afcf00e0; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/font/view.vlp: 1 nodes, 0 connections, words #a950e05cae5ac5df; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/glyphs/view.vlp: 1 nodes, 0 connections, words #f8296a6e529abfa6; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/graph/view.vlp: 1 nodes, 0 connections, words #2d790de87bd5d532; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/hit/view.vlp: 1 nodes, 0 connections, words #9bf39d5be7a7113f; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/image-file/view.vlp: 1 nodes, 0 connections, words #7fe8839e95227066; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/image/view.vlp: 1 nodes, 0 connections, words #756c74e8e12de445; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/inspect/view.vlp: 1 nodes, 0 connections, words #1d38d36ea747e1a2; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/join/view.vlp: 1 nodes, 0 connections, words #abe57d8a8a066e44; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/keys/view.vlp: 1 nodes, 0 connections, words #49ffbd7b433a8c54; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/library/view.vlp: 1 nodes, 0 connections, words #5a180e6f7e1e382f; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/list/view.vlp: 1 nodes, 0 connections, words #e743ff420d7bc134; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/menus/view.vlp: 1 nodes, 0 connections, words #0032178e4fd26f62; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/mesh-file/view.vlp: 1 nodes, 0 connections, words #d15c7d01ed91d89d; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/mesh/view.vlp: 1 nodes, 0 connections, words #ddcf437023b70aa9; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/modes/view.vlp: 1 nodes, 0 connections, words #6549ef6236507bf0; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/palette/view.vlp: 1 nodes, 0 connections, words #49c8300aa5982c13; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/panes/view.vlp: 1 nodes, 0 connections, words #1d456eba6ec7aa83; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/picture/view.vlp: 1 nodes, 0 connections, words #4e304db1b5271eb6; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/projects/view.vlp: 1 nodes, 0 connections, words #001c4a43c6990701; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/rects/view.vlp: 1 nodes, 0 connections, words #562815e4a945d179; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/relations/view.vlp: 1 nodes, 0 connections, words #aadd4f1d943e8449; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/snapshot/view.vlp: 1 nodes, 0 connections, words #a871d71aa07666d3; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/sound-file/view.vlp: 1 nodes, 0 connections, words #524c354f0942b316; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/sound-record/view.vlp: 1 nodes, 0 connections, words #6882f234b3bfb55c; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/split/view.vlp: 1 nodes, 0 connections, words #eec997c92af9c35b; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/still/view.vlp: 1 nodes, 0 connections, words #ecb107bf90564dcb; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/switch-tabs/view.vlp: 1 nodes, 0 connections, words #dc3960b1b7206c2f; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/switch/view.vlp: 1 nodes, 0 connections, words #d62783784c862026; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/text/view.vlp: 1 nodes, 0 connections, words #665f489adeff1211; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/viewport/view.vlp: 1 nodes, 0 connections, words #094322ee0cd1795e; kept [], read from 0 files; 0 folders no node's
+
+## Manifest.cpp/Manifest::load
+("") -> throws runtime_error: "<root>/m/view.vlp: version 0 is not one this build reads; it reads version 1, and no migrate command exists yet (RV03)"
+("# a comment\n[manifest]\nversion = 1\n# about a\n[node \"a\"] # at the end\nlog = info # too\n") -> "{view \"m\" nodes [a log=\"info\" at \"m/view.vlp:5\"] connections [] children []}"
+("[manifest]\n") -> throws runtime_error: "<root>/m/view.vlp: version 0 is not one this build reads; it reads version 1, and no migrate command exists yet (RV03)"
+("[manifest]\nversion = 0\n") -> throws runtime_error: "<root>/m/view.vlp: version 0 is not one this build reads; it reads version 1, and no migrate command exists yet (RV03)"
+("[manifest]\nversion = 1\n") -> "{view \"m\" nodes [] connections [] children []}"
+("[manifest]\nversion = 1\n[connection \"c\"]\nfrom = a.out\nto = b.in\n[node \"a\"]\n[node \"b\"]\n") -> "{view \"m\" nodes [a at \"m/view.vlp:6\", b at \"m/view.vlp:7\"] connections [c: a.out -> [b.in]] children []}"
+("[manifest]\nversion = 1\n[node \"\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown section [node \"\"]; the sections are [manifest], [view \"name\"], [node \"name\"] and [connection \"name\"]"
+("[manifest]\nversion = 1\n[node \"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: a section's name is quoted: [node \"name\"]"
+("[manifest]\nversion = 1\n[node \"a.b\"]\n") -> "{view \"m\" nodes [a.b at \"m/view.vlp:3\"] connections [] children []}"
+("[manifest]\nversion = 1\n[node \"a\"\n") -> throws runtime_error: "<root>/m/view.vlp:3: a section header ends in ]"
+("[manifest]\nversion = 1\n[node \"a\"]\n[connection \"c\"]\nfrom = a.out\n") -> throws runtime_error: "<root>/m/view.vlp:4: connection c needs a from and at least one to"
+("[manifest]\nversion = 1\n[node \"a\"]\n[node \"a.b\"]\nparam = x=1\n") -> "{view \"m\" nodes [a at \"m/view.vlp:3\", a.b param=\"x=1\" at \"m/view.vlp:4\"] connections [] children []}"
+("[manifest]\nversion = 1\n[node \"a\"]\n[node \"a\"]\n") -> throws runtime_error: "<root>/m/view.vlp:4: two nodes or views are named a"
+("[manifest]\nversion = 1\n[node \"a\"]\n[node \"b\"]\n[connection \"c\"]\nfrom = a.out\nto = b.in\n") -> "{view \"m\" nodes [a at \"m/view.vlp:3\", b at \"m/view.vlp:4\"] connections [c: a.out -> [b.in]] children []}"
+("[manifest]\nversion = 1\n[node \"a\"]\n[node \"b\"]\n[connection \"c\"]\nfrom = a.out\nto = b.in\nto = b.in\n") -> throws runtime_error: "<root>/m/view.vlp:5: b.in joins two connections, or one twice"
+("[manifest]\nversion = 1\n[node \"a\"]\nfile = A.comp\n") -> throws runtime_error: "<root>/m/view.vlp:4: a node's files are what its folder holds: put a file in the folder of node a to add it"
+("[manifest]\nversion = 1\n[node \"a\"]\ninvocations\n") -> throws runtime_error: "<root>/m/view.vlp:4: expected `word = value`"
+("[manifest]\nversion = 1\n[node \"a\"]\nlog = info") -> "{view \"m\" nodes [a log=\"info\" at \"m/view.vlp:3\"] connections [] children []}"
+("[manifest]\nversion = 1\n[node \"a\"]\nparam = x = 1\n") -> "{view \"m\" nodes [a param=\"x=1\" at \"m/view.vlp:3\"] connections [] children []}"
+("[manifest]\nversion = 1\n[node \"a\"]\nparam = x=1\nparam = x=2\n") -> throws runtime_error: "<root>/m/view.vlp:5: param x is set twice"
+("[manifest]\nversion = 1\n[node \"a\"]\nwhat = 1\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word what in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+("[manifest]\nversion = 1\n[node \"contracts\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: contracts/ holds what the view's nodes share (RV05, RV09), so no node is named contracts"
+("[manifest]\nversion = 1\n[node \"root\"]\nparam = x=1\n") -> "{view \"m\" nodes [root param=\"x=1\" at \"m/view.vlp:3\"] connections [] children []}"
+("[manifest]\nversion = 1\n[node a]\n") -> throws runtime_error: "<root>/m/view.vlp:3: a section's name is quoted: [node \"name\"]"
+("[manifest]\nversion = 1\n[nodes \"a\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown section [nodes \"a\"]; the sections are [manifest], [view \"name\"], [node \"name\"] and [connection \"name\"]"
+("[manifest]\nversion = 1\n[view \"game\"]\n") -> "{view \"m\" nodes [] connections [] children [game path \"<root>/m/game/view.vlp\"]}"
+("[manifest]\nversion = 1\n[view \"game\"]\n[node \"game\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: two nodes or views are named game"
+("[manifest]\nversion = 1\n[view \"game\"]\nfile = ../elsewhere/view.vlp\n") -> "{view \"m\" nodes [] connections [] children [game path \"<root>/elsewhere/view.vlp\"]}"
+("[manifest]\nversion = 1\n\n[node \"a\"]\ninvocations = 4\n") -> "{view \"m\" nodes [a invocations=\"4\" at \"m/view.vlp:4\"] connections [] children []}"
+("[manifest]\nversion = 1\n\n\n\n[node \"a\"]\n\n\nlog = info\n\n") -> "{view \"m\" nodes [a log=\"info\" at \"m/view.vlp:6\"] connections [] children []}"
+("[manifest]\nversion = 1\n\xef\xbb\xbf[node \"a\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: expected `word = value`"
+("[manifest]\nversion = 1\nversion = 1\n") -> throws runtime_error: "<root>/m/view.vlp:3: version is set twice"
+("[manifest]\nversion = 1\nword = 1\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word word in [manifest]; its one word is version"
+("[manifest]\nversion = 2\n") -> throws runtime_error: "<root>/m/view.vlp: version 2 is not one this build reads; it reads version 1, and no migrate command exists yet (RV03)"
+("[manifest]\nversion = x\n") -> throws runtime_error: "<root>/m/view.vlp:2: x is not a whole number"
+("[manifest]\r\nversion = 1\r\n\r\n[node \"a\"]\r\ninvocations = 4\r\n") -> "{view \"m\" nodes [a invocations=\"4\" at \"m/view.vlp:4\"] connections [] children []}"
+("\xef\xbb\xbf[manifest]\nversion = 1\n") -> throws runtime_error: "<root>/m/view.vlp:1: expected `word = value`"
+("version = 1\n[manifest]\n") -> throws runtime_error: "<root>/m/view.vlp:1: a word before any section; a manifest starts with [manifest]"
+~("[manifest]\nversion = 1\n# note\n") -> "{view \"m\" nodes [] connections [] children []}"
+~("[manifest]\nversion = 1\n[connection \"c\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: connection c needs a from and at least one to"
+~("[manifest]\nversion = 1\n[connection \"c\"]\n# note\nversion = 1\n[manifest]\n[connection \"c\"]\nto = b.in\n") -> throws runtime_error: "<root>/m/view.vlp:5: unknown word version in a connection; its words are from and to"
+~("[manifest]\nversion = 1\n[connection \"c\"]\n[node \"a\"]\nparam = x=1\n[connection \"c\"]\n[node \"a\"]\ninvocations = 4\n[node \"b\"]\n") -> throws runtime_error: "<root>/m/view.vlp:7: two nodes or views are named a"
+~("[manifest]\nversion = 1\n[connection \"c\"]\nlog = info\nlog = info\n[node \"a\"]\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word log in a connection; its words are from and to"
+~("[manifest]\nversion = 1\n[connection \"c\"]\nlog = info\nversion = 1\n[connection \"c\"]\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word log in a connection; its words are from and to"
+~("[manifest]\nversion = 1\n[connection \"c\"]\nto = b.in\nparam = x=1\nversion = 1\n[node \"b\"]\nfrom = a.out\nto = b.in\n") -> throws runtime_error: "<root>/m/view.vlp:5: unknown word param in a connection; its words are from and to"
+~("[manifest]\nversion = 1\n[connection \"c\"]\nversion = 1\n[node \"b\"]\nversion = 1\n[connection \"c\"]\nlog = info\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word version in a connection; its words are from and to"
+~("[manifest]\nversion = 1\n[manifest]\n") -> throws runtime_error: "<root>/m/view.vlp:3: [manifest] is given twice"
+~("[manifest]\nversion = 1\n[manifest]\n[manifest]\nfrom = a.out\n# note\n") -> throws runtime_error: "<root>/m/view.vlp:3: [manifest] is given twice"
+~("[manifest]\nversion = 1\n[manifest]\nfrom = a.out\nparam = x=1\nto = b.in\n# note\nto = b.in\n[node \"a.b\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: [manifest] is given twice"
+~("[manifest]\nversion = 1\n[node \"a.b\"]\n[node \"a.b\"]\nlog = info\ninvocations = 4\nfrom = a.out\nfrom = a.out\nparam = x=1\n") -> throws runtime_error: "<root>/m/view.vlp:7: unknown word from in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+~("[manifest]\nversion = 1\n[node \"a.b\"]\nversion = 1\nto = b.in\nversion = 1\nto = b.in\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word version in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+~("[manifest]\nversion = 1\n[node \"a.b\"]\nversion = 1\nversion = 1\n[node \"a.b\"]\nversion = 1\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word version in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+~("[manifest]\nversion = 1\n[node \"a\"]\n") -> "{view \"m\" nodes [a at \"m/view.vlp:3\"] connections [] children []}"
+~("[manifest]\nversion = 1\n[node \"a\"]\n[connection \"c\"]\nversion = 1\ninvocations = 4\n") -> throws runtime_error: "<root>/m/view.vlp:5: unknown word version in a connection; its words are from and to"
+~("[manifest]\nversion = 1\n[node \"a\"]\n[manifest]\n") -> throws runtime_error: "<root>/m/view.vlp:4: [manifest] is given twice"
+~("[manifest]\nversion = 1\n[node \"a\"]\n[node \"a.b\"]\nfrom = a.out\nparam = x=1\n[node \"a.b\"]\n") -> throws runtime_error: "<root>/m/view.vlp:5: unknown word from in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+~("[manifest]\nversion = 1\n[node \"a\"]\nfrom = a.out\n[node \"a.b\"]\nparam = x=1\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word from in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+~("[manifest]\nversion = 1\n[node \"a\"]\nparam = x=1\n[node \"a.b\"]\nparam = x=1\n[connection \"c\"]\n") -> throws runtime_error: "<root>/m/view.vlp:7: connection c needs a from and at least one to"
+~("[manifest]\nversion = 1\n[node \"a\"]\nparam = x=1\n[node \"b\"]\n[manifest]\n[node \"a\"]\nparam = x=1\n") -> throws runtime_error: "<root>/m/view.vlp:6: [manifest] is given twice"
+~("[manifest]\nversion = 1\n[node \"a\"]\nversion = 1\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word version in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+~("[manifest]\nversion = 1\n[node \"a\"]\nversion = 1\n[node \"a.b\"]\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word version in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+~("[manifest]\nversion = 1\n[node \"b\"]\n") -> "{view \"m\" nodes [b at \"m/view.vlp:3\"] connections [] children []}"
+~("[manifest]\nversion = 1\n[node \"b\"]\nto = b.in\n[manifest]\n# note\n") -> throws runtime_error: "<root>/m/view.vlp:4: unknown word to in a node; its words are recipe, operator, invocations, vertex_count, instance_count, param, image and log"
+~("[manifest]\nversion = 1\nfrom = a.out\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word from in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nfrom = a.out\nversion = 1\nto = b.in\n[connection \"c\"]\nlog = info\n[manifest]\nparam = x=1\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word from in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\ninvocations = 4\n# note\n[manifest]\n[node \"b\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word invocations in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\ninvocations = 4\n[node \"a\"]\n[connection \"c\"]\ninvocations = 4\n[node \"b\"]\n[manifest]\n# note\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word invocations in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\ninvocations = 4\n[node \"a\"]\n[node \"a\"]\nfrom = a.out\nversion = 1\n[connection \"c\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word invocations in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nlog = info\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word log in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nlog = info\n[node \"a\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word log in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nlog = info\n[node \"a\"]\n[node \"b\"]\n[connection \"c\"]\nversion = 1\ninvocations = 4\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word log in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nlog = info\nfrom = a.out\nto = b.in\ninvocations = 4\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word log in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nparam = x=1\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word param in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nparam = x=1\n[connection \"c\"]\nfrom = a.out\nversion = 1\n[node \"a\"]\nparam = x=1\n[node \"a.b\"]\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word param in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nparam = x=1\ninvocations = 4\ninvocations = 4\n[connection \"c\"]\nto = b.in\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word param in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nparam = x=1\nlog = info\n[node \"a.b\"]\n[node \"a\"]\ninvocations = 4\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word param in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nparam = x=1\nversion = 1\nfrom = a.out\nto = b.in\nparam = x=1\nversion = 1\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word param in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nto = b.in\nlog = info\n") -> throws runtime_error: "<root>/m/view.vlp:3: unknown word to in [manifest]; its one word is version"
+~("[manifest]\nversion = 1\nversion = 1\n[node \"a\"]\nlog = info\ninvocations = 4\n[manifest]\nversion = 1\n") -> throws runtime_error: "<root>/m/view.vlp:3: version is set twice"
+
+## Manifest.cpp/Manifest::save
+("") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...xists yet (RV03)" (246 characters, hash ba992c212d7029bd)
+("# a comment\n[manifest]\nversion = 1\n# about a\n[node \"a\"] # at the end\nlog = info # too\n") -> "# a comment\n[manifest]\nversion = 1\n\n# about a\n[node \"a\"] # at the end\nlog = info # too\n"
+("[manifest]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...xists yet (RV03)" (246 characters, hash ba992c212d7029bd)
+("[manifest]\nversion = 0\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...xists yet (RV03)" (246 characters, hash ba992c212d7029bd)
+("[manifest]\nversion = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[connection \"c\"]\nfrom = a.out\nto = b.in\n[node \"a\"]\n[node \"b\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[node \"\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...ection \"name\"]" (265 characters, hash a11bc5a6aa0e4f1d)
+("[manifest]\nversion = 1\n[node \"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... [node \"name\"]" (192 characters, hash 13a8520c56896372)
+("[manifest]\nversion = 1\n[node \"a.b\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[node \"a\"\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...header ends in ]" (175 characters, hash 2270c2c74851849f)
+("[manifest]\nversion = 1\n[node \"a\"]\n[connection \"c\"]\nfrom = a.out\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... at least one to" (194 characters, hash b1f032e77da613a6)
+("[manifest]\nversion = 1\n[node \"a\"]\n[node \"a.b\"]\nparam = x=1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[node \"a\"]\n[node \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...iews are named a" (179 characters, hash a02f11bee529ad07)
+("[manifest]\nversion = 1\n[node \"a\"]\n[node \"b\"]\n[connection \"c\"]\nfrom = a.out\nto = b.in\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[node \"a\"]\n[node \"b\"]\n[connection \"c\"]\nfrom = a.out\nto = b.in\nto = b.in\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...ns, or one twice" (189 characters, hash cde60cd8b10078f6)
+("[manifest]\nversion = 1\n[node \"a\"]\nfile = A.comp\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...node a to add it" (235 characters, hash 322878d0106bb0bc)
+("[manifest]\nversion = 1\n[node \"a\"]\ninvocations\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...d `word = value`" (172 characters, hash d911967645099495)
+("[manifest]\nversion = 1\n[node \"a\"]\nlog = info") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[node \"a\"]\nparam = x = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[node \"a\"]\nparam = x=1\nparam = x=2\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...m x is set twice" (169 characters, hash 9eec3ba22e397eb9)
+("[manifest]\nversion = 1\n[node \"a\"]\nwhat = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...m, image and log" (273 characters, hash 27c8c8d6ec425ef0)
+("[manifest]\nversion = 1\n[node \"contracts\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... named contracts" (237 characters, hash 63ef8a8e669d7d32)
+("[manifest]\nversion = 1\n[node \"root\"]\nparam = x=1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[node a]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... [node \"name\"]" (192 characters, hash 13a8520c56896372)
+("[manifest]\nversion = 1\n[nodes \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...ection \"name\"]" (267 characters, hash a3105927cc05744f)
+("[manifest]\nversion = 1\n[view \"game\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n[view \"game\"]\n[node \"game\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...s are named game" (182 characters, hash e4863b15d1624035)
+("[manifest]\nversion = 1\n[view \"game\"]\nfile = ../elsewhere/view.vlp\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n\n[node \"a\"]\ninvocations = 4\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n\n\n\n[node \"a\"]\n\n\nlog = info\n\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("[manifest]\nversion = 1\n\xef\xbb\xbf[node \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...d `word = value`" (172 characters, hash aa95af42f4ba8b2a)
+("[manifest]\nversion = 1\nversion = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...ion is set twice" (169 characters, hash d36895ed0c817d04)
+("[manifest]\nversion = 1\nword = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (205 characters, hash b31b5ae5a142c37f)
+("[manifest]\nversion = 2\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...xists yet (RV03)" (246 characters, hash aaf6ec45c003fe47)
+("[manifest]\nversion = x\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...t a whole number" (172 characters, hash 8e7e4306910a6f03)
+("[manifest]\r\nversion = 1\r\n\r\n[node \"a\"]\r\ninvocations = 4\r\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+("\xef\xbb\xbf[manifest]\nversion = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...d `word = value`" (172 characters, hash 664c92db9826b978)
+("version = 1\n[manifest]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... with [manifest]" (209 characters, hash 188fdc10ce0b506a)
+~("[manifest]\nversion = 1\n# note\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n\n# note\n"
+~("[manifest]\nversion = 1\n# note\n[node \"b\"]\nto = b.in\nversion = 1\n[node \"b\"]\nversion = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...m, image and log" (271 characters, hash 285ce6b468f8b2da)
+~("[manifest]\nversion = 1\n# note\ninvocations = 4\n[node \"b\"]\nfrom = a.out\nlog = info\ninvocations = 4\nfrom = a.out\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (212 characters, hash 1649b77a69d0110d)
+~("[manifest]\nversion = 1\n[connection \"c\"]\nparam = x=1\n[node \"b\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... are from and to" (210 characters, hash 8789a10f92a42538)
+~("[manifest]\nversion = 1\n[manifest]\n[node \"a.b\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...] is given twice" (174 characters, hash 8fc1d818e4bf5e90)
+~("[manifest]\nversion = 1\n[manifest]\n[node \"a\"]\n[manifest]\n# note\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...] is given twice" (174 characters, hash 8fc1d818e4bf5e90)
+~("[manifest]\nversion = 1\n[manifest]\nlog = info\n[connection \"c\"]\nparam = x=1\nversion = 1\n[connection \"c\"]\n[node \"a.b\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...] is given twice" (174 characters, hash 8fc1d818e4bf5e90)
+~("[manifest]\nversion = 1\n[node \"a.b\"]\ninvocations = 4\n[manifest]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...] is given twice" (174 characters, hash b5d0ec18602069be)
+~("[manifest]\nversion = 1\n[node \"a.b\"]\nversion = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...m, image and log" (276 characters, hash 3fb86b37cfd09078)
+~("[manifest]\nversion = 1\n[node \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n"
+~("[manifest]\nversion = 1\n[node \"a\"]\ninvocations = 4\nto = b.in\n[node \"a\"]\n[manifest]\n[node \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...m, image and log" (271 characters, hash 285ce6b468f8b2da)
+~("[manifest]\nversion = 1\n[node \"b\"]\n[node \"b\"]\ninvocations = 4\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...iews are named b" (179 characters, hash a02f12bee529aeba)
+~("[manifest]\nversion = 1\n[node \"b\"]\nfrom = a.out\nparam = x=1\nversion = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...m, image and log" (273 characters, hash d9e83455cecba31a)
+~("[manifest]\nversion = 1\n[node \"b\"]\nparam = x=1\ninvocations = 4\n[node \"a\"]\nversion = 1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...m, image and log" (276 characters, hash 554aea3feac82c73)
+~("[manifest]\nversion = 1\nfrom = a.out\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (205 characters, hash f931df222df8d71f)
+~("[manifest]\nversion = 1\nfrom = a.out\n[node \"b\"]\nto = b.in\n[manifest]\nlog = info\n[node \"b\"]\n[node \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (205 characters, hash f931df222df8d71f)
+~("[manifest]\nversion = 1\ninvocations = 4\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (212 characters, hash abf7f9329cf93822)
+~("[manifest]\nversion = 1\ninvocations = 4\n[connection \"c\"]\nto = b.in\nversion = 1\n[node \"a.b\"]\n[node \"a\"]\n[manifest]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (212 characters, hash abf7f9329cf93822)
+~("[manifest]\nversion = 1\ninvocations = 4\ninvocations = 4\nversion = 1\nlog = info\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (212 characters, hash abf7f9329cf93822)
+~("[manifest]\nversion = 1\ninvocations = 4\nparam = x=1\nto = b.in\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (212 characters, hash abf7f9329cf93822)
+~("[manifest]\nversion = 1\nlog = info\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (204 characters, hash 4ecd6863f3b95c05)
+~("[manifest]\nversion = 1\nlog = info\nparam = x=1\n[node \"b\"]\ninvocations = 4\nto = b.in\n[node \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (204 characters, hash 4ecd6863f3b95c05)
+~("[manifest]\nversion = 1\nparam = x=1\n[connection \"c\"]\n[node \"a.b\"]\n[connection \"c\"]\nto = b.in\n[node \"a\"]\nlog = info\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nparam = x=1\n[manifest]\n# note\nto = b.in\n[node \"a.b\"]\n[node \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nparam = x=1\n[manifest]\n[node \"a.b\"]\nfrom = a.out\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nparam = x=1\n[manifest]\n[node \"b\"]\ninvocations = 4\n[node \"a.b\"]\n[node \"a\"]\nto = b.in\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nparam = x=1\n[node \"a.b\"]\nparam = x=1\nlog = info\n[node \"b\"]\n[node \"a\"]\nparam = x=1\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nparam = x=1\n[node \"a\"]\n[node \"b\"]\n# note\nversion = 1\n[connection \"c\"]\nlog = info\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nparam = x=1\n[node \"b\"]\n[connection \"c\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nparam = x=1\nparam = x=1\nlog = info\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nparam = x=1\nversion = 1\n[manifest]\nlog = info\nto = b.in\n[connection \"c\"]\ninvocations = 4\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (206 characters, hash a8282e38c48a34b8)
+~("[manifest]\nversion = 1\nto = b.in\n[manifest]\n[node \"a.b\"]\n[manifest]\n[node \"a.b\"]\nfrom = a.out\n# note\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (203 characters, hash 6ba189174ab84244)
+~("[manifest]\nversion = 1\nto = b.in\n[manifest]\nlog = info\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (203 characters, hash 6ba189174ab84244)
+~("[manifest]\nversion = 1\nto = b.in\nto = b.in\n[manifest]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ... word is version" (203 characters, hash 6ba189174ab84244)
+~("[manifest]\nversion = 1\nversion = 1\n# note\nfrom = a.out\n# note\nfrom = a.out\n[node \"a\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...ion is set twice" (169 characters, hash d36895ed0c817d04)
+~("[manifest]\nversion = 1\nversion = 1\n[node \"a.b\"]\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...ion is set twice" (169 characters, hash d36895ed0c817d04)
+~("[manifest]\nversion = 1\nversion = 1\n[node \"a.b\"]\nlog = info\n# note\n") -> "[manifest]\nversion = 1\n\n[node \"a\"]\nlog = info\n; said the ...ion is set twice" (169 characters, hash d36895ed0c817d04)
+
+## Manifest.cpp/Manifest::save round trip
+every view.vlp of projects/ and the recipes saves as it was
+
+## Manifest.cpp/Manifest::save round trip, words given twice
+two image lines -> the same
+two param lines -> the same
+two to lines -> the same
+
+## Manifest.cpp/listed
+("") -> false
+("-") -> true
+(".") -> false
+("1") -> true
+("A9") -> true
+("\xc3\xa9") -> true
+("_") -> true
+("a b") -> true
+("a") -> true
+("a-b") -> true
+("a.b") -> true
+("a/b") -> true
+("a:b") -> true
+("a\r") -> false
+("a\t") -> false
+("a_b") -> true
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> true
+("root") -> true
+~("  ") -> false
+~(" ") -> false
+~(" /--0_") -> false
+~(" //-Z ") -> false
+~(" 0-:") -> false
+~(" 90:_Z") -> false
+~(" Z") -> false
+~("-/") -> true
+~("-0a") -> true
+~("-_/a.a") -> true
+~("-a-") -> true
+~(".-0 a.") -> false
+~("..aa0") -> false
+~("._ ") -> false
+~(".aaa9-") -> false
+~("//:.:Z") -> true
+~("/:") -> true
+~("/Z9Z9") -> true
+~("/Z_Z_0") -> true
+~("/a. 0/") -> true
+~("0") -> true
+~("0-") -> true
+~("0.-_") -> true
+~("0Z_/0_") -> true
+~("9") -> true
+~("9.-") -> true
+~("9._Z0") -> true
+~("90") -> true
+~("9_0") -> true
+~("9a.:a-") -> true
+~(":") -> true
+~(":a") -> true
+~("Za._9") -> true
+~("_-") -> true
+~("_//Z9") -> true
+~("_9.a:") -> true
+~("_Za /") -> true
+~("a-a ") -> false
+~("a/:Z0a") -> true
+~("a90") -> true
+
+## Manifest.cpp/place
+("", "", "1") -> "\n\n"
+("", ".", "1") -> "\n.\n"
+("", "a", "1") -> "\na\n"
+("", "a", "1.5") -> "\na\n"
+("", "a", "4294967295") -> "\na\n"
+("", "a", "a") -> "\na\n"
+("-", "-", "1") -> "-\n-\n"
+("-", "a", "1 ") -> "-\na\n"
+("-", "a", "1") -> "-\na\n"
+("-", "a", "1\r") -> "-\na\n"
+("-", "a", "1e-40") -> "-\na\n"
+("-", "a", "inf") -> "-\na\n"
+("-", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1") -> "-\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (305 characters, hash d3a17310d329c194)
+(".", "", "1") -> ".\n\n"
+(".", ".", "1") -> ".\n.\n"
+(".", "a", "1") -> ".\na\n"
+(".", "a", "1.5") -> ".\na\n"
+(".", "a", "4294967295") -> ".\na\n"
+(".", "a", "a") -> ".\na\n"
+("1", "1", "1") -> "1\n1\n"
+("1", "a", "-1") -> "1\na\n"
+("1", "a", "-2147483648") -> "1\na\n"
+("1", "a", "1") -> "1\na\n"
+("1", "a", "1e") -> "1\na\n"
+("1", "a", "\xef\xbc\x91") -> "1\na\n"
+("1", "a.b", "1") -> "1\na.b\n"
+("A9", "A9", "1") -> "A9\nA9\n"
+("A9", "a", "-0") -> "A9\na\n"
+("A9", "a", "1") -> "A9\na\n"
+("A9", "a", "18446744073709551616") -> "A9\na\n"
+("A9", "a", "1e3") -> "A9\na\n"
+("A9", "a", "\xd9\xa1") -> "A9\na\n"
+("A9", "a:b", "1") -> "A9\na:b\n"
+("\xc3\xa9", "\xc3\xa9", "1") -> "\xc3\xa9\n\xc3\xa9\n"
+("\xc3\xa9", "a", "0") -> "\xc3\xa9\na\n"
+("\xc3\xa9", "a", "1") -> "\xc3\xa9\na\n"
+("\xc3\xa9", "a", "18446744073709551615") -> "\xc3\xa9\na\n"
+("\xc3\xa9", "a", "5.") -> "\xc3\xa9\na\n"
+("\xc3\xa9", "a", "=") -> "\xc3\xa9\na\n"
+("\xc3\xa9", "a_b", "1") -> "\xc3\xa9\na_b\n"
+("_", "_", "1") -> "_\n_\n"
+("_", "a", "-inf") -> "_\na\n"
+("_", "a", "01") -> "_\na\n"
+("_", "a", "1") -> "_\na\n"
+("_", "a", "1\n") -> "_\na\n"
+("_", "a", "1e-50") -> "_\na\n"
+("a b", "a b", "1") -> "a b\na b\n"
+("a b", "a", "+1") -> "a b\na\n"
+("a b", "a", "0x10") -> "a b\na\n"
+("a b", "a", "1") -> "a b\na\n"
+("a b", "a", "1,2") -> "a b\na\n"
+("a b", "a", "3.4028235e38") -> "a b\na\n"
+("a b", "a\t", "1") -> "a b\na\t\n"
+("a", "", "-inf") -> "a\n\n"
+("a", "", "01") -> "a\n\n"
+("a", "", "1") -> "a\n\n"
+("a", "", "1\n") -> "a\n\n"
+("a", "", "1e-50") -> "a\n\n"
+("a", "-", " 1") -> "a\n-\n"
+("a", "-", "1") -> "a\n-\n"
+("a", "-", "1_0") -> "a\n-\n"
+("a", "-", "3.4028236e38") -> "a\n-\n"
+("a", "-", "nan") -> "a\n-\n"
+("a", ".", "-inf") -> "a\n.\n"
+("a", ".", "01") -> "a\n.\n"
+("a", ".", "1") -> "a\n.\n"
+("a", ".", "1\n") -> "a\n.\n"
+("a", ".", "1e-50") -> "a\n.\n"
+("a", "1", "-0") -> "a\n1\n"
+("a", "1", "1") -> "a\n1\n"
+("a", "1", "18446744073709551616") -> "a\n1\n"
+("a", "1", "1e3") -> "a\n1\n"
+("a", "1", "\xd9\xa1") -> "a\n1\n"
+("a", "A9", "0") -> "a\nA9\n"
+("a", "A9", "1") -> "a\nA9\n"
+("a", "A9", "18446744073709551615") -> "a\nA9\n"
+("a", "A9", "5.") -> "a\nA9\n"
+("a", "A9", "=") -> "a\nA9\n"
+("a", "\xc3\xa9", "") -> "a\n\xc3\xa9\n"
+("a", "\xc3\xa9", ".5") -> "a\n\xc3\xa9\n"
+("a", "\xc3\xa9", "1") -> "a\n\xc3\xa9\n"
+("a", "\xc3\xa9", "4294967296") -> "a\n\xc3\xa9\n"
+("a", "\xc3\xa9", "a=b") -> "a\n\xc3\xa9\n"
+("a", "_", "1 ") -> "a\n_\n"
+("a", "_", "1") -> "a\n_\n"
+("a", "_", "1\r") -> "a\n_\n"
+("a", "_", "1e-40") -> "a\n_\n"
+("a", "_", "inf") -> "a\n_\n"
+("a", "a b", "-1") -> "a\na b\n"
+("a", "a b", "-2147483648") -> "a\na b\n"
+("a", "a b", "1") -> "a\na b\n"
+("a", "a b", "1e") -> "a\na b\n"
+("a", "a b", "\xef\xbc\x91") -> "a\na b\n"
+("a", "a", " 1") -> "a\na\n"
+("a", "a", "") -> "a\na\n"
+("a", "a", "+1") -> "a\na\n"
+("a", "a", "-0") -> "a\na\n"
+("a", "a", "-1") -> "a\na\n"
+("a", "a", "-2147483648") -> "a\na\n"
+("a", "a", "-inf") -> "a\na\n"
+("a", "a", ".5") -> "a\na\n"
+("a", "a", "0") -> "a\na\n"
+("a", "a", "01") -> "a\na\n"
+("a", "a", "0x10") -> "a\na\n"
+("a", "a", "1 ") -> "a\na\n"
+("a", "a", "1") -> "a\na\n"
+("a", "a", "1,2") -> "a\na\n"
+("a", "a", "1.5") -> "a\na\n"
+("a", "a", "18446744073709551615") -> "a\na\n"
+("a", "a", "18446744073709551616") -> "a\na\n"
+("a", "a", "1\n") -> "a\na\n"
+("a", "a", "1\r") -> "a\na\n"
+("a", "a", "1_0") -> "a\na\n"
+("a", "a", "1e") -> "a\na\n"
+("a", "a", "1e-40") -> "a\na\n"
+("a", "a", "1e-50") -> "a\na\n"
+("a", "a", "1e3") -> "a\na\n"
+("a", "a", "3.4028235e38") -> "a\na\n"
+("a", "a", "3.4028236e38") -> "a\na\n"
+("a", "a", "4294967295") -> "a\na\n"
+("a", "a", "4294967296") -> "a\na\n"
+("a", "a", "5.") -> "a\na\n"
+("a", "a", "=") -> "a\na\n"
+("a", "a", "\xd9\xa1") -> "a\na\n"
+("a", "a", "\xef\xbc\x91") -> "a\na\n"
+("a", "a", "a") -> "a\na\n"
+("a", "a", "a=b") -> "a\na\n"
+("a", "a", "inf") -> "a\na\n"
+("a", "a", "nan") -> "a\na\n"
+("a", "a-b", "1") -> "a\na-b\n"
+("a", "a-b", "1.5") -> "a\na-b\n"
+("a", "a-b", "4294967295") -> "a\na-b\n"
+("a", "a-b", "a") -> "a\na-b\n"
+("a", "a.b", "-0") -> "a\na.b\n"
+("a", "a.b", "1") -> "a\na.b\n"
+("a", "a.b", "18446744073709551616") -> "a\na.b\n"
+("a", "a.b", "1e3") -> "a\na.b\n"
+("a", "a.b", "\xd9\xa1") -> "a\na.b\n"
+("a", "a/b", "1") -> "a\na/b\n"
+("a", "a/b", "1.5") -> "a\na/b\n"
+("a", "a/b", "4294967295") -> "a\na/b\n"
+("a", "a/b", "a") -> "a\na/b\n"
+("a", "a:b", "0") -> "a\na:b\n"
+("a", "a:b", "1") -> "a\na:b\n"
+("a", "a:b", "18446744073709551615") -> "a\na:b\n"
+("a", "a:b", "5.") -> "a\na:b\n"
+("a", "a:b", "=") -> "a\na:b\n"
+("a", "a\r", "+1") -> "a\na\r\n"
+("a", "a\r", "0x10") -> "a\na\r\n"
+("a", "a\r", "1") -> "a\na\r\n"
+("a", "a\r", "1,2") -> "a\na\r\n"
+("a", "a\r", "3.4028235e38") -> "a\na\r\n"
+("a", "a\t", "-1") -> "a\na\t\n"
+("a", "a\t", "-2147483648") -> "a\na\t\n"
+("a", "a\t", "1") -> "a\na\t\n"
+("a", "a\t", "1e") -> "a\na\t\n"
+("a", "a\t", "\xef\xbc\x91") -> "a\na\t\n"
+("a", "a_b", "") -> "a\na_b\n"
+("a", "a_b", ".5") -> "a\na_b\n"
+("a", "a_b", "1") -> "a\na_b\n"
+("a", "a_b", "4294967296") -> "a\na_b\n"
+("a", "a_b", "a=b") -> "a\na_b\n"
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), " 1") -> "a\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (305 characters, hash 0d9ae41f1fce4e68)
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1") -> "a\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (305 characters, hash 0d9ae41f1fce4e68)
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1_0") -> "a\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (305 characters, hash 0d9ae41f1fce4e68)
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "3.4028236e38") -> "a\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (305 characters, hash 0d9ae41f1fce4e68)
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "nan") -> "a\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (305 characters, hash 0d9ae41f1fce4e68)
+("a", "root", "+1") -> "a\nroot\n"
+("a", "root", "0x10") -> "a\nroot\n"
+("a", "root", "1") -> "a\nroot\n"
+("a", "root", "1,2") -> "a\nroot\n"
+("a", "root", "3.4028235e38") -> "a\nroot\n"
+("a-b", "a", "") -> "a-b\na\n"
+("a-b", "a", ".5") -> "a-b\na\n"
+("a-b", "a", "1") -> "a-b\na\n"
+("a-b", "a", "4294967296") -> "a-b\na\n"
+("a-b", "a", "a=b") -> "a-b\na\n"
+("a-b", "a-b", "1") -> "a-b\na-b\n"
+("a-b", "a/b", "1") -> "a-b\na/b\n"
+("a.b", "1", "1") -> "a.b\n1\n"
+("a.b", "a", "-1") -> "a.b\na\n"
+("a.b", "a", "-2147483648") -> "a.b\na\n"
+("a.b", "a", "1") -> "a.b\na\n"
+("a.b", "a", "1e") -> "a.b\na\n"
+("a.b", "a", "\xef\xbc\x91") -> "a.b\na\n"
+("a.b", "a.b", "1") -> "a.b\na.b\n"
+("a/b", "a", "") -> "a/b\na\n"
+("a/b", "a", ".5") -> "a/b\na\n"
+("a/b", "a", "1") -> "a/b\na\n"
+("a/b", "a", "4294967296") -> "a/b\na\n"
+("a/b", "a", "a=b") -> "a/b\na\n"
+("a/b", "a-b", "1") -> "a/b\na-b\n"
+("a/b", "a/b", "1") -> "a/b\na/b\n"
+("a:b", "A9", "1") -> "a:b\nA9\n"
+("a:b", "a", "-0") -> "a:b\na\n"
+("a:b", "a", "1") -> "a:b\na\n"
+("a:b", "a", "18446744073709551616") -> "a:b\na\n"
+("a:b", "a", "1e3") -> "a:b\na\n"
+("a:b", "a", "\xd9\xa1") -> "a:b\na\n"
+("a:b", "a:b", "1") -> "a:b\na:b\n"
+("a\r", "a", " 1") -> "a\r\na\n"
+("a\r", "a", "1") -> "a\r\na\n"
+("a\r", "a", "1_0") -> "a\r\na\n"
+("a\r", "a", "3.4028236e38") -> "a\r\na\n"
+("a\r", "a", "nan") -> "a\r\na\n"
+("a\r", "a\r", "1") -> "a\r\na\r\n"
+("a\r", "root", "1") -> "a\r\nroot\n"
+("a\t", "a b", "1") -> "a\t\na b\n"
+("a\t", "a", "+1") -> "a\t\na\n"
+("a\t", "a", "0x10") -> "a\t\na\n"
+("a\t", "a", "1") -> "a\t\na\n"
+("a\t", "a", "1,2") -> "a\t\na\n"
+("a\t", "a", "3.4028235e38") -> "a\t\na\n"
+("a\t", "a\t", "1") -> "a\t\na\t\n"
+("a_b", "\xc3\xa9", "1") -> "a_b\n\xc3\xa9\n"
+("a_b", "a", "0") -> "a_b\na\n"
+("a_b", "a", "1") -> "a_b\na\n"
+("a_b", "a", "18446744073709551615") -> "a_b\na\n"
+("a_b", "a", "5.") -> "a_b\na\n"
+("a_b", "a", "=") -> "a_b\na\n"
+("a_b", "a_b", "1") -> "a_b\na_b\n"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "-", "1") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaa\n-\n" (305 characters, hash ae1390969f5eb3ac)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a", "1 ") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaa\na\n" (305 characters, hash a608f49578b95898)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a", "1") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaa\na\n" (305 characters, hash a608f49578b95898)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a", "1\r") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaa\na\n" (305 characters, hash a608f49578b95898)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a", "1e-40") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaa\na\n" (305 characters, hash a608f49578b95898)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a", "inf") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaa\na\n" (305 characters, hash a608f49578b95898)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (604 characters, hash 8d90f74efc94cfdd)
+("root", "a", " 1") -> "root\na\n"
+("root", "a", "1") -> "root\na\n"
+("root", "a", "1_0") -> "root\na\n"
+("root", "a", "3.4028236e38") -> "root\na\n"
+("root", "a", "nan") -> "root\na\n"
+("root", "a\r", "1") -> "root\na\r\n"
+("root", "root", "1") -> "root\nroot\n"
+~("  ::Z", "--a0.0", "") -> "  ::Z\n--a0.0\n"
+~(" _._ ", "0", "326.x05") -> " _._ \n0\n"
+~("", " a_/", "++e") -> "\n a_/\n"
+~("", "", "4") -> "\n\n"
+~("", "-", "") -> "\n-\n"
+~("", ".-.9", "e,E8") -> "\n.-.9\n"
+~("", "/0/-", ".") -> "\n/0/-\n"
+~("", "0", "2") -> "\n0\n"
+~("", ":../.-", "+,7e+-.") -> "\n:../.-\n"
+~("", "a.9 /Z", "") -> "\na.9 /Z\n"
+~("", "aZ9-", "_.") -> "\naZ9-\n"
+~("-", "", "0e4") -> "-\n\n"
+~("--/.9", "_", "2-87,1b") -> "--/.9\n_\n"
+~("-::", "", ", 4.e2") -> "-::\n\n"
+~("-_ .", "9_/", "7a,x1") -> "-_ .\n9_/\n"
+~("-a09_9", "", ",2") -> "-a09_9\n\n"
+~(". Z.-:", "Z0_", "") -> ". Z.-:\nZ0_\n"
+~(".9Z", "Za_", "88") -> ".9Z\nZa_\n"
+~(".Z__//", "_", ",3") -> ".Z__//\n_\n"
+~("/ .", ":0a9", "E3-- 38") -> "/ .\n:0a9\n"
+~("/0: ._", "/", "0+--") -> "/0: ._\n/\n"
+~("/9Z", "/_:_", "0, 2+84") -> "/9Z\n/_:_\n"
+~("/_Z:", "a_", "+.,662ba") -> "/_Z:\na_\n"
+~("0./9 :", "aa ", "7") -> "0./9 :\naa \n"
+~("00", "099a", "ba+_5+") -> "00\n099a\n"
+~("0:-a", ":_. ", "4e8+E49") -> "0:-a\n:_. \n"
+~("0_", "./", "b25,_") -> "0_\n./\n"
+~("9", "a", "608-44") -> "9\na\n"
+~("9-/", " Z.", "9.72") -> "9-/\n Z.\n"
+~("9/9.:", "Z99a", "3") -> "9/9.:\nZ99a\n"
+~(":0.", "0Z", "24a6") -> ":0.\n0Z\n"
+~(":9:::", "/--", ".") -> ":9:::\n/--\n"
+~(":ZaZ", "/:.Z9a", "E0+") -> ":ZaZ\n/:.Z9a\n"
+~(":a", "0//:", "E7,.E") -> ":a\n0//:\n"
+~("Z", "..9.a", "0-.--") -> "Z\n..9.a\n"
+~("Z-/", "a/-", "_.0") -> "Z-/\na/-\n"
+~("Z. Z", ": 00", "") -> "Z. Z\n: 00\n"
+~("Z/ :", " /0/0", "06-") -> "Z/ :\n /0/0\n"
+~("Z/9", "9", " E3a 11x") -> "Z/9\n9\n"
+~("Z/Z_", " -", "9+0-") -> "Z/Z_\n -\n"
+~("Z_. -", "a0a/ -", "0.e") -> "Z_. -\na0a/ -\n"
+~("_ 0", "9:", "9-") -> "_ 0\n9:\n"
+~("_-/ .9", " 99aZ-", "a") -> "_-/ .9\n 99aZ-\n"
+~("_-0", "--", "6") -> "_-0\n--\n"
+~("_:Z-Z", "", "") -> "_:Z-Z\n\n"
+~("_aZZ", "._-_9", ",.x7,e") -> "_aZZ\n._-_9\n"
+~("a.", "", ",6 7") -> "a.\n\n"
+~("a:/ -a", "Za-", " 297082") -> "a:/ -a\nZa-\n"
+
+## Manifest.cpp/runs
+(path "") -> false
+(path ".") -> false
+(path "..") -> false
+(path "../a") -> false
+(path "./a") -> false
+(path ".hidden") -> false
+(path "\xc3\xa9") -> false
+(path "a b") -> false
+(path "a") -> false
+(path "a/") -> false
+(path "a/../b") -> false
+(path "a/./b") -> false
+(path "a/.b/c") -> false
+(path "a/b") -> false
+~(path "../.c") -> false
+~(path ".c") -> false
+~(path ".c/.") -> false
+~(path ".c/../.c") -> false
+~(path ".c/./a") -> false
+~(path ".c/a") -> false
+~(path ".c/b") -> false
+~(path "a/.") -> false
+~(path "a/a") -> false
+~(path "a/a/d e") -> false
+~(path "a/d e") -> false
+~(path "b") -> false
+~(path "b/.") -> false
+~(path "b/.c") -> false
+~(path "b/a") -> false
+~(path "b/b") -> false
+~(path "d e") -> false
+~(path "d e/..") -> false
+~(path "d e/../a") -> false
+~(path "d e/.c") -> false
+~(path "d e/a") -> false
+~(path "d e/d e") -> false

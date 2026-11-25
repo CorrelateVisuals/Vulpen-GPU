@@ -1,0 +1,195 @@
+# The layout of each type runtime/Operator.h declares, as src/tools/gates/port-layout.py
+# reads it; written by its --update, compared at every build.
+
+VP::Bind
+  size 8 align 8
+  virtual Command command(std::string_view, std::string_view)
+  virtual File file(std::string_view)
+  virtual std::string folder() const
+  virtual bool sets(std::string_view)
+  virtual std::string name() const
+  virtual std::string view_name() const
+  virtual const Engine & engine() const
+  virtual std::uint32_t value_offset(std::string_view, std::string_view)
+  virtual std::uint32_t readback_index(std::string_view, const Element &)
+  virtual std::uint32_t upload_index(std::string_view, const Element &, std::uint32_t)
+  virtual std::uint32_t texture_index(std::string_view, std::string_view)
+  virtual std::string_view param_text(std::string_view)
+  virtual void param_read_as(std::string_view, std::string_view, bool)
+  virtual void * output_object(std::string_view, const Kind &)
+  virtual const void * input_object(std::string_view, const Kind &)
+  virtual const View & view() const
+
+VP::Call
+  size 8 align 8
+  virtual bool is(Command) const
+  virtual std::span<const std::string_view> arguments() const
+  virtual void reply(std::string_view)
+  virtual CommandPort & commands()
+  virtual const View & view() const
+  virtual const View * view(std::string_view) const
+  virtual std::span<const Cost> costs() const
+  virtual FilePort & files()
+  virtual ProcessPort & processes()
+  virtual const View & unfolded() const
+  virtual std::string resolved(std::string_view) const
+  virtual std::span<const NodePort> ports() const
+  virtual void keep_name(std::size_t, std::string_view)
+
+VP::Command
+  size 4 align 4
+  field std::uint32_t index at 0
+
+VP::CommandHandler
+  size 8 align 8
+  virtual void command(Call &)
+
+VP::CommandPort
+  size 8 align 8
+  virtual std::string send(std::string_view)
+  virtual std::vector<Usage> usages() const
+  virtual std::span<const Logged> log() const
+  virtual void keep_log_to(std::span<const std::string>)
+  virtual std::string_view current()
+  virtual std::string send_typed(std::string_view, std::string_view)
+  virtual std::size_t done() const
+
+VP::Cook
+  size 8 align 8
+  virtual std::uint64_t index() const
+  virtual glm::uvec2 resolution() const
+  virtual void log(Level, std::string_view) const
+  virtual void hold(std::string_view)
+  virtual CommandPort & commands()
+  virtual InputPort & input()
+  virtual TerminalPort & terminal()
+  virtual FilePort & files()
+  virtual const View & view() const
+  virtual const View * view(std::string_view) const
+  virtual const View * unfolded(std::string_view) const
+  virtual std::span<const Cost> costs(std::string_view) const
+  virtual std::span<std::byte> block()
+  virtual std::span<const std::byte> readback_bytes(std::uint32_t) const
+  virtual std::span<std::byte> upload_bytes(std::uint32_t, std::optional<std::size_t>)
+  virtual void upload_image(std::uint32_t, std::span<const std::byte>, glm::uvec2)
+  virtual bool image_empty(std::uint32_t) const
+  virtual void hold_pointer()
+  virtual std::span<const NodePort> ports(std::string_view) const
+  virtual void hand_pointer(std::string_view, glm::vec2, glm::vec2)
+  virtual void unread(std::string_view)
+
+VP::Cost
+  size 64 align 8
+  field std::string_view node at 0
+  field float cpu at 16
+  field float cpu_last at 20
+  field float gpu at 24
+  field float gpu_last at 28
+  field bool cooks at 32
+  field bool runs at 33
+  field bool timed at 34
+  field std::string_view problem at 40
+  field bool waits at 56
+  field bool warns at 57
+
+VP::Element
+  size 40 align 8
+  field std::size_t size at 0
+  field std::string_view type at 8
+  field std::span<const Member> members at 24
+
+VP::Event
+  size 64 align 8
+  field Kind kind at 0
+  field bool down at 1
+  field std::string name at 8
+  field glm::vec2 at at 40
+  field glm::vec2 turn at 48
+  field std::uint32_t presses at 56
+
+VP::File
+  size 4 align 4
+  field std::uint32_t index at 0
+
+VP::FilePort
+  size 8 align 8
+  virtual std::string_view text(File)
+  virtual void save(File, std::string_view)
+  virtual std::string read(std::string_view)
+  virtual void save(std::string_view, std::string_view)
+  virtual void remove(std::string_view)
+  virtual std::vector<std::string> list(std::string_view)
+  virtual void copy(std::string_view, std::string_view)
+  virtual void rename(std::string_view, std::string_view)
+  virtual void save(const View &, std::string_view)
+  virtual View manifest(std::string_view)
+  virtual void make(std::string_view)
+  virtual std::span<const Moved> moved() const
+
+VP::InputPort
+  size 8 align 8
+  virtual std::span<const Event> events() const
+  virtual glm::vec2 pointer() const
+  virtual bool names_key(std::string_view) const
+  virtual std::string clipboard() const
+  virtual void copy(std::string_view)
+  virtual bool windowed() const
+
+VP::Kind
+  size 32 align 8
+  field const char * type at 0
+  field std::size_t size at 8
+  field std::size_t align at 16
+  field Object (*)() make at 24
+
+VP::Member
+  size 40 align 8
+  field std::string_view name at 0
+  field std::string_view type at 16
+  field std::size_t offset at 32
+
+VP::Moved
+  size 64 align 8
+  field std::string from at 0
+  field std::string to at 32
+
+VP::NodePort
+  size 120 align 8
+  field std::string_view node at 0
+  field std::string_view name at 16
+  field std::string_view kind at 32
+  field bool writes at 48
+  field std::string holds at 56
+  field bool joined at 88
+  field std::vector<std::string> alike at 96
+
+VP::Operator
+  size 8 align 8
+  base CommandHandler
+  virtual void bind(Bind &)
+  virtual void cook(Cook &)
+  virtual void command(Call &)
+
+VP::ProcessPort
+  size 8 align 8
+  virtual void start(std::string_view, std::span<const std::string>)
+
+VP::Registry
+  size 8 align 8
+  virtual void add(std::string_view, Make)
+
+VP::TerminalPort
+  size 8 align 8
+  virtual bool typed() const
+  virtual std::span<const Event> keys()
+  virtual std::span<const std::string> lines()
+  virtual bool ended() const
+  virtual void print(std::string_view)
+  virtual void prompt(std::string_view)
+  virtual void line(std::string_view, std::size_t)
+  virtual std::size_t columns() const
+
+VP::Usage
+  size 32 align 8
+  field std::string_view usage at 0
+  field std::string_view help at 16

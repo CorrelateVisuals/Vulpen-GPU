@@ -1,0 +1,930 @@
+# The rows of src/baseclasses/Resources.h and src/baseclasses/Resources.cpp, a call each (src/tools/bench/bench.py).
+
+## Resources.cpp/Buffer
+device memory: flush and invalidate -> done
+moved into a new one: it holds true, the old buffer null of 0 bytes device, 0 mapped, address none
+moved onto itself -> buffer #1 of 256 bytes device, 0 mapped, address 16-aligned
+moved onto one that holds a buffer: the old one holds what it held: true
+readback bytes written, flushed, invalidated: read back true
+the device goes -> done
+upload bytes written, flushed, invalidated: read back true
+
+## Resources.cpp/Image
+moved into a new one: it holds true, the old image null 0x0 UNDEFINED copy, view null
+moved onto itself -> image #2 8x8 R8G8B8A8_UNORM store, view #1
+moved onto one that holds an image: the old one holds what it held: true
+the device goes -> done
+
+## Resources.cpp/Resources::buffer
+(0, 0, device) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(0, 1, device) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(0, 16, device) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(0, 34, device) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(0, 34, readback) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(0, 34, upload) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(0, 35, device) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(1, 0, device) -> buffer #1 of 1 bytes device, 0 mapped, address 16-aligned
+(1, 1, device) -> buffer #1 of 1 bytes device, 0 mapped, address 16-aligned
+(1, 16, device) -> buffer #1 of 1 bytes device, 0 mapped, address 16-aligned
+(1, 34, device) -> buffer #1 of 1 bytes device, 0 mapped, address 16-aligned
+(1, 34, readback) -> buffer #1 of 1 bytes readback, 1 mapped, address 16-aligned
+(1, 34, upload) -> buffer #1 of 1 bytes upload, 1 mapped, address 16-aligned
+(1, 35, device) -> buffer #1 of 1 bytes device, 0 mapped, address 16-aligned
+(1048576, 0, device) -> buffer #1 of 1048576 bytes device, 0 mapped, address 16-aligned
+(1048576, 1, device) -> buffer #1 of 1048576 bytes device, 0 mapped, address 16-aligned
+(1048576, 16, device) -> buffer #1 of 1048576 bytes device, 0 mapped, address 16-aligned
+(1048576, 34, device) -> buffer #1 of 1048576 bytes device, 0 mapped, address 16-aligned
+(1048576, 34, readback) -> buffer #1 of 1048576 bytes readback, 1048576 mapped, address 16-aligned
+(1048576, 34, upload) -> buffer #1 of 1048576 bytes upload, 1048576 mapped, address 16-aligned
+(1048576, 35, device) -> buffer #1 of 1048576 bytes device, 0 mapped, address 16-aligned
+(1099511627776, 0, device) -> throws runtime_error: "1099.51 GB is more than the GPU can give, with <free> GB free"
+(1099511627776, 1, device) -> throws runtime_error: "1099.51 GB is more than the GPU can give, with <free> GB free"
+(1099511627776, 16, device) -> throws runtime_error: "1099.51 GB is more than the GPU can give, with <free> GB free"
+(1099511627776, 34, device) -> throws runtime_error: "1099.51 GB is more than the GPU can give, with <free> GB free"
+(1099511627776, 34, readback) -> throws runtime_error: "1099.51 GB is more than the GPU can give, with <free> GB free"
+(1099511627776, 34, upload) -> throws runtime_error: "1099.51 GB is more than the GPU can give, with <free> GB free"
+(1099511627776, 35, device) -> throws runtime_error: "1099.51 GB is more than the GPU can give, with <free> GB free"
+(16, 0, device) -> buffer #1 of 16 bytes device, 0 mapped, address 16-aligned
+(16, 1, device) -> buffer #1 of 16 bytes device, 0 mapped, address 16-aligned
+(16, 16, device) -> buffer #1 of 16 bytes device, 0 mapped, address 16-aligned
+(16, 34, device) -> buffer #1 of 16 bytes device, 0 mapped, address 16-aligned
+(16, 34, readback) -> buffer #1 of 16 bytes readback, 16 mapped, address 16-aligned
+(16, 34, upload) -> buffer #1 of 16 bytes upload, 16 mapped, address 16-aligned
+(16, 35, device) -> buffer #1 of 16 bytes device, 0 mapped, address 16-aligned
+(16777216, 0, device) -> buffer #1 of 16777216 bytes device, 0 mapped, address 16-aligned
+(16777216, 1, device) -> buffer #1 of 16777216 bytes device, 0 mapped, address 16-aligned
+(16777216, 16, device) -> buffer #1 of 16777216 bytes device, 0 mapped, address 16-aligned
+(16777216, 34, device) -> buffer #1 of 16777216 bytes device, 0 mapped, address 16-aligned
+(16777216, 34, readback) -> buffer #1 of 16777216 bytes readback, 16777216 mapped, address 16-aligned
+(16777216, 34, upload) -> buffer #1 of 16777216 bytes upload, 16777216 mapped, address 16-aligned
+(16777216, 35, device) -> buffer #1 of 16777216 bytes device, 0 mapped, address 16-aligned
+(18446744073709551360, 0, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551360, 1, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551360, 16, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551360, 34, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551360, 34, readback) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551360, 34, upload) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551360, 35, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551615, 0, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551615, 1, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551615, 16, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551615, 34, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551615, 34, readback) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551615, 34, upload) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(18446744073709551615, 35, device) -> throws runtime_error: "18446744073.71 GB is more than the GPU can give, with <free> GB free"
+(256, 0, device) -> buffer #1 of 256 bytes device, 0 mapped, address 16-aligned
+(256, 0, readback) -> buffer #1 of 256 bytes readback, 256 mapped, address 16-aligned
+(256, 0, upload) -> buffer #1 of 256 bytes upload, 256 mapped, address 16-aligned
+(256, 1, device) -> buffer #1 of 256 bytes device, 0 mapped, address 16-aligned
+(256, 1, readback) -> buffer #1 of 256 bytes readback, 256 mapped, address 16-aligned
+(256, 1, upload) -> buffer #1 of 256 bytes upload, 256 mapped, address 16-aligned
+(256, 16, device) -> buffer #1 of 256 bytes device, 0 mapped, address 16-aligned
+(256, 16, readback) -> buffer #1 of 256 bytes readback, 256 mapped, address 16-aligned
+(256, 16, upload) -> buffer #1 of 256 bytes upload, 256 mapped, address 16-aligned
+(256, 34, device) -> buffer #1 of 256 bytes device, 0 mapped, address 16-aligned
+(256, 34, readback) -> buffer #1 of 256 bytes readback, 256 mapped, address 16-aligned
+(256, 34, upload) -> buffer #1 of 256 bytes upload, 256 mapped, address 16-aligned
+(256, 35, device) -> buffer #1 of 256 bytes device, 0 mapped, address 16-aligned
+(256, 35, readback) -> buffer #1 of 256 bytes readback, 256 mapped, address 16-aligned
+(256, 35, upload) -> buffer #1 of 256 bytes upload, 256 mapped, address 16-aligned
+(3, 0, device) -> buffer #1 of 3 bytes device, 0 mapped, address 16-aligned
+(3, 1, device) -> buffer #1 of 3 bytes device, 0 mapped, address 16-aligned
+(3, 16, device) -> buffer #1 of 3 bytes device, 0 mapped, address 16-aligned
+(3, 34, device) -> buffer #1 of 3 bytes device, 0 mapped, address 16-aligned
+(3, 34, readback) -> buffer #1 of 3 bytes readback, 3 mapped, address 16-aligned
+(3, 34, upload) -> buffer #1 of 3 bytes upload, 3 mapped, address 16-aligned
+(3, 35, device) -> buffer #1 of 3 bytes device, 0 mapped, address 16-aligned
+(4, 0, device) -> buffer #1 of 4 bytes device, 0 mapped, address 16-aligned
+(4, 1, device) -> buffer #1 of 4 bytes device, 0 mapped, address 16-aligned
+(4, 16, device) -> buffer #1 of 4 bytes device, 0 mapped, address 16-aligned
+(4, 34, device) -> buffer #1 of 4 bytes device, 0 mapped, address 16-aligned
+(4, 34, readback) -> buffer #1 of 4 bytes readback, 4 mapped, address 16-aligned
+(4, 34, upload) -> buffer #1 of 4 bytes upload, 4 mapped, address 16-aligned
+(4, 35, device) -> buffer #1 of 4 bytes device, 0 mapped, address 16-aligned
+(4611686018427387904, 0, device) -> throws runtime_error: "4611686018.43 GB is more than the GPU can give, with <free> GB free"
+(4611686018427387904, 1, device) -> throws runtime_error: "4611686018.43 GB is more than the GPU can give, with <free> GB free"
+(4611686018427387904, 16, device) -> throws runtime_error: "4611686018.43 GB is more than the GPU can give, with <free> GB free"
+(4611686018427387904, 34, device) -> throws runtime_error: "4611686018.43 GB is more than the GPU can give, with <free> GB free"
+(4611686018427387904, 34, readback) -> throws runtime_error: "4611686018.43 GB is more than the GPU can give, with <free> GB free"
+(4611686018427387904, 34, upload) -> throws runtime_error: "4611686018.43 GB is more than the GPU can give, with <free> GB free"
+(4611686018427387904, 35, device) -> throws runtime_error: "4611686018.43 GB is more than the GPU can give, with <free> GB free"
+(65536, 0, device) -> buffer #1 of 65536 bytes device, 0 mapped, address 16-aligned
+(65536, 1, device) -> buffer #1 of 65536 bytes device, 0 mapped, address 16-aligned
+(65536, 16, device) -> buffer #1 of 65536 bytes device, 0 mapped, address 16-aligned
+(65536, 34, device) -> buffer #1 of 65536 bytes device, 0 mapped, address 16-aligned
+(65536, 34, readback) -> buffer #1 of 65536 bytes readback, 65536 mapped, address 16-aligned
+(65536, 34, upload) -> buffer #1 of 65536 bytes upload, 65536 mapped, address 16-aligned
+(65536, 35, device) -> buffer #1 of 65536 bytes device, 0 mapped, address 16-aligned
+the device goes -> done
+~(1003760, 16, readback) -> buffer #1 of 1003760 bytes readback, 1003760 mapped, address 16-aligned
+~(1117609637954, 34, readback) -> throws runtime_error: "1117.61 GB is more than the GPU can give, with <free> GB free"
+~(1142280113377, 0, readback) -> throws runtime_error: "1142.28 GB is more than the GPU can give, with <free> GB free"
+~(1192247747883, 34, readback) -> throws runtime_error: "1192.25 GB is more than the GPU can give, with <free> GB free"
+~(1206041866622, 16, readback) -> throws runtime_error: "1206.04 GB is more than the GPU can give, with <free> GB free"
+~(12205, 34, device) -> buffer #1 of 12205 bytes device, 0 mapped, address 16-aligned
+~(1291160647248, 16, readback) -> throws runtime_error: "1291.16 GB is more than the GPU can give, with <free> GB free"
+~(1317564998414, 0, upload) -> throws runtime_error: "1317.56 GB is more than the GPU can give, with <free> GB free"
+~(1347147046891, 0, upload) -> throws runtime_error: "1347.15 GB is more than the GPU can give, with <free> GB free"
+~(1404067332172, 34, upload) -> throws runtime_error: "1404.07 GB is more than the GPU can give, with <free> GB free"
+~(1434390679399, 0, upload) -> throws runtime_error: "1434.39 GB is more than the GPU can give, with <free> GB free"
+~(144745, 0, readback) -> buffer #1 of 144745 bytes readback, 144745 mapped, address 16-aligned
+~(1503169380936, 16, device) -> throws runtime_error: "1503.17 GB is more than the GPU can give, with <free> GB free"
+~(1511781506712, 16, device) -> throws runtime_error: "1511.78 GB is more than the GPU can give, with <free> GB free"
+~(1537871699448, 34, upload) -> throws runtime_error: "1537.87 GB is more than the GPU can give, with <free> GB free"
+~(1606789428454, 16, readback) -> throws runtime_error: "1606.79 GB is more than the GPU can give, with <free> GB free"
+~(160846, 0, upload) -> buffer #1 of 160846 bytes upload, 160846 mapped, address 16-aligned
+~(1644290232166, 1, readback) -> throws runtime_error: "1644.29 GB is more than the GPU can give, with <free> GB free"
+~(1678508761046, 1, readback) -> throws runtime_error: "1678.51 GB is more than the GPU can give, with <free> GB free"
+~(1711905685497, 1, readback) -> throws runtime_error: "1711.91 GB is more than the GPU can give, with <free> GB free"
+~(171600, 1, upload) -> buffer #1 of 171600 bytes upload, 171600 mapped, address 16-aligned
+~(1786284601636, 35, device) -> throws runtime_error: "1786.28 GB is more than the GPU can give, with <free> GB free"
+~(1792464074494, 35, upload) -> throws runtime_error: "1792.46 GB is more than the GPU can give, with <free> GB free"
+~(1872141865293, 16, upload) -> throws runtime_error: "1872.14 GB is more than the GPU can give, with <free> GB free"
+~(1880836647704, 1, device) -> throws runtime_error: "1880.84 GB is more than the GPU can give, with <free> GB free"
+~(1894128984863, 1, readback) -> throws runtime_error: "1894.13 GB is more than the GPU can give, with <free> GB free"
+~(1952323673741, 0, upload) -> throws runtime_error: "1952.32 GB is more than the GPU can give, with <free> GB free"
+~(1994764359629, 0, upload) -> throws runtime_error: "1994.76 GB is more than the GPU can give, with <free> GB free"
+~(2028337273771, 16, device) -> throws runtime_error: "2028.34 GB is more than the GPU can give, with <free> GB free"
+~(2037471152345, 1, upload) -> throws runtime_error: "2037.47 GB is more than the GPU can give, with <free> GB free"
+~(337679, 16, device) -> buffer #1 of 337679 bytes device, 0 mapped, address 16-aligned
+~(368829, 35, readback) -> buffer #1 of 368829 bytes readback, 368829 mapped, address 16-aligned
+~(372862, 35, readback) -> buffer #1 of 372862 bytes readback, 372862 mapped, address 16-aligned
+~(404403, 1, readback) -> buffer #1 of 404403 bytes readback, 404403 mapped, address 16-aligned
+~(417801, 0, readback) -> buffer #1 of 417801 bytes readback, 417801 mapped, address 16-aligned
+~(514793, 16, device) -> buffer #1 of 514793 bytes device, 0 mapped, address 16-aligned
+~(567220, 16, upload) -> buffer #1 of 567220 bytes upload, 567220 mapped, address 16-aligned
+~(632531, 1, device) -> buffer #1 of 632531 bytes device, 0 mapped, address 16-aligned
+~(655980, 0, device) -> buffer #1 of 655980 bytes device, 0 mapped, address 16-aligned
+~(672765, 35, device) -> buffer #1 of 672765 bytes device, 0 mapped, address 16-aligned
+~(729173, 1, device) -> buffer #1 of 729173 bytes device, 0 mapped, address 16-aligned
+~(841190, 0, readback) -> buffer #1 of 841190 bytes readback, 841190 mapped, address 16-aligned
+~(841596, 34, upload) -> buffer #1 of 841596 bytes upload, 841596 mapped, address 16-aligned
+~(860065, 35, device) -> buffer #1 of 860065 bytes device, 0 mapped, address 16-aligned
+~(879605, 1, upload) -> buffer #1 of 879605 bytes upload, 879605 mapped, address 16-aligned
+~(91037, 35, readback) -> buffer #1 of 91037 bytes readback, 91037 mapped, address 16-aligned
+~(99664, 35, device) -> buffer #1 of 99664 bytes device, 0 mapped, address 16-aligned
+~(998245, 0, readback) -> buffer #1 of 998245 bytes readback, 998245 mapped, address 16-aligned
+
+## Resources.cpp/Resources::image
+(0x0, B8G8R8A8_SRGB, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, BC1_RGB_UNORM_BLOCK, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, D32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R16G16B16A16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R16G16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R32G32B32A32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R32G32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R8G8B8A8_SRGB, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R8G8B8A8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R8G8B8A8_UNORM, depth) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...    Objects: 0\n" (920 characters, hash 96291254adc03722)
+(0x0, R8G8B8A8_UNORM, draw) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R8G8B8A8_UNORM, store) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R8G8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x0, R8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, B8G8R8A8_SRGB, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, BC1_RGB_UNORM_BLOCK, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, D32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R16G16B16A16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R16G16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R32G32B32A32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R32G32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R8G8B8A8_SRGB, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R8G8B8A8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R8G8B8A8_UNORM, depth) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...    Objects: 0\n" (920 characters, hash 96291254adc03722)
+(0x64, R8G8B8A8_UNORM, draw) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R8G8B8A8_UNORM, store) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R8G8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(0x64, R8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(16384x1, B8G8R8A8_SRGB, copy) -> image #2 16384x1 B8G8R8A8_SRGB copy, view #1
+(16384x1, BC1_RGB_UNORM_BLOCK, copy) -> image #2 16384x1 BC1_RGB_UNORM_BLOCK copy, view #1
+(16384x1, D32_SFLOAT, copy) -> image #2 16384x1 D32_SFLOAT copy, view #1; printed "UNASSIGNED-CoreValidation-DrawState-InvalidImageAspect(ERROR / S...10, name: NULL\n" (497 characters, hash 805e7307709ef509)
+(16384x1, R16G16B16A16_SFLOAT, copy) -> image #2 16384x1 R16G16B16A16_SFLOAT copy, view #1
+(16384x1, R16G16_SFLOAT, copy) -> image #2 16384x1 R16G16_SFLOAT copy, view #1
+(16384x1, R16_SFLOAT, copy) -> image #2 16384x1 R16_SFLOAT copy, view #1
+(16384x1, R32G32B32A32_SFLOAT, copy) -> image #2 16384x1 R32G32B32A32_SFLOAT copy, view #1
+(16384x1, R32G32_SFLOAT, copy) -> image #2 16384x1 R32G32_SFLOAT copy, view #1
+(16384x1, R32_SFLOAT, copy) -> image #2 16384x1 R32_SFLOAT copy, view #1
+(16384x1, R8G8B8A8_SRGB, copy) -> image #2 16384x1 R8G8B8A8_SRGB copy, view #1
+(16384x1, R8G8B8A8_UNORM, copy) -> image #2 16384x1 R8G8B8A8_UNORM copy, view #1
+(16384x1, R8G8B8A8_UNORM, depth) -> image #2 16384x1 R8G8B8A8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2632 characters, hash 9848ff0dbb1c286b)
+(16384x1, R8G8B8A8_UNORM, draw) -> image #2 16384x1 R8G8B8A8_UNORM draw, view #1
+(16384x1, R8G8B8A8_UNORM, store) -> image #2 16384x1 R8G8B8A8_UNORM store, view #1
+(16384x1, R8G8_UNORM, copy) -> image #2 16384x1 R8G8_UNORM copy, view #1
+(16384x1, R8_UNORM, copy) -> image #2 16384x1 R8_UNORM copy, view #1
+(16385x1, B8G8R8A8_SRGB, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, BC1_RGB_UNORM_BLOCK, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, D32_SFLOAT, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R16G16B16A16_SFLOAT, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R16G16_SFLOAT, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R16_SFLOAT, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R32G32B32A32_SFLOAT, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R32G32_SFLOAT, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R32_SFLOAT, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R8G8B8A8_SRGB, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R8G8B8A8_UNORM, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R8G8B8A8_UNORM, depth) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R8G8B8A8_UNORM, draw) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R8G8B8A8_UNORM, store) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R8G8_UNORM, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, R8_UNORM, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(1x1, B8G8R8A8_SRGB, copy) -> image #2 1x1 B8G8R8A8_SRGB copy, view #1
+(1x1, BC1_RGB_UNORM_BLOCK, copy) -> image #2 1x1 BC1_RGB_UNORM_BLOCK copy, view #1
+(1x1, D32_SFLOAT, copy) -> image #2 1x1 D32_SFLOAT copy, view #1; printed "UNASSIGNED-CoreValidation-DrawState-InvalidImageAspect(ERROR / S...10, name: NULL\n" (497 characters, hash 805e7307709ef509)
+(1x1, R16G16B16A16_SFLOAT, copy) -> image #2 1x1 R16G16B16A16_SFLOAT copy, view #1
+(1x1, R16G16_SFLOAT, copy) -> image #2 1x1 R16G16_SFLOAT copy, view #1
+(1x1, R16_SFLOAT, copy) -> image #2 1x1 R16_SFLOAT copy, view #1
+(1x1, R32G32B32A32_SFLOAT, copy) -> image #2 1x1 R32G32B32A32_SFLOAT copy, view #1
+(1x1, R32G32_SFLOAT, copy) -> image #2 1x1 R32G32_SFLOAT copy, view #1
+(1x1, R32_SFLOAT, copy) -> image #2 1x1 R32_SFLOAT copy, view #1
+(1x1, R8G8B8A8_SRGB, copy) -> image #2 1x1 R8G8B8A8_SRGB copy, view #1
+(1x1, R8G8B8A8_UNORM, copy) -> image #2 1x1 R8G8B8A8_UNORM copy, view #1
+(1x1, R8G8B8A8_UNORM, depth) -> image #2 1x1 R8G8B8A8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2632 characters, hash 9848ff0dbb1c286b)
+(1x1, R8G8B8A8_UNORM, draw) -> image #2 1x1 R8G8B8A8_UNORM draw, view #1
+(1x1, R8G8B8A8_UNORM, store) -> image #2 1x1 R8G8B8A8_UNORM store, view #1
+(1x1, R8G8_UNORM, copy) -> image #2 1x1 R8G8_UNORM copy, view #1
+(1x1, R8_UNORM, copy) -> image #2 1x1 R8_UNORM copy, view #1
+(1x16384, B8G8R8A8_SRGB, copy) -> image #2 1x16384 B8G8R8A8_SRGB copy, view #1
+(1x16384, BC1_RGB_UNORM_BLOCK, copy) -> image #2 1x16384 BC1_RGB_UNORM_BLOCK copy, view #1
+(1x16384, D32_SFLOAT, copy) -> image #2 1x16384 D32_SFLOAT copy, view #1; printed "UNASSIGNED-CoreValidation-DrawState-InvalidImageAspect(ERROR / S...10, name: NULL\n" (497 characters, hash 805e7307709ef509)
+(1x16384, R16G16B16A16_SFLOAT, copy) -> image #2 1x16384 R16G16B16A16_SFLOAT copy, view #1
+(1x16384, R16G16_SFLOAT, copy) -> image #2 1x16384 R16G16_SFLOAT copy, view #1
+(1x16384, R16_SFLOAT, copy) -> image #2 1x16384 R16_SFLOAT copy, view #1
+(1x16384, R32G32B32A32_SFLOAT, copy) -> image #2 1x16384 R32G32B32A32_SFLOAT copy, view #1
+(1x16384, R32G32_SFLOAT, copy) -> image #2 1x16384 R32G32_SFLOAT copy, view #1
+(1x16384, R32_SFLOAT, copy) -> image #2 1x16384 R32_SFLOAT copy, view #1
+(1x16384, R8G8B8A8_SRGB, copy) -> image #2 1x16384 R8G8B8A8_SRGB copy, view #1
+(1x16384, R8G8B8A8_UNORM, copy) -> image #2 1x16384 R8G8B8A8_UNORM copy, view #1
+(1x16384, R8G8B8A8_UNORM, depth) -> image #2 1x16384 R8G8B8A8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2632 characters, hash 9848ff0dbb1c286b)
+(1x16384, R8G8B8A8_UNORM, draw) -> image #2 1x16384 R8G8B8A8_UNORM draw, view #1
+(1x16384, R8G8B8A8_UNORM, store) -> image #2 1x16384 R8G8B8A8_UNORM store, view #1
+(1x16384, R8G8_UNORM, copy) -> image #2 1x16384 R8G8_UNORM copy, view #1
+(1x16384, R8_UNORM, copy) -> image #2 1x16384 R8_UNORM copy, view #1
+(1x16385, B8G8R8A8_SRGB, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, BC1_RGB_UNORM_BLOCK, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, D32_SFLOAT, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R16G16B16A16_SFLOAT, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R16G16_SFLOAT, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R16_SFLOAT, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R32G32B32A32_SFLOAT, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R32G32_SFLOAT, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R32_SFLOAT, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R8G8B8A8_SRGB, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R8G8B8A8_UNORM, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R8G8B8A8_UNORM, depth) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R8G8B8A8_UNORM, draw) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R8G8B8A8_UNORM, store) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R8G8_UNORM, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, R8_UNORM, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(4096x1, B8G8R8A8_SRGB, copy) -> image #2 4096x1 B8G8R8A8_SRGB copy, view #1
+(4096x1, BC1_RGB_UNORM_BLOCK, copy) -> image #2 4096x1 BC1_RGB_UNORM_BLOCK copy, view #1
+(4096x1, D32_SFLOAT, copy) -> image #2 4096x1 D32_SFLOAT copy, view #1; printed "UNASSIGNED-CoreValidation-DrawState-InvalidImageAspect(ERROR / S...10, name: NULL\n" (497 characters, hash 805e7307709ef509)
+(4096x1, R16G16B16A16_SFLOAT, copy) -> image #2 4096x1 R16G16B16A16_SFLOAT copy, view #1
+(4096x1, R16G16_SFLOAT, copy) -> image #2 4096x1 R16G16_SFLOAT copy, view #1
+(4096x1, R16_SFLOAT, copy) -> image #2 4096x1 R16_SFLOAT copy, view #1
+(4096x1, R32G32B32A32_SFLOAT, copy) -> image #2 4096x1 R32G32B32A32_SFLOAT copy, view #1
+(4096x1, R32G32_SFLOAT, copy) -> image #2 4096x1 R32G32_SFLOAT copy, view #1
+(4096x1, R32_SFLOAT, copy) -> image #2 4096x1 R32_SFLOAT copy, view #1
+(4096x1, R8G8B8A8_SRGB, copy) -> image #2 4096x1 R8G8B8A8_SRGB copy, view #1
+(4096x1, R8G8B8A8_UNORM, copy) -> image #2 4096x1 R8G8B8A8_UNORM copy, view #1
+(4096x1, R8G8B8A8_UNORM, depth) -> image #2 4096x1 R8G8B8A8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2632 characters, hash 9848ff0dbb1c286b)
+(4096x1, R8G8B8A8_UNORM, draw) -> image #2 4096x1 R8G8B8A8_UNORM draw, view #1
+(4096x1, R8G8B8A8_UNORM, store) -> image #2 4096x1 R8G8B8A8_UNORM store, view #1
+(4096x1, R8G8_UNORM, copy) -> image #2 4096x1 R8G8_UNORM copy, view #1
+(4096x1, R8_UNORM, copy) -> image #2 4096x1 R8_UNORM copy, view #1
+(4294967295x1, B8G8R8A8_SRGB, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, BC1_RGB_UNORM_BLOCK, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, D32_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R16G16B16A16_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R16G16_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R16_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R32G32B32A32_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R32G32_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R32_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R8G8B8A8_SRGB, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R8G8B8A8_UNORM, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R8G8B8A8_UNORM, depth) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R8G8B8A8_UNORM, draw) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R8G8B8A8_UNORM, store) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R8G8_UNORM, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, R8_UNORM, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, B8G8R8A8_SRGB, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, BC1_RGB_UNORM_BLOCK, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, D32_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R16G16B16A16_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R16G16_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R16_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R32G32B32A32_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R32G32_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R32_SFLOAT, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R8G8B8A8_SRGB, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R8G8B8A8_UNORM, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R8G8B8A8_UNORM, depth) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R8G8B8A8_UNORM, draw) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R8G8B8A8_UNORM, store) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R8G8_UNORM, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, R8_UNORM, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(64x0, B8G8R8A8_SRGB, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, BC1_RGB_UNORM_BLOCK, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, D32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R16G16B16A16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R16G16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R16_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R32G32B32A32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R32G32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R32_SFLOAT, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R8G8B8A8_SRGB, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R8G8B8A8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R8G8B8A8_UNORM, depth) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...    Objects: 0\n" (920 characters, hash 96291254adc03722)
+(64x0, R8G8B8A8_UNORM, draw) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R8G8B8A8_UNORM, store) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R8G8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x0, R8_UNORM, copy) -> throws runtime_error: "vmaCreateImage failed: VkResult -3"
+(64x64, B8G8R8A8_SRGB, copy) -> image #2 64x64 B8G8R8A8_SRGB copy, view #1
+(64x64, B8G8R8A8_SRGB, depth) -> image #2 64x64 B8G8R8A8_SRGB depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2486 characters, hash 741b03e6a37d83e2)
+(64x64, B8G8R8A8_SRGB, draw) -> image #2 64x64 B8G8R8A8_SRGB draw, view #1
+(64x64, B8G8R8A8_SRGB, store) -> image #2 64x64 B8G8R8A8_SRGB store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1978 characters, hash 60944c0fb29da1fa)
+(64x64, BC1_RGB_UNORM_BLOCK, copy) -> image #2 64x64 BC1_RGB_UNORM_BLOCK copy, view #1
+(64x64, BC1_RGB_UNORM_BLOCK, depth) -> image #2 64x64 BC1_RGB_UNORM_BLOCK depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2383 characters, hash 1fc23d2ffc7ddbca)
+(64x64, BC1_RGB_UNORM_BLOCK, draw) -> image #2 64x64 BC1_RGB_UNORM_BLOCK draw, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1912 characters, hash 622220cef2e0c568)
+(64x64, BC1_RGB_UNORM_BLOCK, store) -> image #2 64x64 BC1_RGB_UNORM_BLOCK store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1869 characters, hash 9ac6777f0777c22d)
+(64x64, D32_SFLOAT, copy) -> image #2 64x64 D32_SFLOAT copy, view #1; printed "UNASSIGNED-CoreValidation-DrawState-InvalidImageAspect(ERROR / S...10, name: NULL\n" (497 characters, hash 805e7307709ef509)
+(64x64, D32_SFLOAT, depth) -> image #2 64x64 D32_SFLOAT depth, view #1
+(64x64, D32_SFLOAT, draw) -> image #2 64x64 D32_SFLOAT draw, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2532 characters, hash f5035be440409737)
+(64x64, D32_SFLOAT, store) -> image #2 64x64 D32_SFLOAT store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2489 characters, hash f44d1456d3f1d2fe)
+(64x64, R16G16B16A16_SFLOAT, copy) -> image #2 64x64 R16G16B16A16_SFLOAT copy, view #1
+(64x64, R16G16B16A16_SFLOAT, depth) -> image #2 64x64 R16G16B16A16_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2647 characters, hash 74faff28cc8fee9d)
+(64x64, R16G16B16A16_SFLOAT, draw) -> image #2 64x64 R16G16B16A16_SFLOAT draw, view #1
+(64x64, R16G16B16A16_SFLOAT, store) -> image #2 64x64 R16G16B16A16_SFLOAT store, view #1
+(64x64, R16G16_SFLOAT, copy) -> image #2 64x64 R16G16_SFLOAT copy, view #1
+(64x64, R16G16_SFLOAT, depth) -> image #2 64x64 R16G16_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2629 characters, hash fdef5b940a43c394)
+(64x64, R16G16_SFLOAT, draw) -> image #2 64x64 R16G16_SFLOAT draw, view #1
+(64x64, R16G16_SFLOAT, store) -> image #2 64x64 R16G16_SFLOAT store, view #1
+(64x64, R16_SFLOAT, copy) -> image #2 64x64 R16_SFLOAT copy, view #1
+(64x64, R16_SFLOAT, depth) -> image #2 64x64 R16_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2672 characters, hash 23b0d8c2c4a2ec74)
+(64x64, R16_SFLOAT, draw) -> image #2 64x64 R16_SFLOAT draw, view #1
+(64x64, R16_SFLOAT, store) -> image #2 64x64 R16_SFLOAT store, view #1
+(64x64, R32G32B32A32_SFLOAT, copy) -> image #2 64x64 R32G32B32A32_SFLOAT copy, view #1
+(64x64, R32G32B32A32_SFLOAT, depth) -> image #2 64x64 R32G32B32A32_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2647 characters, hash b62afd9627c64ad1)
+(64x64, R32G32B32A32_SFLOAT, draw) -> image #2 64x64 R32G32B32A32_SFLOAT draw, view #1
+(64x64, R32G32B32A32_SFLOAT, store) -> image #2 64x64 R32G32B32A32_SFLOAT store, view #1
+(64x64, R32G32_SFLOAT, copy) -> image #2 64x64 R32G32_SFLOAT copy, view #1
+(64x64, R32G32_SFLOAT, depth) -> image #2 64x64 R32G32_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2629 characters, hash e18ee3ed406be1ec)
+(64x64, R32G32_SFLOAT, draw) -> image #2 64x64 R32G32_SFLOAT draw, view #1
+(64x64, R32G32_SFLOAT, store) -> image #2 64x64 R32G32_SFLOAT store, view #1
+(64x64, R32_SFLOAT, copy) -> image #2 64x64 R32_SFLOAT copy, view #1
+(64x64, R32_SFLOAT, depth) -> image #2 64x64 R32_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2717 characters, hash eb879d85bd6abcef)
+(64x64, R32_SFLOAT, draw) -> image #2 64x64 R32_SFLOAT draw, view #1
+(64x64, R32_SFLOAT, store) -> image #2 64x64 R32_SFLOAT store, view #1
+(64x64, R8G8B8A8_SRGB, copy) -> image #2 64x64 R8G8B8A8_SRGB copy, view #1
+(64x64, R8G8B8A8_SRGB, depth) -> image #2 64x64 R8G8B8A8_SRGB depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2486 characters, hash c60906a04d13ef62)
+(64x64, R8G8B8A8_SRGB, draw) -> image #2 64x64 R8G8B8A8_SRGB draw, view #1
+(64x64, R8G8B8A8_SRGB, store) -> image #2 64x64 R8G8B8A8_SRGB store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1978 characters, hash bf6c73ff5c33379a)
+(64x64, R8G8B8A8_UNORM, copy) -> image #2 64x64 R8G8B8A8_UNORM copy, view #1
+(64x64, R8G8B8A8_UNORM, depth) -> image #2 64x64 R8G8B8A8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2632 characters, hash 9848ff0dbb1c286b)
+(64x64, R8G8B8A8_UNORM, draw) -> image #2 64x64 R8G8B8A8_UNORM draw, view #1
+(64x64, R8G8B8A8_UNORM, store) -> image #2 64x64 R8G8B8A8_UNORM store, view #1
+(64x64, R8G8_UNORM, copy) -> image #2 64x64 R8G8_UNORM copy, view #1
+(64x64, R8G8_UNORM, depth) -> image #2 64x64 R8G8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2620 characters, hash 2bb6ae83b08fe58a)
+(64x64, R8G8_UNORM, draw) -> image #2 64x64 R8G8_UNORM draw, view #1
+(64x64, R8G8_UNORM, store) -> image #2 64x64 R8G8_UNORM store, view #1
+(64x64, R8_UNORM, copy) -> image #2 64x64 R8_UNORM copy, view #1
+(64x64, R8_UNORM, depth) -> image #2 64x64 R8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2666 characters, hash 9cde79c49cd1ac65)
+(64x64, R8_UNORM, draw) -> image #2 64x64 R8_UNORM draw, view #1
+(64x64, R8_UNORM, store) -> image #2 64x64 R8_UNORM store, view #1
+the device goes -> done
+~(104x46, R8G8_UNORM, draw) -> image #2 104x46 R8G8_UNORM draw, view #1
+~(106x129, R32_SFLOAT, copy) -> image #2 106x129 R32_SFLOAT copy, view #1
+~(110x208, BC1_RGB_UNORM_BLOCK, draw) -> image #2 110x208 BC1_RGB_UNORM_BLOCK draw, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1912 characters, hash 622220cef2e0c568)
+~(114x232, D32_SFLOAT, store) -> image #2 114x232 D32_SFLOAT store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2489 characters, hash f44d1456d3f1d2fe)
+~(117x104, B8G8R8A8_SRGB, depth) -> image #2 117x104 B8G8R8A8_SRGB depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2486 characters, hash 741b03e6a37d83e2)
+~(132x48, R8_UNORM, draw) -> image #2 132x48 R8_UNORM draw, view #1
+~(133x229, R16G16_SFLOAT, copy) -> image #2 133x229 R16G16_SFLOAT copy, view #1
+~(137x133, BC1_RGB_UNORM_BLOCK, copy) -> image #2 137x133 BC1_RGB_UNORM_BLOCK copy, view #1
+~(137x253, R16_SFLOAT, depth) -> image #2 137x253 R16_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2672 characters, hash 23b0d8c2c4a2ec74)
+~(138x235, R16G16_SFLOAT, depth) -> image #2 138x235 R16G16_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2629 characters, hash fdef5b940a43c394)
+~(139x152, R8G8_UNORM, depth) -> image #2 139x152 R8G8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2620 characters, hash 2bb6ae83b08fe58a)
+~(152x256, R8G8B8A8_SRGB, copy) -> image #2 152x256 R8G8B8A8_SRGB copy, view #1
+~(160x104, R8_UNORM, copy) -> image #2 160x104 R8_UNORM copy, view #1
+~(161x206, R8G8B8A8_UNORM, copy) -> image #2 161x206 R8G8B8A8_UNORM copy, view #1
+~(163x204, BC1_RGB_UNORM_BLOCK, store) -> image #2 163x204 BC1_RGB_UNORM_BLOCK store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1869 characters, hash 9ac6777f0777c22d)
+~(169x156, R16_SFLOAT, depth) -> image #2 169x156 R16_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2672 characters, hash 23b0d8c2c4a2ec74)
+~(174x114, R8G8_UNORM, store) -> image #2 174x114 R8G8_UNORM store, view #1
+~(183x190, R8G8B8A8_SRGB, depth) -> image #2 183x190 R8G8B8A8_SRGB depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2486 characters, hash c60906a04d13ef62)
+~(185x9, R8G8B8A8_UNORM, store) -> image #2 185x9 R8G8B8A8_UNORM store, view #1
+~(188x59, R8G8B8A8_SRGB, draw) -> image #2 188x59 R8G8B8A8_SRGB draw, view #1
+~(189x213, R32G32_SFLOAT, depth) -> image #2 189x213 R32G32_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2629 characters, hash e18ee3ed406be1ec)
+~(194x31, R8G8_UNORM, store) -> image #2 194x31 R8G8_UNORM store, view #1
+~(205x35, R8_UNORM, depth) -> image #2 205x35 R8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2666 characters, hash 9cde79c49cd1ac65)
+~(208x111, R32G32B32A32_SFLOAT, depth) -> image #2 208x111 R32G32B32A32_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2647 characters, hash b62afd9627c64ad1)
+~(242x208, R32_SFLOAT, store) -> image #2 242x208 R32_SFLOAT store, view #1
+~(248x75, R8G8_UNORM, depth) -> image #2 248x75 R8G8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2620 characters, hash 2bb6ae83b08fe58a)
+~(251x218, B8G8R8A8_SRGB, store) -> image #2 251x218 B8G8R8A8_SRGB store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1978 characters, hash 60944c0fb29da1fa)
+~(253x2, BC1_RGB_UNORM_BLOCK, draw) -> image #2 253x2 BC1_RGB_UNORM_BLOCK draw, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1912 characters, hash 622220cef2e0c568)
+~(253x208, R8G8B8A8_SRGB, copy) -> image #2 253x208 R8G8B8A8_SRGB copy, view #1
+~(30x7, R8_UNORM, draw) -> image #2 30x7 R8_UNORM draw, view #1
+~(36x238, R16_SFLOAT, copy) -> image #2 36x238 R16_SFLOAT copy, view #1
+~(39x127, R16G16B16A16_SFLOAT, copy) -> image #2 39x127 R16G16B16A16_SFLOAT copy, view #1
+~(44x139, BC1_RGB_UNORM_BLOCK, store) -> image #2 44x139 BC1_RGB_UNORM_BLOCK store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1869 characters, hash 9ac6777f0777c22d)
+~(44x154, D32_SFLOAT, store) -> image #2 44x154 D32_SFLOAT store, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2489 characters, hash f44d1456d3f1d2fe)
+~(52x224, R16_SFLOAT, copy) -> image #2 52x224 R16_SFLOAT copy, view #1
+~(58x63, R32_SFLOAT, copy) -> image #2 58x63 R32_SFLOAT copy, view #1
+~(59x140, BC1_RGB_UNORM_BLOCK, draw) -> image #2 59x140 BC1_RGB_UNORM_BLOCK draw, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (1912 characters, hash 622220cef2e0c568)
+~(59x57, R8G8_UNORM, draw) -> image #2 59x57 R8G8_UNORM draw, view #1
+~(61x177, R16G16_SFLOAT, copy) -> image #2 61x177 R16G16_SFLOAT copy, view #1
+~(67x194, R32_SFLOAT, store) -> image #2 67x194 R32_SFLOAT store, view #1
+~(70x210, R32G32_SFLOAT, depth) -> image #2 70x210 R32G32_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2629 characters, hash e18ee3ed406be1ec)
+~(71x234, D32_SFLOAT, draw) -> image #2 71x234 D32_SFLOAT draw, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2532 characters, hash f5035be440409737)
+~(79x222, R32G32B32A32_SFLOAT, draw) -> image #2 79x222 R32G32B32A32_SFLOAT draw, view #1
+~(81x169, R16G16B16A16_SFLOAT, draw) -> image #2 81x169 R16G16B16A16_SFLOAT draw, view #1
+~(85x38, R8G8B8A8_UNORM, copy) -> image #2 85x38 R8G8B8A8_UNORM copy, view #1
+~(91x13, R8G8B8A8_SRGB, draw) -> image #2 91x13 R8G8B8A8_SRGB draw, view #1
+~(92x233, R8G8B8A8_UNORM, depth) -> image #2 92x233 R8G8B8A8_UNORM depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2632 characters, hash 9848ff0dbb1c286b)
+~(98x139, R32G32B32A32_SFLOAT, depth) -> image #2 98x139 R32G32B32A32_SFLOAT depth, view #1; printed "VUID-VkImageCreateInfo-imageCreateMaxMipLevels-02251(ERROR / SPE...10, name: NULL\n" (2647 characters, hash b62afd9627c64ad1)
+
+## Resources.cpp/Resources::image, depth and mip levels
+64x64 RGBA8 with 1 levels -> "holds 1 levels"
+64x64 RGBA8 with 7 levels -> "holds 7 levels"
+64x64 RGBA8 with 8 levels -> "holds 8 levels"; printed "VUID-VkImageCreateInfo-mipLevels-00958(ERROR / SPEC): msgNum: -9...    Objects: 0\n" (652 characters, hash 2d0d102199b4781a)
+a depth image -> image #2 64x32 D32_SFLOAT depth, view #1
+depth format -> D32_SFLOAT
+the device goes -> done
+
+## Resources.cpp/Resources::runs
+(enum 1) -> true
+(enum 16) -> true
+(enum 2) -> true
+(enum 31) -> true
+(enum 32) -> true
+(enum 4) -> true
+(enum 8) -> true
+max_compute_work_group_count() -> 65535
+the device goes -> done
+
+## Resources.cpp/Resources::samples
+(B8G8R8A8_SRGB, copy) -> true
+(B8G8R8A8_SRGB, depth) -> false
+(B8G8R8A8_SRGB, draw) -> true
+(B8G8R8A8_SRGB, store) -> false
+(BC1_RGB_UNORM_BLOCK, copy) -> true
+(BC1_RGB_UNORM_BLOCK, depth) -> false
+(BC1_RGB_UNORM_BLOCK, draw) -> false
+(BC1_RGB_UNORM_BLOCK, store) -> false
+(D32_SFLOAT, copy) -> true
+(D32_SFLOAT, depth) -> true
+(D32_SFLOAT, draw) -> false
+(D32_SFLOAT, store) -> false
+(R16G16B16A16_SFLOAT, copy) -> true
+(R16G16B16A16_SFLOAT, depth) -> false
+(R16G16B16A16_SFLOAT, draw) -> true
+(R16G16B16A16_SFLOAT, store) -> true
+(R16G16_SFLOAT, copy) -> true
+(R16G16_SFLOAT, depth) -> false
+(R16G16_SFLOAT, draw) -> true
+(R16G16_SFLOAT, store) -> true
+(R16_SFLOAT, copy) -> true
+(R16_SFLOAT, depth) -> false
+(R16_SFLOAT, draw) -> true
+(R16_SFLOAT, store) -> true
+(R32G32B32A32_SFLOAT, copy) -> true
+(R32G32B32A32_SFLOAT, depth) -> false
+(R32G32B32A32_SFLOAT, draw) -> true
+(R32G32B32A32_SFLOAT, store) -> true
+(R32G32_SFLOAT, copy) -> true
+(R32G32_SFLOAT, depth) -> false
+(R32G32_SFLOAT, draw) -> true
+(R32G32_SFLOAT, store) -> true
+(R32_SFLOAT, copy) -> true
+(R32_SFLOAT, depth) -> false
+(R32_SFLOAT, draw) -> true
+(R32_SFLOAT, store) -> true
+(R8G8B8A8_SRGB, copy) -> true
+(R8G8B8A8_SRGB, depth) -> false
+(R8G8B8A8_SRGB, draw) -> true
+(R8G8B8A8_SRGB, store) -> false
+(R8G8B8A8_UNORM, copy) -> true
+(R8G8B8A8_UNORM, depth) -> false
+(R8G8B8A8_UNORM, draw) -> true
+(R8G8B8A8_UNORM, store) -> true
+(R8G8_UNORM, copy) -> true
+(R8G8_UNORM, depth) -> false
+(R8G8_UNORM, draw) -> true
+(R8G8_UNORM, store) -> true
+(R8_UNORM, copy) -> true
+(R8_UNORM, depth) -> false
+(R8_UNORM, draw) -> true
+(R8_UNORM, store) -> true
+(UNDEFINED, copy) -> false
+(UNDEFINED, depth) -> false
+(UNDEFINED, draw) -> false
+(UNDEFINED, store) -> false
+taken B8G8R8A8_SRGB copy -> image #2 64x64 B8G8R8A8_SRGB copy, view #1
+taken B8G8R8A8_SRGB draw -> image #2 64x64 B8G8R8A8_SRGB draw, view #1
+taken BC1_RGB_UNORM_BLOCK copy -> image #2 64x64 BC1_RGB_UNORM_BLOCK copy, view #1
+taken D32_SFLOAT copy -> image #2 64x64 D32_SFLOAT copy, view #1; printed "UNASSIGNED-CoreValidation-DrawState-InvalidImageAspect(ERROR / S...10, name: NULL\n" (497 characters, hash 805e7307709ef509)
+taken D32_SFLOAT depth -> image #2 64x64 D32_SFLOAT depth, view #1
+taken R16G16B16A16_SFLOAT copy -> image #2 64x64 R16G16B16A16_SFLOAT copy, view #1
+taken R16G16B16A16_SFLOAT draw -> image #2 64x64 R16G16B16A16_SFLOAT draw, view #1
+taken R16G16B16A16_SFLOAT store -> image #2 64x64 R16G16B16A16_SFLOAT store, view #1
+taken R16G16_SFLOAT copy -> image #2 64x64 R16G16_SFLOAT copy, view #1
+taken R16G16_SFLOAT draw -> image #2 64x64 R16G16_SFLOAT draw, view #1
+taken R16G16_SFLOAT store -> image #2 64x64 R16G16_SFLOAT store, view #1
+taken R16_SFLOAT copy -> image #2 64x64 R16_SFLOAT copy, view #1
+taken R16_SFLOAT draw -> image #2 64x64 R16_SFLOAT draw, view #1
+taken R16_SFLOAT store -> image #2 64x64 R16_SFLOAT store, view #1
+taken R32G32B32A32_SFLOAT copy -> image #2 64x64 R32G32B32A32_SFLOAT copy, view #1
+taken R32G32B32A32_SFLOAT draw -> image #2 64x64 R32G32B32A32_SFLOAT draw, view #1
+taken R32G32B32A32_SFLOAT store -> image #2 64x64 R32G32B32A32_SFLOAT store, view #1
+taken R32G32_SFLOAT copy -> image #2 64x64 R32G32_SFLOAT copy, view #1
+taken R32G32_SFLOAT draw -> image #2 64x64 R32G32_SFLOAT draw, view #1
+taken R32G32_SFLOAT store -> image #2 64x64 R32G32_SFLOAT store, view #1
+taken R32_SFLOAT copy -> image #2 64x64 R32_SFLOAT copy, view #1
+taken R32_SFLOAT draw -> image #2 64x64 R32_SFLOAT draw, view #1
+taken R32_SFLOAT store -> image #2 64x64 R32_SFLOAT store, view #1
+taken R8G8B8A8_SRGB copy -> image #2 64x64 R8G8B8A8_SRGB copy, view #1
+taken R8G8B8A8_SRGB draw -> image #2 64x64 R8G8B8A8_SRGB draw, view #1
+taken R8G8B8A8_UNORM copy -> image #2 64x64 R8G8B8A8_UNORM copy, view #1
+taken R8G8B8A8_UNORM draw -> image #2 64x64 R8G8B8A8_UNORM draw, view #1
+taken R8G8B8A8_UNORM store -> image #2 64x64 R8G8B8A8_UNORM store, view #1
+taken R8G8_UNORM copy -> image #2 64x64 R8G8_UNORM copy, view #1
+taken R8G8_UNORM draw -> image #2 64x64 R8G8_UNORM draw, view #1
+taken R8G8_UNORM store -> image #2 64x64 R8G8_UNORM store, view #1
+taken R8_UNORM copy -> image #2 64x64 R8_UNORM copy, view #1
+taken R8_UNORM draw -> image #2 64x64 R8_UNORM draw, view #1
+taken R8_UNORM store -> image #2 64x64 R8_UNORM store, view #1
+the device goes -> done
+the device goes -> done
+
+## Resources.cpp/allocated
+(enum -1, 0) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -1, 1) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -1, 18446744073709551614) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 18446744073.71 GB free"
+(enum -1, 18446744073709551615) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 18446744073.71 GB free"
+(enum -1, 2) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -1, 255) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -1, 256) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -1, 4294967296) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 4.29 GB free"
+(enum -1, 65535) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -1, 65536) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -1, 7) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -11, 0) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 1) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 18446744073709551614) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 18446744073709551615) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 2) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 255) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 256) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 4294967296) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 65535) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 65536) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -11, 7) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+(enum -2, 0) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -2, 1) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -2, 18446744073709551614) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 18446744073.71 GB free"
+(enum -2, 18446744073709551615) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 18446744073.71 GB free"
+(enum -2, 2) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -2, 255) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -2, 256) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -2, 4294967296) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 4.29 GB free"
+(enum -2, 65535) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -2, 65536) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -2, 7) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+(enum -3, 0) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 1) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 18446744073709551614) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 18446744073709551615) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 2) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 255) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 256) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 4294967296) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 65535) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 65536) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -3, 7) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+(enum -4, 0) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 1) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 18446744073709551614) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 18446744073709551615) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 2) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 255) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 256) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 4294967296) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 65535) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 65536) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum -4, 7) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+(enum 0, 0) -> done
+(enum 0, 1) -> done
+(enum 0, 18446744073709551614) -> done
+(enum 0, 18446744073709551615) -> done
+(enum 0, 2) -> done
+(enum 0, 255) -> done
+(enum 0, 256) -> done
+(enum 0, 4294967296) -> done
+(enum 0, 65535) -> done
+(enum 0, 65536) -> done
+(enum 0, 7) -> done
+(enum 5, 0) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 1) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 18446744073709551614) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 18446744073709551615) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 2) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 255) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 256) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 4294967296) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 65535) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 65536) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+(enum 5, 7) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+~(enum -1, 14125347157596928703) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 14125347157.60 GB free"
+~(enum -1, 4) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+~(enum -11, 18446744073709551600) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -11"
+~(enum -2, 11) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+~(enum -2, 14) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+~(enum -2, 14464422554815910425) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 14464422554.82 GB free"
+~(enum -2, 18446744073709551601) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 18446744073.71 GB free"
+~(enum -2, 18446744073709551609) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 18446744073.71 GB free"
+~(enum -2, 2092032418114793974) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 2092032418.11 GB free"
+~(enum -2, 501113467220719242) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 501113467.22 GB free"
+~(enum -2, 5471105212477474270) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 5471105212.48 GB free"
+~(enum -2, 75560925586094004) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 75560925.59 GB free"
+~(enum -2, 9) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 0.00 GB free"
+~(enum -2, 9138382263244814597) -> throws runtime_error: "1.00 GB is more than the GPU can give, with 9138382263.24 GB free"
+~(enum -3, 10) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -3, 17123451495739658364) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -3, 18446744073709551604) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -3, 18446744073709551609) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -3, 18446744073709551611) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -3, 4) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -3, 5) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -3, 6) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -3, 9777314765690921908) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -3"
+~(enum -4, 12) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+~(enum -4, 15822045570176255019) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+~(enum -4, 16956720091878856592) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+~(enum -4, 18446744073709551606) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+~(enum -4, 18446744073709551609) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+~(enum -4, 18446744073709551613) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+~(enum -4, 9) -> throws runtime_error: "vmaCreateBuffer failed: VkResult -4"
+~(enum 0, 10084497051542943330) -> done
+~(enum 0, 10087239109405036863) -> done
+~(enum 0, 14) -> done
+~(enum 0, 16964243755882084522) -> done
+~(enum 0, 18446744073709551602) -> done
+~(enum 0, 8) -> done
+~(enum 5, 11) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+~(enum 5, 14435646099300211314) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+~(enum 5, 18446744073709551604) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+~(enum 5, 18446744073709551605) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+~(enum 5, 4) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+~(enum 5, 9) -> throws runtime_error: "vmaCreateBuffer failed: VkResult 5"
+
+## Resources.cpp/fits
+(0x0, copy) -> done
+(0x0, depth) -> done
+(0x0, draw) -> done
+(0x0, store) -> done
+(0x64, copy) -> done
+(0x64, depth) -> done
+(0x64, draw) -> done
+(0x64, store) -> done
+(16384x1, copy) -> done
+(16384x1, depth) -> done
+(16384x1, draw) -> done
+(16384x1, store) -> done
+(16385x1, copy) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, depth) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, draw) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(16385x1, store) -> throws runtime_error: "an image of 16385 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(1x1, copy) -> done
+(1x1, depth) -> done
+(1x1, draw) -> done
+(1x1, store) -> done
+(1x16384, copy) -> done
+(1x16384, depth) -> done
+(1x16384, draw) -> done
+(1x16384, store) -> done
+(1x16385, copy) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, depth) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, draw) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(1x16385, store) -> throws runtime_error: "an image of 1 by 16385 pixels is past the 16384 by 16384 this GPU makes"
+(4096x1, copy) -> done
+(4096x1, depth) -> done
+(4096x1, draw) -> done
+(4096x1, store) -> done
+(4294967295x1, copy) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, depth) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, draw) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x1, store) -> throws runtime_error: "an image of 4294967295 by 1 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, copy) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, depth) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, draw) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(4294967295x4294967295, store) -> throws runtime_error: "an image of 4294967295 by 4294967295 pixels is past the 16384 by 16384 this GPU makes"
+(64x0, copy) -> done
+(64x0, depth) -> done
+(64x0, draw) -> done
+(64x0, store) -> done
+(64x64, copy) -> done
+(64x64, depth) -> done
+(64x64, draw) -> done
+(64x64, store) -> done
+the device goes -> done
+~(101x239, copy) -> done
+~(108x114, store) -> done
+~(10x63, store) -> done
+~(116x145, copy) -> done
+~(125x7, draw) -> done
+~(126x70, draw) -> done
+~(127x253, store) -> done
+~(131x221, draw) -> done
+~(132x26, depth) -> done
+~(135x62, draw) -> done
+~(158x90, depth) -> done
+~(160x165, depth) -> done
+~(168x72, depth) -> done
+~(170x106, depth) -> done
+~(177x199, draw) -> done
+~(177x9, depth) -> done
+~(183x197, store) -> done
+~(1x104, copy) -> done
+~(1x244, depth) -> done
+~(205x111, draw) -> done
+~(20x167, draw) -> done
+~(221x151, copy) -> done
+~(225x29, copy) -> done
+~(227x141, depth) -> done
+~(228x51, draw) -> done
+~(247x154, depth) -> done
+~(249x37, copy) -> done
+~(253x132, draw) -> done
+~(254x35, copy) -> done
+~(256x157, draw) -> done
+~(28x24, draw) -> done
+~(32x71, store) -> done
+~(33x139, copy) -> done
+~(38x98, store) -> done
+~(3x132, depth) -> done
+~(44x148, draw) -> done
+~(53x153, draw) -> done
+~(55x88, draw) -> done
+~(60x243, copy) -> done
+~(66x145, depth) -> done
+~(68x88, copy) -> done
+~(70x242, depth) -> done
+~(76x112, draw) -> done
+~(76x201, depth) -> done
+~(80x245, store) -> done
+~(82x25, draw) -> done
+~(86x29, depth) -> done
+~(8x67, store) -> done
+
+## Resources.cpp/gigabytes
+(0) -> "0.00 GB"
+(1) -> "0.00 GB"
+(18446744073709551614) -> "18446744073.71 GB"
+(18446744073709551615) -> "18446744073.71 GB"
+(2) -> "0.00 GB"
+(255) -> "0.00 GB"
+(256) -> "0.00 GB"
+(4294967296) -> "4.29 GB"
+(65535) -> "0.00 GB"
+(65536) -> "0.00 GB"
+(7) -> "0.00 GB"
+~(10) -> "0.00 GB"
+~(10577752616541503232) -> "10577752616.54 GB"
+~(1082004281598075860) -> "1082004281.60 GB"
+~(11071822441028883379) -> "11071822441.03 GB"
+~(12) -> "0.00 GB"
+~(12474376391994633117) -> "12474376391.99 GB"
+~(13) -> "0.00 GB"
+~(15) -> "0.00 GB"
+~(18446744073709551600) -> "18446744073.71 GB"
+~(18446744073709551602) -> "18446744073.71 GB"
+~(18446744073709551603) -> "18446744073.71 GB"
+~(18446744073709551606) -> "18446744073.71 GB"
+~(18446744073709551607) -> "18446744073.71 GB"
+~(18446744073709551608) -> "18446744073.71 GB"
+~(18446744073709551611) -> "18446744073.71 GB"
+~(18446744073709551612) -> "18446744073.71 GB"
+~(2124755741040586062) -> "2124755741.04 GB"
+~(2599930955148198814) -> "2599930955.15 GB"
+~(3) -> "0.00 GB"
+~(4) -> "0.00 GB"
+~(4149918543465664693) -> "4149918543.47 GB"
+~(4907294910822721916) -> "4907294910.82 GB"
+~(5) -> "0.00 GB"
+~(574388072378596068) -> "574388072.38 GB"
+~(6204361117955026833) -> "6204361117.96 GB"
+~(7685489917289437165) -> "7685489917.29 GB"
+~(8) -> "0.00 GB"
+~(9) -> "0.00 GB"
+
+## Resources.cpp/make_mip_levels
+B8G8R8A8, which the CPU makes no levels of: left as it was -> | level 1: ee ee ee ee
+R8 3x3, 0..8 -> | level 1: 0f
+R8G8 5x1 -> | level 1: 01 ff 03 fd | level 2: 02 fe
+RGBA8 2x2, all transparent, red and blue -> | level 1: 80 00 80 00
+RGBA8 2x2, one texel opaque red, three transparent white -> | level 1: ff 00 00 40
+RGBA8 UNORM 2x2, black and white, opaque -> | level 1: 80 80 80 ff
+RGBA8 sRGB 2x2, black and white, opaque -> | level 1: bc bc bc ff
+
+## Resources.cpp/makes_mip_levels
+(B8G8R8A8_SRGB) -> false
+(BC1_RGB_UNORM_BLOCK) -> false
+(D32_SFLOAT) -> false
+(R16G16B16A16_SFLOAT) -> false
+(R16G16_SFLOAT) -> false
+(R16_SFLOAT) -> false
+(R32G32B32A32_SFLOAT) -> false
+(R32G32_SFLOAT) -> false
+(R32_SFLOAT) -> false
+(R8G8B8A8_SRGB) -> true
+(R8G8B8A8_UNORM) -> true
+(R8G8_UNORM) -> true
+(R8_UNORM) -> true
+
+## Resources.cpp/mip_level_count
+(0x0) -> 0
+(0x64) -> 7
+(16384x1) -> 15
+(16385x1) -> 15
+(1x1) -> 1
+(1x16384) -> 15
+(1x16385) -> 15
+(4096x1) -> 13
+(4294967295x1) -> 32
+(4294967295x4294967295) -> 32
+(64x0) -> 7
+(64x64) -> 7
+~(101x185) -> 8
+~(102x20) -> 7
+~(110x187) -> 8
+~(113x184) -> 8
+~(120x140) -> 8
+~(129x61) -> 8
+~(144x42) -> 8
+~(148x28) -> 8
+~(152x132) -> 8
+~(154x104) -> 8
+~(154x193) -> 8
+~(161x126) -> 8
+~(163x234) -> 8
+~(163x69) -> 8
+~(169x131) -> 8
+~(16x141) -> 8
+~(16x83) -> 7
+~(176x122) -> 8
+~(179x169) -> 8
+~(187x246) -> 8
+~(187x80) -> 8
+~(206x229) -> 8
+~(207x252) -> 8
+~(20x97) -> 7
+~(216x4) -> 8
+~(225x207) -> 8
+~(231x28) -> 8
+~(233x12) -> 8
+~(242x40) -> 8
+~(249x103) -> 8
+~(249x122) -> 8
+~(253x120) -> 8
+~(33x196) -> 8
+~(35x248) -> 8
+~(36x113) -> 7
+~(3x191) -> 8
+~(3x198) -> 8
+~(64x146) -> 8
+~(67x161) -> 8
+~(71x6) -> 7
+~(75x94) -> 7
+~(7x81) -> 7
+~(80x100) -> 7
+~(85x53) -> 7
+~(93x242) -> 8
+~(95x117) -> 7
+~(99x156) -> 8
+~(99x186) -> 8
+
+## Resources.cpp/mip_level_extent
+1x1 -> 1x1 at 0; all 4 bytes
+4096x1 -> 4096x1 at 0 2048x1 at 16384 1024x1 at 24576 512x1 at 28672 256x1 at 30720 128x1 at 31744 64x1 at 32256 32x1 at 32512 16x1 at 32640 8x1 at 32704 4x1 at 32736 2x1 at 32752 1x1 at 32760; all 32764 bytes
+5x3 -> 5x3 at 0 2x1 at 60 1x1 at 68; all 72 bytes
+64x64 -> 64x64 at 0 32x32 at 16384 16x16 at 20480 8x8 at 21504 4x4 at 21760 2x2 at 21824 1x1 at 21840; all 21844 bytes
+
+## Resources.cpp/placement
+(device) -> 0
+(readback) -> 2052
+(upload) -> 1028
+
+## Resources.cpp/srgb_encoded
+decoded: 0 -> 0, 1 -> 20, 10 -> 199, 11 -> 219, 128 -> 14146, 254 -> 64952, 255 -> 65535
+encoded 0 -> 0
+encoded 10 -> 0
+encoded 1099511627776 -> 255
+encoded 11 -> 1
+encoded 30 -> 1
+encoded 32768 -> 188
+encoded 65535 -> 255
+encoded 65536 -> 255
+encoded 9 -> 0
+fifth_root of 32 -> 2; of 1 -> 1; of 0.0064 -> 0.36411284060521604
+of 256 values: 256 encode back to themselves, 256 decode above the one before

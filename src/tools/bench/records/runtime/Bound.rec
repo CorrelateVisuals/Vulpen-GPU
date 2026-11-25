@@ -1,0 +1,1321 @@
+# The rows of src/runtime/Bound.h, a call each (src/tools/bench/bench.py).
+
+## Bound.h/as_word
+("", "") -> ""
+("", "-1") -> ""
+("", "-2147483648") -> ""
+("", ".5") -> ""
+("", "1 ") -> ""
+("", "1") -> ""
+("", "1\r") -> ""
+("", "1e") -> ""
+("", "1e-40") -> ""
+("", "4294967296") -> ""
+("", "\xef\xbc\x91") -> ""
+("", "a=b") -> ""
+("", "inf") -> ""
+("-", "+1") -> ""
+("-", "-inf") -> ""
+("-", "0") -> ""
+("-", "01") -> ""
+("-", "0x10") -> ""
+("-", "1") -> ""
+("-", "1,2") -> ""
+("-", "18446744073709551615") -> ""
+("-", "1\n") -> ""
+("-", "1e-50") -> ""
+("-", "3.4028235e38") -> ""
+("-", "5.") -> ""
+("-", "=") -> ""
+(".", "") -> ""
+(".", "-1") -> ""
+(".", "-2147483648") -> ""
+(".", ".5") -> ""
+(".", "1 ") -> ""
+(".", "1") -> ""
+(".", "1\r") -> ""
+(".", "1e") -> ""
+(".", "1e-40") -> ""
+(".", "4294967296") -> ""
+(".", "\xef\xbc\x91") -> ""
+(".", "a=b") -> ""
+(".", "inf") -> ""
+("1", "+1") -> ""
+("1", "-inf") -> ""
+("1", "0") -> ""
+("1", "01") -> ""
+("1", "0x10") -> ""
+("1", "1") -> ""
+("1", "1,2") -> ""
+("1", "18446744073709551615") -> ""
+("1", "1\n") -> ""
+("1", "1e-50") -> ""
+("1", "3.4028235e38") -> ""
+("1", "5.") -> ""
+("1", "=") -> ""
+("A9", "") -> ""
+("A9", "-1") -> ""
+("A9", "-2147483648") -> ""
+("A9", ".5") -> ""
+("A9", "1 ") -> ""
+("A9", "1") -> ""
+("A9", "1\r") -> ""
+("A9", "1e") -> ""
+("A9", "1e-40") -> ""
+("A9", "4294967296") -> ""
+("A9", "\xef\xbc\x91") -> ""
+("A9", "a=b") -> ""
+("A9", "inf") -> ""
+("\xc3\xa9", " 1") -> ""
+("\xc3\xa9", "-0") -> ""
+("\xc3\xa9", "1") -> ""
+("\xc3\xa9", "1.5") -> ""
+("\xc3\xa9", "18446744073709551616") -> ""
+("\xc3\xa9", "1_0") -> ""
+("\xc3\xa9", "1e3") -> ""
+("\xc3\xa9", "3.4028236e38") -> ""
+("\xc3\xa9", "4294967295") -> ""
+("\xc3\xa9", "\xd9\xa1") -> ""
+("\xc3\xa9", "a") -> ""
+("\xc3\xa9", "nan") -> ""
+("_", " 1") -> ""
+("_", "-0") -> ""
+("_", "1") -> ""
+("_", "1.5") -> ""
+("_", "18446744073709551616") -> ""
+("_", "1_0") -> ""
+("_", "1e3") -> ""
+("_", "3.4028236e38") -> ""
+("_", "4294967295") -> ""
+("_", "\xd9\xa1") -> ""
+("_", "a") -> ""
+("_", "nan") -> ""
+("a b", " 1") -> ""
+("a b", "-0") -> ""
+("a b", "1") -> ""
+("a b", "1.5") -> ""
+("a b", "18446744073709551616") -> ""
+("a b", "1_0") -> ""
+("a b", "1e3") -> ""
+("a b", "3.4028236e38") -> ""
+("a b", "4294967295") -> ""
+("a b", "\xd9\xa1") -> ""
+("a b", "a") -> ""
+("a b", "nan") -> ""
+("a", " 1") -> ""
+("a", "") -> ""
+("a", "+1") -> ""
+("a", "-0") -> ""
+("a", "-1") -> ""
+("a", "-2147483648") -> ""
+("a", "-inf") -> ""
+("a", ".5") -> ""
+("a", "0") -> ""
+("a", "01") -> ""
+("a", "0x10") -> ""
+("a", "1 ") -> ""
+("a", "1") -> ""
+("a", "1,2") -> ""
+("a", "1.5") -> ""
+("a", "18446744073709551615") -> ""
+("a", "18446744073709551616") -> ""
+("a", "1\n") -> ""
+("a", "1\r") -> ""
+("a", "1_0") -> ""
+("a", "1e") -> ""
+("a", "1e-40") -> ""
+("a", "1e-50") -> ""
+("a", "1e3") -> ""
+("a", "3.4028235e38") -> ""
+("a", "3.4028236e38") -> ""
+("a", "4294967295") -> ""
+("a", "4294967296") -> ""
+("a", "5.") -> ""
+("a", "=") -> ""
+("a", "\xd9\xa1") -> ""
+("a", "\xef\xbc\x91") -> ""
+("a", "a") -> ""
+("a", "a=b") -> ""
+("a", "inf") -> ""
+("a", "nan") -> ""
+("a-b", "+1") -> ""
+("a-b", "-inf") -> ""
+("a-b", "0") -> ""
+("a-b", "01") -> ""
+("a-b", "0x10") -> ""
+("a-b", "1") -> ""
+("a-b", "1,2") -> ""
+("a-b", "18446744073709551615") -> ""
+("a-b", "1\n") -> ""
+("a-b", "1e-50") -> ""
+("a-b", "3.4028235e38") -> ""
+("a-b", "5.") -> ""
+("a-b", "=") -> ""
+("a.b", "+1") -> ""
+("a.b", "-inf") -> ""
+("a.b", "0") -> ""
+("a.b", "01") -> ""
+("a.b", "0x10") -> ""
+("a.b", "1") -> ""
+("a.b", "1,2") -> ""
+("a.b", "18446744073709551615") -> ""
+("a.b", "1\n") -> ""
+("a.b", "1e-50") -> ""
+("a.b", "3.4028235e38") -> ""
+("a.b", "5.") -> ""
+("a.b", "=") -> ""
+("a/b", "+1") -> ""
+("a/b", "-inf") -> ""
+("a/b", "0") -> ""
+("a/b", "01") -> ""
+("a/b", "0x10") -> ""
+("a/b", "1") -> ""
+("a/b", "1,2") -> ""
+("a/b", "18446744073709551615") -> ""
+("a/b", "1\n") -> ""
+("a/b", "1e-50") -> ""
+("a/b", "3.4028235e38") -> ""
+("a/b", "5.") -> ""
+("a/b", "=") -> ""
+("a:b", "") -> ""
+("a:b", "-1") -> ""
+("a:b", "-2147483648") -> ""
+("a:b", ".5") -> ""
+("a:b", "1 ") -> ""
+("a:b", "1") -> ""
+("a:b", "1\r") -> ""
+("a:b", "1e") -> ""
+("a:b", "1e-40") -> ""
+("a:b", "4294967296") -> ""
+("a:b", "\xef\xbc\x91") -> ""
+("a:b", "a=b") -> ""
+("a:b", "inf") -> ""
+("a\r", "") -> ""
+("a\r", "-1") -> ""
+("a\r", "-2147483648") -> ""
+("a\r", ".5") -> ""
+("a\r", "1 ") -> ""
+("a\r", "1") -> ""
+("a\r", "1\r") -> ""
+("a\r", "1e") -> ""
+("a\r", "1e-40") -> ""
+("a\r", "4294967296") -> ""
+("a\r", "\xef\xbc\x91") -> ""
+("a\r", "a=b") -> ""
+("a\r", "inf") -> ""
+("a\t", " 1") -> ""
+("a\t", "-0") -> ""
+("a\t", "1") -> ""
+("a\t", "1.5") -> ""
+("a\t", "18446744073709551616") -> ""
+("a\t", "1_0") -> ""
+("a\t", "1e3") -> ""
+("a\t", "3.4028236e38") -> ""
+("a\t", "4294967295") -> ""
+("a\t", "\xd9\xa1") -> ""
+("a\t", "a") -> ""
+("a\t", "nan") -> ""
+("a_b", " 1") -> ""
+("a_b", "-0") -> ""
+("a_b", "1") -> ""
+("a_b", "1.5") -> ""
+("a_b", "18446744073709551616") -> ""
+("a_b", "1_0") -> ""
+("a_b", "1e3") -> ""
+("a_b", "3.4028236e38") -> ""
+("a_b", "4294967295") -> ""
+("a_b", "\xd9\xa1") -> ""
+("a_b", "a") -> ""
+("a_b", "nan") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "+1") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "-inf") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "0") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "01") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "0x10") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1,2") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "18446744073709551615") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1\n") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "1e-50") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "3.4028235e38") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "5.") -> ""
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "=") -> ""
+("root", "") -> ""
+("root", "-1") -> ""
+("root", "-2147483648") -> ""
+("root", ".5") -> ""
+("root", "1 ") -> ""
+("root", "1") -> ""
+("root", "1\r") -> ""
+("root", "1e") -> ""
+("root", "1e-40") -> ""
+("root", "4294967296") -> ""
+("root", "\xef\xbc\x91") -> ""
+("root", "a=b") -> ""
+("root", "inf") -> ""
+~(" ", "1_9ea") -> ""
+~(" ", "4E") -> ""
+~(" .a", "E8b") -> ""
+~(" /", "204") -> ""
+~(" 0.", "+07") -> ""
+~(" 9Z-", "5,b") -> ""
+~("", "+e35xb") -> ""
+~("", "1-E6xe") -> ""
+~("", "144b7ee7") -> ""
+~("", "3-") -> ""
+~("", "33") -> ""
+~("", "51bb94 a") -> ""
+~("", "_,,b") -> ""
+~("", "b") -> ""
+~("", "b8a") -> ""
+~("", "eba") -> ""
+~("", "x181") -> ""
+~("- ", "29 ") -> ""
+~("-0.-: ", "1x") -> ""
+~(".", "0098a+") -> ""
+~(".", "5--7+__e") -> ""
+~(".a-9_", "b4+e1a") -> ""
+~("/9", "_Ee3+x") -> ""
+~("/a:", "b") -> ""
+~("0", "_-b120") -> ""
+~("09_-ZZ", " ,") -> ""
+~("0:/-._", "") -> ""
+~("9-9:Z ", "54E9") -> ""
+~("9/: ", ". ,E58") -> ""
+~("90aZ", "xx218552") -> ""
+~("9:a0Z", "") -> ""
+~("9Z", "-1146_8") -> ""
+~(":.9 -", "00-5") -> ""
+~(":0./Z-", "58309.E") -> ""
+~(":_-.99", "0E_3E6") -> ""
+~(":_a--", "67834E3") -> ""
+~("Z-", " a770") -> ""
+~("Z.:", "bx-") -> ""
+~("Z00.", "64064,e") -> ""
+~("Z_9", "b2") -> ""
+~("Z_a.:/", ".,5_ea") -> ""
+~("_9 ", "+133") -> ""
+~("a", " 067+") -> ""
+~("a.9_.", "x9142E34") -> ""
+~("a:0", "") -> ""
+~("aa_:/0", "_") -> ""
+
+## Bound.h/disagreements
+("", 0, "float", 1) -> ["the operator writes p as 0-byte , but the shader holds 1-byte float"]
+("", 1, "float", 0) -> ["the operator writes p as 1-byte , but the shader holds 0-byte float"]
+("", 1, "float", 1) -> ["the operator writes p as 1-byte , but the shader holds 1-byte float"]
+("", 1, "float", 255) -> ["the operator writes p as 1-byte , but the shader holds 255-byte float"]
+("", 1, "int", 1) -> ["the operator writes p as 1-byte , but the shader holds 1-byte int"]
+("", 1, "ivec2", 1) -> ["the operator writes p as 1-byte , but the shader holds 1-byte ivec2"]
+("", 1, "uvec4", 1) -> ["the operator writes p as 1-byte , but the shader holds 1-byte uvec4"]
+("", 255, "float", 1) -> ["the operator writes p as 255-byte , but the shader holds 1-byte float"]
+("Float", 1, "float", 1) -> ["the operator writes p as 1-byte Float, but the shader holds 1-byte float"]
+("Float", 1, "float", 4294967294) -> ["the operator writes p as 1-byte Float, but the shader holds 4294967294-byte float"]
+("Float", 1, "ivec3", 1) -> ["the operator writes p as 1-byte Float, but the shader holds 1-byte ivec3"]
+("Float", 1, "mat4", 1) -> ["the operator writes p as 1-byte Float, but the shader holds 1-byte mat4"]
+("Float", 1, "uint", 1) -> ["the operator writes p as 1-byte Float, but the shader holds 1-byte uint"]
+("Float", 4294967294, "float", 1) -> ["the operator writes p as 4294967294-byte Float, but the shader holds 1-byte float"]
+("Texture", 0, "float", 1) -> ["the operator writes p as 0-byte Texture, but the shader holds 1-byte float"]
+("Texture", 1, "float", 0) -> ["the operator writes p as 1-byte Texture, but the shader holds 0-byte float"]
+("Texture", 1, "float", 1) -> ["the operator writes p as 1-byte Texture, but the shader holds 1-byte float"]
+("Texture", 1, "float", 255) -> ["the operator writes p as 1-byte Texture, but the shader holds 255-byte float"]
+("Texture", 1, "int", 1) -> ["the operator writes p as 1-byte Texture, but the shader holds 1-byte int"]
+("Texture", 1, "ivec2", 1) -> ["the operator writes p as 1-byte Texture, but the shader holds 1-byte ivec2"]
+("Texture", 1, "uvec4", 1) -> ["the operator writes p as 1-byte Texture, but the shader holds 1-byte uvec4"]
+("Texture", 255, "float", 1) -> ["the operator writes p as 255-byte Texture, but the shader holds 1-byte float"]
+("double", 1, "double", 1) -> []
+("double", 1, "float", 1) -> ["the operator writes p as 1-byte double, but the shader holds 1-byte float"]
+("double", 1, "float", 4294967295) -> ["the operator writes p as 1-byte double, but the shader holds 4294967295-byte float"]
+("double", 1, "float", 65536) -> ["the operator writes p as 1-byte double, but the shader holds 65536-byte float"]
+("double", 1, "ivec4", 1) -> ["the operator writes p as 1-byte double, but the shader holds 1-byte ivec4"]
+("double", 1, "vec2", 1) -> ["the operator writes p as 1-byte double, but the shader holds 1-byte vec2"]
+("double", 4294967295, "float", 1) -> ["the operator writes p as 4294967295-byte double, but the shader holds 1-byte float"]
+("double", 65536, "float", 1) -> ["the operator writes p as 65536-byte double, but the shader holds 1-byte float"]
+("float", 0, "float", 1) -> ["the operator writes p as 0-byte float, but the shader holds 1-byte float"]
+("float", 0, "float", 65535) -> ["the operator writes p as 0-byte float, but the shader holds 65535-byte float"]
+("float", 0, "float", 7) -> ["the operator writes p as 0-byte float, but the shader holds 7-byte float"]
+("float", 0, "int", 1) -> ["the operator writes p as 0-byte float, but the shader holds 1-byte int"]
+("float", 0, "ivec2", 1) -> ["the operator writes p as 0-byte float, but the shader holds 1-byte ivec2"]
+("float", 0, "uvec4", 1) -> ["the operator writes p as 0-byte float, but the shader holds 1-byte uvec4"]
+("float", 1, "", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte "]
+("float", 1, "", 2) -> ["the operator writes p as 1-byte float, but the shader holds 2-byte "]
+("float", 1, "", 256) -> ["the operator writes p as 1-byte float, but the shader holds 256-byte "]
+("float", 1, "Float", 0) -> ["the operator writes p as 1-byte float, but the shader holds 0-byte Float"]
+("float", 1, "Float", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte Float"]
+("float", 1, "Float", 255) -> ["the operator writes p as 1-byte float, but the shader holds 255-byte Float"]
+("float", 1, "Texture", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte Texture"]
+("float", 1, "Texture", 2) -> ["the operator writes p as 1-byte float, but the shader holds 2-byte Texture"]
+("float", 1, "Texture", 256) -> ["the operator writes p as 1-byte float, but the shader holds 256-byte Texture"]
+("float", 1, "double", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte double"]
+("float", 1, "double", 4294967294) -> ["the operator writes p as 1-byte float, but the shader holds 4294967294-byte double"]
+("float", 1, "float", 0) -> ["the operator writes p as 1-byte float, but the shader holds 0-byte float"]
+("float", 1, "float", 1) -> []
+("float", 1, "float", 2) -> ["the operator writes p as 1-byte float, but the shader holds 2-byte float"]
+("float", 1, "float", 255) -> ["the operator writes p as 1-byte float, but the shader holds 255-byte float"]
+("float", 1, "float", 256) -> ["the operator writes p as 1-byte float, but the shader holds 256-byte float"]
+("float", 1, "float", 4294967294) -> ["the operator writes p as 1-byte float, but the shader holds 4294967294-byte float"]
+("float", 1, "float", 4294967295) -> ["the operator writes p as 1-byte float, but the shader holds 4294967295-byte float"]
+("float", 1, "float", 65535) -> ["the operator writes p as 1-byte float, but the shader holds 65535-byte float"]
+("float", 1, "float", 65536) -> ["the operator writes p as 1-byte float, but the shader holds 65536-byte float"]
+("float", 1, "float", 7) -> ["the operator writes p as 1-byte float, but the shader holds 7-byte float"]
+("float", 1, "int", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte int"]
+("float", 1, "int", 65535) -> ["the operator writes p as 1-byte float, but the shader holds 65535-byte int"]
+("float", 1, "int", 7) -> ["the operator writes p as 1-byte float, but the shader holds 7-byte int"]
+("float", 1, "ivec2", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte ivec2"]
+("float", 1, "ivec2", 65535) -> ["the operator writes p as 1-byte float, but the shader holds 65535-byte ivec2"]
+("float", 1, "ivec2", 7) -> ["the operator writes p as 1-byte float, but the shader holds 7-byte ivec2"]
+("float", 1, "ivec3", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte ivec3"]
+("float", 1, "ivec3", 4294967295) -> ["the operator writes p as 1-byte float, but the shader holds 4294967295-byte ivec3"]
+("float", 1, "ivec3", 65536) -> ["the operator writes p as 1-byte float, but the shader holds 65536-byte ivec3"]
+("float", 1, "ivec4", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte ivec4"]
+("float", 1, "ivec4", 4294967294) -> ["the operator writes p as 1-byte float, but the shader holds 4294967294-byte ivec4"]
+("float", 1, "mat4", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte mat4"]
+("float", 1, "mat4", 4294967295) -> ["the operator writes p as 1-byte float, but the shader holds 4294967295-byte mat4"]
+("float", 1, "mat4", 65536) -> ["the operator writes p as 1-byte float, but the shader holds 65536-byte mat4"]
+("float", 1, "uint", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte uint"]
+("float", 1, "uint", 4294967295) -> ["the operator writes p as 1-byte float, but the shader holds 4294967295-byte uint"]
+("float", 1, "uint", 65536) -> ["the operator writes p as 1-byte float, but the shader holds 65536-byte uint"]
+("float", 1, "uvec2", 0) -> ["the operator writes p as 1-byte float, but the shader holds 0-byte uvec2"]
+("float", 1, "uvec2", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte uvec2"]
+("float", 1, "uvec2", 255) -> ["the operator writes p as 1-byte float, but the shader holds 255-byte uvec2"]
+("float", 1, "uvec3", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte uvec3"]
+("float", 1, "uvec3", 2) -> ["the operator writes p as 1-byte float, but the shader holds 2-byte uvec3"]
+("float", 1, "uvec3", 256) -> ["the operator writes p as 1-byte float, but the shader holds 256-byte uvec3"]
+("float", 1, "uvec4", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte uvec4"]
+("float", 1, "uvec4", 65535) -> ["the operator writes p as 1-byte float, but the shader holds 65535-byte uvec4"]
+("float", 1, "uvec4", 7) -> ["the operator writes p as 1-byte float, but the shader holds 7-byte uvec4"]
+("float", 1, "vec2", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte vec2"]
+("float", 1, "vec2", 4294967294) -> ["the operator writes p as 1-byte float, but the shader holds 4294967294-byte vec2"]
+("float", 1, "vec3", 0) -> ["the operator writes p as 1-byte float, but the shader holds 0-byte vec3"]
+("float", 1, "vec3", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte vec3"]
+("float", 1, "vec3", 255) -> ["the operator writes p as 1-byte float, but the shader holds 255-byte vec3"]
+("float", 1, "vec4", 1) -> ["the operator writes p as 1-byte float, but the shader holds 1-byte vec4"]
+("float", 1, "vec4", 2) -> ["the operator writes p as 1-byte float, but the shader holds 2-byte vec4"]
+("float", 1, "vec4", 256) -> ["the operator writes p as 1-byte float, but the shader holds 256-byte vec4"]
+("float", 2, "", 1) -> ["the operator writes p as 2-byte float, but the shader holds 1-byte "]
+("float", 2, "Texture", 1) -> ["the operator writes p as 2-byte float, but the shader holds 1-byte Texture"]
+("float", 2, "float", 1) -> ["the operator writes p as 2-byte float, but the shader holds 1-byte float"]
+("float", 2, "float", 4294967295) -> ["the operator writes p as 2-byte float, but the shader holds 4294967295-byte float"]
+("float", 2, "float", 65536) -> ["the operator writes p as 2-byte float, but the shader holds 65536-byte float"]
+("float", 2, "uvec3", 1) -> ["the operator writes p as 2-byte float, but the shader holds 1-byte uvec3"]
+("float", 2, "vec4", 1) -> ["the operator writes p as 2-byte float, but the shader holds 1-byte vec4"]
+("float", 255, "float", 1) -> ["the operator writes p as 255-byte float, but the shader holds 1-byte float"]
+("float", 255, "float", 65535) -> ["the operator writes p as 255-byte float, but the shader holds 65535-byte float"]
+("float", 255, "float", 7) -> ["the operator writes p as 255-byte float, but the shader holds 7-byte float"]
+("float", 255, "int", 1) -> ["the operator writes p as 255-byte float, but the shader holds 1-byte int"]
+("float", 255, "ivec2", 1) -> ["the operator writes p as 255-byte float, but the shader holds 1-byte ivec2"]
+("float", 255, "uvec4", 1) -> ["the operator writes p as 255-byte float, but the shader holds 1-byte uvec4"]
+("float", 256, "", 1) -> ["the operator writes p as 256-byte float, but the shader holds 1-byte "]
+("float", 256, "Texture", 1) -> ["the operator writes p as 256-byte float, but the shader holds 1-byte Texture"]
+("float", 256, "float", 1) -> ["the operator writes p as 256-byte float, but the shader holds 1-byte float"]
+("float", 256, "float", 4294967295) -> ["the operator writes p as 256-byte float, but the shader holds 4294967295-byte float"]
+("float", 256, "float", 65536) -> ["the operator writes p as 256-byte float, but the shader holds 65536-byte float"]
+("float", 256, "uvec3", 1) -> ["the operator writes p as 256-byte float, but the shader holds 1-byte uvec3"]
+("float", 256, "vec4", 1) -> ["the operator writes p as 256-byte float, but the shader holds 1-byte vec4"]
+("float", 4294967294, "float", 1) -> ["the operator writes p as 4294967294-byte float, but the shader holds 1-byte float"]
+("float", 4294967294, "float", 2) -> ["the operator writes p as 4294967294-byte float, but the shader holds 2-byte float"]
+("float", 4294967294, "float", 256) -> ["the operator writes p as 4294967294-byte float, but the shader holds 256-byte float"]
+("float", 4294967294, "ivec3", 1) -> ["the operator writes p as 4294967294-byte float, but the shader holds 1-byte ivec3"]
+("float", 4294967294, "mat4", 1) -> ["the operator writes p as 4294967294-byte float, but the shader holds 1-byte mat4"]
+("float", 4294967294, "uint", 1) -> ["the operator writes p as 4294967294-byte float, but the shader holds 1-byte uint"]
+("float", 4294967295, "double", 1) -> ["the operator writes p as 4294967295-byte float, but the shader holds 1-byte double"]
+("float", 4294967295, "float", 0) -> ["the operator writes p as 4294967295-byte float, but the shader holds 0-byte float"]
+("float", 4294967295, "float", 1) -> ["the operator writes p as 4294967295-byte float, but the shader holds 1-byte float"]
+("float", 4294967295, "float", 255) -> ["the operator writes p as 4294967295-byte float, but the shader holds 255-byte float"]
+("float", 4294967295, "ivec4", 1) -> ["the operator writes p as 4294967295-byte float, but the shader holds 1-byte ivec4"]
+("float", 4294967295, "vec2", 1) -> ["the operator writes p as 4294967295-byte float, but the shader holds 1-byte vec2"]
+("float", 65535, "Float", 1) -> ["the operator writes p as 65535-byte float, but the shader holds 1-byte Float"]
+("float", 65535, "float", 1) -> ["the operator writes p as 65535-byte float, but the shader holds 1-byte float"]
+("float", 65535, "float", 4294967294) -> ["the operator writes p as 65535-byte float, but the shader holds 4294967294-byte float"]
+("float", 65535, "uvec2", 1) -> ["the operator writes p as 65535-byte float, but the shader holds 1-byte uvec2"]
+("float", 65535, "vec3", 1) -> ["the operator writes p as 65535-byte float, but the shader holds 1-byte vec3"]
+("float", 65536, "double", 1) -> ["the operator writes p as 65536-byte float, but the shader holds 1-byte double"]
+("float", 65536, "float", 0) -> ["the operator writes p as 65536-byte float, but the shader holds 0-byte float"]
+("float", 65536, "float", 1) -> ["the operator writes p as 65536-byte float, but the shader holds 1-byte float"]
+("float", 65536, "float", 255) -> ["the operator writes p as 65536-byte float, but the shader holds 255-byte float"]
+("float", 65536, "ivec4", 1) -> ["the operator writes p as 65536-byte float, but the shader holds 1-byte ivec4"]
+("float", 65536, "vec2", 1) -> ["the operator writes p as 65536-byte float, but the shader holds 1-byte vec2"]
+("float", 7, "Float", 1) -> ["the operator writes p as 7-byte float, but the shader holds 1-byte Float"]
+("float", 7, "float", 1) -> ["the operator writes p as 7-byte float, but the shader holds 1-byte float"]
+("float", 7, "float", 4294967294) -> ["the operator writes p as 7-byte float, but the shader holds 4294967294-byte float"]
+("float", 7, "uvec2", 1) -> ["the operator writes p as 7-byte float, but the shader holds 1-byte uvec2"]
+("float", 7, "vec3", 1) -> ["the operator writes p as 7-byte float, but the shader holds 1-byte vec3"]
+("int", 1, "", 1) -> ["the operator writes p as 1-byte int, but the shader holds 1-byte "]
+("int", 1, "Texture", 1) -> ["the operator writes p as 1-byte int, but the shader holds 1-byte Texture"]
+("int", 1, "float", 1) -> ["the operator writes p as 1-byte int, but the shader holds 1-byte float"]
+("int", 1, "float", 2) -> ["the operator writes p as 1-byte int, but the shader holds 2-byte float"]
+("int", 1, "float", 256) -> ["the operator writes p as 1-byte int, but the shader holds 256-byte float"]
+("int", 1, "uvec3", 1) -> ["the operator writes p as 1-byte int, but the shader holds 1-byte uvec3"]
+("int", 1, "vec4", 1) -> ["the operator writes p as 1-byte int, but the shader holds 1-byte vec4"]
+("int", 2, "float", 1) -> ["the operator writes p as 2-byte int, but the shader holds 1-byte float"]
+("int", 256, "float", 1) -> ["the operator writes p as 256-byte int, but the shader holds 1-byte float"]
+("ivec2", 1, "", 1) -> ["the operator writes p as 1-byte ivec2, but the shader holds 1-byte "]
+("ivec2", 1, "Texture", 1) -> ["the operator writes p as 1-byte ivec2, but the shader holds 1-byte Texture"]
+("ivec2", 1, "float", 1) -> ["the operator writes p as 1-byte ivec2, but the shader holds 1-byte float"]
+("ivec2", 1, "float", 2) -> ["the operator writes p as 1-byte ivec2, but the shader holds 2-byte float"]
+("ivec2", 1, "float", 256) -> ["the operator writes p as 1-byte ivec2, but the shader holds 256-byte float"]
+("ivec2", 1, "uvec3", 1) -> ["the operator writes p as 1-byte ivec2, but the shader holds 1-byte uvec3"]
+("ivec2", 1, "vec4", 1) -> ["the operator writes p as 1-byte ivec2, but the shader holds 1-byte vec4"]
+("ivec2", 2, "float", 1) -> ["the operator writes p as 2-byte ivec2, but the shader holds 1-byte float"]
+("ivec2", 256, "float", 1) -> ["the operator writes p as 256-byte ivec2, but the shader holds 1-byte float"]
+("ivec3", 1, "Float", 1) -> ["the operator writes p as 1-byte ivec3, but the shader holds 1-byte Float"]
+("ivec3", 1, "float", 1) -> ["the operator writes p as 1-byte ivec3, but the shader holds 1-byte float"]
+("ivec3", 1, "float", 65535) -> ["the operator writes p as 1-byte ivec3, but the shader holds 65535-byte float"]
+("ivec3", 1, "float", 7) -> ["the operator writes p as 1-byte ivec3, but the shader holds 7-byte float"]
+("ivec3", 1, "uvec2", 1) -> ["the operator writes p as 1-byte ivec3, but the shader holds 1-byte uvec2"]
+("ivec3", 1, "vec3", 1) -> ["the operator writes p as 1-byte ivec3, but the shader holds 1-byte vec3"]
+("ivec3", 65535, "float", 1) -> ["the operator writes p as 65535-byte ivec3, but the shader holds 1-byte float"]
+("ivec3", 7, "float", 1) -> ["the operator writes p as 7-byte ivec3, but the shader holds 1-byte float"]
+("ivec4", 1, "double", 1) -> ["the operator writes p as 1-byte ivec4, but the shader holds 1-byte double"]
+("ivec4", 1, "float", 1) -> ["the operator writes p as 1-byte ivec4, but the shader holds 1-byte float"]
+("ivec4", 1, "float", 4294967295) -> ["the operator writes p as 1-byte ivec4, but the shader holds 4294967295-byte float"]
+("ivec4", 1, "float", 65536) -> ["the operator writes p as 1-byte ivec4, but the shader holds 65536-byte float"]
+("ivec4", 1, "ivec4", 1) -> []
+("ivec4", 1, "vec2", 1) -> ["the operator writes p as 1-byte ivec4, but the shader holds 1-byte vec2"]
+("ivec4", 4294967295, "float", 1) -> ["the operator writes p as 4294967295-byte ivec4, but the shader holds 1-byte float"]
+("ivec4", 65536, "float", 1) -> ["the operator writes p as 65536-byte ivec4, but the shader holds 1-byte float"]
+("mat4", 1, "Float", 1) -> ["the operator writes p as 1-byte mat4, but the shader holds 1-byte Float"]
+("mat4", 1, "float", 1) -> ["the operator writes p as 1-byte mat4, but the shader holds 1-byte float"]
+("mat4", 1, "float", 65535) -> ["the operator writes p as 1-byte mat4, but the shader holds 65535-byte float"]
+("mat4", 1, "float", 7) -> ["the operator writes p as 1-byte mat4, but the shader holds 7-byte float"]
+("mat4", 1, "uvec2", 1) -> ["the operator writes p as 1-byte mat4, but the shader holds 1-byte uvec2"]
+("mat4", 1, "vec3", 1) -> ["the operator writes p as 1-byte mat4, but the shader holds 1-byte vec3"]
+("mat4", 65535, "float", 1) -> ["the operator writes p as 65535-byte mat4, but the shader holds 1-byte float"]
+("mat4", 7, "float", 1) -> ["the operator writes p as 7-byte mat4, but the shader holds 1-byte float"]
+("uint", 1, "Float", 1) -> ["the operator writes p as 1-byte uint, but the shader holds 1-byte Float"]
+("uint", 1, "float", 1) -> ["the operator writes p as 1-byte uint, but the shader holds 1-byte float"]
+("uint", 1, "float", 65535) -> ["the operator writes p as 1-byte uint, but the shader holds 65535-byte float"]
+("uint", 1, "float", 7) -> ["the operator writes p as 1-byte uint, but the shader holds 7-byte float"]
+("uint", 1, "uvec2", 1) -> ["the operator writes p as 1-byte uint, but the shader holds 1-byte uvec2"]
+("uint", 1, "vec3", 1) -> ["the operator writes p as 1-byte uint, but the shader holds 1-byte vec3"]
+("uint", 65535, "float", 1) -> ["the operator writes p as 65535-byte uint, but the shader holds 1-byte float"]
+("uint", 7, "float", 1) -> ["the operator writes p as 7-byte uint, but the shader holds 1-byte float"]
+("uvec2", 1, "float", 1) -> ["the operator writes p as 1-byte uvec2, but the shader holds 1-byte float"]
+("uvec2", 1, "float", 4294967294) -> ["the operator writes p as 1-byte uvec2, but the shader holds 4294967294-byte float"]
+("uvec2", 1, "ivec3", 1) -> ["the operator writes p as 1-byte uvec2, but the shader holds 1-byte ivec3"]
+("uvec2", 1, "mat4", 1) -> ["the operator writes p as 1-byte uvec2, but the shader holds 1-byte mat4"]
+("uvec2", 1, "uint", 1) -> ["the operator writes p as 1-byte uvec2, but the shader holds 1-byte uint"]
+("uvec2", 4294967294, "float", 1) -> ["the operator writes p as 4294967294-byte uvec2, but the shader holds 1-byte float"]
+("uvec3", 0, "float", 1) -> ["the operator writes p as 0-byte uvec3, but the shader holds 1-byte float"]
+("uvec3", 1, "float", 0) -> ["the operator writes p as 1-byte uvec3, but the shader holds 0-byte float"]
+("uvec3", 1, "float", 1) -> ["the operator writes p as 1-byte uvec3, but the shader holds 1-byte float"]
+("uvec3", 1, "float", 255) -> ["the operator writes p as 1-byte uvec3, but the shader holds 255-byte float"]
+("uvec3", 1, "int", 1) -> ["the operator writes p as 1-byte uvec3, but the shader holds 1-byte int"]
+("uvec3", 1, "ivec2", 1) -> ["the operator writes p as 1-byte uvec3, but the shader holds 1-byte ivec2"]
+("uvec3", 1, "uvec4", 1) -> ["the operator writes p as 1-byte uvec3, but the shader holds 1-byte uvec4"]
+("uvec3", 255, "float", 1) -> ["the operator writes p as 255-byte uvec3, but the shader holds 1-byte float"]
+("uvec4", 1, "", 1) -> ["the operator writes p as 1-byte uvec4, but the shader holds 1-byte "]
+("uvec4", 1, "Texture", 1) -> ["the operator writes p as 1-byte uvec4, but the shader holds 1-byte Texture"]
+("uvec4", 1, "float", 1) -> ["the operator writes p as 1-byte uvec4, but the shader holds 1-byte float"]
+("uvec4", 1, "float", 2) -> ["the operator writes p as 1-byte uvec4, but the shader holds 2-byte float"]
+("uvec4", 1, "float", 256) -> ["the operator writes p as 1-byte uvec4, but the shader holds 256-byte float"]
+("uvec4", 1, "uvec3", 1) -> ["the operator writes p as 1-byte uvec4, but the shader holds 1-byte uvec3"]
+("uvec4", 1, "vec4", 1) -> ["the operator writes p as 1-byte uvec4, but the shader holds 1-byte vec4"]
+("uvec4", 2, "float", 1) -> ["the operator writes p as 2-byte uvec4, but the shader holds 1-byte float"]
+("uvec4", 256, "float", 1) -> ["the operator writes p as 256-byte uvec4, but the shader holds 1-byte float"]
+("vec2", 1, "double", 1) -> ["the operator writes p as 1-byte vec2, but the shader holds 1-byte double"]
+("vec2", 1, "float", 1) -> ["the operator writes p as 1-byte vec2, but the shader holds 1-byte float"]
+("vec2", 1, "float", 4294967295) -> ["the operator writes p as 1-byte vec2, but the shader holds 4294967295-byte float"]
+("vec2", 1, "float", 65536) -> ["the operator writes p as 1-byte vec2, but the shader holds 65536-byte float"]
+("vec2", 1, "ivec4", 1) -> ["the operator writes p as 1-byte vec2, but the shader holds 1-byte ivec4"]
+("vec2", 1, "vec2", 1) -> []
+("vec2", 4294967295, "float", 1) -> ["the operator writes p as 4294967295-byte vec2, but the shader holds 1-byte float"]
+("vec2", 65536, "float", 1) -> ["the operator writes p as 65536-byte vec2, but the shader holds 1-byte float"]
+("vec3", 1, "float", 1) -> ["the operator writes p as 1-byte vec3, but the shader holds 1-byte float"]
+("vec3", 1, "float", 4294967294) -> ["the operator writes p as 1-byte vec3, but the shader holds 4294967294-byte float"]
+("vec3", 1, "ivec3", 1) -> ["the operator writes p as 1-byte vec3, but the shader holds 1-byte ivec3"]
+("vec3", 1, "mat4", 1) -> ["the operator writes p as 1-byte vec3, but the shader holds 1-byte mat4"]
+("vec3", 1, "uint", 1) -> ["the operator writes p as 1-byte vec3, but the shader holds 1-byte uint"]
+("vec3", 4294967294, "float", 1) -> ["the operator writes p as 4294967294-byte vec3, but the shader holds 1-byte float"]
+("vec4", 0, "float", 1) -> ["the operator writes p as 0-byte vec4, but the shader holds 1-byte float"]
+("vec4", 1, "float", 0) -> ["the operator writes p as 1-byte vec4, but the shader holds 0-byte float"]
+("vec4", 1, "float", 1) -> ["the operator writes p as 1-byte vec4, but the shader holds 1-byte float"]
+("vec4", 1, "float", 255) -> ["the operator writes p as 1-byte vec4, but the shader holds 255-byte float"]
+("vec4", 1, "int", 1) -> ["the operator writes p as 1-byte vec4, but the shader holds 1-byte int"]
+("vec4", 1, "ivec2", 1) -> ["the operator writes p as 1-byte vec4, but the shader holds 1-byte ivec2"]
+("vec4", 1, "uvec4", 1) -> ["the operator writes p as 1-byte vec4, but the shader holds 1-byte uvec4"]
+("vec4", 255, "float", 1) -> ["the operator writes p as 255-byte vec4, but the shader holds 1-byte float"]
+~("", 3498503634, "double", 1404291177) -> ["the operator writes p as 3498503634-byte , but the shader holds 1404291177-byte double"]
+~("", 8, "uint", 263611850) -> ["the operator writes p as 8-byte , but the shader holds 263611850-byte uint"]
+~("Float", 0, "uvec4", 1516598956) -> ["the operator writes p as 0-byte Float, but the shader holds 1516598956-byte uvec4"]
+~("Float", 1, "ivec4", 1456497021) -> ["the operator writes p as 1-byte Float, but the shader holds 1456497021-byte ivec4"]
+~("Float", 1303086579, "uint", 3328830830) -> ["the operator writes p as 1303086579-byte Float, but the shader holds 3328830830-byte uint"]
+~("Float", 2617244663, "int", 3510029932) -> ["the operator writes p as 2617244663-byte Float, but the shader holds 3510029932-byte int"]
+~("Float", 9, "ivec2", 3219775982) -> ["the operator writes p as 9-byte Float, but the shader holds 3219775982-byte ivec2"]
+~("Texture", 12, "vec4", 1) -> ["the operator writes p as 12-byte Texture, but the shader holds 1-byte vec4"]
+~("Texture", 4294967282, "uvec2", 4092625498) -> ["the operator writes p as 4294967282-byte Texture, but the shader holds 4092625498-byte uvec2"]
+~("Texture", 4294967289, "vec3", 2856973649) -> ["the operator writes p as 4294967289-byte Texture, but the shader holds 2856973649-byte vec3"]
+~("Texture", 607747309, "uvec3", 3877538024) -> ["the operator writes p as 607747309-byte Texture, but the shader holds 3877538024-byte uvec3"]
+~("double", 2912197229, "vec2", 4294967293) -> ["the operator writes p as 2912197229-byte double, but the shader holds 4294967293-byte vec2"]
+~("double", 4294967281, "vec4", 4294967290) -> ["the operator writes p as 4294967281-byte double, but the shader holds 4294967290-byte vec4"]
+~("float", 14, "Texture", 4294967280) -> ["the operator writes p as 14-byte float, but the shader holds 4294967280-byte Texture"]
+~("float", 679899502, "uvec2", 7) -> ["the operator writes p as 679899502-byte float, but the shader holds 7-byte uvec2"]
+~("ivec2", 12, "ivec3", 9) -> ["the operator writes p as 12-byte ivec2, but the shader holds 9-byte ivec3"]
+~("ivec2", 1300823927, "uint", 4294967281) -> ["the operator writes p as 1300823927-byte ivec2, but the shader holds 4294967281-byte uint"]
+~("ivec2", 2, "vec3", 4294967292) -> ["the operator writes p as 2-byte ivec2, but the shader holds 4294967292-byte vec3"]
+~("ivec2", 2669145551, "uvec2", 755633546) -> ["the operator writes p as 2669145551-byte ivec2, but the shader holds 755633546-byte uvec2"]
+~("ivec3", 2, "ivec2", 2150429346) -> ["the operator writes p as 2-byte ivec3, but the shader holds 2150429346-byte ivec2"]
+~("ivec4", 13, "uvec2", 4294967289) -> ["the operator writes p as 13-byte ivec4, but the shader holds 4294967289-byte uvec2"]
+~("ivec4", 9, "uint", 4294967293) -> ["the operator writes p as 9-byte ivec4, but the shader holds 4294967293-byte uint"]
+~("mat4", 3419446593, "uint", 4294967290) -> ["the operator writes p as 3419446593-byte mat4, but the shader holds 4294967290-byte uint"]
+~("uint", 2992217146, "Texture", 1913088837) -> ["the operator writes p as 2992217146-byte uint, but the shader holds 1913088837-byte Texture"]
+~("uvec2", 1001265792, "ivec4", 2755073984) -> ["the operator writes p as 1001265792-byte uvec2, but the shader holds 2755073984-byte ivec4"]
+~("uvec2", 14, "ivec2", 1737353764) -> ["the operator writes p as 14-byte uvec2, but the shader holds 1737353764-byte ivec2"]
+~("uvec2", 1477427315, "Texture", 7) -> ["the operator writes p as 1477427315-byte uvec2, but the shader holds 7-byte Texture"]
+~("uvec2", 2659838283, "Float", 4294967281) -> ["the operator writes p as 2659838283-byte uvec2, but the shader holds 4294967281-byte Float"]
+~("uvec2", 3702457540, "Texture", 4294967287) -> ["the operator writes p as 3702457540-byte uvec2, but the shader holds 4294967287-byte Texture"]
+~("uvec3", 4, "uint", 176081178) -> ["the operator writes p as 4-byte uvec3, but the shader holds 176081178-byte uint"]
+~("uvec3", 4294967287, "uvec3", 4294967289) -> ["the operator writes p as 4294967287-byte uvec3, but the shader holds 4294967289-byte uvec3"]
+~("uvec3", 447609964, "uint", 4294967285) -> ["the operator writes p as 447609964-byte uvec3, but the shader holds 4294967285-byte uint"]
+~("uvec3", 9, "uvec2", 2405361315) -> ["the operator writes p as 9-byte uvec3, but the shader holds 2405361315-byte uvec2"]
+~("uvec4", 14, "int", 10) -> ["the operator writes p as 14-byte uvec4, but the shader holds 10-byte int"]
+~("uvec4", 2222110568, "ivec4", 4294967295) -> ["the operator writes p as 2222110568-byte uvec4, but the shader holds 4294967295-byte ivec4"]
+~("uvec4", 3251473712, "uint", 4294967295) -> ["the operator writes p as 3251473712-byte uvec4, but the shader holds 4294967295-byte uint"]
+~("vec2", 4294967280, "double", 4294967286) -> ["the operator writes p as 4294967280-byte vec2, but the shader holds 4294967286-byte double"]
+~("vec2", 7, "double", 931474935) -> ["the operator writes p as 7-byte vec2, but the shader holds 931474935-byte double"]
+~("vec3", 1075283077, "uvec3", 6) -> ["the operator writes p as 1075283077-byte vec3, but the shader holds 6-byte uvec3"]
+~("vec3", 1548141848, "uvec3", 4294967284) -> ["the operator writes p as 1548141848-byte vec3, but the shader holds 4294967284-byte uvec3"]
+~("vec3", 2154384236, "uint", 2984647181) -> ["the operator writes p as 2154384236-byte vec3, but the shader holds 2984647181-byte uint"]
+~("vec3", 3005246671, "uvec3", 4294967289) -> ["the operator writes p as 3005246671-byte vec3, but the shader holds 4294967289-byte uvec3"]
+~("vec3", 4294967286, "ivec2", 2870941477) -> ["the operator writes p as 4294967286-byte vec3, but the shader holds 2870941477-byte ivec2"]
+~("vec3", 4294967286, "uvec2", 4294967280) -> ["the operator writes p as 4294967286-byte vec3, but the shader holds 4294967280-byte uvec2"]
+~("vec3", 4294967287, "uvec4", 4294967284) -> ["the operator writes p as 4294967287-byte vec3, but the shader holds 4294967284-byte uvec4"]
+~("vec3", 9, "uint", 1158075055) -> ["the operator writes p as 9-byte vec3, but the shader holds 1158075055-byte uint"]
+~("vec4", 15, "uvec2", 1302673572) -> ["the operator writes p as 15-byte vec4, but the shader holds 1302673572-byte uvec2"]
+~("vec4", 4294967295, "uvec2", 4294967283) -> ["the operator writes p as 4294967295-byte vec4, but the shader holds 4294967283-byte uvec2"]
+
+## Bound.h/instance_number
+(" 1") -> none
+("") -> 1
+("+1") -> none
+("-0") -> none
+("-1") -> none
+("-2147483648") -> none
+("-inf") -> none
+(".5") -> none
+("0") -> 0
+("01") -> 1
+("0x10") -> none
+("1 ") -> none
+("1") -> 1
+("1,2") -> none
+("1.5") -> none
+("18446744073709551615") -> none
+("18446744073709551616") -> none
+("1\n") -> none
+("1\r") -> none
+("1_0") -> none
+("1e") -> none
+("1e-40") -> none
+("1e-50") -> none
+("1e3") -> none
+("3.4028235e38") -> none
+("3.4028236e38") -> none
+("4294967295") -> 4294967295
+("4294967296") -> none
+("5.") -> none
+("=") -> none
+("\xd9\xa1") -> none
+("\xef\xbc\x91") -> none
+("a") -> none
+("a=b") -> none
+("inf") -> none
+("nan") -> none
+~(" ") -> none
+~(" 289") -> none
+~(" 8x.6 7") -> none
+~("+5") -> none
+~("+b14") -> none
+~("+x,-,x+9") -> none
+~(",+8") -> none
+~(",,") -> none
+~(",b,") -> none
+~("-0b._") -> none
+~("-5_1b-77") -> none
+~(".,") -> none
+~("0,94,30a") -> none
+~("0527_E_+") -> none
+~("1,+.185e") -> none
+~("1Ee1") -> none
+~("237e9") -> none
+~("31eEE,4") -> none
+~("402") -> 402
+~("5E7") -> none
+~("7 -E,.") -> none
+~("7") -> 7
+~("73-,-e-E") -> none
+~("859_7 2") -> none
+~("9 ._6") -> none
+~("94") -> 94
+~("99ebe3") -> none
+~("E+a5") -> none
+~("E,") -> none
+~("E-1E") -> none
+~("E3-axe9,") -> none
+~("E7e507+") -> none
+~("_") -> none
+~("a-+xa") -> none
+~("b0,26") -> none
+~("e-E95758") -> none
+~("eE7,8.bx") -> none
+~("ea_") -> none
+~("x-5a_0,5") -> none
+~("x-8-") -> none
+~("x.0425x") -> none
+~("x4e7,4") -> none
+
+## Bound.h/is_draw and the stage rules
+(["A.comp", "A.cpp"]) -> "vertex false fragment false draw false lacks false operator true"
+(["A.comp"]) -> "vertex false fragment false draw false lacks false operator false"
+(["A.cpp"]) -> "vertex false fragment false draw false lacks false operator true"
+(["A.frag"]) -> "vertex false fragment true draw false lacks false operator false"
+(["A.geom"]) -> "vertex false fragment false draw false lacks true operator false"
+(["A.vert", "A.frag", "A.cpp"]) -> "vertex false fragment false draw true lacks false operator true"
+(["A.vert", "A.frag"]) -> "vertex false fragment false draw true lacks false operator false"
+(["A.vert", "A.geom", "A.frag"]) -> "vertex false fragment false draw true lacks false operator false"
+(["A.vert", "A.tesc", "A.frag"]) -> "vertex false fragment false draw false lacks true operator false"
+(["A.vert", "A.tesc", "A.tese", "A.frag"]) -> "vertex false fragment false draw true lacks false operator false"
+(["A.vert"]) -> "vertex true fragment false draw true lacks false operator false"
+([]) -> "vertex false fragment false draw false lacks false operator false"
+
+## Bound.h/joining
+(view "chain" #756c4f17, "") -> "connect   b.in c.in"
+(view "chain" #756c4f17, ".") -> "connect  . b.in c.in"
+(view "chain" #756c4f17, ".a") -> "connect a .a b.in c.in"
+(view "chain" #756c4f17, "\xc3\xa9.a") -> "connect a \xc3\xa9.a b.in c.in"
+(view "chain" #756c4f17, "a b") -> "connect a b a b b.in c.in"
+(view "chain" #756c4f17, "a") -> "connect a a b.in c.in"
+(view "chain" #756c4f17, "a.") -> "connect  a. b.in c.in"
+(view "chain" #756c4f17, "a..b") -> "connect b a..b b.in c.in"
+(view "chain" #756c4f17, "a.b ") -> "connect b  a.b  b.in c.in"
+(view "chain" #756c4f17, "a.b") -> "connect b a.b b.in c.in"
+(view "chain" #756c4f17, "a.b.c") -> "connect c a.b.c b.in c.in"
+(view "chain" #756c4f17, "a.root") -> "connect root a.root b.in c.in"
+(view "chain" #756c4f17, "a/b") -> "connect a/b a/b b.in c.in"
+(view "chain" #756c4f17, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> "connect b aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaa.b b.in c.in" (322 characters, hash 7bf9a693481c99b2)
+(view "chain" #756c4f17, "root") -> "connect root root b.in c.in"
+(view "chain" #756c4f17, "root.a") -> "connect a root.a b.in c.in"
+(view "empty" #983bd7a3, "") -> "connect   b.in c.in"
+(view "empty" #983bd7a3, ".") -> "connect  . b.in c.in"
+(view "empty" #983bd7a3, ".a") -> "connect a .a b.in c.in"
+(view "empty" #983bd7a3, "\xc3\xa9.a") -> "connect a \xc3\xa9.a b.in c.in"
+(view "empty" #983bd7a3, "a b") -> "connect a b a b b.in c.in"
+(view "empty" #983bd7a3, "a") -> "connect a a b.in c.in"
+(view "empty" #983bd7a3, "a.") -> "connect  a. b.in c.in"
+(view "empty" #983bd7a3, "a..b") -> "connect b a..b b.in c.in"
+(view "empty" #983bd7a3, "a.b ") -> "connect b  a.b  b.in c.in"
+(view "empty" #983bd7a3, "a.b") -> "connect b a.b b.in c.in"
+(view "empty" #983bd7a3, "a.b.c") -> "connect c a.b.c b.in c.in"
+(view "empty" #983bd7a3, "a.root") -> "connect root a.root b.in c.in"
+(view "empty" #983bd7a3, "a/b") -> "connect a/b a/b b.in c.in"
+(view "empty" #983bd7a3, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> "connect b aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaa.b b.in c.in" (322 characters, hash 7bf9a693481c99b2)
+(view "empty" #983bd7a3, "root") -> "connect root root b.in c.in"
+(view "empty" #983bd7a3, "root.a") -> "connect a root.a b.in c.in"
+(view "hosting" #bb4b71a1, "") -> "connect   b.in c.in"
+(view "hosting" #bb4b71a1, ".") -> "connect  . b.in c.in"
+(view "hosting" #bb4b71a1, ".a") -> "connect a .a b.in c.in"
+(view "hosting" #bb4b71a1, "\xc3\xa9.a") -> "connect a \xc3\xa9.a b.in c.in"
+(view "hosting" #bb4b71a1, "a b") -> "connect a b a b b.in c.in"
+(view "hosting" #bb4b71a1, "a") -> "connect a a b.in c.in"
+(view "hosting" #bb4b71a1, "a.") -> "connect  a. b.in c.in"
+(view "hosting" #bb4b71a1, "a..b") -> "connect b a..b b.in c.in"
+(view "hosting" #bb4b71a1, "a.b ") -> "connect b  a.b  b.in c.in"
+(view "hosting" #bb4b71a1, "a.b") -> "connect b a.b b.in c.in"
+(view "hosting" #bb4b71a1, "a.b.c") -> "connect c a.b.c b.in c.in"
+(view "hosting" #bb4b71a1, "a.root") -> "connect root a.root b.in c.in"
+(view "hosting" #bb4b71a1, "a/b") -> "connect a/b a/b b.in c.in"
+(view "hosting" #bb4b71a1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> "connect b aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaa.b b.in c.in" (322 characters, hash 7bf9a693481c99b2)
+(view "hosting" #bb4b71a1, "root") -> "connect root root b.in c.in"
+(view "hosting" #bb4b71a1, "root.a") -> "connect a root.a b.in c.in"
+(view "nested" #45098330, "") -> "connect   b.in c.in"
+(view "nested" #45098330, ".") -> "connect  . b.in c.in"
+(view "nested" #45098330, ".a") -> "connect a .a b.in c.in"
+(view "nested" #45098330, "\xc3\xa9.a") -> "connect a \xc3\xa9.a b.in c.in"
+(view "nested" #45098330, "a b") -> "connect a b a b b.in c.in"
+(view "nested" #45098330, "a") -> "connect a a b.in c.in"
+(view "nested" #45098330, "a.") -> "connect  a. b.in c.in"
+(view "nested" #45098330, "a..b") -> "connect b a..b b.in c.in"
+(view "nested" #45098330, "a.b ") -> "connect b  a.b  b.in c.in"
+(view "nested" #45098330, "a.b") -> "connect b a.b b.in c.in"
+(view "nested" #45098330, "a.b.c") -> "connect c a.b.c b.in c.in"
+(view "nested" #45098330, "a.root") -> "connect root a.root b.in c.in"
+(view "nested" #45098330, "a/b") -> "connect a/b a/b b.in c.in"
+(view "nested" #45098330, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> "connect b aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaa.b b.in c.in" (322 characters, hash 7bf9a693481c99b2)
+(view "nested" #45098330, "root") -> "connect root root b.in c.in"
+(view "nested" #45098330, "root.a") -> "connect a root.a b.in c.in"
+(view "one" #ea05330d, "") -> "connect   b.in c.in"
+(view "one" #ea05330d, ".") -> "connect  . b.in c.in"
+(view "one" #ea05330d, ".a") -> "connect a .a b.in c.in"
+(view "one" #ea05330d, "\xc3\xa9.a") -> "connect a \xc3\xa9.a b.in c.in"
+(view "one" #ea05330d, "a b") -> "connect a b a b b.in c.in"
+(view "one" #ea05330d, "a") -> "connect a a b.in c.in"
+(view "one" #ea05330d, "a.") -> "connect  a. b.in c.in"
+(view "one" #ea05330d, "a..b") -> "connect b a..b b.in c.in"
+(view "one" #ea05330d, "a.b ") -> "connect b  a.b  b.in c.in"
+(view "one" #ea05330d, "a.b") -> "connect b a.b b.in c.in"
+(view "one" #ea05330d, "a.b.c") -> "connect c a.b.c b.in c.in"
+(view "one" #ea05330d, "a.root") -> "connect root a.root b.in c.in"
+(view "one" #ea05330d, "a/b") -> "connect a/b a/b b.in c.in"
+(view "one" #ea05330d, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> "connect b aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaa.b b.in c.in" (322 characters, hash 7bf9a693481c99b2)
+(view "one" #ea05330d, "root") -> "connect root root b.in c.in"
+(view "one" #ea05330d, "root.a") -> "connect a root.a b.in c.in"
+(view "uses" #3db38939, "") -> "connect   b.in c.in"
+(view "uses" #3db38939, ".") -> "connect  . b.in c.in"
+(view "uses" #3db38939, ".a") -> "connect a .a b.in c.in"
+(view "uses" #3db38939, "\xc3\xa9.a") -> "connect a \xc3\xa9.a b.in c.in"
+(view "uses" #3db38939, "a b") -> "connect a b a b b.in c.in"
+(view "uses" #3db38939, "a") -> "connect a a b.in c.in"
+(view "uses" #3db38939, "a.") -> "connect  a. b.in c.in"
+(view "uses" #3db38939, "a..b") -> "connect b a..b b.in c.in"
+(view "uses" #3db38939, "a.b ") -> "connect b  a.b  b.in c.in"
+(view "uses" #3db38939, "a.b") -> "connect b a.b b.in c.in"
+(view "uses" #3db38939, "a.b.c") -> "connect c a.b.c b.in c.in"
+(view "uses" #3db38939, "a.root") -> "connect root a.root b.in c.in"
+(view "uses" #3db38939, "a/b") -> "connect a/b a/b b.in c.in"
+(view "uses" #3db38939, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> "connect b aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaa.b b.in c.in" (322 characters, hash 7bf9a693481c99b2)
+(view "uses" #3db38939, "root") -> "connect root root b.in c.in"
+(view "uses" #3db38939, "root.a") -> "connect a root.a b.in c.in"
+~(view "drawn" #06187ea6, "9Za90Z_") -> "connect 9Za90Z_ 9Za90Z_ b.in c.in"
+~(view "drawn" #21947f1c, "Z:.a:a9.") -> "connect  Z:.a:a9. b.in c.in"
+~(view "drawn" #223d3b96, " _.-.0") -> "connect 0  _.-.0 b.in c.in"
+~(view "drawn" #270f2aa1, ":- _aZ:") -> "connect :- _aZ: :- _aZ: b.in c.in"
+~(view "drawn" #2bfedbc2, "9-a90") -> "connect 9-a90 9-a90 b.in c.in"
+~(view "drawn" #2fbf2a78, "") -> "connect   b.in c.in"
+~(view "drawn" #2fbf2a78, ".a .Z Z") -> "connect Z Z .a .Z Z b.in c.in"
+~(view "drawn" #2fbf2a78, "99") -> "connect 99 99 b.in c.in"
+~(view "drawn" #32f58775, "9: _") -> "connect 9: _ 9: _ b.in c.in"
+~(view "drawn" #32f58775, "a900") -> "connect a900 a900 b.in c.in"
+~(view "drawn" #32f58775, "a:9 ") -> "connect a:9  a:9  b.in c.in"
+~(view "drawn" #32f58775, "aZ") -> "connect aZ aZ b.in c.in"
+~(view "drawn" #3c706d96, "_9_9:0") -> "connect _9_9:0 _9_9:0 b.in c.in"
+~(view "drawn" #3c706d96, "a 0_") -> "connect a 0_ a 0_ b.in c.in"
+~(view "drawn" #4ec6ec30, "") -> "connect   b.in c.in"
+~(view "drawn" #534d1b3f, ".-a") -> "connect -a .-a b.in c.in"
+~(view "drawn" #5551e99e, "9/ /a9.") -> "connect  9/ /a9. b.in c.in"
+~(view "drawn" #6e825710, "") -> "connect   b.in c.in"
+~(view "drawn" #6e825710, "///a-/ ") -> "connect ///a-/  ///a-/  b.in c.in"
+~(view "drawn" #6e825710, ":/./Z") -> "connect /Z :/./Z b.in c.in"
+~(view "drawn" #78bc68bb, "0/99-9a_") -> "connect 0/99-9a_ 0/99-9a_ b.in c.in"
+~(view "drawn" #7ad8844c, "0") -> "connect 0 0 b.in c.in"
+~(view "drawn" #7ad8844c, "0:9 Z._a") -> "connect _a 0:9 Z._a b.in c.in"
+~(view "drawn" #7ad8844c, "99_") -> "connect 99_ 99_ b.in c.in"
+~(view "drawn" #7ad8844c, "_/:: .aa") -> "connect aa _/:: .aa b.in c.in"
+~(view "drawn" #7ad8844c, "_0") -> "connect _0 _0 b.in c.in"
+~(view "drawn" #7fcfa6ab, "") -> "connect   b.in c.in"
+~(view "drawn" #7fcfa6ab, ".") -> "connect  . b.in c.in"
+~(view "drawn" #7fcfa6ab, ".__0Z ") -> "connect __0Z  .__0Z  b.in c.in"
+~(view "drawn" #7fcfa6ab, "0._-a-:a") -> "connect _-a-:a 0._-a-:a b.in c.in"
+~(view "drawn" #7fcfa6ab, "00:0/") -> "connect 00:0/ 00:0/ b.in c.in"
+~(view "drawn" #7fcfa6ab, "99") -> "connect 99 99 b.in c.in"
+~(view "drawn" #7fcfa6ab, "99_") -> "connect 99_ 99_ b.in c.in"
+~(view "drawn" #7fcfa6ab, "Za.") -> "connect  Za. b.in c.in"
+~(view "drawn" #7fcfa6ab, "_- Za 0.") -> "connect  _- Za 0. b.in c.in"
+~(view "drawn" #7fcfa6ab, "a0/Z-a:") -> "connect a0/Z-a: a0/Z-a: b.in c.in"
+~(view "drawn" #86778d7a, " /a/:") -> "connect  /a/:  /a/: b.in c.in"
+~(view "drawn" #94dfaa50, " ./:/") -> "connect /:/  ./:/ b.in c.in"
+~(view "drawn" #adc25525, "/._") -> "connect _ /._ b.in c.in"
+~(view "drawn" #b080ec39, "-::a9") -> "connect -::a9 -::a9 b.in c.in"
+~(view "drawn" #b4bda048, "Z9...Z9_") -> "connect Z9_ Z9...Z9_ b.in c.in"
+~(view "drawn" #ba55975e, "  ZZa.") -> "connect    ZZa. b.in c.in"
+~(view "drawn" #ba55975e, "-.9/a//") -> "connect 9/a// -.9/a// b.in c.in"
+~(view "drawn" #ba55975e, "_ .") -> "connect  _ . b.in c.in"
+~(view "drawn" #e292116f, ".") -> "connect  . b.in c.in"
+~(view "drawn" #e2d31f86, "Z/a") -> "connect Z/a Z/a b.in c.in"
+~(view "drawn" #e9c8d7b7, "- 0 ") -> "connect - 0  - 0  b.in c.in"
+
+## Bound.h/joining, its name taken
+a.b -> connect a-b a.b c.in
+b -> connect b-b b c.in
+x.a.b -> connect a-b x.a.b c.in
+
+## Bound.h/pixel_format
+("") -> "none"
+("-") -> "none"
+(".") -> "none"
+("1") -> "none"
+("A9") -> "none"
+("\xc3\xa9") -> "none"
+("_") -> "none"
+("a b") -> "none"
+("a") -> "none"
+("a-b") -> "none"
+("a.b") -> "none"
+("a/b") -> "none"
+("a:b") -> "none"
+("a\r") -> "none"
+("a\t") -> "none"
+("a_b") -> "none"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "none"
+("root") -> "none"
+~(" a_") -> "none"
+~("-.") -> "none"
+~("-Z90 ") -> "none"
+~("-Z:") -> "none"
+~("-_:  ") -> "none"
+~("-_:") -> "none"
+~(".:") -> "none"
+~(".Z ") -> "none"
+~("/:///") -> "none"
+~("/a-:") -> "none"
+~("0 -.a") -> "none"
+~("0") -> "none"
+~("00:") -> "none"
+~("09Z9") -> "none"
+~("9") -> "none"
+~("9-/-") -> "none"
+~("9.a9Z") -> "none"
+~("9/_a-") -> "none"
+~("9::-a") -> "none"
+~("9aZ0") -> "none"
+~(": Z//Z") -> "none"
+~("::") -> "none"
+~(":Z") -> "none"
+~(":Z/:/") -> "none"
+~("Z.") -> "none"
+~("Z/- :/") -> "none"
+~("Z0") -> "none"
+~("_.") -> "none"
+~("_9 -.") -> "none"
+~("_Z") -> "none"
+~("_a.-/Z") -> "none"
+~("a9:0") -> "none"
+~("a_0:0") -> "none"
+~("aa:_") -> "none"
+
+## Bound.h/saved_since_built
+both built after their saves -> false
+linked in, no module -> false
+the .cpp saved since the module -> true
+the shader saved since its SPIR-V -> true
+
+## Bound.h/smooth
+(-0, 0) -> (0, 0)
+(-0, 1) -> (0, -0)
+(-0, 2) -> (0, -0)
+(-0, 254) -> (0, -0)
+(-0, 255) -> (0, -0)
+(-0, 7) -> (0, -0)
+(-1, 0) -> (0, 0)
+(-1, 1) -> (-0.018518519, -1)
+(-1, 2) -> (-0.036694102, -1)
+(-1, 254) -> (-0.2302503, -1)
+(-1, 255) -> (-0.24450493, -1)
+(-1, 7) -> (-0.1226462, -1)
+(-3.4028235e+38, 0) -> (0, 0)
+(-3.4028235e+38, 1) -> (-6.301525e+36, -3.4028235e+38)
+(-3.4028235e+38, 2) -> (-1.2486355e+37, -3.4028235e+38)
+(-3.4028235e+38, 254) -> (-7.8350107e+37, -3.4028235e+38)
+(-3.4028235e+38, 255) -> (-8.3200706e+37, -3.4028235e+38)
+(-3.4028235e+38, 7) -> (-4.1734333e+37, -3.4028235e+38)
+(-inf, 0) -> (0, 0)
+(-inf, 1) -> (-inf, -inf)
+(-inf, 2) -> (-nan, -inf)
+(-inf, 254) -> (-nan, -inf)
+(-inf, 255) -> (-nan, -inf)
+(-inf, 7) -> (-nan, -inf)
+(0, 0) -> (0, 0)
+(0, 1) -> (0, 0)
+(0, 2) -> (0, 0)
+(0, 254) -> (0, 0)
+(0, 255) -> (0, 0)
+(0, 7) -> (0, 0)
+(0.1, 0) -> (0, 0)
+(0.1, 1) -> (0.0018518519, 0.1)
+(0.1, 2) -> (0.0036694105, 0.1)
+(0.1, 254) -> (0.02302503, 0.1)
+(0.1, 255) -> (0.024450492, 0.1)
+(0.1, 7) -> (0.01226462, 0.1)
+(0.5, 0) -> (0, 0)
+(0.5, 1) -> (0.009259259, 0.5)
+(0.5, 2) -> (0.018347051, 0.5)
+(0.5, 254) -> (0.11512515, 0.5)
+(0.5, 255) -> (0.122252464, 0.5)
+(0.5, 7) -> (0.0613231, 0.5)
+(1, 0) -> (0, 0)
+(1, 1) -> (0.018518519, 1)
+(1, 2) -> (0.036694102, 1)
+(1, 254) -> (0.2302503, 1)
+(1, 255) -> (0.24450493, 1)
+(1, 7) -> (0.1226462, 1)
+(1.1754944e-38, 0) -> (0, 0)
+(1.1754944e-38, 1) -> (2.17685e-40, 1.1754944e-38)
+(1.1754944e-38, 2) -> (4.31338e-40, 1.1754944e-38)
+(1.1754944e-38, 254) -> (2.706579e-39, 1.1754944e-38)
+(1.1754944e-38, 255) -> (2.87414e-39, 1.1754944e-38)
+(1.1754944e-38, 7) -> (1.4417e-39, 1.1754944e-38)
+(1.1920929e-07, 0) -> (0, 0)
+(1.1920929e-07, 1) -> (2.2075795e-09, 1.1920929e-07)
+(1.1920929e-07, 2) -> (4.374278e-09, 1.1920929e-07)
+(1.1920929e-07, 254) -> (2.7447975e-08, 1.1920929e-07)
+(1.1920929e-07, 255) -> (2.9147259e-08, 1.1920929e-07)
+(1.1920929e-07, 7) -> (1.4620566e-08, 1.1920929e-07)
+(1e+06, 0) -> (0, 0)
+(1e+06, 1) -> (18518.52, 1e+06)
+(1e+06, 2) -> (36694.1, 1e+06)
+(1e+06, 254) -> (230250.3, 1e+06)
+(1e+06, 255) -> (244504.92, 1e+06)
+(1e+06, 7) -> (122646.19, 1e+06)
+(1e-45, 0) -> (0, 0)
+(1e-45, 1) -> (0, 1e-45)
+(1e-45, 2) -> (0, 1e-45)
+(1e-45, 254) -> (0, 1e-45)
+(1e-45, 255) -> (0, 1e-45)
+(1e-45, 7) -> (0, 1e-45)
+(2, 0) -> (0, 0)
+(2, 1) -> (0.037037037, 2)
+(2, 2) -> (0.073388204, 2)
+(2, 254) -> (0.4605006, 2)
+(2, 255) -> (0.48900986, 2)
+(2, 7) -> (0.2452924, 2)
+(3.4028235e+38, 0) -> (0, 0)
+(3.4028235e+38, 1) -> (6.301525e+36, 3.4028235e+38)
+(3.4028235e+38, 2) -> (1.2486355e+37, 3.4028235e+38)
+(3.4028235e+38, 254) -> (7.8350107e+37, 3.4028235e+38)
+(3.4028235e+38, 255) -> (8.3200706e+37, 3.4028235e+38)
+(3.4028235e+38, 7) -> (4.1734333e+37, 3.4028235e+38)
+(inf, 0) -> (0, 0)
+(inf, 1) -> (inf, inf)
+(inf, 2) -> (-nan, inf)
+(inf, 254) -> (-nan, inf)
+(inf, 255) -> (-nan, inf)
+(inf, 7) -> (-nan, inf)
+(nan, 0) -> (0, 0)
+(nan, 1) -> (nan, nan)
+(nan, 2) -> (nan, nan)
+(nan, 254) -> (nan, nan)
+(nan, 255) -> (nan, nan)
+(nan, 7) -> (nan, nan)
+~(-1.7673412e-28, 15) -> (-4.3212364e-29, -1.7673412e-28)
+~(-1.79, 250) -> (-0.3051789, -1.79)
+~(-3.0007194e+36, 249) -> (-4.6463106e+35, -3.0007194e+36)
+~(-3.339015e-39, 252) -> (-6.70907e-40, -3.339015e-39)
+~(-4.25, 38) -> (-2.1611414, -4.25)
+~(-4.63822e-06, 240) -> (0, 0)
+~(-5.76, 252) -> (-1.1573516, -5.76)
+~(-5.91, 246) -> (-0.6270057, -5.91)
+~(-7.15, 11) -> (-1.3288438, -7.15)
+~(-7.540438e-25, 73) -> (-5.613843e-25, -7.540438e-25)
+~(-8.66, 7) -> (-1.0621159, -8.66)
+~(0.00024414062, 7) -> (2.994292e-05, 0.00024414062)
+~(0.00390625, 14) -> (0.00089941523, 0.00390625)
+~(0.00390625, 63) -> (0.0027030637, 0.00390625)
+~(0.0078125, 1) -> (0.00014467593, 0.0078125)
+~(0.33, 17) -> (0.08983496, 0.33)
+~(0.54, 7) -> (0.06622894, 0.54)
+~(1.0496993e-11, 184) -> (7.323629e-12, 1.0496993e-11)
+~(1.1920929e-07, 35) -> (5.7238942e-08, 1.1920929e-07)
+~(1.3138095e-27, 241) -> (2.4329807e-29, 1.3138095e-27)
+~(1.4507654e+30, 13) -> (3.1296881e+29, 1.4507654e+30)
+~(1.5258789e-05, 252) -> (3.0659348e-06, 1.5258789e-05)
+~(1.8189894e-12, 242) -> (6.674618e-14, 1.8189894e-12)
+~(1048576, 248) -> (145640.38, 1048576)
+~(1048576, 7) -> (128603.86, 1048576)
+~(2.16, 13) -> (0.4659697, 2.16)
+~(2.3896404e+14, 247) -> (2.9308028e+13, 2.3896404e+14)
+~(2048, 105) -> (1760.2924, 2048)
+~(2048, 5) -> (182.73518, 2048)
+~(2097152, 242) -> (76953.11, 2097152)
+~(274877906944, 0) -> (0, 0)
+~(3.32, 250) -> (0.5660302, 3.32)
+~(3.6842157e-19, 131) -> (6.847199e-20, 3.6842157e-19)
+~(3.8146973e-06, 14) -> (8.783352e-07, 3.8146973e-06)
+~(3.8146973e-06, 4) -> (2.7481747e-07, 3.8146973e-06)
+~(32768, 251) -> (6090.008, 32768)
+~(3342303744, 254) -> (769566400, 3342303744)
+~(4, 254) -> (0.9210012, 4)
+~(4.656613e-10, 255) -> (1.1385648e-10, 4.656613e-10)
+~(4294967296, 251) -> (798229504, 4294967296)
+~(5.566975e+19, 248) -> (7.732166e+18, 5.566975e+19)
+~(5.7463097e-33, 3) -> (3.1336409e-34, 5.7463097e-33)
+~(536870912, 4) -> (38677120, 536870912)
+~(5423.6143, 166) -> (3128.1748, 5423.6143)
+~(7.450581e-09, 168) -> (4.412975e-09, 7.450581e-09)
+~(8, 15) -> (1.9560394, 8)
+~(9.094947e-13, 242) -> (3.337309e-14, 9.094947e-13)
+~(9.3827596e+13, 248) -> (1.3032041e+13, 9.3827596e+13)
+
+## Bound.h/write_value
+(" 1", "double") -> "false 77777777777777777777777777777777"
+(" 1", "float") -> "false 77777777777777777777777777777777"
+(" 1", "int") -> "false 77777777777777777777777777777777"
+(" 1", "ivec3") -> "false 77777777777777777777777777777777"
+(" 1", "uvec3") -> "false 77777777777777777777777777777777"
+(" 1", "vec3") -> "false 77777777777777777777777777777777"
+("", "") -> "false 77777777777777777777777777777777"
+("", "Texture") -> "false 77777777777777777777777777777777"
+("", "float") -> "false 77777777777777777777777777777777"
+("", "ivec2") -> "false 77777777777777777777777777777777"
+("", "mat4") -> "false 77777777777777777777777777777777"
+("", "uvec2") -> "false 77777777777777777777777777777777"
+("", "vec2") -> "false 77777777777777777777777777777777"
+("+1", "Float") -> "false 77777777777777777777777777777777"
+("+1", "float") -> "false 77777777777777777777777777777777"
+("+1", "ivec4") -> "false 77777777777777777777777777777777"
+("+1", "uint") -> "false 77777777777777777777777777777777"
+("+1", "uvec4") -> "false 77777777777777777777777777777777"
+("+1", "vec4") -> "false 77777777777777777777777777777777"
+("-0", "double") -> "false 77777777777777777777777777777777"
+("-0", "float") -> "true 00000080777777777777777777777777"
+("-0", "int") -> "true 00000000777777777777777777777777"
+("-0", "ivec3") -> "false 77777777777777777777777777777777"
+("-0", "uvec3") -> "false 77777777777777777777777777777777"
+("-0", "vec3") -> "false 77777777777777777777777777777777"
+("-1", "") -> "false 77777777777777777777777777777777"
+("-1", "Texture") -> "false 77777777777777777777777777777777"
+("-1", "float") -> "true 000080bf777777777777777777777777"
+("-1", "ivec2") -> "false 77777777777777777777777777777777"
+("-1", "mat4") -> "false 77777777777777777777777777777777"
+("-1", "uvec2") -> "false 77777777777777777777777777777777"
+("-1", "vec2") -> "false 77777777777777777777777777777777"
+("-2147483648", "") -> "false 77777777777777777777777777777777"
+("-2147483648", "Texture") -> "false 77777777777777777777777777777777"
+("-2147483648", "float") -> "true 000000cf777777777777777777777777"
+("-2147483648", "ivec2") -> "false 77777777777777777777777777777777"
+("-2147483648", "mat4") -> "false 77777777777777777777777777777777"
+("-2147483648", "uvec2") -> "false 77777777777777777777777777777777"
+("-2147483648", "vec2") -> "false 77777777777777777777777777777777"
+("-inf", "Float") -> "false 77777777777777777777777777777777"
+("-inf", "float") -> "false 77777777777777777777777777777777"
+("-inf", "ivec4") -> "false 77777777777777777777777777777777"
+("-inf", "uint") -> "false 77777777777777777777777777777777"
+("-inf", "uvec4") -> "false 77777777777777777777777777777777"
+("-inf", "vec4") -> "false 77777777777777777777777777777777"
+(".5", "") -> "false 77777777777777777777777777777777"
+(".5", "Texture") -> "false 77777777777777777777777777777777"
+(".5", "float") -> "true 0000003f777777777777777777777777"
+(".5", "ivec2") -> "false 77777777777777777777777777777777"
+(".5", "mat4") -> "false 77777777777777777777777777777777"
+(".5", "uvec2") -> "false 77777777777777777777777777777777"
+(".5", "vec2") -> "false 77777777777777777777777777777777"
+("0", "Float") -> "false 77777777777777777777777777777777"
+("0", "float") -> "true 00000000777777777777777777777777"
+("0", "ivec4") -> "false 77777777777777777777777777777777"
+("0", "uint") -> "true 00000000777777777777777777777777"
+("0", "uvec4") -> "false 77777777777777777777777777777777"
+("0", "vec4") -> "false 77777777777777777777777777777777"
+("01", "Float") -> "false 77777777777777777777777777777777"
+("01", "float") -> "true 0000803f777777777777777777777777"
+("01", "ivec4") -> "false 77777777777777777777777777777777"
+("01", "uint") -> "true 01000000777777777777777777777777"
+("01", "uvec4") -> "false 77777777777777777777777777777777"
+("01", "vec4") -> "false 77777777777777777777777777777777"
+("0x10", "Float") -> "false 77777777777777777777777777777777"
+("0x10", "float") -> "false 77777777777777777777777777777777"
+("0x10", "ivec4") -> "false 77777777777777777777777777777777"
+("0x10", "uint") -> "false 77777777777777777777777777777777"
+("0x10", "uvec4") -> "false 77777777777777777777777777777777"
+("0x10", "vec4") -> "false 77777777777777777777777777777777"
+("1 ", "") -> "false 77777777777777777777777777777777"
+("1 ", "Texture") -> "false 77777777777777777777777777777777"
+("1 ", "float") -> "false 77777777777777777777777777777777"
+("1 ", "ivec2") -> "false 77777777777777777777777777777777"
+("1 ", "mat4") -> "false 77777777777777777777777777777777"
+("1 ", "uvec2") -> "false 77777777777777777777777777777777"
+("1 ", "vec2") -> "false 77777777777777777777777777777777"
+("1", "") -> "false 77777777777777777777777777777777"
+("1", "Float") -> "false 77777777777777777777777777777777"
+("1", "Texture") -> "false 77777777777777777777777777777777"
+("1", "double") -> "false 77777777777777777777777777777777"
+("1", "float") -> "true 0000803f777777777777777777777777"
+("1", "int") -> "true 01000000777777777777777777777777"
+("1", "ivec2") -> "false 77777777777777777777777777777777"
+("1", "ivec3") -> "false 77777777777777777777777777777777"
+("1", "ivec4") -> "false 77777777777777777777777777777777"
+("1", "mat4") -> "false 77777777777777777777777777777777"
+("1", "uint") -> "true 01000000777777777777777777777777"
+("1", "uvec2") -> "false 77777777777777777777777777777777"
+("1", "uvec3") -> "false 77777777777777777777777777777777"
+("1", "uvec4") -> "false 77777777777777777777777777777777"
+("1", "vec2") -> "false 77777777777777777777777777777777"
+("1", "vec3") -> "false 77777777777777777777777777777777"
+("1", "vec4") -> "false 77777777777777777777777777777777"
+("1,2", "Float") -> "false 77777777777777777777777777777777"
+("1,2", "float") -> "false 77777777777777777777777777777777"
+("1,2", "ivec4") -> "false 77777777777777777777777777777777"
+("1,2", "uint") -> "false 77777777777777777777777777777777"
+("1,2", "uvec4") -> "false 77777777777777777777777777777777"
+("1,2", "vec4") -> "false 77777777777777777777777777777777"
+("1.5", "double") -> "false 77777777777777777777777777777777"
+("1.5", "float") -> "true 0000c03f777777777777777777777777"
+("1.5", "int") -> "false 77777777777777777777777777777777"
+("1.5", "ivec3") -> "false 77777777777777777777777777777777"
+("1.5", "uvec3") -> "false 77777777777777777777777777777777"
+("1.5", "vec3") -> "false 77777777777777777777777777777777"
+("18446744073709551615", "Float") -> "false 77777777777777777777777777777777"
+("18446744073709551615", "float") -> "true 0000805f777777777777777777777777"
+("18446744073709551615", "ivec4") -> "false 77777777777777777777777777777777"
+("18446744073709551615", "uint") -> "false 77777777777777777777777777777777"
+("18446744073709551615", "uvec4") -> "false 77777777777777777777777777777777"
+("18446744073709551615", "vec4") -> "false 77777777777777777777777777777777"
+("18446744073709551616", "double") -> "false 77777777777777777777777777777777"
+("18446744073709551616", "float") -> "true 0000805f777777777777777777777777"
+("18446744073709551616", "int") -> "false 77777777777777777777777777777777"
+("18446744073709551616", "ivec3") -> "false 77777777777777777777777777777777"
+("18446744073709551616", "uvec3") -> "false 77777777777777777777777777777777"
+("18446744073709551616", "vec3") -> "false 77777777777777777777777777777777"
+("1\n", "Float") -> "false 77777777777777777777777777777777"
+("1\n", "float") -> "false 77777777777777777777777777777777"
+("1\n", "ivec4") -> "false 77777777777777777777777777777777"
+("1\n", "uint") -> "false 77777777777777777777777777777777"
+("1\n", "uvec4") -> "false 77777777777777777777777777777777"
+("1\n", "vec4") -> "false 77777777777777777777777777777777"
+("1\r", "") -> "false 77777777777777777777777777777777"
+("1\r", "Texture") -> "false 77777777777777777777777777777777"
+("1\r", "float") -> "false 77777777777777777777777777777777"
+("1\r", "ivec2") -> "false 77777777777777777777777777777777"
+("1\r", "mat4") -> "false 77777777777777777777777777777777"
+("1\r", "uvec2") -> "false 77777777777777777777777777777777"
+("1\r", "vec2") -> "false 77777777777777777777777777777777"
+("1_0", "double") -> "false 77777777777777777777777777777777"
+("1_0", "float") -> "false 77777777777777777777777777777777"
+("1_0", "int") -> "false 77777777777777777777777777777777"
+("1_0", "ivec3") -> "false 77777777777777777777777777777777"
+("1_0", "uvec3") -> "false 77777777777777777777777777777777"
+("1_0", "vec3") -> "false 77777777777777777777777777777777"
+("1e", "") -> "false 77777777777777777777777777777777"
+("1e", "Texture") -> "false 77777777777777777777777777777777"
+("1e", "float") -> "false 77777777777777777777777777777777"
+("1e", "ivec2") -> "false 77777777777777777777777777777777"
+("1e", "mat4") -> "false 77777777777777777777777777777777"
+("1e", "uvec2") -> "false 77777777777777777777777777777777"
+("1e", "vec2") -> "false 77777777777777777777777777777777"
+("1e-40", "") -> "false 77777777777777777777777777777777"
+("1e-40", "Texture") -> "false 77777777777777777777777777777777"
+("1e-40", "float") -> "false 77777777777777777777777777777777"
+("1e-40", "ivec2") -> "false 77777777777777777777777777777777"
+("1e-40", "mat4") -> "false 77777777777777777777777777777777"
+("1e-40", "uvec2") -> "false 77777777777777777777777777777777"
+("1e-40", "vec2") -> "false 77777777777777777777777777777777"
+("1e-50", "Float") -> "false 77777777777777777777777777777777"
+("1e-50", "float") -> "false 77777777777777777777777777777777"
+("1e-50", "ivec4") -> "false 77777777777777777777777777777777"
+("1e-50", "uint") -> "false 77777777777777777777777777777777"
+("1e-50", "uvec4") -> "false 77777777777777777777777777777777"
+("1e-50", "vec4") -> "false 77777777777777777777777777777777"
+("1e3", "double") -> "false 77777777777777777777777777777777"
+("1e3", "float") -> "true 00007a44777777777777777777777777"
+("1e3", "int") -> "false 77777777777777777777777777777777"
+("1e3", "ivec3") -> "false 77777777777777777777777777777777"
+("1e3", "uvec3") -> "false 77777777777777777777777777777777"
+("1e3", "vec3") -> "false 77777777777777777777777777777777"
+("3.4028235e38", "Float") -> "false 77777777777777777777777777777777"
+("3.4028235e38", "float") -> "true ffff7f7f777777777777777777777777"
+("3.4028235e38", "ivec4") -> "false 77777777777777777777777777777777"
+("3.4028235e38", "uint") -> "false 77777777777777777777777777777777"
+("3.4028235e38", "uvec4") -> "false 77777777777777777777777777777777"
+("3.4028235e38", "vec4") -> "false 77777777777777777777777777777777"
+("3.4028236e38", "double") -> "false 77777777777777777777777777777777"
+("3.4028236e38", "float") -> "false 77777777777777777777777777777777"
+("3.4028236e38", "int") -> "false 77777777777777777777777777777777"
+("3.4028236e38", "ivec3") -> "false 77777777777777777777777777777777"
+("3.4028236e38", "uvec3") -> "false 77777777777777777777777777777777"
+("3.4028236e38", "vec3") -> "false 77777777777777777777777777777777"
+("4294967295", "double") -> "false 77777777777777777777777777777777"
+("4294967295", "float") -> "true 0000804f777777777777777777777777"
+("4294967295", "int") -> "false 77777777777777777777777777777777"
+("4294967295", "ivec3") -> "false 77777777777777777777777777777777"
+("4294967295", "uvec3") -> "false 77777777777777777777777777777777"
+("4294967295", "vec3") -> "false 77777777777777777777777777777777"
+("4294967296", "") -> "false 77777777777777777777777777777777"
+("4294967296", "Texture") -> "false 77777777777777777777777777777777"
+("4294967296", "float") -> "true 0000804f777777777777777777777777"
+("4294967296", "ivec2") -> "false 77777777777777777777777777777777"
+("4294967296", "mat4") -> "false 77777777777777777777777777777777"
+("4294967296", "uvec2") -> "false 77777777777777777777777777777777"
+("4294967296", "vec2") -> "false 77777777777777777777777777777777"
+("5.", "Float") -> "false 77777777777777777777777777777777"
+("5.", "float") -> "true 0000a040777777777777777777777777"
+("5.", "ivec4") -> "false 77777777777777777777777777777777"
+("5.", "uint") -> "false 77777777777777777777777777777777"
+("5.", "uvec4") -> "false 77777777777777777777777777777777"
+("5.", "vec4") -> "false 77777777777777777777777777777777"
+("=", "Float") -> "false 77777777777777777777777777777777"
+("=", "float") -> "false 77777777777777777777777777777777"
+("=", "ivec4") -> "false 77777777777777777777777777777777"
+("=", "uint") -> "false 77777777777777777777777777777777"
+("=", "uvec4") -> "false 77777777777777777777777777777777"
+("=", "vec4") -> "false 77777777777777777777777777777777"
+("\xd9\xa1", "double") -> "false 77777777777777777777777777777777"
+("\xd9\xa1", "float") -> "false 77777777777777777777777777777777"
+("\xd9\xa1", "int") -> "false 77777777777777777777777777777777"
+("\xd9\xa1", "ivec3") -> "false 77777777777777777777777777777777"
+("\xd9\xa1", "uvec3") -> "false 77777777777777777777777777777777"
+("\xd9\xa1", "vec3") -> "false 77777777777777777777777777777777"
+("\xef\xbc\x91", "") -> "false 77777777777777777777777777777777"
+("\xef\xbc\x91", "Texture") -> "false 77777777777777777777777777777777"
+("\xef\xbc\x91", "float") -> "false 77777777777777777777777777777777"
+("\xef\xbc\x91", "ivec2") -> "false 77777777777777777777777777777777"
+("\xef\xbc\x91", "mat4") -> "false 77777777777777777777777777777777"
+("\xef\xbc\x91", "uvec2") -> "false 77777777777777777777777777777777"
+("\xef\xbc\x91", "vec2") -> "false 77777777777777777777777777777777"
+("a", "double") -> "false 77777777777777777777777777777777"
+("a", "float") -> "false 77777777777777777777777777777777"
+("a", "int") -> "false 77777777777777777777777777777777"
+("a", "ivec3") -> "false 77777777777777777777777777777777"
+("a", "uvec3") -> "false 77777777777777777777777777777777"
+("a", "vec3") -> "false 77777777777777777777777777777777"
+("a=b", "") -> "false 77777777777777777777777777777777"
+("a=b", "Texture") -> "false 77777777777777777777777777777777"
+("a=b", "float") -> "false 77777777777777777777777777777777"
+("a=b", "ivec2") -> "false 77777777777777777777777777777777"
+("a=b", "mat4") -> "false 77777777777777777777777777777777"
+("a=b", "uvec2") -> "false 77777777777777777777777777777777"
+("a=b", "vec2") -> "false 77777777777777777777777777777777"
+("inf", "") -> "false 77777777777777777777777777777777"
+("inf", "Texture") -> "false 77777777777777777777777777777777"
+("inf", "float") -> "false 77777777777777777777777777777777"
+("inf", "ivec2") -> "false 77777777777777777777777777777777"
+("inf", "mat4") -> "false 77777777777777777777777777777777"
+("inf", "uvec2") -> "false 77777777777777777777777777777777"
+("inf", "vec2") -> "false 77777777777777777777777777777777"
+("nan", "double") -> "false 77777777777777777777777777777777"
+("nan", "float") -> "false 77777777777777777777777777777777"
+("nan", "int") -> "false 77777777777777777777777777777777"
+("nan", "ivec3") -> "false 77777777777777777777777777777777"
+("nan", "uvec3") -> "false 77777777777777777777777777777777"
+("nan", "vec3") -> "false 77777777777777777777777777777777"
+holds: a refused text writes no byte, over 281 rows
+~(" 1a", "uvec2") -> "false 77777777777777777777777777777777"
+~(" 2.", "vec2") -> "false 77777777777777777777777777777777"
+~("", "double") -> "false 77777777777777777777777777777777"
+~("", "int") -> "false 77777777777777777777777777777777"
+~("", "vec4") -> "false 77777777777777777777777777777777"
+~("+x 2x", "") -> "false 77777777777777777777777777777777"
+~(",4+", "uvec4") -> "false 77777777777777777777777777777777"
+~("--2e3", "uvec2") -> "false 77777777777777777777777777777777"
+~("-8", "uvec4") -> "false 77777777777777777777777777777777"
+~(".", "mat4") -> "false 77777777777777777777777777777777"
+~(".595", "double") -> "false 77777777777777777777777777777777"
+~("00b118e", "double") -> "false 77777777777777777777777777777777"
+~("10x_ 9", "int") -> "false 77777777777777777777777777777777"
+~("34 7Ex3", "Float") -> "false 77777777777777777777777777777777"
+~("3a9", "vec3") -> "false 77777777777777777777777777777777"
+~("4", "vec3") -> "false 77777777777777777777777777777777"
+~("47-e", "ivec3") -> "false 77777777777777777777777777777777"
+~("6", "float") -> "true 0000c040777777777777777777777777"
+~("6780+", "") -> "false 77777777777777777777777777777777"
+~("73.-e ++", "uvec2") -> "false 77777777777777777777777777777777"
+~("73ae_a", "vec4") -> "false 77777777777777777777777777777777"
+~("7a1", "vec4") -> "false 77777777777777777777777777777777"
+~("83_4__3", "uint") -> "false 77777777777777777777777777777777"
+~("83b5_b", "double") -> "false 77777777777777777777777777777777"
+~("8be+0+ e", "float") -> "false 77777777777777777777777777777777"
+~("92", "ivec4") -> "false 77777777777777777777777777777777"
+~("9474", "ivec2") -> "false 77777777777777777777777777777777"
+~("E+32b8x9", "float") -> "false 77777777777777777777777777777777"
+~("E,", "int") -> "false 77777777777777777777777777777777"
+~("E4", "float") -> "false 77777777777777777777777777777777"
+~("E57.", "Float") -> "false 77777777777777777777777777777777"
+~("E6_a7x-", "ivec4") -> "false 77777777777777777777777777777777"
+~("_", "uvec3") -> "false 77777777777777777777777777777777"
+~("_,0.9", "uvec4") -> "false 77777777777777777777777777777777"
+~("_94xxe0", "float") -> "false 77777777777777777777777777777777"
+~("a", "") -> "false 77777777777777777777777777777777"
+~("ab7396", "vec2") -> "false 77777777777777777777777777777777"
+~("b3e", "uint") -> "false 77777777777777777777777777777777"
+~("b7x788+", "vec2") -> "false 77777777777777777777777777777777"
+~("e, b", "mat4") -> "false 77777777777777777777777777777777"
+~("e76", "vec3") -> "false 77777777777777777777777777777777"
+~("e86_8925", "double") -> "false 77777777777777777777777777777777"
+~("x,a", "Texture") -> "false 77777777777777777777777777777777"
+~("x9", "vec3") -> "false 77777777777777777777777777777777"

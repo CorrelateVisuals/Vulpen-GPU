@@ -1,0 +1,67 @@
+# The rows of src/runtime/Live.h and src/runtime/Live.cpp, a call each (src/tools/bench/bench.py).
+
+## Live.cpp/Builder::mount
+1. a hosted -> "<here>/a\n"
+2. b hosted, a still there -> "<here>/a\n<here>/b\n"
+3. a gone, c hosted -> "<here>/b\n<here>/c\n"
+4. c hosted again -> "<here>/b\n<here>/c\n"
+
+## Live.cpp/Live::engine_changed
+1. before: none
+2. written: <here>/engine/a.cpp
+3. asked again: none
+4. both written at one time: <here>/engine/a.cpp
+
+## Live.cpp/Live::poll
+01. nothing written -> only none; failed []; built []; building false; errors ""
+02. a file in v's .vulpen written -> only none; failed []; built []; building false; errors ""
+03. a hidden file new in v's node folder -> started, failed; failed [v]; built [v]; building false; errors "Error: could not load cache\n"
+04. a file of v written -> started, failed; failed [v]; built [v]; building false; errors "Error: could not load cache\n"
+05. a file of w written -> started; failed [v]; built [w]; building true; errors "Error: could not load cache\n"
+06. written again while it builds -> unsettled; failed [w]; built [w]; building false; errors "Error: could not load cache\n"
+07. once the files settle -> started, failed; failed [w]; built [w]; building false; errors "Error: could not load cache\nError: could not load cache\n"
+08. x watched, which the build has no target for -> started, succeeded; failed []; built [x]; building false; errors "Error: could not load cache\nError: could not load cache\n"
+09. a file of x written -> started, succeeded; failed []; built [x]; building false; errors "Error: could not load cache\nError: could not load cache\n"
+10. targets [vulpen_view_v, vulpen_view_w, vulpen_view_x]
+11. v and x no longer watched: targets [vulpen_view_w]
+
+## Live.cpp/Restart
+1. not asked: ready false, asked false
+2. a file of v written -> started, failed
+3. quit restart -> vulpen builds; the run restarts once it is built, and goes on as it is if the build fails\n
+4. again -> vulpen builds already; the run restarts once it is built\n
+4b. the poll that starts its build -> ready false, building true; the next, the build waiting -> ready false
+5. then ready false; its build ran true; asked false, building false; printed "<clock>            {!!!} quit restart: the build failed, so the ...not load cache\n" (185 characters, hash 7039cde23dd8f057)
+6. without a live build, not asked -> ready false
+7. quit restart again -> vulpen builds; the run restarts once it is built, and goes on as it is if the build fails\n
+8. with no live build: its first poll ready false, building true; then ready false, asked false; printed "<clock>            {!!!} quit restart: the build failed, so the run goes on\n<clock>                  Error: could not load cache\n"
+
+## Live.cpp/first_errors
+"" -> ""
+"/r/projects/lake/l/L.cpp:1:1: error: in /r/projects/wave/w/W.h\n" -> "l/L.cpp:1:1: error: in /r/projects/wave/w/W.h"
+"/r/projects/wave/:1: error: the folder itself\n" -> ":1: error: the folder itself"
+"/r/projects/wave/a/A.cpp:1:1: error: cannot open /r/projects/wave/inner/x.h\n/r/projects/wave/b/B.cpp:2:2: error: cannot open /r/projects/wave/inner/x.h\n" -> "a/A.cpp:1:1: error: cannot open /r/projects/wave/inner/x.h\nb/B.cpp:2:2: error: cannot open /r/projects/wave/inner/x.h"
+"/r/projects/wave/inner/n/N.cpp:1:1: error: the deepest folder names it\n" -> "n/N.cpp:1:1: error: the deepest folder names it"
+"/r/projects/wave/w/W.cpp:1:1: error: cannot open /r/projects/wave/inner/x.h\n" -> "w/W.cpp:1:1: error: cannot open /r/projects/wave/inner/x.h"
+"/r/projects/wave/wave/Wave.cpp error without a line\n" -> "wave/Wave.cpp error without a line"
+"/r/projects/wave/wave/Wave.cpp:12:5: error: 'x' was not declared in this scope\n" -> "wave/Wave.cpp:12:5: error: 'x' was not declared in this scope"
+"/r/projects/wave/wave/Wave.cpp:12:5: error: one\n/r/projects/wave/wave/Wave.cpp:14:1: error: two\n/r/projects/wave/probe/Probe.cpp:3:1: error: three\n" -> "wave/Wave.cpp:12:5: error: one\nprobe/Probe.cpp:3:1: error: three"
+"/r/projects/wave/wave/Wave.cpp:1:1: error: crlf\r\n" -> "wave/Wave.cpp:1:1: error: crlf"
+"/r/projects/wave2/w/W.cpp:2:2: error: not wave's\n" -> "w/W.cpp:2:2: error: not wave's"
+"C:\\r\\p\\life\\engine\\Engine.cpp(12): error C2065: 'x': undeclared identifier\n" -> "engine\\Engine.cpp(12): error C2065: 'x': undeclared identifier"
+"ERROR: /r/projects/wave/wave/wave.comp:7: '' :   spaced\n" -> "wave/wave.comp:7: spaced"
+"ERROR: /r/projects/wave/wave/wave.comp:7: '' : syntax error, unexpected IDENTIFIER\nERROR: 1 compilation errors.  No code generated.\n" -> "wave/wave.comp:7: syntax error, unexpected IDENTIFIER"
+"Error: could not load cache\n" -> "Error: could not load cache\n"
+"In file included from /r/projects/wave/wave/Wave.cpp:3:\n/r/src/runtime/Operator.h:100:3: error: an engine header's\n" -> "In file included from /r/projects/wave/wave/Wave.cpp:3:\n/r/src/runtime/Operator.h:100:3: error: an engine header's\n"
+"make[2]: *** [CMakeFiles/x.dir/build.make:76: x] Error 1\n/r/projects/wave/wave/Wave.cpp:1:1: warning: unused variable 'x'\n" -> "make[2]: *** [CMakeFiles/x.dir/build.make:76: x] Error 1\n/r/projects/wave/wave/Wave.cpp:1:1: warning: unused variable 'x'\n"
+no folders, one error -> "/r/a.cpp:1:1: error: x\n"
+
+## Live.cpp/newest
+1. all at base: newest is base + 0 s
+2. .hidden/d ahead 50 s: newest is base + 0 s
+3. .hidden ahead 45 s: newest is base + 0 s
+4. b/.e ahead 40 s: newest is base + 0 s
+5. b/c ahead 10 s: newest is base + 10 s
+6. f ahead 20 s: newest is base + 20 s
+7. a ahead 30 s: newest is base + 30 s
+8. no such folder: the earliest time there is true

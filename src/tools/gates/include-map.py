@@ -17,6 +17,10 @@ code from the shared/ folder in the library's parts/ or at the top of its group 
 view, or an engine file the map's node table lists. Engine code never includes node
 code.
 
+The bench, src/tools/bench/, is tooling, not engine, and has no row either: it
+may include any engine file, a .cpp too, as a case includes the file it reviews to reach
+its unnamed namespace, and never node code. Engine and node code never include it.
+
 With --view FOLDER it checks the node code of that view alone, as the view's own build
 runs it, so a project's mistake stops that project's build, and a file under projects/
 in no project, which no build compiles, stops none.
@@ -39,6 +43,7 @@ INCLUDE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]', re.MULTILINE)
 CODE_SPAN = re.compile(r"`([^`]+)`")
 RECIPES = SOURCE / "runtime" / "recipes"  # a folder a group of recipes
 LIBRARY = RECIPES / "vulpen" / "library"  # vulpen's recipes, and what they share
+BENCH = SOURCE / "tools" / "bench"  # the bench
 MANIFEST = "view.vlp"  # a folder holding one is a view's
 # The only files more than one node includes, at the top of the library or of a view, but
 # the library keeps shared/ in parts/ (RV05, RV09); a node includes their GLSL or C++
@@ -78,6 +83,10 @@ def node_root(file: Path) -> Path | None:
         return RECIPES / file.relative_to(RECIPES).parts[0]
     return next((folder for folder in file.parents
                  if ours(folder) and (folder / MANIFEST).is_file()), None)
+
+
+def bench(file: Path) -> bool:
+    return BENCH in file.parents
 
 
 def shared_root(file: Path) -> Path | None:
@@ -166,7 +175,8 @@ def row(file: str, names: set[str]) -> str:
 
 
 def differences(code: dict[str, set[str]], page: dict[str, set[str]]) -> list[str]:
-    engine = {file: names for file, names in code.items() if not node_root(path_of(file))}
+    engine = {file: names for file, names in code.items()
+              if not node_root(path_of(file)) and not bench(path_of(file))}
     problems = [f"{file}: new file; once approved, add the row\n      {row(file, engine[file])}"
                 for file in sorted(engine.keys() - page.keys())]
     problems += [f"{file}: node code has no row in the map" if file in code
@@ -192,6 +202,9 @@ def node_rule(code: dict[str, set[str]], reach: set[str]) -> list[str]:
                 if node_root(target):
                     problems.append(f"{file} -> {name}: engine code never includes node code "
                                     "(RA00)")
+                elif bench(target) and not bench(path_of(file)):
+                    problems.append(f"{file} -> {name}: only the bench includes the "
+                                    "bench (RA00)")
             elif not (target.parent == path_of(file).parent
                       or (target.suffix in HEADER_SUFFIXES
                           and target.parent in (root / CONTRACTS,

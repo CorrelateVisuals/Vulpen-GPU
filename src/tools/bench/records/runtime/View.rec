@@ -1,0 +1,1320 @@
+# The rows of src/runtime/View.h, a call each (src/tools/bench/bench.py).
+
+## View.h/Endpoint::text
+("", "") -> ":"
+("", "_") -> "._"
+("", "a") -> ".a"
+("", "a.b") -> ".a.b"
+("", "a/b") -> ".a/b"
+("", "a:b") -> ".a:b"
+("", "a\t") -> ".a\t"
+("", "a_b") -> ".a_b"
+("", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> ".aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (301 characters, hash 202b296d2d53026d)
+("", "root") -> ".root"
+(".", "-") -> "..-"
+(".", ".") -> "..."
+(".", "1") -> "..1"
+(".", "A9") -> "..A9"
+(".", "\xc3\xa9") -> "..\xc3\xa9"
+(".", "a b") -> "..a b"
+(".", "a") -> "..a"
+(".", "a-b") -> "..a-b"
+(".", "a\r") -> "..a\r"
+(".a", "") -> ".a:"
+(".a", "_") -> ".a._"
+(".a", "a") -> ".a.a"
+(".a", "a.b") -> ".a.a.b"
+(".a", "a/b") -> ".a.a/b"
+(".a", "a:b") -> ".a.a:b"
+(".a", "a\t") -> ".a.a\t"
+(".a", "a_b") -> ".a.a_b"
+(".a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> ".a.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (303 characters, hash 86c4dece3ca8520e)
+(".a", "root") -> ".a.root"
+("\xc3\xa9.a", "") -> "\xc3\xa9.a:"
+("\xc3\xa9.a", "_") -> "\xc3\xa9.a._"
+("\xc3\xa9.a", "a") -> "\xc3\xa9.a.a"
+("\xc3\xa9.a", "a.b") -> "\xc3\xa9.a.a.b"
+("\xc3\xa9.a", "a/b") -> "\xc3\xa9.a.a/b"
+("\xc3\xa9.a", "a:b") -> "\xc3\xa9.a.a:b"
+("\xc3\xa9.a", "a\t") -> "\xc3\xa9.a.a\t"
+("\xc3\xa9.a", "a_b") -> "\xc3\xa9.a.a_b"
+("\xc3\xa9.a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "\xc3\xa9.a.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (311 characters, hash 9a71de8f7704ec1e)
+("\xc3\xa9.a", "root") -> "\xc3\xa9.a.root"
+("a b", "") -> "a b:"
+("a b", "_") -> "a b._"
+("a b", "a") -> "a b.a"
+("a b", "a.b") -> "a b.a.b"
+("a b", "a/b") -> "a b.a/b"
+("a b", "a:b") -> "a b.a:b"
+("a b", "a\t") -> "a b.a\t"
+("a b", "a_b") -> "a b.a_b"
+("a b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "a b.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (304 characters, hash 774b50e36303d8e8)
+("a b", "root") -> "a b.root"
+("a", "") -> "a:"
+("a", "-") -> "a.-"
+("a", ".") -> "a.."
+("a", "1") -> "a.1"
+("a", "A9") -> "a.A9"
+("a", "\xc3\xa9") -> "a.\xc3\xa9"
+("a", "_") -> "a._"
+("a", "a b") -> "a.a b"
+("a", "a") -> "a.a"
+("a", "a-b") -> "a.a-b"
+("a", "a.b") -> "a.a.b"
+("a", "a/b") -> "a.a/b"
+("a", "a:b") -> "a.a:b"
+("a", "a\r") -> "a.a\r"
+("a", "a\t") -> "a.a\t"
+("a", "a_b") -> "a.a_b"
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "a.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (302 characters, hash 8a7219eee08e145a)
+("a", "root") -> "a.root"
+("a.", "-") -> "a..-"
+("a.", ".") -> "a..."
+("a.", "1") -> "a..1"
+("a.", "A9") -> "a..A9"
+("a.", "\xc3\xa9") -> "a..\xc3\xa9"
+("a.", "a b") -> "a..a b"
+("a.", "a") -> "a..a"
+("a.", "a-b") -> "a..a-b"
+("a.", "a\r") -> "a..a\r"
+("a..b", "-") -> "a..b.-"
+("a..b", ".") -> "a..b.."
+("a..b", "1") -> "a..b.1"
+("a..b", "A9") -> "a..b.A9"
+("a..b", "\xc3\xa9") -> "a..b.\xc3\xa9"
+("a..b", "a b") -> "a..b.a b"
+("a..b", "a") -> "a..b.a"
+("a..b", "a-b") -> "a..b.a-b"
+("a..b", "a\r") -> "a..b.a\r"
+("a.b ", "-") -> "a.b .-"
+("a.b ", ".") -> "a.b .."
+("a.b ", "1") -> "a.b .1"
+("a.b ", "A9") -> "a.b .A9"
+("a.b ", "\xc3\xa9") -> "a.b .\xc3\xa9"
+("a.b ", "a b") -> "a.b .a b"
+("a.b ", "a") -> "a.b .a"
+("a.b ", "a-b") -> "a.b .a-b"
+("a.b ", "a\r") -> "a.b .a\r"
+("a.b", "") -> "a.b:"
+("a.b", "_") -> "a.b._"
+("a.b", "a") -> "a.b.a"
+("a.b", "a.b") -> "a.b.a.b"
+("a.b", "a/b") -> "a.b.a/b"
+("a.b", "a:b") -> "a.b.a:b"
+("a.b", "a\t") -> "a.b.a\t"
+("a.b", "a_b") -> "a.b.a_b"
+("a.b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "a.b.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (304 characters, hash 200a46b5aaec937a)
+("a.b", "root") -> "a.b.root"
+("a.b.c", "-") -> "a.b.c.-"
+("a.b.c", ".") -> "a.b.c.."
+("a.b.c", "1") -> "a.b.c.1"
+("a.b.c", "A9") -> "a.b.c.A9"
+("a.b.c", "\xc3\xa9") -> "a.b.c.\xc3\xa9"
+("a.b.c", "a b") -> "a.b.c.a b"
+("a.b.c", "a") -> "a.b.c.a"
+("a.b.c", "a-b") -> "a.b.c.a-b"
+("a.b.c", "a\r") -> "a.b.c.a\r"
+("a.root", "-") -> "a.root.-"
+("a.root", ".") -> "a.root.."
+("a.root", "1") -> "a.root.1"
+("a.root", "A9") -> "a.root.A9"
+("a.root", "\xc3\xa9") -> "a.root.\xc3\xa9"
+("a.root", "a b") -> "a.root.a b"
+("a.root", "a") -> "a.root.a"
+("a.root", "a-b") -> "a.root.a-b"
+("a.root", "a\r") -> "a.root.a\r"
+("a/b", "-") -> "a/b.-"
+("a/b", ".") -> "a/b.."
+("a/b", "1") -> "a/b.1"
+("a/b", "A9") -> "a/b.A9"
+("a/b", "\xc3\xa9") -> "a/b.\xc3\xa9"
+("a/b", "a b") -> "a/b.a b"
+("a/b", "a") -> "a/b.a"
+("a/b", "a-b") -> "a/b.a-b"
+("a/b", "a\r") -> "a/b.a\r"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaa.b:" (303 characters, hash fdc43e6c2e6b8795)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "_") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaa.b._" (304 characters, hash 9fb9dbd2e07def72)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaa.b.a" (304 characters, hash 9fba0dd2e07e4468)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a.b") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaa.b.a.b" (306 characters, hash c6b976d2734e5ab0)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a/b") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaa.b.a/b" (306 characters, hash c6bd60d273521e25)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a:b") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaa.b.a:b" (306 characters, hash c6e27ed273716d5c)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a\t") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaa.b.a\t" (306 characters, hash c67c78d2731aaff8)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a_b") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaa.b.a_b" (306 characters, hash c68680d273231215)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (603 characters, hash a65caa5bd3f7ab15)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "root") -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaa.b.root" (307 characters, hash 5e82ca2dd7b24a01)
+("root", "") -> "root:"
+("root", "_") -> "root._"
+("root", "a") -> "root.a"
+("root", "a.b") -> "root.a.b"
+("root", "a/b") -> "root.a/b"
+("root", "a:b") -> "root.a:b"
+("root", "a\t") -> "root.a\t"
+("root", "a_b") -> "root.a_b"
+("root", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "root.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (305 characters, hash ee83dfb7b613a90d)
+("root", "root") -> "root.root"
+("root.a", "") -> "root.a:"
+("root.a", "_") -> "root.a._"
+("root.a", "a") -> "root.a.a"
+("root.a", "a.b") -> "root.a.a.b"
+("root.a", "a/b") -> "root.a.a/b"
+("root.a", "a:b") -> "root.a.a:b"
+("root.a", "a\t") -> "root.a.a\t"
+("root.a", "a_b") -> "root.a.a_b"
+("root.a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "root.a.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (307 characters, hash a67cb9ca43d3602e)
+("root.a", "root") -> "root.a.root"
+~(" -:..:", "_ ") -> " -:..:._ "
+~(" ._0Z:", "-") -> " ._0Z:.-"
+~(" /::9Z_", "") -> " /::9Z_:"
+~(" 0__-aa", " /:0_") -> " 0__-aa. /:0_"
+~(" Z.99a", " _") -> " Z.99a. _"
+~(" a:a ", "999  -") -> " a:a .999  -"
+~("", "//_9_") -> ".//_9_"
+~("", "/a9") -> "./a9"
+~("", "_ Z/ /") -> "._ Z/ /"
+~("-", "-  a/Z") -> "-.-  a/Z"
+~("--", "_  0") -> "--._  0"
+~("-00 ", "_ /0a") -> "-00 ._ /0a"
+~("-9", "a") -> "-9.a"
+~("-Z._09:a", "-:0_") -> "-Z._09:a.-:0_"
+~("-Z/9-0Z ", "Z0") -> "-Z/9-0Z .Z0"
+~(".-/Z_--.", "/ a") -> ".-/Z_--../ a"
+~(".aZ", "aZ") -> ".aZ.aZ"
+~("/", "-0-") -> "/.-0-"
+~("/", "_:") -> "/._:"
+~("/99", ".0") -> "/99..0"
+~("/:0Z-.0", "9") -> "/:0Z-.0.9"
+~("0 -/", " 0//::") -> "0 -/. 0//::"
+~("0", "") -> "0:"
+~("00", "-/9a_/") -> "00.-/9a_/"
+~("0aa:.0.", ".:a/-a") -> "0aa:.0...:a/-a"
+~("9.Z /", "._/") -> "9.Z /.._/"
+~("9: -/", "aa/:9:") -> "9: -/.aa/:9:"
+~("9:", "/") -> "9:./"
+~("9_ZZ ", "_Z/ ") -> "9_ZZ ._Z/ "
+~(":/0a", "09/-") -> ":/0a.09/-"
+~(":/Z", ":") -> ":/Z.:"
+~("::/._", "a_") -> "::/._.a_"
+~(":Z9-a0", "_") -> ":Z9-a0._"
+~(":_", "-.") -> ":_.-."
+~("Z", "") -> "Z:"
+~("Z", "_:") -> "Z._:"
+~("Z.aZ", "a._:::") -> "Z.aZ.a._:::"
+~("Z09_a.a:", ".-") -> "Z09_a.a:..-"
+~("ZZ -", "") -> "ZZ -:"
+~("Za0._0/:", "a9-a//") -> "Za0._0/:.a9-a//"
+~("_-a", " ") -> "_-a. "
+~("_0/0_", "/9-0: ") -> "_0/0_./9-0: "
+~("_Z9: _//", "Z") -> "_Z9: _//.Z"
+~("__ ", "-a9_-.") -> "__ .-a9_-."
+~("___ a ", "0 :-a") -> "___ a .0 :-a"
+~("_a. ", "-/ZZ") -> "_a. .-/ZZ"
+~("a/9a.", " :.9a") -> "a/9a.. :.9a"
+~("aa_.9Za", "a-Z/") -> "aa_.9Za.a-Z/"
+
+## View.h/draws_into_window
+(view "chain" #756c4f17) -> false
+(view "empty" #983bd7a3) -> false
+(view "hosting" #bb4b71a1) -> false
+(view "nested" #45098330) -> false
+(view "one" #ea05330d) -> false
+(view "uses" #3db38939) -> false
+~(view "drawn" #022561e9) -> false
+~(view "drawn" #06592398) -> false
+~(view "drawn" #0b36f831) -> false
+~(view "drawn" #1bfab1d4) -> false
+~(view "drawn" #270f2aa1) -> false
+~(view "drawn" #28cc2a78) -> false
+~(view "drawn" #2fbf2a78) -> false
+~(view "drawn" #30bb83c0) -> false
+~(view "drawn" #32f58775) -> false
+~(view "drawn" #3fd73edb) -> false
+~(view "drawn" #4ec6ec30) -> false
+~(view "drawn" #5551e99e) -> false
+~(view "drawn" #6e825710) -> false
+~(view "drawn" #7ad8844c) -> false
+~(view "drawn" #7fcfa6ab) -> false
+~(view "drawn" #8184f45d) -> false
+~(view "drawn" #87248009) -> false
+~(view "drawn" #88f28072) -> false
+~(view "drawn" #9f505dbb) -> false
+~(view "drawn" #b33cbead) -> false
+~(view "drawn" #b3e4cee5) -> false
+~(view "drawn" #b4bda048) -> false
+~(view "drawn" #b595ce44) -> false
+~(view "drawn" #ba55975e) -> false
+~(view "drawn" #ec605807) -> false
+~(view "drawn" #eef33be7) -> false
+
+## View.h/folder_in
+(view "chain" #756c4f17, "") -> path ""
+(view "chain" #756c4f17, ".") -> path ""
+(view "chain" #756c4f17, ".a") -> path "a"
+(view "chain" #756c4f17, "\xc3\xa9.a") -> path "\xc3\xa9/a"
+(view "chain" #756c4f17, "a b") -> path "a b"
+(view "chain" #756c4f17, "a") -> path "a"
+(view "chain" #756c4f17, "a.") -> path "a/"
+(view "chain" #756c4f17, "a..b") -> path "a/b"
+(view "chain" #756c4f17, "a.b ") -> path "a/b "
+(view "chain" #756c4f17, "a.b") -> path "a/b"
+(view "chain" #756c4f17, "a.b.c") -> path "a/b/c"
+(view "chain" #756c4f17, "a.root") -> path "a/root"
+(view "chain" #756c4f17, "a/b") -> path "a/b"
+(view "chain" #756c4f17, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> path "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa/b" (302 characters, hash cd838ba507bf6078)
+(view "chain" #756c4f17, "root") -> path ""
+(view "chain" #756c4f17, "root.a") -> path "root/a"
+(view "empty" #983bd7a3, "") -> path ""
+(view "empty" #983bd7a3, ".") -> path ""
+(view "empty" #983bd7a3, ".a") -> path "a"
+(view "empty" #983bd7a3, "\xc3\xa9.a") -> path "\xc3\xa9/a"
+(view "empty" #983bd7a3, "a b") -> path "a b"
+(view "empty" #983bd7a3, "a") -> path "a"
+(view "empty" #983bd7a3, "a.") -> path "a/"
+(view "empty" #983bd7a3, "a..b") -> path "a/b"
+(view "empty" #983bd7a3, "a.b ") -> path "a/b "
+(view "empty" #983bd7a3, "a.b") -> path "a/b"
+(view "empty" #983bd7a3, "a.b.c") -> path "a/b/c"
+(view "empty" #983bd7a3, "a.root") -> path "a/root"
+(view "empty" #983bd7a3, "a/b") -> path "a/b"
+(view "empty" #983bd7a3, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> path "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa/b" (302 characters, hash cd838ba507bf6078)
+(view "empty" #983bd7a3, "root") -> path ""
+(view "empty" #983bd7a3, "root.a") -> path "root/a"
+(view "hosting" #bb4b71a1, "") -> path ""
+(view "hosting" #bb4b71a1, ".") -> path ""
+(view "hosting" #bb4b71a1, ".a") -> path "a"
+(view "hosting" #bb4b71a1, "\xc3\xa9.a") -> path "\xc3\xa9/a"
+(view "hosting" #bb4b71a1, "a b") -> path "a b"
+(view "hosting" #bb4b71a1, "a") -> path "a"
+(view "hosting" #bb4b71a1, "a.") -> path "a/"
+(view "hosting" #bb4b71a1, "a..b") -> path "a/b"
+(view "hosting" #bb4b71a1, "a.b ") -> path "a/b "
+(view "hosting" #bb4b71a1, "a.b") -> path "a/b"
+(view "hosting" #bb4b71a1, "a.b.c") -> path "a/b/c"
+(view "hosting" #bb4b71a1, "a.root") -> path "a/root"
+(view "hosting" #bb4b71a1, "a/b") -> path "a/b"
+(view "hosting" #bb4b71a1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> path "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa/b" (302 characters, hash cd838ba507bf6078)
+(view "hosting" #bb4b71a1, "root") -> path ""
+(view "hosting" #bb4b71a1, "root.a") -> path "root/a"
+(view "nested" #45098330, "") -> path ""
+(view "nested" #45098330, ".") -> path ""
+(view "nested" #45098330, ".a") -> path "a"
+(view "nested" #45098330, "\xc3\xa9.a") -> path "\xc3\xa9/a"
+(view "nested" #45098330, "a b") -> path "a b"
+(view "nested" #45098330, "a") -> path "a"
+(view "nested" #45098330, "a.") -> path "a/"
+(view "nested" #45098330, "a..b") -> path "a/b"
+(view "nested" #45098330, "a.b ") -> path "a/b "
+(view "nested" #45098330, "a.b") -> path "a/b"
+(view "nested" #45098330, "a.b.c") -> path "a/b/c"
+(view "nested" #45098330, "a.root") -> path "a/root"
+(view "nested" #45098330, "a/b") -> path "a/b"
+(view "nested" #45098330, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> path "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa/b" (302 characters, hash cd838ba507bf6078)
+(view "nested" #45098330, "root") -> path ""
+(view "nested" #45098330, "root.a") -> path "root/a"
+(view "one" #ea05330d, "") -> path ""
+(view "one" #ea05330d, ".") -> path ""
+(view "one" #ea05330d, ".a") -> path "a"
+(view "one" #ea05330d, "\xc3\xa9.a") -> path "\xc3\xa9/a"
+(view "one" #ea05330d, "a b") -> path "a b"
+(view "one" #ea05330d, "a") -> path "a"
+(view "one" #ea05330d, "a.") -> path "a/"
+(view "one" #ea05330d, "a..b") -> path "a/b"
+(view "one" #ea05330d, "a.b ") -> path "a/b "
+(view "one" #ea05330d, "a.b") -> path "a/b"
+(view "one" #ea05330d, "a.b.c") -> path "a/b/c"
+(view "one" #ea05330d, "a.root") -> path "a/root"
+(view "one" #ea05330d, "a/b") -> path "a/b"
+(view "one" #ea05330d, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> path "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa/b" (302 characters, hash cd838ba507bf6078)
+(view "one" #ea05330d, "root") -> path ""
+(view "one" #ea05330d, "root.a") -> path "root/a"
+(view "uses" #3db38939, "") -> path ""
+(view "uses" #3db38939, ".") -> path ""
+(view "uses" #3db38939, ".a") -> path "a"
+(view "uses" #3db38939, "\xc3\xa9.a") -> path "\xc3\xa9/a"
+(view "uses" #3db38939, "a b") -> path "a b"
+(view "uses" #3db38939, "a") -> path "a"
+(view "uses" #3db38939, "a.") -> path "a/"
+(view "uses" #3db38939, "a..b") -> path "a/b"
+(view "uses" #3db38939, "a.b ") -> path "a/b "
+(view "uses" #3db38939, "a.b") -> path "a/b"
+(view "uses" #3db38939, "a.b.c") -> path "a/b/c"
+(view "uses" #3db38939, "a.root") -> path "a/root"
+(view "uses" #3db38939, "a/b") -> path "a/b"
+(view "uses" #3db38939, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> path "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa/b" (302 characters, hash cd838ba507bf6078)
+(view "uses" #3db38939, "root") -> path ""
+(view "uses" #3db38939, "root.a") -> path "root/a"
+~(view "drawn" #06187ea6, ":- 9-0") -> path ":- 9-0"
+~(view "drawn" #1bfab1d4, "") -> path ""
+~(view "drawn" #1bfab1d4, "_.-.-ZZa") -> path "_/-/-ZZa"
+~(view "drawn" #24cecc70, ".") -> path ""
+~(view "drawn" #28cc2a78, "-aZZ") -> path "-aZZ"
+~(view "drawn" #2fbf2a78, " 0/9Za") -> path " 0/9Za"
+~(view "drawn" #2fbf2a78, "") -> path ""
+~(view "drawn" #2fbf2a78, "/0") -> path "/0"
+~(view "drawn" #2fbf2a78, "0-09_9") -> path "0-09_9"
+~(view "drawn" #2fbf2a78, ": //") -> path ": /"
+~(view "drawn" #2fbf2a78, ":9/") -> path ":9/"
+~(view "drawn" #2fbf2a78, ":Z  _") -> path ":Z  _"
+~(view "drawn" #2fbf2a78, "ZaZ ") -> path "ZaZ "
+~(view "drawn" #2fbf2a78, "_") -> path "_"
+~(view "drawn" #32f58775, " /.") -> path " /"
+~(view "drawn" #481913b7, "Z") -> path "Z"
+~(view "drawn" #6e825710, "_:Z_ _") -> path "_:Z_ _"
+~(view "drawn" #6e825710, "aaZ9 Z") -> path "aaZ9 Z"
+~(view "drawn" #7733f6a6, ".a._") -> path "a/_"
+~(view "drawn" #7ad8844c, ".9/Za-Z_") -> path "9/Za-Z_"
+~(view "drawn" #7ad8844c, "/_") -> path "/_"
+~(view "drawn" #7ad8844c, "9: ") -> path "9: "
+~(view "drawn" #7ad8844c, ":9") -> path ":9"
+~(view "drawn" #7ad8844c, "Z-a") -> path "Z-a"
+~(view "drawn" #7fcfa6ab, "  :9 ") -> path "  :9 "
+~(view "drawn" #7fcfa6ab, "") -> path ""
+~(view "drawn" #7fcfa6ab, "- /9 ") -> path "- /9 "
+~(view "drawn" #7fcfa6ab, "--") -> path "--"
+~(view "drawn" #7fcfa6ab, "/ ") -> path "/ "
+~(view "drawn" #7fcfa6ab, "0:9_") -> path "0:9_"
+~(view "drawn" #7fcfa6ab, "0a") -> path "0a"
+~(view "drawn" #7fcfa6ab, ":a") -> path ":a"
+~(view "drawn" #7fcfa6ab, "Z") -> path "Z"
+~(view "drawn" #91222de0, ". ZZ__") -> path " ZZ__"
+~(view "drawn" #91222de0, ".9a_") -> path "9a_"
+~(view "drawn" #9c1e95bc, "90-/:-") -> path "90-/:-"
+~(view "drawn" #adc25525, "00/0./0") -> path "/0"
+~(view "drawn" #b33cbead, ".:/ZZ9_") -> path ":/ZZ9_"
+~(view "drawn" #b33cbead, "// _a:") -> path "/ _a:"
+~(view "drawn" #b4bda048, "0Z_-9:_") -> path "0Z_-9:_"
+~(view "drawn" #dab5036d, "") -> path ""
+~(view "drawn" #dab5036d, "a.-0.") -> path "a/-0/"
+~(view "drawn" #e2d31f86, "9_a_.999") -> path "9_a_/999"
+~(view "drawn" #e9c8d7b7, "/9/:__Z") -> path "/9/:__Z"
+~(view "drawn" #ea07aa8a, "") -> path ""
+~(view "drawn" #ea07aa8a, "0_a") -> path "0_a"
+~(view "drawn" #eef33be7, "/0:a") -> path "/0:a"
+
+## View.h/hidden
+(path "") -> false
+(path ".") -> true
+(path "..") -> true
+(path "../a") -> true
+(path "./a") -> false
+(path ".hidden") -> true
+(path "\xc3\xa9") -> false
+(path "a b") -> false
+(path "a") -> false
+(path "a/") -> false
+(path "a/../b") -> false
+(path "a/./b") -> false
+(path "a/.b/c") -> true
+(path "a/b") -> false
+~(path "../d e") -> true
+~(path "./../.c") -> true
+~(path "./d e") -> false
+~(path ".c") -> true
+~(path ".c/.") -> true
+~(path ".c/../.") -> true
+~(path ".c/a/d e") -> false
+~(path ".c/b") -> true
+~(path ".c/d e") -> true
+~(path ".c/d e/.") -> false
+~(path "a/..") -> true
+~(path "a/./.c") -> true
+~(path "a/.c") -> true
+~(path "a/.c/..") -> false
+~(path "a/a/..") -> false
+~(path "a/a/b") -> false
+~(path "b") -> false
+~(path "b/a/b") -> false
+~(path "b/a/d e") -> false
+~(path "b/b/..") -> false
+~(path "b/d e/b") -> false
+~(path "d e") -> false
+~(path "d e/..") -> true
+~(path "d e/../d e") -> false
+~(path "d e/./b") -> false
+~(path "d e/d e") -> false
+
+## View.h/holds_stage
+(["A.VERT"], "") -> true
+(["A.VERT"], "-1") -> false
+(["A.VERT"], "-2147483648") -> false
+(["A.VERT"], ".5") -> false
+(["A.VERT"], "1 ") -> false
+(["A.VERT"], "1") -> false
+(["A.VERT"], "1\r") -> false
+(["A.VERT"], "1e") -> false
+(["A.VERT"], "1e-40") -> false
+(["A.VERT"], "4294967296") -> false
+(["A.VERT"], "\xef\xbc\x91") -> false
+(["A.VERT"], "a=b") -> false
+(["A.VERT"], "inf") -> false
+(["A.comp", "A.vert"], "") -> true
+(["A.comp", "A.vert"], "-1") -> false
+(["A.comp", "A.vert"], "-2147483648") -> false
+(["A.comp", "A.vert"], ".5") -> false
+(["A.comp", "A.vert"], "1 ") -> false
+(["A.comp", "A.vert"], "1") -> false
+(["A.comp", "A.vert"], "1\r") -> false
+(["A.comp", "A.vert"], "1e") -> false
+(["A.comp", "A.vert"], "1e-40") -> false
+(["A.comp", "A.vert"], "4294967296") -> false
+(["A.comp", "A.vert"], "\xef\xbc\x91") -> false
+(["A.comp", "A.vert"], "a=b") -> false
+(["A.comp", "A.vert"], "inf") -> false
+(["A.comp"], "+1") -> false
+(["A.comp"], "-inf") -> false
+(["A.comp"], "0") -> false
+(["A.comp"], "01") -> false
+(["A.comp"], "0x10") -> false
+(["A.comp"], "1") -> false
+(["A.comp"], "1,2") -> false
+(["A.comp"], "18446744073709551615") -> false
+(["A.comp"], "1\n") -> false
+(["A.comp"], "1e-50") -> false
+(["A.comp"], "3.4028235e38") -> false
+(["A.comp"], "5.") -> false
+(["A.comp"], "=") -> false
+(["A.cpp", "A.h"], "+1") -> false
+(["A.cpp", "A.h"], "-inf") -> false
+(["A.cpp", "A.h"], "0") -> false
+(["A.cpp", "A.h"], "01") -> false
+(["A.cpp", "A.h"], "0x10") -> false
+(["A.cpp", "A.h"], "1") -> false
+(["A.cpp", "A.h"], "1,2") -> false
+(["A.cpp", "A.h"], "18446744073709551615") -> false
+(["A.cpp", "A.h"], "1\n") -> false
+(["A.cpp", "A.h"], "1e-50") -> false
+(["A.cpp", "A.h"], "3.4028235e38") -> false
+(["A.cpp", "A.h"], "5.") -> false
+(["A.cpp", "A.h"], "=") -> false
+(["A.frag"], "") -> true
+(["A.frag"], "-1") -> false
+(["A.frag"], "-2147483648") -> false
+(["A.frag"], ".5") -> false
+(["A.frag"], "1 ") -> false
+(["A.frag"], "1") -> false
+(["A.frag"], "1\r") -> false
+(["A.frag"], "1e") -> false
+(["A.frag"], "1e-40") -> false
+(["A.frag"], "4294967296") -> false
+(["A.frag"], "\xef\xbc\x91") -> false
+(["A.frag"], "a=b") -> false
+(["A.frag"], "inf") -> false
+(["A.geom"], " 1") -> false
+(["A.geom"], "-0") -> false
+(["A.geom"], "1") -> false
+(["A.geom"], "1.5") -> false
+(["A.geom"], "18446744073709551616") -> false
+(["A.geom"], "1_0") -> false
+(["A.geom"], "1e3") -> false
+(["A.geom"], "3.4028236e38") -> false
+(["A.geom"], "4294967295") -> false
+(["A.geom"], "\xd9\xa1") -> false
+(["A.geom"], "a") -> false
+(["A.geom"], "nan") -> false
+(["A.vert", "A.frag"], " 1") -> false
+(["A.vert", "A.frag"], "") -> true
+(["A.vert", "A.frag"], "+1") -> false
+(["A.vert", "A.frag"], "-0") -> false
+(["A.vert", "A.frag"], "-1") -> false
+(["A.vert", "A.frag"], "-2147483648") -> false
+(["A.vert", "A.frag"], "-inf") -> false
+(["A.vert", "A.frag"], ".5") -> false
+(["A.vert", "A.frag"], "0") -> false
+(["A.vert", "A.frag"], "01") -> false
+(["A.vert", "A.frag"], "0x10") -> false
+(["A.vert", "A.frag"], "1 ") -> false
+(["A.vert", "A.frag"], "1") -> false
+(["A.vert", "A.frag"], "1,2") -> false
+(["A.vert", "A.frag"], "1.5") -> false
+(["A.vert", "A.frag"], "18446744073709551615") -> false
+(["A.vert", "A.frag"], "18446744073709551616") -> false
+(["A.vert", "A.frag"], "1\n") -> false
+(["A.vert", "A.frag"], "1\r") -> false
+(["A.vert", "A.frag"], "1_0") -> false
+(["A.vert", "A.frag"], "1e") -> false
+(["A.vert", "A.frag"], "1e-40") -> false
+(["A.vert", "A.frag"], "1e-50") -> false
+(["A.vert", "A.frag"], "1e3") -> false
+(["A.vert", "A.frag"], "3.4028235e38") -> false
+(["A.vert", "A.frag"], "3.4028236e38") -> false
+(["A.vert", "A.frag"], "4294967295") -> false
+(["A.vert", "A.frag"], "4294967296") -> false
+(["A.vert", "A.frag"], "5.") -> false
+(["A.vert", "A.frag"], "=") -> false
+(["A.vert", "A.frag"], "\xd9\xa1") -> false
+(["A.vert", "A.frag"], "\xef\xbc\x91") -> false
+(["A.vert", "A.frag"], "a") -> false
+(["A.vert", "A.frag"], "a=b") -> false
+(["A.vert", "A.frag"], "inf") -> false
+(["A.vert", "A.frag"], "nan") -> false
+(["A.vert", "A.geom", "A.frag"], "+1") -> false
+(["A.vert", "A.geom", "A.frag"], "-inf") -> false
+(["A.vert", "A.geom", "A.frag"], "0") -> false
+(["A.vert", "A.geom", "A.frag"], "01") -> false
+(["A.vert", "A.geom", "A.frag"], "0x10") -> false
+(["A.vert", "A.geom", "A.frag"], "1") -> false
+(["A.vert", "A.geom", "A.frag"], "1,2") -> false
+(["A.vert", "A.geom", "A.frag"], "18446744073709551615") -> false
+(["A.vert", "A.geom", "A.frag"], "1\n") -> false
+(["A.vert", "A.geom", "A.frag"], "1e-50") -> false
+(["A.vert", "A.geom", "A.frag"], "3.4028235e38") -> false
+(["A.vert", "A.geom", "A.frag"], "5.") -> false
+(["A.vert", "A.geom", "A.frag"], "=") -> false
+(["A.vert", "A.tesc", "A.frag"], " 1") -> false
+(["A.vert", "A.tesc", "A.frag"], "-0") -> false
+(["A.vert", "A.tesc", "A.frag"], "1") -> false
+(["A.vert", "A.tesc", "A.frag"], "1.5") -> false
+(["A.vert", "A.tesc", "A.frag"], "18446744073709551616") -> false
+(["A.vert", "A.tesc", "A.frag"], "1_0") -> false
+(["A.vert", "A.tesc", "A.frag"], "1e3") -> false
+(["A.vert", "A.tesc", "A.frag"], "3.4028236e38") -> false
+(["A.vert", "A.tesc", "A.frag"], "4294967295") -> false
+(["A.vert", "A.tesc", "A.frag"], "\xd9\xa1") -> false
+(["A.vert", "A.tesc", "A.frag"], "a") -> false
+(["A.vert", "A.tesc", "A.frag"], "nan") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "+1") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "-inf") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "0") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "01") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "0x10") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "1") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "1,2") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "18446744073709551615") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "1\n") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "1e-50") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "3.4028235e38") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "5.") -> false
+(["A.vert", "A.tesc", "A.tese", "A.frag"], "=") -> false
+(["A.vert", "A.tese", "A.frag"], "") -> true
+(["A.vert", "A.tese", "A.frag"], "-1") -> false
+(["A.vert", "A.tese", "A.frag"], "-2147483648") -> false
+(["A.vert", "A.tese", "A.frag"], ".5") -> false
+(["A.vert", "A.tese", "A.frag"], "1 ") -> false
+(["A.vert", "A.tese", "A.frag"], "1") -> false
+(["A.vert", "A.tese", "A.frag"], "1\r") -> false
+(["A.vert", "A.tese", "A.frag"], "1e") -> false
+(["A.vert", "A.tese", "A.frag"], "1e-40") -> false
+(["A.vert", "A.tese", "A.frag"], "4294967296") -> false
+(["A.vert", "A.tese", "A.frag"], "\xef\xbc\x91") -> false
+(["A.vert", "A.tese", "A.frag"], "a=b") -> false
+(["A.vert", "A.tese", "A.frag"], "inf") -> false
+(["A.vert"], " 1") -> false
+(["A.vert"], "-0") -> false
+(["A.vert"], "1") -> false
+(["A.vert"], "1.5") -> false
+(["A.vert"], "18446744073709551616") -> false
+(["A.vert"], "1_0") -> false
+(["A.vert"], "1e3") -> false
+(["A.vert"], "3.4028236e38") -> false
+(["A.vert"], "4294967295") -> false
+(["A.vert"], "\xd9\xa1") -> false
+(["A.vert"], "a") -> false
+(["A.vert"], "nan") -> false
+(["A.vert.bak", "A.frag~"], " 1") -> false
+(["A.vert.bak", "A.frag~"], "-0") -> false
+(["A.vert.bak", "A.frag~"], "1") -> false
+(["A.vert.bak", "A.frag~"], "1.5") -> false
+(["A.vert.bak", "A.frag~"], "18446744073709551616") -> false
+(["A.vert.bak", "A.frag~"], "1_0") -> false
+(["A.vert.bak", "A.frag~"], "1e3") -> false
+(["A.vert.bak", "A.frag~"], "3.4028236e38") -> false
+(["A.vert.bak", "A.frag~"], "4294967295") -> false
+(["A.vert.bak", "A.frag~"], "\xd9\xa1") -> false
+(["A.vert.bak", "A.frag~"], "a") -> false
+(["A.vert.bak", "A.frag~"], "nan") -> false
+([], "") -> false
+([], "-1") -> false
+([], "-2147483648") -> false
+([], ".5") -> false
+([], "1 ") -> false
+([], "1") -> false
+([], "1\r") -> false
+([], "1e") -> false
+([], "1e-40") -> false
+([], "4294967296") -> false
+([], "\xef\xbc\x91") -> false
+([], "a=b") -> false
+([], "inf") -> false
+~(["A.comp", "A.geom"], "Eb08b") -> false
+~(["A.comp"], "") -> true
+~(["A.cpp", "A.tesc"], "03a") -> false
+~(["A.cpp", "A.tese"], "2+e4") -> false
+~(["A.cpp"], " 0_xEE+") -> false
+~(["A.cpp"], " 5,b5") -> false
+~(["A.cpp"], "") -> true
+~(["A.geom", "A.cpp"], "4e,") -> false
+~(["A.geom", "A.geom", "A.tese"], "9,a5x") -> false
+~(["A.geom", "A.vert", "A.comp"], "e6.0+E") -> false
+~(["A.tesc", "A.tese"], "3e 7") -> false
+~(["A.tesc"], "31") -> false
+~(["A.tese", "A.cpp"], ",ba-3e37") -> false
+~(["A.tese", "A.geom", "A.frag"], "e") -> true
+~(["A.tese", "A.tese", "B.vert"], "-E.8") -> false
+~(["A.tese", "A.tese"], "3_70") -> false
+~(["A.tese", "A.tese"], "7 2++x") -> false
+~(["A.tese"], "b") -> false
+~(["A.vert", "A.comp"], ",E2+72") -> false
+~(["A.vert", "A.cpp"], "7 8") -> false
+~(["A.vert", "A.tesc"], "41ex-74") -> false
+~(["A.vert", "A.tese"], ".") -> false
+~(["A.vert", "A.vert"], "989495") -> false
+~(["A.vert", "B.vert"], "ea0x2ab7") -> false
+~(["B.vert", "A.comp", "A.tese"], "9x7bx") -> false
+~(["B.vert", "A.comp"], ".bx") -> false
+~(["B.vert", "A.cpp", "A.geom"], "") -> true
+~(["B.vert", "A.tesc", "A.tese"], "798+-") -> false
+~(["B.vert"], "") -> true
+~(["B.vert"], "-5Eeae") -> false
+~(["B.vert"], "e+") -> false
+~([], "+b") -> false
+~([], ",b6x.4") -> false
+~([], "-263,-04") -> false
+~([], "0e_") -> false
+~([], "5-e4848") -> false
+~([], "936a0+Ex") -> false
+~([], "E6.-") -> false
+~([], "_..") -> false
+~([], "_0") -> false
+~([], "a-6.") -> false
+~([], "a.") -> false
+~([], "e2b6") -> false
+~([], "ee3,5-7") -> false
+
+## View.h/is_name
+("") -> false
+("-") -> true
+(".") -> false
+("1") -> true
+("A9") -> true
+("\xc3\xa9") -> false
+("_") -> true
+("a b") -> false
+("a") -> true
+("a-b") -> true
+("a.b") -> false
+("a/b") -> false
+("a:b") -> false
+("a\r") -> false
+("a\t") -> false
+("a_b") -> true
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> true
+("root") -> true
+~(" //") -> false
+~(" a") -> false
+~("-.Z. ") -> false
+~("-09:/") -> false
+~("-: a") -> false
+~("..a-") -> false
+~(".0Z ") -> false
+~(".Z") -> false
+~(".Z::9") -> false
+~("._") -> false
+~("._Z- /") -> false
+~("._a") -> false
+~("/   Z0") -> false
+~("/-/:") -> false
+~("/9") -> false
+~("/Z-0") -> false
+~("0") -> true
+~("00") -> true
+~("0a:a") -> false
+~("9") -> true
+~("9/aZ") -> false
+~("990Z") -> true
+~("9Z/_") -> false
+~("9a") -> true
+~(":-Z.a") -> false
+~(":9") -> false
+~(":9a.:.") -> false
+~("Z") -> true
+~("Z/90/a") -> false
+~("Z__.") -> false
+~("_0Z:.") -> false
+~("_Z9/Z") -> false
+
+## View.h/is_path
+("") -> false
+(".") -> false
+(".a") -> false
+("\xc3\xa9.a") -> false
+("a b") -> false
+("a") -> true
+("a.") -> false
+("a..b") -> false
+("a.b ") -> false
+("a.b") -> true
+("a.b.c") -> true
+("a.root") -> true
+("a/b") -> false
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> true
+("root") -> true
+("root.a") -> true
+holds: a path is names joined by dots, over 58 rows
+~("  :") -> false
+~(" -_0-") -> false
+~(" 0a_:") -> false
+~("--/") -> false
+~("-9.9/") -> false
+~("-_") -> true
+~("-a: ZZ") -> false
+~(". 9-/") -> false
+~("..-9-:") -> false
+~(".:-09Z") -> false
+~("/") -> false
+~("/-a._09.") -> false
+~("/.--0-") -> false
+~("//9/- ._") -> false
+~("0 - 0 ") -> false
+~("0---0aZ:") -> false
+~("0-0_0") -> true
+~("0aZ") -> true
+~("99.0") -> true
+~("9aa /aZ0") -> false
+~(":") -> false
+~(":.") -> false
+~(":/") -> false
+~(":0:/.:") -> false
+~(":90") -> false
+~(":::") -> false
+~("::_.") -> false
+~(":ZZ:.") -> false
+~("Z9- -") -> false
+~("Za0a _") -> false
+~("_  :-/") -> false
+~("_-") -> true
+~("_-/") -> false
+~("_.9ZZ0.") -> false
+~("_9-") -> true
+~("_Z.- Z -") -> false
+~("_Z0/_") -> false
+~("__99 ") -> false
+~("_a ") -> false
+~("a- /_9/.") -> false
+~("a9_/_a/") -> false
+~("aZ:0.") -> false
+
+## View.h/is_top
+(view "chain" #756c4f17, "") -> false
+(view "chain" #756c4f17, ".") -> false
+(view "chain" #756c4f17, ".a") -> false
+(view "chain" #756c4f17, "\xc3\xa9.a") -> false
+(view "chain" #756c4f17, "a b") -> false
+(view "chain" #756c4f17, "a") -> false
+(view "chain" #756c4f17, "a.") -> false
+(view "chain" #756c4f17, "a..b") -> false
+(view "chain" #756c4f17, "a.b ") -> false
+(view "chain" #756c4f17, "a.b") -> false
+(view "chain" #756c4f17, "a.b.c") -> false
+(view "chain" #756c4f17, "a.root") -> false
+(view "chain" #756c4f17, "a/b") -> false
+(view "chain" #756c4f17, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+(view "chain" #756c4f17, "root") -> true
+(view "chain" #756c4f17, "root.a") -> false
+(view "empty" #983bd7a3, "") -> false
+(view "empty" #983bd7a3, ".") -> false
+(view "empty" #983bd7a3, ".a") -> false
+(view "empty" #983bd7a3, "\xc3\xa9.a") -> false
+(view "empty" #983bd7a3, "a b") -> false
+(view "empty" #983bd7a3, "a") -> false
+(view "empty" #983bd7a3, "a.") -> false
+(view "empty" #983bd7a3, "a..b") -> false
+(view "empty" #983bd7a3, "a.b ") -> false
+(view "empty" #983bd7a3, "a.b") -> false
+(view "empty" #983bd7a3, "a.b.c") -> false
+(view "empty" #983bd7a3, "a.root") -> false
+(view "empty" #983bd7a3, "a/b") -> false
+(view "empty" #983bd7a3, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+(view "empty" #983bd7a3, "root") -> true
+(view "empty" #983bd7a3, "root.a") -> false
+(view "hosting" #bb4b71a1, "") -> false
+(view "hosting" #bb4b71a1, ".") -> false
+(view "hosting" #bb4b71a1, ".a") -> false
+(view "hosting" #bb4b71a1, "\xc3\xa9.a") -> false
+(view "hosting" #bb4b71a1, "a b") -> false
+(view "hosting" #bb4b71a1, "a") -> false
+(view "hosting" #bb4b71a1, "a.") -> false
+(view "hosting" #bb4b71a1, "a..b") -> false
+(view "hosting" #bb4b71a1, "a.b ") -> false
+(view "hosting" #bb4b71a1, "a.b") -> false
+(view "hosting" #bb4b71a1, "a.b.c") -> false
+(view "hosting" #bb4b71a1, "a.root") -> false
+(view "hosting" #bb4b71a1, "a/b") -> false
+(view "hosting" #bb4b71a1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+(view "hosting" #bb4b71a1, "root") -> true
+(view "hosting" #bb4b71a1, "root.a") -> false
+(view "nested" #45098330, "") -> false
+(view "nested" #45098330, ".") -> false
+(view "nested" #45098330, ".a") -> false
+(view "nested" #45098330, "\xc3\xa9.a") -> false
+(view "nested" #45098330, "a b") -> false
+(view "nested" #45098330, "a") -> false
+(view "nested" #45098330, "a.") -> false
+(view "nested" #45098330, "a..b") -> false
+(view "nested" #45098330, "a.b ") -> false
+(view "nested" #45098330, "a.b") -> false
+(view "nested" #45098330, "a.b.c") -> false
+(view "nested" #45098330, "a.root") -> false
+(view "nested" #45098330, "a/b") -> false
+(view "nested" #45098330, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+(view "nested" #45098330, "root") -> true
+(view "nested" #45098330, "root.a") -> false
+(view "one" #ea05330d, "") -> false
+(view "one" #ea05330d, ".") -> false
+(view "one" #ea05330d, ".a") -> false
+(view "one" #ea05330d, "\xc3\xa9.a") -> false
+(view "one" #ea05330d, "a b") -> false
+(view "one" #ea05330d, "a") -> false
+(view "one" #ea05330d, "a.") -> false
+(view "one" #ea05330d, "a..b") -> false
+(view "one" #ea05330d, "a.b ") -> false
+(view "one" #ea05330d, "a.b") -> false
+(view "one" #ea05330d, "a.b.c") -> false
+(view "one" #ea05330d, "a.root") -> false
+(view "one" #ea05330d, "a/b") -> false
+(view "one" #ea05330d, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+(view "one" #ea05330d, "root") -> true
+(view "one" #ea05330d, "root.a") -> false
+(view "uses" #3db38939, "") -> false
+(view "uses" #3db38939, ".") -> false
+(view "uses" #3db38939, ".a") -> false
+(view "uses" #3db38939, "\xc3\xa9.a") -> false
+(view "uses" #3db38939, "a b") -> false
+(view "uses" #3db38939, "a") -> false
+(view "uses" #3db38939, "a.") -> false
+(view "uses" #3db38939, "a..b") -> false
+(view "uses" #3db38939, "a.b ") -> false
+(view "uses" #3db38939, "a.b") -> false
+(view "uses" #3db38939, "a.b.c") -> false
+(view "uses" #3db38939, "a.root") -> false
+(view "uses" #3db38939, "a/b") -> false
+(view "uses" #3db38939, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+(view "uses" #3db38939, "root") -> true
+(view "uses" #3db38939, "root.a") -> false
+~(view "drawn" #022561e9, "") -> false
+~(view "drawn" #162a2aa9, "   9 ") -> false
+~(view "drawn" #1bfab1d4, "-a./0a:") -> false
+~(view "drawn" #2bfedbc2, ":Z-") -> false
+~(view "drawn" #2fbf2a78, " _:") -> false
+~(view "drawn" #2fbf2a78, "-.a0a0a.") -> false
+~(view "drawn" #2fbf2a78, "-a09/:") -> false
+~(view "drawn" #2fbf2a78, ".-ZZZ_") -> false
+~(view "drawn" #2fbf2a78, "/ _a_0- ") -> false
+~(view "drawn" #2fbf2a78, "909-") -> false
+~(view "drawn" #2fbf2a78, "Z 0") -> false
+~(view "drawn" #2fbf2a78, "Z:aZ0-.") -> false
+~(view "drawn" #32f58775, "/") -> false
+~(view "drawn" #32f58775, "_ ////0") -> false
+~(view "drawn" #3a546194, "") -> false
+~(view "drawn" #3c706d96, "/_Z.:a") -> false
+~(view "drawn" #641c753a, ":.ZZ::-/") -> false
+~(view "drawn" #7ad8844c, "") -> false
+~(view "drawn" #7ad8844c, "./-/ _9-") -> false
+~(view "drawn" #7ad8844c, "/:Za") -> false
+~(view "drawn" #7ad8844c, "0:0Z /Z") -> false
+~(view "drawn" #7ad8844c, ":  ") -> false
+~(view "drawn" #7ad8844c, "Z:/:90Z-") -> false
+~(view "drawn" #7ad8844c, "a999.") -> false
+~(view "drawn" #7fcfa6ab, " ..a.9") -> false
+~(view "drawn" #7fcfa6ab, "-9:/_ 9Z") -> false
+~(view "drawn" #7fcfa6ab, ".") -> false
+~(view "drawn" #7fcfa6ab, "0 /a/") -> false
+~(view "drawn" #7fcfa6ab, "9") -> false
+~(view "drawn" #7fcfa6ab, "9-/0.:") -> false
+~(view "drawn" #7fcfa6ab, "9. 0a") -> false
+~(view "drawn" #7fcfa6ab, "9a__a9Z") -> false
+~(view "drawn" #7fcfa6ab, "_9") -> false
+~(view "drawn" #7fcfa6ab, "a:") -> false
+~(view "drawn" #87248009, "9 :09Z:Z") -> false
+~(view "drawn" #87248009, "Z9../a") -> false
+~(view "drawn" #91222de0, "0/.") -> false
+~(view "drawn" #9c814e07, ".Z") -> false
+~(view "drawn" #a5d84ba3, "_ :9-/ ") -> false
+~(view "drawn" #b33cbead, "-_..9:9") -> false
+~(view "drawn" #b33cbead, "/./.") -> false
+~(view "drawn" #b4bda048, "-a- :") -> false
+~(view "drawn" #b4bda048, ":_9aZ:9_") -> false
+~(view "drawn" #ba55975e, " ") -> false
+~(view "drawn" #ba55975e, "/") -> false
+~(view "drawn" #d63159bf, "0Z a-") -> false
+~(view "drawn" #eef33be7, "-9Z. 9a_") -> false
+
+## View.h/missing_stages
+(["A.VERT"]) -> []
+(["A.comp", "A.vert"]) -> [".frag"]
+(["A.comp"]) -> []
+(["A.cpp", "A.h"]) -> []
+(["A.frag"]) -> [".vert"]
+(["A.geom"]) -> [".vert", ".frag"]
+(["A.vert", "A.frag"]) -> []
+(["A.vert", "A.geom", "A.frag"]) -> []
+(["A.vert", "A.tesc", "A.frag"]) -> [".tese"]
+(["A.vert", "A.tesc", "A.tese", "A.frag"]) -> []
+(["A.vert", "A.tese", "A.frag"]) -> [".tesc"]
+(["A.vert"]) -> [".frag"]
+(["A.vert.bak", "A.frag~"]) -> []
+([]) -> []
+~(["A.comp", "A.geom"]) -> [".vert", ".frag"]
+~(["A.comp", "A.tese", "B.vert"]) -> [".tesc", ".frag"]
+~(["A.cpp", "A.comp"]) -> []
+~(["A.cpp", "A.cpp"]) -> []
+~(["A.cpp", "A.frag", "A.tesc"]) -> [".vert", ".tese"]
+~(["A.cpp", "A.geom", "A.cpp"]) -> [".vert", ".frag"]
+~(["A.cpp", "A.tesc", "A.comp"]) -> [".vert", ".tese", ".frag"]
+~(["A.cpp", "A.tesc"]) -> [".vert", ".tese", ".frag"]
+~(["A.cpp"]) -> []
+~(["A.frag", "A.comp"]) -> [".vert"]
+~(["A.frag", "A.frag"]) -> [".vert"]
+~(["A.frag", "A.tesc"]) -> [".vert", ".tese"]
+~(["A.geom", "A.comp", "A.vert"]) -> [".frag"]
+~(["A.geom", "A.tesc"]) -> [".vert", ".tese", ".frag"]
+~(["A.geom", "B.vert", "A.comp"]) -> [".frag"]
+~(["A.tesc", "B.vert"]) -> [".tese", ".frag"]
+~(["A.tesc"]) -> [".vert", ".tese", ".frag"]
+~(["A.tese", "A.comp", "A.cpp"]) -> [".vert", ".tesc", ".frag"]
+~(["A.tese", "A.cpp", "A.frag"]) -> [".vert", ".tesc"]
+~(["A.tese", "A.frag", "A.frag"]) -> [".vert", ".tesc"]
+~(["A.tese", "A.geom", "A.tese"]) -> [".vert", ".tesc", ".frag"]
+~(["A.tese", "A.tese", "A.vert"]) -> [".tesc", ".frag"]
+~(["A.tese"]) -> [".vert", ".tesc", ".frag"]
+~(["A.vert", "A.geom"]) -> [".frag"]
+~(["B.vert", "A.cpp"]) -> [".frag"]
+~(["B.vert", "A.geom", "A.vert"]) -> [".frag"]
+~(["B.vert", "A.tesc"]) -> [".tese", ".frag"]
+~(["B.vert"]) -> [".frag"]
+
+## View.h/path_of
+("") -> path ""
+(".") -> path ""
+(".a") -> path "a"
+("\xc3\xa9.a") -> path "\xc3\xa9/a"
+("a b") -> path "a b"
+("a") -> path "a"
+("a.") -> path "a/"
+("a..b") -> path "a/b"
+("a.b ") -> path "a/b "
+("a.b") -> path "a/b"
+("a.b.c") -> path "a/b/c"
+("a.root") -> path "a/root"
+("a/b") -> path "a/b"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> path "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa/b" (302 characters, hash cd838ba507bf6078)
+("root") -> path "root"
+("root.a") -> path "root/a"
+holds: a node's folder and its name lead back to each other (RV08), over 55 rows
+~(" -/_0_") -> path " -/_0_"
+~(" 00._") -> path " 00/_"
+~(" _ ") -> path " _ "
+~("-Z:- .") -> path "-Z:- /"
+~(". :/") -> path " :/"
+~(".9 ") -> path "9 "
+~("/ Z/") -> path "/ Z/"
+~("/") -> path "/"
+~("/-") -> path "/-"
+~("/.09") -> path "/09"
+~("/0") -> path "/0"
+~("/_ 9 ") -> path "/_ 9 "
+~("0") -> path "0"
+~("0.") -> path "0/"
+~("0._") -> path "0/_"
+~("0:.Z ") -> path "0:/Z "
+~("9") -> path "9"
+~("9/") -> path "9/"
+~("99 Z") -> path "99 Z"
+~("9a") -> path "9a"
+~(":-.9- _") -> path ":-/9- _"
+~(":09 _a") -> path ":09 _a"
+~(":9_") -> path ":9_"
+~(":a") -> path ":a"
+~(":aZ") -> path ":aZ"
+~("Z/Z:-:") -> path "Z/Z:-:"
+~("Z0.") -> path "Z0/"
+~("Z: - ") -> path "Z: - "
+~("ZZ..00") -> path "ZZ/00"
+~("Za  ") -> path "Za  "
+~("Za") -> path "Za"
+~("Za._ ") -> path "Za/_ "
+~("_ .") -> path "_ /"
+~("_") -> path "_"
+~("_:9 Z") -> path "_:9 Z"
+~("_a/9") -> path "_a/9"
+~("_a/_:/") -> path "_a/_:/"
+~("_a__") -> path "_a__"
+~("a.a") -> path "a/a"
+~("a/-Z_.a") -> path "a/-Z_/a"
+
+## View.h/port_node
+("") -> ""
+(".") -> ""
+(".a") -> ""
+("\xc3\xa9.a") -> "\xc3\xa9"
+("a b") -> "a b"
+("a") -> "a"
+("a.") -> "a"
+("a..b") -> "a."
+("a.b ") -> "a"
+("a.b") -> "a"
+("a.b.c") -> "a.b"
+("a.root") -> "a"
+("a/b") -> "a/b"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)
+("root") -> "root"
+("root.a") -> "root"
+~(" --Z9_") -> " --Z9_"
+~(" .-0 0Z0") -> " "
+~(" :-9.-0 ") -> " :-9"
+~("- ") -> "- "
+~(".../ a99") -> ".."
+~("..Z :") -> "."
+~(".//.a ") -> ".//"
+~(".a:.../") -> ".a:.."
+~("/") -> "/"
+~("/0. -") -> "/0"
+~("/0.0") -> "/0"
+~("/:0:/:Z") -> "/:0:/:Z"
+~("0-9") -> "0-9"
+~("0-:--:/0") -> "0-:--:/0"
+~("9/.- a") -> "9/"
+~("90/") -> "90/"
+~("9909aaZ0") -> "9909aaZ0"
+~("9: a_") -> "9: a_"
+~("9Z9") -> "9Z9"
+~("9_/Z /") -> "9_/Z /"
+~(":") -> ":"
+~(":-") -> ":-"
+~(":...0:") -> ":.."
+~(":.//:a") -> ":"
+~(":0  .:") -> ":0  "
+~(":Z/ Z") -> ":Z/ Z"
+~(":a.") -> ":a"
+~("Z./00/") -> "Z"
+~("Z/0a") -> "Z/0a"
+~("Z/_._") -> "Z/_"
+~("ZZZ:") -> "ZZZ:"
+~("ZZa:_") -> "ZZa:_"
+~("Z_") -> "Z_"
+~("_") -> "_"
+~("_-a") -> "_-a"
+~("_0Z_-0a") -> "_0Z_-0a"
+~("_:") -> "_:"
+~("a.._9_Z.") -> "a.._9_Z"
+~("a.90:_:") -> "a"
+
+## View.h/within
+("", "") -> true
+("", ".a") -> false
+("", "\xc3\xa9.a") -> false
+("", "a b") -> false
+("", "a") -> false
+("", "a.b") -> false
+("", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+("", "root") -> false
+("", "root.a") -> false
+(".", ".") -> true
+(".", "a") -> false
+(".", "a.") -> false
+(".", "a..b") -> false
+(".", "a.b ") -> false
+(".", "a.b.c") -> false
+(".", "a.root") -> false
+(".", "a/b") -> false
+(".a", "") -> true
+(".a", ".a") -> true
+(".a", "\xc3\xa9.a") -> false
+(".a", "a b") -> false
+(".a", "a") -> false
+(".a", "a.b") -> false
+(".a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+(".a", "root") -> false
+(".a", "root.a") -> false
+("\xc3\xa9.a", "") -> false
+("\xc3\xa9.a", ".a") -> false
+("\xc3\xa9.a", "\xc3\xa9.a") -> true
+("\xc3\xa9.a", "a b") -> false
+("\xc3\xa9.a", "a") -> false
+("\xc3\xa9.a", "a.b") -> false
+("\xc3\xa9.a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+("\xc3\xa9.a", "root") -> false
+("\xc3\xa9.a", "root.a") -> false
+("a b", "") -> false
+("a b", ".a") -> false
+("a b", "\xc3\xa9.a") -> false
+("a b", "a b") -> true
+("a b", "a") -> false
+("a b", "a.b") -> false
+("a b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+("a b", "root") -> false
+("a b", "root.a") -> false
+("a", "") -> false
+("a", ".") -> false
+("a", ".a") -> false
+("a", "\xc3\xa9.a") -> false
+("a", "a b") -> false
+("a", "a") -> true
+("a", "a.") -> false
+("a", "a..b") -> false
+("a", "a.b ") -> false
+("a", "a.b") -> false
+("a", "a.b.c") -> false
+("a", "a.root") -> false
+("a", "a/b") -> false
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+("a", "root") -> false
+("a", "root.a") -> false
+("a.", ".") -> false
+("a.", "a") -> true
+("a.", "a.") -> true
+("a.", "a..b") -> false
+("a.", "a.b ") -> false
+("a.", "a.b.c") -> false
+("a.", "a.root") -> false
+("a.", "a/b") -> false
+("a..b", ".") -> false
+("a..b", "a") -> true
+("a..b", "a.") -> true
+("a..b", "a..b") -> true
+("a..b", "a.b ") -> false
+("a..b", "a.b.c") -> false
+("a..b", "a.root") -> false
+("a..b", "a/b") -> false
+("a.b ", ".") -> false
+("a.b ", "a") -> true
+("a.b ", "a.") -> false
+("a.b ", "a..b") -> false
+("a.b ", "a.b ") -> true
+("a.b ", "a.b.c") -> false
+("a.b ", "a.root") -> false
+("a.b ", "a/b") -> false
+("a.b", "") -> false
+("a.b", ".a") -> false
+("a.b", "\xc3\xa9.a") -> false
+("a.b", "a b") -> false
+("a.b", "a") -> true
+("a.b", "a.b") -> true
+("a.b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+("a.b", "root") -> false
+("a.b", "root.a") -> false
+("a.b.c", ".") -> false
+("a.b.c", "a") -> true
+("a.b.c", "a.") -> false
+("a.b.c", "a..b") -> false
+("a.b.c", "a.b ") -> false
+("a.b.c", "a.b.c") -> true
+("a.b.c", "a.root") -> false
+("a.b.c", "a/b") -> false
+("a.root", ".") -> false
+("a.root", "a") -> true
+("a.root", "a.") -> false
+("a.root", "a..b") -> false
+("a.root", "a.b ") -> false
+("a.root", "a.b.c") -> false
+("a.root", "a.root") -> true
+("a.root", "a/b") -> false
+("a/b", ".") -> false
+("a/b", "a") -> false
+("a/b", "a.") -> false
+("a/b", "a..b") -> false
+("a/b", "a.b ") -> false
+("a/b", "a.b.c") -> false
+("a/b", "a.root") -> false
+("a/b", "a/b") -> true
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "") -> false
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), ".a") -> false
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "\xc3\xa9.a") -> false
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a b") -> false
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a") -> false
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "a.b") -> false
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> true
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "root") -> false
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad), "root.a") -> false
+("root", "") -> false
+("root", ".a") -> false
+("root", "\xc3\xa9.a") -> false
+("root", "a b") -> false
+("root", "a") -> false
+("root", "a.b") -> false
+("root", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+("root", "root") -> true
+("root", "root.a") -> false
+("root.a", "") -> false
+("root.a", ".a") -> false
+("root.a", "\xc3\xa9.a") -> false
+("root.a", "a b") -> false
+("root.a", "a") -> false
+("root.a", "a.b") -> false
+("root.a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa.b" (302 characters, hash cd86b5a507c1ddad)) -> false
+("root.a", "root") -> true
+("root.a", "root.a") -> true
+holds: inside it, or it, over 191 rows
+~(" -", ":") -> false
+~(" ..-:__", "/-0Z0Z") -> false
+~(" : a", " Z-Z") -> false
+~("", "-a") -> false
+~("", "0:Z0") -> false
+~("", "_9") -> false
+~("", "_Z ") -> false
+~("", "aZ/") -> false
+~("", "aa_") -> false
+~("-9...9", " 9a") -> false
+~("-:0/_", "-0") -> false
+~("-:Z-0/ZZ", ".-/ Z0aa") -> false
+~("-Z", "") -> false
+~("-_.:-- ", "") -> false
+~(".-a. Z", "_") -> false
+~("..", "9/9-0") -> false
+~("./.9ZZ9", "./") -> true
+~(".0_Z", "9.Z_Z") -> false
+~(".9--9", "09a00:-") -> false
+~(".9Z", "-0a ") -> false
+~(".:-:", "-Za  .Z") -> false
+~(".__0 ", "09/") -> false
+~("/-a", "0 . .90") -> false
+~("/. 9_9", " 0: _ 0:") -> false
+~("// 0.0", "") -> false
+~("/::-Z ", ".._") -> false
+~("/Z", "") -> false
+~("0 -/_Z", "_") -> false
+~("0.", "/0a-") -> false
+~("0/Z0_/a9", "Z99a:.:_") -> false
+~("09", ".") -> false
+~("0_9aaZa", "9./Z_") -> false
+~("0a9", "Z__") -> false
+~("9--_9", "0 /.Z-9") -> false
+~("90/", " 9_ZZZ") -> false
+~(":./ Z:_/", "_-9") -> false
+~(":90/009.", ".a9_Z-Z") -> false
+~("Z.:a_", "-Z:- ") -> false
+~("Z90_", ":_Z:Z9/0") -> false
+~("Z_0./99", "") -> false
+~("Za", ":Z:_aa9_") -> false
+~("_.a0:", "0Z/") -> false
+~("_/ Z -Za", "0a90Z") -> false
+~("_:/.9", ":.a/9/") -> false
+~("_:Z09", " ") -> false
+~("a_ a-", "-_9:/") -> false
+~("aa0Z/a", "._0Z_.0") -> false
+
+## View.h/words_of
+(view "chain" #756c4f17) -> []
+(view "empty" #983bd7a3) -> []
+(view "hosting" #bb4b71a1) -> []
+(view "nested" #45098330) -> ["ui.panel: param = rows=4"]
+(view "one" #ea05330d) -> ["a: param = x=1"]
+(view "uses" #3db38939) -> ["tool: recipe = lamp", "tool: param = light.tint=1,1,1"]
+holds: the words a save writes read back as the node, over 25 rows
+~(view "drawn" #022561e9) -> []
+~(view "drawn" #0a6501fb) -> []
+~(view "drawn" #28cc2a78) -> []
+~(view "drawn" #2bfedbc2) -> []
+~(view "drawn" #2fbf2a78) -> []
+~(view "drawn" #30bb83c0) -> []
+~(view "drawn" #32f58775) -> []
+~(view "drawn" #6d1f0734) -> []
+~(view "drawn" #7ad8844c) -> []
+~(view "drawn" #7fcfa6ab) -> []
+~(view "drawn" #87248009) -> []
+~(view "drawn" #9c814e07) -> []
+~(view "drawn" #adb5e02c) -> []
+~(view "drawn" #b33cbead) -> []
+~(view "drawn" #b4bda048) -> []
+~(view "drawn" #b595ce44) -> []
+~(view "drawn" #ca95244b) -> []
+~(view "drawn" #ea07aa8a) -> []
+~(view "drawn" #eef33be7) -> []

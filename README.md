@@ -193,9 +193,9 @@ The graph opens any folder the same way. Here is Vulpen in its own graph, from t
 | `cmake --build --preset debug` | `cmake --build --preset debug` | builds everything the tests run, where `./run.sh` builds vulpen and the projects it opens |
 | `ctest --preset debug` | `ctest --preset debug` | the tests, after that build; also `release` and `gpu-validation` (on a GPU, as lavapipe cannot run it), and on Linux `asan` and `tsan` |
 | `python3 src/tools/check.py quick` | `python src\tools\check.py quick` | configure, build and test, as CI does on every push, and on Linux the names MSVC would refuse, about a minute; `install-hook` runs it before each `git push` |
-| `python3 src/tools/check.py full` | | quick, every example made again by typing, every command swept in each state, and the `asan` preset, side by side, about twenty minutes |
-| `python3 src/tools/check.py nightly` | | every preset, GPU-assisted validation, the soaks, the long fuzz and the whole command sweep, about an hour |
-| `python3 src/tools/check.py release` | | before `main` moves to a commit, in a worktree of it: nightly, the commit built as GitHub's source download, and main's own lines and projects run on main's build and this one, compared, about seventy minutes |
+| `python3 src/tools/check.py full` | | quick, every example made again by typing, every command swept in each state, every engine function's rows against the [bench](src/tools/bench/bench.py)'s records, and the `asan` preset, side by side, about twenty minutes |
+| `python3 src/tools/check.py nightly` | | every preset, GPU-assisted validation, the soaks, the long fuzz, the whole command sweep, and every engine function's rows in each context and build, some hours |
+| `python3 src/tools/check.py release` | | before `main` moves to a commit, in a worktree of it: nightly, the commit built as GitHub's source download, and main's own lines and projects run on main's build and this one, compared, some hours |
 
 `--log error|warn|info|debug` sets how much a run says; each run keeps its log in `docs/logs/`, the newest 20.
 

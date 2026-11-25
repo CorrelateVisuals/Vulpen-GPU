@@ -1,0 +1,116 @@
+# The rows of src/tools/bench/Bench.h and src/tools/bench/Bench.cpp, a call each (src/tools/bench/bench.py).
+
+## Bench.cpp/Bench::run
+["bench-x", "list", "more"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "list"] -> 0; printed "an id\n\tthread\ta why\nanother\n"
+["bench-x", "lists"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id", "--colour", "red"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id", "--context", "again"] -> 0
+["bench-x", "run", "an id", "--context", "heap"] -> 0
+["bench-x", "run", "an id", "--context", "nowhere"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id", "--context", "thread"] -> 0
+["bench-x", "run", "an id", "--context"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id", "--locale", "xx_XX.none"] -> 2; to stderr "no locale xx_XX.none on this machine\n"
+["bench-x", "run", "an id", "--repeat", "-1"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id", "--repeat", "18446744073709551616"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id", "--repeat", "3 "] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id", "--repeat", "3"] -> 0; printed "\x1dcost rows=0 calls=0 nanoseconds=0 allocations=0 bytes=0\n"
+["bench-x", "run", "an id", "--repeat", "x"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id", "--root", "a", "--repo", "b"] -> 0
+["bench-x", "run", "an id", "--root"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x", "run", "an id"] -> 0
+["bench-x", "run", "none"] -> 2; to stderr "no function none in this bench\n"
+["bench-x", "run"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+["bench-x"] -> 2; to stderr "usage: bench-<File> list\n       bench-<File> run ID [--context ...--repo FOLDER]\n" (206 characters, hash dd916379fa87f635)
+a context left out for an id no check registers, then list -> 2; to stderr "an idd: a context is left out for it, but no check registers it\n"
+
+## Bench.cpp/Rows
+a handle numbered, then a row -> the next handle is #1 (was #1)
+a row holding a newline, a return and a mark -> kept ["a\\nb\\r\\x1ec"]
+drop, reverse, repeat 3, a row -> count 1, kept [], reverse true, repeat 3
+keep, two rows and a skip -> count 2, kept ["one", "two"]
+
+## Bench.cpp/Rows::skip
+a row after a skip
+a row after quiet, which made 1
+
+## Bench.cpp/thrown
+an int -> throws something not a std::exception
+bad_alloc -> throws bad_alloc
+bad_array_new_length -> throws bad_alloc
+bad_function_call -> throws exception
+bad_optional_access -> throws bad_optional_access
+bad_variant_access -> throws bad_variant_access
+domain_error -> throws domain_error: "a"
+exception -> throws exception
+filesystem_error -> throws filesystem_error
+format_error -> throws runtime_error: "a"
+invalid_argument -> throws invalid_argument: "a"
+ios_base::failure -> throws system_error
+length_error -> throws length_error: "a"
+logic_error -> throws logic_error: "a"
+nothing -> threw nothing
+out_of_range -> throws out_of_range: "a"
+overflow_error -> throws overflow_error: "a"
+range_error -> throws range_error: "a"
+runtime_error -> throws runtime_error: "a"
+system_error -> throws system_error
+underflow_error -> throws underflow_error: "a"
+
+## Bench.h/distinct
+holds: each input once, the first row that has it, in order, over 43 rows
+
+## Bench.h/holds_rows
+a claim false for odd numbers -> ["fails: even, at (1): false", "fails: even, at (7): false", "fails: even, at (2147483647): false", "fails: even, at (-1): false", "fails: even, at (-2147483647): false", "fails: even, at (255): false", "fails: even, at (65535): false", "fails: even, at (2147483633): false", "fails: even, at (9): false", "fails: even, at (2147483639): false", "fails: even, in 20 of 41 rows"]
+one that throws for 7 -> ["fails: not seven, at (7): throws out_of_range: \"seven\"", "fails: not seven, in 1 of 41 rows"]
+one true of every input -> ["holds: any, over 41 rows"]
+
+## Bench.h/rows_of
+12 edges, 21 edges, the pairs filling the room -> 300 rows, 252 picked, 252 distinct
+260 edges, more than the room -> 300 rows, 260 picked, 260 distinct
+bool -> 50 rows, 2 picked, 2 distinct
+float, float, float, float -> 278 rows, 230 picked, 278 distinct
+holds: the first row typical, every edge in a row, the drawn last and within the cap, the same seed the same rows, over 43 rows
+int -> 61 rows, 13 picked, 41 distinct
+int, string -> 264 rows, 216 picked, 264 distinct
+string -> 78 rows, 30 picked, 68 distinct
+string, string, int -> 290 rows, 242 picked, 290 distinct
+
+## Bench.h/sweep_rows
+a void function that changes its parameter -> ["(true) -> done; #1 = false", "(false) -> done; #1 = true"]
+an int's, the drawn after the picked -> ["(1) -> 2", "(0) -> 0", "(2) -> 4", "(7) -> 14", "(2147483647) -> 4294967294", "(2147483646) -> 4294967292", "(-1) -> -2", "(-2147483648) -> -4294967296", ..., "~(772633761) -> 1545267522", "~(-1257906228) -> -2515812456", "~(10) -> 20", "~(2147483641) -> 4294967282"] (41 items, those between #a052072f6341ca66)
+in reverse -> ["(false) -> 1", "(true) -> throws invalid_argument: \"yes\""]
+one that throws for one input -> ["(true) -> throws invalid_argument: \"yes\"", "(false) -> 1"]
+
+## canary/again
+call 1
+
+## canary/again, last to first
+rows first to last
+
+## canary/asan
+a block left unfreed
+
+## canary/cwd
+no view.vlp in the working folder
+
+## canary/environment
+TERM unset
+
+## canary/heap
+MALLOC_PERTURB_ unset
+
+## canary/locale
+1.5 printed as "1.5"
+
+## canary/odd
+a byte past ASCII reads as negative
+
+## canary/release
+an assert's side effect: 1
+
+## canary/thread
+on the thread that registered it
+
+## canary/threads
+in the sandbox's "root"

@@ -1,0 +1,1181 @@
+# The rows of src/baseclasses/Log.h and src/baseclasses/Log.cpp, a call each (src/tools/bench/bench.py).
+
+## Log.cpp/Log::Log
+(debug, "") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "%s %n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "\x1b[2J") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "\x7f") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "\xc3\xa9") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "a\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "a\n\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "a\nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "a\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "a\r\nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "a\tb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(debug, "{!!!} a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "%s %n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "\x1b[2J") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "\x7f") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "\xc3\xa9") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "a\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "a\n\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "a\nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "a\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "a\r\nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "a\tb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(error, "{!!!} a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "%s %n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "\x1b[2J") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "\x7f") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "\xc3\xa9") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "a\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "a\n\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "a\nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "a\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "a\r\nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "a\tb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(info, "{!!!} a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "%s %n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "\x1b[2J") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "\x7f") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "\xc3\xa9") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "a\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "a\n\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "a\nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "a\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "a\r\nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "a\tb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+(warn, "{!!!} a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(debug, "   \t\n\t\t\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(debug, "\n\x1b") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(debug, "\nbb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(debug, "\ra\na\t \t") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(debug, "a\n\t\r ") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(debug, "a\x1b \x1b") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(debug, "b\x1b\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(debug, "b\x1b\tb\x1b\x1b") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, " \n\nb\t\x1b\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, " \t\r\t") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "\ra a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "\ra\n\r\t\n\r\x1b\rb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "\t") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "\x1b\n\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "a b") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "b\ta") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "b\tb\x1b\x1b") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "b\x1b  \n\n b") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "ba\r\n\x1bb\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "ba\ra\x1b\n\na\tb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(error, "baa\na\r ") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "\na ") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "\r\n\x1bbb\n\n\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "\t b\ta\tb  a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "\x1b\t") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "\x1ba\nb \x1ba \nb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "a\n\r\r\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "a\rabb\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "a\t\t \t\t\ta") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "b ") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(info, "b\nb \n\t \tb\r") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(warn, " \n\r\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(warn, "\r \x1b\x1b\t\x1b\n\tb\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(warn, "\r\t\rab a") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(warn, "\r\x1b \x1b  \t\x1bb") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(warn, "\x1b\t\na \x1b\x1b\t ") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(warn, "a\na\r\t\x1b\x1b\r\t\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(warn, "b  \x1b\raa\n") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+~(warn, "b\na\t\ra") -> (true, ["<rule>", "<banner>", "<rule>", "{run} bench", "<rule>", "<credit>"])
+
+## Log.cpp/Log::Log a folder for a file
+(debug) -> throws runtime_error: "<root>/folder.log: cannot be written: Is a directory"; printed "<clock>            +--------------------------------------------...   {run} bench\n" (258 characters, hash 617e687e402cb0a0)
+(error) -> throws runtime_error: "<root>/folder.log: cannot be written: Is a directory"; printed "<clock>            +--------------------------------------------...   {run} bench\n" (258 characters, hash 617e687e402cb0a0)
+(info) -> throws runtime_error: "<root>/folder.log: cannot be written: Is a directory"; printed "<clock>            +--------------------------------------------...   {run} bench\n" (258 characters, hash 617e687e402cb0a0)
+(warn) -> throws runtime_error: "<root>/folder.log: cannot be written: Is a directory"; printed "<clock>            +--------------------------------------------...   {run} bench\n" (258 characters, hash 617e687e402cb0a0)
+
+## Log.cpp/Log::Log runs before, past half the room
+524288 bytes before -> 5242 lines kept, "before 00000" to "before 05241"
+524289 bytes before -> 5241 lines kept, "before 00001" to "before 05241"
+525288 bytes before -> 5242 lines kept, "before 00010" to "before 05251"
+
+## Log.cpp/Log::Speaking
+holds: the speaker before comes back, however deep, over 37 rows
+
+## Log.cpp/Log::add_to_file
+(0, 0, 1) -> "101 bytes, header kept true, last line kept true"
+(0, 1, 0) -> "5001 bytes, header kept true, last line kept true"
+(0, 1, 1) -> "5101 bytes, header kept true, last line kept true"
+(0, 1, 2) -> "5201 bytes, header kept true, last line kept true"
+(0, 209, 1) -> "1045101 bytes, header kept true, last line kept true"
+(0, 210, 1) -> "525001 bytes, header kept true, last line kept true"
+(0, 211, 1) -> "527501 bytes, header kept true, last line kept true"
+(0, 299, 1) -> "747501 bytes, header kept true, last line kept true"
+(10, 0, 0) -> "11 bytes, header kept true, last line kept true"
+(10, 0, 1) -> "111 bytes, header kept true, last line kept true"
+(10, 0, 2) -> "211 bytes, header kept true, last line kept true"
+(10, 1, 0) -> "5011 bytes, header kept true, last line kept true"
+(10, 1, 1) -> "5111 bytes, header kept true, last line kept true"
+(10, 1, 2) -> "5211 bytes, header kept true, last line kept true"
+(10, 209, 0) -> "1045011 bytes, header kept true, last line kept true"
+(10, 209, 1) -> "1045111 bytes, header kept true, last line kept true"
+(10, 209, 2) -> "1045211 bytes, header kept true, last line kept true"
+(10, 210, 0) -> "524911 bytes, header kept true, last line kept true"
+(10, 210, 1) -> "525011 bytes, header kept true, last line kept true"
+(10, 210, 2) -> "525011 bytes, header kept true, last line kept true"
+(10, 211, 0) -> "527411 bytes, header kept true, last line kept true"
+(10, 211, 1) -> "527511 bytes, header kept true, last line kept true"
+(10, 211, 2) -> "527511 bytes, header kept true, last line kept true"
+(10, 299, 0) -> "747411 bytes, header kept true, last line kept true"
+(10, 299, 1) -> "747511 bytes, header kept true, last line kept true"
+(10, 299, 2) -> "747511 bytes, header kept true, last line kept true"
+(63, 0, 1) -> "164 bytes, header kept true, last line kept true"
+(63, 1, 0) -> "5064 bytes, header kept true, last line kept true"
+(63, 1, 1) -> "5164 bytes, header kept true, last line kept true"
+(63, 1, 2) -> "5264 bytes, header kept true, last line kept true"
+(63, 209, 1) -> "1045164 bytes, header kept true, last line kept true"
+(63, 210, 1) -> "525064 bytes, header kept true, last line kept true"
+(63, 211, 1) -> "527564 bytes, header kept true, last line kept true"
+(63, 299, 1) -> "747564 bytes, header kept true, last line kept true"
+~(0, 0, 0) -> "1 bytes, header kept true, last line kept true"
+~(0, 209, 2) -> "1045201 bytes, header kept true, last line kept true"
+~(0, 210, 2) -> "525001 bytes, header kept true, last line kept true"
+~(0, 211, 0) -> "527401 bytes, header kept true, last line kept true"
+~(63, 209, 0) -> "1045064 bytes, header kept true, last line kept true"
+~(63, 209, 2) -> "1045264 bytes, header kept true, last line kept true"
+~(63, 211, 2) -> "527564 bytes, header kept true, last line kept true"
+~(63, 299, 0) -> "747464 bytes, header kept true, last line kept true"
+~(63, 299, 2) -> "747564 bytes, header kept true, last line kept true"
+
+## Log.cpp/Log::add_to_file at its room
+a byte past it -> 524277 bytes, header kept true, last line kept true
+the room exactly -> 1048576 bytes, header kept true, last line kept true
+
+## Log.cpp/Log::clears_row
+(false) then a warning; printed "<clock>            { ! } a\n"
+(true) then a warning; printed "\r\x1b[K<clock>            { ! } a\n"
+
+## Log.cpp/Log::kept
+([""], debug, "") -> true
+([""], error, "") -> true
+([""], info, "") -> true
+([""], warn, "") -> true
+([""], warn, "a") -> true
+([""], warn, "b") -> true
+([""], warn, "ide") -> true
+(["a", "b"], debug, "") -> true
+(["a", "b"], error, "") -> true
+(["a", "b"], info, "") -> true
+(["a", "b"], warn, "") -> true
+(["a", "b"], warn, "a") -> true
+(["a", "b"], warn, "b") -> true
+(["a", "b"], warn, "ide") -> true
+(["a"], debug, "") -> true
+(["a"], debug, "a") -> true
+(["a"], debug, "b") -> false
+(["a"], debug, "ide") -> false
+(["a"], error, "") -> true
+(["a"], error, "a") -> true
+(["a"], error, "b") -> true
+(["a"], error, "ide") -> true
+(["a"], info, "") -> true
+(["a"], info, "a") -> true
+(["a"], info, "b") -> false
+(["a"], info, "ide") -> false
+(["a"], warn, "") -> true
+(["a"], warn, "a") -> true
+(["a"], warn, "b") -> true
+(["a"], warn, "ide") -> true
+(["ide"], debug, "") -> true
+(["ide"], error, "") -> true
+(["ide"], info, "") -> true
+(["ide"], warn, "") -> true
+(["ide"], warn, "a") -> true
+(["ide"], warn, "b") -> true
+(["ide"], warn, "ide") -> true
+([], debug, "") -> true
+([], error, "") -> true
+([], info, "") -> true
+([], warn, "") -> true
+([], warn, "a") -> true
+([], warn, "b") -> true
+([], warn, "ide") -> true
+~([""], error, "ide") -> true
+~([""], info, "ide") -> false
+~(["a", "b"], debug, "b") -> true
+~(["a", "b"], error, "a") -> true
+~(["a", "b"], error, "b") -> true
+~(["ide"], debug, "ide") -> true
+~(["ide"], error, "a") -> true
+~([], debug, "a") -> true
+~([], debug, "b") -> true
+~([], info, "b") -> true
+~([], info, "ide") -> true
+
+## Log.cpp/Log::print repeats
+(0, false, "") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(0, true, "") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(0, true, "a") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(0, true, "b") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(0, true, "ide") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(1, false, "") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+(1, false, "a") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+(1, false, "b") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+(1, false, "ide") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+(1, true, "") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+(1, true, "a") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+(1, true, "b") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+(1, true, "ide") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+(2, false, "") -> printed ["{nod} a: same", "{rep} previous line repeated 1x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 1x", info "{run} other"]
+(2, true, "") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(2, true, "a") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(2, true, "b") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(2, true, "ide") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(254, false, "") -> printed ["{nod} a: same", "{rep} previous line repeated 3x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 3x", info "{run} other"]
+(254, true, "") -> printed ["{nod} a: same", "{nod} a: same", "{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(254, true, "a") -> printed ["{nod} a: same", "{nod} a: same", "{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(254, true, "b") -> printed ["{nod} a: same", "{nod} a: same", "{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(254, true, "ide") -> printed ["{nod} a: same", "{nod} a: same", "{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(255, false, "") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(255, true, "") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(255, true, "a") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(255, true, "b") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(255, true, "ide") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+(7, false, "") -> printed ["{nod} a: same", "{rep} previous line repeated 1x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 1x", info "{run} other"]
+(7, true, "") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(7, true, "a") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(7, true, "b") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+(7, true, "ide") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+~(11, true, "a") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+~(12, false, "") -> printed ["{nod} a: same", "{rep} previous line repeated 1x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 1x", info "{run} other"]
+~(120, true, "a") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(127, true, "a") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+~(14, false, "ide") -> printed ["{nod} a: same", "{rep} previous line repeated 3x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 3x", info "{run} other"]
+~(140, true, "b") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(142, false, "a") -> printed ["{nod} a: same", "{rep} previous line repeated 1x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 1x", info "{run} other"]
+~(147, true, "") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+~(149, false, "") -> printed ["{nod} a: same", "{rep} previous line repeated 3x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 3x", info "{run} other"]
+~(15, true, "ide") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(195, false, "ide") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(2, false, "b") -> printed ["{nod} a: same", "{rep} previous line repeated 1x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 1x", info "{run} other"]
+~(220, true, "") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(223, true, "") -> printed ["{nod} a: same", "{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+~(228, true, "") -> printed ["{nod} a: same", "{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+~(235, false, "a") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(238, true, "ide") -> printed ["{nod} a: same", "{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+~(240, false, "") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(241, false, "") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+~(242, true, "ide") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+~(243, false, "") -> printed ["{nod} a: same", "{rep} previous line repeated 2x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 2x", info "{run} other"]
+~(243, false, "b") -> printed ["{nod} a: same", "{rep} previous line repeated 2x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 2x", info "{run} other"]
+~(244, false, "a") -> printed ["{nod} a: same", "{rep} previous line repeated 3x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 3x", info "{run} other"]
+~(245, false, "a") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(246, false, "") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+~(246, true, "b") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+~(247, false, "b") -> printed ["{nod} a: same", "{rep} previous line repeated 1x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 1x", info "{run} other"]
+~(247, false, "ide") -> printed ["{nod} a: same", "{rep} previous line repeated 1x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 1x", info "{run} other"]
+~(250, false, "b") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(251, true, "b") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+~(252, true, "a") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+~(253, false, "b") -> printed ["{nod} a: same", "{rep} previous line repeated 2x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 2x", info "{run} other"]
+~(255, false, "ide") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(3, false, "b") -> printed ["{nod} a: same", "{rep} previous line repeated 2x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 2x", info "{run} other"]
+~(4, false, "a") -> printed ["{nod} a: same", "{rep} previous line repeated 3x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 3x", info "{run} other"]
+~(5, false, "ide") -> printed ["{run} other"] kept [info "{run} bench", info "{run} other"]
+~(6, false, "ide") -> printed ["{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{run} other"]
+~(7, false, "ide") -> printed ["{nod} a: same", "{rep} previous line repeated 1x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 1x", info "{run} other"]
+~(8, false, "a") -> printed ["{nod} a: same", "{rep} previous line repeated 2x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 2x", info "{run} other"]
+~(9, false, "") -> printed ["{nod} a: same", "{rep} previous line repeated 3x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 3x", info "{run} other"]
+~(9, false, "b") -> printed ["{nod} a: same", "{rep} previous line repeated 3x", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{rep} previous line repeated 3x", info "{run} other"]
+~(97, true, "ide") -> printed ["{nod} a: same", "{nod} a: same", "{run} other"] kept [info "{run} bench", info "{nod} a: same", info "{nod} a: same", info "{run} other"]
+
+## Log.cpp/Log::save
+a folder where its file was, then two errors -> printed ["{!!!} first", "{!!!} <root>/run.log: cannot be written: Is a directory", "{!!!} second"] kept [error "{!!!} first", error "{!!!} <root>/run.log: cannot be written: Is a directory", error "{!!!} second"]
+
+## Log.cpp/Log::save as the run goes
+1. made -> under the time true, the file holds ["<rule>", "<banner>", "<rule>", "{run} bench"]
+2. an info line -> the file holds ["<rule>", "<banner>", "<rule>", "{run} bench"]
+3. a warning -> the file holds ["<rule>", "<banner>", "<rule>", "{run} bench", "{run} a", "{ ! } w"]
+
+## Log.cpp/Log::write
+(debug, debug, {run}, "a") -> printed ["{run} a"] kept [debug "{run} a"]
+(debug, error, {run}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(debug, info, {run}, "a") -> printed ["{run} a"] kept [info "{run} a"]
+(debug, warn, {gpu}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(debug, warn, {mem}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(debug, warn, {mod}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(debug, warn, {nod}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(debug, warn, {out}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(debug, warn, {run}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(debug, warn, {run}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(debug, warn, {run}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(debug, warn, {run}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(debug, warn, {run}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(debug, warn, {run}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(debug, warn, {run}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(debug, warn, {run}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(debug, warn, {run}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(debug, warn, {run}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(debug, warn, {run}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(debug, warn, {run}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(debug, warn, {run}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(debug, warn, {run}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(debug, warn, {run}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+(debug, warn, {swp}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(error, debug, {run}, "a") -> printed [] kept []
+(error, error, {run}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(error, info, {run}, "a") -> printed [] kept []
+(error, warn, {gpu}, "a") -> printed [] kept []
+(error, warn, {mem}, "a") -> printed [] kept []
+(error, warn, {mod}, "a") -> printed [] kept []
+(error, warn, {nod}, "a") -> printed [] kept []
+(error, warn, {out}, "a") -> printed [] kept []
+(error, warn, {run}, "") -> printed [] kept []
+(error, warn, {run}, "%s %n") -> printed [] kept []
+(error, warn, {run}, "\n") -> printed [] kept []
+(error, warn, {run}, "\x1b[2J") -> printed [] kept []
+(error, warn, {run}, "\x7f") -> printed [] kept []
+(error, warn, {run}, "\xc3\xa9") -> printed [] kept []
+(error, warn, {run}, "a") -> printed [] kept []
+(error, warn, {run}, "a\n") -> printed [] kept []
+(error, warn, {run}, "a\n\n") -> printed [] kept []
+(error, warn, {run}, "a\nb") -> printed [] kept []
+(error, warn, {run}, "a\r") -> printed [] kept []
+(error, warn, {run}, "a\r\nb") -> printed [] kept []
+(error, warn, {run}, "a\tb") -> printed [] kept []
+(error, warn, {run}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed [] kept []
+(error, warn, {run}, "{!!!} a") -> printed [] kept []
+(error, warn, {swp}, "a") -> printed [] kept []
+(info, debug, {run}, "a") -> printed [] kept []
+(info, error, {run}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(info, info, {run}, "a") -> printed ["{run} a"] kept [info "{run} a"]
+(info, warn, {gpu}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(info, warn, {mem}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(info, warn, {mod}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(info, warn, {nod}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(info, warn, {out}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(info, warn, {run}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(info, warn, {run}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(info, warn, {run}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(info, warn, {run}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(info, warn, {run}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(info, warn, {run}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(info, warn, {run}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(info, warn, {run}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(info, warn, {run}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(info, warn, {run}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(info, warn, {run}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(info, warn, {run}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(info, warn, {run}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(info, warn, {run}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(info, warn, {run}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+(info, warn, {swp}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, debug, {gpu}, "a") -> printed [] kept []
+(warn, debug, {mem}, "a") -> printed [] kept []
+(warn, debug, {mod}, "a") -> printed [] kept []
+(warn, debug, {nod}, "a") -> printed [] kept []
+(warn, debug, {out}, "a") -> printed [] kept []
+(warn, debug, {run}, "") -> printed [] kept []
+(warn, debug, {run}, "%s %n") -> printed [] kept []
+(warn, debug, {run}, "\n") -> printed [] kept []
+(warn, debug, {run}, "\x1b[2J") -> printed [] kept []
+(warn, debug, {run}, "\x7f") -> printed [] kept []
+(warn, debug, {run}, "\xc3\xa9") -> printed [] kept []
+(warn, debug, {run}, "a") -> printed [] kept []
+(warn, debug, {run}, "a\n") -> printed [] kept []
+(warn, debug, {run}, "a\n\n") -> printed [] kept []
+(warn, debug, {run}, "a\nb") -> printed [] kept []
+(warn, debug, {run}, "a\r") -> printed [] kept []
+(warn, debug, {run}, "a\r\nb") -> printed [] kept []
+(warn, debug, {run}, "a\tb") -> printed [] kept []
+(warn, debug, {run}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed [] kept []
+(warn, debug, {run}, "{!!!} a") -> printed [] kept []
+(warn, debug, {swp}, "a") -> printed [] kept []
+(warn, error, {gpu}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, error, {mem}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, error, {mod}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, error, {nod}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, error, {out}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, error, {run}, "") -> printed ["{!!!} "] kept [error "{!!!} "]
+(warn, error, {run}, "%s %n") -> printed ["{!!!} %s %n"] kept [error "{!!!} %s %n"]
+(warn, error, {run}, "\n") -> printed ["{!!!} "] kept [error "{!!!} "]
+(warn, error, {run}, "\x1b[2J") -> printed ["{!!!} \\x1b[2J"] kept [error "{!!!} \\x1b[2J"]
+(warn, error, {run}, "\x7f") -> printed ["{!!!} \\x7f"] kept [error "{!!!} \\x7f"]
+(warn, error, {run}, "\xc3\xa9") -> printed ["{!!!} \xc3\xa9"] kept [error "{!!!} \xc3\xa9"]
+(warn, error, {run}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, error, {run}, "a\n") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, error, {run}, "a\n\n") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, error, {run}, "a\nb") -> printed ["{!!!} a", "      b"] kept [error "{!!!} a\nb"]
+(warn, error, {run}, "a\r") -> printed ["{!!!} a\\x0d"] kept [error "{!!!} a\\x0d"]
+(warn, error, {run}, "a\r\nb") -> printed ["{!!!} a\\x0d", "      b"] kept [error "{!!!} a\\x0d\nb"]
+(warn, error, {run}, "a\tb") -> printed ["{!!!} a\tb"] kept [error "{!!!} a\tb"]
+(warn, error, {run}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{!!!} aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash b42f8d127d6f13d2)] kept [error "{!!!} aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash b42f8d127d6f13d2)]
+(warn, error, {run}, "{!!!} a") -> printed ["{!!!} {!!!} a"] kept [error "{!!!} {!!!} a"]
+(warn, error, {swp}, "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(warn, info, {gpu}, "a") -> printed [] kept []
+(warn, info, {mem}, "a") -> printed [] kept []
+(warn, info, {mod}, "a") -> printed [] kept []
+(warn, info, {nod}, "a") -> printed [] kept []
+(warn, info, {out}, "a") -> printed [] kept []
+(warn, info, {run}, "") -> printed [] kept []
+(warn, info, {run}, "%s %n") -> printed [] kept []
+(warn, info, {run}, "\n") -> printed [] kept []
+(warn, info, {run}, "\x1b[2J") -> printed [] kept []
+(warn, info, {run}, "\x7f") -> printed [] kept []
+(warn, info, {run}, "\xc3\xa9") -> printed [] kept []
+(warn, info, {run}, "a") -> printed [] kept []
+(warn, info, {run}, "a\n") -> printed [] kept []
+(warn, info, {run}, "a\n\n") -> printed [] kept []
+(warn, info, {run}, "a\nb") -> printed [] kept []
+(warn, info, {run}, "a\r") -> printed [] kept []
+(warn, info, {run}, "a\r\nb") -> printed [] kept []
+(warn, info, {run}, "a\tb") -> printed [] kept []
+(warn, info, {run}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed [] kept []
+(warn, info, {run}, "{!!!} a") -> printed [] kept []
+(warn, info, {swp}, "a") -> printed [] kept []
+(warn, warn, {gpu}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {gpu}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(warn, warn, {gpu}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {gpu}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(warn, warn, {gpu}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(warn, warn, {gpu}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(warn, warn, {gpu}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {gpu}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {gpu}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {gpu}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(warn, warn, {gpu}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(warn, warn, {gpu}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(warn, warn, {gpu}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(warn, warn, {gpu}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(warn, warn, {gpu}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+(warn, warn, {mem}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {mem}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(warn, warn, {mem}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {mem}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(warn, warn, {mem}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(warn, warn, {mem}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(warn, warn, {mem}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {mem}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {mem}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {mem}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(warn, warn, {mem}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(warn, warn, {mem}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(warn, warn, {mem}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(warn, warn, {mem}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(warn, warn, {mem}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+(warn, warn, {mod}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {mod}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(warn, warn, {mod}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {mod}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(warn, warn, {mod}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(warn, warn, {mod}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(warn, warn, {mod}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {mod}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {mod}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {mod}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(warn, warn, {mod}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(warn, warn, {mod}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(warn, warn, {mod}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(warn, warn, {mod}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(warn, warn, {mod}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+(warn, warn, {nod}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {nod}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(warn, warn, {nod}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {nod}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(warn, warn, {nod}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(warn, warn, {nod}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(warn, warn, {nod}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {nod}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {nod}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {nod}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(warn, warn, {nod}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(warn, warn, {nod}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(warn, warn, {nod}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(warn, warn, {nod}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(warn, warn, {nod}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+(warn, warn, {out}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {out}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(warn, warn, {out}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {out}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(warn, warn, {out}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(warn, warn, {out}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(warn, warn, {out}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {out}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {out}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {out}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(warn, warn, {out}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(warn, warn, {out}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(warn, warn, {out}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(warn, warn, {out}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(warn, warn, {out}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+(warn, warn, {run}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {run}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(warn, warn, {run}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {run}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(warn, warn, {run}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(warn, warn, {run}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(warn, warn, {run}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {run}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {run}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {run}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(warn, warn, {run}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(warn, warn, {run}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(warn, warn, {run}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(warn, warn, {run}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(warn, warn, {run}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+(warn, warn, {swp}, "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {swp}, "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(warn, warn, {swp}, "\n") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, {swp}, "\x1b[2J") -> printed ["{ ! } \\x1b[2J"] kept [warn "{ ! } \\x1b[2J"]
+(warn, warn, {swp}, "\x7f") -> printed ["{ ! } \\x7f"] kept [warn "{ ! } \\x7f"]
+(warn, warn, {swp}, "\xc3\xa9") -> printed ["{ ! } \xc3\xa9"] kept [warn "{ ! } \xc3\xa9"]
+(warn, warn, {swp}, "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {swp}, "a\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {swp}, "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, {swp}, "a\nb") -> printed ["{ ! } a", "      b"] kept [warn "{ ! } a\nb"]
+(warn, warn, {swp}, "a\r") -> printed ["{ ! } a\\x0d"] kept [warn "{ ! } a\\x0d"]
+(warn, warn, {swp}, "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(warn, warn, {swp}, "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(warn, warn, {swp}, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash a67671999da1663e)]
+(warn, warn, {swp}, "{!!!} a") -> printed ["{ ! } {!!!} a"] kept [warn "{ ! } {!!!} a"]
+~(debug, debug, {gpu}, "\x1bb\ta") -> printed ["{gpu} \\x1bb\ta"] kept [debug "{gpu} \\x1bb\ta"]
+~(debug, debug, {mem}, "b") -> printed ["{mem} b"] kept [debug "{mem} b"]
+~(debug, debug, {mod}, "a\n\x1b\t\t\r\na\r\r") -> printed ["{mod} a", "      \\x1b\t\t\\x0d", "      a\\x0d\\x0d"] kept [debug "{mod} a\n\\x1b\t\t\\x0d\na\\x0d\\x0d"]
+~(debug, info, {mod}, "  \t\t  \n") -> printed ["{mod}   \t\t  "] kept [info "{mod}   \t\t  "]
+~(debug, info, {nod}, "") -> printed ["{nod} "] kept [info "{nod} "]
+~(debug, info, {nod}, "\naa\n  ") -> printed ["{nod} ", "      aa", "        "] kept [info "{nod} \naa\n  "]
+~(debug, info, {out}, "\r\r") -> printed ["{out} \\x0d\\x0d"] kept [info "{out} \\x0d\\x0d"]
+~(debug, info, {snd}, "baa  \n") -> printed ["{snd} baa  "] kept [info "{snd} baa  "]
+~(debug, warn, {run}, "\r\ra\r \t") -> printed ["{ ! } \\x0d\\x0da\\x0d \t"] kept [warn "{ ! } \\x0d\\x0da\\x0d \t"]
+~(error, debug, {mem}, "\nb ") -> printed [] kept []
+~(error, error, {gpu}, "\x1b\r\n\n\r") -> printed ["{!!!} \\x1b\\x0d", "      ", "      \\x0d"] kept [error "{!!!} \\x1b\\x0d\n\n\\x0d"]
+~(error, error, {mem}, "b\nb\t") -> printed ["{!!!} b", "      b\t"] kept [error "{!!!} b\nb\t"]
+~(error, error, {nod}, "\t\t a\r \r\n") -> printed ["{!!!} \t\t a\\x0d \\x0d"] kept [error "{!!!} \t\t a\\x0d \\x0d"]
+~(error, error, {nod}, "\x1b\t\x1b") -> printed ["{!!!} \\x1b\t\\x1b"] kept [error "{!!!} \\x1b\t\\x1b"]
+~(error, error, {run}, "b\x1b \x1b") -> printed ["{!!!} b\\x1b \\x1b"] kept [error "{!!!} b\\x1b \\x1b"]
+~(error, info, {nod}, "aba ") -> printed [] kept []
+~(error, info, {swp}, "a\x1b\ta\t\r \x1baa") -> printed [] kept []
+~(error, warn, {mod}, "a ") -> printed [] kept []
+~(info, debug, {out}, "\x1b\n\x1b\t a\r") -> printed [] kept []
+~(info, debug, {run}, "") -> printed [] kept []
+~(info, debug, {snd}, "b\x1b\n\n\t\t") -> printed [] kept []
+~(info, error, {gpu}, "  \x1b\x1b\r\rb b") -> printed ["{!!!}   \\x1b\\x1b\\x0d\\x0db b"] kept [error "{!!!}   \\x1b\\x1b\\x0d\\x0db b"]
+~(info, error, {gpu}, "\n\x1bb\r\t\x1ba\t \n") -> printed ["{!!!} ", "      \\x1bb\\x0d\t\\x1ba\t "] kept [error "{!!!} \n\\x1bb\\x0d\t\\x1ba\t "]
+~(info, error, {gpu}, "b\r\x1bb\r \x1b\ra") -> printed ["{!!!} b\\x0d\\x1bb\\x0d \\x1b\\x0da"] kept [error "{!!!} b\\x0d\\x1bb\\x0d \\x1b\\x0da"]
+~(info, error, {mod}, "") -> printed ["{!!!} "] kept [error "{!!!} "]
+~(info, error, {nod}, "\r ") -> printed ["{!!!} \\x0d "] kept [error "{!!!} \\x0d "]
+~(info, error, {nod}, "a\n\nb \t") -> printed ["{!!!} a", "      ", "      b \t"] kept [error "{!!!} a\n\nb \t"]
+~(info, error, {out}, " \n \r\x1b\t\r\naa") -> printed ["{!!!}  ", "       \\x0d\\x1b\t\\x0d", "      aa"] kept [error "{!!!}  \n \\x0d\\x1b\t\\x0d\naa"]
+~(info, error, {out}, "aa\ta\r\x1b") -> printed ["{!!!} aa\ta\\x0d\\x1b"] kept [error "{!!!} aa\ta\\x0d\\x1b"]
+~(info, error, {run}, "") -> printed ["{!!!} "] kept [error "{!!!} "]
+~(info, error, {run}, "\x1b\x1b\ra \x1b\t\n") -> printed ["{!!!} \\x1b\\x1b\\x0da \\x1b\t"] kept [error "{!!!} \\x1b\\x1b\\x0da \\x1b\t"]
+~(info, error, {swp}, "\tb\r\n\ta\x1b") -> printed ["{!!!} \tb\\x0d", "      \ta\\x1b"] kept [error "{!!!} \tb\\x0d\n\ta\\x1b"]
+~(info, error, {swp}, "ab") -> printed ["{!!!} ab"] kept [error "{!!!} ab"]
+~(info, info, {snd}, "") -> printed ["{snd} "] kept [info "{snd} "]
+~(info, info, {swp}, "bb\t\r\t\n\x1bb\x1b ") -> printed ["{swp} bb\t\\x0d\t", "      \\x1bb\\x1b "] kept [info "{swp} bb\t\\x0d\t\n\\x1bb\\x1b "]
+~(info, warn, {mem}, "b \n a") -> printed ["{ ! } b ", "       a"] kept [warn "{ ! } b \n a"]
+~(info, warn, {mod}, "\t\r \ta \n\t\x1b") -> printed ["{ ! } \t\\x0d \ta ", "      \t\\x1b"] kept [warn "{ ! } \t\\x0d \ta \n\t\\x1b"]
+~(warn, debug, {gpu}, "a\nb\x1b a") -> printed [] kept []
+~(warn, debug, {mem}, "\n\rb\r \n") -> printed [] kept []
+~(warn, debug, {mod}, "aaa\t") -> printed [] kept []
+~(warn, debug, {nod}, " \t\x1b\x1b\rb") -> printed [] kept []
+~(warn, debug, {run}, "b ") -> printed [] kept []
+~(warn, debug, {swp}, " a") -> printed [] kept []
+~(warn, error, {mod}, "\n\n") -> printed ["{!!!} "] kept [error "{!!!} "]
+~(warn, error, {swp}, "") -> printed ["{!!!} "] kept [error "{!!!} "]
+~(warn, info, {mem}, "a\r") -> printed [] kept []
+~(warn, info, {out}, "\r") -> printed [] kept []
+~(warn, warn, {swp}, "\t\x1b\r") -> printed ["{ ! } \t\\x1b\\x0d"] kept [warn "{ ! } \t\\x1b\\x0d"]
+
+## Log.cpp/Log::write about a node
+(debug, error, "", "a", "a") -> printed [] kept []
+(debug, warn, "", "\xc3\xa9", "a") -> printed [] kept []
+(debug, warn, "", "_", "a") -> printed [] kept []
+(debug, warn, "", "a b", "a") -> printed [] kept []
+(debug, warn, "", "a", "\x1b[2J") -> printed [] kept []
+(debug, warn, "", "a", "\xc3\xa9") -> printed [] kept []
+(debug, warn, "", "a", "a") -> printed [] kept []
+(debug, warn, "", "a", "a\n") -> printed [] kept []
+(debug, warn, "", "a", "a\r") -> printed [] kept []
+(debug, warn, "", "a\t", "a") -> printed [] kept []
+(debug, warn, "", "a_b", "a") -> printed [] kept []
+(debug, warn, "a", "a", "a") -> printed [] kept []
+(error, error, "", "a", "a") -> printed ["{!!!} a: a"] kept [error "{!!!} a: a"]
+(error, warn, "", "", "a") -> printed ["{!!!} a"] kept [error "{!!!} a"]
+(error, warn, "", ".", "a") -> printed ["{!!!} .: a"] kept [error "{!!!} .: a"]
+(error, warn, "", "A9", "a") -> printed ["{!!!} A9: a"] kept [error "{!!!} A9: a"]
+(error, warn, "", "a", "") -> printed ["{!!!} a: "] kept [error "{!!!} a: "]
+(error, warn, "", "a", "%s %n") -> printed ["{!!!} a: %s %n"] kept [error "{!!!} a: %s %n"]
+(error, warn, "", "a", "a") -> printed ["{!!!} a: a"] kept [error "{!!!} a: a"]
+(error, warn, "", "a", "a\n\n") -> printed ["{!!!} a: a"] kept [error "{!!!} a: a"]
+(error, warn, "", "a", "a\r\nb") -> printed ["{!!!} a: a\\x0d", "      b"] kept [error "{!!!} a: a\\x0d\nb"]
+(error, warn, "", "a", "a\tb") -> printed ["{!!!} a: a\tb"] kept [error "{!!!} a: a\tb"]
+(error, warn, "", "a:b", "a") -> printed ["{!!!} a:b: a"] kept [error "{!!!} a:b: a"]
+(error, warn, "", "a\r", "a") -> printed ["{!!!} a\r: a"] kept [error "{!!!} a\r: a"]
+(error, warn, "", "root", "a") -> printed ["{!!!} root: a"] kept [error "{!!!} root: a"]
+(error, warn, "a", "a", "a") -> printed ["{!!!} a: a"] kept [error "{!!!} a: a"]
+(info, error, "", "a", "a") -> printed [] kept []
+(info, warn, "", "-", "a") -> printed [] kept []
+(info, warn, "", "1", "a") -> printed [] kept []
+(info, warn, "", "a", "\n") -> printed [] kept []
+(info, warn, "", "a", "\x7f") -> printed [] kept []
+(info, warn, "", "a", "a") -> printed [] kept []
+(info, warn, "", "a", "a\nb") -> printed [] kept []
+(info, warn, "", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed [] kept []
+(info, warn, "", "a", "{!!!} a") -> printed [] kept []
+(info, warn, "", "a-b", "a") -> printed [] kept []
+(info, warn, "", "a.b", "a") -> printed [] kept []
+(info, warn, "", "a/b", "a") -> printed [] kept []
+(info, warn, "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a") -> printed [] kept []
+(info, warn, "a", "a", "a") -> printed [] kept []
+(warn, debug, "", "\xc3\xa9", "a") -> printed ["{ ! } \xc3\xa9: a"] kept [warn "{ ! } \xc3\xa9: a"]
+(warn, debug, "", "_", "a") -> printed ["{ ! } _: a"] kept [warn "{ ! } _: a"]
+(warn, debug, "", "a b", "a") -> printed ["{ ! } a b: a"] kept [warn "{ ! } a b: a"]
+(warn, debug, "", "a", "\x1b[2J") -> printed ["{ ! } a: \\x1b[2J"] kept [warn "{ ! } a: \\x1b[2J"]
+(warn, debug, "", "a", "\xc3\xa9") -> printed ["{ ! } a: \xc3\xa9"] kept [warn "{ ! } a: \xc3\xa9"]
+(warn, debug, "", "a", "a") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, debug, "", "a", "a\n") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, debug, "", "a", "a\r") -> printed ["{ ! } a: a\\x0d"] kept [warn "{ ! } a: a\\x0d"]
+(warn, debug, "", "a\t", "a") -> printed ["{ ! } a\t: a"] kept [warn "{ ! } a\t: a"]
+(warn, debug, "", "a_b", "a") -> printed ["{ ! } a_b: a"] kept [warn "{ ! } a_b: a"]
+(warn, debug, "a", "a", "a") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, error, "", "", "a") -> printed [] kept []
+(warn, error, "", ".", "a") -> printed [] kept []
+(warn, error, "", "A9", "a") -> printed [] kept []
+(warn, error, "", "a", "") -> printed [] kept []
+(warn, error, "", "a", "%s %n") -> printed [] kept []
+(warn, error, "", "a", "a") -> printed [] kept []
+(warn, error, "", "a", "a\n\n") -> printed [] kept []
+(warn, error, "", "a", "a\r\nb") -> printed [] kept []
+(warn, error, "", "a", "a\tb") -> printed [] kept []
+(warn, error, "", "a:b", "a") -> printed [] kept []
+(warn, error, "", "a\r", "a") -> printed [] kept []
+(warn, error, "", "root", "a") -> printed [] kept []
+(warn, error, "a", "a", "a") -> printed [] kept []
+(warn, info, "", "-", "a") -> printed ["{ ! } -: a"] kept [warn "{ ! } -: a"]
+(warn, info, "", "1", "a") -> printed ["{ ! } 1: a"] kept [warn "{ ! } 1: a"]
+(warn, info, "", "a", "\n") -> printed ["{ ! } a: "] kept [warn "{ ! } a: "]
+(warn, info, "", "a", "\x7f") -> printed ["{ ! } a: \\x7f"] kept [warn "{ ! } a: \\x7f"]
+(warn, info, "", "a", "a") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, info, "", "a", "a\nb") -> printed ["{ ! } a: a", "      b"] kept [warn "{ ! } a: a\nb"]
+(warn, info, "", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } a: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash 7d064ec72679507f)] kept [warn "{ ! } a: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash 7d064ec72679507f)]
+(warn, info, "", "a", "{!!!} a") -> printed ["{ ! } a: {!!!} a"] kept [warn "{ ! } a: {!!!} a"]
+(warn, info, "", "a-b", "a") -> printed ["{ ! } a-b: a"] kept [warn "{ ! } a-b: a"]
+(warn, info, "", "a.b", "a") -> printed ["{ ! } a.b: a"] kept [warn "{ ! } a.b: a"]
+(warn, info, "", "a/b", "a") -> printed ["{ ! } a/b: a"] kept [warn "{ ! } a/b: a"]
+(warn, info, "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a") -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaa: a" (309 characters, hash a2fd1b3d8c00269f)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaa: a" (309 characters, hash a2fd1b3d8c00269f)]
+(warn, info, "a", "a", "a") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "", "", "") -> printed ["{ ! } "] kept [warn "{ ! } "]
+(warn, warn, "", "", "%s %n") -> printed ["{ ! } %s %n"] kept [warn "{ ! } %s %n"]
+(warn, warn, "", "", "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, "", "", "a\n\n") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, "", "", "a\r\nb") -> printed ["{ ! } a\\x0d", "      b"] kept [warn "{ ! } a\\x0d\nb"]
+(warn, warn, "", "", "a\tb") -> printed ["{ ! } a\tb"] kept [warn "{ ! } a\tb"]
+(warn, warn, "", "-", "\n") -> printed ["{ ! } -: "] kept [warn "{ ! } -: "]
+(warn, warn, "", "-", "\x7f") -> printed ["{ ! } -: \\x7f"] kept [warn "{ ! } -: \\x7f"]
+(warn, warn, "", "-", "a") -> printed ["{ ! } -: a"] kept [warn "{ ! } -: a"]
+(warn, warn, "", "-", "a\nb") -> printed ["{ ! } -: a", "      b"] kept [warn "{ ! } -: a\nb"]
+(warn, warn, "", "-", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } -: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash 3f71ca74e901f5f3)] kept [warn "{ ! } -: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash 3f71ca74e901f5f3)]
+(warn, warn, "", "-", "{!!!} a") -> printed ["{ ! } -: {!!!} a"] kept [warn "{ ! } -: {!!!} a"]
+(warn, warn, "", ".", "") -> printed ["{ ! } .: "] kept [warn "{ ! } .: "]
+(warn, warn, "", ".", "%s %n") -> printed ["{ ! } .: %s %n"] kept [warn "{ ! } .: %s %n"]
+(warn, warn, "", ".", "a") -> printed ["{ ! } .: a"] kept [warn "{ ! } .: a"]
+(warn, warn, "", ".", "a\n\n") -> printed ["{ ! } .: a"] kept [warn "{ ! } .: a"]
+(warn, warn, "", ".", "a\r\nb") -> printed ["{ ! } .: a\\x0d", "      b"] kept [warn "{ ! } .: a\\x0d\nb"]
+(warn, warn, "", ".", "a\tb") -> printed ["{ ! } .: a\tb"] kept [warn "{ ! } .: a\tb"]
+(warn, warn, "", "1", "\n") -> printed ["{ ! } 1: "] kept [warn "{ ! } 1: "]
+(warn, warn, "", "1", "\x7f") -> printed ["{ ! } 1: \\x7f"] kept [warn "{ ! } 1: \\x7f"]
+(warn, warn, "", "1", "a") -> printed ["{ ! } 1: a"] kept [warn "{ ! } 1: a"]
+(warn, warn, "", "1", "a\nb") -> printed ["{ ! } 1: a", "      b"] kept [warn "{ ! } 1: a\nb"]
+(warn, warn, "", "1", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } 1: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a6a9854af28c9d4f)] kept [warn "{ ! } 1: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a6a9854af28c9d4f)]
+(warn, warn, "", "1", "{!!!} a") -> printed ["{ ! } 1: {!!!} a"] kept [warn "{ ! } 1: {!!!} a"]
+(warn, warn, "", "A9", "") -> printed ["{ ! } A9: "] kept [warn "{ ! } A9: "]
+(warn, warn, "", "A9", "%s %n") -> printed ["{ ! } A9: %s %n"] kept [warn "{ ! } A9: %s %n"]
+(warn, warn, "", "A9", "a") -> printed ["{ ! } A9: a"] kept [warn "{ ! } A9: a"]
+(warn, warn, "", "A9", "a\n\n") -> printed ["{ ! } A9: a"] kept [warn "{ ! } A9: a"]
+(warn, warn, "", "A9", "a\r\nb") -> printed ["{ ! } A9: a\\x0d", "      b"] kept [warn "{ ! } A9: a\\x0d\nb"]
+(warn, warn, "", "A9", "a\tb") -> printed ["{ ! } A9: a\tb"] kept [warn "{ ! } A9: a\tb"]
+(warn, warn, "", "\xc3\xa9", "\x1b[2J") -> printed ["{ ! } \xc3\xa9: \\x1b[2J"] kept [warn "{ ! } \xc3\xa9: \\x1b[2J"]
+(warn, warn, "", "\xc3\xa9", "\xc3\xa9") -> printed ["{ ! } \xc3\xa9: \xc3\xa9"] kept [warn "{ ! } \xc3\xa9: \xc3\xa9"]
+(warn, warn, "", "\xc3\xa9", "a") -> printed ["{ ! } \xc3\xa9: a"] kept [warn "{ ! } \xc3\xa9: a"]
+(warn, warn, "", "\xc3\xa9", "a\n") -> printed ["{ ! } \xc3\xa9: a"] kept [warn "{ ! } \xc3\xa9: a"]
+(warn, warn, "", "\xc3\xa9", "a\r") -> printed ["{ ! } \xc3\xa9: a\\x0d"] kept [warn "{ ! } \xc3\xa9: a\\x0d"]
+(warn, warn, "", "_", "\x1b[2J") -> printed ["{ ! } _: \\x1b[2J"] kept [warn "{ ! } _: \\x1b[2J"]
+(warn, warn, "", "_", "\xc3\xa9") -> printed ["{ ! } _: \xc3\xa9"] kept [warn "{ ! } _: \xc3\xa9"]
+(warn, warn, "", "_", "a") -> printed ["{ ! } _: a"] kept [warn "{ ! } _: a"]
+(warn, warn, "", "_", "a\n") -> printed ["{ ! } _: a"] kept [warn "{ ! } _: a"]
+(warn, warn, "", "_", "a\r") -> printed ["{ ! } _: a\\x0d"] kept [warn "{ ! } _: a\\x0d"]
+(warn, warn, "", "a b", "\x1b[2J") -> printed ["{ ! } a b: \\x1b[2J"] kept [warn "{ ! } a b: \\x1b[2J"]
+(warn, warn, "", "a b", "\xc3\xa9") -> printed ["{ ! } a b: \xc3\xa9"] kept [warn "{ ! } a b: \xc3\xa9"]
+(warn, warn, "", "a b", "a") -> printed ["{ ! } a b: a"] kept [warn "{ ! } a b: a"]
+(warn, warn, "", "a b", "a\n") -> printed ["{ ! } a b: a"] kept [warn "{ ! } a b: a"]
+(warn, warn, "", "a b", "a\r") -> printed ["{ ! } a b: a\\x0d"] kept [warn "{ ! } a b: a\\x0d"]
+(warn, warn, "", "a", "") -> printed ["{ ! } a: "] kept [warn "{ ! } a: "]
+(warn, warn, "", "a", "%s %n") -> printed ["{ ! } a: %s %n"] kept [warn "{ ! } a: %s %n"]
+(warn, warn, "", "a", "\n") -> printed ["{ ! } a: "] kept [warn "{ ! } a: "]
+(warn, warn, "", "a", "\x1b[2J") -> printed ["{ ! } a: \\x1b[2J"] kept [warn "{ ! } a: \\x1b[2J"]
+(warn, warn, "", "a", "\x7f") -> printed ["{ ! } a: \\x7f"] kept [warn "{ ! } a: \\x7f"]
+(warn, warn, "", "a", "\xc3\xa9") -> printed ["{ ! } a: \xc3\xa9"] kept [warn "{ ! } a: \xc3\xa9"]
+(warn, warn, "", "a", "a") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "", "a", "a\n") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "", "a", "a\n\n") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "", "a", "a\nb") -> printed ["{ ! } a: a", "      b"] kept [warn "{ ! } a: a\nb"]
+(warn, warn, "", "a", "a\r") -> printed ["{ ! } a: a\\x0d"] kept [warn "{ ! } a: a\\x0d"]
+(warn, warn, "", "a", "a\r\nb") -> printed ["{ ! } a: a\\x0d", "      b"] kept [warn "{ ! } a: a\\x0d\nb"]
+(warn, warn, "", "a", "a\tb") -> printed ["{ ! } a: a\tb"] kept [warn "{ ! } a: a\tb"]
+(warn, warn, "", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } a: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash 7d064ec72679507f)] kept [warn "{ ! } a: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash 7d064ec72679507f)]
+(warn, warn, "", "a", "{!!!} a") -> printed ["{ ! } a: {!!!} a"] kept [warn "{ ! } a: {!!!} a"]
+(warn, warn, "", "a-b", "\n") -> printed ["{ ! } a-b: "] kept [warn "{ ! } a-b: "]
+(warn, warn, "", "a-b", "\x7f") -> printed ["{ ! } a-b: \\x7f"] kept [warn "{ ! } a-b: \\x7f"]
+(warn, warn, "", "a-b", "a") -> printed ["{ ! } a-b: a"] kept [warn "{ ! } a-b: a"]
+(warn, warn, "", "a-b", "a\nb") -> printed ["{ ! } a-b: a", "      b"] kept [warn "{ ! } a-b: a\nb"]
+(warn, warn, "", "a-b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } a-b: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (311 characters, hash db85bc968179a3cc)] kept [warn "{ ! } a-b: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (311 characters, hash db85bc968179a3cc)]
+(warn, warn, "", "a-b", "{!!!} a") -> printed ["{ ! } a-b: {!!!} a"] kept [warn "{ ! } a-b: {!!!} a"]
+(warn, warn, "", "a.b", "\n") -> printed ["{ ! } a.b: "] kept [warn "{ ! } a.b: "]
+(warn, warn, "", "a.b", "\x7f") -> printed ["{ ! } a.b: \\x7f"] kept [warn "{ ! } a.b: \\x7f"]
+(warn, warn, "", "a.b", "a") -> printed ["{ ! } a.b: a"] kept [warn "{ ! } a.b: a"]
+(warn, warn, "", "a.b", "a\nb") -> printed ["{ ! } a.b: a", "      b"] kept [warn "{ ! } a.b: a\nb"]
+(warn, warn, "", "a.b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } a.b: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (311 characters, hash 5fb1a0a34faf245b)] kept [warn "{ ! } a.b: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (311 characters, hash 5fb1a0a34faf245b)]
+(warn, warn, "", "a.b", "{!!!} a") -> printed ["{ ! } a.b: {!!!} a"] kept [warn "{ ! } a.b: {!!!} a"]
+(warn, warn, "", "a/b", "\n") -> printed ["{ ! } a/b: "] kept [warn "{ ! } a/b: "]
+(warn, warn, "", "a/b", "\x7f") -> printed ["{ ! } a/b: \\x7f"] kept [warn "{ ! } a/b: \\x7f"]
+(warn, warn, "", "a/b", "a") -> printed ["{ ! } a/b: a"] kept [warn "{ ! } a/b: a"]
+(warn, warn, "", "a/b", "a\nb") -> printed ["{ ! } a/b: a", "      b"] kept [warn "{ ! } a/b: a\nb"]
+(warn, warn, "", "a/b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } a/b: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (311 characters, hash 171cc564666424f6)] kept [warn "{ ! } a/b: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (311 characters, hash 171cc564666424f6)]
+(warn, warn, "", "a/b", "{!!!} a") -> printed ["{ ! } a/b: {!!!} a"] kept [warn "{ ! } a/b: {!!!} a"]
+(warn, warn, "", "a:b", "") -> printed ["{ ! } a:b: "] kept [warn "{ ! } a:b: "]
+(warn, warn, "", "a:b", "%s %n") -> printed ["{ ! } a:b: %s %n"] kept [warn "{ ! } a:b: %s %n"]
+(warn, warn, "", "a:b", "a") -> printed ["{ ! } a:b: a"] kept [warn "{ ! } a:b: a"]
+(warn, warn, "", "a:b", "a\n\n") -> printed ["{ ! } a:b: a"] kept [warn "{ ! } a:b: a"]
+(warn, warn, "", "a:b", "a\r\nb") -> printed ["{ ! } a:b: a\\x0d", "      b"] kept [warn "{ ! } a:b: a\\x0d\nb"]
+(warn, warn, "", "a:b", "a\tb") -> printed ["{ ! } a:b: a\tb"] kept [warn "{ ! } a:b: a\tb"]
+(warn, warn, "", "a\r", "") -> printed ["{ ! } a\r: "] kept [warn "{ ! } a\r: "]
+(warn, warn, "", "a\r", "%s %n") -> printed ["{ ! } a\r: %s %n"] kept [warn "{ ! } a\r: %s %n"]
+(warn, warn, "", "a\r", "a") -> printed ["{ ! } a\r: a"] kept [warn "{ ! } a\r: a"]
+(warn, warn, "", "a\r", "a\n\n") -> printed ["{ ! } a\r: a"] kept [warn "{ ! } a\r: a"]
+(warn, warn, "", "a\r", "a\r\nb") -> printed ["{ ! } a\r: a\\x0d", "      b"] kept [warn "{ ! } a\r: a\\x0d\nb"]
+(warn, warn, "", "a\r", "a\tb") -> printed ["{ ! } a\r: a\tb"] kept [warn "{ ! } a\r: a\tb"]
+(warn, warn, "", "a\t", "\x1b[2J") -> printed ["{ ! } a\t: \\x1b[2J"] kept [warn "{ ! } a\t: \\x1b[2J"]
+(warn, warn, "", "a\t", "\xc3\xa9") -> printed ["{ ! } a\t: \xc3\xa9"] kept [warn "{ ! } a\t: \xc3\xa9"]
+(warn, warn, "", "a\t", "a") -> printed ["{ ! } a\t: a"] kept [warn "{ ! } a\t: a"]
+(warn, warn, "", "a\t", "a\n") -> printed ["{ ! } a\t: a"] kept [warn "{ ! } a\t: a"]
+(warn, warn, "", "a\t", "a\r") -> printed ["{ ! } a\t: a\\x0d"] kept [warn "{ ! } a\t: a\\x0d"]
+(warn, warn, "", "a_b", "\x1b[2J") -> printed ["{ ! } a_b: \\x1b[2J"] kept [warn "{ ! } a_b: \\x1b[2J"]
+(warn, warn, "", "a_b", "\xc3\xa9") -> printed ["{ ! } a_b: \xc3\xa9"] kept [warn "{ ! } a_b: \xc3\xa9"]
+(warn, warn, "", "a_b", "a") -> printed ["{ ! } a_b: a"] kept [warn "{ ! } a_b: a"]
+(warn, warn, "", "a_b", "a\n") -> printed ["{ ! } a_b: a"] kept [warn "{ ! } a_b: a"]
+(warn, warn, "", "a_b", "a\r") -> printed ["{ ! } a_b: a\\x0d"] kept [warn "{ ! } a_b: a\\x0d"]
+(warn, warn, "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "\n") -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa: " (308 characters, hash 13985ba328571904)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa: " (308 characters, hash 13985ba328571904)]
+(warn, warn, "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "\x7f") -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaa: \\x7f" (313 characters, hash 93d2b3f73410b5c5)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaa: \\x7f" (313 characters, hash 93d2b3f73410b5c5)]
+(warn, warn, "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a") -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaa: a" (309 characters, hash a2fd1b3d8c00269f)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaa: a" (309 characters, hash a2fd1b3d8c00269f)]
+(warn, warn, "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a\nb") -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaa: a" (309 characters, hash a2fd1b3d8c00269f), "      b"] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaa: a\nb" (312 characters, hash 4bb85ec2b0219315)]
+(warn, warn, "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (608 characters, hash 420fbe40b4a7f438)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (608 characters, hash 420fbe40b4a7f438)]
+(warn, warn, "", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "{!!!} a") -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaa: {!!!} a" (315 characters, hash b724aba50a43515a)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaa: {!!!} a" (315 characters, hash b724aba50a43515a)]
+(warn, warn, "", "root", "") -> printed ["{ ! } root: "] kept [warn "{ ! } root: "]
+(warn, warn, "", "root", "%s %n") -> printed ["{ ! } root: %s %n"] kept [warn "{ ! } root: %s %n"]
+(warn, warn, "", "root", "a") -> printed ["{ ! } root: a"] kept [warn "{ ! } root: a"]
+(warn, warn, "", "root", "a\n\n") -> printed ["{ ! } root: a"] kept [warn "{ ! } root: a"]
+(warn, warn, "", "root", "a\r\nb") -> printed ["{ ! } root: a\\x0d", "      b"] kept [warn "{ ! } root: a\\x0d\nb"]
+(warn, warn, "", "root", "a\tb") -> printed ["{ ! } root: a\tb"] kept [warn "{ ! } root: a\tb"]
+(warn, warn, "a", "", "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+(warn, warn, "a", ".", "a") -> printed ["{ ! } .: a"] kept [warn "{ ! } .: a"]
+(warn, warn, "a", "A9", "a") -> printed ["{ ! } A9: a"] kept [warn "{ ! } A9: a"]
+(warn, warn, "a", "a", "") -> printed ["{ ! } a: "] kept [warn "{ ! } a: "]
+(warn, warn, "a", "a", "%s %n") -> printed ["{ ! } a: %s %n"] kept [warn "{ ! } a: %s %n"]
+(warn, warn, "a", "a", "a") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "a", "a", "a\n\n") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "a", "a", "a\r\nb") -> printed ["{ ! } a: a\\x0d", "      b"] kept [warn "{ ! } a: a\\x0d\nb"]
+(warn, warn, "a", "a", "a\tb") -> printed ["{ ! } a: a\tb"] kept [warn "{ ! } a: a\tb"]
+(warn, warn, "a", "a:b", "a") -> printed ["{ ! } a:b: a"] kept [warn "{ ! } a:b: a"]
+(warn, warn, "a", "a\r", "a") -> printed ["{ ! } a\r: a"] kept [warn "{ ! } a\r: a"]
+(warn, warn, "a", "root", "a") -> printed ["{ ! } root: a"] kept [warn "{ ! } root: a"]
+(warn, warn, "b", "-", "a") -> printed ["{ ! } -: a"] kept [warn "{ ! } -: a"]
+(warn, warn, "b", "1", "a") -> printed ["{ ! } 1: a"] kept [warn "{ ! } 1: a"]
+(warn, warn, "b", "a", "\n") -> printed ["{ ! } a: "] kept [warn "{ ! } a: "]
+(warn, warn, "b", "a", "\x7f") -> printed ["{ ! } a: \\x7f"] kept [warn "{ ! } a: \\x7f"]
+(warn, warn, "b", "a", "a") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "b", "a", "a\nb") -> printed ["{ ! } a: a", "      b"] kept [warn "{ ! } a: a\nb"]
+(warn, warn, "b", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> printed ["{ ! } a: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash 7d064ec72679507f)] kept [warn "{ ! } a: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash 7d064ec72679507f)]
+(warn, warn, "b", "a", "{!!!} a") -> printed ["{ ! } a: {!!!} a"] kept [warn "{ ! } a: {!!!} a"]
+(warn, warn, "b", "a-b", "a") -> printed ["{ ! } a-b: a"] kept [warn "{ ! } a-b: a"]
+(warn, warn, "b", "a.b", "a") -> printed ["{ ! } a.b: a"] kept [warn "{ ! } a.b: a"]
+(warn, warn, "b", "a/b", "a") -> printed ["{ ! } a/b: a"] kept [warn "{ ! } a/b: a"]
+(warn, warn, "b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a") -> printed ["{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaa: a" (309 characters, hash a2fd1b3d8c00269f)] kept [warn "{ ! } aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaa: a" (309 characters, hash a2fd1b3d8c00269f)]
+(warn, warn, "ide", "\xc3\xa9", "a") -> printed ["{ ! } \xc3\xa9: a"] kept [warn "{ ! } \xc3\xa9: a"]
+(warn, warn, "ide", "_", "a") -> printed ["{ ! } _: a"] kept [warn "{ ! } _: a"]
+(warn, warn, "ide", "a b", "a") -> printed ["{ ! } a b: a"] kept [warn "{ ! } a b: a"]
+(warn, warn, "ide", "a", "\x1b[2J") -> printed ["{ ! } a: \\x1b[2J"] kept [warn "{ ! } a: \\x1b[2J"]
+(warn, warn, "ide", "a", "\xc3\xa9") -> printed ["{ ! } a: \xc3\xa9"] kept [warn "{ ! } a: \xc3\xa9"]
+(warn, warn, "ide", "a", "a") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "ide", "a", "a\n") -> printed ["{ ! } a: a"] kept [warn "{ ! } a: a"]
+(warn, warn, "ide", "a", "a\r") -> printed ["{ ! } a: a\\x0d"] kept [warn "{ ! } a: a\\x0d"]
+(warn, warn, "ide", "a\t", "a") -> printed ["{ ! } a\t: a"] kept [warn "{ ! } a\t: a"]
+(warn, warn, "ide", "a_b", "a") -> printed ["{ ! } a_b: a"] kept [warn "{ ! } a_b: a"]
+~(debug, debug, "", "0.Z0", "b\naa\t") -> printed ["{nod} 0.Z0: b", "      aa\t"] kept [debug "{nod} 0.Z0: b\naa\t"]
+~(debug, debug, "a", "/aZ._", " \r") -> printed ["{nod} /aZ._:  \\x0d"] kept [debug "{nod} /aZ._:  \\x0d"]
+~(debug, debug, "a", "Za:-a", "b \x1b\r\rb") -> printed ["{nod} Za:-a: b \\x1b\\x0d\\x0db"] kept [debug "{nod} Za:-a: b \\x1b\\x0d\\x0db"]
+~(debug, debug, "b", "/", "\r ") -> printed [] kept []
+~(debug, debug, "ide", "./", "") -> printed [] kept []
+~(debug, error, "", "Z ", "\t\t\x1b") -> printed [] kept []
+~(debug, error, "ide", "0a.0-/", "") -> printed [] kept []
+~(debug, error, "ide", "_-9Z", "b") -> printed [] kept []
+~(debug, info, "a", "-0", "a\rb\n\r\rba\n") -> printed [] kept []
+~(debug, info, "b", "", " \x1b\x1b\x1bb\tb \x1b\t") -> printed [] kept []
+~(debug, info, "b", "", "\x1b \x1ba") -> printed [] kept []
+~(debug, info, "b", "0a", "\t\na") -> printed [] kept []
+~(debug, info, "b", "9Z.", "\x1b\t") -> printed [] kept []
+~(debug, info, "ide", "9:", "\na") -> printed [] kept []
+~(debug, warn, "", "Z9-", "\t ab ") -> printed [] kept []
+~(debug, warn, "b", "a_", "b ") -> printed [] kept []
+~(error, debug, "a", "", "\t") -> printed ["{!!!} \t"] kept [error "{!!!} \t"]
+~(error, error, "", "Z", "b\t\x1b ") -> printed ["{!!!} Z: b\t\\x1b "] kept [error "{!!!} Z: b\t\\x1b "]
+~(error, error, "", "Z/a/-", "\t") -> printed ["{!!!} Z/a/-: \t"] kept [error "{!!!} Z/a/-: \t"]
+~(error, error, "b", "/ a", "\x1bbb\n\r\nab") -> printed ["{!!!} / a: \\x1bbb", "      \\x0d", "      ab"] kept [error "{!!!} / a: \\x1bbb\n\\x0d\nab"]
+~(error, error, "ide", "--9a:", "\x1b\n\x1b\r\nb\x1b  b") -> printed ["{!!!} --9a:: \\x1b", "      \\x1b\\x0d", "      b\\x1b  b"] kept [error "{!!!} --9a:: \\x1b\n\\x1b\\x0d\nb\\x1b  b"]
+~(error, error, "ide", "_", "\t") -> printed ["{!!!} _: \t"] kept [error "{!!!} _: \t"]
+~(error, info, "a", "_Z-:a", "ab \t\n a\n\x1ba") -> printed ["{!!!} _Z-:a: ab \t", "       a", "      \\x1ba"] kept [error "{!!!} _Z-:a: ab \t\n a\n\\x1ba"]
+~(error, warn, "ide", " a0:Z", "\t \rab \r") -> printed ["{!!!}  a0:Z: \t \\x0dab \\x0d"] kept [error "{!!!}  a0:Z: \t \\x0dab \\x0d"]
+~(info, debug, "ide", "999", "\x1b\x1b\t \t\tbb b") -> printed [] kept []
+~(info, error, "ide", ":", "\t") -> printed [] kept []
+~(info, info, "a", ".", "") -> printed ["{nod} .: "] kept [info "{nod} .: "]
+~(info, info, "ide", " 9 .9", "\r\x1b\t \x1b\x1bba ") -> printed [] kept []
+~(info, info, "ide", "9", "b") -> printed [] kept []
+~(info, warn, "", "", "b\t \r\t\ta") -> printed [] kept []
+~(info, warn, "a", "0_aZ-", "\n\x1b\nba\ra\rb") -> printed [] kept []
+~(info, warn, "a", ":Z -0_", "\n   b\x1bb") -> printed [] kept []
+~(info, warn, "a", "_0_ ", "\tb\t   \r") -> printed [] kept []
+~(info, warn, "b", ":Z", "\n") -> printed [] kept []
+~(warn, debug, "", "90", "\x1b\x1bb\na\r\n") -> printed ["{ ! } 90: \\x1b\\x1bb", "      a\\x0d"] kept [warn "{ ! } 90: \\x1b\\x1bb\na\\x0d"]
+~(warn, debug, "", "_9.", "\n\n\r") -> printed ["{ ! } _9.: ", "      ", "      \\x0d"] kept [warn "{ ! } _9.: \n\n\\x0d"]
+~(warn, debug, "a", "", "a") -> printed ["{ ! } a"] kept [warn "{ ! } a"]
+~(warn, debug, "a", "/.0/-_", "b\rb\x1b\t ") -> printed ["{ ! } /.0/-_: b\\x0db\\x1b\t "] kept [warn "{ ! } /.0/-_: b\\x0db\\x1b\t "]
+~(warn, debug, "ide", ":-9 0:", "") -> printed ["{ ! } :-9 0:: "] kept [warn "{ ! } :-9 0:: "]
+~(warn, debug, "ide", "_.a_ Z", "\n\taba\n") -> printed ["{ ! } _.a_ Z: ", "      \taba"] kept [warn "{ ! } _.a_ Z: \n\taba"]
+~(warn, error, "", "", "\r b\r\t\n\r\r\t") -> printed [] kept []
+~(warn, error, "a", "_0", "b\t\x1ba\x1b\r") -> printed [] kept []
+~(warn, error, "b", "--", "\n\n") -> printed [] kept []
+~(warn, info, "", "09", "\n aa\ra") -> printed ["{ ! } 09: ", "       aa\\x0da"] kept [warn "{ ! } 09: \n aa\\x0da"]
+~(warn, info, "", "0a-.Z", "bbb  \x1b\raa") -> printed ["{ ! } 0a-.Z: bbb  \\x1b\\x0daa"] kept [warn "{ ! } 0a-.Z: bbb  \\x1b\\x0daa"]
+~(warn, warn, "a", ".9_aa0", "\t\r\x1baa\r\na") -> printed ["{ ! } .9_aa0: \t\\x0d\\x1baa\\x0d", "      a"] kept [warn "{ ! } .9_aa0: \t\\x0d\\x1baa\\x0d\na"]
+~(warn, warn, "b", "- ::9:", "ab\x1b\taa\n\r\r ") -> printed ["{ ! } - ::9:: ab\\x1b\taa", "      \\x0d\\x0d "] kept [warn "{ ! } - ::9:: ab\\x1b\taa\n\\x0d\\x0d "]
+~(warn, warn, "ide", "", "\n\t\t\n\r b\r\r\x1b") -> printed ["{ ! } ", "      \t\t", "      \\x0d b\\x0d\\x0d\\x1b"] kept [warn "{ ! } \n\t\t\n\\x0d b\\x0d\\x0d\\x1b"]
+
+## Log.cpp/Printed
+("", "", warn) -> printed [] kept [info "{run} bench"]
+("", "%s %n", warn) -> printed ["{!!!} n: %s %n"] kept [info "{run} bench", error "{!!!} n: %s %n"]
+("", "\n", warn) -> printed ["{!!!} n: "] kept [info "{run} bench", error "{!!!} n: "]
+("", "a", debug) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("", "a", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("", "a", warn) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("", "a\n", warn) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("", "a\r", warn) -> printed ["{!!!} n: a\\x0d"] kept [info "{run} bench", error "{!!!} n: a\\x0d"]
+("", "a\tb", warn) -> printed ["{!!!} n: a\tb"] kept [info "{run} bench", error "{!!!} n: a\tb"]
+("", "{!!!} a", warn) -> printed ["{!!!} n: {!!!} a"] kept [info "{run} bench", error "{!!!} n: {!!!} a"]
+("%s %n", "", warn) -> printed ["{out} n: %s %n"] kept [info "{run} bench", info "{out} n: %s %n"]
+("%s %n", "%s %n", warn) -> printed ["{out} n: %s %n", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: %s %n", error "{!!!} n: %s %n"]
+("%s %n", "\n", warn) -> printed ["{!!!} n: ", "{out} n: %s %n"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: %s %n"]
+("%s %n", "a", debug) -> printed ["{out} n: %s %n", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: %s %n", error "{!!!} n: a"]
+("%s %n", "a", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("%s %n", "a", warn) -> printed ["{out} n: %s %n", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: %s %n", error "{!!!} n: a"]
+("%s %n", "a\n", warn) -> printed ["{!!!} n: a", "{out} n: %s %n"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: %s %n"]
+("%s %n", "a\r", warn) -> printed ["{out} n: %s %n", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: %s %n", error "{!!!} n: a\\x0d"]
+("%s %n", "a\tb", warn) -> printed ["{out} n: %s %n", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: %s %n", error "{!!!} n: a\tb"]
+("%s %n", "{!!!} a", warn) -> printed ["{out} n: %s %n", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: %s %n", error "{!!!} n: {!!!} a"]
+("\n", "", warn) -> printed ["{out} n: "] kept [info "{run} bench", info "{out} n: "]
+("\n", "%s %n", warn) -> printed ["{out} n: ", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: %s %n"]
+("\n", "\n", warn) -> printed ["{out} n: ", "{!!!} n: "] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: "]
+("\n", "a", debug) -> printed ["{out} n: ", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: a"]
+("\n", "a", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("\n", "a", warn) -> printed ["{out} n: ", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: a"]
+("\n", "a\n", warn) -> printed ["{out} n: ", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: a"]
+("\n", "a\r", warn) -> printed ["{out} n: ", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: a\\x0d"]
+("\n", "a\tb", warn) -> printed ["{out} n: ", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: a\tb"]
+("\n", "{!!!} a", warn) -> printed ["{out} n: ", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: {!!!} a"]
+("\x1b[2J", "", warn) -> printed ["{out} n: \\x1b[2J"] kept [info "{run} bench", info "{out} n: \\x1b[2J"]
+("\x1b[2J", "%s %n", warn) -> printed ["{out} n: \\x1b[2J", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: \\x1b[2J", error "{!!!} n: %s %n"]
+("\x1b[2J", "\n", warn) -> printed ["{!!!} n: ", "{out} n: \\x1b[2J"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: \\x1b[2J"]
+("\x1b[2J", "a", info) -> printed ["{out} n: \\x1b[2J", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: \\x1b[2J", error "{!!!} n: a"]
+("\x1b[2J", "a", warn) -> printed ["{out} n: \\x1b[2J", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: \\x1b[2J", error "{!!!} n: a"]
+("\x1b[2J", "a\n", warn) -> printed ["{!!!} n: a", "{out} n: \\x1b[2J"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: \\x1b[2J"]
+("\x1b[2J", "a\r", warn) -> printed ["{out} n: \\x1b[2J", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: \\x1b[2J", error "{!!!} n: a\\x0d"]
+("\x1b[2J", "a\tb", warn) -> printed ["{out} n: \\x1b[2J", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: \\x1b[2J", error "{!!!} n: a\tb"]
+("\x1b[2J", "{!!!} a", warn) -> printed ["{out} n: \\x1b[2J", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: \\x1b[2J", error "{!!!} n: {!!!} a"]
+("\x7f", "", warn) -> printed ["{out} n: \\x7f"] kept [info "{run} bench", info "{out} n: \\x7f"]
+("\x7f", "%s %n", warn) -> printed ["{out} n: \\x7f", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: \\x7f", error "{!!!} n: %s %n"]
+("\x7f", "\n", warn) -> printed ["{!!!} n: ", "{out} n: \\x7f"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: \\x7f"]
+("\x7f", "a", info) -> printed ["{out} n: \\x7f", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: \\x7f", error "{!!!} n: a"]
+("\x7f", "a", warn) -> printed ["{out} n: \\x7f", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: \\x7f", error "{!!!} n: a"]
+("\x7f", "a\n", warn) -> printed ["{!!!} n: a", "{out} n: \\x7f"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: \\x7f"]
+("\x7f", "a\r", warn) -> printed ["{out} n: \\x7f", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: \\x7f", error "{!!!} n: a\\x0d"]
+("\x7f", "a\tb", warn) -> printed ["{out} n: \\x7f", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: \\x7f", error "{!!!} n: a\tb"]
+("\x7f", "{!!!} a", warn) -> printed ["{out} n: \\x7f", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: \\x7f", error "{!!!} n: {!!!} a"]
+("\xc3\xa9", "", warn) -> printed ["{out} n: \xc3\xa9"] kept [info "{run} bench", info "{out} n: \xc3\xa9"]
+("\xc3\xa9", "%s %n", warn) -> printed ["{out} n: \xc3\xa9", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: \xc3\xa9", error "{!!!} n: %s %n"]
+("\xc3\xa9", "\n", warn) -> printed ["{!!!} n: ", "{out} n: \xc3\xa9"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: \xc3\xa9"]
+("\xc3\xa9", "a", info) -> printed ["{out} n: \xc3\xa9", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: \xc3\xa9", error "{!!!} n: a"]
+("\xc3\xa9", "a", warn) -> printed ["{out} n: \xc3\xa9", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: \xc3\xa9", error "{!!!} n: a"]
+("\xc3\xa9", "a\n", warn) -> printed ["{!!!} n: a", "{out} n: \xc3\xa9"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: \xc3\xa9"]
+("\xc3\xa9", "a\r", warn) -> printed ["{out} n: \xc3\xa9", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: \xc3\xa9", error "{!!!} n: a\\x0d"]
+("\xc3\xa9", "a\tb", warn) -> printed ["{out} n: \xc3\xa9", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: \xc3\xa9", error "{!!!} n: a\tb"]
+("\xc3\xa9", "{!!!} a", warn) -> printed ["{out} n: \xc3\xa9", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: \xc3\xa9", error "{!!!} n: {!!!} a"]
+("a", "", debug) -> printed ["{out} n: a"] kept [info "{run} bench", info "{out} n: a"]
+("a", "", error) -> printed [] kept [info "{run} bench"]
+("a", "", warn) -> printed ["{out} n: a"] kept [info "{run} bench", info "{out} n: a"]
+("a", "%s %n", debug) -> printed ["{out} n: a", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: %s %n"]
+("a", "%s %n", error) -> printed ["{!!!} n: %s %n"] kept [info "{run} bench", error "{!!!} n: %s %n"]
+("a", "%s %n", warn) -> printed ["{out} n: a", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: %s %n"]
+("a", "\n", debug) -> printed ["{!!!} n: ", "{out} n: a"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: a"]
+("a", "\n", error) -> printed ["{!!!} n: "] kept [info "{run} bench", error "{!!!} n: "]
+("a", "\n", warn) -> printed ["{!!!} n: ", "{out} n: a"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: a"]
+("a", "\x1b[2J", info) -> printed ["{out} n: a", "{!!!} n: \\x1b[2J"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: \\x1b[2J"]
+("a", "\x1b[2J", warn) -> printed ["{out} n: a", "{!!!} n: \\x1b[2J"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: \\x1b[2J"]
+("a", "\x7f", info) -> printed ["{out} n: a", "{!!!} n: \\x7f"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: \\x7f"]
+("a", "\x7f", warn) -> printed ["{out} n: a", "{!!!} n: \\x7f"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: \\x7f"]
+("a", "\xc3\xa9", info) -> printed ["{out} n: a", "{!!!} n: \xc3\xa9"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: \xc3\xa9"]
+("a", "\xc3\xa9", warn) -> printed ["{out} n: a", "{!!!} n: \xc3\xa9"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: \xc3\xa9"]
+("a", "a", debug) -> printed ["{out} n: a", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a"]
+("a", "a", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("a", "a", info) -> printed ["{out} n: a", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a"]
+("a", "a", warn) -> printed ["{out} n: a", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a"]
+("a", "a\n", debug) -> printed ["{!!!} n: a", "{out} n: a"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: a"]
+("a", "a\n", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("a", "a\n", warn) -> printed ["{!!!} n: a", "{out} n: a"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: a"]
+("a", "a\n\n", info) -> printed ["{!!!} n: a", "{!!!} n: ", "{out} n: a"] kept [info "{run} bench", error "{!!!} n: a", error "{!!!} n: ", info "{out} n: a"]
+("a", "a\n\n", warn) -> printed ["{!!!} n: a", "{!!!} n: ", "{out} n: a"] kept [info "{run} bench", error "{!!!} n: a", error "{!!!} n: ", info "{out} n: a"]
+("a", "a\nb", info) -> printed ["{!!!} n: a", "{out} n: a", "{!!!} n: b"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: a", error "{!!!} n: b"]
+("a", "a\nb", warn) -> printed ["{!!!} n: a", "{out} n: a", "{!!!} n: b"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: a", error "{!!!} n: b"]
+("a", "a\r", debug) -> printed ["{out} n: a", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a\\x0d"]
+("a", "a\r", error) -> printed ["{!!!} n: a\\x0d"] kept [info "{run} bench", error "{!!!} n: a\\x0d"]
+("a", "a\r", warn) -> printed ["{out} n: a", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a\\x0d"]
+("a", "a\r\nb", info) -> printed ["{!!!} n: a\\x0d", "{out} n: a", "{!!!} n: b"] kept [info "{run} bench", error "{!!!} n: a\\x0d", info "{out} n: a", error "{!!!} n: b"]
+("a", "a\r\nb", warn) -> printed ["{!!!} n: a\\x0d", "{out} n: a", "{!!!} n: b"] kept [info "{run} bench", error "{!!!} n: a\\x0d", info "{out} n: a", error "{!!!} n: b"]
+("a", "a\tb", debug) -> printed ["{out} n: a", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a\tb"]
+("a", "a\tb", error) -> printed ["{!!!} n: a\tb"] kept [info "{run} bench", error "{!!!} n: a\tb"]
+("a", "a\tb", warn) -> printed ["{out} n: a", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a\tb"]
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), info) -> printed ["{out} n: a", "{!!!} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash b70dae0a490c970e)] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash b70dae0a490c970e)]
+("a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), warn) -> printed ["{out} n: a", "{!!!} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash b70dae0a490c970e)] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash b70dae0a490c970e)]
+("a", "{!!!} a", debug) -> printed ["{out} n: a", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: {!!!} a"]
+("a", "{!!!} a", error) -> printed ["{!!!} n: {!!!} a"] kept [info "{run} bench", error "{!!!} n: {!!!} a"]
+("a", "{!!!} a", warn) -> printed ["{out} n: a", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: {!!!} a"]
+("a\n", "", warn) -> printed ["{out} n: a"] kept [info "{run} bench", info "{out} n: a"]
+("a\n", "%s %n", warn) -> printed ["{out} n: a", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: %s %n"]
+("a\n", "\n", warn) -> printed ["{out} n: a", "{!!!} n: "] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: "]
+("a\n", "a", debug) -> printed ["{out} n: a", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a"]
+("a\n", "a", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("a\n", "a", warn) -> printed ["{out} n: a", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a"]
+("a\n", "a\n", warn) -> printed ["{out} n: a", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a"]
+("a\n", "a\r", warn) -> printed ["{out} n: a", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a\\x0d"]
+("a\n", "a\tb", warn) -> printed ["{out} n: a", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a\tb"]
+("a\n", "{!!!} a", warn) -> printed ["{out} n: a", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: {!!!} a"]
+("a\n\n", "", warn) -> printed ["{out} n: a", "{out} n: "] kept [info "{run} bench", info "{out} n: a", info "{out} n: "]
+("a\n\n", "%s %n", warn) -> printed ["{out} n: a", "{out} n: ", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: a", info "{out} n: ", error "{!!!} n: %s %n"]
+("a\n\n", "\n", warn) -> printed ["{out} n: a", "{out} n: ", "{!!!} n: "] kept [info "{run} bench", info "{out} n: a", info "{out} n: ", error "{!!!} n: "]
+("a\n\n", "a", info) -> printed ["{out} n: a", "{out} n: ", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", info "{out} n: ", error "{!!!} n: a"]
+("a\n\n", "a", warn) -> printed ["{out} n: a", "{out} n: ", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", info "{out} n: ", error "{!!!} n: a"]
+("a\n\n", "a\n", warn) -> printed ["{out} n: a", "{out} n: ", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", info "{out} n: ", error "{!!!} n: a"]
+("a\n\n", "a\r", warn) -> printed ["{out} n: a", "{out} n: ", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a", info "{out} n: ", error "{!!!} n: a\\x0d"]
+("a\n\n", "a\tb", warn) -> printed ["{out} n: a", "{out} n: ", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: a", info "{out} n: ", error "{!!!} n: a\tb"]
+("a\n\n", "{!!!} a", warn) -> printed ["{out} n: a", "{out} n: ", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: a", info "{out} n: ", error "{!!!} n: {!!!} a"]
+("a\nb", "", warn) -> printed ["{out} n: a", "{out} n: b"] kept [info "{run} bench", info "{out} n: a", info "{out} n: b"]
+("a\nb", "%s %n", warn) -> printed ["{out} n: a", "{out} n: b", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: a", info "{out} n: b", error "{!!!} n: %s %n"]
+("a\nb", "\n", warn) -> printed ["{out} n: a", "{!!!} n: ", "{out} n: b"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: ", info "{out} n: b"]
+("a\nb", "a", info) -> printed ["{out} n: a", "{out} n: b", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", info "{out} n: b", error "{!!!} n: a"]
+("a\nb", "a", warn) -> printed ["{out} n: a", "{out} n: b", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a", info "{out} n: b", error "{!!!} n: a"]
+("a\nb", "a\n", warn) -> printed ["{out} n: a", "{!!!} n: a", "{out} n: b"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: a", info "{out} n: b"]
+("a\nb", "a\r", warn) -> printed ["{out} n: a", "{out} n: b", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a", info "{out} n: b", error "{!!!} n: a\\x0d"]
+("a\nb", "a\tb", warn) -> printed ["{out} n: a", "{out} n: b", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: a", info "{out} n: b", error "{!!!} n: a\tb"]
+("a\nb", "{!!!} a", warn) -> printed ["{out} n: a", "{out} n: b", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: a", info "{out} n: b", error "{!!!} n: {!!!} a"]
+("a\r", "", warn) -> printed ["{out} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a\\x0d"]
+("a\r", "%s %n", warn) -> printed ["{out} n: a\\x0d", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: a\\x0d", error "{!!!} n: %s %n"]
+("a\r", "\n", warn) -> printed ["{!!!} n: ", "{out} n: a\\x0d"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: a\\x0d"]
+("a\r", "a", debug) -> printed ["{out} n: a\\x0d", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a\\x0d", error "{!!!} n: a"]
+("a\r", "a", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("a\r", "a", warn) -> printed ["{out} n: a\\x0d", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a\\x0d", error "{!!!} n: a"]
+("a\r", "a\n", warn) -> printed ["{!!!} n: a", "{out} n: a\\x0d"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: a\\x0d"]
+("a\r", "a\r", warn) -> printed ["{out} n: a\\x0d", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a\\x0d", error "{!!!} n: a\\x0d"]
+("a\r", "a\tb", warn) -> printed ["{out} n: a\\x0d", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: a\\x0d", error "{!!!} n: a\tb"]
+("a\r", "{!!!} a", warn) -> printed ["{out} n: a\\x0d", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: a\\x0d", error "{!!!} n: {!!!} a"]
+("a\r\nb", "", warn) -> printed ["{out} n: a\\x0d", "{out} n: b"] kept [info "{run} bench", info "{out} n: a\\x0d", info "{out} n: b"]
+("a\r\nb", "%s %n", warn) -> printed ["{out} n: a\\x0d", "{out} n: b", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: a\\x0d", info "{out} n: b", error "{!!!} n: %s %n"]
+("a\r\nb", "\n", warn) -> printed ["{out} n: a\\x0d", "{!!!} n: ", "{out} n: b"] kept [info "{run} bench", info "{out} n: a\\x0d", error "{!!!} n: ", info "{out} n: b"]
+("a\r\nb", "a", info) -> printed ["{out} n: a\\x0d", "{out} n: b", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a\\x0d", info "{out} n: b", error "{!!!} n: a"]
+("a\r\nb", "a", warn) -> printed ["{out} n: a\\x0d", "{out} n: b", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a\\x0d", info "{out} n: b", error "{!!!} n: a"]
+("a\r\nb", "a\n", warn) -> printed ["{out} n: a\\x0d", "{!!!} n: a", "{out} n: b"] kept [info "{run} bench", info "{out} n: a\\x0d", error "{!!!} n: a", info "{out} n: b"]
+("a\r\nb", "a\r", warn) -> printed ["{out} n: a\\x0d", "{out} n: b", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a\\x0d", info "{out} n: b", error "{!!!} n: a\\x0d"]
+("a\r\nb", "a\tb", warn) -> printed ["{out} n: a\\x0d", "{out} n: b", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: a\\x0d", info "{out} n: b", error "{!!!} n: a\tb"]
+("a\r\nb", "{!!!} a", warn) -> printed ["{out} n: a\\x0d", "{out} n: b", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: a\\x0d", info "{out} n: b", error "{!!!} n: {!!!} a"]
+("a\tb", "", warn) -> printed ["{out} n: a\tb"] kept [info "{run} bench", info "{out} n: a\tb"]
+("a\tb", "%s %n", warn) -> printed ["{out} n: a\tb", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: a\tb", error "{!!!} n: %s %n"]
+("a\tb", "\n", warn) -> printed ["{!!!} n: ", "{out} n: a\tb"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: a\tb"]
+("a\tb", "a", debug) -> printed ["{out} n: a\tb", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a\tb", error "{!!!} n: a"]
+("a\tb", "a", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("a\tb", "a", warn) -> printed ["{out} n: a\tb", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: a\tb", error "{!!!} n: a"]
+("a\tb", "a\n", warn) -> printed ["{!!!} n: a", "{out} n: a\tb"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: a\tb"]
+("a\tb", "a\r", warn) -> printed ["{out} n: a\tb", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: a\tb", error "{!!!} n: a\\x0d"]
+("a\tb", "a\tb", warn) -> printed ["{out} n: a\tb", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: a\tb", error "{!!!} n: a\tb"]
+("a\tb", "{!!!} a", warn) -> printed ["{out} n: a\tb", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: a\tb", error "{!!!} n: {!!!} a"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "", warn) -> printed ["{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9)] kept [info "{run} bench", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9)]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "%s %n", warn) -> printed ["{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), error "{!!!} n: %s %n"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "\n", warn) -> printed ["{!!!} n: ", "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9)] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9)]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a", info) -> printed ["{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), "{!!!} n: a"] kept [info "{run} bench", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), error "{!!!} n: a"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a", warn) -> printed ["{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), "{!!!} n: a"] kept [info "{run} bench", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), error "{!!!} n: a"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a\n", warn) -> printed ["{!!!} n: a", "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9)] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9)]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a\r", warn) -> printed ["{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), error "{!!!} n: a\\x0d"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "a\tb", warn) -> printed ["{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), error "{!!!} n: a\tb"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "{!!!} a", warn) -> printed ["{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (309 characters, hash a33c4ac6b47e61a9), error "{!!!} n: {!!!} a"]
+("{!!!} a", "", warn) -> printed ["{out} n: {!!!} a"] kept [info "{run} bench", info "{out} n: {!!!} a"]
+("{!!!} a", "%s %n", warn) -> printed ["{out} n: {!!!} a", "{!!!} n: %s %n"] kept [info "{run} bench", info "{out} n: {!!!} a", error "{!!!} n: %s %n"]
+("{!!!} a", "\n", warn) -> printed ["{!!!} n: ", "{out} n: {!!!} a"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n: {!!!} a"]
+("{!!!} a", "a", debug) -> printed ["{out} n: {!!!} a", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: {!!!} a", error "{!!!} n: a"]
+("{!!!} a", "a", error) -> printed ["{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: a"]
+("{!!!} a", "a", warn) -> printed ["{out} n: {!!!} a", "{!!!} n: a"] kept [info "{run} bench", info "{out} n: {!!!} a", error "{!!!} n: a"]
+("{!!!} a", "a\n", warn) -> printed ["{!!!} n: a", "{out} n: {!!!} a"] kept [info "{run} bench", error "{!!!} n: a", info "{out} n: {!!!} a"]
+("{!!!} a", "a\r", warn) -> printed ["{out} n: {!!!} a", "{!!!} n: a\\x0d"] kept [info "{run} bench", info "{out} n: {!!!} a", error "{!!!} n: a\\x0d"]
+("{!!!} a", "a\tb", warn) -> printed ["{out} n: {!!!} a", "{!!!} n: a\tb"] kept [info "{run} bench", info "{out} n: {!!!} a", error "{!!!} n: a\tb"]
+("{!!!} a", "{!!!} a", warn) -> printed ["{out} n: {!!!} a", "{!!!} n: {!!!} a"] kept [info "{run} bench", info "{out} n: {!!!} a", error "{!!!} n: {!!!} a"]
+~("  \n\ta", "b\naaa\n", info) -> printed ["{out} n:   ", "{!!!} n: b", "{!!!} n: aaa", "{out} n: \ta"] kept [info "{run} bench", info "{out} n:   ", error "{!!!} n: b", error "{!!!} n: aaa", info "{out} n: \ta"]
+~("  a\x1bb\n  a", " \r\na\x1b \r\r\x1b", info) -> printed ["{out} n:   a\\x1bb", "{!!!} n:  \\x0d", "{out} n:   a", "{!!!} n: a\\x1b \\x0d\\x0d\\x1b"] kept [info "{run} bench", info "{out} n:   a\\x1bb", error "{!!!} n:  \\x0d", info "{out} n:   a", error "{!!!} n: a\\x1b \\x0d\\x0d\\x1b"]
+~(" \r\na\x1bb", "\r\r\x1bba\r", debug) -> printed ["{out} n:  \\x0d", "{out} n: a\\x1bb", "{!!!} n: \\x0d\\x0d\\x1bba\\x0d"] kept [info "{run} bench", info "{out} n:  \\x0d", info "{out} n: a\\x1bb", error "{!!!} n: \\x0d\\x0d\\x1bba\\x0d"]
+~(" \ra a", "\n\r\x1b\t\r\x1b \x1b\x1b", debug) -> printed ["{!!!} n: ", "{out} n:  \\x0da a", "{!!!} n: \\x0d\\x1b\t\\x0d\\x1b \\x1b\\x1b"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n:  \\x0da a", error "{!!!} n: \\x0d\\x1b\t\\x0d\\x1b \\x1b\\x1b"]
+~(" \tab", " \ta \r a", info) -> printed ["{out} n:  \tab", "{!!!} n:  \ta \\x0d a"] kept [info "{run} bench", info "{out} n:  \tab", error "{!!!} n:  \ta \\x0d a"]
+~(" \x1b", " a\n\t b\ta\ra", info) -> printed ["{!!!} n:  a", "{out} n:  \\x1b", "{!!!} n: \t b\ta\\x0da"] kept [info "{run} bench", error "{!!!} n:  a", info "{out} n:  \\x1b", error "{!!!} n: \t b\ta\\x0da"]
+~(" a\x1b", "\na", info) -> printed ["{!!!} n: ", "{out} n:  a\\x1b", "{!!!} n: a"] kept [info "{run} bench", error "{!!!} n: ", info "{out} n:  a\\x1b", error "{!!!} n: a"]
+~(" ab\x1b\n \t\x1b\r", "\x1b \x1b", warn) -> printed ["{out} n:  ab\\x1b", "{out} n:  \t\\x1b\\x0d", "{!!!} n: \\x1b \\x1b"] kept [info "{run} bench", info "{out} n:  ab\\x1b", info "{out} n:  \t\\x1b\\x0d", error "{!!!} n: \\x1b \\x1b"]
+~(" b\t\nb", "ab\t\rabaa\n\r", debug) -> printed ["{out} n:  b\t", "{!!!} n: ab\t\\x0dabaa", "{out} n: b", "{!!!} n: \\x0d"] kept [info "{run} bench", info "{out} n:  b\t", error "{!!!} n: ab\t\\x0dabaa", info "{out} n: b", error "{!!!} n: \\x0d"]
+~("", "\t\t\taba", warn) -> printed ["{!!!} n: \t\t\taba"] kept [info "{run} bench", error "{!!!} n: \t\t\taba"]
+~("", "\tbb\rb", info) -> printed ["{!!!} n: \tbb\\x0db"] kept [info "{run} bench", error "{!!!} n: \tbb\\x0db"]
+~("", "b \n\x1b\nb\r\t", info) -> printed ["{!!!} n: b ", "{!!!} n: \\x1b", "{!!!} n: b\\x0d\t"] kept [info "{run} bench", error "{!!!} n: b ", error "{!!!} n: \\x1b", error "{!!!} n: b\\x0d\t"]
+~("\n \n\r\t\n  \r", "", error) -> printed [] kept [info "{run} bench"]
+~("\n \r\t\tb \t\x1b\t", "a\x1b\x1b\tb", error) -> printed ["{!!!} n: a\\x1b\\x1b\tb"] kept [info "{run} bench", error "{!!!} n: a\\x1b\\x1b\tb"]
+~("\n\r\x1b\t", "a\x1b\x1b\x1b \t\ta\x1b\t", warn) -> printed ["{out} n: ", "{out} n: \\x0d\\x1b\t", "{!!!} n: a\\x1b\\x1b\\x1b \t\ta\\x1b\t"] kept [info "{run} bench", info "{out} n: ", info "{out} n: \\x0d\\x1b\t", error "{!!!} n: a\\x1b\\x1b\\x1b \t\ta\\x1b\t"]
+~("\n\t\t\t\x1b ", "\rabb\n\t\t\x1b ", debug) -> printed ["{out} n: ", "{!!!} n: \\x0dabb", "{out} n: \t\t\t\\x1b ", "{!!!} n: \t\t\\x1b "] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: \\x0dabb", info "{out} n: \t\t\t\\x1b ", error "{!!!} n: \t\t\\x1b "]
+~("\n\ta\t", " ", error) -> printed ["{!!!} n:  "] kept [info "{run} bench", error "{!!!} n:  "]
+~("\na\tb\x1b\r", "\t\n", info) -> printed ["{out} n: ", "{!!!} n: \t", "{out} n: a\tb\\x1b\\x0d"] kept [info "{run} bench", info "{out} n: ", error "{!!!} n: \t", info "{out} n: a\tb\\x1b\\x0d"]
+~("\na\x1b\r\t b", "bb\ta \n b", error) -> printed ["{!!!} n: bb\ta ", "{!!!} n:  b"] kept [info "{run} bench", error "{!!!} n: bb\ta ", error "{!!!} n:  b"]
+~("\r \r\x1bb\ta\t\r", "\n\x1baba\n \t\t", info) -> printed ["{!!!} n: ", "{!!!} n: \\x1baba", "{out} n: \\x0d \\x0d\\x1bb\ta\t\\x0d", "{!!!} n:  \t\t"] kept [info "{run} bench", error "{!!!} n: ", error "{!!!} n: \\x1baba", info "{out} n: \\x0d \\x0d\\x1bb\ta\t\\x0d", error "{!!!} n:  \t\t"]
+~("\r\r \x1b", "\t  \ta", debug) -> printed ["{out} n: \\x0d\\x0d \\x1b", "{!!!} n: \t  \ta"] kept [info "{run} bench", info "{out} n: \\x0d\\x0d \\x1b", error "{!!!} n: \t  \ta"]
+~("\r\t\x1b\t\t\t ", " bb\n\t\n\nb", debug) -> printed ["{!!!} n:  bb", "{!!!} n: \t", "{!!!} n: ", "{out} n: \\x0d\t\\x1b\t\t\t ", "{!!!} n: b"] kept [info "{run} bench", error "{!!!} n:  bb", error "{!!!} n: \t", error "{!!!} n: ", info "{out} n: \\x0d\t\\x1b\t\t\t ", error "{!!!} n: b"]
+~("\rb \ta", " b\t  \na\t\r\t", info) -> printed ["{!!!} n:  b\t  ", "{out} n: \\x0db \ta", "{!!!} n: a\t\\x0d\t"] kept [info "{run} bench", error "{!!!} n:  b\t  ", info "{out} n: \\x0db \ta", error "{!!!} n: a\t\\x0d\t"]
+~("\rb\t \n", "\x1b\r b\rb\x1b\t ", warn) -> printed ["{out} n: \\x0db\t ", "{!!!} n: \\x1b\\x0d b\\x0db\\x1b\t "] kept [info "{run} bench", info "{out} n: \\x0db\t ", error "{!!!} n: \\x1b\\x0d b\\x0db\\x1b\t "]
+~("\rb\x1b\tb\t\r", "\x1b\rbb\x1b\n", warn) -> printed ["{!!!} n: \\x1b\\x0dbb\\x1b", "{out} n: \\x0db\\x1b\tb\t\\x0d"] kept [info "{run} bench", error "{!!!} n: \\x1b\\x0dbb\\x1b", info "{out} n: \\x0db\\x1b\tb\t\\x0d"]
+~("\t \t ", "\t\r\na\r\r\t\t\r", warn) -> printed ["{!!!} n: \t\\x0d", "{out} n: \t \t ", "{!!!} n: a\\x0d\\x0d\t\t\\x0d"] kept [info "{run} bench", error "{!!!} n: \t\\x0d", info "{out} n: \t \t ", error "{!!!} n: a\\x0d\\x0d\t\t\\x0d"]
+~("\t a\n\r\x1b", " \tba\t\r", error) -> printed ["{!!!} n:  \tba\t\\x0d"] kept [info "{run} bench", error "{!!!} n:  \tba\t\\x0d"]
+~("\t", " \x1ba\tab\x1b\r", warn) -> printed ["{out} n: \t", "{!!!} n:  \\x1ba\tab\\x1b\\x0d"] kept [info "{run} bench", info "{out} n: \t", error "{!!!} n:  \\x1ba\tab\\x1b\\x0d"]
+~("\t", "aa\nb\n\t\r\n \r", debug) -> printed ["{!!!} n: aa", "{!!!} n: b", "{!!!} n: \t\\x0d", "{out} n: \t", "{!!!} n:  \\x0d"] kept [info "{run} bench", error "{!!!} n: aa", error "{!!!} n: b", error "{!!!} n: \t\\x0d", info "{out} n: \t", error "{!!!} n:  \\x0d"]
+~("\t\x1b\t\x1bb\x1ba", "    \t\nb", info) -> printed ["{!!!} n:     \t", "{out} n: \t\\x1b\t\\x1bb\\x1ba", "{!!!} n: b"] kept [info "{run} bench", error "{!!!} n:     \t", info "{out} n: \t\\x1b\t\\x1bb\\x1ba", error "{!!!} n: b"]
+~("\ta \r\t", "\tbbb\x1ba\r", info) -> printed ["{out} n: \ta \\x0d\t", "{!!!} n: \tbbb\\x1ba\\x0d"] kept [info "{run} bench", info "{out} n: \ta \\x0d\t", error "{!!!} n: \tbbb\\x1ba\\x0d"]
+~("\tb\n aa\ta\tb", " \ta", debug) -> printed ["{out} n: \tb", "{out} n:  aa\ta\tb", "{!!!} n:  \ta"] kept [info "{run} bench", info "{out} n: \tb", info "{out} n:  aa\ta\tb", error "{!!!} n:  \ta"]
+~("\x1b ", "b\n\r\t\tb", warn) -> printed ["{!!!} n: b", "{out} n: \\x1b ", "{!!!} n: \\x0d\t\tb"] kept [info "{run} bench", error "{!!!} n: b", info "{out} n: \\x1b ", error "{!!!} n: \\x0d\t\tb"]
+~("\x1b\t", "\x1b bab\x1b\ra\r", debug) -> printed ["{out} n: \\x1b\t", "{!!!} n: \\x1b bab\\x1b\\x0da\\x0d"] kept [info "{run} bench", info "{out} n: \\x1b\t", error "{!!!} n: \\x1b bab\\x1b\\x0da\\x0d"]
+~("\x1b\x1b\t\r\x1b\r \ra\n", "\n \nb\tb\x1b\x1b\x1b\x1b", debug) -> printed ["{out} n: \\x1b\\x1b\t\\x0d\\x1b\\x0d \\x0da", "{!!!} n: ", "{!!!} n:  ", "{!!!} n: b\tb\\x1b\\x1b\\x1b\\x1b"] kept [info "{run} bench", info "{out} n: \\x1b\\x1b\t\\x0d\\x1b\\x0d \\x0da", error "{!!!} n: ", error "{!!!} n:  ", error "{!!!} n: b\tb\\x1b\\x1b\\x1b\\x1b"]
+~("\x1b\x1b\t\t", "\n\naa\x1b\r\t", warn) -> printed ["{!!!} n: ", "{rep} previous line repeated 1x", "{out} n: \\x1b\\x1b\t\t", "{!!!} n: aa\\x1b\\x0d\t"] kept [info "{run} bench", error "{!!!} n: ", info "{rep} previous line repeated 1x", info "{out} n: \\x1b\\x1b\t\t", error "{!!!} n: aa\\x1b\\x0d\t"]
+~("\x1ba\t\r\ra \nb\x1b", "ab\r\t", error) -> printed ["{!!!} n: ab\\x0d\t"] kept [info "{run} bench", error "{!!!} n: ab\\x0d\t"]
+~("\x1bb\r\n\n\t\n", " \t\x1b\rb", error) -> printed ["{!!!} n:  \t\\x1b\\x0db"] kept [info "{run} bench", error "{!!!} n:  \t\\x1b\\x0db"]
+~("\x1bb\t\x1b\ta\x1b", "\n\n b", info) -> printed ["{!!!} n: ", "{rep} previous line repeated 1x", "{out} n: \\x1bb\t\\x1b\ta\\x1b", "{!!!} n:  b"] kept [info "{run} bench", error "{!!!} n: ", info "{rep} previous line repeated 1x", info "{out} n: \\x1bb\t\\x1b\ta\\x1b", error "{!!!} n:  b"]
+~("a\n\t  \t\t", "\t\n", warn) -> printed ["{out} n: a", "{!!!} n: \t", "{out} n: \t  \t\t"] kept [info "{run} bench", info "{out} n: a", error "{!!!} n: \t", info "{out} n: \t  \t\t"]
+~("a\nabb ", "\naa\n\r", error) -> printed ["{!!!} n: ", "{!!!} n: aa", "{!!!} n: \\x0d"] kept [info "{run} bench", error "{!!!} n: ", error "{!!!} n: aa", error "{!!!} n: \\x0d"]
+~("aab", "\t\x1bb", debug) -> printed ["{out} n: aab", "{!!!} n: \t\\x1bb"] kept [info "{run} bench", info "{out} n: aab", error "{!!!} n: \t\\x1bb"]
+~("b", "ba ", warn) -> printed ["{out} n: b", "{!!!} n: ba "] kept [info "{run} bench", info "{out} n: b", error "{!!!} n: ba "]
+~("b\nb\t b\x1b", "\x1b\r\x1bba \n\n", error) -> printed ["{!!!} n: \\x1b\\x0d\\x1bba ", "{!!!} n: "] kept [info "{run} bench", error "{!!!} n: \\x1b\\x0d\\x1bba ", error "{!!!} n: "]
+~("b\r b\tb", "\r", error) -> printed ["{!!!} n: \\x0d"] kept [info "{run} bench", error "{!!!} n: \\x0d"]
+~("b\r\r  b", "\x1b \n\t\nb\x1b", error) -> printed ["{!!!} n: \\x1b ", "{!!!} n: \t", "{!!!} n: b\\x1b"] kept [info "{run} bench", error "{!!!} n: \\x1b ", error "{!!!} n: \t", error "{!!!} n: b\\x1b"]
+~("b\x1b \x1b\n", "\r b\x1b\r\r\n\n", error) -> printed ["{!!!} n: \\x0d b\\x1b\\x0d\\x0d", "{!!!} n: "] kept [info "{run} bench", error "{!!!} n: \\x0d b\\x1b\\x0d\\x0d", error "{!!!} n: "]
+~("bb \nb\t", "b\rbb", error) -> printed ["{!!!} n: b\\x0dbb"] kept [info "{run} bench", error "{!!!} n: b\\x0dbb"]
+
+## Log.cpp/Printed, a character at a time
+"ab" and std::endl, put 'c' and '\n', to errors put 'e' and std::endl -> printed ["{out} n: ab", "{out} n: c", "{!!!} n: e"] kept [info "{out} n: ab", info "{out} n: c", error "{!!!} n: e"]
+
+## Log.h/level_named
+(" 1") -> none
+("") -> none
+("+1") -> none
+("-0") -> none
+("-1") -> none
+("-2147483648") -> none
+("-inf") -> none
+(".5") -> none
+("0") -> none
+("01") -> none
+("0x10") -> none
+("1 ") -> none
+("1") -> none
+("1,2") -> none
+("1.5") -> none
+("18446744073709551615") -> none
+("18446744073709551616") -> none
+("1\n") -> none
+("1\r") -> none
+("1_0") -> none
+("1e") -> none
+("1e-40") -> none
+("1e-50") -> none
+("1e3") -> none
+("3.4028235e38") -> none
+("3.4028236e38") -> none
+("4294967295") -> none
+("4294967296") -> none
+("5.") -> none
+("=") -> none
+("\xd9\xa1") -> none
+("\xef\xbc\x91") -> none
+("a") -> none
+("a=b") -> none
+("inf") -> none
+("nan") -> none
+holds: each level's name reads back as it, over 4 rows
+~("+9a98,") -> none
+~("+b8_E05.") -> none
+~(".b+") -> none
+~("064._") -> none
+~("0__55") -> none
+~("1-53") -> none
+~("113a120 ") -> none
+~("17x") -> none
+~("19e_") -> none
+~("2") -> none
+~("26x3 ") -> none
+~("3,8") -> none
+~("3-+7E5") -> none
+~("31-39") -> none
+~("3E") -> none
+~("3_,") -> none
+~("3e_") -> none
+~("42.e2Eba") -> none
+~("48E545ab") -> none
+~("4_Eb5") -> none
+~("5e1.6 4") -> none
+~("5x e01") -> none
+~("7 +xE") -> none
+~("7-8.7_") -> none
+~("78") -> none
+~("7_E") -> none
+~("8") -> none
+~("82.e.x") -> none
+~("9ae42") -> none
+~("E9") -> none
+~("_4x4,8") -> none
+~("_5-6bE+3") -> none
+~("_e559") -> none
+~("ab_8") -> none
+~("axa24x+") -> none
+~("b") -> none
+~("bx7") -> none
+~("e298ab51") -> none
+~("e6091,") -> none
+~("e79.7,+") -> none
+~("e90-_4") -> none
+~("x1.b") -> none
+~("xE9-") -> none

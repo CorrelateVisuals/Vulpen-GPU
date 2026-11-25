@@ -1,0 +1,771 @@
+# The rows of src/runtime/Schedule.h and src/runtime/Schedule.cpp, a call each (src/tools/bench/bench.py).
+
+## Schedule.cpp/a draw counted on the GPU, its depth kept
+a schedule, ok true, 4 nodes
+after them, node count: cooks false, runs true
+after them, node crowd: cooks false, runs true
+after them, node look: cooks true, runs true
+after them, node seen: cooks false, runs true
+node count: cooks false, runs true
+node crowd: cooks false, runs true
+node look: cooks false, runs true
+node seen: cooks false, runs true
+pass dispatch of 1 groups, reads 0, writes 0
+pass dispatch of 1 groups, reads 0, writes 1
+pass dispatch of 1 groups, reads 1, writes 1
+pass draw of 3 vertices, instances counted on the GPU, into an image
+port count.drawn: buffer written DrawCount, joined
+port crowd.color: image written R8G8B8A8_UNORM, joined
+port crowd.depth: image written DepthWrite, joined
+port crowd.drawn: buffer read DrawCount, joined
+port look.painted: image read Texture, joined
+port look.texels: buffer written vec2
+port seen.depth: image read Texture, joined
+the device goes -> done
+three frames -> done
+
+## Schedule.cpp/a rebuild keeps what it can
+mistakes 1 started, a frame at 64 by 64: {mem} draw: draw.values of 12 bytes on the GPU
+mistakes 1 started, a frame at 64 by 64: {mem} fill: values of 256 bytes on the GPU
+mistakes 1 started, a frame at 64 by 64: {mem} frame: frame.seen of 48 bytes read back by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} look: look.texels of 512 bytes read back by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} maker: maker.shapes of 64 bytes written by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} paint: paint.color: 64 by 64 pixels of R8G8B8A8_UNORM, which it draws
+mistakes 1 started, a frame at 64 by 64: {mem} pairs: pairs.pairs of 512 bytes on the GPU
+mistakes 1 started, a frame at 64 by 64: {mem} picture: picture.picture: 4 by 2 pixels of R8_UNORM
+mistakes 1 started, a frame at 64 by 64: {mem} picture: picture.texels of 32 bytes read back by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} shape: shape.shapes of 128 bytes written by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} shape: shape.sums of 16 bytes read back by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} sign: sign.characters of 1548 bytes written by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} sign: sign.labels of 80 bytes written by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} sign: sign.rects of 96 bytes written by the CPU
+mistakes 1 started, a frame at 64 by 64: {mem} stamp: stamp.canvas: 64 by 64 pixels of R8G8B8A8_UNORM, which it stores into
+mistakes 1 started, a frame at 64 by 64: {mem} sum: sum.sums of 256 bytes on the GPU
+mistakes 1 started, a frame at 64 by 64: {mem} wrong: wrong.values of 256 bytes on the GPU
+mistakes 1 started, a frame at 64 by 64: {nod} draw: pass block of 16 bytes: float[] values at 0
+mistakes 1 started, a frame at 64 by 64: {nod} draw: pipeline from Draw.frag and Draw.vert
+mistakes 1 started, a frame at 64 by 64: {nod} fill: pass block of 16 bytes: float amount at 0, writeonly float[] values at 8
+mistakes 1 started, a frame at 64 by 64: {nod} fill: pipeline from Fill.comp
+mistakes 1 started, a frame at 64 by 64: {nod} frame: new operator Frame
+mistakes 1 started, a frame at 64 by 64: {nod} frame: pass block of 48 bytes: writeonly float[] seen at 0, vec3 tint at 16, float after at 28, vec2 at at 32
+mistakes 1 started, a frame at 64 by 64: {nod} frame: pipeline from Frame.comp
+mistakes 1 started, a frame at 64 by 64: {nod} give: new operator Give
+mistakes 1 started, a frame at 64 by 64: {nod} input: new operator Input
+mistakes 1 started, a frame at 64 by 64: {nod} look: new operator Look
+mistakes 1 started, a frame at 64 by 64: {nod} look: pass block of 32 bytes: Texture painted at 0, writeonly vec2[] texels at 16
+mistakes 1 started, a frame at 64 by 64: {nod} look: pipeline from Look.comp
+mistakes 1 started, a frame at 64 by 64: {nod} maker: new operator Maker
+mistakes 1 started, a frame at 64 by 64: {nod} paint: pipeline from Paint.frag and Paint.vert
+mistakes 1 started, a frame at 64 by 64: {nod} pairs: pass block of 16 bytes: writeonly vec2[] pairs at 0
+mistakes 1 started, a frame at 64 by 64: {nod} pairs: pipeline from Pairs.comp
+mistakes 1 started, a frame at 64 by 64: {nod} picture: new operator Picture
+mistakes 1 started, a frame at 64 by 64: {nod} picture: pass block of 32 bytes: Texture picture at 0, writeonly float[] texels at 16
+mistakes 1 started, a frame at 64 by 64: {nod} picture: pipeline from Picture.comp
+mistakes 1 started, a frame at 64 by 64: {nod} scene: pipeline from Scene.frag and Scene.vert
+mistakes 1 started, a frame at 64 by 64: {nod} scratch: new operator Scratch
+mistakes 1 started, a frame at 64 by 64: {nod} shape: new operator Shapes
+mistakes 1 started, a frame at 64 by 64: {nod} shape: pass block of 16 bytes: readonly Shape[] shapes at 0, writeonly float[] sums at 8
+mistakes 1 started, a frame at 64 by 64: {nod} shape: pipeline from Shape.comp
+mistakes 1 started, a frame at 64 by 64: {nod} sign: new operator Sign
+mistakes 1 started, a frame at 64 by 64: {nod} stamp: pass block of 16 bytes: Image canvas at 0
+mistakes 1 started, a frame at 64 by 64: {nod} stamp: pipeline from Stamp.comp
+mistakes 1 started, a frame at 64 by 64: {nod} sum: pass block of 16 bytes: readonly float[] values at 0, writeonly float[] sums at 8
+mistakes 1 started, a frame at 64 by 64: {nod} sum: pipeline from Sum.comp
+mistakes 1 started, a frame at 64 by 64: {nod} take: new operator Take
+mistakes 1 started, a frame at 64 by 64: {nod} twin: new operator Twin
+mistakes 1 started, a frame at 64 by 64: {nod} wrong: pass block of 16 bytes: float amount at 0, writeonly float[] values at 8
+mistakes 1 started, a frame at 64 by 64: {nod} wrong: pipeline from Wrong.comp
+mistakes 2 node set paint log=warn: {mem} draw: keeps draw.values and what it holds
+mistakes 2 node set paint log=warn: {mem} fill: keeps values and what it holds
+mistakes 2 node set paint log=warn: {mem} frame: keeps frame.seen and what it holds
+mistakes 2 node set paint log=warn: {mem} look: keeps look.texels and what it holds
+mistakes 2 node set paint log=warn: {mem} maker: keeps maker.shapes and what it holds
+mistakes 2 node set paint log=warn: {mem} pairs: keeps pairs.pairs and what it holds
+mistakes 2 node set paint log=warn: {mem} picture: keeps picture.texels and what it holds
+mistakes 2 node set paint log=warn: {mem} shape: keeps shape.shapes and what it holds
+mistakes 2 node set paint log=warn: {mem} shape: keeps shape.sums and what it holds
+mistakes 2 node set paint log=warn: {mem} sign: keeps sign.characters and what it holds
+mistakes 2 node set paint log=warn: {mem} sign: keeps sign.labels and what it holds
+mistakes 2 node set paint log=warn: {mem} sign: keeps sign.rects and what it holds
+mistakes 2 node set paint log=warn: {mem} sum: keeps sum.sums and what it holds
+mistakes 2 node set paint log=warn: {mem} wrong: keeps wrong.values and what it holds
+mistakes 2 node set paint log=warn: {nod} draw: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} fill: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} frame: keeps its operator
+mistakes 2 node set paint log=warn: {nod} frame: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} give: keeps its operator
+mistakes 2 node set paint log=warn: {nod} input: keeps its operator
+mistakes 2 node set paint log=warn: {nod} look: keeps its operator
+mistakes 2 node set paint log=warn: {nod} look: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} maker: keeps its operator
+mistakes 2 node set paint log=warn: {nod} pairs: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} picture: keeps its operator
+mistakes 2 node set paint log=warn: {nod} picture: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} scene: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} scratch: keeps its operator
+mistakes 2 node set paint log=warn: {nod} shape: keeps its operator
+mistakes 2 node set paint log=warn: {nod} shape: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} sign: keeps its operator
+mistakes 2 node set paint log=warn: {nod} stamp: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} sum: keeps its pipeline
+mistakes 2 node set paint log=warn: {nod} take: keeps its operator
+mistakes 2 node set paint log=warn: {nod} twin: keeps its operator
+mistakes 2 node set paint log=warn: {nod} wrong: keeps its pipeline
+mistakes 3 a frame at no size: {mem} draw: keeps draw.values and what it holds
+mistakes 3 a frame at no size: {mem} fill: keeps values and what it holds
+mistakes 3 a frame at no size: {mem} frame: keeps frame.seen and what it holds
+mistakes 3 a frame at no size: {mem} look: keeps look.texels and what it holds
+mistakes 3 a frame at no size: {mem} maker: keeps maker.shapes and what it holds
+mistakes 3 a frame at no size: {mem} pairs: keeps pairs.pairs and what it holds
+mistakes 3 a frame at no size: {mem} picture: keeps picture.texels and what it holds
+mistakes 3 a frame at no size: {mem} shape: keeps shape.shapes and what it holds
+mistakes 3 a frame at no size: {mem} shape: keeps shape.sums and what it holds
+mistakes 3 a frame at no size: {mem} sign: keeps sign.characters and what it holds
+mistakes 3 a frame at no size: {mem} sign: keeps sign.labels and what it holds
+mistakes 3 a frame at no size: {mem} sign: keeps sign.rects and what it holds
+mistakes 3 a frame at no size: {mem} sum: keeps sum.sums and what it holds
+mistakes 3 a frame at no size: {mem} wrong: keeps wrong.values and what it holds
+mistakes 3 a frame at no size: {nod} draw: keeps its pipeline
+mistakes 3 a frame at no size: {nod} fill: keeps its pipeline
+mistakes 3 a frame at no size: {nod} frame: keeps its operator
+mistakes 3 a frame at no size: {nod} frame: keeps its pipeline
+mistakes 3 a frame at no size: {nod} give: keeps its operator
+mistakes 3 a frame at no size: {nod} input: keeps its operator
+mistakes 3 a frame at no size: {nod} look: keeps its operator
+mistakes 3 a frame at no size: {nod} look: keeps its pipeline
+mistakes 3 a frame at no size: {nod} maker: keeps its operator
+mistakes 3 a frame at no size: {nod} pairs: keeps its pipeline
+mistakes 3 a frame at no size: {nod} picture: keeps its operator
+mistakes 3 a frame at no size: {nod} picture: keeps its pipeline
+mistakes 3 a frame at no size: {nod} scene: keeps its pipeline
+mistakes 3 a frame at no size: {nod} scratch: keeps its operator
+mistakes 3 a frame at no size: {nod} shape: keeps its operator
+mistakes 3 a frame at no size: {nod} shape: keeps its pipeline
+mistakes 3 a frame at no size: {nod} sign: keeps its operator
+mistakes 3 a frame at no size: {nod} stamp: keeps its pipeline
+mistakes 3 a frame at no size: {nod} sum: keeps its pipeline
+mistakes 3 a frame at no size: {nod} take: keeps its operator
+mistakes 3 a frame at no size: {nod} twin: keeps its operator
+mistakes 3 a frame at no size: {nod} wrong: keeps its pipeline
+mistakes 5 a frame at 64 by 64 again: {mem} stamp: stamp.canvas: 64 by 64 pixels of R8G8B8A8_UNORM, which it stores into
+the device goes -> done
+triangle-compute 1 started, a frame at 64 by 64: {mem} raster: raster.canvas: 64 by 64 pixels of R8G8B8A8_UNORM, which it stores into
+triangle-compute 1 started, a frame at 64 by 64: {nod} raster: pass block of 32 bytes: uint frames_per_turn at 0, Image canvas at 16
+triangle-compute 1 started, a frame at 64 by 64: {nod} raster: pipeline from Raster.comp
+triangle-compute 1 started, a frame at 64 by 64: {nod} screen: pass block of 16 bytes: Texture picture at 0
+triangle-compute 1 started, a frame at 64 by 64: {nod} screen: pipeline from Screen.frag and Screen.vert
+triangle-compute 2 node set screen log=warn: {nod} raster: keeps its pipeline
+triangle-compute 5 a frame at 64 by 64 again: {mem} raster: raster.canvas: 64 by 64 pixels of R8G8B8A8_UNORM, which it stores into
+triangle-cpp-raster 1 started, a frame at 64 by 64: {mem} raster: cells of 2097152 bytes on the GPU
+triangle-cpp-raster 1 started, a frame at 64 by 64: {mem} raster: raster.packed of 262144 bytes written by the CPU
+triangle-cpp-raster 1 started, a frame at 64 by 64: {nod} raster: new operator Raster
+triangle-cpp-raster 1 started, a frame at 64 by 64: {nod} raster: pass block of 32 bytes: uint side at 0, readonly uint[] packed at 8, writeonly Cell[] cells at 16
+triangle-cpp-raster 1 started, a frame at 64 by 64: {nod} raster: pipeline from Raster.comp
+triangle-cpp-raster 1 started, a frame at 64 by 64: {nod} screen: pass block of 16 bytes: readonly Cell[] cells at 0
+triangle-cpp-raster 1 started, a frame at 64 by 64: {nod} screen: pipeline from Screen.frag and Screen.vert
+triangle-cpp-raster 2 node set screen log=warn: {mem} raster: keeps cells and what it holds
+triangle-cpp-raster 2 node set screen log=warn: {mem} raster: keeps raster.packed and what it holds
+triangle-cpp-raster 2 node set screen log=warn: {nod} raster: keeps its operator
+triangle-cpp-raster 2 node set screen log=warn: {nod} raster: keeps its pipeline
+wave 1 started, a frame at 64 by 64: {mem} probe: probe.samples of 32 bytes read back by the CPU
+wave 1 started, a frame at 64 by 64: {mem} wave: values of 4096 bytes on the GPU
+wave 1 started, a frame at 64 by 64: {nod} probe: new operator Probe
+wave 1 started, a frame at 64 by 64: {nod} probe: pipeline from Probe.comp
+wave 1 started, a frame at 64 by 64: {nod} wave: new operator Wave
+wave 1 started, a frame at 64 by 64: {nod} wave: pass block of 16 bytes: float amplitude at 0, float phase at 4, float[] values at 8
+wave 1 started, a frame at 64 by 64: {nod} wave: pipeline from Wave.comp
+wave 2 node set probe log=warn: {mem} wave: keeps values and what it holds
+wave 2 node set probe log=warn: {nod} wave: keeps its operator
+wave 2 node set probe log=warn: {nod} wave: keeps its pipeline
+
+## Schedule.cpp/every project
+projects/life/view.vlp: a schedule, ok true, 3 nodes
+projects/life/view.vlp: after them, node cells: cooks false, runs true
+projects/life/view.vlp: after them, node engine: cooks true, runs true
+projects/life/view.vlp: after them, node seed-cells: cooks true, runs true
+projects/life/view.vlp: node cells: cooks false, runs true
+projects/life/view.vlp: node engine: cooks false, runs true
+projects/life/view.vlp: node seed-cells: cooks false, runs true
+projects/life/view.vlp: pass dispatch of 1024 groups, reads 0, writes 1
+projects/life/view.vlp: pass dispatch of 1024 groups, reads 3, writes 3
+projects/life/view.vlp: pass draw of 6 vertices, counted instances, into the window
+projects/life/view.vlp: port cells.cells: buffer read Cell, joined
+projects/life/view.vlp: port cells.out_color: image written -
+projects/life/view.vlp: port engine.cell_a: buffer written Cell
+projects/life/view.vlp: port engine.cell_b: buffer written Cell
+projects/life/view.vlp: port engine.cells: buffer written Cell, joined
+projects/life/view.vlp: port engine.frames_per_generation: value read uint, joined
+projects/life/view.vlp: port engine.generations: value read -
+projects/life/view.vlp: port engine.grid_xy: value read ivec2, joined
+projects/life/view.vlp: port engine.seeded: buffer read Cell, joined
+projects/life/view.vlp: port seed-cells.alive_percent: value read uint, joined
+projects/life/view.vlp: port seed-cells.seed: value read uint, joined
+projects/life/view.vlp: port seed-cells.seeded: buffer written Cell, joined
+projects/life/view.vlp: three frames -> done
+projects/ray-cubes/view.vlp: a schedule, ok true, 28 nodes
+projects/ray-cubes/view.vlp: after them, node bounce1.reflect: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce1.shade: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce1.shadow: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce1.trace: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce1: cooks false, runs false
+projects/ray-cubes/view.vlp: after them, node bounce2.reflect: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce2.shade: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce2.shadow: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce2.trace: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce2: cooks false, runs false
+projects/ray-cubes/view.vlp: after them, node bounce3.reflect: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce3.shade: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce3.shadow: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce3.trace: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node bounce3: cooks false, runs false
+projects/ray-cubes/view.vlp: after them, node camera: cooks true, runs false
+projects/ray-cubes/view.vlp: after them, node floor: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node grid: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node join: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node lamp: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node meter: cooks true, runs true
+projects/ray-cubes/view.vlp: after them, node place: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node rays: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node screen: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node sky: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node smooth: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node spin: cooks false, runs true
+projects/ray-cubes/view.vlp: after them, node tone: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce1.reflect: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce1.shade: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce1.shadow: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce1.trace: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce1: cooks false, runs false
+projects/ray-cubes/view.vlp: node bounce2.reflect: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce2.shade: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce2.shadow: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce2.trace: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce2: cooks false, runs false
+projects/ray-cubes/view.vlp: node bounce3.reflect: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce3.shade: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce3.shadow: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce3.trace: cooks false, runs true
+projects/ray-cubes/view.vlp: node bounce3: cooks false, runs false
+projects/ray-cubes/view.vlp: node camera: cooks false, runs false
+projects/ray-cubes/view.vlp: node floor: cooks false, runs true
+projects/ray-cubes/view.vlp: node grid: cooks false, runs true
+projects/ray-cubes/view.vlp: node join: cooks false, runs true
+projects/ray-cubes/view.vlp: node lamp: cooks false, runs true
+projects/ray-cubes/view.vlp: node meter: cooks false, runs true
+projects/ray-cubes/view.vlp: node place: cooks false, runs true
+projects/ray-cubes/view.vlp: node rays: cooks false, runs true
+projects/ray-cubes/view.vlp: node screen: cooks false, runs true
+projects/ray-cubes/view.vlp: node sky: cooks false, runs true
+projects/ray-cubes/view.vlp: node smooth: cooks false, runs true
+projects/ray-cubes/view.vlp: node spin: cooks false, runs true
+projects/ray-cubes/view.vlp: node tone: cooks false, runs true
+projects/ray-cubes/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 1 groups, reads 1, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 1 groups, reads 1, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 1024 groups, reads 1, writes 0, stores
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 1, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 1, writes 2
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 2, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 2, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 2, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 2, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 3, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 3, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 3, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 4, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 4, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 4, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 5, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 5, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 32400 groups, reads 5, writes 1
+projects/ray-cubes/view.vlp: pass dispatch of 65 groups, reads 1, writes 2
+projects/ray-cubes/view.vlp: pass dispatch of 65 groups, reads 2, writes 1
+projects/ray-cubes/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/ray-cubes/view.vlp: port bounce1.reflect.bounced: buffer written Ray, joined
+projects/ray-cubes/view.vlp: port bounce1.reflect.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce1.reflect.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port bounce1.reflect.tint: value read float, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.after: buffer written vec4, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.ambient: value read float, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.before: buffer read vec4, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.light: buffer read Light, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.lit: buffer read float, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.sharpness: value read float, joined
+projects/ray-cubes/view.vlp: port bounce1.shade.shine: value read float, joined
+projects/ray-cubes/view.vlp: port bounce1.shadow.count: buffer read uint, joined
+projects/ray-cubes/view.vlp: port bounce1.shadow.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce1.shadow.instances: buffer read Instance, joined
+projects/ray-cubes/view.vlp: port bounce1.shadow.light: buffer read Light, joined
+projects/ray-cubes/view.vlp: port bounce1.shadow.lit: buffer written float, joined
+projects/ray-cubes/view.vlp: port bounce1.trace.count: buffer read uint, joined
+projects/ray-cubes/view.vlp: port bounce1.trace.hits: buffer written Hit, joined
+projects/ray-cubes/view.vlp: port bounce1.trace.instances: buffer read Instance, joined
+projects/ray-cubes/view.vlp: port bounce1.trace.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port bounce2.reflect.bounced: buffer written Ray, joined
+projects/ray-cubes/view.vlp: port bounce2.reflect.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce2.reflect.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port bounce2.reflect.tint: value read float, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.after: buffer written vec4, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.ambient: value read float, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.before: buffer read vec4, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.light: buffer read Light, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.lit: buffer read float, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.sharpness: value read float, joined
+projects/ray-cubes/view.vlp: port bounce2.shade.shine: value read float, joined
+projects/ray-cubes/view.vlp: port bounce2.shadow.count: buffer read uint, joined
+projects/ray-cubes/view.vlp: port bounce2.shadow.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce2.shadow.instances: buffer read Instance, joined
+projects/ray-cubes/view.vlp: port bounce2.shadow.light: buffer read Light, joined
+projects/ray-cubes/view.vlp: port bounce2.shadow.lit: buffer written float, joined
+projects/ray-cubes/view.vlp: port bounce2.trace.count: buffer read uint, joined
+projects/ray-cubes/view.vlp: port bounce2.trace.hits: buffer written Hit, joined
+projects/ray-cubes/view.vlp: port bounce2.trace.instances: buffer read Instance, joined
+projects/ray-cubes/view.vlp: port bounce2.trace.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port bounce3.reflect.bounced: buffer written Ray, joined
+projects/ray-cubes/view.vlp: port bounce3.reflect.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce3.reflect.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port bounce3.reflect.tint: value read float, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.after: buffer written vec4, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.ambient: value read float, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.before: buffer read vec4, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.light: buffer read Light, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.lit: buffer read float, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.sharpness: value read float, joined
+projects/ray-cubes/view.vlp: port bounce3.shade.shine: value read float, joined
+projects/ray-cubes/view.vlp: port bounce3.shadow.count: buffer read uint, joined
+projects/ray-cubes/view.vlp: port bounce3.shadow.hits: buffer read Hit, joined
+projects/ray-cubes/view.vlp: port bounce3.shadow.instances: buffer read Instance, joined
+projects/ray-cubes/view.vlp: port bounce3.shadow.light: buffer read Light, joined
+projects/ray-cubes/view.vlp: port bounce3.shadow.lit: buffer written float, joined
+projects/ray-cubes/view.vlp: port bounce3.trace.count: buffer read uint, joined
+projects/ray-cubes/view.vlp: port bounce3.trace.hits: buffer written Hit, joined
+projects/ray-cubes/view.vlp: port bounce3.trace.instances: buffer read Instance, joined
+projects/ray-cubes/view.vlp: port bounce3.trace.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port camera.camera: buffer written -, joined
+projects/ray-cubes/view.vlp: port camera.double_click: value read -, joined
+projects/ray-cubes/view.vlp: port camera.eye: value read vec3, joined
+projects/ray-cubes/view.vlp: port camera.far: value read float, joined
+projects/ray-cubes/view.vlp: port camera.frames_per_turn: value read uint, joined
+projects/ray-cubes/view.vlp: port camera.lens: value read float, joined
+projects/ray-cubes/view.vlp: port camera.near: value read float, joined
+projects/ray-cubes/view.vlp: port camera.target: value read vec3, joined
+projects/ray-cubes/view.vlp: port camera.turn: value read -, joined
+projects/ray-cubes/view.vlp: port camera.up: value read vec3, joined
+projects/ray-cubes/view.vlp: port floor.color: value read vec3, joined
+projects/ray-cubes/view.vlp: port floor.cube: buffer written Cube, joined
+projects/ray-cubes/view.vlp: port floor.extent: value read float, joined
+projects/ray-cubes/view.vlp: port floor.mirror: value read float, joined
+projects/ray-cubes/view.vlp: port floor.tiles: value read float, joined
+projects/ray-cubes/view.vlp: port grid.columns: value read uint, joined
+projects/ray-cubes/view.vlp: port grid.cubes: buffer written Cube, joined
+projects/ray-cubes/view.vlp: port grid.side: value read float, joined
+projects/ray-cubes/view.vlp: port grid.spacing: value read float, joined
+projects/ray-cubes/view.vlp: port join.cubes: buffer read Cube, joined
+projects/ray-cubes/view.vlp: port join.floor: buffer read Cube, joined
+projects/ray-cubes/view.vlp: port join.scene: buffer written Cube, joined
+projects/ray-cubes/view.vlp: port lamp.center: value read vec3, joined
+projects/ray-cubes/view.vlp: port lamp.color: value read vec3, joined
+projects/ray-cubes/view.vlp: port lamp.frames_per_turn: value read uint, joined
+projects/ray-cubes/view.vlp: port lamp.light: buffer written Light, joined
+projects/ray-cubes/view.vlp: port lamp.radius: value read float, joined
+projects/ray-cubes/view.vlp: port meter.gathered: buffer read vec4, joined
+projects/ray-cubes/view.vlp: port meter.size: value read uvec2, joined
+projects/ray-cubes/view.vlp: port meter.spots: buffer written vec4
+projects/ray-cubes/view.vlp: port place.count: buffer written uint, joined
+projects/ray-cubes/view.vlp: port place.instances: buffer written Instance, joined
+projects/ray-cubes/view.vlp: port place.scene: buffer read Cube, joined
+projects/ray-cubes/view.vlp: port rays.camera: buffer read Camera, joined
+projects/ray-cubes/view.vlp: port rays.gathered: buffer written vec4, joined
+projects/ray-cubes/view.vlp: port rays.rays: buffer written Ray, joined
+projects/ray-cubes/view.vlp: port rays.size: value read uvec2, joined
+projects/ray-cubes/view.vlp: port screen.picture: image read Texture, joined
+projects/ray-cubes/view.vlp: port screen.pixel: image written -
+projects/ray-cubes/view.vlp: port sky.after: buffer written vec4, joined
+projects/ray-cubes/view.vlp: port sky.before: buffer read vec4, joined
+projects/ray-cubes/view.vlp: port sky.rays: buffer read Ray, joined
+projects/ray-cubes/view.vlp: port smooth.after: buffer written vec4, joined
+projects/ray-cubes/view.vlp: port smooth.before: buffer read vec4, joined
+projects/ray-cubes/view.vlp: port smooth.size: value read uvec2, joined
+projects/ray-cubes/view.vlp: port spin.moved: buffer written Cube, joined
+projects/ray-cubes/view.vlp: port spin.rest: buffer read Cube, joined
+projects/ray-cubes/view.vlp: port spin.speed: value read float, joined
+projects/ray-cubes/view.vlp: port tone.exposure: value read float, joined
+projects/ray-cubes/view.vlp: port tone.gathered: buffer read vec4, joined
+projects/ray-cubes/view.vlp: port tone.picture: image written Image, joined
+projects/ray-cubes/view.vlp: port tone.size: value read uvec2, joined
+projects/ray-cubes/view.vlp: three frames -> done
+projects/triangles/triangle-compute/view.vlp: a schedule, ok true, 2 nodes
+projects/triangles/triangle-compute/view.vlp: after them, node raster: cooks false, runs true
+projects/triangles/triangle-compute/view.vlp: after them, node screen: cooks false, runs true
+projects/triangles/triangle-compute/view.vlp: node raster: cooks false, runs true
+projects/triangles/triangle-compute/view.vlp: node screen: cooks false, runs true
+projects/triangles/triangle-compute/view.vlp: pass dispatch of 1024 groups, reads 0, writes 0, stores
+projects/triangles/triangle-compute/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/triangles/triangle-compute/view.vlp: port raster.canvas: image written Image, joined
+projects/triangles/triangle-compute/view.vlp: port raster.frames_per_turn: value read uint, joined
+projects/triangles/triangle-compute/view.vlp: port screen.picture: image read Texture, joined
+projects/triangles/triangle-compute/view.vlp: port screen.pixel: image written -
+projects/triangles/triangle-compute/view.vlp: three frames -> done
+projects/triangles/triangle-cpp-raster/view.vlp: a schedule, ok true, 2 nodes
+projects/triangles/triangle-cpp-raster/view.vlp: after them, node raster: cooks true, runs true
+projects/triangles/triangle-cpp-raster/view.vlp: after them, node screen: cooks false, runs true
+projects/triangles/triangle-cpp-raster/view.vlp: node raster: cooks false, runs true
+projects/triangles/triangle-cpp-raster/view.vlp: node screen: cooks false, runs true
+projects/triangles/triangle-cpp-raster/view.vlp: pass dispatch of 1024 groups, reads 1, writes 1
+projects/triangles/triangle-cpp-raster/view.vlp: pass draw of 6 vertices, counted instances, into the window
+projects/triangles/triangle-cpp-raster/view.vlp: port raster.cells: buffer written Cell, joined
+projects/triangles/triangle-cpp-raster/view.vlp: port raster.frames_per_turn: value read uint, joined
+projects/triangles/triangle-cpp-raster/view.vlp: port raster.packed: buffer read uint, joined
+projects/triangles/triangle-cpp-raster/view.vlp: port raster.side: value read uint, joined
+projects/triangles/triangle-cpp-raster/view.vlp: port screen.cells: buffer read Cell, joined
+projects/triangles/triangle-cpp-raster/view.vlp: port screen.pixel: image written -
+projects/triangles/triangle-cpp-raster/view.vlp: three frames -> done
+projects/triangles/triangle-files/view.vlp: a schedule, ok true, 4 nodes
+projects/triangles/triangle-files/view.vlp: after them, node blend: cooks false, runs false
+projects/triangles/triangle-files/view.vlp: after them, node clock: cooks true, runs false
+projects/triangles/triangle-files/view.vlp: after them, node corners: cooks true, runs false
+projects/triangles/triangle-files/view.vlp: after them, node face: cooks false, runs true
+projects/triangles/triangle-files/view.vlp: node blend: cooks false, runs false
+projects/triangles/triangle-files/view.vlp: node clock: cooks false, runs false
+projects/triangles/triangle-files/view.vlp: node corners: cooks false, runs false
+projects/triangles/triangle-files/view.vlp: node face: cooks false, runs true
+projects/triangles/triangle-files/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/triangles/triangle-files/view.vlp: port blend.color: varying read vec3 at 0, joined
+projects/triangles/triangle-files/view.vlp: port blend.pixel: image written -
+projects/triangles/triangle-files/view.vlp: port clock.frames_per_turn: value read uint, joined
+projects/triangles/triangle-files/view.vlp: port clock.spin: object written vp_triangle_files::Spin, joined
+projects/triangles/triangle-files/view.vlp: port corners.corners: buffer written -, joined
+projects/triangles/triangle-files/view.vlp: port corners.spin: object read vp_triangle_files::Spin, joined
+projects/triangles/triangle-files/view.vlp: port face.color: varying written vec3 at 0, joined
+projects/triangles/triangle-files/view.vlp: port face.corners: buffer read Corner, joined
+projects/triangles/triangle-files/view.vlp: three frames -> done
+projects/triangles/triangle-params/view.vlp: a schedule, ok true, 1 nodes
+projects/triangles/triangle-params/view.vlp: after them, node triangle: cooks false, runs true
+projects/triangles/triangle-params/view.vlp: node triangle: cooks false, runs true
+projects/triangles/triangle-params/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/triangles/triangle-params/view.vlp: port triangle.frames_per_turn: value read uint, joined
+projects/triangles/triangle-params/view.vlp: port triangle.left: value read vec2, joined
+projects/triangles/triangle-params/view.vlp: port triangle.left_color: value read vec3, joined
+projects/triangles/triangle-params/view.vlp: port triangle.pixel: image written -
+projects/triangles/triangle-params/view.vlp: port triangle.right: value read vec2, joined
+projects/triangles/triangle-params/view.vlp: port triangle.right_color: value read vec3, joined
+projects/triangles/triangle-params/view.vlp: port triangle.top: value read vec2, joined
+projects/triangles/triangle-params/view.vlp: port triangle.top_color: value read vec3, joined
+projects/triangles/triangle-params/view.vlp: three frames -> done
+projects/triangles/triangle-points/view.vlp: a schedule, ok true, 5 nodes
+projects/triangles/triangle-points/view.vlp: after them, node corners.left: cooks false, runs true
+projects/triangles/triangle-points/view.vlp: after them, node corners.right: cooks false, runs true
+projects/triangles/triangle-points/view.vlp: after them, node corners.top: cooks false, runs true
+projects/triangles/triangle-points/view.vlp: after them, node corners: cooks false, runs false
+projects/triangles/triangle-points/view.vlp: after them, node face: cooks false, runs true
+projects/triangles/triangle-points/view.vlp: node corners.left: cooks false, runs true
+projects/triangles/triangle-points/view.vlp: node corners.right: cooks false, runs true
+projects/triangles/triangle-points/view.vlp: node corners.top: cooks false, runs true
+projects/triangles/triangle-points/view.vlp: node corners: cooks false, runs false
+projects/triangles/triangle-points/view.vlp: node face: cooks false, runs true
+projects/triangles/triangle-points/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+projects/triangles/triangle-points/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+projects/triangles/triangle-points/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+projects/triangles/triangle-points/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/triangles/triangle-points/view.vlp: port corners.left.at: value read vec2, joined
+projects/triangles/triangle-points/view.vlp: port corners.left.color: value read vec3, joined
+projects/triangles/triangle-points/view.vlp: port corners.left.corner: buffer written Corner, joined
+projects/triangles/triangle-points/view.vlp: port corners.right.at: value read vec2, joined
+projects/triangles/triangle-points/view.vlp: port corners.right.color: value read vec3, joined
+projects/triangles/triangle-points/view.vlp: port corners.right.corner: buffer written Corner, joined
+projects/triangles/triangle-points/view.vlp: port corners.top.at: value read vec2, joined
+projects/triangles/triangle-points/view.vlp: port corners.top.color: value read vec3, joined
+projects/triangles/triangle-points/view.vlp: port corners.top.corner: buffer written Corner, joined
+projects/triangles/triangle-points/view.vlp: port face.frames_per_turn: value read uint, joined
+projects/triangles/triangle-points/view.vlp: port face.left: buffer read Corner, joined
+projects/triangles/triangle-points/view.vlp: port face.pixel: image written -
+projects/triangles/triangle-points/view.vlp: port face.right: buffer read Corner, joined
+projects/triangles/triangle-points/view.vlp: port face.top: buffer read Corner, joined
+projects/triangles/triangle-points/view.vlp: three frames -> done
+projects/triangles/triangle-shaders/view.vlp: a schedule, ok true, 1 nodes
+projects/triangles/triangle-shaders/view.vlp: after them, node triangle: cooks false, runs true
+projects/triangles/triangle-shaders/view.vlp: node triangle: cooks false, runs true
+projects/triangles/triangle-shaders/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/triangles/triangle-shaders/view.vlp: port triangle.frames_per_turn: value read uint, joined
+projects/triangles/triangle-shaders/view.vlp: port triangle.pixel: image written -
+projects/triangles/triangle-shaders/view.vlp: three frames -> done
+projects/triangles/triangle-twin/view.vlp: a schedule, ok true, 1 nodes
+projects/triangles/triangle-twin/view.vlp: after them, node triangle: cooks true, runs true
+projects/triangles/triangle-twin/view.vlp: node triangle: cooks false, runs true
+projects/triangles/triangle-twin/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/triangles/triangle-twin/view.vlp: port triangle.frames_per_turn: value read uint, joined
+projects/triangles/triangle-twin/view.vlp: port triangle.pixel: image written -
+projects/triangles/triangle-twin/view.vlp: port triangle.points: buffer read vec2, joined
+projects/triangles/triangle-twin/view.vlp: three frames -> done
+projects/triangles/triangle-wire/view.vlp: a schedule, ok true, 2 nodes
+projects/triangles/triangle-wire/view.vlp: after them, node corners: cooks false, runs true
+projects/triangles/triangle-wire/view.vlp: after them, node face: cooks false, runs true
+projects/triangles/triangle-wire/view.vlp: node corners: cooks false, runs true
+projects/triangles/triangle-wire/view.vlp: node face: cooks false, runs true
+projects/triangles/triangle-wire/view.vlp: pass dispatch of 3 groups, reads 0, writes 1
+projects/triangles/triangle-wire/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/triangles/triangle-wire/view.vlp: port corners.angles: buffer written float, joined
+projects/triangles/triangle-wire/view.vlp: port corners.frames_per_turn: value read uint, joined
+projects/triangles/triangle-wire/view.vlp: port face.angles: buffer read float, joined
+projects/triangles/triangle-wire/view.vlp: port face.pixel: image written -
+projects/triangles/triangle-wire/view.vlp: three frames -> done
+projects/triangles/triangle/view.vlp: a schedule, ok true, 1 nodes
+projects/triangles/triangle/view.vlp: after them, node triangle: cooks true, runs true
+projects/triangles/triangle/view.vlp: node triangle: cooks false, runs true
+projects/triangles/triangle/view.vlp: pass draw of 3 vertices, 1 instances, into the window
+projects/triangles/triangle/view.vlp: port triangle.corners: buffer read Corner, joined
+projects/triangles/triangle/view.vlp: port triangle.frames_per_turn: value read uint, joined
+projects/triangles/triangle/view.vlp: port triangle.pixel: image written -
+projects/triangles/triangle/view.vlp: three frames -> done
+projects/wave/view.vlp: a schedule, ok true, 2 nodes
+projects/wave/view.vlp: after them, node probe: cooks true, runs true
+projects/wave/view.vlp: after them, node wave: cooks true, runs true
+projects/wave/view.vlp: node probe: cooks false, runs true
+projects/wave/view.vlp: node wave: cooks false, runs true
+projects/wave/view.vlp: pass dispatch of 1 groups, reads 1, writes 1
+projects/wave/view.vlp: pass dispatch of 16 groups, reads 1, writes 1
+projects/wave/view.vlp: port probe.every: value read uint, joined
+projects/wave/view.vlp: port probe.samples: buffer written float
+projects/wave/view.vlp: port probe.step: value read uint, joined
+projects/wave/view.vlp: port probe.values: buffer read float, joined
+projects/wave/view.vlp: port wave.amplitude: value read float, joined
+projects/wave/view.vlp: port wave.speed: value read float, joined
+projects/wave/view.vlp: port wave.values: buffer written float, joined
+projects/wave/view.vlp: three frames -> done
+the device goes -> done
+
+## Schedule.cpp/the fail-loud view
+src/tools/tests/mistakes/view.vlp: a schedule, ok false, 25 nodes
+src/tools/tests/mistakes/view.vlp: after them, node blot: left out, "a fragment node declares no pass block yet: the vertex node it draws with holds the draw's, and hands on what the fragment shader needs as varyings"
+src/tools/tests/mistakes/view.vlp: after them, node brush: warns, "draws nothing yet, as its folder holds no .frag: new brush/Brush.frag writes one, or connect its outputs to the inputs of a node whose folder holds a lone .frag"
+src/tools/tests/mistakes/view.vlp: after them, node draw: left out, "values: a draw's shaders only read buffers; declare it readonly"
+src/tools/tests/mistakes/view.vlp: after them, node fill: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: after them, node frame: cooks true, runs true
+src/tools/tests/mistakes/view.vlp: after them, node give: cooks true, runs false
+src/tools/tests/mistakes/view.vlp: after them, node ink: warns, "draws nothing yet, as its folder holds no .vert: new ink/Ink.vert writes one, or connect the outputs of a node whose folder holds a lone .vert to its inputs"
+src/tools/tests/mistakes/view.vlp: after them, node input: cooks true, runs false
+src/tools/tests/mistakes/view.vlp: after them, node look: cooks true, runs true
+src/tools/tests/mistakes/view.vlp: after them, node maker: left out, "the operator writes shapes, which nothing reads: connect it to a buffer of another node's shader"
+src/tools/tests/mistakes/view.vlp: after them, node paint: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: after them, node pairs: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: after them, node picture: cooks true, runs true
+src/tools/tests/mistakes/view.vlp: after them, node rub: left out, "tint: its .frag reads a vec3 at location 1, which its .vert writes nothing to"
+src/tools/tests/mistakes/view.vlp: after them, node scene: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: after them, node scratch: cooks true, runs false
+src/tools/tests/mistakes/view.vlp: after them, node shape: cooks true, runs true
+src/tools/tests/mistakes/view.vlp: after them, node sign: left out, "the operator writes rects, which nothing reads: connect it to a buffer of another node's shader"
+src/tools/tests/mistakes/view.vlp: after them, node smear: left out, "canvas: a draw's shaders store into no image, as that needs features past the Vulkan floor; a dispatch stores into one"
+src/tools/tests/mistakes/view.vlp: after them, node smudge: warns, "draws nothing yet, as its folder holds no .vert: new smudge/Smud...rt to its inputs" (162 characters, hash 54fdcae046a50b25)
+src/tools/tests/mistakes/view.vlp: after them, node spare: cooks false, runs false
+src/tools/tests/mistakes/view.vlp: after them, node stamp: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: after them, node sum: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: after them, node take: cooks true, runs false
+src/tools/tests/mistakes/view.vlp: after them, node twin: cooks true, runs false
+src/tools/tests/mistakes/view.vlp: after them, node wrong: left out, "the C++ of mistakes/wrong registers Echo NoHelp Refuse Twin Wron...>) registers one" (172 characters, hash 7a57279f7ee86290)
+src/tools/tests/mistakes/view.vlp: node blot: left out, "a fragment node declares no pass block yet: the vertex node it draws with holds the draw's, and hands on what the fragment shader needs as varyings"
+src/tools/tests/mistakes/view.vlp: node brush: warns, "draws nothing yet, as its folder holds no .frag: new brush/Brush.frag writes one, or connect its outputs to the inputs of a node whose folder holds a lone .frag"
+src/tools/tests/mistakes/view.vlp: node draw: left out, "values: a draw's shaders only read buffers; declare it readonly"
+src/tools/tests/mistakes/view.vlp: node fill: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node frame: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node give: cooks false, runs false
+src/tools/tests/mistakes/view.vlp: node ink: warns, "draws nothing yet, as its folder holds no .vert: new ink/Ink.vert writes one, or connect the outputs of a node whose folder holds a lone .vert to its inputs"
+src/tools/tests/mistakes/view.vlp: node input: cooks false, runs false
+src/tools/tests/mistakes/view.vlp: node look: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node maker: left out, "the operator writes shapes, which nothing reads: connect it to a buffer of another node's shader"
+src/tools/tests/mistakes/view.vlp: node paint: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node pairs: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node picture: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node rub: left out, "tint: its .frag reads a vec3 at location 1, which its .vert writes nothing to"
+src/tools/tests/mistakes/view.vlp: node scene: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node scratch: cooks false, runs false
+src/tools/tests/mistakes/view.vlp: node shape: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node sign: left out, "the operator writes rects, which nothing reads: connect it to a buffer of another node's shader"
+src/tools/tests/mistakes/view.vlp: node smear: left out, "canvas: a draw's shaders store into no image, as that needs features past the Vulkan floor; a dispatch stores into one"
+src/tools/tests/mistakes/view.vlp: node smudge: warns, "draws nothing yet, as its folder holds no .vert: new smudge/Smud...rt to its inputs" (162 characters, hash 54fdcae046a50b25)
+src/tools/tests/mistakes/view.vlp: node stamp: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node sum: cooks false, runs true
+src/tools/tests/mistakes/view.vlp: node take: cooks false, runs false
+src/tools/tests/mistakes/view.vlp: node twin: cooks false, runs false
+src/tools/tests/mistakes/view.vlp: node wrong: left out, "the C++ of mistakes/wrong registers Echo NoHelp Refuse Twin Wron...>) registers one" (172 characters, hash 7a57279f7ee86290)
+src/tools/tests/mistakes/view.vlp: pass dispatch of 1 groups, reads 0, writes 0, stores
+src/tools/tests/mistakes/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+src/tools/tests/mistakes/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+src/tools/tests/mistakes/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+src/tools/tests/mistakes/view.vlp: pass dispatch of 1 groups, reads 0, writes 1
+src/tools/tests/mistakes/view.vlp: pass dispatch of 1 groups, reads 1, writes 1
+src/tools/tests/mistakes/view.vlp: pass dispatch of 1 groups, reads 1, writes 1
+src/tools/tests/mistakes/view.vlp: pass dispatch of 2 groups, reads 0, writes 1
+src/tools/tests/mistakes/view.vlp: pass draw of 3 vertices, 1 instances, into an image
+src/tools/tests/mistakes/view.vlp: pass draw of 6 vertices, 1 instances, into the window
+src/tools/tests/mistakes/view.vlp: port brush.shade: varying written float at 1, alike ink.shade
+src/tools/tests/mistakes/view.vlp: port brush.uv: varying written vec2 at 0, alike ink.uv
+src/tools/tests/mistakes/view.vlp: port draw.color: image written -, alike picture.picture
+src/tools/tests/mistakes/view.vlp: port draw.values: buffer written float
+src/tools/tests/mistakes/view.vlp: port fill.amount: value read float, joined
+src/tools/tests/mistakes/view.vlp: port fill.values: buffer written float, joined
+src/tools/tests/mistakes/view.vlp: port frame.after: value read float, joined
+src/tools/tests/mistakes/view.vlp: port frame.at: value read vec2, joined
+src/tools/tests/mistakes/view.vlp: port frame.seen: buffer written float
+src/tools/tests/mistakes/view.vlp: port frame.tint: value read vec3, joined
+src/tools/tests/mistakes/view.vlp: port give.count: object written vp_mistakes::Count, joined
+src/tools/tests/mistakes/view.vlp: port ink.shade: varying read float at 1, alike brush.shade
+src/tools/tests/mistakes/view.vlp: port ink.uv: varying read vec2 at 0, alike brush.uv
+src/tools/tests/mistakes/view.vlp: port look.painted: image read Texture, joined
+src/tools/tests/mistakes/view.vlp: port look.texels: buffer written vec2
+src/tools/tests/mistakes/view.vlp: port maker.shapes: buffer written -
+src/tools/tests/mistakes/view.vlp: port paint.color: image written R8G8B8A8_UNORM, joined
+src/tools/tests/mistakes/view.vlp: port pairs.pairs: buffer written vec2
+src/tools/tests/mistakes/view.vlp: port picture.picture: image read Texture, alike draw.color, stamp.canvas, scene.color
+src/tools/tests/mistakes/view.vlp: port picture.texels: buffer written float
+src/tools/tests/mistakes/view.vlp: port scene.color: image written -, alike picture.picture
+src/tools/tests/mistakes/view.vlp: port shape.shapes: buffer read Shape, joined
+src/tools/tests/mistakes/view.vlp: port shape.sums: buffer written float
+src/tools/tests/mistakes/view.vlp: port sign.characters: buffer written -
+src/tools/tests/mistakes/view.vlp: port sign.labels: buffer written -
+src/tools/tests/mistakes/view.vlp: port sign.rects: buffer written -
+src/tools/tests/mistakes/view.vlp: port smudge.shade: varying read float at 2
+src/tools/tests/mistakes/view.vlp: port smudge.uv: varying read vec3 at 0
+src/tools/tests/mistakes/view.vlp: port stamp.canvas: image written Image, alike picture.picture
+src/tools/tests/mistakes/view.vlp: port sum.sums: buffer written float
+src/tools/tests/mistakes/view.vlp: port sum.values: buffer read float, joined
+src/tools/tests/mistakes/view.vlp: port take.count: object read vp_mistakes::Count, joined
+src/tools/tests/mistakes/view.vlp: port wrong.amount: value read float, joined
+src/tools/tests/mistakes/view.vlp: port wrong.values: buffer written float
+src/tools/tests/mistakes/view.vlp: three frames -> done
+the device goes -> done
+
+## Schedule.cpp/the fail-loud view, more mistakes
+mistakes+: a schedule, ok false, 25 nodes
+mistakes+: after them, node blot: left out, "a fragment node declares no pass block yet: the vertex node it draws with holds the draw's, and hands on what the fragment shader needs as varyings"
+mistakes+: after them, node brush: warns, "draws nothing yet, as its folder holds no .frag: new brush/Brush.frag writes one, or connect its outputs to the inputs of a node whose folder holds a lone .frag"
+mistakes+: after them, node draw: left out, "values: a draw's shaders only read buffers; declare it readonly"
+mistakes+: after them, node fill: cooks false, runs true
+mistakes+: after them, node frame: cooks false, runs true
+mistakes+: after them, node give: cooks true, runs false
+mistakes+: after them, node ink: warns, "draws nothing yet, as its folder holds no .vert: new ink/Ink.vert writes one, or connect the outputs of a node whose folder holds a lone .vert to its inputs"
+mistakes+: after them, node input: cooks false, runs false
+mistakes+: after them, node look: left out, "connection count: give writes a C++ object, which count does not read as an input"
+mistakes+: after them, node maker: left out, "the operator writes shapes, which nothing reads: connect it to a buffer of another node's shader"
+mistakes+: after them, node paint: cooks false, runs true
+mistakes+: after them, node pairs: left out, "image extra=R8_UNORM: neither its operator fills, its draw renders nor its dispatch stores an image extra"
+mistakes+: after them, node picture: left out, "picture is filled both by the operator and through connection filled-twice"
+mistakes+: after them, node rub: left out, "tint: its .frag reads a vec3 at location 1, which its .vert writes nothing to"
+mistakes+: after them, node scene: cooks false, runs true
+mistakes+: after them, node scratch: cooks true, runs false
+mistakes+: after them, node shape: cooks true, runs true
+mistakes+: after them, node sign: left out, "the operator writes rects, which nothing reads: connect it to a buffer of another node's shader"
+mistakes+: after them, node smear: left out, "canvas: a draw's shaders store into no image, as that needs features past the Vulkan floor; a dispatch stores into one"
+mistakes+: after them, node smudge: warns, "draws nothing yet, as its folder holds no .vert: new smudge/Smud...rt to its inputs" (162 characters, hash 54fdcae046a50b25)
+mistakes+: after them, node stamp: cooks false, runs true
+mistakes+: after them, node sum: left out, "connection into-buffer: stamp stores an image, which sums is no Texture to sample"
+mistakes+: after them, node take: cooks true, runs false
+mistakes+: after them, node twin: cooks true, runs false
+mistakes+: after them, node wrong: left out, "the C++ of mistakes/wrong registers Echo NoHelp Refuse Twin Wron...>) registers one" (172 characters, hash 7a57279f7ee86290)
+mistakes+: node blot: left out, "a fragment node declares no pass block yet: the vertex node it draws with holds the draw's, and hands on what the fragment shader needs as varyings"
+mistakes+: node brush: warns, "draws nothing yet, as its folder holds no .frag: new brush/Brush.frag writes one, or connect its outputs to the inputs of a node whose folder holds a lone .frag"
+mistakes+: node draw: left out, "values: a draw's shaders only read buffers; declare it readonly"
+mistakes+: node fill: cooks false, runs true
+mistakes+: node frame: cooks false, runs true
+mistakes+: node give: cooks false, runs false
+mistakes+: node ink: warns, "draws nothing yet, as its folder holds no .vert: new ink/Ink.vert writes one, or connect the outputs of a node whose folder holds a lone .vert to its inputs"
+mistakes+: node input: cooks false, runs false
+mistakes+: node look: left out, "connection count: give writes a C++ object, which count does not read as an input"
+mistakes+: node maker: left out, "the operator writes shapes, which nothing reads: connect it to a buffer of another node's shader"
+mistakes+: node paint: cooks false, runs true
+mistakes+: node pairs: left out, "image extra=R8_UNORM: neither its operator fills, its draw renders nor its dispatch stores an image extra"
+mistakes+: node picture: left out, "picture is filled both by the operator and through connection filled-twice"
+mistakes+: node rub: left out, "tint: its .frag reads a vec3 at location 1, which its .vert writes nothing to"
+mistakes+: node scene: cooks false, runs true
+mistakes+: node scratch: cooks false, runs false
+mistakes+: node shape: cooks false, runs true
+mistakes+: node sign: left out, "the operator writes rects, which nothing reads: connect it to a buffer of another node's shader"
+mistakes+: node smear: left out, "canvas: a draw's shaders store into no image, as that needs features past the Vulkan floor; a dispatch stores into one"
+mistakes+: node smudge: warns, "draws nothing yet, as its folder holds no .vert: new smudge/Smud...rt to its inputs" (162 characters, hash 54fdcae046a50b25)
+mistakes+: node stamp: cooks false, runs true
+mistakes+: node sum: left out, "connection into-buffer: stamp stores an image, which sums is no Texture to sample"
+mistakes+: node take: cooks false, runs false
+mistakes+: node twin: cooks false, runs false
+mistakes+: node wrong: left out, "the C++ of mistakes/wrong registers Echo NoHelp Refuse Twin Wron...>) registers one" (172 characters, hash 7a57279f7ee86290)
+mistakes+: pass dispatch of 1 groups, reads 0, writes 0, stores
+mistakes+: pass dispatch of 1 groups, reads 0, writes 1
+mistakes+: pass dispatch of 1 groups, reads 1, writes 1
+mistakes+: pass dispatch of 2 groups, reads 0, writes 1
+mistakes+: pass draw of 3 vertices, 1 instances, into an image
+mistakes+: pass draw of 6 vertices, 1 instances, into an image
+mistakes+: port brush.shade: varying written float at 1, alike ink.shade
+mistakes+: port brush.uv: varying written vec2 at 0, alike ink.uv
+mistakes+: port draw.color: image written -
+mistakes+: port draw.values: buffer written float
+mistakes+: port fill.amount: value read float, joined
+mistakes+: port fill.values: buffer written float, joined
+mistakes+: port frame.after: value read float, joined
+mistakes+: port frame.at: value read vec2, joined
+mistakes+: port frame.seen: buffer written float
+mistakes+: port frame.tint: value read vec3, joined
+mistakes+: port give.count: object written vp_mistakes::Count, joined
+mistakes+: port ink.shade: varying read float at 1, alike brush.shade
+mistakes+: port ink.uv: varying read vec2 at 0, alike brush.uv
+mistakes+: port look.painted: image read Texture, joined
+mistakes+: port look.texels: buffer written vec2
+mistakes+: port maker.shapes: buffer written -
+mistakes+: port paint.color: image written R8G8B8A8_UNORM, joined
+mistakes+: port pairs.pairs: buffer written vec2
+mistakes+: port picture.picture: image read Texture, joined
+mistakes+: port picture.texels: buffer written float
+mistakes+: port scene.color: image written R8G8B8A8_UNORM, joined
+mistakes+: port shape.shapes: buffer read Shape, joined
+mistakes+: port shape.sums: buffer written float
+mistakes+: port sign.characters: buffer written -
+mistakes+: port sign.labels: buffer written -
+mistakes+: port sign.rects: buffer written -
+mistakes+: port smudge.shade: varying read float at 2
+mistakes+: port smudge.uv: varying read vec3 at 0
+mistakes+: port stamp.canvas: image written Image, joined
+mistakes+: port sum.sums: buffer written float, joined
+mistakes+: port sum.values: buffer read float, joined
+mistakes+: port take.count: object read vp_mistakes::Count, joined
+mistakes+: port wrong.amount: value read float, joined
+mistakes+: port wrong.values: buffer written float
+mistakes+: three frames -> done
+the device goes -> done
+triangle-compute, screen alone-: a schedule, ok true, 1 nodes
+triangle-compute, screen alone-: after them, node screen: warns, "picture samples no image, so it reads black: connect it to an image another node writes, or fill it from the operator"
+triangle-compute, screen alone-: node screen: warns, "picture samples no image, so it reads black: connect it to an image another node writes, or fill it from the operator"
+triangle-compute, screen alone-: pass draw of 3 vertices, 1 instances, into the window
+triangle-compute, screen alone-: port screen.picture: image read Texture
+triangle-compute, screen alone-: port screen.pixel: image written -
+triangle-compute, screen alone-: three frames -> done
+triangle-compute-: a schedule, ok true, 2 nodes
+triangle-compute-: after them, node raster: cooks false, runs true
+triangle-compute-: after them, node screen: warns, "picture samples no image, so it reads black: connect canvas raster.canvas screen.picture"
+triangle-compute-: node raster: cooks false, runs true
+triangle-compute-: node screen: warns, "picture samples no image, so it reads black: connect canvas raster.canvas screen.picture"
+triangle-compute-: pass dispatch of 1024 groups, reads 0, writes 0, stores
+triangle-compute-: pass draw of 3 vertices, 1 instances, into the window
+triangle-compute-: port raster.canvas: image written Image, alike screen.picture
+triangle-compute-: port raster.frames_per_turn: value read uint, joined
+triangle-compute-: port screen.picture: image read Texture, alike raster.canvas
+triangle-compute-: port screen.pixel: image written -
+triangle-compute-: three frames -> done
+wave-: a schedule, ok false, 2 nodes
+wave-: after them, node probe: left out, "values reads nothing: connect values wave.values probe.values"
+wave-: after them, node wave: cooks true, runs true
+wave-: node probe: left out, "values reads nothing: connect values wave.values probe.values"
+wave-: node wave: cooks false, runs true
+wave-: pass dispatch of 16 groups, reads 1, writes 1
+wave-: port probe.every: value read uint, joined
+wave-: port probe.samples: buffer written float
+wave-: port probe.step: value read uint, joined
+wave-: port probe.values: buffer read float, alike wave.values
+wave-: port wave.amplitude: value read float, joined
+wave-: port wave.speed: value read float, joined
+wave-: port wave.values: buffer written float, alike probe.values
+wave-: three frames -> done

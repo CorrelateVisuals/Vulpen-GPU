@@ -1,0 +1,28 @@
+# The rows of src/baseclasses/Swapchain.h and src/baseclasses/Swapchain.cpp, a call each (src/tools/bench/bench.py).
+
+## Swapchain.cpp/Swapchain::Swapchain
+its render pass #1; then gone -> done
+its render pass #1; then gone -> done
+its render pass #1; then gone -> done
+made with 4 samples and vsync, time 2 -> done; printed "<clock>            {rep} previous line repeated 1x\n<clock>            {swp} presents 4 images of 640x480 in FIFO mode, 4 samples a pixel\n"
+made, time 0 -> done; printed "<clock>            {swp} presents 4 images of 640x480 in mailbox mode, 1 sample a pixel\n"
+made, time 1 -> done
+present mode with vsync 2
+the device goes -> done
+the surface: format B8G8R8A8_SRGB, color space 0, present mode 1, the device presents to it: true
+
+## Swapchain.cpp/frames
+frame 0 -> done; an image of 640x480
+frame 1 -> done; an image of 640x480
+frame 2 -> done; an image of 640x480
+frame 3 -> done; an image of 640x480
+frame 4 -> done; an image of 640x480
+the device goes -> done
+
+## Swapchain.cpp/frames, multisampled
+frame 0 -> done; an image of 640x480
+frame 1 -> done; an image of 640x480
+frame 2 -> done; an image of 640x480
+frame 3 -> done; an image of 640x480
+frame 4 -> done; an image of 640x480
+the device goes -> done

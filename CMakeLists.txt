@@ -280,6 +280,7 @@ vulpen_link_modules(${generated}/linked-modules.h)
 vulpen_list_views()
 
 include(src/tools/tests/tests.cmake)
+include(src/tools/bench/bench.cmake)
 
 # The README's pictures, which a release build takes again as it counts the lines, on the
 # driver the tests take where the build names one. Every machine then takes the same

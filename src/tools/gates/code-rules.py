@@ -77,6 +77,8 @@ def blank(match: re.Match) -> str:
 
 def ownership(line: str) -> list[str]:
     found = ["std::shared_ptr"] if SHARED.search(line) else []
+    if INCLUDE.match(line):  # <new> names a header, which owns nothing
+        return found
     for match in NEW_OR_DELETE.finditer(line):
         before = line[:match.start()].rstrip()
         word = match.group(0)

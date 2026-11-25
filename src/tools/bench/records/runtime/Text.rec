@@ -1,0 +1,626 @@
+# The rows of src/runtime/Text.h, a call each (src/tools/bench/bench.py).
+
+## Text.h/joined<span<const string>>
+holds: as joined<vector<string>>, over 228 rows
+
+## Text.h/joined<span<const string_view>>
+holds: as joined<vector<string>>, over 227 rows
+
+## Text.h/joined<vector<string>>
+(["", "a"], " ") -> " a"
+(["", "a"], " a") -> " aa"
+(["", "a"], "") -> "a"
+(["", "a"], "#") -> "#a"
+(["", "a"], ",") -> ",a"
+(["", "a"], "-1") -> "-1a"
+(["", "a"], ".") -> ".a"
+(["", "a"], "..") -> "..a"
+(["", "a"], "/") -> "/a"
+(["", "a"], "1") -> "1a"
+(["", "a"], "\"") -> "\"a"
+(["", "a"], "\\") -> "\\a"
+(["", "a"], "\n") -> "\na"
+(["", "a"], "\na") -> "\naa"
+(["", "a"], "\r") -> "\ra"
+(["", "a"], "\t") -> "\ta"
+(["", "a"], "\x00") -> "\x00a"
+(["", "a"], "\xc3\xa9") -> "\xc3\xa9a"
+(["", "a"], "\xff") -> "\xffa"
+(["", "a"], "a ") -> "a a"
+(["", "a"], "a b") -> "a ba"
+(["", "a"], "a") -> "aa"
+(["", "a"], "a.b") -> "a.ba"
+(["", "a"], "a=b") -> "a=ba"
+(["", "a"], "a\n") -> "a\na"
+(["", "a"], "a\nb") -> "a\nba"
+(["", "a"], "a\r\n") -> "a\r\na"
+(["", "a"], "a\x00b") -> "a\x00ba"
+(["", "a"], "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (301 characters, hash d5dbe56dd76986c0)
+(["", "a"], "ab") -> "aba"
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), " ") -> "a    ab a b  a a  \t \r \n a\n a\r\n \na a\nb \x00 a\x00b \xc3\x...aaaaaaaaaaaaaaaa" (402 characters, hash 1d42ec1c569e4fb5)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), " a") -> "a a a  aab aa b a a aa  a\t a\r a\n aa\n aa\r\n a\na aa\nb a\x00...aaaaaaaaaaaaaaaa" (431 characters, hash 1047bbac20d66ef4)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "") -> "a aba b aa \t\r\na\na\r\n\naa\nb\x00a\x00b\xc3\xa9\xff1-1a.ba=b#...aaaaaaaaaaaaaaaa" (373 characters, hash 05c9dddf81f612b5)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "#") -> "a## #ab#a b# a#a #\t#\r#\n#a\n#a\r\n#\na#a\nb#\x00#a\x00b#\xc3\x...aaaaaaaaaaaaaaaa" (402 characters, hash ec1e8df06127a282)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), ",") -> "a,, ,ab,a b, a,a ,\t,\r,\n,a\n,a\r\n,\na,a\nb,\x00,a\x00b,\xc3\x...aaaaaaaaaaaaaaaa" (402 characters, hash de169703b2f059c9)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "-1") -> "a-1-1 -1ab-1a b-1 a-1a -1\t-1\r-1\n-1a\n-1a\r\n-1\na-1a\nb-1\x00...aaaaaaaaaaaaaaaa" (431 characters, hash c17b99fff59e2cf7)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), ".") -> "a.. .ab.a b. a.a .\t.\r.\n.a\n.a\r\n.\na.a\nb.\x00.a\x00b.\xc3\x...aaaaaaaaaaaaaaaa" (402 characters, hash 3d0789f84e75e557)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "..") -> "a.... ..ab..a b.. a..a ..\t..\r..\n..a\n..a\r\n..\na..a\nb..\x00...aaaaaaaaaaaaaaaa" (431 characters, hash 56812a62a93dea09)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "/") -> "a// /ab/a b/ a/a /\t/\r/\n/a\n/a\r\n/\na/a\nb/\x00/a\x00b/\xc3\x...aaaaaaaaaaaaaaaa" (402 characters, hash f1f69bc30ae4cf7e)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "1") -> "a11 1ab1a b1 a1a 1\t1\r1\n1a\n1a\r\n1\na1a\nb1\x001a\x00b1\xc3\x...aaaaaaaaaaaaaaaa" (402 characters, hash 3346d73cf3f66384)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\"") -> "a\"\" \"ab\"a b\" a\"a \"\t\"\r\"\n\"a\n\"a\r\n\"\na\"a\nb\"\x00...aaaaaaaaaaaaaaaa" (431 characters, hash 4f855f43ba54bdab)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\\") -> "a\\\\ \\ab\\a b\\ a\\a \\\t\\\r\\\n\\a\n\\a\r\n\\\na\\a\nb\\\x00...aaaaaaaaaaaaaaaa" (431 characters, hash 54f56b70772cef2d)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\n") -> "a\n\n \nab\na b\n a\na \n\t\n\r\n\n\na\n\na\r\n\n\na\na\nb\n\x00...aaaaaaaaaaaaaaaa" (431 characters, hash 2d295ba7a07e43d7)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\na") -> "a\na\na \naab\naa b\na a\naa \na\t\na\r\na\n\naa\n\naa\r\n\na\na...aaaaaaaaaaaaaaaa" (460 characters, hash 713d4e9f3e95cbb6)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\r") -> "a\r\r \rab\ra b\r a\ra \r\t\r\r\r\n\ra\n\ra\r\n\r\na\ra\nb\r\x00...aaaaaaaaaaaaaaaa" (431 characters, hash 9a174664842094fb)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\t") -> "a\t\t \tab\ta b\t a\ta \t\t\t\r\t\n\ta\n\ta\r\n\t\na\ta\nb\t\x00...aaaaaaaaaaaaaaaa" (431 characters, hash 7701988283ac4f55)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\x00") -> "a\x00\x00 \x00ab\x00a b\x00 a\x00a \x00\t\x00\r\x00\n\x00a\n\x00...aaaaaaaaaaaaaaaa" (489 characters, hash 4ee7b277d7b4b8a9)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\xc3\xa9") -> "a\xc3\xa9\xc3\xa9 \xc3\xa9ab\xc3\xa9a b\xc3\xa9 a\xc3\xa9a \xc3\...aaaaaaaaaaaaaaaa" (605 characters, hash c555c691ecf35fb1)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "\xff") -> "a\xff\xff \xffab\xffa b\xff a\xffa \xff\t\xff\r\xff\n\xffa\n\xff...aaaaaaaaaaaaaaaa" (489 characters, hash ead54c326df6e8c5)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a ") -> "aa a  a aba a ba  aa a a \ta \ra \na a\na a\r\na \naa a\nba \x00...aaaaaaaaaaaaaaaa" (431 characters, hash c2868993f5290602)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a b") -> "aa ba b a baba ba ba b aa ba a b\ta b\ra b\na ba\na ba\r\na b\na...aaaaaaaaaaaaaaaa" (460 characters, hash 01a332f6150b0c4a)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a") -> "aaa aabaa ba aaa a\ta\ra\naa\naa\r\na\naaa\nba\x00aa\x00ba\xc3\x...aaaaaaaaaaaaaaaa" (402 characters, hash 433f6d2971003754)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a.b") -> "aa.ba.b a.baba.ba ba.b aa.ba a.b\ta.b\ra.b\na.ba\na.ba\r\na.b\na...aaaaaaaaaaaaaaaa" (460 characters, hash 40adedd28db97c80)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a=b") -> "aa=ba=b a=baba=ba ba=b aa=ba a=b\ta=b\ra=b\na=ba\na=ba\r\na=b\na...aaaaaaaaaaaaaaaa" (460 characters, hash 28acfd8ca9117785)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a\n") -> "aa\na\n a\naba\na ba\n aa\na a\n\ta\n\ra\n\na\na\na\na\r\na\n\na...aaaaaaaaaaaaaaaa" (460 characters, hash 74677e7216078c0a)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a\nb") -> "aa\nba\nb a\nbaba\nba ba\nb aa\nba a\nb\ta\nb\ra\nb\na\nba\na\nb...aaaaaaaaaaaaaaaa" (489 characters, hash e0cb041729009ef2)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a\r\n") -> "aa\r\na\r\n a\r\naba\r\na ba\r\n aa\r\na a\r\n\ta\r\n\ra\r\n\na\...aaaaaaaaaaaaaaaa" (518 characters, hash d87f96dc6d5134d0)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "a\x00b") -> "aa\x00ba\x00b a\x00baba\x00ba ba\x00b aa\x00ba a\x00b\ta\x00b\ra...aaaaaaaaaaaaaaaa" (547 characters, hash 54a6c62b21e7a48c)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (9073 characters, hash fc3019a8cfefbde9)
+(["a", "", " ", "ab", "a b", " a", "a ", "\t", ..., ".", "..", "/", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)] (30 items, those between #3f2318c2c4c80747), "ab") -> "aabab abababa bab aaba ab\tab\rab\naba\naba\r\nab\naaba\nbab\x00...aaaaaaaaaaaaaaaa" (431 characters, hash 04ce1200fb064a40)
+(["a", ""], " ") -> "a "
+(["a", ""], " a") -> "a a"
+(["a", ""], "") -> "a"
+(["a", ""], "#") -> "a#"
+(["a", ""], ",") -> "a,"
+(["a", ""], "-1") -> "a-1"
+(["a", ""], ".") -> "a."
+(["a", ""], "..") -> "a.."
+(["a", ""], "/") -> "a/"
+(["a", ""], "1") -> "a1"
+(["a", ""], "\"") -> "a\""
+(["a", ""], "\\") -> "a\\"
+(["a", ""], "\n") -> "a\n"
+(["a", ""], "\na") -> "a\na"
+(["a", ""], "\r") -> "a\r"
+(["a", ""], "\t") -> "a\t"
+(["a", ""], "\x00") -> "a\x00"
+(["a", ""], "\xc3\xa9") -> "a\xc3\xa9"
+(["a", ""], "\xff") -> "a\xff"
+(["a", ""], "a ") -> "aa "
+(["a", ""], "a b") -> "aa b"
+(["a", ""], "a") -> "aa"
+(["a", ""], "a.b") -> "aa.b"
+(["a", ""], "a=b") -> "aa=b"
+(["a", ""], "a\n") -> "aa\n"
+(["a", ""], "a\nb") -> "aa\nb"
+(["a", ""], "a\r\n") -> "aa\r\n"
+(["a", ""], "a\x00b") -> "aa\x00b"
+(["a", ""], "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (301 characters, hash d5dbe56dd76986c0)
+(["a", ""], "ab") -> "aab"
+(["a", "a"], " ") -> "a a"
+(["a", "a"], " a") -> "a aa"
+(["a", "a"], "") -> "aa"
+(["a", "a"], "#") -> "a#a"
+(["a", "a"], ",") -> "a,a"
+(["a", "a"], "-1") -> "a-1a"
+(["a", "a"], ".") -> "a.a"
+(["a", "a"], "..") -> "a..a"
+(["a", "a"], "/") -> "a/a"
+(["a", "a"], "1") -> "a1a"
+(["a", "a"], "\"") -> "a\"a"
+(["a", "a"], "\\") -> "a\\a"
+(["a", "a"], "\n") -> "a\na"
+(["a", "a"], "\na") -> "a\naa"
+(["a", "a"], "\r") -> "a\ra"
+(["a", "a"], "\t") -> "a\ta"
+(["a", "a"], "\x00") -> "a\x00a"
+(["a", "a"], "\xc3\xa9") -> "a\xc3\xa9a"
+(["a", "a"], "\xff") -> "a\xffa"
+(["a", "a"], "a ") -> "aa a"
+(["a", "a"], "a b") -> "aa ba"
+(["a", "a"], "a") -> "aaa"
+(["a", "a"], "a.b") -> "aa.ba"
+(["a", "a"], "a=b") -> "aa=ba"
+(["a", "a"], "a\n") -> "aa\na"
+(["a", "a"], "a\nb") -> "aa\nba"
+(["a", "a"], "a\r\n") -> "aa\r\na"
+(["a", "a"], "a\x00b") -> "aa\x00ba"
+(["a", "a"], "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (302 characters, hash ce2d7aa5084fc393)
+(["a", "a"], "ab") -> "aaba"
+(["a"], " ") -> "a"
+(["a"], " a") -> "a"
+(["a"], "") -> "a"
+(["a"], "#") -> "a"
+(["a"], ",") -> "a"
+(["a"], "-1") -> "a"
+(["a"], ".") -> "a"
+(["a"], "..") -> "a"
+(["a"], "/") -> "a"
+(["a"], "1") -> "a"
+(["a"], "\"") -> "a"
+(["a"], "\\") -> "a"
+(["a"], "\n") -> "a"
+(["a"], "\na") -> "a"
+(["a"], "\r") -> "a"
+(["a"], "\t") -> "a"
+(["a"], "\x00") -> "a"
+(["a"], "\xc3\xa9") -> "a"
+(["a"], "\xff") -> "a"
+(["a"], "a ") -> "a"
+(["a"], "a b") -> "a"
+(["a"], "a") -> "a"
+(["a"], "a.b") -> "a"
+(["a"], "a=b") -> "a"
+(["a"], "a\n") -> "a"
+(["a"], "a\nb") -> "a"
+(["a"], "a\r\n") -> "a"
+(["a"], "a\x00b") -> "a"
+(["a"], "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "a"
+(["a"], "ab") -> "a"
+([], " ") -> ""
+([], " a") -> ""
+([], "") -> ""
+([], "#") -> ""
+([], ",") -> ""
+([], "-1") -> ""
+([], ".") -> ""
+([], "..") -> ""
+([], "/") -> ""
+([], "1") -> ""
+([], "\"") -> ""
+([], "\\") -> ""
+([], "\n") -> ""
+([], "\na") -> ""
+([], "\r") -> ""
+([], "\t") -> ""
+([], "\x00") -> ""
+([], "\xc3\xa9") -> ""
+([], "\xff") -> ""
+([], "a ") -> ""
+([], "a b") -> ""
+([], "a") -> ""
+([], "a.b") -> ""
+([], "a=b") -> ""
+([], "a\n") -> ""
+([], "a\nb") -> ""
+([], "a\r\n") -> ""
+([], "a\x00b") -> ""
+([], "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> ""
+([], "ab") -> ""
+holds: the names come back, split where between is, over 227 rows
+~([" z/\"\xc3A\xc3", ".\r\xc3\xa9,\"", "", "#=/\r0_\n#\n"], "\x00\xff=\xc3#, \n\n") -> " z/\"\xc3A\xc3\x00\xff=\xc3#, \n\n.\r\xc3\xa9,\"\x00\xff=\xc3#, \n\n\x00\xff=\xc3#, \n\n#=/\r0_\n#\n"
+~(["", " "], "\x00z0A\xa9A._ \t0") -> "\x00z0A\xa9A._ \t0 "
+~(["", " _0."], "\xa9") -> "\xa9 _0."
+~(["", ""], "\ta\na") -> "\ta\na"
+~(["", "09--\"z =a\"z", "\xa9- \\a\"", "\xff \xc3,", "A\n-\xff\t=\xa9#\xa9"], "\xa9\t.\x00\xa9. \r_ ") -> "\xa9\t.\x00\xa9. \r_ 09--\"z =a\"z\xa9\t.\x00\xa9. \r_ \xa9- \\a\"\xa9\t.\x00\xa9. \r_ \xff \xc3,\xa9\t.\x00\xa9. \r_ A\n-\xff\t=\xa9#\xa9"
+~(["", "\"\"\"az\"\n."], "9\xff") -> "9\xff\"\"\"az\"\n."
+~([""], "\t=0\xa9/# ") -> ""
+~(["#9_#/", "-\xc3\xc3#\\\xff\xa9=\xa9", "  \xa9"], "\\9 \xc3A") -> "#9_#/\\9 \xc3A-\xc3\xc3#\\\xff\xa9=\xa9\\9 \xc3A  \xa9"
+~([",A-=\r", "_9#\\,z0\rA", "z\xff\"z\\", ""], "\xff.") -> ",A-=\r\xff._9#\\,z0\rA\xff.z\xff\"z\\\xff."
+~(["- \n\xa9A=\t\t-\\", "\xff-,\\z\n\rz\xc3\xff0"], ",a#z\"\"=0\t") -> "- \n\xa9A=\t\t-\\,a#z\"\"=0\t\xff-,\\z\n\rz\xc3\xff0"
+~(["--.0", "\"\"--#\"\x00zA", "a\x000/", "\x00-\x000\n9z0##"], "0\xff\r#a.\"\x00") -> "--.00\xff\r#a.\"\x00\"\"--#\"\x00zA0\xff\r#a.\"\x00a\x000/0\xff\r#a.\"\x00\x00-\x000\n9z0##"
+~(["-\n\xff..-#,", ""], "__ ") -> "-\n\xff..-#,__ "
+~([". /_/9za=9"], "z\t/A_\"\\a0") -> ". /_/9za=9"
+~([".#\"\"z\x00#9\xc3\r"], "") -> ".#\"\"z\x00#9\xc3\r"
+~(["/.,\xa9\xc3z", "\x00#", "\xff, z,#\r,.\\\"", "# \xff\\__\"0."], ".\xc3") -> "/.,\xa9\xc3z.\xc3\x00#.\xc3\xff, z,#\r,.\\\".\xc3# \xff\\__\"0."
+~(["0\\_\xa9 ", "a9,#\"A", "", "\\A", "#_,_\r\t "], "_=#-\xff-\xa9\xff") -> "0\\_\xa9 _=#-\xff-\xa9\xffa9,#\"A_=#-\xff-\xa9\xff_=#-\xff-\xa9\xff\\A_=#-\xff-\xa9\xff#_,_\r\t "
+~(["9 \\\\", "\xff=", "/0"], "9./.\x00/") -> "9 \\\\9./.\x00/\xff=9./.\x00//0"
+~(["=zz 9\xa9\x00A \\/", "a,\\z-\xa9\xff/\"#A", "#_,"], "\n") -> "=zz 9\xa9\x00A \\/\na,\\z-\xa9\xff/\"#A\n#_,"
+~(["A.9\\", ","], "A9\na\n.") -> "A.9\\A9\na\n.,"
+~(["A\na\t_", "\xffAA\xc3\"A_,\xa90", "\n\xa9-\\\xc3A,0"], "\xffA_") -> "A\na\t_\xffA_\xffAA\xc3\"A_,\xa90\xffA_\n\xa9-\\\xc3A,0"
+~(["\"\t,9-\xff \\"], "-\\ /0/\r\xff") -> "\"\t,9-\xff \\"
+~(["\\\xc3_\xc3\\\\\xff\r\xa9", "\t\t\xff/\t-"], " \xff\xc3\xff\tA\n \xa9") -> "\\\xc3_\xc3\\\\\xff\r\xa9 \xff\xc3\xff\tA\n \xa9\t\t\xff/\t-"
+~(["\n.\"\xc3\xff", "\xff", "\t#\xa9\"\r\n0\"", "\"A=", ".\x00\\/0"], "=\xc3\xa9#.=\xc3_,") -> "\n.\"\xc3\xff=\xc3\xa9#.=\xc3_,\xff=\xc3\xa9#.=\xc3_,\t#\xa9\"\r\n0\"=\xc3\xa9#.=\xc3_,\"A==\xc3\xa9#.=\xc3_,.\x00\\/0"
+~(["\n\r,/\tz\".", ",.0\t"], "\xa909\xff9") -> "\n\r,/\tz\".\xa909\xff9,.0\t"
+~(["\n\xff\\a\t\\\x00_9", "\xc3_\tA\\_\x00_\xa90\x00"], "z\tz\xa9\n") -> "\n\xff\\a\t\\\x00_9z\tz\xa9\n\xc3_\tA\\_\x00_\xa90\x00"
+~(["\r", "/#\n0", ".", "a\t-\x00", "\x00A9\r-\xc3z\t  "], "\x00\n0") -> "\r\x00\n0/#\n0\x00\n0.\x00\n0a\t-\x00\x00\n0\x00A9\r-\xc3z\t  "
+~(["\r#\n\t\t\x00\x00\x00\\\n.", "0=_.\ra", "", "9 - \n0"], "\xc3\x00,9#.") -> "\r#\n\t\t\x00\x00\x00\\\n.\xc3\x00,9#.0=_.\ra\xc3\x00,9#.\xc3\x00,9#.9 - \n0"
+~(["\r\\", "0-\xc3\"A9a\n", "\xa9"], " #\\ ,\xa9#\\0z") -> "\r\\ #\\ ,\xa9#\\0z0-\xc3\"A9a\n #\\ ,\xa9#\\0z\xa9"
+~(["\r\\\\\xa9\r\",0A", " 9\t\\", "A/", "\rA\\a\xff\"\xff,A\xa9/", ","], "\xa9\xc3/\xff") -> "\r\\\\\xa9\r\",0A\xa9\xc3/\xff 9\t\\\xa9\xc3/\xffA/\xa9\xc3/\xff\rA\\a\xff\"\xff,A\xa9/\xa9\xc3/\xff,"
+~(["\tA\xffA\xc3z\xff\xff", "A#\"_\xa9\r=0z\\"], "/_") -> "\tA\xffA\xc3z\xff\xff/_A#\"_\xa9\r=0z\\"
+~(["\t_\"A", "Aa\x00"], "#,\x00A") -> "\t_\"A#,\x00AAa\x00"
+~(["\x00=\x00\n-A,z\xa9", "=_9/=\r,0\"_/", "\t\xc3\t_z0\\ _\t."], "\xff-\xff9 \x00\xff\x00/\"z") -> "\x00=\x00\n-A,z\xa9\xff-\xff9 \x00\xff\x00/\"z=_9/=\r,0\"_/\xff-\xff9 \x00\xff\x00/\"z\t\xc3\t_z0\\ _\t."
+~(["\xc3\xff/ ==\x00a\\\\=", "\xff-\"", "a\n\"\xc3", "\xff_#\r\xff,/#,,", "0-##A#_,a9"], "/A#\\\xff\"\n\\-") -> "\xc3\xff/ ==\x00a\\\\=/A#\\\xff\"\n\\-\xff-\"/A#\\\xff\"\n\\-a\n\"\xc3/A#\\\xff\"\n\\-\xff_#\r\xff,/#,,/A#\\\xff\"\n\\-0-##A#_,a9"
+~(["\xff", "--a,\xffA\t_\xff\xa9-", ".-\xc3", "\n_\xff/\"9a-"], "\xff,\" 9\xa9=/") -> "\xff\xff,\" 9\xa9=/--a,\xffA\t_\xff\xa9-\xff,\" 9\xa9=/.-\xc3\xff,\" 9\xa9=/\n_\xff/\"9a-"
+~(["\xff\t=\n/", "", "-\xa9 00\x00\rz-", ".\n", "\nz\xa99/\\"], "\xa9=,") -> "\xff\t=\n/\xa9=,\xa9=,-\xa9 00\x00\rz-\xa9=,.\n\xa9=,\nz\xa99/\\"
+~(["\xff\xc3."], "") -> "\xff\xc3."
+~(["__\t#,"], ",\\A\\") -> "__\t#,"
+~(["a_#", "\"A/-\xff\xc3\n\t,", "\x00a/z.a\"\x00a\xc3", "\t0"], "\r0\t_z,9,0\xff") -> "a_#\r0\t_z,9,0\xff\"A/-\xff\xc3\n\t,\r0\t_z,9,0\xff\x00a/z.a\"\x00a\xc3\r0\t_z,9,0\xff\t0"
+~(["z_,\xa9", "-", ",\xa9_\xa9=", "\xc39/,"], "\"/\n .") -> "z_,\xa9\"/\n .-\"/\n .,\xa9_\xa9=\"/\n .\xc39/,"
+~([], "=\rz\" \t#=.") -> ""
+~([], "A.9\t#9") -> ""
+~([], "A\t\xc3-# \nza") -> ""
+~([], "\\A") -> ""
+~([], "\n\xc3\t#\n\t\xff\t.\"") -> ""
+~([], "\r\r9") -> ""
+~([], "\xa9\xa9 #\xa9a--z9=") -> ""
+
+## Text.h/joined<vector<string_view>>
+holds: as joined<vector<string>>, over 227 rows
+
+## Text.h/lines_in
+("  a  \n") -> ["  a  "]
+(" \n") -> [" "]
+("") -> []
+("\n") -> []
+("\n\n") -> []
+("\r") -> []
+("\r\n") -> []
+("\r\r\n") -> ["\r"]
+("\ta\n") -> ["\ta"]
+("\xef\xbb\xbfa\n") -> ["\xef\xbb\xbfa"]
+("a") -> ["a"]
+("a\n") -> ["a"]
+("a\n\nb") -> ["a", "b"]
+("a\n\r\nb") -> ["a", "b"]
+("a\nb") -> ["a", "b"]
+("a\r") -> ["a"]
+("a\r\nb\r\n") -> ["a", "b"]
+("a\r\r\n") -> ["a\r"]
+("a\x00b\n") -> ["a\x00b"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaa\n" (302 characters, hash cefc89a508ff794b)) -> ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)]
+holds: each line a view into the text, holding no \n, over 59 rows
+holds: the lines its comment says, in order, over 63 rows
+~("  \n") -> ["  "]
+~(" #\r ") -> [" #\r "]
+~(" #\ra") -> [" #\ra"]
+~(" =") -> [" ="]
+~(" \n\r\n=\r#a b=\n=ba") -> [" ", "=\r#a b=", "=ba"]
+~(" \r\t==#\r\n# ") -> [" \r\t==#", "# "]
+~(" \t#") -> [" \t#"]
+~(" a\nb\n\n ") -> [" a", "b", " "]
+~(" a\t\rb\t# ") -> [" a\t\rb\t# "]
+~(" ba\t\n\ra  ##") -> [" ba\t", "\ra  ##"]
+~("#=a b\n\r#\n#") -> ["#=a b", "\r#", "#"]
+~("#\r") -> ["#"]
+~("#\ra\n#\t") -> ["#\ra", "#\t"]
+~("#b  =\r##\t\rb") -> ["#b  =\r##\t\rb"]
+~("#bb\t=#a") -> ["#bb\t=#a"]
+~("=") -> ["="]
+~("=#=\n#b") -> ["=#=", "#b"]
+~("=\n") -> ["="]
+~("=\ta=b\n\rab\na\n") -> ["=\ta=b", "\rab", "a"]
+~("=b\r  ") -> ["=b\r  "]
+~("\n ==  \r\rb#") -> [" ==  \r\rb#"]
+~("\n =ba\nb\r=#") -> [" =ba", "b\r=#"]
+~("\n \n#a\t\r\r a a##ba") -> [" ", "#a\t\r\r a a##ba"]
+~("\n=#") -> ["=#"]
+~("\na\nb\t a\r\t =a=") -> ["a", "b\t a\r\t =a="]
+~("\r bbbb\t ") -> ["\r bbbb\t "]
+~("\r###\rb\r\rb##\r \r=\n") -> ["\r###\rb\r\rb##\r \r="]
+~("\r\r\r\n\r \r  a\r\r") -> ["\r\r", "\r \r  a\r"]
+~("\r\ta\t \n#\n= \n\r\t#\n ") -> ["\r\ta\t ", "#", "= ", "\r\t#", " "]
+~("\t a\n=\nb=\r\t a\n\t") -> ["\t a", "=", "b=\r\t a", "\t"]
+~("\t") -> ["\t"]
+~("\t# \rba\r\n\r\n ab") -> ["\t# \rba", " ab"]
+~("\t\r\t") -> ["\t\r\t"]
+~("\taa#\nbbb #a") -> ["\taa#", "bbb #a"]
+~("a \ra#\t\t =\ta") -> ["a \ra#\t\t =\ta"]
+~("a\na") -> ["a", "a"]
+~("a\r#\n\n=b= #\n") -> ["a\r#", "=b= #"]
+~("b\n\t bba #=\r##a") -> ["b", "\t bba #=\r##a"]
+~("b\nb\t##bb ") -> ["b", "b\t##bb "]
+~("bb\t\r  #\n\t=") -> ["bb\t\r  #", "\t="]
+~("bba=b\t#=b==\n\rb=a") -> ["bba=b\t#=b==", "\rb=a"]
+
+## Text.h/number_in<float>
+(" 1") -> none
+("") -> none
+("+1") -> none
+("-0") -> -0
+("-1") -> -1
+("-2147483648") -> -2147483648
+("-inf") -> none
+(".5") -> 0.5
+("0") -> 0
+("01") -> 1
+("0x10") -> none
+("1 ") -> none
+("1") -> 1
+("1,2") -> none
+("1.5") -> 1.5
+("18446744073709551615") -> 1.8446744e+19
+("18446744073709551616") -> 1.8446744e+19
+("1\n") -> none
+("1\r") -> none
+("1_0") -> none
+("1e") -> none
+("1e-40") -> 1e-40
+("1e-50") -> none
+("1e3") -> 1000
+("3.4028235e38") -> 3.4028235e+38
+("3.4028236e38") -> none
+("4294967295") -> 4294967296
+("4294967296") -> 4294967296
+("5.") -> 5
+("=") -> none
+("\xd9\xa1") -> none
+("\xef\xbc\x91") -> none
+("a") -> none
+("a=b") -> none
+("inf") -> none
+("nan") -> none
+holds: a finite float's shortest text reads back as it, over 62 rows
+~("+4,+-12-") -> none
+~("+9bea") -> none
+~(",,ee30") -> none
+~(",265b5eE") -> none
+~(".406-8") -> none
+~(".4E7") -> 4e+06
+~(".4a6.b") -> none
+~(".4a9") -> none
+~(".72") -> 0.72
+~(".b xe2e7") -> none
+~("0,x.7") -> none
+~("13._09") -> none
+~("133-") -> none
+~("1_6e2") -> none
+~("2,") -> none
+~("24ab,3") -> none
+~("2a") -> none
+~("2a8_a,4") -> none
+~("30") -> 30
+~("34_6 862") -> none
+~("399_a5+.") -> none
+~("49+06ab6") -> none
+~("5") -> 5
+~("5..5a") -> none
+~("5912") -> 5912
+~("63xe e") -> none
+~("6658") -> 6658
+~("66a8") -> none
+~("7") -> 7
+~("7.+") -> none
+~("8") -> 8
+~("80") -> 80
+~("9b ") -> none
+~("E E.a") -> none
+~("E") -> none
+~("E54xeE") -> none
+~("Ee42") -> none
+~("Ex2e,b") -> none
+~("aa--5_8") -> none
+~("x") -> none
+~("x-6592") -> none
+~("xae,x9a") -> none
+
+## Text.h/number_in<size_t>
+(" 1") -> none
+("") -> none
+("+1") -> none
+("-0") -> none
+("-1") -> none
+("-2147483648") -> none
+("-inf") -> none
+(".5") -> none
+("0") -> 0
+("01") -> 1
+("0x10") -> none
+("1 ") -> none
+("1") -> 1
+("1,2") -> none
+("1.5") -> none
+("18446744073709551615") -> 18446744073709551615
+("18446744073709551616") -> none
+("1\n") -> none
+("1\r") -> none
+("1_0") -> none
+("1e") -> none
+("1e-40") -> none
+("1e-50") -> none
+("1e3") -> none
+("3.4028235e38") -> none
+("3.4028236e38") -> none
+("4294967295") -> 4294967295
+("4294967296") -> 4294967296
+("5.") -> none
+("=") -> none
+("\xd9\xa1") -> none
+("\xef\xbc\x91") -> none
+("a") -> none
+("a=b") -> none
+("inf") -> none
+("nan") -> none
+holds: a number's shortest text reads back as it, over 45 rows
+~("  ") -> none
+~("++7x_") -> none
+~(",.e5") -> none
+~(",a") -> none
+~(".+3 4E +") -> none
+~("0226037") -> 226037
+~("1 9-1") -> none
+~("13-7668+") -> none
+~("22309ebe") -> none
+~("2803+8") -> none
+~("29") -> 29
+~("32-52a") -> none
+~("41+8_-,3") -> none
+~("4e_a--") -> none
+~("5") -> 5
+~("55") -> 55
+~("59") -> 59
+~("6e+1exe") -> none
+~("7") -> 7
+~("79b") -> none
+~("7a8") -> none
+~("7b_ a.1") -> none
+~("8_265") -> none
+~("9") -> 9
+~("9+bE+4") -> none
+~("9-6+4") -> none
+~("949b") -> none
+~("9_6") -> none
+~("E.4_1") -> none
+~("E3") -> none
+~("_-78bE71") -> none
+~("_22_+,+-") -> none
+~("b,631") -> none
+~("b295-.66") -> none
+~("b4 x.+4") -> none
+~("e++01 ") -> none
+~("e-xaE") -> none
+~("e.0968 ") -> none
+~("eb5,4") -> none
+~("x") -> none
+~("xxb.7E") -> none
+
+## Text.h/number_in<uint32_t>
+(" 1") -> none
+("") -> none
+("+1") -> none
+("-0") -> none
+("-1") -> none
+("-2147483648") -> none
+("-inf") -> none
+(".5") -> none
+("0") -> 0
+("01") -> 1
+("0x10") -> none
+("1 ") -> none
+("1") -> 1
+("1,2") -> none
+("1.5") -> none
+("18446744073709551615") -> none
+("18446744073709551616") -> none
+("1\n") -> none
+("1\r") -> none
+("1_0") -> none
+("1e") -> none
+("1e-40") -> none
+("1e-50") -> none
+("1e3") -> none
+("3.4028235e38") -> none
+("3.4028236e38") -> none
+("4294967295") -> 4294967295
+("4294967296") -> none
+("5.") -> none
+("=") -> none
+("\xd9\xa1") -> none
+("\xef\xbc\x91") -> none
+("a") -> none
+("a=b") -> none
+("inf") -> none
+("nan") -> none
+holds: a number's shortest text reads back as it, over 38 rows
+~(" +0") -> none
+~(" -.8bx") -> none
+~(" a_a__75") -> none
+~("+896") -> none
+~(",") -> none
+~(",949++ ") -> none
+~("-, 24 ") -> none
+~("--6b") -> none
+~("-07b") -> none
+~("-_E19") -> none
+~("-e51,+") -> none
+~(".._-e_") -> none
+~(".x46+x19") -> none
+~("0,+80x1+") -> none
+~("0-b7a0x") -> none
+~("0.35E") -> none
+~("10") -> 10
+~("14,Ex") -> none
+~("2") -> 2
+~("21a,8") -> none
+~("371,x") -> none
+~("374ax") -> none
+~("42aeb") -> none
+~("4828xb1") -> none
+~("50952") -> 50952
+~("654") -> 654
+~("69") -> 69
+~("7,+") -> none
+~("7-xa8797") -> none
+~("72b2b0") -> none
+~("7a17 - _") -> none
+~("7eE") -> none
+~("81E216-,") -> none
+~("84-98x") -> none
+~("9") -> 9
+~("927E") -> none
+~("9E5+") -> none
+~("E .b-") -> none
+~("a,.17_-") -> none
+~("a8190") -> none
+~("b01") -> none
+~("e0xebb8E") -> none
+~("x208e0") -> none
+
+## Text.h/trim
+(" ") -> ""
+(" a") -> "a"
+("") -> ""
+("#") -> "#"
+(",") -> ","
+("-1") -> "-1"
+(".") -> "."
+("..") -> ".."
+("/") -> "/"
+("1") -> "1"
+("\"") -> "\""
+("\\") -> "\\"
+("\n") -> "\n"
+("\na") -> "\na"
+("\r") -> ""
+("\t") -> ""
+("\x00") -> "\x00"
+("\xc3\xa9") -> "\xc3\xa9"
+("\xff") -> "\xff"
+("a ") -> "a"
+("a b") -> "a b"
+("a") -> "a"
+("a.b") -> "a.b"
+("a=b") -> "a=b"
+("a\n") -> "a\n"
+("a\nb") -> "a\nb"
+("a\r\n") -> "a\r\n"
+("a\x00b") -> "a\x00b"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)
+("ab") -> "ab"
+holds: a view into the text, over 67 rows
+holds: no blank at either end, over 65 rows
+holds: trim twice is trim once, over 70 rows
+~("  A\r") -> "A"
+~(" #") -> "#"
+~(" \xff\n\t\"-\\0") -> "\xff\n\t\"-\\0"
+~("# ") -> "#"
+~("#\xff\x00\xff\"0A\xc30") -> "#\xff\x00\xff\"0A\xc30"
+~(", .a=") -> ", .a="
+~(",=\xc3\x00\xa9\"\x009\\") -> ",=\xc3\x00\xa9\"\x009\\"
+~(",A_\n\xa9=\r,\"") -> ",A_\n\xa9=\r,\""
+~(",a00 \x00\xff\xc3#\t_") -> ",a00 \x00\xff\xc3#\t_"
+~("-9=A\x00\x00\\\n,\xc3") -> "-9=A\x00\x00\\\n,\xc3"
+~("-=\xc30/\t\xc3,./") -> "-=\xc30/\t\xc3,./"
+~("-z \r/\xff\xff\"") -> "-z \r/\xff\xff\""
+~("..,A") -> "..,A"
+~(".A\xa9.#\\") -> ".A\xa9.#\\"
+~(".\xa9=\"\xc3 ") -> ".\xa9=\"\xc3"
+~(".\xff\xff\xff.\n\x00\r") -> ".\xff\xff\xff.\n\x00"
+~("/a-") -> "/a-"
+~("0\xa9\xa9=A") -> "0\xa9\xa9=A"
+~("9") -> "9"
+~("9-\x00\xff_\"\"") -> "9-\x00\xff_\"\""
+~("9z_\xc3-_a") -> "9z_\xc3-_a"
+~("=9/#\"\xff") -> "=9/#\"\xff"
+~("=9\xa9a00") -> "=9\xa9a00"
+~("=_\xc3\xc3\n#.\"0") -> "=_\xc3\xc3\n#.\"0"
+~("A") -> "A"
+~("A\\\t\n9 a#\xa9\xc3") -> "A\\\t\n9 a#\xa9\xc3"
+~("\\0,- =") -> "\\0,- ="
+~("\\=z\xff#.") -> "\\=z\xff#."
+~("\\\t\\\t\xff") -> "\\\t\\\t\xff"
+~("\\z#") -> "\\z#"
+~("\r/\n\xc3\"/") -> "/\n\xc3\"/"
+~("\r\"/=/\"\xc3-") -> "\"/=/\"\xc3-"
+~("\t,0\\\t.") -> ",0\\\t."
+~("\tA_ A,\\") -> "A_ A,\\"
+~("\t\xc3A\"\n9\xc3Az\r\\") -> "\xc3A\"\n9\xc3Az\r\\"
+~("\tz\x00\t\n=\xc3\xff\x000") -> "z\x00\t\n=\xc3\xff\x000"
+~("\x00=09\x00") -> "\x00=09\x00"
+~("\x00z\\,z\rA") -> "\x00z\\,z\rA"
+~("\xa9,") -> "\xa9,"
+~("\xc3 \xc3") -> "\xc3 \xc3"
+~("\xc3") -> "\xc3"
+~("\xc3\tz\xc3\\z_=.") -> "\xc3\tz\xc3\\z_=."
+~("aA09/A") -> "aA09/A"
+~("z/9\r\xc3 a") -> "z/9\r\xc3 a"

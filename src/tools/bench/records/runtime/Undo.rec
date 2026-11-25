@@ -1,0 +1,862 @@
+# The rows of src/runtime/Undo.h and src/runtime/Undo.cpp, a call each (src/tools/bench/bench.py).
+
+## Undo.cpp/a change made since
+a copied onto b, which is there, refused; then c saved -> throws "<here>/b exists already"; then [a=1, b/, b/keep=mine]; undo throws "nothing to undo: undo takes back a line typed, picked from a menu or sent by the graph's keys, that changed a project or its files"; then [a=1, b/, b/keep=mine, c=mine]; redo throws "nothing to redo: redo runs again what undo took back last, until another line changes a project"; then [a=1, b/, b/keep=mine, c=mine]
+a folder d made, then d/notes saved in it -> done; then [d/]; undo throws "<here>/d/notes is new or changed since the line the line, and undo would delete it with <here>/d; nothing changed"; then [d/, d/notes=mine]; redo throws "nothing to redo: redo runs again what undo took back last, until another line changes a project"; then [d/, d/notes=mine]
+a renamed to b, then a made again -> done; then [b=1]; undo throws "<here>/a is there again since the line the line, which undo would write over; nothing changed"; then [a=mine, b=1]; redo throws "nothing to redo: redo runs again what undo took back last, until another line changes a project"; then [a=mine, b=1]
+a save of a, then a's text changed -> done; then [a=2]; undo throws "<here>/a changed since the line the line, which undo would lose; nothing changed"; then [a=mine]; redo throws "nothing to redo: redo runs again what undo took back last, until another line changes a project"; then [a=mine]
+d copied to e, then e/notes saved in it -> done; then [d/, d/b=2, e/, e/b=2]; undo throws "<here>/e/notes is new or changed since the line the line, and undo would delete it with <here>/e; nothing changed"; then [d/, d/b=2, e/, e/b=2, e/notes=mine]; redo throws "nothing to redo: redo runs again what undo took back last, until another line changes a project"; then [d/, d/b=2, e/, e/b=2, e/notes=mine]
+d made where d is, refused; then c saved -> throws "<here>/d exists already"; then [d/, d/keep=mine]; undo throws "nothing to undo: undo takes back a line typed, picked from a menu or sent by the graph's keys, that changed a project or its files"; then [c=mine, d/, d/keep=mine]; redo throws "nothing to redo: redo runs again what undo took back last, until another line changes a project"; then [c=mine, d/, d/keep=mine]
+
+## Undo.cpp/a copy
+(["a=1", "a.tmp=mine"], "", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "a", "") -> "throws \"<here>/ exists already\"; then [a.tmp=mine, a=1]; undo ...a.tmp=mine, a=1]" (366 characters, hash 005aba3e24770d10)
+(["a=1", "a.tmp=mine"], "a", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "a", "a.tmp") -> "throws \"<here>/a.tmp exists already\"; then [a.tmp=mine, a=1]; ...a.tmp=mine, a=1]" (371 characters, hash 7b6a99f1d4252956)
+(["a=1", "a.tmp=mine"], "a", "b") -> "done; then [a.tmp=mine, a=1, b=1]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, b=1]"
+(["a=1", "a.tmp=mine"], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c...a.tmp=mine, a=1]" (408 characters, hash 2937c7ad2d3290e8)
+(["a=1", "a.tmp=mine"], "a", "d/b") -> "done; then [a.tmp=mine, a=1, d/, d/b=1]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/b=1]"
+(["a=1", "a.tmp=mine"], "a", "x") -> "done; then [a.tmp=mine, a=1, x=1]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, x=1]"
+(["a=1", "a.tmp=mine"], "a.tmp", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "b", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "d/../a", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "d/b", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "x", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "b=2"], "", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "a", "") -> "throws \"<here>/ exists already\"; then [a=1, b=2]; undo throws ... then [a=1, b=2]" (345 characters, hash 81fe8458236af305)
+(["a=1", "b=2"], "a", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "a", "a.tmp") -> "done; then [a.tmp=1, a=1, b=2]; undo done; then [a=1, b=2]; redo done; then [a.tmp=1, a=1, b=2]"
+(["a=1", "b=2"], "a", "b") -> "throws \"<here>/b exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 8257943e82db04cd)
+(["a=1", "b=2"], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c... then [a=1, b=2]" (387 characters, hash bbf0325cf139727d)
+(["a=1", "b=2"], "a", "d/b") -> "done; then [a=1, b=2, d/, d/b=1]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/b=1]"
+(["a=1", "b=2"], "a", "x") -> "done; then [a=1, b=2, x=1]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, x=1]"
+(["a=1", "b=2"], "a.tmp", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "b", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "d/../a", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "d/b", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "x", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "") -> "throws \"<here>/ exists already\"; then [a=1, x.tmp/, x.tmp/keep...x.tmp/keep=mine]" (405 characters, hash 0e2e3c6bf1c69c5f)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "a.tmp") -> "done; then [a.tmp=1, a=1, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a.tmp=1, a=1, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "b") -> "done; then [a=1, b=1, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, b=1, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c...x.tmp/keep=mine]" (447 characters, hash 6bd3b9113b246c87)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "d/b") -> "done; then [a=1, d/, d/b=1, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, d/, d/b=1, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "x") -> "done; then [a=1, x.tmp/, x.tmp/keep=mine, x=1]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, x.tmp/, x.tmp/keep=mine, x=1]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a.tmp", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "b", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/../a", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/b", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "x", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1"], "", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "", "a.tmp") -> "throws \"<here>/a.tmp is inside <here>/, so it cannot hold a cop...ct\"; then [a=1]" (370 characters, hash 8c43727b814f2666)
+(["a=1"], "", "b") -> "throws \"<here>/b is inside <here>/, so it cannot hold a copy of...ct\"; then [a=1]" (366 characters, hash 44f2457d8fb0b5d4)
+(["a=1"], "", "d/../a") -> "throws \"<here>/d/../a is inside <here>/, so it cannot hold a co...ct\"; then [a=1]" (371 characters, hash 35fe91eb478e74cb)
+(["a=1"], "", "d/b") -> "throws \"<here>/d/b is inside <here>/, so it cannot hold a copy ...ct\"; then [a=1]" (368 characters, hash a2670bb8ecd051b9)
+(["a=1"], "", "x") -> "throws \"<here>/x is inside <here>/, so it cannot hold a copy of...ct\"; then [a=1]" (366 characters, hash a2c42066cecaba2e)
+(["a=1"], "a", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "a", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "a", "a.tmp") -> "done; then [a.tmp=1, a=1]; undo done; then [a=1]; redo done; then [a.tmp=1, a=1]"
+(["a=1"], "a", "a/b") -> "throws \"<here>/a/b is inside <here>/a, so it cannot hold a copy...ct\"; then [a=1]" (369 characters, hash 0beea1ef68710bad)
+(["a=1"], "a", "b") -> "done; then [a=1, b=1]; undo done; then [a=1]; redo done; then [a=1, b=1]"
+(["a=1"], "a", "d") -> "done; then [a=1, d=1]; undo done; then [a=1]; redo done; then [a=1, d=1]"
+(["a=1"], "a", "d.tmp") -> "done; then [a=1, d.tmp=1]; undo done; then [a=1]; redo done; then [a=1, d.tmp=1]"
+(["a=1"], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c...ct\"; then [a=1]" (372 characters, hash f6c82b2efd5b02a0)
+(["a=1"], "a", "d/b") -> "done; then [a=1, d/, d/b=1]; undo done; then [a=1]; redo done; then [a=1, d/, d/b=1]"
+(["a=1"], "a", "d/e") -> "done; then [a=1, d/, d/e=1]; undo done; then [a=1]; redo done; then [a=1, d/, d/e=1]"
+(["a=1"], "a", "d/e/f") -> "done; then [a=1, d/, d/e/, d/e/f=1]; undo done; then [a=1]; redo done; then [a=1, d/, d/e/, d/e/f=1]"
+(["a=1"], "a", "d/x") -> "done; then [a=1, d/, d/x=1]; undo done; then [a=1]; redo done; then [a=1, d/, d/x=1]"
+(["a=1"], "a", "x") -> "done; then [a=1, x=1]; undo done; then [a=1]; redo done; then [a=1, x=1]"
+(["a=1"], "a.tmp", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "a.tmp", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "a.tmp", "a.tmp") -> "throws \"<here>/a.tmp is inside <here>/a.tmp, so it cannot hold ...ct\"; then [a=1]" (375 characters, hash ab91232f27aee2b2)
+(["a=1"], "a.tmp", "b") -> "throws \"<here>/a.tmp: cannot be copied to <here>/b: No such fil...ct\"; then [a=1]" (377 characters, hash 71dee3ca132c474e)
+(["a=1"], "a.tmp", "d/../a") -> "throws \"<here>/a.tmp: cannot be copied to <here>/d/../a: No suc...; then [a=1, d/]" (394 characters, hash e13cb30f0bd72804)
+(["a=1"], "a.tmp", "d/b") -> "throws \"<here>/a.tmp: cannot be copied to <here>/d/b: No such f...; then [a=1, d/]" (391 characters, hash 54e7b268114da57a)
+(["a=1"], "a.tmp", "x") -> "throws \"<here>/a.tmp: cannot be copied to <here>/x: No such fil...ct\"; then [a=1]" (377 characters, hash 813340e7c00838ec)
+(["a=1"], "a/b", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "a/b", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "a/b", "a.tmp") -> "throws \"<here>/a/b: cannot be copied to <here>/a.tmp: Not a dir...ct\"; then [a=1]" (369 characters, hash 2744c94c53e46ecf)
+(["a=1"], "a/b", "b") -> "throws \"<here>/a/b: cannot be copied to <here>/b: Not a directo...ct\"; then [a=1]" (365 characters, hash 063ace3207a16129)
+(["a=1"], "a/b", "d/../a") -> "throws \"<here>/a/b: cannot be copied to <here>/d/../a: Not a di...; then [a=1, d/]" (382 characters, hash c21ce5e3ebcbf7d3)
+(["a=1"], "a/b", "d/b") -> "throws \"<here>/a/b: cannot be copied to <here>/d/b: Not a direc...; then [a=1, d/]" (379 characters, hash 6a2d8765e10f7ab9)
+(["a=1"], "a/b", "x") -> "throws \"<here>/a/b: cannot be copied to <here>/x: Not a directo...ct\"; then [a=1]" (365 characters, hash 71d00b31370354ef)
+(["a=1"], "b", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "b", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "b", "a.tmp") -> "throws \"<here>/b: cannot be copied to <here>/a.tmp: No such fil...ct\"; then [a=1]" (377 characters, hash f613f8121fe0b7ca)
+(["a=1"], "b", "b") -> "throws \"<here>/b is inside <here>/b, so it cannot hold a copy o...ct\"; then [a=1]" (367 characters, hash e9af01dc6c964c4e)
+(["a=1"], "b", "d/../a") -> "throws \"<here>/b: cannot be copied to <here>/d/../a: No such fi...; then [a=1, d/]" (390 characters, hash 5b8e0e9d47b2b43a)
+(["a=1"], "b", "d/b") -> "throws \"<here>/b: cannot be copied to <here>/d/b: No such file ...; then [a=1, d/]" (387 characters, hash 8dcf691f925bcdec)
+(["a=1"], "b", "x") -> "throws \"<here>/b: cannot be copied to <here>/x: No such file or...ct\"; then [a=1]" (373 characters, hash 0e3e84f46852c80a)
+(["a=1"], "d", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d", "a.tmp") -> "throws \"<here>/d: cannot be copied to <here>/a.tmp: No such fil...ct\"; then [a=1]" (377 characters, hash 20f5fac0d9e13b5c)
+(["a=1"], "d", "b") -> "throws \"<here>/d: cannot be copied to <here>/b: No such file or...ct\"; then [a=1]" (373 characters, hash 461e52b95830ac32)
+(["a=1"], "d", "d/../a") -> "throws \"<here>/d: cannot be copied to <here>/d/../a: Not a dire...; then [a=1, d/]" (380 characters, hash c9a3ab9c17d750cd)
+(["a=1"], "d", "d/b") -> "throws \"<here>/d/b is inside <here>/d, so it cannot hold a copy...ct\"; then [a=1]" (369 characters, hash 2c48752989948793)
+(["a=1"], "d", "x") -> "throws \"<here>/d: cannot be copied to <here>/x: No such file or...ct\"; then [a=1]" (373 characters, hash 7e89fd6c264f3c10)
+(["a=1"], "d.tmp", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d.tmp", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d.tmp", "a.tmp") -> "throws \"<here>/d.tmp: cannot be copied to <here>/a.tmp: No such...ct\"; then [a=1]" (381 characters, hash 20cc8cf361fbb43f)
+(["a=1"], "d.tmp", "b") -> "throws \"<here>/d.tmp: cannot be copied to <here>/b: No such fil...ct\"; then [a=1]" (377 characters, hash eeafffb334173a8d)
+(["a=1"], "d.tmp", "d/../a") -> "throws \"<here>/d.tmp: cannot be copied to <here>/d/../a: No suc...; then [a=1, d/]" (394 characters, hash 52f911dc01f81b39)
+(["a=1"], "d.tmp", "d/b") -> "throws \"<here>/d.tmp: cannot be copied to <here>/d/b: No such f...; then [a=1, d/]" (391 characters, hash 059bf9d7cee59ca9)
+(["a=1"], "d.tmp", "x") -> "throws \"<here>/d.tmp: cannot be copied to <here>/x: No such fil...ct\"; then [a=1]" (377 characters, hash cc6c2660b585dfbb)
+(["a=1"], "d/../a", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/../a", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/../a", "a.tmp") -> "throws \"<here>/d/../a: cannot be copied to <here>/a.tmp: No suc...ct\"; then [a=1]" (382 characters, hash 26beb13b5c2b9137)
+(["a=1"], "d/../a", "b") -> "throws \"<here>/d/../a: cannot be copied to <here>/b: No such fi...ct\"; then [a=1]" (378 characters, hash eb97f3d2890a8245)
+(["a=1"], "d/../a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/d/../a, so it cannot hol...ct\"; then [a=1]" (377 characters, hash 4791f2ff3f931f1c)
+(["a=1"], "d/../a", "d/b") -> "done; then [a=1, d/, d/b=1]; undo done; then [a=1]; redo done; then [a=1, d/, d/b=1]"
+(["a=1"], "d/../a", "x") -> "throws \"<here>/d/../a: cannot be copied to <here>/x: No such fi...ct\"; then [a=1]" (378 characters, hash f0b21ebebea69ea3)
+(["a=1"], "d/b", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/b", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/b", "a.tmp") -> "throws \"<here>/d/b: cannot be copied to <here>/a.tmp: No such f...ct\"; then [a=1]" (379 characters, hash 149d7da0ee746c79)
+(["a=1"], "d/b", "b") -> "throws \"<here>/d/b: cannot be copied to <here>/b: No such file ...ct\"; then [a=1]" (375 characters, hash ee2aa968fe3dcb4f)
+(["a=1"], "d/b", "d/../a") -> "throws \"<here>/d/b: cannot be copied to <here>/d/../a: No such ...; then [a=1, d/]" (392 characters, hash 85ce84e4c78da417)
+(["a=1"], "d/b", "d/b") -> "throws \"<here>/d/b is inside <here>/d/b, so it cannot hold a co...ct\"; then [a=1]" (371 characters, hash e956645f204c308c)
+(["a=1"], "d/b", "x") -> "throws \"<here>/d/b: cannot be copied to <here>/x: No such file ...ct\"; then [a=1]" (375 characters, hash 55224e5e6751a471)
+(["a=1"], "d/e", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/e", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/e", "a.tmp") -> "throws \"<here>/d/e: cannot be copied to <here>/a.tmp: No such f...ct\"; then [a=1]" (379 characters, hash 48340902e938d660)
+(["a=1"], "d/e", "b") -> "throws \"<here>/d/e: cannot be copied to <here>/b: No such file ...ct\"; then [a=1]" (375 characters, hash 847d3d49cfd2ee1e)
+(["a=1"], "d/e", "d/../a") -> "throws \"<here>/d/e: cannot be copied to <here>/d/../a: No such ...; then [a=1, d/]" (392 characters, hash 5e4dea088cc020b4)
+(["a=1"], "d/e", "d/b") -> "throws \"<here>/d/e: cannot be copied to <here>/d/b: No such fil...; then [a=1, d/]" (389 characters, hash 33000c7073576bca)
+(["a=1"], "d/e", "x") -> "throws \"<here>/d/e: cannot be copied to <here>/x: No such file ...ct\"; then [a=1]" (375 characters, hash bf77cdf3b02774dc)
+(["a=1"], "d/e/f", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/e/f", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/e/f", "a.tmp") -> "throws \"<here>/d/e/f: cannot be copied to <here>/a.tmp: No such...ct\"; then [a=1]" (381 characters, hash 97d0f41dc33947f1)
+(["a=1"], "d/e/f", "b") -> "throws \"<here>/d/e/f: cannot be copied to <here>/b: No such fil...ct\"; then [a=1]" (377 characters, hash 40c43733f52e3c67)
+(["a=1"], "d/e/f", "d/../a") -> "throws \"<here>/d/e/f: cannot be copied to <here>/d/../a: No suc...; then [a=1, d/]" (394 characters, hash c293e7c9d8bde29f)
+(["a=1"], "d/e/f", "d/b") -> "throws \"<here>/d/e/f: cannot be copied to <here>/d/b: No such f...; then [a=1, d/]" (391 characters, hash 0d282c9f0483027b)
+(["a=1"], "d/e/f", "x") -> "throws \"<here>/d/e/f: cannot be copied to <here>/x: No such fil...ct\"; then [a=1]" (377 characters, hash 5ad285467dcadc59)
+(["a=1"], "d/x", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/x", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/x", "a.tmp") -> "throws \"<here>/d/x: cannot be copied to <here>/a.tmp: No such f...ct\"; then [a=1]" (379 characters, hash 70944c0e9009818f)
+(["a=1"], "d/x", "b") -> "throws \"<here>/d/x: cannot be copied to <here>/b: No such file ...ct\"; then [a=1]" (375 characters, hash 9b2c2344ef53d2dd)
+(["a=1"], "d/x", "d/../a") -> "throws \"<here>/d/x: cannot be copied to <here>/d/../a: No such ...; then [a=1, d/]" (392 characters, hash d46b1367ad56a2a9)
+(["a=1"], "d/x", "d/b") -> "throws \"<here>/d/x: cannot be copied to <here>/d/b: No such fil...; then [a=1, d/]" (389 characters, hash 3116818c3e0a9a39)
+(["a=1"], "d/x", "x") -> "throws \"<here>/d/x: cannot be copied to <here>/x: No such file ...ct\"; then [a=1]" (375 characters, hash 4e3acf865e3362eb)
+(["a=1"], "x", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "x", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "x", "a.tmp") -> "throws \"<here>/x: cannot be copied to <here>/a.tmp: No such fil...ct\"; then [a=1]" (377 characters, hash bf4a99e4395bc148)
+(["a=1"], "x", "b") -> "throws \"<here>/x: cannot be copied to <here>/b: No such file or...ct\"; then [a=1]" (373 characters, hash 8c90674eebc3b006)
+(["a=1"], "x", "d/../a") -> "throws \"<here>/x: cannot be copied to <here>/d/../a: No such fi...; then [a=1, d/]" (390 characters, hash 85720eab33ddc5ac)
+(["a=1"], "x", "d/b") -> "throws \"<here>/x: cannot be copied to <here>/d/b: No such file ...; then [a=1, d/]" (387 characters, hash e9067179e9c77682)
+(["a=1"], "x", "x") -> "throws \"<here>/x is inside <here>/x, so it cannot hold a copy o...ct\"; then [a=1]" (367 characters, hash b031810eb447df26)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "", "a") -> "throws \"<here>/a is inside <here>/, so it cannot hold a copy of...mine, d/, d/b=2]" (459 characters, hash d01d529b86366406)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "") -> "throws \"<here>/ exists already\"; then [d.tmp/, d.tmp/keep=mine...mine, d/, d/b=2]" (423 characters, hash 1fc74f855b6b8a67)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "a") -> "throws \"<here>/a is inside <here>/a, so it cannot hold a copy o...mine, d/, d/b=2]" (460 characters, hash cb55b7b01403d37b)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "a.tmp") -> "throws \"<here>/a: cannot be copied to <here>/a.tmp: No such fil...mine, d/, d/b=2]" (470 characters, hash 1b1dea43d0710fc2)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "b") -> "throws \"<here>/a: cannot be copied to <here>/b: No such file or...mine, d/, d/b=2]" (466 characters, hash 6c852a99c99d1614)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c...mine, d/, d/b=2]" (465 characters, hash af5a2457a0bc835f)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "d/b") -> "throws \"<here>/d/b exists already\"; then [d.tmp/, d.tmp/keep=m...mine, d/, d/b=2]" (426 characters, hash 45bbe63dcb8f6f3a)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "x") -> "throws \"<here>/a: cannot be copied to <here>/x: No such file or...mine, d/, d/b=2]" (466 characters, hash 8733987ff594aba6)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be copied to <here>/a: No such fil...mine, d/, d/b=2]" (470 characters, hash 6a03fc6b209a907e)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "b", "a") -> "throws \"<here>/b: cannot be copied to <here>/a: No such file or...mine, d/, d/b=2]" (466 characters, hash 0d78f1f864a70e58)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/../a", "a") -> "throws \"<here>/a is inside <here>/d/../a, so it cannot hold a c...mine, d/, d/b=2]" (465 characters, hash 125d982190abeab7)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/b", "a") -> "done; then [a=2, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo done;...mine, d/, d/b=2]" (165 characters, hash 45ab256be552d00d)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "x", "a") -> "throws \"<here>/x: cannot be copied to <here>/a: No such file or...mine, d/, d/b=2]" (466 characters, hash c5ff88c542fcf426)
+(["d/", "d/b=2"], "", "a") -> "throws \"<here>/a is inside <here>/, so it cannot hold a copy of...then [d/, d/b=2]" (384 characters, hash 0350b123565ce9eb)
+(["d/", "d/b=2"], "a", "") -> "throws \"<here>/ exists already\"; then [d/, d/b=2]; undo throws...then [d/, d/b=2]" (348 characters, hash a887f6ab216da4f4)
+(["d/", "d/b=2"], "a", "a") -> "throws \"<here>/a is inside <here>/a, so it cannot hold a copy o...then [d/, d/b=2]" (385 characters, hash 0ac271deebbc9540)
+(["d/", "d/b=2"], "a", "a.tmp") -> "throws \"<here>/a: cannot be copied to <here>/a.tmp: No such fil...then [d/, d/b=2]" (395 characters, hash bab85e86a381e5df)
+(["d/", "d/b=2"], "a", "b") -> "throws \"<here>/a: cannot be copied to <here>/b: No such file or...then [d/, d/b=2]" (391 characters, hash 25a2becb35709cbd)
+(["d/", "d/b=2"], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c...then [d/, d/b=2]" (390 characters, hash 7f25be60251dc5cc)
+(["d/", "d/b=2"], "a", "d/b") -> "throws \"<here>/d/b exists already\"; then [d/, d/b=2]; undo thr...then [d/, d/b=2]" (351 characters, hash b5539813a29ccaf7)
+(["d/", "d/b=2"], "a", "x") -> "throws \"<here>/a: cannot be copied to <here>/x: No such file or...then [d/, d/b=2]" (391 characters, hash 37e6d3b1ce57918b)
+(["d/", "d/b=2"], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be copied to <here>/a: No such fil...then [d/, d/b=2]" (395 characters, hash ea8d2b62c0aacee3)
+(["d/", "d/b=2"], "b", "a") -> "throws \"<here>/b: cannot be copied to <here>/a: No such file or...then [d/, d/b=2]" (391 characters, hash ca0f1aee178f0979)
+(["d/", "d/b=2"], "d/../a", "a") -> "throws \"<here>/a is inside <here>/d/../a, so it cannot hold a c...then [d/, d/b=2]" (390 characters, hash fe75f9d74248f424)
+(["d/", "d/b=2"], "d/b", "a") -> "done; then [a=2, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a=2, d/, d/b=2]"
+(["d/", "d/b=2"], "x", "a") -> "throws \"<here>/x: cannot be copied to <here>/a: No such file or...then [d/, d/b=2]" (391 characters, hash f377202a2ed8bb0b)
+(["d/"], "", "a") -> "throws \"<here>/a is inside <here>/, so it cannot hold a copy of...ect\"; then [d/]" (363 characters, hash f5e1a95ad34c4683)
+(["d/"], "a", "") -> "throws \"<here>/ exists already\"; then [d/]; undo throws \"noth...ect\"; then [d/]" (327 characters, hash 459a41a0b0671216)
+(["d/"], "a", "a") -> "throws \"<here>/a is inside <here>/a, so it cannot hold a copy o...ect\"; then [d/]" (364 characters, hash 22144ebf2ad43fca)
+(["d/"], "a", "a.tmp") -> "throws \"<here>/a: cannot be copied to <here>/a.tmp: No such fil...ect\"; then [d/]" (374 characters, hash 0c23040d0ded8e7f)
+(["d/"], "a", "b") -> "throws \"<here>/a: cannot be copied to <here>/b: No such file or...ect\"; then [d/]" (370 characters, hash 80cfa816b9510e25)
+(["d/"], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c...ect\"; then [d/]" (369 characters, hash 5cfb6663b1cc714e)
+(["d/"], "a", "d/b") -> "throws \"<here>/a: cannot be copied to <here>/d/b: No such file ...ect\"; then [d/]" (372 characters, hash de4010461254b454)
+(["d/"], "a", "x") -> "throws \"<here>/a: cannot be copied to <here>/x: No such file or...ect\"; then [d/]" (370 characters, hash dfe88d77088ff8a3)
+(["d/"], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be copied to <here>/a: No such fil...ect\"; then [d/]" (374 characters, hash 9c5e6754a4c362bb)
+(["d/"], "b", "a") -> "throws \"<here>/b: cannot be copied to <here>/a: No such file or...ect\"; then [d/]" (370 characters, hash 5d314ec32cb2e9b9)
+(["d/"], "d/../a", "a") -> "throws \"<here>/a is inside <here>/d/../a, so it cannot hold a c...ect\"; then [d/]" (369 characters, hash 2869770ed8376666)
+(["d/"], "d/b", "a") -> "throws \"<here>/d/b: cannot be copied to <here>/a: No such file ...ect\"; then [d/]" (372 characters, hash 31c994a64e6e70c4)
+(["d/"], "x", "a") -> "throws \"<here>/x: cannot be copied to <here>/a: No such file or...ect\"; then [d/]" (370 characters, hash abbc0e5e8eeb8123)
+(["d/e/f=3"], "", "a") -> "throws \"<here>/a is inside <here>/, so it cannot hold a copy of..., d/e/, d/e/f=3]" (408 characters, hash 86c3460ba07a3333)
+(["d/e/f=3"], "a", "") -> "throws \"<here>/ exists already\"; then [d/, d/e/, d/e/f=3]; und..., d/e/, d/e/f=3]" (372 characters, hash 1538d26f3e1229c8)
+(["d/e/f=3"], "a", "a") -> "throws \"<here>/a is inside <here>/a, so it cannot hold a copy o..., d/e/, d/e/f=3]" (409 characters, hash a69f453001fb4bd4)
+(["d/e/f=3"], "a", "a.tmp") -> "throws \"<here>/a: cannot be copied to <here>/a.tmp: No such fil..., d/e/, d/e/f=3]" (419 characters, hash 9e610f3d59dbd8a7)
+(["d/e/f=3"], "a", "b") -> "throws \"<here>/a: cannot be copied to <here>/b: No such file or..., d/e/, d/e/f=3]" (415 characters, hash 1b2243d3c9aa6521)
+(["d/e/f=3"], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c..., d/e/, d/e/f=3]" (414 characters, hash 6b8bb0a7f2ab40c0)
+(["d/e/f=3"], "a", "d/b") -> "throws \"<here>/a: cannot be copied to <here>/d/b: No such file ..., d/e/, d/e/f=3]" (417 characters, hash 20fd81e68904bb1a)
+(["d/e/f=3"], "a", "x") -> "throws \"<here>/a: cannot be copied to <here>/x: No such file or..., d/e/, d/e/f=3]" (415 characters, hash ed135d703af128d3)
+(["d/e/f=3"], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be copied to <here>/a: No such fil..., d/e/, d/e/f=3]" (419 characters, hash 5b738efb0ff3f9cb)
+(["d/e/f=3"], "b", "a") -> "throws \"<here>/b: cannot be copied to <here>/a: No such file or..., d/e/, d/e/f=3]" (415 characters, hash ab863240611f5a6d)
+(["d/e/f=3"], "d/../a", "a") -> "throws \"<here>/a is inside <here>/d/../a, so it cannot hold a c..., d/e/, d/e/f=3]" (414 characters, hash 0dbf9ee9ed904338)
+(["d/e/f=3"], "d/b", "a") -> "throws \"<here>/d/b: cannot be copied to <here>/a: No such file ..., d/e/, d/e/f=3]" (417 characters, hash 778e4bf991d514ea)
+(["d/e/f=3"], "x", "a") -> "throws \"<here>/x: cannot be copied to <here>/a: No such file or..., d/e/, d/e/f=3]" (415 characters, hash b5ef60606150e253)
+([], "", "a") -> "throws \"<here>/a is inside <here>/, so it cannot hold a copy of...oject\"; then []" (357 characters, hash 580a3f84364f4ef2)
+([], "a", "") -> "throws \"<here>/ exists already\"; then []; undo throws \"nothin...oject\"; then []" (321 characters, hash 7f92f583ef6722bf)
+([], "a", "a") -> "throws \"<here>/a is inside <here>/a, so it cannot hold a copy o...oject\"; then []" (358 characters, hash 13ac85a4a2fda963)
+([], "a", "a.tmp") -> "throws \"<here>/a: cannot be copied to <here>/a.tmp: No such fil...oject\"; then []" (368 characters, hash 47f95e12fccdae3e)
+([], "a", "b") -> "throws \"<here>/a: cannot be copied to <here>/b: No such file or...oject\"; then []" (364 characters, hash dd509c9ca2501f98)
+([], "a", "d/../a") -> "throws \"<here>/d/../a is inside <here>/a, so it cannot hold a c...oject\"; then []" (363 characters, hash dd30b1f3946892c7)
+([], "a", "d/b") -> "throws \"<here>/a: cannot be copied to <here>/d/b: No such file ...ect\"; then [d/]" (372 characters, hash de4010461254b454)
+([], "a", "x") -> "throws \"<here>/a: cannot be copied to <here>/x: No such file or...oject\"; then []" (364 characters, hash bfe0f2fb8d4c1d12)
+([], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be copied to <here>/a: No such fil...oject\"; then []" (368 characters, hash 21795ca6b32ed7fa)
+([], "b", "a") -> "throws \"<here>/b: cannot be copied to <here>/a: No such file or...oject\"; then []" (364 characters, hash 2f3cdd37d447b7fc)
+([], "d/../a", "a") -> "throws \"<here>/a is inside <here>/d/../a, so it cannot hold a c...oject\"; then []" (363 characters, hash f6b6c9c7809a158f)
+([], "d/b", "a") -> "throws \"<here>/d/b: cannot be copied to <here>/a: No such file ...oject\"; then []" (366 characters, hash 0d25a67fb17d1e21)
+([], "x", "a") -> "throws \"<here>/x: cannot be copied to <here>/a: No such file or...oject\"; then []" (364 characters, hash 8c78b5ab64e7e992)
+~(["a=1", "a.tmp=mine"], "a/b", "a.tmp") -> "throws \"<here>/a.tmp exists already\"; then [a.tmp=mine, a=1]; ...a.tmp=mine, a=1]" (371 characters, hash 7b6a99f1d4252956)
+~(["a=1", "a.tmp=mine"], "d/b", "a.tmp") -> "throws \"<here>/a.tmp exists already\"; then [a.tmp=mine, a=1]; ...a.tmp=mine, a=1]" (371 characters, hash 7b6a99f1d4252956)
+~(["a=1", "a.tmp=mine"], "d/e", "x") -> "throws \"<here>/d/e: cannot be copied to <here>/x: No such file ...a.tmp=mine, a=1]" (411 characters, hash 8bb822b9699a5074)
+~(["a=1", "b=2"], "", "d/e/f") -> "throws \"<here>/d/e/f is inside <here>/, so it cannot hold a cop... then [a=1, b=2]" (385 characters, hash 2f4a2518519b878a)
+~(["a=1", "b=2"], "a", "d") -> "done; then [a=1, b=2, d=1]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d=1]"
+~(["a=1", "b=2"], "d/../a", "d/e") -> "done; then [a=1, b=2, d/, d/e=1]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/e=1]"
+~(["a=1", "b=2"], "d/e/f", "d.tmp") -> "throws \"<here>/d/e/f: cannot be copied to <here>/d.tmp: No such... then [a=1, b=2]" (396 characters, hash 4bafba410be8b84b)
+~(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a.tmp", "d.tmp") -> "throws \"<here>/a.tmp: cannot be copied to <here>/d.tmp: No such...x.tmp/keep=mine]" (456 characters, hash f694f4a94e6bec16)
+~(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d", "d/e/f") -> "throws \"<here>/d/e/f is inside <here>/d, so it cannot hold a co...x.tmp/keep=mine]" (446 characters, hash d182787f675a4cca)
+~(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/x", "x") -> "throws \"<here>/d/x: cannot be copied to <here>/x: No such file ...x.tmp/keep=mine]" (450 characters, hash d82cb8635b1cfbea)
+~(["a=1"], "d/x", "d") -> "throws \"<here>/d/x: cannot be copied to <here>/d: No such file ...ct\"; then [a=1]" (375 characters, hash f0b8aaa411103bb7)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a.tmp", "a.tmp") -> "throws \"<here>/a.tmp is inside <here>/a.tmp, so it cannot hold ...mine, d/, d/b=2]" (468 characters, hash c89f03e729cca19d)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a.tmp", "d/x") -> "throws \"<here>/a.tmp: cannot be copied to <here>/d/x: No such f...mine, d/, d/b=2]" (472 characters, hash 921c39e9d3485b56)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "b", "d/x") -> "throws \"<here>/b: cannot be copied to <here>/d/x: No such file ...mine, d/, d/b=2]" (468 characters, hash c4781c974facaacc)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d.tmp", "d.tmp") -> "throws \"<here>/d.tmp exists already\"; then [d.tmp/, d.tmp/keep...mine, d/, d/b=2]" (428 characters, hash cbcaa8394efb655c)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d.tmp", "d/b") -> "throws \"<here>/d/b exists already\"; then [d.tmp/, d.tmp/keep=m...mine, d/, d/b=2]" (426 characters, hash 45bbe63dcb8f6f3a)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d.tmp", "d/x") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, d/x/, d/x/keep=m..., d/x/keep=mine]" (197 characters, hash 3f22ed40ea748fff)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e/f", "a") -> "throws \"<here>/d/e/f: cannot be copied to <here>/a: No such fil...mine, d/, d/b=2]" (470 characters, hash d0e66ba2e61c1659)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "x", "") -> "throws \"<here>/ exists already\"; then [d.tmp/, d.tmp/keep=mine...mine, d/, d/b=2]" (423 characters, hash 1fc74f855b6b8a67)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "x", "d/e/f") -> "throws \"<here>/x: cannot be copied to <here>/d/e/f: No such fil...d/, d/b=2, d/e/]" (488 characters, hash c553c5787b566185)
+~(["d/", "d/b=2"], "a.tmp", "d/e") -> "throws \"<here>/a.tmp: cannot be copied to <here>/d/e: No such f...then [d/, d/b=2]" (397 characters, hash 097e5a11ed8ac64c)
+~(["d/", "d/b=2"], "d/../a", "d/b") -> "throws \"<here>/d/b exists already\"; then [d/, d/b=2]; undo thr...then [d/, d/b=2]" (351 characters, hash b5539813a29ccaf7)
+~(["d/", "d/b=2"], "x", "d/e/f") -> "throws \"<here>/x: cannot be copied to <here>/d/e/f: No such fil...d/, d/b=2, d/e/]" (413 characters, hash a9bf576e3865e082)
+~(["d/"], "a.tmp", "") -> "throws \"<here>/ exists already\"; then [d/]; undo throws \"noth...ect\"; then [d/]" (327 characters, hash 459a41a0b0671216)
+~(["d/"], "a.tmp", "a/b") -> "throws \"<here>/a.tmp: cannot be copied to <here>/a/b: No such f..."; then [a/, d/]" (388 characters, hash 13ea95fd021363a8)
+~(["d/"], "d", "d.tmp") -> "done; then [d.tmp/, d/]; undo done; then [d/]; redo done; then [d.tmp/, d/]"
+~(["d/"], "d.tmp", "d/b") -> "throws \"<here>/d.tmp: cannot be copied to <here>/d/b: No such f...ect\"; then [d/]" (376 characters, hash 0a105f5337cf9f80)
+~(["d/"], "d/../a", "a/b") -> "throws \"<here>/a/b is inside <here>/d/../a, so it cannot hold a...ect\"; then [d/]" (371 characters, hash 2acb7e5ed6458d0f)
+~(["d/"], "d/e", "") -> "throws \"<here>/ exists already\"; then [d/]; undo throws \"noth...ect\"; then [d/]" (327 characters, hash 459a41a0b0671216)
+~(["d/"], "x", "b") -> "throws \"<here>/x: cannot be copied to <here>/b: No such file or...ect\"; then [d/]" (370 characters, hash 326d7d9bbe4b50b4)
+~(["d/"], "x", "d.tmp") -> "throws \"<here>/x: cannot be copied to <here>/d.tmp: No such fil...ect\"; then [d/]" (374 characters, hash 902edd69ebbec64b)
+~(["d/e/f=3"], "a", "d.tmp") -> "throws \"<here>/a: cannot be copied to <here>/d.tmp: No such fil..., d/e/, d/e/f=3]" (419 characters, hash d3d241506836142c)
+~(["d/e/f=3"], "a.tmp", "d/../a") -> "throws \"<here>/a.tmp: cannot be copied to <here>/d/../a: No suc..., d/e/, d/e/f=3]" (424 characters, hash cd582619ae2679a3)
+~(["d/e/f=3"], "a/b", "x") -> "throws \"<here>/a/b: cannot be copied to <here>/x: No such file ..., d/e/, d/e/f=3]" (417 characters, hash a22a63195e825906)
+~(["d/e/f=3"], "d", "d/e") -> "throws \"<here>/d/e exists already\"; then [d/, d/e/, d/e/f=3]; ..., d/e/, d/e/f=3]" (375 characters, hash 9f7f79355d9504c2)
+~(["d/e/f=3"], "d.tmp", "d/e/f") -> "throws \"<here>/d/e/f exists already\"; then [d/, d/e/, d/e/f=3]..., d/e/, d/e/f=3]" (377 characters, hash 14231cbc78271b57)
+~(["d/e/f=3"], "d/../a", "x") -> "throws \"<here>/d/../a: cannot be copied to <here>/x: No such fi..., d/e/, d/e/f=3]" (420 characters, hash 7bf5303b91cf95df)
+~(["d/e/f=3"], "d/e", "d/e/f") -> "throws \"<here>/d/e/f exists already\"; then [d/, d/e/, d/e/f=3]..., d/e/, d/e/f=3]" (377 characters, hash 14231cbc78271b57)
+~([], "b", "d/e/f") -> "throws \"<here>/b: cannot be copied to <here>/d/e/f: No such fil... then [d/, d/e/]" (392 characters, hash 184929c7828a2dea)
+~([], "d/e/f", "") -> "throws \"<here>/ exists already\"; then []; undo throws \"nothin...oject\"; then []" (321 characters, hash 7f92f583ef6722bf)
+~([], "x", "d/b") -> "throws \"<here>/x: cannot be copied to <here>/d/b: No such file ...ect\"; then [d/]" (372 characters, hash d1b500db4c91d32d)
+
+## Undo.cpp/a folder made
+(["a=1", "a.tmp=mine"], "") -> "throws \"<here>/ exists already\"; then [a.tmp=mine, a=1]; undo ...a.tmp=mine, a=1]" (366 characters, hash 005aba3e24770d10)
+(["a=1", "a.tmp=mine"], "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "a.tmp") -> "throws \"<here>/a.tmp exists already\"; then [a.tmp=mine, a=1]; ...a.tmp=mine, a=1]" (371 characters, hash 7b6a99f1d4252956)
+(["a=1", "a.tmp=mine"], "a/b") -> "throws \"<here>/a/b: cannot be made: Not a directory\"; then [a....a.tmp=mine, a=1]" (387 characters, hash 7d49fac198cc7fca)
+(["a=1", "a.tmp=mine"], "b") -> "done; then [a.tmp=mine, a=1, b/]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, b/]"
+(["a=1", "a.tmp=mine"], "d") -> "done; then [a.tmp=mine, a=1, d/]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/]"
+(["a=1", "a.tmp=mine"], "d.tmp") -> "done; then [a.tmp=mine, a=1, d.tmp/]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d.tmp/]"
+(["a=1", "a.tmp=mine"], "d/../a") -> "throws \"<here>/d/../a: cannot be made: File exists\"; then [a.t...p=mine, a=1, d/]" (398 characters, hash e6e8c7c4d8b5c8f1)
+(["a=1", "a.tmp=mine"], "d/b") -> "done; then [a.tmp=mine, a=1, d/, d/b/]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/b/]"
+(["a=1", "a.tmp=mine"], "d/e") -> "done; then [a.tmp=mine, a=1, d/, d/e/]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/e/]"
+(["a=1", "a.tmp=mine"], "d/e/f") -> "done; then [a.tmp=mine, a=1, d/, d/e/, d/e/f/]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/e/, d/e/f/]"
+(["a=1", "a.tmp=mine"], "d/x") -> "done; then [a.tmp=mine, a=1, d/, d/x/]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/x/]"
+(["a=1", "a.tmp=mine"], "x") -> "done; then [a.tmp=mine, a=1, x/]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, x/]"
+(["a=1", "b=2"], "") -> "throws \"<here>/ exists already\"; then [a=1, b=2]; undo throws ... then [a=1, b=2]" (345 characters, hash 81fe8458236af305)
+(["a=1", "b=2"], "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "a.tmp") -> "done; then [a.tmp/, a=1, b=2]; undo done; then [a=1, b=2]; redo done; then [a.tmp/, a=1, b=2]"
+(["a=1", "b=2"], "a/b") -> "throws \"<here>/a/b: cannot be made: Not a directory\"; then [a=... then [a=1, b=2]" (366 characters, hash 47490c3bfde1235b)
+(["a=1", "b=2"], "b") -> "throws \"<here>/b exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 8257943e82db04cd)
+(["a=1", "b=2"], "d") -> "done; then [a=1, b=2, d/]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/]"
+(["a=1", "b=2"], "d.tmp") -> "done; then [a=1, b=2, d.tmp/]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d.tmp/]"
+(["a=1", "b=2"], "d/../a") -> "throws \"<here>/d/../a: cannot be made: File exists\"; then [a=1...n [a=1, b=2, d/]" (377 characters, hash 6bd6db349c158422)
+(["a=1", "b=2"], "d/b") -> "done; then [a=1, b=2, d/, d/b/]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/b/]"
+(["a=1", "b=2"], "d/e") -> "done; then [a=1, b=2, d/, d/e/]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/e/]"
+(["a=1", "b=2"], "d/e/f") -> "done; then [a=1, b=2, d/, d/e/, d/e/f/]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/e/, d/e/f/]"
+(["a=1", "b=2"], "d/x") -> "done; then [a=1, b=2, d/, d/x/]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/x/]"
+(["a=1", "b=2"], "x") -> "done; then [a=1, b=2, x/]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, x/]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "") -> "throws \"<here>/ exists already\"; then [a=1, x.tmp/, x.tmp/keep...x.tmp/keep=mine]" (405 characters, hash 0e2e3c6bf1c69c5f)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a.tmp") -> "done; then [a.tmp/, a=1, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a.tmp/, a=1, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a/b") -> "throws \"<here>/a/b: cannot be made: Not a directory\"; then [a=...x.tmp/keep=mine]" (426 characters, hash ecad11f59649ded5)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "b") -> "done; then [a=1, b/, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, b/, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d") -> "done; then [a=1, d/, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, d/, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d.tmp") -> "done; then [a=1, d.tmp/, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, d.tmp/, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/../a") -> "throws \"<here>/d/../a: cannot be made: File exists\"; then [a=1...x.tmp/keep=mine]" (437 characters, hash 0271843bd137c766)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/b") -> "done; then [a=1, d/, d/b/, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, d/, d/b/, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/e") -> "done; then [a=1, d/, d/e/, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, d/, d/e/, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/e/f") -> "done; then [a=1, d/, d/e/, d/e/f/, x.tmp/, x.tmp/keep=mine]; und...x.tmp/keep=mine]" (173 characters, hash 22c4d9b7f4bb6189)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/x") -> "done; then [a=1, d/, d/x/, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, d/, d/x/, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "x") -> "done; then [a=1, x.tmp/, x.tmp/keep=mine, x/]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, x.tmp/, x.tmp/keep=mine, x/]"
+(["a=1"], "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "a.tmp") -> "done; then [a.tmp/, a=1]; undo done; then [a=1]; redo done; then [a.tmp/, a=1]"
+(["a=1"], "a/b") -> "throws \"<here>/a/b: cannot be made: Not a directory\"; then [a=...ct\"; then [a=1]" (351 characters, hash ab624b0f6b008582)
+(["a=1"], "b") -> "done; then [a=1, b/]; undo done; then [a=1]; redo done; then [a=1, b/]"
+(["a=1"], "d") -> "done; then [a=1, d/]; undo done; then [a=1]; redo done; then [a=1, d/]"
+(["a=1"], "d.tmp") -> "done; then [a=1, d.tmp/]; undo done; then [a=1]; redo done; then [a=1, d.tmp/]"
+(["a=1"], "d/../a") -> "throws \"<here>/d/../a: cannot be made: File exists\"; then [a=1...; then [a=1, d/]" (362 characters, hash 33f6cc09a106760d)
+(["a=1"], "d/b") -> "done; then [a=1, d/, d/b/]; undo done; then [a=1]; redo done; then [a=1, d/, d/b/]"
+(["a=1"], "d/e") -> "done; then [a=1, d/, d/e/]; undo done; then [a=1]; redo done; then [a=1, d/, d/e/]"
+(["a=1"], "d/e/f") -> "done; then [a=1, d/, d/e/, d/e/f/]; undo done; then [a=1]; redo done; then [a=1, d/, d/e/, d/e/f/]"
+(["a=1"], "d/x") -> "done; then [a=1, d/, d/x/]; undo done; then [a=1]; redo done; then [a=1, d/, d/x/]"
+(["a=1"], "x") -> "done; then [a=1, x/]; undo done; then [a=1]; redo done; then [a=1, x/]"
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "") -> "throws \"<here>/ exists already\"; then [d.tmp/, d.tmp/keep=mine...mine, d/, d/b=2]" (423 characters, hash 1fc74f855b6b8a67)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a") -> "done; then [a/, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo done; ...mine, d/, d/b=2]" (163 characters, hash 4b3d316f0a6cef01)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a.tmp") -> "done; then [a.tmp/, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo do...mine, d/, d/b=2]" (171 characters, hash 07bac78aeaa7e5bd)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a/b") -> "done; then [a/, a/b/, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo ...mine, d/, d/b=2]" (175 characters, hash 4428902c104c75e9)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "b") -> "done; then [b/, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo done; ...mine, d/, d/b=2]" (163 characters, hash 1056b4b5fa769081)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d") -> "throws \"<here>/d exists already\"; then [d.tmp/, d.tmp/keep=min...mine, d/, d/b=2]" (424 characters, hash 2dc8acd864e78c45)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d.tmp") -> "throws \"<here>/d.tmp exists already\"; then [d.tmp/, d.tmp/keep...mine, d/, d/b=2]" (428 characters, hash cbcaa8394efb655c)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/../a") -> "done; then [a/, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo done; ...mine, d/, d/b=2]" (163 characters, hash 4b3d316f0a6cef01)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/b") -> "throws \"<here>/d/b exists already\"; then [d.tmp/, d.tmp/keep=m...mine, d/, d/b=2]" (426 characters, hash 45bbe63dcb8f6f3a)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, d/e/]; undo done...d/, d/b=2, d/e/]" (167 characters, hash 3e483412f6d22865)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e/f") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, d/e/, d/e/f/]; u...2, d/e/, d/e/f/]" (183 characters, hash 9a707656d1acc9c1)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/x") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, d/x/]; undo done...d/, d/b=2, d/x/]" (167 characters, hash e1ac8334b9a15ced)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "x") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, x/]; undo done; ..., d/, d/b=2, x/]" (163 characters, hash d1a8791a37951cc1)
+(["d/", "d/b=2"], "") -> "throws \"<here>/ exists already\"; then [d/, d/b=2]; undo throws...then [d/, d/b=2]" (348 characters, hash a887f6ab216da4f4)
+(["d/", "d/b=2"], "a") -> "done; then [a/, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a/, d/, d/b=2]"
+(["d/", "d/b=2"], "a.tmp") -> "done; then [a.tmp/, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a.tmp/, d/, d/b=2]"
+(["d/", "d/b=2"], "a/b") -> "done; then [a/, a/b/, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a/, a/b/, d/, d/b=2]"
+(["d/", "d/b=2"], "b") -> "done; then [b/, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [b/, d/, d/b=2]"
+(["d/", "d/b=2"], "d") -> "throws \"<here>/d exists already\"; then [d/, d/b=2]; undo throw...then [d/, d/b=2]" (349 characters, hash d309877ab13c5eae)
+(["d/", "d/b=2"], "d.tmp") -> "done; then [d.tmp/, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [d.tmp/, d/, d/b=2]"
+(["d/", "d/b=2"], "d/../a") -> "done; then [a/, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a/, d/, d/b=2]"
+(["d/", "d/b=2"], "d/b") -> "throws \"<here>/d/b exists already\"; then [d/, d/b=2]; undo thr...then [d/, d/b=2]" (351 characters, hash b5539813a29ccaf7)
+(["d/", "d/b=2"], "d/e") -> "done; then [d/, d/b=2, d/e/]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=2, d/e/]"
+(["d/", "d/b=2"], "d/e/f") -> "done; then [d/, d/b=2, d/e/, d/e/f/]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=2, d/e/, d/e/f/]"
+(["d/", "d/b=2"], "d/x") -> "done; then [d/, d/b=2, d/x/]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=2, d/x/]"
+(["d/", "d/b=2"], "x") -> "done; then [d/, d/b=2, x/]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=2, x/]"
+(["d/"], "") -> "throws \"<here>/ exists already\"; then [d/]; undo throws \"noth...ect\"; then [d/]" (327 characters, hash 459a41a0b0671216)
+(["d/"], "a") -> "done; then [a/, d/]; undo done; then [d/]; redo done; then [a/, d/]"
+(["d/"], "a.tmp") -> "done; then [a.tmp/, d/]; undo done; then [d/]; redo done; then [a.tmp/, d/]"
+(["d/"], "a/b") -> "done; then [a/, a/b/, d/]; undo done; then [d/]; redo done; then [a/, a/b/, d/]"
+(["d/"], "b") -> "done; then [b/, d/]; undo done; then [d/]; redo done; then [b/, d/]"
+(["d/"], "d") -> "throws \"<here>/d exists already\"; then [d/]; undo throws \"not...ect\"; then [d/]" (328 characters, hash 15d3838590201118)
+(["d/"], "d.tmp") -> "done; then [d.tmp/, d/]; undo done; then [d/]; redo done; then [d.tmp/, d/]"
+(["d/"], "d/../a") -> "done; then [a/, d/]; undo done; then [d/]; redo done; then [a/, d/]"
+(["d/"], "d/b") -> "done; then [d/, d/b/]; undo done; then [d/]; redo done; then [d/, d/b/]"
+(["d/"], "d/e") -> "done; then [d/, d/e/]; undo done; then [d/]; redo done; then [d/, d/e/]"
+(["d/"], "d/e/f") -> "done; then [d/, d/e/, d/e/f/]; undo done; then [d/]; redo done; then [d/, d/e/, d/e/f/]"
+(["d/"], "d/x") -> "done; then [d/, d/x/]; undo done; then [d/]; redo done; then [d/, d/x/]"
+(["d/"], "x") -> "done; then [d/, x/]; undo done; then [d/]; redo done; then [d/, x/]"
+(["d/e/f=3"], "") -> "throws \"<here>/ exists already\"; then [d/, d/e/, d/e/f=3]; und..., d/e/, d/e/f=3]" (372 characters, hash 1538d26f3e1229c8)
+(["d/e/f=3"], "a") -> "done; then [a/, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a/, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "a.tmp") -> "done; then [a.tmp/, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a.tmp/, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "a/b") -> "done; then [a/, a/b/, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a/, a/b/, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "b") -> "done; then [b/, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [b/, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "d") -> "throws \"<here>/d exists already\"; then [d/, d/e/, d/e/f=3]; un..., d/e/, d/e/f=3]" (373 characters, hash b888e50abaa3d256)
+(["d/e/f=3"], "d.tmp") -> "done; then [d.tmp/, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d.tmp/, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "d/../a") -> "done; then [a/, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a/, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "d/b") -> "done; then [d/, d/b/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d/, d/b/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "d/e") -> "throws \"<here>/d/e exists already\"; then [d/, d/e/, d/e/f=3]; ..., d/e/, d/e/f=3]" (375 characters, hash 9f7f79355d9504c2)
+(["d/e/f=3"], "d/e/f") -> "throws \"<here>/d/e/f exists already\"; then [d/, d/e/, d/e/f=3]..., d/e/, d/e/f=3]" (377 characters, hash 14231cbc78271b57)
+(["d/e/f=3"], "d/x") -> "done; then [d/, d/e/, d/e/f=3, d/x/]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d/, d/e/, d/e/f=3, d/x/]"
+(["d/e/f=3"], "x") -> "done; then [d/, d/e/, d/e/f=3, x/]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d/, d/e/, d/e/f=3, x/]"
+([], "") -> "throws \"<here>/ exists already\"; then []; undo throws \"nothin...oject\"; then []" (321 characters, hash 7f92f583ef6722bf)
+([], "a") -> "done; then [a/]; undo done; then []; redo done; then [a/]"
+([], "a.tmp") -> "done; then [a.tmp/]; undo done; then []; redo done; then [a.tmp/]"
+([], "a/b") -> "done; then [a/, a/b/]; undo done; then []; redo done; then [a/, a/b/]"
+([], "b") -> "done; then [b/]; undo done; then []; redo done; then [b/]"
+([], "d") -> "done; then [d/]; undo done; then []; redo done; then [d/]"
+([], "d.tmp") -> "done; then [d.tmp/]; undo done; then []; redo done; then [d.tmp/]"
+([], "d/../a") -> "done; then [a/, d/]; undo done; then []; redo done; then [a/, d/]"
+([], "d/b") -> "done; then [d/, d/b/]; undo done; then []; redo done; then [d/, d/b/]"
+([], "d/e") -> "done; then [d/, d/e/]; undo done; then []; redo done; then [d/, d/e/]"
+([], "d/e/f") -> "done; then [d/, d/e/, d/e/f/]; undo done; then []; redo done; then [d/, d/e/, d/e/f/]"
+([], "d/x") -> "done; then [d/, d/x/]; undo done; then []; redo done; then [d/, d/x/]"
+([], "x") -> "done; then [x/]; undo done; then []; redo done; then [x/]"
+
+## Undo.cpp/a remove
+(["a=1", "a.tmp=mine"], "") -> "throws \"<here>/: cannot be deleted: Directory not empty\"; then...a.tmp=mine, a=1]" (391 characters, hash b868717340377bca)
+(["a=1", "a.tmp=mine"], "a") -> "done; then [a.tmp=mine]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine]"
+(["a=1", "a.tmp=mine"], "a.tmp") -> "done; then [a=1]; undo done; then [a.tmp=mine, a=1]; redo done; then [a=1]"
+(["a=1", "a.tmp=mine"], "a/b") -> "throws \"<here>/a/b: cannot be deleted: Not a directory\"; then ...a.tmp=mine, a=1]" (390 characters, hash 8a653ad9a4e32714)
+(["a=1", "a.tmp=mine"], "b") -> "throws \"<here>/b: cannot be deleted: it is not there\"; then [a...a.tmp=mine, a=1]" (388 characters, hash 65cc10335a327a5b)
+(["a=1", "a.tmp=mine"], "d") -> "throws \"<here>/d: cannot be deleted: it is not there\"; then [a...a.tmp=mine, a=1]" (388 characters, hash 063fe6d54c7816d1)
+(["a=1", "a.tmp=mine"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: it is not there\"; the...a.tmp=mine, a=1]" (392 characters, hash 066880045b6a9ce4)
+(["a=1", "a.tmp=mine"], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th...a.tmp=mine, a=1]" (393 characters, hash 50c6dc4af07181bc)
+(["a=1", "a.tmp=mine"], "d/b") -> "throws \"<here>/d/b: cannot be deleted: it is not there\"; then ...a.tmp=mine, a=1]" (390 characters, hash add3abed3e791b3a)
+(["a=1", "a.tmp=mine"], "d/e") -> "throws \"<here>/d/e: cannot be deleted: it is not there\"; then ...a.tmp=mine, a=1]" (390 characters, hash d888aa1a7c63aaed)
+(["a=1", "a.tmp=mine"], "d/e/f") -> "throws \"<here>/d/e/f: cannot be deleted: it is not there\"; the...a.tmp=mine, a=1]" (392 characters, hash 1507736ac238d052)
+(["a=1", "a.tmp=mine"], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ...a.tmp=mine, a=1]" (390 characters, hash d27ca208544f08b4)
+(["a=1", "a.tmp=mine"], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then [a...a.tmp=mine, a=1]" (388 characters, hash dae13ee31bc2fef5)
+(["a=1", "b=2"], "") -> "throws \"<here>/: cannot be deleted: Directory not empty\"; then... then [a=1, b=2]" (370 characters, hash 83ae67c09c07f75b)
+(["a=1", "b=2"], "a") -> "done; then [b=2]; undo done; then [a=1, b=2]; redo done; then [b=2]"
+(["a=1", "b=2"], "a.tmp") -> "throws \"<here>/a.tmp: cannot be deleted: it is not there\"; the... then [a=1, b=2]" (371 characters, hash e025dda1af405362)
+(["a=1", "b=2"], "a/b") -> "throws \"<here>/a/b: cannot be deleted: Not a directory\"; then ... then [a=1, b=2]" (369 characters, hash 70d26470e0bd1771)
+(["a=1", "b=2"], "b") -> "done; then [a=1]; undo done; then [a=1, b=2]; redo done; then [a=1]"
+(["a=1", "b=2"], "d") -> "throws \"<here>/d: cannot be deleted: it is not there\"; then [a... then [a=1, b=2]" (367 characters, hash 14b175f70e9f75ce)
+(["a=1", "b=2"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: it is not there\"; the... then [a=1, b=2]" (371 characters, hash 428688b8726ac901)
+(["a=1", "b=2"], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th... then [a=1, b=2]" (372 characters, hash df794c0d92c1b9f9)
+(["a=1", "b=2"], "d/b") -> "throws \"<here>/d/b: cannot be deleted: it is not there\"; then ... then [a=1, b=2]" (369 characters, hash 976380933d23ef4b)
+(["a=1", "b=2"], "d/e") -> "throws \"<here>/d/e: cannot be deleted: it is not there\"; then ... then [a=1, b=2]" (369 characters, hash 39249b453106b6b2)
+(["a=1", "b=2"], "d/e/f") -> "throws \"<here>/d/e/f: cannot be deleted: it is not there\"; the... then [a=1, b=2]" (371 characters, hash ae279184ee7fee03)
+(["a=1", "b=2"], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ... then [a=1, b=2]" (369 characters, hash 95cd43aece640e11)
+(["a=1", "b=2"], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then [a... then [a=1, b=2]" (367 characters, hash 44200feb7adf14ba)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "") -> "throws \"<here>/: cannot be deleted: Directory not empty\"; then...x.tmp/keep=mine]" (430 characters, hash bf56e3aa815172d5)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a") -> "done; then [x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a.tmp") -> "throws \"<here>/a.tmp: cannot be deleted: it is not there\"; the...x.tmp/keep=mine]" (431 characters, hash 254eac4623ac8f94)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a/b") -> "throws \"<here>/a/b: cannot be deleted: Not a directory\"; then ...x.tmp/keep=mine]" (429 characters, hash d4fc05089291124b)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "b") -> "throws \"<here>/b: cannot be deleted: it is not there\"; then [a...x.tmp/keep=mine]" (427 characters, hash f55332948768d2b6)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d") -> "throws \"<here>/d: cannot be deleted: it is not there\"; then [a...x.tmp/keep=mine]" (427 characters, hash 8aa403060270d010)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: it is not there\"; the...x.tmp/keep=mine]" (431 characters, hash ae7dc370351b4b5b)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th...x.tmp/keep=mine]" (432 characters, hash 72291e4f3dde9563)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/b") -> "throws \"<here>/d/b: cannot be deleted: it is not there\"; then ...x.tmp/keep=mine]" (429 characters, hash b894700ae41a2385)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/e") -> "throws \"<here>/d/e: cannot be deleted: it is not there\"; then ...x.tmp/keep=mine]" (429 characters, hash 12c42ddfbb05daa4)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/e/f") -> "throws \"<here>/d/e/f: cannot be deleted: it is not there\"; the...x.tmp/keep=mine]" (431 characters, hash 2b173e1f31ce7f2d)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ...x.tmp/keep=mine]" (429 characters, hash 854aa0e95b8ff8eb)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then [a...x.tmp/keep=mine]" (427 characters, hash 2df911d10285ce9c)
+(["a=1"], "") -> "throws \"<here>/: cannot be deleted: Directory not empty\"; then...ct\"; then [a=1]" (355 characters, hash 7182819b4a8bc182)
+(["a=1"], "a") -> "done; then no folder; undo done; then [a=1]; redo done; then no folder"
+(["a=1"], "a.tmp") -> "throws \"<here>/a.tmp: cannot be deleted: it is not there\"; the...ct\"; then [a=1]" (356 characters, hash 30e2bcc611f132a9)
+(["a=1"], "a/b") -> "throws \"<here>/a/b: cannot be deleted: Not a directory\"; then ...ct\"; then [a=1]" (354 characters, hash 2f359725ea6f237c)
+(["a=1"], "b") -> "throws \"<here>/b: cannot be deleted: it is not there\"; then [a...ct\"; then [a=1]" (352 characters, hash 5e08fd769c4ee8ff)
+(["a=1"], "d") -> "throws \"<here>/d: cannot be deleted: it is not there\"; then [a...ct\"; then [a=1]" (352 characters, hash f4836727623ef74d)
+(["a=1"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: it is not there\"; the...ct\"; then [a=1]" (356 characters, hash d48bb7dbd4cf22ec)
+(["a=1"], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th...ct\"; then [a=1]" (357 characters, hash a797636c4cb14234)
+(["a=1"], "d/b") -> "throws \"<here>/d/b: cannot be deleted: it is not there\"; then ...ct\"; then [a=1]" (354 characters, hash 24e272711f65bed2)
+(["a=1"], "d/e") -> "throws \"<here>/d/e: cannot be deleted: it is not there\"; then ...ct\"; then [a=1]" (354 characters, hash f184bfb9e91e16d9)
+(["a=1"], "d/e/f") -> "throws \"<here>/d/e/f: cannot be deleted: it is not there\"; the...ct\"; then [a=1]" (356 characters, hash 99ff4bf2799dfc3a)
+(["a=1"], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ...ct\"; then [a=1]" (354 characters, hash 3ae5b828cae8991c)
+(["a=1"], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then [a...ct\"; then [a=1]" (352 characters, hash 681e9b620b708dd1)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "") -> "throws \"<here>/: cannot be deleted: Directory not empty\"; then...mine, d/, d/b=2]" (448 characters, hash 74f75d52d191aecd)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a") -> "throws \"<here>/a: cannot be deleted: it is not there\"; then [d...mine, d/, d/b=2]" (445 characters, hash c71a77447278d87f)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a.tmp") -> "throws \"<here>/a.tmp: cannot be deleted: it is not there\"; the...mine, d/, d/b=2]" (449 characters, hash fe69d3ed8d4c60cc)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a/b") -> "throws \"<here>/a/b: cannot be deleted: it is not there\"; then ...mine, d/, d/b=2]" (447 characters, hash 1cc4fa09afb60156)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "b") -> "throws \"<here>/b: cannot be deleted: it is not there\"; then [d...mine, d/, d/b=2]" (445 characters, hash 636d3f49c31a9146)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d") -> "throws \"<here>/d: cannot be deleted: Directory not empty\"; the...mine, d/, d/b=2]" (449 characters, hash 06a87c1fbca8dbd7)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: Directory not empty\";...mine, d/, d/b=2]" (453 characters, hash e883373fe52b7ebc)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th...mine, d/, d/b=2]" (450 characters, hash 4d39859bb7c62d33)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/b") -> "done; then [d.tmp/, d.tmp/keep=mine]; undo done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2]; redo done; then [d.tmp/, d.tmp/keep=mine]"
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e") -> "throws \"<here>/d/e: cannot be deleted: it is not there\"; then ...mine, d/, d/b=2]" (447 characters, hash 48d31841413cf79c)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e/f") -> "throws \"<here>/d/e/f: cannot be deleted: it is not there\"; the...mine, d/, d/b=2]" (449 characters, hash 1299cabfbaafb915)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ...mine, d/, d/b=2]" (447 characters, hash 85a00bc75eb779ab)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then [d...mine, d/, d/b=2]" (445 characters, hash 09ac0049d7c58264)
+(["d/", "d/b=2"], "") -> "throws \"<here>/: cannot be deleted: Directory not empty\"; then...then [d/, d/b=2]" (373 characters, hash cbb89d98bbfc2796)
+(["d/", "d/b=2"], "a") -> "throws \"<here>/a: cannot be deleted: it is not there\"; then [d...then [d/, d/b=2]" (370 characters, hash 77d1dd5fc565b8ec)
+(["d/", "d/b=2"], "a.tmp") -> "throws \"<here>/a.tmp: cannot be deleted: it is not there\"; the...then [d/, d/b=2]" (374 characters, hash 741192b8be136475)
+(["d/", "d/b=2"], "a/b") -> "throws \"<here>/a/b: cannot be deleted: it is not there\"; then ...then [d/, d/b=2]" (372 characters, hash 1116e980850e281b)
+(["d/", "d/b=2"], "b") -> "throws \"<here>/b: cannot be deleted: it is not there\"; then [d...then [d/, d/b=2]" (370 characters, hash 1194bdba5e34ecab)
+(["d/", "d/b=2"], "d") -> "throws \"<here>/d: cannot be deleted: Directory not empty\"; the...then [d/, d/b=2]" (374 characters, hash e4333b702ad222c4)
+(["d/", "d/b=2"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: it is not there\"; the...then [d/, d/b=2]" (374 characters, hash 55df189e41a21be0)
+(["d/", "d/b=2"], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th...then [d/, d/b=2]" (375 characters, hash dc3ea93952409ab8)
+(["d/", "d/b=2"], "d/b") -> "done; then []; undo done; then [d/, d/b=2]; redo done; then []"
+(["d/", "d/b=2"], "d/e") -> "throws \"<here>/d/e: cannot be deleted: it is not there\"; then ...then [d/, d/b=2]" (372 characters, hash b8b62b77ea11cda5)
+(["d/", "d/b=2"], "d/e/f") -> "throws \"<here>/d/e/f: cannot be deleted: it is not there\"; the...then [d/, d/b=2]" (374 characters, hash f82142f60e0c261e)
+(["d/", "d/b=2"], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ...then [d/, d/b=2]" (372 characters, hash 539f328ba3d8d990)
+(["d/", "d/b=2"], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then [d...then [d/, d/b=2]" (370 characters, hash 894a7fdc54097aad)
+(["d/"], "") -> "throws \"<here>/: cannot be deleted: Directory not empty\"; then...ect\"; then [d/]" (352 characters, hash e159dacf53f57c00)
+(["d/"], "a") -> "throws \"<here>/a: cannot be deleted: it is not there\"; then [d...ect\"; then [d/]" (349 characters, hash 89e93693c55202ee)
+(["d/"], "a.tmp") -> "throws \"<here>/a.tmp: cannot be deleted: it is not there\"; the...ect\"; then [d/]" (353 characters, hash a96cf8c1dbed459d)
+(["d/"], "a/b") -> "throws \"<here>/a/b: cannot be deleted: it is not there\"; then ...ect\"; then [d/]" (351 characters, hash d1314324b4166a13)
+(["d/"], "b") -> "throws \"<here>/b: cannot be deleted: it is not there\"; then [d...ect\"; then [d/]" (349 characters, hash cca0a11ac9f7f1c3)
+(["d/"], "d") -> "done; then no folder; undo done; then [d/]; redo done; then no folder"
+(["d/"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: it is not there\"; the...ect\"; then [d/]" (353 characters, hash 91ebc5ab1c95596a)
+(["d/"], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th...ect\"; then [d/]" (354 characters, hash d8be809556bf1ea2)
+(["d/"], "d/b") -> "throws \"<here>/d/b: cannot be deleted: it is not there\"; then ...ect\"; then [d/]" (351 characters, hash 6586e92d68cf82f0)
+(["d/"], "d/e") -> "throws \"<here>/d/e: cannot be deleted: it is not there\"; then ...ect\"; then [d/]" (351 characters, hash 9752e887aca8a7ed)
+(["d/"], "d/e/f") -> "throws \"<here>/d/e/f: cannot be deleted: it is not there\"; the...ect\"; then [d/]" (353 characters, hash 14aa4f665d9d8068)
+(["d/"], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ...ect\"; then [d/]" (351 characters, hash 06bfa78ed38375fa)
+(["d/"], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then [d...ect\"; then [d/]" (349 characters, hash b21ab3bad096c6f5)
+(["d/e/f=3"], "") -> "throws \"<here>/: cannot be deleted: Directory not empty\"; then..., d/e/, d/e/f=3]" (397 characters, hash 2438c174cb2c15fe)
+(["d/e/f=3"], "a") -> "throws \"<here>/a: cannot be deleted: it is not there\"; then [d..., d/e/, d/e/f=3]" (394 characters, hash 7375e1d9f067c6e0)
+(["d/e/f=3"], "a.tmp") -> "throws \"<here>/a.tmp: cannot be deleted: it is not there\"; the..., d/e/, d/e/f=3]" (398 characters, hash 58c6fd2a1ecdb6f9)
+(["d/e/f=3"], "a/b") -> "throws \"<here>/a/b: cannot be deleted: it is not there\"; then ..., d/e/, d/e/f=3]" (396 characters, hash d53d1a7b242ffb23)
+(["d/e/f=3"], "b") -> "throws \"<here>/b: cannot be deleted: it is not there\"; then [d..., d/e/, d/e/f=3]" (394 characters, hash 8a6cb8555e462873)
+(["d/e/f=3"], "d") -> "throws \"<here>/d: cannot be deleted: Directory not empty\"; the..., d/e/, d/e/f=3]" (398 characters, hash 47b69c1050cc44d8)
+(["d/e/f=3"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: it is not there\"; the..., d/e/, d/e/f=3]" (398 characters, hash d45015f7fcb06874)
+(["d/e/f=3"], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th..., d/e/, d/e/f=3]" (399 characters, hash 380194085069448c)
+(["d/e/f=3"], "d/b") -> "throws \"<here>/d/b: cannot be deleted: it is not there\"; then ..., d/e/, d/e/f=3]" (396 characters, hash b5a1007a5a22620e)
+(["d/e/f=3"], "d/e") -> "throws \"<here>/d/e: cannot be deleted: Directory not empty\"; t..., d/e/, d/e/f=3]" (400 characters, hash e22b0093fc981774)
+(["d/e/f=3"], "d/e/f") -> "done; then [d/]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d/]"
+(["d/e/f=3"], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ..., d/e/, d/e/f=3]" (396 characters, hash ecfacf244fe010e4)
+(["d/e/f=3"], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then [d..., d/e/, d/e/f=3]" (394 characters, hash 0fc2f54a1b2df011)
+([], "") -> "done; then no folder; undo done; then []; redo done; then no folder"
+([], "a") -> "throws \"<here>/a: cannot be deleted: it is not there\"; then []...oject\"; then []" (343 characters, hash 53ec40d6378d1e67)
+([], "a.tmp") -> "throws \"<here>/a.tmp: cannot be deleted: it is not there\"; the...oject\"; then []" (347 characters, hash 83d6c05b654f9700)
+([], "a/b") -> "throws \"<here>/a/b: cannot be deleted: it is not there\"; then ...oject\"; then []" (345 characters, hash fee9931ed88e3ac2)
+([], "b") -> "throws \"<here>/b: cannot be deleted: it is not there\"; then []...oject\"; then []" (343 characters, hash aa7a6e4d3759f5b2)
+([], "d") -> "throws \"<here>/d: cannot be deleted: it is not there\"; then []...oject\"; then []" (343 characters, hash fcc95c2181c66704)
+([], "d.tmp") -> "throws \"<here>/d.tmp: cannot be deleted: it is not there\"; the...oject\"; then []" (347 characters, hash 00239f6db3fffb83)
+([], "d/../a") -> "throws \"<here>/d/../a: cannot be deleted: it is not there\"; th...oject\"; then []" (348 characters, hash 2569cf11f114226b)
+([], "d/b") -> "throws \"<here>/d/b: cannot be deleted: it is not there\"; then ...oject\"; then []" (345 characters, hash 74221bc3227fbf2d)
+([], "d/e") -> "throws \"<here>/d/e: cannot be deleted: it is not there\"; then ...oject\"; then []" (345 characters, hash eef526caef3e8490)
+([], "d/e/f") -> "throws \"<here>/d/e/f: cannot be deleted: it is not there\"; the...oject\"; then []" (347 characters, hash 1f3b3ea15f19e175)
+([], "d/x") -> "throws \"<here>/d/x: cannot be deleted: it is not there\"; then ...oject\"; then []" (345 characters, hash 76b9095cf1dd5213)
+([], "x") -> "throws \"<here>/x: cannot be deleted: it is not there\"; then []...oject\"; then []" (343 characters, hash f6327ef11c4acbe8)
+
+## Undo.cpp/a rename
+(["a=1", "a.tmp=mine"], "", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "a", "") -> "throws \"<here>/ exists already\"; then [a.tmp=mine, a=1]; undo ...a.tmp=mine, a=1]" (366 characters, hash 005aba3e24770d10)
+(["a=1", "a.tmp=mine"], "a", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "a", "a.tmp") -> "throws \"<here>/a.tmp exists already\"; then [a.tmp=mine, a=1]; ...a.tmp=mine, a=1]" (371 characters, hash 7b6a99f1d4252956)
+(["a=1", "a.tmp=mine"], "a", "b") -> "done; then [a.tmp=mine, b=1]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, b=1]"
+(["a=1", "a.tmp=mine"], "a", "d/../a") -> "done; then [a.tmp=mine, a=1, d/]; undo throws \"<here>/a is ther...p=mine, a=1, d/]" (312 characters, hash 596d7f3ccff43fac)
+(["a=1", "a.tmp=mine"], "a", "d/b") -> "done; then [a.tmp=mine, d/, d/b=1]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, d/, d/b=1]"
+(["a=1", "a.tmp=mine"], "a", "x") -> "done; then [a.tmp=mine, x=1]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, x=1]"
+(["a=1", "a.tmp=mine"], "a.tmp", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "b", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "d/../a", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "d/b", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "a.tmp=mine"], "x", "a") -> "throws \"<here>/a exists already\"; then [a.tmp=mine, a=1]; undo...a.tmp=mine, a=1]" (367 characters, hash 40149842b51c35d9)
+(["a=1", "b=2"], "", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "a", "") -> "throws \"<here>/ exists already\"; then [a=1, b=2]; undo throws ... then [a=1, b=2]" (345 characters, hash 81fe8458236af305)
+(["a=1", "b=2"], "a", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "a", "a.tmp") -> "done; then [a.tmp=1, b=2]; undo done; then [a=1, b=2]; redo done; then [a.tmp=1, b=2]"
+(["a=1", "b=2"], "a", "b") -> "throws \"<here>/b exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 8257943e82db04cd)
+(["a=1", "b=2"], "a", "d/../a") -> "done; then [a=1, b=2, d/]; undo throws \"<here>/a is there again...n [a=1, b=2, d/]" (291 characters, hash 02fb70a180eddaf5)
+(["a=1", "b=2"], "a", "d/b") -> "done; then [b=2, d/, d/b=1]; undo done; then [a=1, b=2]; redo done; then [b=2, d/, d/b=1]"
+(["a=1", "b=2"], "a", "x") -> "done; then [b=2, x=1]; undo done; then [a=1, b=2]; redo done; then [b=2, x=1]"
+(["a=1", "b=2"], "a.tmp", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "b", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "d/../a", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "d/b", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "b=2"], "x", "a") -> "throws \"<here>/a exists already\"; then [a=1, b=2]; undo throws... then [a=1, b=2]" (346 characters, hash 74ba945ae174eab6)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "") -> "throws \"<here>/ exists already\"; then [a=1, x.tmp/, x.tmp/keep...x.tmp/keep=mine]" (405 characters, hash 0e2e3c6bf1c69c5f)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "a.tmp") -> "done; then [a.tmp=1, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a.tmp=1, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "b") -> "done; then [b=1, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [b=1, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "d/../a") -> "done; then [a=1, d/, x.tmp/, x.tmp/keep=mine]; undo throws \"<he...x.tmp/keep=mine]" (351 characters, hash edb5ec3be68ce6c1)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "d/b") -> "done; then [d/, d/b=1, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [d/, d/b=1, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a", "x") -> "done; then [x.tmp/, x.tmp/keep=mine, x=1]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [x.tmp/, x.tmp/keep=mine, x=1]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a.tmp", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "b", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/../a", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/b", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "x", "a") -> "throws \"<here>/a exists already\"; then [a=1, x.tmp/, x.tmp/kee...x.tmp/keep=mine]" (406 characters, hash 60faab4baee92a88)
+(["a=1"], "", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "", "a.tmp") -> "throws \"<here>/: cannot be renamed to <here>/a.tmp: Invalid arg...ct\"; then [a=1]" (368 characters, hash fc8b8b59252a8680)
+(["a=1"], "", "b") -> "throws \"<here>/: cannot be renamed to <here>/b: Invalid argumen...ct\"; then [a=1]" (364 characters, hash a1783ec5b65fb55a)
+(["a=1"], "", "d/../a") -> "throws \"<here>/: cannot be renamed to <here>/d/../a: Invalid ar...; then [a=1, d/]" (381 characters, hash fd9abe49007b521a)
+(["a=1"], "", "d/b") -> "throws \"<here>/: cannot be renamed to <here>/d/b: Invalid argum...; then [a=1, d/]" (378 characters, hash 0a9e9072f05ee8a0)
+(["a=1"], "", "x") -> "throws \"<here>/: cannot be renamed to <here>/x: Invalid argumen...ct\"; then [a=1]" (364 characters, hash 9ab434e89ef2a640)
+(["a=1"], "a", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "a", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "a", "a.tmp") -> "done; then [a.tmp=1]; undo done; then [a=1]; redo done; then [a.tmp=1]"
+(["a=1"], "a", "a/b") -> "throws \"<here>/a: cannot be renamed to <here>/a/b: Not a direct...ct\"; then [a=1]" (366 characters, hash 2abc97a2bee24f3a)
+(["a=1"], "a", "b") -> "done; then [b=1]; undo done; then [a=1]; redo done; then [b=1]"
+(["a=1"], "a", "d") -> "done; then [d=1]; undo done; then [a=1]; redo done; then [d=1]"
+(["a=1"], "a", "d.tmp") -> "done; then [d.tmp=1]; undo done; then [a=1]; redo done; then [d.tmp=1]"
+(["a=1"], "a", "d/../a") -> "done; then [a=1, d/]; undo throws \"<here>/a is there again sinc...; then [a=1, d/]" (276 characters, hash f6b38d78b6733128)
+(["a=1"], "a", "d/b") -> "done; then [d/, d/b=1]; undo done; then [a=1]; redo done; then [d/, d/b=1]"
+(["a=1"], "a", "d/e") -> "done; then [d/, d/e=1]; undo done; then [a=1]; redo done; then [d/, d/e=1]"
+(["a=1"], "a", "d/e/f") -> "done; then [d/, d/e/, d/e/f=1]; undo done; then [a=1]; redo done; then [d/, d/e/, d/e/f=1]"
+(["a=1"], "a", "d/x") -> "done; then [d/, d/x=1]; undo done; then [a=1]; redo done; then [d/, d/x=1]"
+(["a=1"], "a", "x") -> "done; then [x=1]; undo done; then [a=1]; redo done; then [x=1]"
+(["a=1"], "a.tmp", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "a.tmp", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "a.tmp", "a.tmp") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/a.tmp: No suc...ct\"; then [a=1]" (382 characters, hash ea5ad7f4c3a50eac)
+(["a=1"], "a.tmp", "b") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/b: No such fi...ct\"; then [a=1]" (378 characters, hash 5cb8ffe5a6528802)
+(["a=1"], "a.tmp", "d/../a") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/d/../a: No su...; then [a=1, d/]" (395 characters, hash d47a2a69db48ab80)
+(["a=1"], "a.tmp", "d/b") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/d/b: No such ...; then [a=1, d/]" (392 characters, hash bd79692de1dcf2d6)
+(["a=1"], "a.tmp", "x") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/x: No such fi...ct\"; then [a=1]" (378 characters, hash 1138364f8e19e080)
+(["a=1"], "a/b", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "a/b", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "a/b", "a.tmp") -> "throws \"<here>/a/b: cannot be renamed to <here>/a.tmp: Not a di...ct\"; then [a=1]" (370 characters, hash 7856d7e88ef0c7c7)
+(["a=1"], "a/b", "b") -> "throws \"<here>/a/b: cannot be renamed to <here>/b: Not a direct...ct\"; then [a=1]" (366 characters, hash 2edb3fc16560cc81)
+(["a=1"], "a/b", "d/../a") -> "throws \"<here>/a/b: cannot be renamed to <here>/d/../a: Not a d...; then [a=1, d/]" (383 characters, hash 2e859f9e49fddc7b)
+(["a=1"], "a/b", "d/b") -> "throws \"<here>/a/b: cannot be renamed to <here>/d/b: Not a dire...; then [a=1, d/]" (380 characters, hash d3734481c7850de1)
+(["a=1"], "a/b", "x") -> "throws \"<here>/a/b: cannot be renamed to <here>/x: Not a direct...ct\"; then [a=1]" (366 characters, hash 4bb65cbab54c4b37)
+(["a=1"], "b", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "b", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "b", "a.tmp") -> "throws \"<here>/b: cannot be renamed to <here>/a.tmp: No such fi...ct\"; then [a=1]" (378 characters, hash 8cd6066d4829bc62)
+(["a=1"], "b", "b") -> "throws \"<here>/b: cannot be renamed to <here>/b: No such file o...ct\"; then [a=1]" (374 characters, hash 9f5411f133186150)
+(["a=1"], "b", "d/../a") -> "throws \"<here>/b: cannot be renamed to <here>/d/../a: No such f...; then [a=1, d/]" (391 characters, hash 1e6081793f29ff82)
+(["a=1"], "b", "d/b") -> "throws \"<here>/b: cannot be renamed to <here>/d/b: No such file...; then [a=1, d/]" (388 characters, hash c8eab469c3a12214)
+(["a=1"], "b", "x") -> "throws \"<here>/b: cannot be renamed to <here>/x: No such file o...ct\"; then [a=1]" (374 characters, hash e66da0920ba0bc72)
+(["a=1"], "d", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d", "a.tmp") -> "throws \"<here>/d: cannot be renamed to <here>/a.tmp: No such fi...ct\"; then [a=1]" (378 characters, hash 95277f3b69b30e70)
+(["a=1"], "d", "b") -> "throws \"<here>/d: cannot be renamed to <here>/b: No such file o...ct\"; then [a=1]" (374 characters, hash a60c81d45a6c556e)
+(["a=1"], "d", "d/../a") -> "throws \"<here>/d: cannot be renamed to <here>/d/../a: Not a dir...; then [a=1, d/]" (381 characters, hash 96d5f3ed374f7941)
+(["a=1"], "d", "d/b") -> "throws \"<here>/d: cannot be renamed to <here>/d/b: Invalid argu...; then [a=1, d/]" (379 characters, hash 05f2368f2c0ae55a)
+(["a=1"], "d", "x") -> "throws \"<here>/d: cannot be renamed to <here>/x: No such file o...ct\"; then [a=1]" (374 characters, hash 2f9f8a2c9650810c)
+(["a=1"], "d.tmp", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d.tmp", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d.tmp", "a.tmp") -> "throws \"<here>/d.tmp: cannot be renamed to <here>/a.tmp: No suc...ct\"; then [a=1]" (382 characters, hash 4d0ffe478e64b80d)
+(["a=1"], "d.tmp", "b") -> "throws \"<here>/d.tmp: cannot be renamed to <here>/b: No such fi...ct\"; then [a=1]" (378 characters, hash 8bf007b1e6b1106b)
+(["a=1"], "d.tmp", "d/../a") -> "throws \"<here>/d.tmp: cannot be renamed to <here>/d/../a: No su...; then [a=1, d/]" (395 characters, hash 22153ebb8e4e128b)
+(["a=1"], "d.tmp", "d/b") -> "throws \"<here>/d.tmp: cannot be renamed to <here>/d/b: No such ...; then [a=1, d/]" (392 characters, hash bc90c991a413d967)
+(["a=1"], "d.tmp", "x") -> "throws \"<here>/d.tmp: cannot be renamed to <here>/x: No such fi...ct\"; then [a=1]" (378 characters, hash d8e15b7077d1805d)
+(["a=1"], "d/../a", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/../a", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/../a", "a.tmp") -> "throws \"<here>/d/../a: cannot be renamed to <here>/a.tmp: No su...ct\"; then [a=1]" (383 characters, hash 23390009012bd295)
+(["a=1"], "d/../a", "b") -> "throws \"<here>/d/../a: cannot be renamed to <here>/b: No such f...ct\"; then [a=1]" (379 characters, hash a7db60f530cbf653)
+(["a=1"], "d/../a", "d/../a") -> "done; then [a=1, d/]; undo throws \"<here>/d/../a is there again...; then [a=1, d/]" (281 characters, hash 4e3017a850521a56)
+(["a=1"], "d/../a", "d/b") -> "done; then [d/, d/b=1]; undo done; then [a=1]; redo throws \"<here>/d/../a is gone since the line the line, which redo would need; nothing changed\"; then [a=1]"
+(["a=1"], "d/../a", "x") -> "throws \"<here>/d/../a: cannot be renamed to <here>/x: No such f...ct\"; then [a=1]" (379 characters, hash 73dc03a8c1a0df55)
+(["a=1"], "d/b", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/b", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/b", "a.tmp") -> "throws \"<here>/d/b: cannot be renamed to <here>/a.tmp: No such ...ct\"; then [a=1]" (380 characters, hash 1d017dab662875e3)
+(["a=1"], "d/b", "b") -> "throws \"<here>/d/b: cannot be renamed to <here>/b: No such file...ct\"; then [a=1]" (376 characters, hash 5a50e2bb190ad4a9)
+(["a=1"], "d/b", "d/../a") -> "throws \"<here>/d/b: cannot be renamed to <here>/d/../a: No such...; then [a=1, d/]" (393 characters, hash e7499718a7cdfc2d)
+(["a=1"], "d/b", "d/b") -> "throws \"<here>/d/b: cannot be renamed to <here>/d/b: No such fi...; then [a=1, d/]" (390 characters, hash db2686f6b58bea0d)
+(["a=1"], "d/b", "x") -> "throws \"<here>/d/b: cannot be renamed to <here>/x: No such file...ct\"; then [a=1]" (376 characters, hash 1fb675e71b789f17)
+(["a=1"], "d/e", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/e", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/e", "a.tmp") -> "throws \"<here>/d/e: cannot be renamed to <here>/a.tmp: No such ...ct\"; then [a=1]" (380 characters, hash 97b67718f4b4badc)
+(["a=1"], "d/e", "b") -> "throws \"<here>/d/e: cannot be renamed to <here>/b: No such file...ct\"; then [a=1]" (376 characters, hash f1b700445ec9f3b2)
+(["a=1"], "d/e", "d/../a") -> "throws \"<here>/d/e: cannot be renamed to <here>/d/../a: No such...; then [a=1, d/]" (393 characters, hash 2fb6a47a76a5f950)
+(["a=1"], "d/e", "d/b") -> "throws \"<here>/d/e: cannot be renamed to <here>/d/b: No such fi...; then [a=1, d/]" (390 characters, hash 827f282dee6edec6)
+(["a=1"], "d/e", "x") -> "throws \"<here>/d/e: cannot be renamed to <here>/x: No such file...ct\"; then [a=1]" (376 characters, hash 2a22aaf72ce88390)
+(["a=1"], "d/e/f", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/e/f", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/e/f", "a.tmp") -> "throws \"<here>/d/e/f: cannot be renamed to <here>/a.tmp: No suc...ct\"; then [a=1]" (382 characters, hash a91420977f453c0b)
+(["a=1"], "d/e/f", "b") -> "throws \"<here>/d/e/f: cannot be renamed to <here>/b: No such fi...ct\"; then [a=1]" (378 characters, hash 04919ac03209ca31)
+(["a=1"], "d/e/f", "d/../a") -> "throws \"<here>/d/e/f: cannot be renamed to <here>/d/../a: No su...; then [a=1, d/]" (395 characters, hash b1f186c198067085)
+(["a=1"], "d/e/f", "d/b") -> "throws \"<here>/d/e/f: cannot be renamed to <here>/d/b: No such ...; then [a=1, d/]" (392 characters, hash 48ab13efbc0c8525)
+(["a=1"], "d/e/f", "x") -> "throws \"<here>/d/e/f: cannot be renamed to <here>/x: No such fi...ct\"; then [a=1]" (378 characters, hash 106dabc4858f1f0f)
+(["a=1"], "d/x", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "d/x", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "d/x", "a.tmp") -> "throws \"<here>/d/x: cannot be renamed to <here>/a.tmp: No such ...ct\"; then [a=1]" (380 characters, hash 774bc0ebd534257d)
+(["a=1"], "d/x", "b") -> "throws \"<here>/d/x: cannot be renamed to <here>/b: No such file...ct\"; then [a=1]" (376 characters, hash 95e4e8c82fedd69b)
+(["a=1"], "d/x", "d/../a") -> "throws \"<here>/d/x: cannot be renamed to <here>/d/../a: No such...; then [a=1, d/]" (393 characters, hash 0c8429bfa802a49b)
+(["a=1"], "d/x", "d/b") -> "throws \"<here>/d/x: cannot be renamed to <here>/d/b: No such fi...; then [a=1, d/]" (390 characters, hash d40dae5eba9dc217)
+(["a=1"], "d/x", "x") -> "throws \"<here>/d/x: cannot be renamed to <here>/x: No such file...ct\"; then [a=1]" (376 characters, hash 4879ad5222e28ded)
+(["a=1"], "x", "") -> "throws \"<here>/ exists already\"; then [a=1]; undo throws \"not...ct\"; then [a=1]" (330 characters, hash 6d83d1cec14acf58)
+(["a=1"], "x", "a") -> "throws \"<here>/a exists already\"; then [a=1]; undo throws \"no...ct\"; then [a=1]" (331 characters, hash e003835118e23b25)
+(["a=1"], "x", "a.tmp") -> "throws \"<here>/x: cannot be renamed to <here>/a.tmp: No such fi...ct\"; then [a=1]" (378 characters, hash 4da5e0cd86e72cb4)
+(["a=1"], "x", "b") -> "throws \"<here>/x: cannot be renamed to <here>/b: No such file o...ct\"; then [a=1]" (374 characters, hash 8664b12450051a2a)
+(["a=1"], "x", "d/../a") -> "throws \"<here>/x: cannot be renamed to <here>/d/../a: No such f...; then [a=1, d/]" (391 characters, hash f9716eb8e6e29318)
+(["a=1"], "x", "d/b") -> "throws \"<here>/x: cannot be renamed to <here>/d/b: No such file...; then [a=1, d/]" (388 characters, hash b80dd7465e9684ae)
+(["a=1"], "x", "x") -> "throws \"<here>/x: cannot be renamed to <here>/x: No such file o...ct\"; then [a=1]" (374 characters, hash 6e3f7b3e38a22798)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "", "a") -> "throws \"<here>/: cannot be renamed to <here>/a: Invalid argumen...mine, d/, d/b=2]" (457 characters, hash 9b147b266e8e6758)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "") -> "throws \"<here>/ exists already\"; then [d.tmp/, d.tmp/keep=mine...mine, d/, d/b=2]" (423 characters, hash 1fc74f855b6b8a67)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "a") -> "throws \"<here>/a: cannot be renamed to <here>/a: No such file o...mine, d/, d/b=2]" (467 characters, hash a719a991b267f279)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "a.tmp") -> "throws \"<here>/a: cannot be renamed to <here>/a.tmp: No such fi...mine, d/, d/b=2]" (471 characters, hash 83eb187020bbf624)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "b") -> "throws \"<here>/a: cannot be renamed to <here>/b: No such file o...mine, d/, d/b=2]" (467 characters, hash 03daf46f4439397e)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "d/../a") -> "throws \"<here>/a: cannot be renamed to <here>/d/../a: No such f...mine, d/, d/b=2]" (472 characters, hash e3ce44a06272f893)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "d/b") -> "throws \"<here>/d/b exists already\"; then [d.tmp/, d.tmp/keep=m...mine, d/, d/b=2]" (426 characters, hash 45bbe63dcb8f6f3a)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a", "x") -> "throws \"<here>/a: cannot be renamed to <here>/x: No such file o...mine, d/, d/b=2]" (467 characters, hash b75f2c7326f558bc)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/a: No such fi...mine, d/, d/b=2]" (471 characters, hash 97b590f38f6668c2)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "b", "a") -> "throws \"<here>/b: cannot be renamed to <here>/a: No such file o...mine, d/, d/b=2]" (467 characters, hash 999f301e7a97a360)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/../a", "a") -> "throws \"<here>/d/../a: cannot be renamed to <here>/a: No such f...mine, d/, d/b=2]" (472 characters, hash 78b48899aa01b955)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/b", "a") -> "done; then [a=2, d.tmp/, d.tmp/keep=mine, d/]; undo done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2]; redo done; then [a=2, d.tmp/, d.tmp/keep=mine, d/]"
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "x", "a") -> "throws \"<here>/x: cannot be renamed to <here>/a: No such file o...mine, d/, d/b=2]" (467 characters, hash 5cb0c6fb7113e1fa)
+(["d/", "d/b=2"], "", "a") -> "throws \"<here>/: cannot be renamed to <here>/a: Invalid argumen...then [d/, d/b=2]" (382 characters, hash 28495e958742b479)
+(["d/", "d/b=2"], "a", "") -> "throws \"<here>/ exists already\"; then [d/, d/b=2]; undo throws...then [d/, d/b=2]" (348 characters, hash a887f6ab216da4f4)
+(["d/", "d/b=2"], "a", "a") -> "throws \"<here>/a: cannot be renamed to <here>/a: No such file o...then [d/, d/b=2]" (392 characters, hash d4114470c40c949a)
+(["d/", "d/b=2"], "a", "a.tmp") -> "throws \"<here>/a: cannot be renamed to <here>/a.tmp: No such fi...then [d/, d/b=2]" (396 characters, hash 8cf5cd5a58df6aed)
+(["d/", "d/b=2"], "a", "b") -> "throws \"<here>/a: cannot be renamed to <here>/b: No such file o...then [d/, d/b=2]" (392 characters, hash 96cc39605cf669e3)
+(["d/", "d/b=2"], "a", "d/../a") -> "throws \"<here>/a: cannot be renamed to <here>/d/../a: No such f...then [d/, d/b=2]" (397 characters, hash 982a7cd525a83918)
+(["d/", "d/b=2"], "a", "d/b") -> "throws \"<here>/d/b exists already\"; then [d/, d/b=2]; undo thr...then [d/, d/b=2]" (351 characters, hash b5539813a29ccaf7)
+(["d/", "d/b=2"], "a", "x") -> "throws \"<here>/a: cannot be renamed to <here>/x: No such file o...then [d/, d/b=2]" (392 characters, hash 622cf2d55874bcc5)
+(["d/", "d/b=2"], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/a: No such fi...then [d/, d/b=2]" (396 characters, hash 92dc8c640f1f90df)
+(["d/", "d/b=2"], "b", "a") -> "throws \"<here>/b: cannot be renamed to <here>/a: No such file o...then [d/, d/b=2]" (392 characters, hash 74a372bb578442a1)
+(["d/", "d/b=2"], "d/../a", "a") -> "throws \"<here>/d/../a: cannot be renamed to <here>/a: No such f...then [d/, d/b=2]" (397 characters, hash a5621b4d892973de)
+(["d/", "d/b=2"], "d/b", "a") -> "done; then [a=2, d/]; undo done; then [d/, d/b=2]; redo done; then [a=2, d/]"
+(["d/", "d/b=2"], "x", "a") -> "throws \"<here>/x: cannot be renamed to <here>/a: No such file o...then [d/, d/b=2]" (392 characters, hash f1a0e0d82f7f3f37)
+(["d/"], "", "a") -> "throws \"<here>/: cannot be renamed to <here>/a: Invalid argumen...ect\"; then [d/]" (361 characters, hash 30b6de558c54c2b9)
+(["d/"], "a", "") -> "throws \"<here>/ exists already\"; then [d/]; undo throws \"noth...ect\"; then [d/]" (327 characters, hash 459a41a0b0671216)
+(["d/"], "a", "a") -> "throws \"<here>/a: cannot be renamed to <here>/a: No such file o...ect\"; then [d/]" (371 characters, hash 3312f52caffa5dec)
+(["d/"], "a", "a.tmp") -> "throws \"<here>/a: cannot be renamed to <here>/a.tmp: No such fi...ect\"; then [d/]" (375 characters, hash 933f7318db53c6b5)
+(["d/"], "a", "b") -> "throws \"<here>/a: cannot be renamed to <here>/b: No such file o...ect\"; then [d/]" (371 characters, hash e4e6fd9f67248bbb)
+(["d/"], "a", "d/../a") -> "throws \"<here>/a: cannot be renamed to <here>/d/../a: No such f...ect\"; then [d/]" (376 characters, hash ab9dc39fb8024302)
+(["d/"], "a", "d/b") -> "throws \"<here>/a: cannot be renamed to <here>/d/b: No such file...ect\"; then [d/]" (373 characters, hash 0db6251ac5c9e9b6)
+(["d/"], "a", "x") -> "throws \"<here>/a: cannot be renamed to <here>/x: No such file o...ect\"; then [d/]" (371 characters, hash 617b57784ff31b0d)
+(["d/"], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/a: No such fi...ect\"; then [d/]" (375 characters, hash c0114b800d9d677f)
+(["d/"], "b", "a") -> "throws \"<here>/b: cannot be renamed to <here>/a: No such file o...ect\"; then [d/]" (371 characters, hash add037e6066977e1)
+(["d/"], "d/../a", "a") -> "throws \"<here>/d/../a: cannot be renamed to <here>/a: No such f...ect\"; then [d/]" (376 characters, hash 05f4a28721fe2da8)
+(["d/"], "d/b", "a") -> "throws \"<here>/d/b: cannot be renamed to <here>/a: No such file...ect\"; then [d/]" (373 characters, hash cae3be911e2ef87a)
+(["d/"], "x", "a") -> "throws \"<here>/x: cannot be renamed to <here>/a: No such file o...ect\"; then [d/]" (371 characters, hash e43f529cc94087b7)
+(["d/e/f=3"], "", "a") -> "throws \"<here>/: cannot be renamed to <here>/a: Invalid argumen..., d/e/, d/e/f=3]" (406 characters, hash e5e0bfbc1181256d)
+(["d/e/f=3"], "a", "") -> "throws \"<here>/ exists already\"; then [d/, d/e/, d/e/f=3]; und..., d/e/, d/e/f=3]" (372 characters, hash 1538d26f3e1229c8)
+(["d/e/f=3"], "a", "a") -> "throws \"<here>/a: cannot be renamed to <here>/a: No such file o..., d/e/, d/e/f=3]" (416 characters, hash e164ae74dc413012)
+(["d/e/f=3"], "a", "a.tmp") -> "throws \"<here>/a: cannot be renamed to <here>/a.tmp: No such fi..., d/e/, d/e/f=3]" (420 characters, hash c8449997c4c031d1)
+(["d/e/f=3"], "a", "b") -> "throws \"<here>/a: cannot be renamed to <here>/b: No such file o..., d/e/, d/e/f=3]" (416 characters, hash 474a5261f747b4cb)
+(["d/e/f=3"], "a", "d/../a") -> "throws \"<here>/a: cannot be renamed to <here>/d/../a: No such f..., d/e/, d/e/f=3]" (421 characters, hash 34b35616ca3bc36c)
+(["d/e/f=3"], "a", "d/b") -> "throws \"<here>/a: cannot be renamed to <here>/d/b: No such file..., d/e/, d/e/f=3]" (418 characters, hash 74ad52df17722368)
+(["d/e/f=3"], "a", "x") -> "throws \"<here>/a: cannot be renamed to <here>/x: No such file o..., d/e/, d/e/f=3]" (416 characters, hash 306bb186e36318c9)
+(["d/e/f=3"], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/a: No such fi..., d/e/, d/e/f=3]" (420 characters, hash 4e80c86b61e7a3a7)
+(["d/e/f=3"], "b", "a") -> "throws \"<here>/b: cannot be renamed to <here>/a: No such file o..., d/e/, d/e/f=3]" (416 characters, hash fe47ed6448268215)
+(["d/e/f=3"], "d/../a", "a") -> "throws \"<here>/d/../a: cannot be renamed to <here>/a: No such f..., d/e/, d/e/f=3]" (421 characters, hash 7885d2c4e3907f86)
+(["d/e/f=3"], "d/b", "a") -> "throws \"<here>/d/b: cannot be renamed to <here>/a: No such file..., d/e/, d/e/f=3]" (418 characters, hash bb8ee621ca6a3864)
+(["d/e/f=3"], "x", "a") -> "throws \"<here>/x: cannot be renamed to <here>/a: No such file o..., d/e/, d/e/f=3]" (416 characters, hash 9046f7cee1658ebf)
+([], "", "a") -> "throws \"<here>/: cannot be renamed to <here>/a: Invalid argumen...oject\"; then []" (355 characters, hash 920d1d9d760058fc)
+([], "a", "") -> "throws \"<here>/ exists already\"; then []; undo throws \"nothin...oject\"; then []" (321 characters, hash 7f92f583ef6722bf)
+([], "a", "a") -> "throws \"<here>/a: cannot be renamed to <here>/a: No such file o...oject\"; then []" (365 characters, hash d0e44f79c456b999)
+([], "a", "a.tmp") -> "throws \"<here>/a: cannot be renamed to <here>/a.tmp: No such fi...oject\"; then []" (369 characters, hash 6695b09ccf38cc28)
+([], "a", "b") -> "throws \"<here>/a: cannot be renamed to <here>/b: No such file o...oject\"; then []" (365 characters, hash ce7d06499c2148fa)
+([], "a", "d/../a") -> "throws \"<here>/a: cannot be renamed to <here>/d/../a: No such f...ect\"; then [d/]" (376 characters, hash ab9dc39fb8024302)
+([], "a", "d/b") -> "throws \"<here>/a: cannot be renamed to <here>/d/b: No such file...ect\"; then [d/]" (373 characters, hash 0db6251ac5c9e9b6)
+([], "a", "x") -> "throws \"<here>/a: cannot be renamed to <here>/x: No such file o...oject\"; then []" (365 characters, hash 591d31dba9b57db0)
+([], "a.tmp", "a") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/a: No such fi...oject\"; then []" (369 characters, hash 04b95ce22f044f3e)
+([], "b", "a") -> "throws \"<here>/b: cannot be renamed to <here>/a: No such file o...oject\"; then []" (365 characters, hash a3ed1eb2f9729bb4)
+([], "d/../a", "a") -> "throws \"<here>/d/../a: cannot be renamed to <here>/a: No such f...oject\"; then []" (370 characters, hash 6022908800a40d35)
+([], "d/b", "a") -> "throws \"<here>/d/b: cannot be renamed to <here>/a: No such file...oject\"; then []" (367 characters, hash f95e29dfae98e893)
+([], "x", "a") -> "throws \"<here>/x: cannot be renamed to <here>/a: No such file o...oject\"; then []" (365 characters, hash d93f5c125b9c5ec6)
+~(["a=1", "a.tmp=mine"], "d", "b") -> "throws \"<here>/d: cannot be renamed to <here>/b: No such file o...a.tmp=mine, a=1]" (410 characters, hash 335fd882435ee876)
+~(["a=1", "a.tmp=mine"], "d", "d/e") -> "throws \"<here>/d: cannot be renamed to <here>/d/e: Invalid argu...p=mine, a=1, d/]" (415 characters, hash 3620df3c47c1b8cd)
+~(["a=1", "a.tmp=mine"], "d/e", "d.tmp") -> "throws \"<here>/d/e: cannot be renamed to <here>/d.tmp: No such ...a.tmp=mine, a=1]" (416 characters, hash 458396800b64b12f)
+~(["a=1", "a.tmp=mine"], "x", "x") -> "throws \"<here>/x: cannot be renamed to <here>/x: No such file o...a.tmp=mine, a=1]" (410 characters, hash c3061cab34bd2450)
+~(["a=1", "b=2"], "", "a/b") -> "throws \"<here>/: cannot be renamed to <here>/a/b: Not a directo... then [a=1, b=2]" (380 characters, hash 7cb6271ecf0ae6aa)
+~(["a=1", "b=2"], "a/b", "d/../a") -> "throws \"<here>/a/b: cannot be renamed to <here>/d/../a: Not a d...n [a=1, b=2, d/]" (398 characters, hash bcc338b8879f535c)
+~(["a=1", "b=2"], "b", "x") -> "done; then [a=1, x=2]; undo done; then [a=1, b=2]; redo done; then [a=1, x=2]"
+~(["a=1", "b=2"], "d/e", "x") -> "throws \"<here>/d/e: cannot be renamed to <here>/x: No such file... then [a=1, b=2]" (391 characters, hash fa78240d855f174d)
+~(["a=1", "b=2"], "x", "") -> "throws \"<here>/ exists already\"; then [a=1, b=2]; undo throws ... then [a=1, b=2]" (345 characters, hash 81fe8458236af305)
+~(["a=1", "b=2"], "x", "d/e") -> "throws \"<here>/x: cannot be renamed to <here>/d/e: No such file...n [a=1, b=2, d/]" (403 characters, hash 31f85342ea023748)
+~(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a.tmp", "d/e") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/d/e: No such ...x.tmp/keep=mine]" (467 characters, hash 5ce9964b767eddb4)
+~(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a/b", "d/e") -> "throws \"<here>/a/b: cannot be renamed to <here>/d/e: Not a dire...x.tmp/keep=mine]" (455 characters, hash c6c6f43912d8c999)
+~(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/x", "b") -> "throws \"<here>/d/x: cannot be renamed to <here>/b: No such file...x.tmp/keep=mine]" (451 characters, hash 83e1ccc41c923cfa)
+~(["a=1", "x.tmp/", "x.tmp/keep=mine"], "x", "") -> "throws \"<here>/ exists already\"; then [a=1, x.tmp/, x.tmp/keep...x.tmp/keep=mine]" (405 characters, hash 0e2e3c6bf1c69c5f)
+~(["a=1"], "b", "d/e") -> "throws \"<here>/b: cannot be renamed to <here>/d/e: No such file...; then [a=1, d/]" (388 characters, hash 10f61e57b7184b59)
+~(["a=1"], "d", "a/b") -> "throws \"<here>/d: cannot be renamed to <here>/a/b: Not a direct...ct\"; then [a=1]" (366 characters, hash f16db96c06ec69f7)
+~(["a=1"], "d", "d") -> "throws \"<here>/d: cannot be renamed to <here>/d: No such file o...ct\"; then [a=1]" (374 characters, hash badacdcc714a0a40)
+~(["a=1"], "d/e/f", "d.tmp") -> "throws \"<here>/d/e/f: cannot be renamed to <here>/d.tmp: No suc...ct\"; then [a=1]" (382 characters, hash 29015868705f3364)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "", "x") -> "throws \"<here>/: cannot be renamed to <here>/x: Invalid argumen...mine, d/, d/b=2]" (457 characters, hash 503795ab9c4daf7f)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "b", "d/e") -> "throws \"<here>/b: cannot be renamed to <here>/d/e: No such file...mine, d/, d/b=2]" (469 characters, hash 45a21c2e0702ef5d)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e/f", "") -> "throws \"<here>/ exists already\"; then [d.tmp/, d.tmp/keep=mine...mine, d/, d/b=2]" (423 characters, hash 1fc74f855b6b8a67)
+~(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e/f", "b") -> "throws \"<here>/d/e/f: cannot be renamed to <here>/b: No such fi...mine, d/, d/b=2]" (471 characters, hash 5c3630118936dec4)
+~(["d/", "d/b=2"], "", "") -> "throws \"<here>/ exists already\"; then [d/, d/b=2]; undo throws...then [d/, d/b=2]" (348 characters, hash a887f6ab216da4f4)
+~(["d/", "d/b=2"], "a", "d/e") -> "throws \"<here>/a: cannot be renamed to <here>/d/e: No such file...then [d/, d/b=2]" (394 characters, hash 06c27cd20890ceb5)
+~(["d/", "d/b=2"], "d", "") -> "throws \"<here>/ exists already\"; then [d/, d/b=2]; undo throws...then [d/, d/b=2]" (348 characters, hash a887f6ab216da4f4)
+~(["d/", "d/b=2"], "d/../a", "d/../a") -> "throws \"<here>/d/../a: cannot be renamed to <here>/d/../a: No s...then [d/, d/b=2]" (402 characters, hash d41ee18d27d6402c)
+~(["d/", "d/b=2"], "d/b", "d/e/f") -> "done; then [d/, d/e/, d/e/f=2]; undo done; then [d/, d/b=2]; redo done; then [d/, d/e/, d/e/f=2]"
+~(["d/"], "a", "d/x") -> "throws \"<here>/a: cannot be renamed to <here>/d/x: No such file...ect\"; then [d/]" (373 characters, hash 32710f1d41b74c18)
+~(["d/"], "a.tmp", "b") -> "throws \"<here>/a.tmp: cannot be renamed to <here>/b: No such fi...ect\"; then [d/]" (375 characters, hash cc5b52d3ec97cf80)
+~(["d/"], "a/b", "a") -> "throws \"<here>/a/b: cannot be renamed to <here>/a: No such file...ect\"; then [d/]" (373 characters, hash 3025a30074b1f8b1)
+~(["d/"], "d/../a", "d/b") -> "throws \"<here>/d/../a: cannot be renamed to <here>/d/b: No such...ect\"; then [d/]" (378 characters, hash 7738bb9dd99f1802)
+~(["d/e/f=3"], "d", "a") -> "done; then [a/, a/e/, a/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a/, a/e/, a/e/f=3]"
+~(["d/e/f=3"], "d/e", "d/e/f") -> "throws \"<here>/d/e/f exists already\"; then [d/, d/e/, d/e/f=3]..., d/e/, d/e/f=3]" (377 characters, hash 14231cbc78271b57)
+~(["d/e/f=3"], "d/e/f", "d/e") -> "throws \"<here>/d/e exists already\"; then [d/, d/e/, d/e/f=3]; ..., d/e/, d/e/f=3]" (375 characters, hash 9f7f79355d9504c2)
+~(["d/e/f=3"], "d/x", "a") -> "throws \"<here>/d/x: cannot be renamed to <here>/a: No such file..., d/e/, d/e/f=3]" (418 characters, hash 7c0acd5adb761f5e)
+~(["d/e/f=3"], "x", "a.tmp") -> "throws \"<here>/x: cannot be renamed to <here>/a.tmp: No such fi..., d/e/, d/e/f=3]" (420 characters, hash 485ea6b723fd630c)
+~([], "a/b", "d/e") -> "throws \"<here>/a/b: cannot be renamed to <here>/d/e: No such fi...ect\"; then [d/]" (375 characters, hash c798030560cbf0e0)
+~([], "d.tmp", "d.tmp") -> "throws \"<here>/d.tmp: cannot be renamed to <here>/d.tmp: No suc...oject\"; then []" (373 characters, hash 601cce92d40431d1)
+~([], "d/x", "d.tmp") -> "throws \"<here>/d/x: cannot be renamed to <here>/d.tmp: No such ...oject\"; then []" (371 characters, hash 5324e4cdb397a8e1)
+~([], "d/x", "d/b") -> "throws \"<here>/d/x: cannot be renamed to <here>/d/b: No such fi...ect\"; then [d/]" (375 characters, hash 2b4a2acae0bf2a8a)
+
+## Undo.cpp/a save
+(["a=1", "a.tmp=mine"], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then...a.tmp=mine, a=1]" (391 characters, hash 31d54fc512f677c0)
+(["a=1", "a.tmp=mine"], "a") -> "done; then [a.tmp=mine, a=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=new]"
+(["a=1", "a.tmp=mine"], "a.tmp") -> "done; then [a.tmp=new, a=1]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=new, a=1]"
+(["a=1", "a.tmp=mine"], "a/b") -> "throws \"<here>/a/b: cannot be written: Not a directory\"; then ...a.tmp=mine, a=1]" (390 characters, hash ee36931016fbd38a)
+(["a=1", "a.tmp=mine"], "b") -> "done; then [a.tmp=mine, a=1, b=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, b=new]"
+(["a=1", "a.tmp=mine"], "d") -> "done; then [a.tmp=mine, a=1, d=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d=new]"
+(["a=1", "a.tmp=mine"], "d.tmp") -> "done; then [a.tmp=mine, a=1, d.tmp=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d.tmp=new]"
+(["a=1", "a.tmp=mine"], "d/../a") -> "done; then [a.tmp=mine, a=new, d/]; undo done; then [a.tmp=mine]; redo done; then [a.tmp=mine, a=new, d/]"
+(["a=1", "a.tmp=mine"], "d/b") -> "done; then [a.tmp=mine, a=1, d/, d/b=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/b=new]"
+(["a=1", "a.tmp=mine"], "d/e") -> "done; then [a.tmp=mine, a=1, d/, d/e=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/e=new]"
+(["a=1", "a.tmp=mine"], "d/e/f") -> "done; then [a.tmp=mine, a=1, d/, d/e/, d/e/f=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/e/, d/e/f=new]"
+(["a=1", "a.tmp=mine"], "d/x") -> "done; then [a.tmp=mine, a=1, d/, d/x=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, d/, d/x=new]"
+(["a=1", "a.tmp=mine"], "x") -> "done; then [a.tmp=mine, a=1, x=new]; undo done; then [a.tmp=mine, a=1]; redo done; then [a.tmp=mine, a=1, x=new]"
+(["a=1", "b=2"], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then... then [a=1, b=2]" (370 characters, hash 20c489c84ed4bf75)
+(["a=1", "b=2"], "a") -> "done; then [a=new, b=2]; undo done; then [a=1, b=2]; redo done; then [a=new, b=2]"
+(["a=1", "b=2"], "a.tmp") -> "done; then [a.tmp=new, a=1, b=2]; undo done; then [a=1, b=2]; redo done; then [a.tmp=new, a=1, b=2]"
+(["a=1", "b=2"], "a/b") -> "throws \"<here>/a/b: cannot be written: Not a directory\"; then ... then [a=1, b=2]" (369 characters, hash dec5ef87b7646f1b)
+(["a=1", "b=2"], "b") -> "done; then [a=1, b=new]; undo done; then [a=1, b=2]; redo done; then [a=1, b=new]"
+(["a=1", "b=2"], "d") -> "done; then [a=1, b=2, d=new]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d=new]"
+(["a=1", "b=2"], "d.tmp") -> "done; then [a=1, b=2, d.tmp=new]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d.tmp=new]"
+(["a=1", "b=2"], "d/../a") -> "done; then [a=new, b=2, d/]; undo done; then [b=2]; redo done; then [a=new, b=2, d/]"
+(["a=1", "b=2"], "d/b") -> "done; then [a=1, b=2, d/, d/b=new]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/b=new]"
+(["a=1", "b=2"], "d/e") -> "done; then [a=1, b=2, d/, d/e=new]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/e=new]"
+(["a=1", "b=2"], "d/e/f") -> "done; then [a=1, b=2, d/, d/e/, d/e/f=new]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/e/, d/e/f=new]"
+(["a=1", "b=2"], "d/x") -> "done; then [a=1, b=2, d/, d/x=new]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, d/, d/x=new]"
+(["a=1", "b=2"], "x") -> "done; then [a=1, b=2, x=new]; undo done; then [a=1, b=2]; redo done; then [a=1, b=2, x=new]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then...x.tmp/keep=mine]" (430 characters, hash 540691821f9ef90f)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a") -> "done; then [a=new, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=new, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a.tmp") -> "done; then [a.tmp=new, a=1, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a.tmp=new, a=1, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "a/b") -> "throws \"<here>/a/b: cannot be written: Not a directory\"; then ...x.tmp/keep=mine]" (429 characters, hash ae370663d3c4e015)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "b") -> "done; then [a=1, b=new, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, b=new, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d") -> "done; then [a=1, d=new, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, d=new, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d.tmp") -> "done; then [a=1, d.tmp=new, x.tmp/, x.tmp/keep=mine]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, d.tmp=new, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/../a") -> "done; then [a=new, d/, x.tmp/, x.tmp/keep=mine]; undo done; then [x.tmp/, x.tmp/keep=mine]; redo done; then [a=new, d/, x.tmp/, x.tmp/keep=mine]"
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/b") -> "done; then [a=1, d/, d/b=new, x.tmp/, x.tmp/keep=mine]; undo don...x.tmp/keep=mine]" (163 characters, hash 6fe4114d40fc921b)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/e") -> "done; then [a=1, d/, d/e=new, x.tmp/, x.tmp/keep=mine]; undo don...x.tmp/keep=mine]" (163 characters, hash 7028e362e70f3701)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/e/f") -> "done; then [a=1, d/, d/e/, d/e/f=new, x.tmp/, x.tmp/keep=mine]; ...x.tmp/keep=mine]" (179 characters, hash a214f99e928957e9)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "d/x") -> "done; then [a=1, d/, d/x=new, x.tmp/, x.tmp/keep=mine]; undo don...x.tmp/keep=mine]" (163 characters, hash 266eb313c8711733)
+(["a=1", "x.tmp/", "x.tmp/keep=mine"], "x") -> "done; then [a=1, x.tmp/, x.tmp/keep=mine, x=new]; undo done; then [a=1, x.tmp/, x.tmp/keep=mine]; redo done; then [a=1, x.tmp/, x.tmp/keep=mine, x=new]"
+(["a=1"], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then...ct\"; then [a=1]" (355 characters, hash e50216da9c6c5e68)
+(["a=1"], "a") -> "done; then [a=new]; undo done; then [a=1]; redo done; then [a=new]"
+(["a=1"], "a.tmp") -> "done; then [a.tmp=new, a=1]; undo done; then [a=1]; redo done; then [a.tmp=new, a=1]"
+(["a=1"], "a/b") -> "throws \"<here>/a/b: cannot be written: Not a directory\"; then ...ct\"; then [a=1]" (354 characters, hash a14aa0d50d912442)
+(["a=1"], "b") -> "done; then [a=1, b=new]; undo done; then [a=1]; redo done; then [a=1, b=new]"
+(["a=1"], "d") -> "done; then [a=1, d=new]; undo done; then [a=1]; redo done; then [a=1, d=new]"
+(["a=1"], "d.tmp") -> "done; then [a=1, d.tmp=new]; undo done; then [a=1]; redo done; then [a=1, d.tmp=new]"
+(["a=1"], "d/../a") -> "done; then [a=new, d/]; undo done; then []; redo done; then [a=new, d/]"
+(["a=1"], "d/b") -> "done; then [a=1, d/, d/b=new]; undo done; then [a=1]; redo done; then [a=1, d/, d/b=new]"
+(["a=1"], "d/e") -> "done; then [a=1, d/, d/e=new]; undo done; then [a=1]; redo done; then [a=1, d/, d/e=new]"
+(["a=1"], "d/e/f") -> "done; then [a=1, d/, d/e/, d/e/f=new]; undo done; then [a=1]; redo done; then [a=1, d/, d/e/, d/e/f=new]"
+(["a=1"], "d/x") -> "done; then [a=1, d/, d/x=new]; undo done; then [a=1]; redo done; then [a=1, d/, d/x=new]"
+(["a=1"], "x") -> "done; then [a=1, x=new]; undo done; then [a=1]; redo done; then [a=1, x=new]"
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then...mine, d/, d/b=2]" (448 characters, hash a28cbc07816ea917)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a") -> "done; then [a=new, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo don...mine, d/, d/b=2]" (169 characters, hash 721693112d845e29)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a.tmp") -> "done; then [a.tmp=new, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo...mine, d/, d/b=2]" (177 characters, hash 34f2984d9d7ce8fb)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "a/b") -> "done; then [a/, a/b=new, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; un...mine, d/, d/b=2]" (181 characters, hash 2c3a523ade7246af)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "b") -> "done; then [b=new, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo don...mine, d/, d/b=2]" (169 characters, hash 56b4a266dcd4febf)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d") -> "throws \"<here>/d: cannot be written: Is a directory\"; then [d....mine, d/, d/b=2]" (444 characters, hash 118729a08e91949e)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d.tmp") -> "throws \"<here>/d.tmp: cannot be written: Is a directory\"; then...mine, d/, d/b=2]" (448 characters, hash 80a1ac59d0cb9737)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/../a") -> "done; then [a=new, d.tmp/, d.tmp/keep=mine, d/, d/b=2]; undo don...mine, d/, d/b=2]" (169 characters, hash 721693112d845e29)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/b") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=new]; undo done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2]; redo done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=new]"
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, d/e=new]; undo d... d/b=2, d/e=new]" (173 characters, hash 4a7a858755324fab)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/e/f") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, d/e/, d/e/f=new]...d/e/, d/e/f=new]" (189 characters, hash 9e096a6ed84d3f27)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "d/x") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, d/x=new]; undo d... d/b=2, d/x=new]" (173 characters, hash 5e35c0af1be97ef5)
+(["d/", "d/b=2", "d.tmp/", "d.tmp/keep=mine"], "x") -> "done; then [d.tmp/, d.tmp/keep=mine, d/, d/b=2, x=new]; undo don.../, d/b=2, x=new]" (169 characters, hash 51b3c33b0b3ca54b)
+(["d/", "d/b=2"], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then...then [d/, d/b=2]" (373 characters, hash 7ffccd90b1ba4584)
+(["d/", "d/b=2"], "a") -> "done; then [a=new, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a=new, d/, d/b=2]"
+(["d/", "d/b=2"], "a.tmp") -> "done; then [a.tmp=new, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a.tmp=new, d/, d/b=2]"
+(["d/", "d/b=2"], "a/b") -> "done; then [a/, a/b=new, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a/, a/b=new, d/, d/b=2]"
+(["d/", "d/b=2"], "b") -> "done; then [b=new, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [b=new, d/, d/b=2]"
+(["d/", "d/b=2"], "d") -> "throws \"<here>/d: cannot be written: Is a directory\"; then [d/...then [d/, d/b=2]" (369 characters, hash 6c154124e0a35b83)
+(["d/", "d/b=2"], "d.tmp") -> "done; then [d.tmp=new, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [d.tmp=new, d/, d/b=2]"
+(["d/", "d/b=2"], "d/../a") -> "done; then [a=new, d/, d/b=2]; undo done; then [d/, d/b=2]; redo done; then [a=new, d/, d/b=2]"
+(["d/", "d/b=2"], "d/b") -> "done; then [d/, d/b=new]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=new]"
+(["d/", "d/b=2"], "d/e") -> "done; then [d/, d/b=2, d/e=new]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=2, d/e=new]"
+(["d/", "d/b=2"], "d/e/f") -> "done; then [d/, d/b=2, d/e/, d/e/f=new]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=2, d/e/, d/e/f=new]"
+(["d/", "d/b=2"], "d/x") -> "done; then [d/, d/b=2, d/x=new]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=2, d/x=new]"
+(["d/", "d/b=2"], "x") -> "done; then [d/, d/b=2, x=new]; undo done; then [d/, d/b=2]; redo done; then [d/, d/b=2, x=new]"
+(["d/"], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then...ect\"; then [d/]" (352 characters, hash b4c19413da4ccac6)
+(["d/"], "a") -> "done; then [a=new, d/]; undo done; then [d/]; redo done; then [a=new, d/]"
+(["d/"], "a.tmp") -> "done; then [a.tmp=new, d/]; undo done; then [d/]; redo done; then [a.tmp=new, d/]"
+(["d/"], "a/b") -> "done; then [a/, a/b=new, d/]; undo done; then [d/]; redo done; then [a/, a/b=new, d/]"
+(["d/"], "b") -> "done; then [b=new, d/]; undo done; then [d/]; redo done; then [b=new, d/]"
+(["d/"], "d") -> "throws \"<here>/d: cannot be written: Is a directory\"; then [d/...ect\"; then [d/]" (348 characters, hash 500949f310ca7ddb)
+(["d/"], "d.tmp") -> "done; then [d.tmp=new, d/]; undo done; then [d/]; redo done; then [d.tmp=new, d/]"
+(["d/"], "d/../a") -> "done; then [a=new, d/]; undo done; then [d/]; redo done; then [a=new, d/]"
+(["d/"], "d/b") -> "done; then [d/, d/b=new]; undo done; then [d/]; redo done; then [d/, d/b=new]"
+(["d/"], "d/e") -> "done; then [d/, d/e=new]; undo done; then [d/]; redo done; then [d/, d/e=new]"
+(["d/"], "d/e/f") -> "done; then [d/, d/e/, d/e/f=new]; undo done; then [d/]; redo done; then [d/, d/e/, d/e/f=new]"
+(["d/"], "d/x") -> "done; then [d/, d/x=new]; undo done; then [d/]; redo done; then [d/, d/x=new]"
+(["d/"], "x") -> "done; then [d/, x=new]; undo done; then [d/]; redo done; then [d/, x=new]"
+(["d/e/f=3"], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then..., d/e/, d/e/f=3]" (397 characters, hash 17a9c6ab98503618)
+(["d/e/f=3"], "a") -> "done; then [a=new, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a=new, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "a.tmp") -> "done; then [a.tmp=new, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a.tmp=new, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "a/b") -> "done; then [a/, a/b=new, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a/, a/b=new, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "b") -> "done; then [b=new, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [b=new, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "d") -> "throws \"<here>/d: cannot be written: Is a directory\"; then [d/..., d/e/, d/e/f=3]" (393 characters, hash 641cd5266211c56b)
+(["d/e/f=3"], "d.tmp") -> "done; then [d.tmp=new, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d.tmp=new, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "d/../a") -> "done; then [a=new, d/, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [a=new, d/, d/e/, d/e/f=3]"
+(["d/e/f=3"], "d/b") -> "done; then [d/, d/b=new, d/e/, d/e/f=3]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d/, d/b=new, d/e/, d/e/f=3]"
+(["d/e/f=3"], "d/e") -> "throws \"<here>/d/e: cannot be written: Is a directory\"; then [..., d/e/, d/e/f=3]" (395 characters, hash ae8c76b707100e8f)
+(["d/e/f=3"], "d/e/f") -> "done; then [d/, d/e/, d/e/f=new]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d/, d/e/, d/e/f=new]"
+(["d/e/f=3"], "d/x") -> "done; then [d/, d/e/, d/e/f=3, d/x=new]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d/, d/e/, d/e/f=3, d/x=new]"
+(["d/e/f=3"], "x") -> "done; then [d/, d/e/, d/e/f=3, x=new]; undo done; then [d/, d/e/, d/e/f=3]; redo done; then [d/, d/e/, d/e/f=3, x=new]"
+([], "") -> "throws \"<here>/: cannot be written: Directory not empty\"; then...oject\"; then []" (346 characters, hash dcc671a95af885ef)
+([], "a") -> "done; then [a=new]; undo done; then []; redo done; then [a=new]"
+([], "a.tmp") -> "done; then [a.tmp=new]; undo done; then []; redo done; then [a.tmp=new]"
+([], "a/b") -> "done; then [a/, a/b=new]; undo done; then []; redo done; then [a/, a/b=new]"
+([], "b") -> "done; then [b=new]; undo done; then []; redo done; then [b=new]"
+([], "d") -> "done; then [d=new]; undo done; then []; redo done; then [d=new]"
+([], "d.tmp") -> "done; then [d.tmp=new]; undo done; then []; redo done; then [d.tmp=new]"
+([], "d/../a") -> "done; then [a=new, d/]; undo done; then []; redo done; then [a=new, d/]"
+([], "d/b") -> "done; then [d/, d/b=new]; undo done; then []; redo done; then [d/, d/b=new]"
+([], "d/e") -> "done; then [d/, d/e=new]; undo done; then []; redo done; then [d/, d/e=new]"
+([], "d/e/f") -> "done; then [d/, d/e/, d/e/f=new]; undo done; then []; redo done; then [d/, d/e/, d/e/f=new]"
+([], "d/x") -> "done; then [d/, d/x=new]; undo done; then []; redo done; then [d/, d/x=new]"
+([], "x") -> "done; then [x=new]; undo done; then []; redo done; then [x=new]"
+
+## Undo.cpp/a step of several changes
+a removed, then b renamed to a -> done; then [a=2]; undo done; then [a=1, b=2]; redo done; then [a=2]
+a renamed to b, then a saved anew -> done; then [a=new, b=1]; undo done; then [a=1]; redo done; then [a=new, b=1]
+a saved twice -> done; then [a=3]; undo done; then [a=1]; redo done; then [a=3]
+d made, d/x saved, then renamed to d/y -> done; then [d/, d/y=1]; undo done; then []; redo done; then [d/, d/y=1]
+d made, then a copied into it -> done; then [a=1, d/, d/a=1]; undo done; then [a=1]; redo done; then [a=1, d/, d/a=1]
+d made, then d/x saved in it, as node new makes a node -> done; then [d/, d/x=1]; undo done; then []; redo done; then [d/, d/x=1]
+d renamed to e, then e/x saved -> done; then [e/, e/x=2]; undo done; then [d/, d/x=1]; redo done; then [e/, e/x=2]

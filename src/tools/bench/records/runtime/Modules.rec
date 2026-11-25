@@ -1,0 +1,27 @@
+# The rows of src/runtime/Modules.h and src/runtime/Modules.cpp, a call each (src/tools/bench/bench.py).
+
+## Modules.cpp/Modules::builds_ended
+after life again, none failed: life failed false
+after wave and life, life failed: wave failed false, life failed true
+failed with none built: life failed true
+
+## Modules.cpp/Modules::sole and make
+life/engine: built true; sole "Engine"; make Engine made; make Nope throws runtime_error: "the C++ of life/engine registers no operator Nope; it registers: Engine"
+mistakes/scratch: built true; sole "Scratch"; make Scratch made; make Nope throws runtime_error: "the C++ of mistakes/scratch registers no operator Nope; it registers: Scratch"
+mistakes/wrong: built true; sole throws runtime_error: "the C++ of mistakes/wrong registers Echo NoHelp Refuse Twin Wron...>) registers one" (172 characters, hash 7a57279f7ee86290); make Wrong throws runtime_error: "the C++ of mistakes/wrong registers no operator Wrong; it registers: Echo NoHelp Refuse Twin WrongName WrongType"; make Nope throws runtime_error: "the C++ of mistakes/wrong registers no operator Nope; it registers: Echo NoHelp Refuse Twin WrongName WrongType"
+nothing/here: built false; sole throws runtime_error: "nothing/here has no C++ built: <here>/nothing/here/module.so is missing"; make Here throws runtime_error: "nothing/here has no C++ built: <here>/nothing/here/module.so is missing"; make Nope throws runtime_error: "nothing/here has no C++ built: <here>/nothing/here/module.so is missing"
+wave/none: built false; sole throws runtime_error: "wave/none has no C++ built: <here>/wave/none/module.so is missing"; make None throws runtime_error: "wave/none has no C++ built: <here>/wave/none/module.so is missing"; make Nope throws runtime_error: "wave/none has no C++ built: <here>/wave/none/module.so is missing"
+wave/probe: built true; sole "Probe"; make Probe made; make Nope throws runtime_error: "the C++ of wave/probe registers no operator Nope; it registers: Probe"
+wave/wave: built true; sole "Wave"; make Wave made; make Nope throws runtime_error: "the C++ of wave/wave registers no operator Nope; it registers: Wave"
+
+## Modules.cpp/a module built against other headers
+make of it -> throws runtime_error: "the C++ of copy/old was built against older engine headers than this vulpen's: a build makes it again"
+
+## Modules.cpp/a module the build writes again
+after it: built_at set true, rewritten []
+after it: rewritten []
+before a make: built_at set false, rewritten []
+make -> made
+make after unload -> made
+make before unload -> made
+written again: rewritten ["copy/m"]

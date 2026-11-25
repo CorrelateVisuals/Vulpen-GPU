@@ -1,0 +1,46 @@
+# The rows of src/baseclasses/Engine.h and src/baseclasses/Engine.cpp, a call each (src/tools/bench/bench.py).
+
+## Engine.cpp/Engine::Engine
+headless: device "llvmpipe (LLVM 20.1.2, 256 bits): cpu, Vulkan 1.4.318", kind cpu, takes cpu for discrete, render pass null, 0 times
+the device goes -> done
+
+## Engine.cpp/Engine::run a dispatch
+frame 0 -> done; values [0,0.004997917,0.009983342,0.014943815]
+frame 1 -> done; values [0,0.0094960425,0.018968351,0.028393248]
+frame 2 -> done; values [0,0.013544355,0.027054857,0.04049774]
+the device goes -> done
+times: 1 pass, above 0: true
+
+## Engine.cpp/Engine::run clears
+a filled buffer cleared -> done; reads [0,0,0,0]
+frame 0 of nothing -> done
+frame 1 of nothing -> done
+frame 2 of nothing -> done
+the device goes -> done
+the same buffer cleared twice in a frame -> done; printed "SYNC-HAZARD-WRITE-AFTER-WRITE(ERROR / SPEC): msgNum: 1544472022 ... 9, name: NULL\n" (506 characters, hash 78261f71f7b71a15)
+
+## Engine.cpp/Engine::run copies
+frame 0: a copy and a zeroing -> done
+frame 1: a copy and a zeroing -> done
+the device goes -> done
+
+## Engine.cpp/Engine::run draws into an image
+a clear alone -> done
+a dispatch with no pipeline -> done
+a draw with no pipeline but an instance -> done
+a triangle each side, then their picture -> done; (16,26) #9aa09bff, (48,26) #9aa09bff, (32,50) #000000ff, (2,60) #000000ff
+the device goes -> done
+the triangle -> done
+the triangle into an image with no size yet -> done
+the triangle, then its picture -> done; (32,26) #9aa09bff, (16,26) #000000ff, (48,26) #000000ff, (2,60) #000000ff
+times after it: 1 pass, a time of at least 0: true
+two triangles into one image, in one render pass -> done
+
+## Engine.cpp/Engine::run into the window
+closed: render pass null; a frame -> done
+frame 0, the triangle into the window -> done
+frame 1, the triangle into the window -> done
+frame 2, the triangle into the window -> done
+made with a window: its render pass #1
+opened again: a frame -> done
+the device goes -> done

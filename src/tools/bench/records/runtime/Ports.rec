@@ -1,0 +1,533 @@
+# The rows of src/runtime/Ports.h and src/runtime/Ports.cpp, a call each (src/tools/bench/bench.py).
+
+## Ports.cpp/axes, window lines and sound, with no window
+a frame of 4: 4 frames
+input axis gamepad_a 0 0 -> refused: gamepad_a is no axis: an axis is gamepad_left or gamepad_right, a stick, or gamepad_left_trigger or gamepad_right_trigger
+input axis gamepad_left 0.5 -1 -> 
+input axis gamepad_left 1.5 0 -> refused: gamepad_left 1.5 0: a stick's x and y go from -1 to 1, a trigger's x from 0 to 1, its y 0
+input axis gamepad_left nan 0 -> refused: nan is not a finite number
+input axis gamepad_left_trigger 0.5 0.5 -> refused: gamepad_left_trigger 0.5 0.5: a stick's x and y go from -1 to 1, a trigger's x from 0 to 1, its y 0
+input axis gamepad_right_trigger -0.1 0 -> refused: gamepad_right_trigger -0.1 0: a stick's x and y go from -1 to 1, a trigger's x from 0 to 1, its y 0
+input axis gamepad_right_trigger 1 0 -> 
+played, after the next frame started: 0.5 -0.25 1 -1 0 0 0.5 0.5; it holds 2 frames
+the frame after: game's a reads [axis "gamepad_left" (0.5,-1), axis "gamepad_right_trigger" (1,0)]
+window fullscreen off -> refused: unknown command window fullscreen off; the commands window starts are window pointer free, window pointer lock, window title <value>...
+window fullscreen on -> refused: unknown command window fullscreen on; the commands window starts are window pointer free, window pointer lock, window title <value>...
+window pointer free -> freed the pointer; no window is open, so it waits for one
+window pointer lock -> locked the pointer in the window; no window is open, so it waits for one
+window title a  named window -> named the window a named window; no window is open, so it waits for one
+
+## Ports.cpp/checked_button
+(" 1") -> throws runtime_error: " 1 is no button: a button is left, right or middle"
+("") -> throws runtime_error: " is no button: a button is left, right or middle"
+("+1") -> throws runtime_error: "+1 is no button: a button is left, right or middle"
+("-0") -> throws runtime_error: "-0 is no button: a button is left, right or middle"
+("-1") -> throws runtime_error: "-1 is no button: a button is left, right or middle"
+("-2147483648") -> throws runtime_error: "-2147483648 is no button: a button is left, right or middle"
+("-inf") -> throws runtime_error: "-inf is no button: a button is left, right or middle"
+(".5") -> throws runtime_error: ".5 is no button: a button is left, right or middle"
+("0") -> throws runtime_error: "0 is no button: a button is left, right or middle"
+("01") -> throws runtime_error: "01 is no button: a button is left, right or middle"
+("0x10") -> throws runtime_error: "0x10 is no button: a button is left, right or middle"
+("1 ") -> throws runtime_error: "1  is no button: a button is left, right or middle"
+("1") -> throws runtime_error: "1 is no button: a button is left, right or middle"
+("1,2") -> throws runtime_error: "1,2 is no button: a button is left, right or middle"
+("1.5") -> throws runtime_error: "1.5 is no button: a button is left, right or middle"
+("18446744073709551615") -> throws runtime_error: "18446744073709551615 is no button: a button is left, right or middle"
+("18446744073709551616") -> throws runtime_error: "18446744073709551616 is no button: a button is left, right or middle"
+("1\n") -> throws runtime_error: "1\n is no button: a button is left, right or middle"
+("1\r") -> throws runtime_error: "1\r is no button: a button is left, right or middle"
+("1_0") -> throws runtime_error: "1_0 is no button: a button is left, right or middle"
+("1e") -> throws runtime_error: "1e is no button: a button is left, right or middle"
+("1e-40") -> throws runtime_error: "1e-40 is no button: a button is left, right or middle"
+("1e-50") -> throws runtime_error: "1e-50 is no button: a button is left, right or middle"
+("1e3") -> throws runtime_error: "1e3 is no button: a button is left, right or middle"
+("3.4028235e38") -> throws runtime_error: "3.4028235e38 is no button: a button is left, right or middle"
+("3.4028236e38") -> throws runtime_error: "3.4028236e38 is no button: a button is left, right or middle"
+("4294967295") -> throws runtime_error: "4294967295 is no button: a button is left, right or middle"
+("4294967296") -> throws runtime_error: "4294967296 is no button: a button is left, right or middle"
+("5.") -> throws runtime_error: "5. is no button: a button is left, right or middle"
+("=") -> throws runtime_error: "= is no button: a button is left, right or middle"
+("\xd9\xa1") -> throws runtime_error: "\xd9\xa1 is no button: a button is left, right or middle"
+("\xef\xbc\x91") -> throws runtime_error: "\xef\xbc\x91 is no button: a button is left, right or middle"
+("a") -> throws runtime_error: "a is no button: a button is left, right or middle"
+("a=b") -> throws runtime_error: "a=b is no button: a button is left, right or middle"
+("inf") -> throws runtime_error: "inf is no button: a button is left, right or middle"
+("nan") -> throws runtime_error: "nan is no button: a button is left, right or middle"
+~(" .41+1") -> throws runtime_error: " .41+1 is no button: a button is left, right or middle"
+~(" 4x") -> throws runtime_error: " 4x is no button: a button is left, right or middle"
+~(" 789,") -> throws runtime_error: " 789, is no button: a button is left, right or middle"
+~("+") -> throws runtime_error: "+ is no button: a button is left, right or middle"
+~(",2a5232+") -> throws runtime_error: ",2a5232+ is no button: a button is left, right or middle"
+~(",eE-5E8") -> throws runtime_error: ",eE-5E8 is no button: a button is left, right or middle"
+~(",eb") -> throws runtime_error: ",eb is no button: a button is left, right or middle"
+~("-0503.1E") -> throws runtime_error: "-0503.1E is no button: a button is left, right or middle"
+~("-9eE") -> throws runtime_error: "-9eE is no button: a button is left, right or middle"
+~("-aa4xb5b") -> throws runtime_error: "-aa4xb5b is no button: a button is left, right or middle"
+~(".") -> throws runtime_error: ". is no button: a button is left, right or middle"
+~(".0") -> throws runtime_error: ".0 is no button: a button is left, right or middle"
+~("004") -> throws runtime_error: "004 is no button: a button is left, right or middle"
+~("0aE6-+") -> throws runtime_error: "0aE6-+ is no button: a button is left, right or middle"
+~("1x ,") -> throws runtime_error: "1x , is no button: a button is left, right or middle"
+~("21") -> throws runtime_error: "21 is no button: a button is left, right or middle"
+~("4376Eea") -> throws runtime_error: "4376Eea is no button: a button is left, right or middle"
+~("5444") -> throws runtime_error: "5444 is no button: a button is left, right or middle"
+~("63e209-") -> throws runtime_error: "63e209- is no button: a button is left, right or middle"
+~("72") -> throws runtime_error: "72 is no button: a button is left, right or middle"
+~("8+8") -> throws runtime_error: "8+8 is no button: a button is left, right or middle"
+~("80-b6") -> throws runtime_error: "80-b6 is no button: a button is left, right or middle"
+~("9") -> throws runtime_error: "9 is no button: a button is left, right or middle"
+~("9E") -> throws runtime_error: "9E is no button: a button is left, right or middle"
+~("E, 4") -> throws runtime_error: "E, 4 is no button: a button is left, right or middle"
+~("E736E15") -> throws runtime_error: "E736E15 is no button: a button is left, right or middle"
+~("EE3") -> throws runtime_error: "EE3 is no button: a button is left, right or middle"
+~("_") -> throws runtime_error: "_ is no button: a button is left, right or middle"
+~("_.--5x+5") -> throws runtime_error: "_.--5x+5 is no button: a button is left, right or middle"
+~("_00") -> throws runtime_error: "_00 is no button: a button is left, right or middle"
+~("_b,1ea.") -> throws runtime_error: "_b,1ea. is no button: a button is left, right or middle"
+~("ax08ae_") -> throws runtime_error: "ax08ae_ is no button: a button is left, right or middle"
+~("b5a,,967") -> throws runtime_error: "b5a,,967 is no button: a button is left, right or middle"
+~("b5e,+8") -> throws runtime_error: "b5e,+8 is no button: a button is left, right or middle"
+~("x") -> throws runtime_error: "x is no button: a button is left, right or middle"
+~("x09+5x") -> throws runtime_error: "x09+5x is no button: a button is left, right or middle"
+
+## Ports.cpp/checked_key
+(" 1") -> throws runtime_error: " 1 is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 2bf889229fe942b1)
+("") -> throws runtime_error: " is no key: a key is named by the character it prints without sh... gamepad_dpad_up" (282 characters, hash bb729a93acf493d2)
+("+1") -> throws runtime_error: "+1 is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 36637ff0e3b52726)
+("-0") -> throws runtime_error: "-0 is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 683c67c7b84139fb)
+("-1") -> throws runtime_error: "-1 is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash e0d2698b1cd86ec4)
+("-2147483648") -> throws runtime_error: "-2147483648 is no key: a key is named by the character it prints... gamepad_dpad_up" (293 characters, hash efc060a6ffa3e6b6)
+("-inf") -> throws runtime_error: "-inf is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash ca96960be225659c)
+(".5") -> throws runtime_error: ".5 is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 7d3dd1cc3e2fe367)
+("0") -> "0"
+("01") -> throws runtime_error: "01 is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 79119df131821641)
+("0x10") -> throws runtime_error: "0x10 is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash c6607f2cc58bc94f)
+("1 ") -> throws runtime_error: "1  is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 6ee3afe6949c734f)
+("1") -> "1"
+("1,2") -> throws runtime_error: "1,2 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 6ad88d105193d895)
+("1.5") -> throws runtime_error: "1.5 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash dd62f51bd11aa7be)
+("18446744073709551615") -> throws runtime_error: "18446744073709551615 is no key: a key is named by the character ... gamepad_dpad_up" (302 characters, hash 199f43a394538fcf)
+("18446744073709551616") -> throws runtime_error: "18446744073709551616 is no key: a key is named by the character ... gamepad_dpad_up" (302 characters, hash 1c191687d5e4bada)
+("1\n") -> throws runtime_error: "1\n is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 4d10aadefadb8f71)
+("1\r") -> throws runtime_error: "1\r is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 30c651cf01750ae5)
+("1_0") -> throws runtime_error: "1_0 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 8b2dfa43eb34c5e4)
+("1e") -> throws runtime_error: "1e is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 567f29ebc890b6b4)
+("1e-40") -> throws runtime_error: "1e-40 is no key: a key is named by the character it prints witho... gamepad_dpad_up" (287 characters, hash 9da6a3730640dea5)
+("1e-50") -> throws runtime_error: "1e-50 is no key: a key is named by the character it prints witho... gamepad_dpad_up" (287 characters, hash 8b8f805f6e227cf0)
+("1e3") -> throws runtime_error: "1e3 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 8d9f7693fbce829b)
+("3.4028235e38") -> throws runtime_error: "3.4028235e38 is no key: a key is named by the character it print... gamepad_dpad_up" (294 characters, hash dcc1174a16ec8f83)
+("3.4028236e38") -> throws runtime_error: "3.4028236e38 is no key: a key is named by the character it print... gamepad_dpad_up" (294 characters, hash 3eac7372537c1e8c)
+("4294967295") -> throws runtime_error: "4294967295 is no key: a key is named by the character it prints ... gamepad_dpad_up" (292 characters, hash 5f27136c333d4da9)
+("4294967296") -> throws runtime_error: "4294967296 is no key: a key is named by the character it prints ... gamepad_dpad_up" (292 characters, hash 7dedaa26005de6a0)
+("5.") -> throws runtime_error: "5. is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 9b1357b00d3f58c1)
+("=") -> "="
+("\xd9\xa1") -> "\xd9\xa1"
+("\xef\xbc\x91") -> "\xef\xbc\x91"
+("a") -> "a"
+("a=b") -> throws runtime_error: "a=b is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 6ad2906a158d156c)
+("inf") -> throws runtime_error: "inf is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 7c6e14c5b80d342b)
+("nan") -> throws runtime_error: "nan is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 4b52dda7a984e181)
+~(" .8") -> throws runtime_error: " .8 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 9adaf5f0717786c6)
+~(" 5a ") -> throws runtime_error: " 5a  is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash 92a707b3b2988248)
+~("+.") -> throws runtime_error: "+. is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash dcbdb0e8ab33a547)
+~(",-149 3") -> throws runtime_error: ",-149 3 is no key: a key is named by the character it prints wit... gamepad_dpad_up" (289 characters, hash b56842ad33f20348)
+~("-e1a") -> throws runtime_error: "-e1a is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash cc3cd4e0c841029e)
+~(".48") -> throws runtime_error: ".48 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 566a064bb51300d2)
+~("19E") -> throws runtime_error: "19E is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash dc799697fef88cbd)
+~("1_E8ea4E") -> throws runtime_error: "1_E8ea4E is no key: a key is named by the character it prints wi... gamepad_dpad_up" (290 characters, hash cf0366b8c60de35e)
+~("20e9") -> throws runtime_error: "20e9 is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash cf82f4404bad5c02)
+~("24xx-6") -> throws runtime_error: "24xx-6 is no key: a key is named by the character it prints with... gamepad_dpad_up" (288 characters, hash 55e515e99c9358e7)
+~("3,E5") -> throws runtime_error: "3,E5 is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash bd41027d66cabadb)
+~("35x0, .1") -> throws runtime_error: "35x0, .1 is no key: a key is named by the character it prints wi... gamepad_dpad_up" (290 characters, hash cfecbede2e0e6def)
+~("4+.4ea") -> throws runtime_error: "4+.4ea is no key: a key is named by the character it prints with... gamepad_dpad_up" (288 characters, hash 9c99d5d124e09a87)
+~("449E725a") -> throws runtime_error: "449E725a is no key: a key is named by the character it prints wi... gamepad_dpad_up" (290 characters, hash dc96f53780e55c6f)
+~("46,") -> throws runtime_error: "46, is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 200c4081d6db429e)
+~("5") -> "5"
+~("509.") -> throws runtime_error: "509. is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash 5d6d8bc50bf66340)
+~("50x-") -> throws runtime_error: "50x- is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash b1f94428a296ee10)
+~("55") -> throws runtime_error: "55 is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 0754384a1ea597d0)
+~("57672") -> throws runtime_error: "57672 is no key: a key is named by the character it prints witho... gamepad_dpad_up" (287 characters, hash 18fa24fc23bca0bb)
+~("5xe6") -> throws runtime_error: "5xe6 is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash 7e74431d8c5eb3dc)
+~("6") -> "6"
+~("6+5-+E") -> throws runtime_error: "6+5-+E is no key: a key is named by the character it prints with... gamepad_dpad_up" (288 characters, hash a65e361cf45dc4a3)
+~("632,e9,") -> throws runtime_error: "632,e9, is no key: a key is named by the character it prints wit... gamepad_dpad_up" (289 characters, hash 6d998da9f6ca2839)
+~("66.-") -> throws runtime_error: "66.- is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash 929da928c18ecb37)
+~("6e- 8-2") -> throws runtime_error: "6e- 8-2 is no key: a key is named by the character it prints wit... gamepad_dpad_up" (289 characters, hash 540b861efd228903)
+~("7") -> "7"
+~("7E e39") -> throws runtime_error: "7E e39 is no key: a key is named by the character it prints with... gamepad_dpad_up" (288 characters, hash 994be8e156d67db5)
+~("7b") -> throws runtime_error: "7b is no key: a key is named by the character it prints without ... gamepad_dpad_up" (284 characters, hash 717cf3f5a5c58197)
+~("8") -> "8"
+~("808366") -> throws runtime_error: "808366 is no key: a key is named by the character it prints with... gamepad_dpad_up" (288 characters, hash dfb79536a5dd04eb)
+~("8a91") -> throws runtime_error: "8a91 is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash fdc71ffce526bd83)
+~("8e087") -> throws runtime_error: "8e087 is no key: a key is named by the character it prints witho... gamepad_dpad_up" (287 characters, hash 2972bd5fc2647b54)
+~("9a-306x4") -> throws runtime_error: "9a-306x4 is no key: a key is named by the character it prints wi... gamepad_dpad_up" (290 characters, hash 3ba54b0a78f9d6ea)
+~("E__7") -> throws runtime_error: "E__7 is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash dead4bcb029302ec)
+~("_06") -> throws runtime_error: "_06 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash a51dbdaa3caedbdf)
+~("_31x1") -> throws runtime_error: "_31x1 is no key: a key is named by the character it prints witho... gamepad_dpad_up" (287 characters, hash bf43d2c9effffe5a)
+~("a12") -> throws runtime_error: "a12 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 1d43c2e2922783e0)
+~("a_0+-b") -> throws runtime_error: "a_0+-b is no key: a key is named by the character it prints with... gamepad_dpad_up" (288 characters, hash 11acf2d814e13dd0)
+~("b28") -> throws runtime_error: "b28 is no key: a key is named by the character it prints without... gamepad_dpad_up" (285 characters, hash 3082240c6cb331a8)
+~("b4e3") -> throws runtime_error: "b4e3 is no key: a key is named by the character it prints withou... gamepad_dpad_up" (286 characters, hash 9dde0068a6e0944c)
+~("e1_E-") -> throws runtime_error: "e1_E- is no key: a key is named by the character it prints witho... gamepad_dpad_up" (287 characters, hash 94028cb38f7356b1)
+
+## Ports.cpp/files the nodes open
+a file that is not there: done, reads ""
+back: done, reads "3"
+changed on disk, the same frame: done, reads "1"
+closed by both: throws "a file this node did not open when it last bound", reads ""
+closed by one node: done, reads "4"
+first read: done, reads "1"
+gone: done, reads ""
+on disk: [a=4]
+opened twice: the same file true
+saved through the port: done, reads "4"
+the next frame: done, reads "2"
+
+## Ports.cpp/frames of input
+a frame after: v a pointer false
+handed over a picture, the pointer a quarter in: menu.items.b reads [pointer (150,75)]; other reads [pointer (150,75)]; game's reads [pointer (200,100)]
+handed over a picture, the pointer past it: menu.items.b reads [pointer (400,300)]; other reads [pointer (400,300)]; game's reads [pointer (799,399)]
+handed to game: menu.items.b reads [button down "right" x1]; other reads []; game's reads [button down "right" x1]
+held as the frame before cooked: a view drawn into an image, outside the hold, reads []
+held as the frame before cooked: menu.items.b reads [button down "left" x1, wheel (0,1), key down "a"]; other reads [key down "a"]; game's reads [key down "a"]
+held as the frame before cooked: menu.items2, named alike but beside the menu, reads [key down "a"]
+let go: menu.items.b reads [button down "middle" x1]; other reads [button down "middle" x1]; game's reads [button down "middle" x1]
+the frame after: menu.items.b reads []; other reads []; game's reads []
+three moves around a press: menu.items.b reads [pointer (2,2), button down "left" x1, pointer (3,3)]; other reads [pointer (2,2), button down "left" x1, pointer (3,3)]; game's reads [pointer (2,2), button down "left" x1, pointer (3,3)]
+unread: v a pointer true, v a keys false
+
+## Ports.cpp/key
+("") -> "took 0: []"
+("\n") -> "took 1: [key down \"enter\", key up \"enter\"]"
+("\r") -> "took 1: [key down \"enter\", key up \"enter\"]"
+("\t") -> "took 1: [key down \"tab\", key up \"tab\"]"
+("\x00") -> "took 1: [key down \"control\", key down \"`\", key up \"`\", key up \"control\"]"
+("\x01") -> "took 1: [key down \"control\", key down \"a\", key up \"a\", key up \"control\"]"
+("\x08") -> "took 1: [key down \"backspace\", key up \"backspace\"]"
+("\x1b") -> "took 0: []"
+("\x1bOH") -> "took 3: [key down \"home\", key up \"home\"]"
+("\x1b[") -> "took 0: []"
+("\x1b[1;5C") -> "took 6: []"
+("\x1b[200~") -> "took 6: []"
+("\x1b[3~") -> "took 4: [key down \"delete\", key up \"delete\"]"
+("\x1b[9~") -> "took 4: []"
+("\x1b[A") -> "took 3: [key down \"up\", key up \"up\"]"
+("\x1b\x1b[A") -> "took 1: [key down \"escape\", key up \"escape\"]"
+("\x1bx") -> "took 1: [key down \"escape\", key up \"escape\"]"
+("\x7f") -> "took 1: [key down \"backspace\", key up \"backspace\"]"
+("\xc3") -> "took 1: [text \"\\xc3\"]"
+("\xc3\xa9") -> "took 2: [text \"\\xc3\\xa9\"]"
+("a") -> "took 1: [text \"a\"]"
+("a\rb") -> "took 1: [text \"a\"]"
+("ab\x1b[D") -> "took 2: [text \"ab\"]"
+("abc") -> "took 3: [text \"abc\"]"
+~("\n\x1b[1;5C") -> "took 1: [key down \"enter\", key up \"enter\"]"
+~("\n\xc3") -> "took 1: [key down \"enter\", key up \"enter\"]"
+~("\r\x08") -> "took 1: [key down \"enter\", key up \"enter\"]"
+~("\x00\x08") -> "took 1: [key down \"control\", key down \"`\", key up \"`\", key up \"control\"]"
+~("\x00ab\x1b[D") -> "took 1: [key down \"control\", key down \"`\", key up \"`\", key up \"control\"]"
+~("\x01\x1bOH") -> "took 1: [key down \"control\", key down \"a\", key up \"a\", key up \"control\"]"
+~("\x01\x1b[") -> "took 1: [key down \"control\", key down \"a\", key up \"a\", key up \"control\"]"
+~("\x08\x1b[9~") -> "took 1: [key down \"backspace\", key up \"backspace\"]"
+~("\x1bOH\n") -> "took 3: [key down \"home\", key up \"home\"]"
+~("\x1bOHab\x1b[D") -> "took 3: [key down \"home\", key up \"home\"]"
+~("\x1bOHabc") -> "took 3: [key down \"home\", key up \"home\"]"
+~("\x1b[1;5Cab\x1b[D") -> "took 6: []"
+~("\x1b[200~\n") -> "took 6: []"
+~("\x1b[200~\x00") -> "took 6: []"
+~("\x1b[200~\x1b[3~") -> "took 6: []"
+~("\x1b[3~ab\x1b[D") -> "took 4: [key down \"delete\", key up \"delete\"]"
+~("\x1b[9~\x1b") -> "took 4: []"
+~("\x1b[9~\x1b[200~") -> "took 4: []"
+~("\x1b[A\x08") -> "took 3: [key down \"up\", key up \"up\"]"
+~("\x1b[A\x7f") -> "took 3: [key down \"up\", key up \"up\"]"
+~("\x1b\x08") -> "took 1: [key down \"escape\", key up \"escape\"]"
+~("\x1b\x1b[A\x01") -> "took 1: [key down \"escape\", key up \"escape\"]"
+~("\x1b\x1b[A\x1bx") -> "took 1: [key down \"escape\", key up \"escape\"]"
+~("\x1b\x1b\x1b[A") -> "took 1: [key down \"escape\", key up \"escape\"]"
+~("\x1b\x7f") -> "took 1: [key down \"escape\", key up \"escape\"]"
+~("\x1b\xc3") -> "took 1: [key down \"escape\", key up \"escape\"]"
+~("\xc3\x1b[1;5C") -> "took 1: [text \"\\xc3\"]"
+~("\xc3\x1b[9~") -> "took 1: [text \"\\xc3\"]"
+~("\xc3\x1bx") -> "took 1: [text \"\\xc3\"]"
+~("\xc3\xa9\n") -> "took 2: [text \"\\xc3\\xa9\"]"
+~("\xc3\xa9\x01") -> "took 2: [text \"\\xc3\\xa9\"]"
+~("\xc3\xa9abc") -> "took 5: [text \"\\xc3\\xa9abc\"]"
+~("\xc3abc") -> "took 4: [text \"\\xc3abc\"]"
+~("a\rb\x1b[1;5C") -> "took 1: [text \"a\"]"
+~("a\x1bx") -> "took 1: [text \"a\"]"
+~("ab\x1b[D\n") -> "took 2: [text \"ab\"]"
+~("ab\x1b[D\x1b[9~") -> "took 2: [text \"ab\"]"
+~("abc\n") -> "took 3: [text \"abc\"]"
+~("abc\x7f") -> "took 3: [text \"abc\"]"
+
+## Ports.cpp/normal
+(path "") -> path ""
+(path ".") -> path "."
+(path "..") -> path ".."
+(path "../a") -> path "../a"
+(path "./a") -> path "a"
+(path ".hidden") -> path ".hidden"
+(path "\xc3\xa9") -> path "\xc3\xa9"
+(path "a b") -> path "a b"
+(path "a") -> path "a"
+(path "a/") -> path "a"
+(path "a/../b") -> path "b"
+(path "a/./b") -> path "a/b"
+(path "a/.b/c") -> path "a/.b/c"
+(path "a/b") -> path "a/b"
+~(path ".././a") -> path "../a"
+~(path "../b") -> path "../b"
+~(path "../d e") -> path "../d e"
+~(path "./.c/a") -> path ".c/a"
+~(path "./b") -> path "b"
+~(path ".c") -> path ".c"
+~(path ".c/./d e") -> path ".c/d e"
+~(path ".c/.c") -> path ".c/.c"
+~(path ".c/a") -> path ".c/a"
+~(path ".c/b/.") -> path ".c/b"
+~(path "a/a") -> path "a/a"
+~(path "a/b/.") -> path "a/b"
+~(path "a/d e") -> path "a/d e"
+~(path "b") -> path "b"
+~(path "b/.") -> path "b"
+~(path "b/.c/..") -> path "b"
+~(path "b/a") -> path "b/a"
+~(path "b/a/b") -> path "b/a/b"
+~(path "b/b/.") -> path "b/b"
+~(path "b/b/b") -> path "b/b/b"
+~(path "b/d e") -> path "b/d e"
+~(path "d e") -> path "d e"
+~(path "d e/./..") -> path "."
+~(path "d e/a/.c") -> path "d e/a/.c"
+~(path "d e/b/..") -> path "d e"
+~(path "d e/d e") -> path "d e/d e"
+~(path "d e/d e/b") -> path "d e/d e/b"
+
+## Ports.cpp/number
+(" 1") -> throws runtime_error: " 1 is not a finite number"
+("") -> throws runtime_error: " is not a finite number"
+("+1") -> throws runtime_error: "+1 is not a finite number"
+("-0") -> -0
+("-1") -> -1
+("-2147483648") -> -2147483648
+("-inf") -> throws runtime_error: "-inf is not a finite number"
+(".5") -> 0.5
+("0") -> 0
+("01") -> 1
+("0x10") -> throws runtime_error: "0x10 is not a finite number"
+("1 ") -> throws runtime_error: "1  is not a finite number"
+("1") -> 1
+("1,2") -> throws runtime_error: "1,2 is not a finite number"
+("1.5") -> 1.5
+("18446744073709551615") -> 1.8446744e+19
+("18446744073709551616") -> 1.8446744e+19
+("1\n") -> throws runtime_error: "1\n is not a finite number"
+("1\r") -> throws runtime_error: "1\r is not a finite number"
+("1_0") -> throws runtime_error: "1_0 is not a finite number"
+("1e") -> throws runtime_error: "1e is not a finite number"
+("1e-40") -> 1e-40
+("1e-50") -> throws runtime_error: "1e-50 is not a finite number"
+("1e3") -> 1000
+("3.4028235e38") -> 3.4028235e+38
+("3.4028236e38") -> throws runtime_error: "3.4028236e38 is not a finite number"
+("4294967295") -> 4294967296
+("4294967296") -> 4294967296
+("5.") -> 5
+("=") -> throws runtime_error: "= is not a finite number"
+("\xd9\xa1") -> throws runtime_error: "\xd9\xa1 is not a finite number"
+("\xef\xbc\x91") -> throws runtime_error: "\xef\xbc\x91 is not a finite number"
+("a") -> throws runtime_error: "a is not a finite number"
+("a=b") -> throws runtime_error: "a=b is not a finite number"
+("inf") -> throws runtime_error: "inf is not a finite number"
+("nan") -> throws runtime_error: "nan is not a finite number"
+~(" 4+x84") -> throws runtime_error: " 4+x84 is not a finite number"
+~(" 53_2 ,") -> throws runtime_error: " 53_2 , is not a finite number"
+~("+") -> throws runtime_error: "+ is not a finite number"
+~("+65E1") -> throws runtime_error: "+65E1 is not a finite number"
+~(",") -> throws runtime_error: ", is not a finite number"
+~(",-4E") -> throws runtime_error: ",-4E is not a finite number"
+~(",08_") -> throws runtime_error: ",08_ is not a finite number"
+~("-b-") -> throws runtime_error: "-b- is not a finite number"
+~(".,8a6b") -> throws runtime_error: ".,8a6b is not a finite number"
+~(".a") -> throws runtime_error: ".a is not a finite number"
+~("07") -> 7
+~("07_b") -> throws runtime_error: "07_b is not a finite number"
+~("14.60") -> 14.6
+~("1a") -> throws runtime_error: "1a is not a finite number"
+~("20xb8") -> throws runtime_error: "20xb8 is not a finite number"
+~("3be_") -> throws runtime_error: "3be_ is not a finite number"
+~("4b-.635-") -> throws runtime_error: "4b-.635- is not a finite number"
+~("5-9 2") -> throws runtime_error: "5-9 2 is not a finite number"
+~("5312+,") -> throws runtime_error: "5312+, is not a finite number"
+~("53x -0") -> throws runtime_error: "53x -0 is not a finite number"
+~("5beE7x4 ") -> throws runtime_error: "5beE7x4  is not a finite number"
+~("5x") -> throws runtime_error: "5x is not a finite number"
+~("6,101") -> throws runtime_error: "6,101 is not a finite number"
+~("6,2xb") -> throws runtime_error: "6,2xb is not a finite number"
+~("6-") -> throws runtime_error: "6- is not a finite number"
+~("6b") -> throws runtime_error: "6b is not a finite number"
+~("75") -> 75
+~("98 0ae9") -> throws runtime_error: "98 0ae9 is not a finite number"
+~("E,") -> throws runtime_error: "E, is not a finite number"
+~("E.23-+e") -> throws runtime_error: "E.23-+e is not a finite number"
+~("E3") -> throws runtime_error: "E3 is not a finite number"
+~("E9e73") -> throws runtime_error: "E9e73 is not a finite number"
+~("E_413") -> throws runtime_error: "E_413 is not a finite number"
+~("a+6a") -> throws runtime_error: "a+6a is not a finite number"
+~("b7,33ba") -> throws runtime_error: "b7,33ba is not a finite number"
+~("b9") -> throws runtime_error: "b9 is not a finite number"
+~("eb") -> throws runtime_error: "eb is not a finite number"
+~("x") -> throws runtime_error: "x is not a finite number"
+~("x6") -> throws runtime_error: "x6 is not a finite number"
+
+## Ports.cpp/presses_of
+(" 1") -> throws runtime_error: " 1 is no count of presses: 1 for one, 2 for a double click's second"
+("") -> throws runtime_error: " is no count of presses: 1 for one, 2 for a double click's second"
+("+1") -> throws runtime_error: "+1 is no count of presses: 1 for one, 2 for a double click's second"
+("-0") -> throws runtime_error: "-0 is no count of presses: 1 for one, 2 for a double click's second"
+("-1") -> throws runtime_error: "-1 is no count of presses: 1 for one, 2 for a double click's second"
+("-2147483648") -> throws runtime_error: "-2147483648 is no count of presses: 1 for one, 2 for a double click's second"
+("-inf") -> throws runtime_error: "-inf is no count of presses: 1 for one, 2 for a double click's second"
+(".5") -> throws runtime_error: ".5 is no count of presses: 1 for one, 2 for a double click's second"
+("0") -> throws runtime_error: "0 is no count of presses: 1 for one, 2 for a double click's second"
+("01") -> 1
+("0x10") -> throws runtime_error: "0x10 is no count of presses: 1 for one, 2 for a double click's second"
+("1 ") -> throws runtime_error: "1  is no count of presses: 1 for one, 2 for a double click's second"
+("1") -> 1
+("1,2") -> throws runtime_error: "1,2 is no count of presses: 1 for one, 2 for a double click's second"
+("1.5") -> throws runtime_error: "1.5 is no count of presses: 1 for one, 2 for a double click's second"
+("18446744073709551615") -> throws runtime_error: "18446744073709551615 is no count of presses: 1 for one, 2 for a double click's second"
+("18446744073709551616") -> throws runtime_error: "18446744073709551616 is no count of presses: 1 for one, 2 for a double click's second"
+("1\n") -> throws runtime_error: "1\n is no count of presses: 1 for one, 2 for a double click's second"
+("1\r") -> throws runtime_error: "1\r is no count of presses: 1 for one, 2 for a double click's second"
+("1_0") -> throws runtime_error: "1_0 is no count of presses: 1 for one, 2 for a double click's second"
+("1e") -> throws runtime_error: "1e is no count of presses: 1 for one, 2 for a double click's second"
+("1e-40") -> throws runtime_error: "1e-40 is no count of presses: 1 for one, 2 for a double click's second"
+("1e-50") -> throws runtime_error: "1e-50 is no count of presses: 1 for one, 2 for a double click's second"
+("1e3") -> throws runtime_error: "1e3 is no count of presses: 1 for one, 2 for a double click's second"
+("3.4028235e38") -> throws runtime_error: "3.4028235e38 is no count of presses: 1 for one, 2 for a double click's second"
+("3.4028236e38") -> throws runtime_error: "3.4028236e38 is no count of presses: 1 for one, 2 for a double click's second"
+("4294967295") -> 4294967295
+("4294967296") -> throws runtime_error: "4294967296 is no count of presses: 1 for one, 2 for a double click's second"
+("5.") -> throws runtime_error: "5. is no count of presses: 1 for one, 2 for a double click's second"
+("=") -> throws runtime_error: "= is no count of presses: 1 for one, 2 for a double click's second"
+("\xd9\xa1") -> throws runtime_error: "\xd9\xa1 is no count of presses: 1 for one, 2 for a double click's second"
+("\xef\xbc\x91") -> throws runtime_error: "\xef\xbc\x91 is no count of presses: 1 for one, 2 for a double click's second"
+("a") -> throws runtime_error: "a is no count of presses: 1 for one, 2 for a double click's second"
+("a=b") -> throws runtime_error: "a=b is no count of presses: 1 for one, 2 for a double click's second"
+("inf") -> throws runtime_error: "inf is no count of presses: 1 for one, 2 for a double click's second"
+("nan") -> throws runtime_error: "nan is no count of presses: 1 for one, 2 for a double click's second"
+~(" 5e1b_") -> throws runtime_error: " 5e1b_ is no count of presses: 1 for one, 2 for a double click's second"
+~("+9") -> throws runtime_error: "+9 is no count of presses: 1 for one, 2 for a double click's second"
+~(",6_4x-.") -> throws runtime_error: ",6_4x-. is no count of presses: 1 for one, 2 for a double click's second"
+~("-1+E3") -> throws runtime_error: "-1+E3 is no count of presses: 1 for one, 2 for a double click's second"
+~("-x") -> throws runtime_error: "-x is no count of presses: 1 for one, 2 for a double click's second"
+~("-x1210_0") -> throws runtime_error: "-x1210_0 is no count of presses: 1 for one, 2 for a double click's second"
+~(".85466b") -> throws runtime_error: ".85466b is no count of presses: 1 for one, 2 for a double click's second"
+~("0a 2_1") -> throws runtime_error: "0a 2_1 is no count of presses: 1 for one, 2 for a double click's second"
+~("0e6_ba") -> throws runtime_error: "0e6_ba is no count of presses: 1 for one, 2 for a double click's second"
+~("1a9_e5b") -> throws runtime_error: "1a9_e5b is no count of presses: 1 for one, 2 for a double click's second"
+~("2") -> 2
+~("2+.54+ ") -> throws runtime_error: "2+.54+  is no count of presses: 1 for one, 2 for a double click's second"
+~("2be") -> throws runtime_error: "2be is no count of presses: 1 for one, 2 for a double click's second"
+~("3165 ") -> throws runtime_error: "3165  is no count of presses: 1 for one, 2 for a double click's second"
+~("3a0724,3") -> throws runtime_error: "3a0724,3 is no count of presses: 1 for one, 2 for a double click's second"
+~("5") -> 5
+~("5+0 E") -> throws runtime_error: "5+0 E is no count of presses: 1 for one, 2 for a double click's second"
+~("57.96") -> throws runtime_error: "57.96 is no count of presses: 1 for one, 2 for a double click's second"
+~("7.8") -> throws runtime_error: "7.8 is no count of presses: 1 for one, 2 for a double click's second"
+~("71b6") -> throws runtime_error: "71b6 is no count of presses: 1 for one, 2 for a double click's second"
+~("8") -> 8
+~("8+--5E59") -> throws runtime_error: "8+--5E59 is no count of presses: 1 for one, 2 for a double click's second"
+~("8+x 14") -> throws runtime_error: "8+x 14 is no count of presses: 1 for one, 2 for a double click's second"
+~("8a-a") -> throws runtime_error: "8a-a is no count of presses: 1 for one, 2 for a double click's second"
+~("E") -> throws runtime_error: "E is no count of presses: 1 for one, 2 for a double click's second"
+~("E+4.28-.") -> throws runtime_error: "E+4.28-. is no count of presses: 1 for one, 2 for a double click's second"
+~("_") -> throws runtime_error: "_ is no count of presses: 1 for one, 2 for a double click's second"
+~("_-") -> throws runtime_error: "_- is no count of presses: 1 for one, 2 for a double click's second"
+~("_-85+0") -> throws runtime_error: "_-85+0 is no count of presses: 1 for one, 2 for a double click's second"
+~("_6e4.e") -> throws runtime_error: "_6e4.e is no count of presses: 1 for one, 2 for a double click's second"
+~("_e") -> throws runtime_error: "_e is no count of presses: 1 for one, 2 for a double click's second"
+~("a0e0x_3") -> throws runtime_error: "a0e0x_3 is no count of presses: 1 for one, 2 for a double click's second"
+~("b ") -> throws runtime_error: "b  is no count of presses: 1 for one, 2 for a double click's second"
+~("b") -> throws runtime_error: "b is no count of presses: 1 for one, 2 for a double click's second"
+~("b.5x22_+") -> throws runtime_error: "b.5x22_+ is no count of presses: 1 for one, 2 for a double click's second"
+~("b5 2x4+") -> throws runtime_error: "b5 2x4+ is no count of presses: 1 for one, 2 for a double click's second"
+~("e") -> throws runtime_error: "e is no count of presses: 1 for one, 2 for a double click's second"
+~("e443-.a") -> throws runtime_error: "e443-.a is no count of presses: 1 for one, 2 for a double click's second"
+~("e91,85") -> throws runtime_error: "e91,85 is no count of presses: 1 for one, 2 for a double click's second"
+
+## Ports.cpp/the clipboard, with no window
+1 windowed false, the clipboard holds ""
+2 a copy: the clipboard holds "copied"
+3 a node outside a hold: windowed false, a copy, the clipboard holds "from outside"
+
+## Ports.cpp/the file port
+a relative path -> throws "v/n is relative; a node names a file from its folder, and a command's <file> comes resolved"; moved []; relisted false; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/n/, v/n/N.comp=main, v/view.vlp=version 1]
+copy a folder -> done; moved []; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/c/, v/c/N.comp=main, v/n/, v/n/N.comp=main, v/view.vlp=version 1]
+list a file -> throws "<here>/v/view.vlp: cannot be listed: Not a directory"; moved []; relisted false; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/n/, v/n/N.comp=main, v/view.vlp=version 1]
+list nothing -> done; moved []; relisted false; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/n/, v/n/N.comp=main, v/view.vlp=version 1]
+read a folder -> throws "<here>/v/n: cannot be read"; moved []; relisted false; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/n/, v/n/N.comp=main, v/view.vlp=version 1]
+remove a node's folder -> throws "<here>/v/n: cannot be deleted: Directory not empty"; moved []; relisted false; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/n/, v/n/N.comp=main, v/view.vlp=version 1]
+remove a node's last file -> done; moved ["<here>/v/n/N.comp" -> gone]; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/x/, read-folders=<here>, v/, v/view.vlp=version 1]
+remove a node's last file, of a copy the build reads no folder of -> done; moved ["<here>/v/n/N.comp" -> gone]; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, v/, v/view.vlp=version 1]
+remove the view's manifest -> done; moved ["<here>/v/view.vlp" -> gone]; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/x/, read-folders=<here>, v/, v/n/, v/n/N.comp=main]
+remove the view's manifest, of a copy the build reads no folder of -> done; moved ["<here>/v/view.vlp" -> gone]; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, v/, v/n/, v/n/N.comp=main]
+rename a node's folder -> done; moved ["<here>/v/n" -> "<here>/v/m"]; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/x/, read-folders=<here>, v/, v/m/, v/m/N.comp=main, v/view.vlp=version 1]
+rename a node's folder, of a copy the build reads no folder of -> done; moved ["<here>/v/n" -> "<here>/v/m"]; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, v/, v/m/, v/m/N.comp=main, v/view.vlp=version 1]
+rename into a hidden trash -> done; moved ["<here>/v/n" -> gone]; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/x/, read-folders=<here>, v/, v/.vulpen/, v/.vulpen/n/, v/.vulpen/n/N.comp=main, v/view.vlp=version 1]
+rename into a hidden trash, of a copy the build reads no folder of -> done; moved ["<here>/v/n" -> gone]; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, v/, v/.vulpen/, v/.vulpen/n/, v/.vulpen/n/N.comp=main, v/view.vlp=version 1]
+save a hidden file -> done; moved []; relisted false; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/.kept=x, v/n/, v/n/N.comp=main, v/view.vlp=version 1]
+save a new file -> done; moved []; relisted true; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/n/, v/n/N.comp=main, v/n/new=x, v/view.vlp=version 1]
+save over a file -> done; moved []; relisted false; then [mirror/, mirror/v/, mirror/v/n/, mirror/v/n/N.comp.spv=built, mirror/v/x/, read-folders=<here>, v/, v/n/, v/n/N.comp=x, v/view.vlp=version 1]
+
+## Ports.cpp/the input command
+("input button down left 0") -> "throws \"0 is no count of presses: 1 for one, 2 for a double click's second\"; then []; pointer (0,0)"
+("input button down left 2") -> "done; then [button down \"left\" x2]; pointer (0,0)"
+("input button down left") -> "done; then [button down \"left\" x1]; pointer (0,0)"
+("input button down x") -> "throws \"x is no button: a button is left, right or middle\"; then []; pointer (0,0)"
+("input button up right") -> "done; then [button up \"right\"]; pointer (0,0)"
+("input focus off") -> "done; then [focus up]; pointer (0,0)"
+("input focus on") -> "done; then [focus down]; pointer (0,0)"
+("input key down A") -> "throws \"A is no key: a key is named by the character it prints ...]; pointer (0,0)" (318 characters, hash 68ca11c7a04628d3)
+("input key down a") -> "done; then [key down \"a\"]; pointer (0,0)"
+("input key down f13") -> "throws \"f13 is no key: a key is named by the character it print...]; pointer (0,0)" (320 characters, hash d9854fed15f550f6)
+("input key down nokey") -> "throws \"nokey is no key: a key is named by the character it pri...]; pointer (0,0)" (322 characters, hash 047085aa71f8c08a)
+("input key down space") -> "done; then [key down \"space\"]; pointer (0,0)"
+("input key down") -> "throws \"input key down does not fit the usage `input key down <value>`\"; then []; pointer (0,0)"
+("input key up f12") -> "done; then [key up \"f12\"]; pointer (0,0)"
+("input pointer 1 2") -> "done; then [pointer (1,2)]; pointer (1,2)"
+("input pointer 1,5 2") -> "throws \"1,5 is not a finite number\"; then []; pointer (0,0)"
+("input pointer 1e40 0") -> "throws \"1e40 is not a finite number\"; then []; pointer (0,0)"
+("input pointer inf -0") -> "throws \"inf is not a finite number\"; then []; pointer (0,0)"
+("input pointer nan nan") -> "throws \"nan is not a finite number\"; then []; pointer (0,0)"
+("input pointer x 2") -> "throws \"x is not a finite number\"; then []; pointer (0,0)"
+("input text \xc3\xa9") -> "done; then [text \"\\xc3\\xa9\"]; pointer (0,0)"
+("input text a  b") -> "done; then [text \"a b\"]; pointer (0,0)"
+("input wheel 1 -1") -> "done; then [wheel (1,-1)]; pointer (0,0)"
+("input wheel nan 0") -> "throws \"nan is not a finite number\"; then []; pointer (0,0)"
+
+## Ports.cpp/the terminal, read from a file
+100 typed, the caret at 79; printed "\r\x1b[Kxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\x1b[79C"
+100 typed, the caret at 80; printed "\r\x1b[Kxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\x1b[79C"
+100 typed, the caret at the end; printed "\r\x1b[Kxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\x1b[79C"
+a line printed; printed "a line\n"
+a line with its break printed; printed "a line\n"
+a prompt
+abc typed, the caret after a; printed "\r\x1b[Kabc\r\x1b[1C"
+frame 1: reads ["a", "b", ""], asked again ["a", "b", ""], ended false
+frame 2: reads ["c"], asked again ["c"], ended true
+frame 3: reads [], asked again [], ended true
+nothing typed; printed "\r\x1b[K\r"
+typed false, 80 columns
+
+## Ports.cpp/view_of
+ -> ""
+v -> "<here>/v"
+v/n -> "<here>/v"
+v/n/m -> "<here>/v"
+v/n/m/f -> "<here>/v"
+v/view.vlp -> "<here>/v"
+w -> ""

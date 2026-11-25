@@ -14,7 +14,16 @@ The README's [quick start](README.md#quick-start) names what to install. Before 
 python3 src/tools/check.py quick   # configure, build, test, and the names MSVC would refuse
 ```
 
-`python3 src/tools/check.py install-hook` runs it before each `git push`. For a change to the engine (`src/baseclasses/`, `src/runtime/`), also run `check.py full`: every example made again by typing, every command tried in each state, and AddressSanitizer, about twenty minutes on Linux, side by side. The tests run headless on lavapipe, so they need no GPU and no display.
+`python3 src/tools/check.py install-hook` runs it before each `git push`. For a change to the engine (`src/baseclasses/`, `src/runtime/`), also run `check.py full`: every example made again by typing, every command tried in each state, every engine function's rows against the bench's records, and AddressSanitizer, about twenty minutes on Linux, side by side. The tests run headless on lavapipe, so they need no GPU and no display.
+
+## The bench
+
+[`src/tools/bench/`](src/tools/bench) runs every function of `src/baseclasses/` and `src/runtime/` on its own, and keeps what each returns, throws and changes as rows of text in [`records/`](src/tools/bench/records). `check.py full` compares them, so a change that moves a row fails until a person approves it.
+
+- **Run it:** `python3 src/tools/bench/bench.py compare` builds a bench per engine file and compares them all; `compare Text Views` compares some. GPU cases run on the tests' lavapipe and window cases on an Xvfb of their own where it is installed, so it needs no GPU and no display.
+- **A row that moved on purpose:** `bench.py approve <id> --why "…"` takes the new rows into `records/`. Commit them with the change, the why in the commit's body, so a reviewer reads both.
+- **A new engine function** gets its case and rows in the same commit, in `cases/<File>.cpp` beside the file's other functions. Most take one line, as `bench.sweep("Text.h/trim", trim)`, whose inputs the parameters' types make. `check.py nightly` fails when the engine lines nothing runs grow (`bench.py coverage`).
+- `bench.py --help` lists the rest (contexts, cost, mutants, planted faults), and the file's head says what each does.
 
 ## How designs are decided
 

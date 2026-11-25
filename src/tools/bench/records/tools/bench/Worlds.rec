@@ -1,0 +1,30 @@
+# The rows of src/tools/bench/Worlds.h, a call each (src/tools/bench/bench.py).
+
+## Worlds.h/Shown<View>
+holds: two views show alike exactly when they are alike whole, over 73 rows
+
+## Worlds.h/chain_of
+0 -> {view "many" nodes [] connections [] children []}
+1000 -> 1000 nodes, 999 connections, 100 inside another
+2 -> {view "many" nodes [n0 param="i=0", n1 param="i=1"] connections [c1: n0.out -> [n1.in]] children []}
+
+## Worlds.h/changes
+chain and itself -> unchanged
+chain, then d added, a changed, bc gone, b and c swapped -> ~node a param="x=2"; +node d; -connection bc; order ["a", "c", "b"]
+empty, then chain -> +node a; +node b; +node c; +connection ab: a.out -> [b.in]; +connection bc: b.out -> [c.in]
+
+## Worlds.h/here
+("", "/a") -> ""
+("/a/a/a", "/a/a") -> "<here>/a"
+("/a/b", "") -> "/a/b"
+("/a/bc", "/a/b") -> "<here>c"
+("in /a/b and /a/b/c", "/a/b") -> "in <here> and <here>/c"
+
+## Worlds.h/manifests
+every one a view.vlp of projects/ or the recipes, none in a hidden folder, sorted -> true
+
+## Worlds.h/tree_of
+45 files -> [f00=0, f01=1, f02=2, f03=3, f04=4, f05=5, f06=6, f07=7, f08=8, f09=9, f10=10, f11=11, f12=12, f13=13, f14=14, f15=15, f16=16, f17=17, f18=18, f19=19, f20=20, f21=21, f22=22, f23=23, f24=24, f25=25, f26=26, f27=27, f28=28, f29=29, f30=30, f31=31, f32=32, f33=33, f34=34, f35=35, f36=36, f37=37, f38=38, f39=39, ... (45 in all)]
+a folder that is not there -> no folder
+a planted tree -> [a=1, d/, d/b=2, e/]
+the sandbox's loop of links -> [a=1, up -> ..]

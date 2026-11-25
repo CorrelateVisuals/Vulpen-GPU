@@ -1,0 +1,805 @@
+# The rows of src/runtime/Commands.h and src/runtime/Commands.cpp, a call each (src/tools/bench/bench.py).
+
+## Commands.cpp/CommandLog
+a line typed: "node add a lamp\n"
+a part's answer a frame after: "node add a lamp\nnode set a x=1\n"
+a part's line four frames after: "node add a lamp\nnode set a x=1\nnode set a y=2\n"
+after the first kept, for the start view: "node set a x=1\nnode set a y=2\n"
+and brought back: "node add a lamp\nnode set a x=1\nnode set a y=2\nview save\n"
+the first group taken back: "node set a y=2\nview save\n"
+views changed since 0: [""]
+
+## Commands.cpp/CommandLog, what a part's line joins
+a line typed that changed nothing four frames after the last change, then two parts' lines, the second group taken back: "node add a lamp\nnode set a y=2\n"
+two parts' lines in one frame, four after the last typed, the second group taken back: "node add a lamp\nnode set a y=2\n"
+
+## Commands.cpp/Commands::add
+("") -> "throws \"command `` needs a usage and a help to register (RV04)\""
+("9a") -> "throws \"command `9a`: a usage is words of a lowercase letter, t...folder, recipe\"" (235 characters, hash 3701524110fe0fed)
+("<name> a") -> "throws \"command `<name> a`: a usage is words of a lowercase let...folder, recipe\"" (241 characters, hash 04efca5ef088a0d7)
+("A") -> "throws \"command `A`: a usage is words of a lowercase letter, th...folder, recipe\"" (234 characters, hash 3d51dcec735b12c4)
+("a  b") -> "registers as \"a  b\"; again throws \"command `a  b` registers twice\""
+("a <<name>>") -> "throws \"command `a <<name>>`: a usage is words of a lowercase l...folder, recipe\"" (243 characters, hash f34b9d25f784c9a9)
+("a <file>...") -> "registers as \"a <file>...\"; again throws \"command `a <file>...` registers twice\""
+("a <name >") -> "throws \"command `a <name >`: a usage is words of a lowercase le...folder, recipe\"" (242 characters, hash 4fb05636aac410e3)
+("a <name> b") -> "throws \"command `a <name> b`: a usage is words of a lowercase l...folder, recipe\"" (243 characters, hash d97cdb65481113b3)
+("a <name>") -> "registers as \"a <name>\"; again throws \"command `a <name>` registers twice\""
+("a <node> <port>") -> "registers as \"a <node> <port>\"; again throws \"command `a <node> <port>` registers twice\""
+("a <nope>") -> "throws \"command `a <nope>`: a usage is words of a lowercase let...folder, recipe\"" (241 characters, hash 89e0f476286c8906)
+("a <value>... <name>") -> "throws \"command `a <value>... <name>`: a usage is words of a lo...folder, recipe\"" (252 characters, hash d0bc3299bcc6ae94)
+("a <value>...") -> "registers as \"a <value>...\"; again throws \"command `a <value>...` registers twice\""
+("a [<name>") -> "throws \"command `a [<name>`: a usage is words of a lowercase le...folder, recipe\"" (242 characters, hash 78fea76e21476a5a)
+("a [<name>] <port> <port>") -> "registers as \"a [<name>] <port> <port>\"; again throws \"command `a [<name>] <port> <port>` registers twice\""
+("a [<name>]") -> "registers as \"a [<name>]\"; again throws \"command `a [<name>]` registers twice\""
+("a [<value>...]") -> "registers as \"a [<value>...]\"; again throws \"command `a [<value>...]` registers twice\""
+("a [<view>]") -> "registers as \"a [<view>]\"; again throws \"command `a [<view>]` registers twice\""
+("a b c d e") -> "registers as \"a b c d e\"; again throws \"command `a b c d e` registers twice\""
+("a b") -> "registers as \"a b\"; again throws \"command `a b` registers twice\""
+("a") -> "registers as \"a\"; again throws \"command `a` registers twice\""
+("a-b c9") -> "registers as \"a-b c9\"; again throws \"command `a-b c9` registers twice\""
+("a\tb") -> "registers as \"a\\tb\"; again throws \"command `a\\tb` registers twice\""
+
+## Commands.cpp/Commands::replay
+a log of five lines -> answers ""; handed ["one"] ["x"] ["a", "lamp"]; asked nothing; log ""; refused ["nope: unknown command nope; the commands are quit, quit force, s..., shared <value>" (369 characters, hash 3ba9a214223fa23b)]
+
+## Commands.cpp/Commands::run
+("   ") -> "answers \"\"; handed nothing; asked nothing; log \"\""
+("  echo   hi  ") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("") -> "answers \"\"; handed nothing; asked nothing; log \"\""
+(": echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+(":") -> "answers \"\"; handed nothing; asked nothing; log \"\""
+("ECHO hi") -> "throws \"unknown command ECHO; the commands are quit, quit force...othing; log \"\"" (415 characters, hash 26b38aeb7709105c)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "throws \"unknown command aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...othing; log \"\"" (711 characters, hash c2cefc70f846d39d)
+("connect a.out b.in") -> "answers \"ran\\n\"; handed [\"\", \"a.out\", \"b.in\"]; asked nothing; log \"connect chosen a.out b.in\\n\""
+("connect ab a.out b.in c.in") -> "answers \"ran\\n\"; handed [\"ab\", \"a.out\", \"b.in\", \"c.in\"]; asked nothing; log \"connect ab a.out b.in c.in\\n\""
+("connect game: show.picture") -> "answers \"ran\\n\"; handed [\"\", \"game:\", \"show.picture\"]; asked nothing; log \"connect chosen game: show.picture\\n\""
+("echo a b c") -> "answers \"ran\\n\"; handed [\"a\", \"b\", \"c\"]; asked nothing; log \"\""
+("echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("echo hi\r") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("echo") -> "throws \"echo does not fit the usage `echo <value>...`\"; handed nothing; asked nothing; log \"\""
+("echo-x") -> "throws \"unknown command echo-x; the commands are quit, quit for...othing; log \"\"" (417 characters, hash e017c920a9b9d76d)
+("echo\thi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("file open ../x") -> "answers \"ran\\n\"; handed [\"<root>/x\"]; asked nothing; log \"\""
+("file open /abs/x") -> "answers \"ran\\n\"; handed [\"/abs/x\"]; asked nothing; log \"\""
+("file open a b") -> "throws \"file open a b does not fit the usage `file open <path>`: b is one word too many, as a path holds no blank\"; handed nothing; asked nothing; log \"\""
+("file open a/b.txt") -> "answers \"ran\\n\"; handed [\"<here>/a/b.txt\"]; asked nothing; log \"\""
+("files copy a b/c") -> "answers \"ran\\n\"; handed [\"a\", \"<here>/b/c\"]; asked nothing; log \"files copy a b/c\\n\""
+("game: echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("game: shared x") -> "answers \"ran for game\\n\"; handed [\"x\"]; asked nothing; log \"game: shared x\\n\""
+("game:") -> "answers \"\"; handed nothing; asked nothing; log \"\""
+("log save") -> "throws \"log save does not fit the usage `log save <file>`\"; handed nothing; asked nothing; log \"\""
+("nest echo inner") -> "answers \"nested: ran\\nran\\n\"; handed [\"inner\"] [\"echo\", \"inner\"]; asked nothing; log \"nest echo inner\\n\""
+("nest nope") -> "throws \"unknown command nope; the commands are quit, quit force...othing; log \"\"" (418 characters, hash e1f62ad851dd5258)
+("nest refuse") -> "throws \"refused by its handler\"; handed [\"refuse\"]; asked nothing; log \"\""
+("node add a lamp more") -> "throws \"node add a lamp more does not fit the usage `node add [<name>] <recipe>`: more is one word too many\"; handed nothing; asked nothing; log \"\""
+("node add a lamp") -> "answers \"ran\\n\"; handed [\"a\", \"lamp\"]; asked nothing; log \"node add a lamp\\n\""
+("node add a.b lamp") -> "throws \"node add a.b lamp does not fit the usage `node add [<name>] <recipe>`: lamp is one word too many\"; handed nothing; asked nothing; log \"\""
+("node add lamp") -> "throws \"node add lamp does not fit the usage `node add [<name>] <recipe>`\"; handed nothing; asked nothing; log \"\""
+("node set a x=1 y=2") -> "answers \"ran\\n\"; handed [\"a\", \"x=1\", \"y=2\"]; asked nothing; log \"node set a x=1 y=2\\n\""
+("node set a") -> "throws \"node set a does not fit the usage `node set <node> <word=value>...`\"; handed nothing; asked nothing; log \"\""
+("node") -> "throws \"unknown command node; the commands node starts are node...othing; log \"\"" (162 characters, hash 830e4b1c0c599293)
+("nogame: echo hi") -> "throws \"no view is named nogame; view list lists those a view hosts\"; handed nothing; asked nothing; log \"\""
+("nope") -> "throws \"unknown command nope; the commands are quit, quit force...othing; log \"\"" (415 characters, hash d40dda9df0b348bd)
+("refuse now") -> "answers \"ran\\n\"; handed [\"now\"]; asked nothing; log \"refuse now\\n\""
+("shared x") -> "answers \"ran\\n\"; handed [\"x\"]; asked nothing; log \"shared x\\n\""
+("source") -> "throws \"source does not fit the usage `source <file>`\"; handed nothing; asked nothing; log \"\""
+("view save p") -> "answers \"ran\\n\"; handed [\"p\"]; asked nothing; log \"view save p\\n\""
+("view save p/q") -> "answers \"ran\\n\"; handed [\"<cwd>/p/q\"]; asked nothing; log \"view save ../../cwd/p/q\\n\""
+("view save") -> "answers \"ran\\n\"; handed []; asked nothing; log \"view save\\n\""
+("view switch game") -> "answers \"lines go to game now\\n\"; handed nothing; asked nothing; log \"\""
+("view switch nogame") -> "throws \"no view is named nogame; view list lists those a view hosts\"; handed nothing; asked nothing; log \"\""
+("view switch") -> "answers \"lines go to the view vulpen started with now\\n\"; handed nothing; asked nothing; log \"\""
+("x=1") -> "throws \"unknown command x=1: a word=value follows a command that takes one, as node set <node> <word=value>...\"; handed nothing; asked nothing; log \"\""
+~("    node set a x=1 y=2") -> "answers \"ran\\n\"; handed [\"a\", \"x=1\", \"y=2\"]; asked nothing; log \"node set a x=1 y=2\\n\""
+~("  echo   hi   node set a x=1 y=2") -> "answers \"ran\\n\"; handed [\"hi\", \"node\", \"set\", \"a\", \"x=1\", \"y=2\"]; asked nothing; log \"\""
+~(": shared x") -> "answers \"ran\\n\"; handed [\"x\"]; asked nothing; log \"shared x\\n\""
+~("ECHO hi game: echo hi") -> "throws \"unknown command ECHO; the commands are quit, quit force...othing; log \"\"" (415 characters, hash 26b38aeb7709105c)
+~("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...ew switch nogame" (319 characters, hash 9b89d72ea7b7745f)) -> "throws \"unknown command aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...othing; log \"\"" (711 characters, hash c2cefc70f846d39d)
+~("connect ab a.out b.in c.in ") -> "answers \"ran\\n\"; handed [\"ab\", \"a.out\", \"b.in\", \"c.in\"]; asked nothing; log \"connect ab a.out b.in c.in\\n\""
+~("echo ECHO hi") -> "answers \"ran\\n\"; handed [\"ECHO\", \"hi\"]; asked nothing; log \"\""
+~("echo a b c node add lamp") -> "answers \"ran\\n\"; handed [\"a\", \"b\", \"c\", \"node\", \"add\", \"lamp\"]; asked nothing; log \"\""
+~("echo\thi source") -> "answers \"ran\\n\"; handed [\"hi\", \"source\"]; asked nothing; log \"\""
+~("file open a/b.txt ") -> "answers \"ran\\n\"; handed [\"<here>/a/b.txt\"]; asked nothing; log \"\""
+~("file open a/b.txt view switch nogame") -> "throws \"file open a/b.txt view switch nogame does not fit the u...othing; log \"\"" (197 characters, hash 5e228a9aaa4cd3ff)
+~("files copy a b/c source") -> "throws \"files copy a b/c source does not fit the usage `files c...othing; log \"\"" (182 characters, hash 3b1d34facb83a388)
+~("game: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (306 characters, hash 9c08ea2b7364f601)) -> "throws \"unknown command aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...othing; log \"\"" (711 characters, hash c2cefc70f846d39d)
+~("game: game: echo hi") -> "throws \"unknown command game:; the commands are quit, quit forc...othing; log \"\"" (416 characters, hash 50d9d152beaa4e43)
+~("nest echo inner nope") -> "answers \"nested: ran\\nran\\n\"; handed [\"inner\", \"nope\"] [\"echo\", \"inner\", \"nope\"]; asked nothing; log \"nest echo inner nope\\n\""
+~("nest refuse aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (312 characters, hash c0eae44693db8d2f)) -> "throws \"refused by its handler\"; handed [\"refuse\", \"aaaaaaa...othing; log \"\"" (385 characters, hash ba5d837f4cb476dd)
+~("node add a lamp more connect a.out b.in") -> "throws \"node add a lamp more connect a.out b.in does not fit th...othing; log \"\"" (189 characters, hash 827ec09b69af0efe)
+~("node add a.b lamp view save") -> "throws \"node add a.b lamp view save does not fit the usage `nod...othing; log \"\"" (168 characters, hash 9be51b002da2ed29)
+~("node set a x=1 y=2 node add a lamp") -> "answers \"ran\\n\"; handed [\"a\", \"x=1\", \"y=2\", \"node\", \"add\", \"a\", \"lamp\"]; asked nothing; log \"node set a x=1 y=2 node add a lamp\\n\""
+~("node set a x=1 y=2 node add lamp") -> "answers \"ran\\n\"; handed [\"a\", \"x=1\", \"y=2\", \"node\", \"add\", \"lamp\"]; asked nothing; log \"node set a x=1 y=2 node add lamp\\n\""
+~("nogame: echo hi connect ab a.out b.in c.in") -> "throws \"no view is named nogame; view list lists those a view hosts\"; handed nothing; asked nothing; log \"\""
+~("refuse now view switch game") -> "throws \"refuse now view switch game does not fit the usage `refuse <value>`: view switch game are 3 words too many\"; handed nothing; asked nothing; log \"\""
+~("shared x connect ab a.out b.in c.in") -> "throws \"shared x connect ab a.out b.in c.in does not fit the us...othing; log \"\"" (176 characters, hash c302e83733b431ec)
+~("source :") -> "throws \"<here>/:: cannot be read\"; handed nothing; asked nothing; log \"\""
+~("view save    ") -> "answers \"ran\\n\"; handed []; asked nothing; log \"view save\\n\""
+~("view save p/q view switch nogame") -> "throws \"view save p/q view switch nogame does not fit the usage...othing; log \"\"" (172 characters, hash 8f93616dbfb58d74)
+~("view switch game : echo hi") -> "throws \"view switch game : echo hi does not fit the usage `view switch [<view>]`: : echo hi are 3 words too many\"; handed nothing; asked nothing; log \"\""
+~("view switch nogame echo hi\r") -> "throws \"view switch nogame echo hi does not fit the usage `view switch [<view>]`: echo hi are 2 words too many\"; handed nothing; asked nothing; log \"\""
+
+## Commands.cpp/Commands::send
+("   ") -> "answers \"\"; handed nothing; asked nothing; log \"\""
+("  echo   hi  ") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("") -> "answers \"\"; handed nothing; asked nothing; log \"\""
+(": echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+(":") -> "answers \"\"; handed nothing; asked nothing; log \"\""
+("ECHO hi") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...lue>\"; log \"\"" (435 characters, hash 13f00d968b62b622)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...lue>\"; log \"\"" (731 characters, hash 20393a69576ff375)
+("connect a.out b.in") -> "answers \"ran\\n\"; handed [\"\", \"a.out\", \"b.in\"]; asked nothing; log \"connect chosen a.out b.in\\n\""
+("connect ab a.out b.in c.in") -> "answers \"ran\\n\"; handed [\"ab\", \"a.out\", \"b.in\", \"c.in\"]; asked nothing; log \"connect ab a.out b.in c.in\\n\""
+("connect game: show.picture") -> "answers \"ran\\n\"; handed [\"\", \"game:\", \"show.picture\"]; asked nothing; log \"connect chosen game: show.picture\\n\""
+("echo a b c") -> "answers \"ran\\n\"; handed [\"a\", \"b\", \"c\"]; asked nothing; log \"\""
+("echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("echo hi\r") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("echo") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} echo does not fit the usage `echo <value>...`\"; log \"\""
+("echo-x") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...lue>\"; log \"\"" (437 characters, hash b0dd86a57e01544d)
+("echo\thi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("file open ../x") -> "answers \"ran\\n\"; handed [\"<sandbox>/x\"]; asked nothing; log \"\""
+("file open /abs/x") -> "answers \"ran\\n\"; handed [\"/abs/x\"]; asked nothing; log \"\""
+("file open a b") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} file...lank\"; log \"\"" (177 characters, hash bb2bd02214197232)
+("file open a/b.txt") -> "answers \"ran\\n\"; handed [\"<cwd>/a/b.txt\"]; asked nothing; log \"\""
+("files copy a b/c") -> "answers \"ran\\n\"; handed [\"a\", \"<cwd>/b/c\"]; asked nothing; log \"files copy a b/c\\n\""
+("game: echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked nothing; log \"\""
+("game: shared x") -> "answers \"ran for game\\n\"; handed [\"x\"]; asked nothing; log \"game: shared x\\n\""
+("game:") -> "answers \"\"; handed nothing; asked nothing; log \"\""
+("log save") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} log save does not fit the usage `log save <file>`\"; log \"\""
+("nest echo inner") -> "answers \"nested: ran\\nran\\n\"; handed [\"inner\"] [\"echo\", \"inner\"]; asked nothing; log \"nest echo inner\\n\""
+("nest nope") -> "answers \"\"; handed [\"nope\"]; asked nothing; logged \"{!!!} u...lue>\"; log \"\"" (438 characters, hash ea6a42b9ee5852d0)
+("nest refuse") -> "answers \"\"; handed [\"refuse\"]; asked nothing; logged \"{!!!} refused by its handler\"; log \"\""
+("node add a lamp more") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} node...many\"; log \"\"" (171 characters, hash 361af5ff95270b99)
+("node add a lamp") -> "answers \"ran\\n\"; handed [\"a\", \"lamp\"]; asked nothing; log \"node add a lamp\\n\""
+("node add a.b lamp") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} node...many\"; log \"\"" (168 characters, hash 9b9dfc223414fcaf)
+("node add lamp") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} node add lamp does not fit the usage `node add [<name>] <recipe>`\"; log \"\""
+("node set a x=1 y=2") -> "answers \"ran\\n\"; handed [\"a\", \"x=1\", \"y=2\"]; asked nothing; log \"node set a x=1 y=2\\n\""
+("node set a") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} node set a does not fit the usage `node set <node> <word=value>...`\"; log \"\""
+("node") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...>...\"; log \"\"" (182 characters, hash 55a7cae52835e343)
+("nogame: echo hi") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} no view is named nogame; view list lists those a view hosts\"; log \"\""
+("nope") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...lue>\"; log \"\"" (435 characters, hash 3fcb825a1fe46655)
+("refuse now") -> "answers \"ran\\n\"; handed [\"now\"]; asked nothing; log \"refuse now\\n\""
+("shared x") -> "answers \"ran\\n\"; handed [\"x\"]; asked nothing; log \"shared x\\n\""
+("source") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} source does not fit the usage `source <file>`\"; log \"\""
+("view save p") -> "answers \"ran\\n\"; handed [\"p\"]; asked nothing; log \"view save p\\n\""
+("view save p/q") -> "answers \"ran\\n\"; handed [\"<cwd>/p/q\"]; asked nothing; log \"view save p/q\\n\""
+("view save") -> "answers \"ran\\n\"; handed []; asked nothing; log \"view save\\n\""
+("view switch game") -> "answers \"lines go to game now\\n\"; handed nothing; asked nothing; log \"\""
+("view switch nogame") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} no view is named nogame; view list lists those a view hosts\"; log \"\""
+("view switch") -> "answers \"lines go to the view vulpen started with now\\n\"; handed nothing; asked nothing; log \"\""
+("x=1") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...>...\"; log \"\"" (174 characters, hash 4d714f756873f3aa)
+~(" view switch game") -> "answers \"lines go to game now\\n\"; handed nothing; asked nothing; log \"\""
+~(": log save") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} log save does not fit the usage `log save <file>`\"; log \"\""
+~(": view switch") -> "answers \"lines go to the view vulpen started with now\\n\"; handed nothing; asked nothing; log \"\""
+~("ECHO hi node set a x=1 y=2") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...lue>\"; log \"\"" (435 characters, hash 13f00d968b62b622)
+~("ECHO hi source") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...lue>\"; log \"\"" (435 characters, hash 13f00d968b62b622)
+~("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa... add a lamp more" (321 characters, hash 220183eeef020c08)) -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...lue>\"; log \"\"" (731 characters, hash 20393a69576ff375)
+~("echo-x : echo hi") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...lue>\"; log \"\"" (437 characters, hash b0dd86a57e01544d)
+~("echo\thi file open a/b.txt") -> "answers \"ran\\n\"; handed [\"hi\", \"file\", \"open\", \"a/b.txt\"]; asked nothing; log \"\""
+~("echo\thi nest nope") -> "answers \"ran\\n\"; handed [\"hi\", \"nest\", \"nope\"]; asked nothing; log \"\""
+~("file open a/b.txt node add lamp") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} file...lank\"; log \"\"" (207 characters, hash e68b3e851521cc1d)
+~("files copy a b/c    ") -> "answers \"ran\\n\"; handed [\"a\", \"<cwd>/b/c\"]; asked nothing; log \"files copy a b/c\\n\""
+~("game: shared x game:") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} shared x game: does not fit the usage `shared <value>`: game: is one word too many\"; log \"\""
+~("game: shared x nest echo inner") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} shar...many\"; log \"\"" (174 characters, hash 31652940c17f9ac4)
+~("nest echo inner log save") -> "answers \"nested: ran\\nran\\n\"; handed [\"inner\", \"log\", \"...er log save\\n\"" (164 characters, hash 8c96e77cf9464c88)
+~("nest echo inner shared x") -> "answers \"nested: ran\\nran\\n\"; handed [\"inner\", \"shared\",...er shared x\\n\"" (164 characters, hash b2a4843e1b8f0bb2)
+~("node add a lamp more connect a.out b.in") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} node...many\"; log \"\"" (209 characters, hash 421eabe8c5a40ca8)
+~("node add a.b lamp echo a b c") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} node...many\"; log \"\"" (190 characters, hash 769bd4f5444234c3)
+~("node add a.b lamp view save p") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} node...many\"; log \"\"" (192 characters, hash acf4cf99cf9f4aba)
+~("node nest refuse") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...>...\"; log \"\"" (194 characters, hash 4cc3a9fab97d1e35)
+~("node set a x=1 y=2 game:") -> "answers \"ran\\n\"; handed [\"a\", \"x=1\", \"y=2\", \"game:\"]; asked nothing; log \"node set a x=1 y=2 game:\\n\""
+~("nogame: echo hi node set a x=1 y=2") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} no view is named nogame; view list lists those a view hosts\"; log \"\""
+~("refuse now x=1") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} refuse now x=1 does not fit the usage `refuse <value>`: x=1 is one word too many\"; log \"\""
+~("view save echo") -> "answers \"ran\\n\"; handed [\"echo\"]; asked nothing; log \"view save echo\\n\""
+~("view save file open ../x") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} view...many\"; log \"\"" (175 characters, hash bd8d52763c0ab871)
+~("view switch nogame game: shared x") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} view...many\"; log \"\"" (188 characters, hash 9507806db947e70b)
+~("view switch view save p") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} view...many\"; log \"\"" (170 characters, hash 2c91d05b982adbbe)
+~("x=1 echo-x") -> "answers \"\"; handed nothing; asked nothing; logged \"{!!!} unkn...>...\"; log \"\"" (174 characters, hash 4d714f756873f3aa)
+
+## Commands.cpp/Commands::send_typed
+("   ") -> "answers \"\"; handed nothing; asked begin step \"   \"; end step, nothing kept; log \"\""
+("  echo   hi  ") -> "answers \"ran\\n\"; handed [\"hi\"]; asked begin step \"  echo   hi  \"; end step, nothing kept; log \"\""
+("") -> "answers \"\"; handed nothing; asked begin step \"\"; end step, nothing kept; log \"\""
+(": echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked begin step \": echo hi\"; end step, nothing kept; log \"\""
+(":") -> "answers \"\"; handed nothing; asked begin step \":\"; end step, nothing kept; log \"\""
+("ECHO hi") -> "answers \"\"; handed nothing; asked begin step \"ECHO hi\"; end ...lue>\"; log \"\"" (474 characters, hash 23f0794d0e139b49)
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "answers \"\"; handed nothing; asked begin step \"aaaaaaaaaaaaaaa...lue>\"; log \"\"" (1063 characters, hash 959de2663b999b6e)
+("connect a.out b.in") -> "answers \"ran\\n\"; handed [\"\", \"a.out\", \"b.in\"]; asked be... a.out b.in\\n\"" (174 characters, hash 797a57dc0e1c12da)
+("connect ab a.out b.in c.in") -> "answers \"ran\\n\"; handed [\"ab\", \"a.out\", \"b.in\", \"c.in\...t b.in c.in\\n\"" (195 characters, hash b3ff68478df49d95)
+("connect game: show.picture") -> "answers \"ran\\n\"; handed [\"\", \"game:\", \"show.picture\"]; ...how.picture\\n\"" (198 characters, hash c2c8828bdf8afd37)
+("echo a b c") -> "answers \"ran\\n\"; handed [\"a\", \"b\", \"c\"]; asked begin step \"echo a b c\"; end step, nothing kept; log \"\""
+("echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked begin step \"echo hi\"; end step, nothing kept; log \"\""
+("echo hi\r") -> "answers \"ran\\n\"; handed [\"hi\"]; asked begin step \"echo hi\\r\"; end step, nothing kept; log \"\""
+("echo") -> "answers \"\"; handed nothing; asked begin step \"echo\"; end step, nothing kept; logged \"{!!!} echo does not fit the usage `echo <value>...`\"; log \"\""
+("echo-x") -> "answers \"\"; handed nothing; asked begin step \"echo-x\"; end s...lue>\"; log \"\"" (475 characters, hash a831b0115f98bc56)
+("echo\thi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked begin step \"echo\\thi\"; end step, nothing kept; log \"\""
+("file open ../x") -> "answers \"ran\\n\"; handed [\"<root>/x\"]; asked begin step \"file open ../x\"; end step, nothing kept; log \"\""
+("file open /abs/x") -> "answers \"ran\\n\"; handed [\"/abs/x\"]; asked begin step \"file open /abs/x\"; end step, nothing kept; log \"\""
+("file open a b") -> "answers \"\"; handed nothing; asked begin step \"file open a b\"...lank\"; log \"\"" (222 characters, hash a36d3d5654c2cafe)
+("file open a/b.txt") -> "answers \"ran\\n\"; handed [\"<here>/a/b.txt\"]; asked begin step \"file open a/b.txt\"; end step, nothing kept; log \"\""
+("files copy a b/c") -> "answers \"ran\\n\"; handed [\"a\", \"<here>/b/c\"]; asked begin step \"files copy a b/c\"; write the start view; end step, group 0; log \"files copy a b/c\\n\""
+("game: echo hi") -> "answers \"ran\\n\"; handed [\"hi\"]; asked begin step \"game: echo hi\"; end step, nothing kept; log \"\""
+("game: shared x") -> "answers \"ran for game\\n\"; handed [\"x\"]; asked begin step \"game: shared x\"; write game; end step, group 0; log \"game: shared x\\n\""
+("game:") -> "answers \"\"; handed nothing; asked begin step \"game:\"; end step, nothing kept; log \"\""
+("log save") -> "answers \"\"; handed nothing; asked begin step \"log save\"; end...le>`\"; log \"\"" (161 characters, hash fcd04fc244058cee)
+("nest echo inner") -> "answers \"nested: ran\\nran\\n\"; handed [\"inner\"] [\"echo\", ... echo inner\\n\"" (181 characters, hash 6aafd2167266de87)
+("nest nope") -> "answers \"\"; handed [\"nope\"]; asked begin step \"nest nope\";...lue>\"; log \"\"" (479 characters, hash afd84a2fad0a1c37)
+("nest refuse") -> "answers \"\"; handed [\"refuse\"]; asked begin step \"nest refuse\"; end step, nothing kept; logged \"{!!!} refused by its handler\"; log \"\""
+("node add a lamp more") -> "answers \"\"; handed nothing; asked begin step \"node add a lamp...many\"; log \"\"" (223 characters, hash c1a2a71b3b24f345)
+("node add a lamp") -> "answers \"ran\\n\"; handed [\"a\", \"lamp\"]; asked begin step \"node add a lamp\"; write the start view; end step, group 0; log \"node add a lamp\\n\""
+("node add a.b lamp") -> "answers \"\"; handed nothing; asked begin step \"node add a.b la...many\"; log \"\"" (217 characters, hash e3dc9a384efecf4c)
+("node add lamp") -> "answers \"\"; handed nothing; asked begin step \"node add lamp\"...pe>`\"; log \"\"" (182 characters, hash 2141942d598261b9)
+("node set a x=1 y=2") -> "answers \"ran\\n\"; handed [\"a\", \"x=1\", \"y=2\"]; asked begi...t a x=1 y=2\\n\"" (165 characters, hash e08305e3377086e1)
+("node set a") -> "answers \"\"; handed nothing; asked begin step \"node set a\"; e......`\"; log \"\"" (181 characters, hash 013ad6e4f750c9db)
+("node") -> "answers \"\"; handed nothing; asked begin step \"node\"; end ste...>...\"; log \"\"" (218 characters, hash 7cc1450e0d0d9b36)
+("nogame: echo hi") -> "answers \"\"; handed nothing; asked begin step \"nogame: echo hi...osts\"; log \"\"" (178 characters, hash 06e8c0443d905cc2)
+("nope") -> "answers \"\"; handed nothing; asked begin step \"nope\"; end ste...lue>\"; log \"\"" (471 characters, hash 4668f27154cc249e)
+("refuse now") -> "answers \"ran\\n\"; handed [\"now\"]; asked begin step \"refuse now\"; write the start view; end step, group 0; log \"refuse now\\n\""
+("shared x") -> "answers \"ran\\n\"; handed [\"x\"]; asked begin step \"shared x\"; write the start view; end step, group 0; log \"shared x\\n\""
+("source") -> "answers \"\"; handed nothing; asked begin step \"source\"; end step, nothing kept; logged \"{!!!} source does not fit the usage `source <file>`\"; log \"\""
+("view save p") -> "answers \"ran\\n\"; handed [\"p\"]; asked begin step \"view save p\"; end step, group 0; log \"view save p\\n\""
+("view save p/q") -> "answers \"ran\\n\"; handed [\"<cwd>/p/q\"]; asked begin step \"view save p/q\"; end step, group 0; log \"view save ../../cwd/p/q\\n\""
+("view save") -> "answers \"ran\\n\"; handed []; asked begin step \"view save\"; end step, group 0; log \"view save\\n\""
+("view switch game") -> "answers \"lines go to game now\\n\"; handed nothing; asked begin step \"view switch game\"; end step, nothing kept; log \"\""
+("view switch nogame") -> "answers \"\"; handed nothing; asked begin step \"view switch nog...osts\"; log \"\"" (181 characters, hash e4c02ca26182b5a3)
+("view switch") -> "answers \"lines go to the view vulpen started with now\\n\"; handed nothing; asked begin step \"view switch\"; end step, nothing kept; log \"\""
+("x=1") -> "answers \"\"; handed nothing; asked begin step \"x=1\"; end step...>...\"; log \"\"" (209 characters, hash fdabc4e6f45cfb1d)
+~("    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (304 characters, hash 18d01668c058df71)) -> "answers \"\"; handed nothing; asked begin step \"    aaaaaaaaaaa...lue>\"; log \"\"" (1067 characters, hash 112e24f6bce629ce)
+~("    view save p") -> "answers \"ran\\n\"; handed [\"p\"]; asked begin step \"    view save p\"; end step, group 0; log \"view save p\\n\""
+~("  echo   hi   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (314 characters, hash c0f4dbe246faa8f9)) -> "answers \"ran\\n\"; handed [\"hi\", \"aaaaaaaaaaaaaaaaaaaaaaaaaa...g kept; log \"\"" (712 characters, hash d082503f87e30557)
+~(" files copy a b/c") -> "answers \"ran\\n\"; handed [\"a\", \"<here>/b/c\"]; asked begin step \" files copy a b/c\"; write the start view; end step, group 0; log \"files copy a b/c\\n\""
+~(" nest echo inner") -> "answers \"nested: ran\\nran\\n\"; handed [\"inner\"] [\"echo\", ... echo inner\\n\"" (182 characters, hash 1d555a46d9980101)
+~(": echo hi connect a.out b.in") -> "answers \"ran\\n\"; handed [\"hi\", \"connect\", \"a.out\", \"b.in\"]; asked begin step \": echo hi connect a.out b.in\"; end step, nothing kept; log \"\""
+~("ECHO hi echo hi") -> "answers \"\"; handed nothing; asked begin step \"ECHO hi echo hi...lue>\"; log \"\"" (482 characters, hash b924f68713254f31)
+~("echo hi aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (308 characters, hash 6b49cfc912ff1769)) -> "answers \"ran\\n\"; handed [\"hi\", \"aaaaaaaaaaaaaaaaaaaaaaaaaa...g kept; log \"\"" (706 characters, hash 1e02d3eb4059de67)
+~("file open /abs/x echo-x") -> "answers \"\"; handed nothing; asked begin step \"file open /abs/...lank\"; log \"\"" (247 characters, hash dc4d746149c263fa)
+~("file open a b echo\thi") -> "answers \"\"; handed nothing; asked begin step \"file open a b e...lank\"; log \"\"" (250 characters, hash f9ec09eb97e00e50)
+~("game: echo hi view save p/q") -> "answers \"ran\\n\"; handed [\"hi\", \"view\", \"save\", \"p/q\"]; asked begin step \"game: echo hi view save p/q\"; end step, nothing kept; log \"\""
+~("nest nope log save") -> "answers \"\"; handed [\"nope\", \"log\", \"save\"]; asked begin ...lue>\"; log \"\"" (507 characters, hash 86b0a1e51d6faf09)
+~("nest refuse echo-x") -> "answers \"\"; handed [\"refuse\", \"echo-x\"]; asked begin step ...dler\"; log \"\"" (161 characters, hash 462ee330fa27a970)
+~("node add a lamp node set a x=1 y=2") -> "answers \"\"; handed nothing; asked begin step \"node add a lamp...many\"; log \"\"" (265 characters, hash 5c0e5850377ec3e9)
+~("node add a.b lamp echo") -> "answers \"\"; handed nothing; asked begin step \"node add a.b la...many\"; log \"\"" (232 characters, hash 3a337d24974772d8)
+~("node add a.b lamp file open /abs/x") -> "answers \"\"; handed nothing; asked begin step \"node add a.b la...many\"; log \"\"" (268 characters, hash dcb6d90b9c9a6c35)
+~("node set a x=1 y=2 view save") -> "answers \"ran\\n\"; handed [\"a\", \"x=1\", \"y=2\", \"view\", \...2 view save\\n\"" (205 characters, hash 9e60433528e28d4d)
+~("node view save p") -> "answers \"\"; handed nothing; asked begin step \"node view save ...>...\"; log \"\"" (242 characters, hash ad28db68071e7246)
+~("view switch game connect a.out b.in") -> "answers \"\"; handed nothing; asked begin step \"view switch gam...many\"; log \"\"" (261 characters, hash 1902cc8ea3e1e7a0)
+~("view switch game game: shared x") -> "answers \"\"; handed nothing; asked begin step \"view switch gam...many\"; log \"\"" (249 characters, hash 9b8c7887096769f1)
+~("view switch game nest echo inner") -> "answers \"\"; handed nothing; asked begin step \"view switch gam...many\"; log \"\"" (252 characters, hash 4600e56bb0dfbaed)
+~("x=1 view save p") -> "answers \"\"; handed nothing; asked begin step \"x=1 view save p...>...\"; log \"\"" (221 characters, hash 3fe0bf442d6aa797)
+
+## Commands.cpp/Commands::source
+a folder -> throws "<here>/d: cannot be read"; handed nothing; asked nothing; log ""
+a path from its folder -> answers ""; handed ["<here>/d/x/y.txt"]; asked nothing; log ""
+a refusal in the middle -> throws "<here>/s:2: unknown command nope; the commands are quit, quit fo..., shared <value>" (375 characters, hash 0578d73b7b2b3ab1); handed ["one"]; asked nothing; log ""
+a refusal not passed over -> throws "<here>/s:2: refused by its handler"; handed ["one"] ["refuse"]; asked nothing; log ""
+a refusal passed over -> answers ""; handed ["one"] ["refuse"] ["three"]; asked nothing; logged "{!!!} <here>/s:2: refused by its handler; the lines after it of game are passed over"; log ""
+another that sources it -> throws "<here>/s:1: <here>/t:1: <here>/s is running already, so sourcing it again would never end"; handed nothing; asked nothing; log ""
+blank lines -> answers ""; handed ["one"]; asked nothing; log ""
+empty -> answers ""; handed nothing; asked nothing; log ""
+itself -> throws "<here>/s:1: <here>/s is running already, so sourcing it again would never end"; handed nothing; asked nothing; log ""
+lines of Windows -> answers ""; handed ["one"] ["a", "lamp"]; asked nothing; log "node add a lamp\n"
+no last newline -> answers ""; handed ["one"] ["two"]; asked nothing; log ""
+none -> throws "<here>/s: cannot be read"; handed nothing; asked nothing; log ""
+quit in the middle -> answers ""; handed ["one"]; asked nothing; log ""
+two lines -> answers ""; handed ["one"] ["a", "lamp"]; asked nothing; log "node add a lamp\n"
+
+## Commands.cpp/a command several nodes register
+: zoom x -> answers "ran for the app\n"; handed nothing; asked nothing; log ""
+an app's node's then an app's node's: the second throws "command `twice <value>` registers twice"
+an app's node's then game's node's: both register
+an app's node's then the engine's: the second throws "command `twice <value>` registers twice"
+an app's node's then the start project's node's: both register
+game's node's then an app's node's: both register
+game's node's then game's node's: the second throws "command `twice <value>` registers twice"
+game's node's then the engine's: the second throws "command `twice <value>` registers twice"
+game's node's then the start project's node's: both register
+game: zoom x -> answers "ran for game\n"; handed ["x"]; asked nothing; log ""
+nogame: zoom x -> throws "no view is named nogame; view list lists those a view hosts"; handed nothing; asked nothing; log ""
+the engine's then an app's node's: the second throws "command `twice <value>` registers twice"
+the engine's then game's node's: the second throws "command `twice <value>` registers twice"
+the engine's then the engine's: the second throws "command `twice <value>` registers twice"
+the engine's then the start project's node's: the second throws "command `twice <value>` registers twice"
+the start project's node's then an app's node's: both register
+the start project's node's then game's node's: both register
+the start project's node's then the engine's: the second throws "command `twice <value>` registers twice"
+the start project's node's then the start project's node's: the second throws "command `twice <value>` registers twice"
+view switch game -> answers "lines go to game now\n"; handed nothing; asked nothing; log "", then : zoom x -> answers "ran for the app\n"; handed nothing; asked nothing; log ""
+view switch game -> answers "lines go to game now\n"; handed nothing; asked nothing; log "", then zoom x -> answers "ran for the app\n"; handed nothing; asked nothing; log ""
+zoom x -> answers "ran for the app\n"; handed nothing; asked nothing; log ""
+
+## Commands.cpp/command_word
+(" 1") -> false
+("") -> false
+("+1") -> false
+("-0") -> false
+("-1") -> false
+("-2147483648") -> false
+("-inf") -> false
+(".5") -> false
+("0") -> false
+("01") -> false
+("0x10") -> false
+("1 ") -> false
+("1") -> false
+("1,2") -> false
+("1.5") -> false
+("18446744073709551615") -> false
+("18446744073709551616") -> false
+("1\n") -> false
+("1\r") -> false
+("1_0") -> false
+("1e") -> false
+("1e-40") -> false
+("1e-50") -> false
+("1e3") -> false
+("3.4028235e38") -> false
+("3.4028236e38") -> false
+("4294967295") -> false
+("4294967296") -> false
+("5.") -> false
+("=") -> false
+("\xd9\xa1") -> false
+("\xef\xbc\x91") -> false
+("a") -> true
+("a=b") -> false
+("inf") -> true
+("nan") -> true
+~("+,471_") -> false
+~("+7aa3") -> false
+~(",042-35-") -> false
+~(",46e1") -> false
+~("-3E") -> false
+~(".07b+7") -> false
+~("01a") -> false
+~("0e-") -> false
+~("1E8x5 ") -> false
+~("2.") -> false
+~("31,+6+5x") -> false
+~("35e+") -> false
+~("3_E_") -> false
+~("6") -> false
+~("66") -> false
+~("67- x7_8") -> false
+~("6_2.88x") -> false
+~("735944") -> false
+~("8") -> false
+~("8_,a+. ") -> false
+~("9 __e+") -> false
+~("9+.7") -> false
+~("E") -> false
+~("E,08") -> false
+~("E2,5") -> false
+~("_.") -> false
+~("a0") -> true
+~("a05-58,") -> false
+~("a1") -> true
+~("b,311+") -> false
+~("b--exE92") -> false
+~("b5EE_") -> false
+~("b8+") -> false
+~("e") -> true
+~("e+.b") -> false
+~("e3,4") -> false
+~("e94") -> true
+~("eb0,5..6") -> false
+
+## Commands.cpp/log save
+a folder -> throws "<here>/d is a folder; log save writes a file"; handed ["a", "<here>/d/b"] ["a", "lamp"]; asked begin step "files copy a d/b"; write the start view; end step, group 0; begin step "node add a lamp"; write the start view; end step, group 1; log "files copy a d/b\nnode add a lamp\n"; then "[d/]"
+a new log -> answers ""; handed ["a", "<here>/d/b"] ["a", "lamp"]; asked begin step "files copy a d/b"; write the start view; end step, group 0; begin step "node add a lamp"; write the start view; end step, group 1; log "files copy a d/b\nnode add a lamp\n"; then "[s.log=files copy a d/b\nnode add a lamp\n]"
+force over it -> answers ""; handed ["a", "<here>/d/b"] ["a", "lamp"]; asked begin step "files copy a d/b"; write the start view; end step, group 0; begin step "node add a lamp"; write the start view; end step, group 1; log "files copy a d/b\nnode add a lamp\n"; then "[s.txt=files copy a d/b\nnode add a lamp\n]"
+in a folder, paths from there -> answers ""; handed ["a", "<here>/d/b"] ["a", "lamp"]; asked begin step "files copy a d/b"; write the start view; end step, group 0; begin step "node add a lamp"; write the start view; end step, group 1; log "files copy a d/b\nnode add a lamp\n"; then "[d/, d/s.log=files copy a b\nnode add a lamp\n]"
+over a file not named .log -> throws "<here>/s.txt is there and its name does not end in .log, so log save leaves it; log save force writes over it"; handed ["a", "<here>/d/b"] ["a", "lamp"]; asked begin step "files copy a d/b"; write the start view; end step, group 0; begin step "node add a lamp"; write the start view; end step, group 1; log "files copy a d/b\nnode add a lamp\n"; then "[s.txt=mine]"
+over a log -> answers ""; handed ["a", "<here>/d/b"] ["a", "lamp"]; asked begin step "files copy a d/b"; write the start view; end step, group 0; begin step "node add a lamp"; write the start view; end step, group 1; log "files copy a d/b\nnode add a lamp\n"; then "[s.log=files copy a d/b\nnode add a lamp\n]"
+
+## Commands.cpp/placeholder
+(" 1") -> false
+("") -> false
+("+1") -> false
+("-0") -> false
+("-1") -> false
+("-2147483648") -> false
+("-inf") -> false
+(".5") -> false
+("0") -> false
+("01") -> false
+("0x10") -> false
+("1 ") -> false
+("1") -> false
+("1,2") -> false
+("1.5") -> false
+("18446744073709551615") -> false
+("18446744073709551616") -> false
+("1\n") -> false
+("1\r") -> false
+("1_0") -> false
+("1e") -> false
+("1e-40") -> false
+("1e-50") -> false
+("1e3") -> false
+("3.4028235e38") -> false
+("3.4028236e38") -> false
+("4294967295") -> false
+("4294967296") -> false
+("5.") -> false
+("=") -> false
+("\xd9\xa1") -> false
+("\xef\xbc\x91") -> false
+("a") -> false
+("a=b") -> false
+("inf") -> false
+("nan") -> false
+~(" ") -> false
+~("+1E5174") -> false
+~(",-  ") -> false
+~(",7.+") -> false
+~(",9") -> false
+~(",90b 6") -> false
+~(",99_.0b") -> false
+~(".") -> false
+~(".+b7b") -> false
+~(".9b") -> false
+~("018e") -> false
+~("04") -> false
+~("0_42+") -> false
+~("23 9e") -> false
+~("2bx51b.+") -> false
+~("3") -> false
+~("3-75x") -> false
+~("399,6294") -> false
+~("3b06-") -> false
+~("4aaxE") -> false
+~("5.xa5 .-") -> false
+~("6-5") -> false
+~("6a9E96") -> false
+~("74") -> false
+~("82. a85_") -> false
+~("82.3") -> false
+~("8exa") -> false
+~("9") -> false
+~("9E--7") -> false
+~("E2a -453") -> false
+~("Ex5e98") -> false
+~("_,E") -> false
+~("_46,bE+") -> false
+~("a E6") -> false
+~("a0.+9") -> false
+~("b+6b0E-") -> false
+~("b1..  a") -> false
+~("bxEE3+") -> false
+~("e2,+0") -> false
+~("e8-641") -> false
+~("x  6ae") -> false
+
+## Commands.cpp/quit
+a node holds work -> throws "quit would lose what nodes hold, or what no view save kept, so t...me:editor: a.txt" (312 characters, hash 37a709eed71a4eb0); handed nothing; asked nothing; log ""; quitting false
+a node holds work, played alone -> throws "quit would lose what nodes hold, or what no view save kept, so t...me:editor: a.txt" (312 characters, hash 37a709eed71a4eb0); handed nothing; asked nothing; log ""; quitting false
+files no save kept -> throws "quit would lose what nodes hold, or what no view save kept, so t...ngame: a.txt, b/" (350 characters, hash fae210465dadbac1); handed nothing; asked nothing; log ""; quitting false
+files no save kept, played alone -> answers ""; handed nothing; asked nothing; log ""; quitting true
+held a frame ago -> throws "quit would lose what nodes hold, or what no view save kept, so t...me:editor: a.txt" (312 characters, hash 37a709eed71a4eb0); handed nothing; asked nothing; log ""; quitting false
+held twice -> throws "quit would lose what nodes hold, or what no view save kept, so t...me:editor: a.txt" (312 characters, hash 37a709eed71a4eb0); handed nothing; asked nothing; log ""; quitting false
+held two frames ago -> answers ""; handed nothing; asked nothing; log ""; quitting true
+nothing held -> answers ""; handed nothing; asked nothing; log ""; quitting true
+quit force over them -> answers ""; handed nothing; asked put back the start view; put back game; log ""; quitting true
+quit force over them, played alone -> answers ""; handed nothing; asked nothing; log ""; quitting true
+
+## Commands.cpp/resolved_from
+(path "", path "") -> path "<cwd>/"
+(path "", path ".") -> path "<cwd>/"
+(path "", path "..") -> path "<sandbox>/"
+(path "", path "../a") -> path "<sandbox>/a"
+(path "", path "./a") -> path "<cwd>/a"
+(path "", path ".hidden") -> path "<cwd>/.hidden"
+(path "", path "\xc3\xa9") -> path "<cwd>/\xc3\xa9"
+(path "", path "a b") -> path "<cwd>/a b"
+(path "", path "a") -> path "<cwd>/a"
+(path "", path "a/") -> path "<cwd>/a/"
+(path "", path "a/../b") -> path "<cwd>/b"
+(path "", path "a/./b") -> path "<cwd>/a/b"
+(path "", path "a/.b/c") -> path "<cwd>/a/.b/c"
+(path "", path "a/b") -> path "<cwd>/a/b"
+(path ".", path "") -> path "<cwd>/"
+(path ".", path ".") -> path "<cwd>/"
+(path ".", path "..") -> path "<sandbox>/"
+(path ".", path "../a") -> path "<sandbox>/a"
+(path ".", path "./a") -> path "<cwd>/a"
+(path ".", path ".hidden") -> path "<cwd>/.hidden"
+(path ".", path "\xc3\xa9") -> path "<cwd>/\xc3\xa9"
+(path ".", path "a b") -> path "<cwd>/a b"
+(path ".", path "a") -> path "<cwd>/a"
+(path ".", path "a/") -> path "<cwd>/a/"
+(path ".", path "a/../b") -> path "<cwd>/b"
+(path ".", path "a/./b") -> path "<cwd>/a/b"
+(path ".", path "a/.b/c") -> path "<cwd>/a/.b/c"
+(path ".", path "a/b") -> path "<cwd>/a/b"
+(path "..", path "") -> path "<sandbox>/"
+(path "..", path ".") -> path "<sandbox>/"
+(path "..", path "..") -> path "<sandboxes>/"
+(path "..", path "../a") -> path "<sandboxes>/a"
+(path "..", path "./a") -> path "<sandbox>/a"
+(path "..", path ".hidden") -> path "<sandbox>/.hidden"
+(path "..", path "\xc3\xa9") -> path "<sandbox>/\xc3\xa9"
+(path "..", path "a b") -> path "<sandbox>/a b"
+(path "..", path "a") -> path "<sandbox>/a"
+(path "..", path "a/") -> path "<sandbox>/a/"
+(path "..", path "a/../b") -> path "<sandbox>/b"
+(path "..", path "a/./b") -> path "<sandbox>/a/b"
+(path "..", path "a/.b/c") -> path "<sandbox>/a/.b/c"
+(path "..", path "a/b") -> path "<sandbox>/a/b"
+(path "../a", path "") -> path "<sandbox>/a/"
+(path "../a", path ".") -> path "<sandbox>/a/"
+(path "../a", path "..") -> path "<sandbox>/"
+(path "../a", path "../a") -> path "<sandbox>/a"
+(path "../a", path "./a") -> path "<sandbox>/a/a"
+(path "../a", path ".hidden") -> path "<sandbox>/a/.hidden"
+(path "../a", path "\xc3\xa9") -> path "<sandbox>/a/\xc3\xa9"
+(path "../a", path "a b") -> path "<sandbox>/a/a b"
+(path "../a", path "a") -> path "<sandbox>/a/a"
+(path "../a", path "a/") -> path "<sandbox>/a/a/"
+(path "../a", path "a/../b") -> path "<sandbox>/a/b"
+(path "../a", path "a/./b") -> path "<sandbox>/a/a/b"
+(path "../a", path "a/.b/c") -> path "<sandbox>/a/a/.b/c"
+(path "../a", path "a/b") -> path "<sandbox>/a/a/b"
+(path "./a", path "") -> path "<cwd>/a/"
+(path "./a", path ".") -> path "<cwd>/a/"
+(path "./a", path "..") -> path "<cwd>/"
+(path "./a", path "../a") -> path "<cwd>/a"
+(path "./a", path "./a") -> path "<cwd>/a/a"
+(path "./a", path ".hidden") -> path "<cwd>/a/.hidden"
+(path "./a", path "\xc3\xa9") -> path "<cwd>/a/\xc3\xa9"
+(path "./a", path "a b") -> path "<cwd>/a/a b"
+(path "./a", path "a") -> path "<cwd>/a/a"
+(path "./a", path "a/") -> path "<cwd>/a/a/"
+(path "./a", path "a/../b") -> path "<cwd>/a/b"
+(path "./a", path "a/./b") -> path "<cwd>/a/a/b"
+(path "./a", path "a/.b/c") -> path "<cwd>/a/a/.b/c"
+(path "./a", path "a/b") -> path "<cwd>/a/a/b"
+(path ".hidden", path "") -> path "<cwd>/.hidden/"
+(path ".hidden", path ".") -> path "<cwd>/.hidden/"
+(path ".hidden", path "..") -> path "<cwd>/"
+(path ".hidden", path "../a") -> path "<cwd>/a"
+(path ".hidden", path "./a") -> path "<cwd>/.hidden/a"
+(path ".hidden", path ".hidden") -> path "<cwd>/.hidden/.hidden"
+(path ".hidden", path "\xc3\xa9") -> path "<cwd>/.hidden/\xc3\xa9"
+(path ".hidden", path "a b") -> path "<cwd>/.hidden/a b"
+(path ".hidden", path "a") -> path "<cwd>/.hidden/a"
+(path ".hidden", path "a/") -> path "<cwd>/.hidden/a/"
+(path ".hidden", path "a/../b") -> path "<cwd>/.hidden/b"
+(path ".hidden", path "a/./b") -> path "<cwd>/.hidden/a/b"
+(path ".hidden", path "a/.b/c") -> path "<cwd>/.hidden/a/.b/c"
+(path ".hidden", path "a/b") -> path "<cwd>/.hidden/a/b"
+(path "\xc3\xa9", path "") -> path "<cwd>/\xc3\xa9/"
+(path "\xc3\xa9", path ".") -> path "<cwd>/\xc3\xa9/"
+(path "\xc3\xa9", path "..") -> path "<cwd>/"
+(path "\xc3\xa9", path "../a") -> path "<cwd>/a"
+(path "\xc3\xa9", path "./a") -> path "<cwd>/\xc3\xa9/a"
+(path "\xc3\xa9", path ".hidden") -> path "<cwd>/\xc3\xa9/.hidden"
+(path "\xc3\xa9", path "\xc3\xa9") -> path "<cwd>/\xc3\xa9/\xc3\xa9"
+(path "\xc3\xa9", path "a b") -> path "<cwd>/\xc3\xa9/a b"
+(path "\xc3\xa9", path "a") -> path "<cwd>/\xc3\xa9/a"
+(path "\xc3\xa9", path "a/") -> path "<cwd>/\xc3\xa9/a/"
+(path "\xc3\xa9", path "a/../b") -> path "<cwd>/\xc3\xa9/b"
+(path "\xc3\xa9", path "a/./b") -> path "<cwd>/\xc3\xa9/a/b"
+(path "\xc3\xa9", path "a/.b/c") -> path "<cwd>/\xc3\xa9/a/.b/c"
+(path "\xc3\xa9", path "a/b") -> path "<cwd>/\xc3\xa9/a/b"
+(path "a b", path "") -> path "<cwd>/a b/"
+(path "a b", path ".") -> path "<cwd>/a b/"
+(path "a b", path "..") -> path "<cwd>/"
+(path "a b", path "../a") -> path "<cwd>/a"
+(path "a b", path "./a") -> path "<cwd>/a b/a"
+(path "a b", path ".hidden") -> path "<cwd>/a b/.hidden"
+(path "a b", path "\xc3\xa9") -> path "<cwd>/a b/\xc3\xa9"
+(path "a b", path "a b") -> path "<cwd>/a b/a b"
+(path "a b", path "a") -> path "<cwd>/a b/a"
+(path "a b", path "a/") -> path "<cwd>/a b/a/"
+(path "a b", path "a/../b") -> path "<cwd>/a b/b"
+(path "a b", path "a/./b") -> path "<cwd>/a b/a/b"
+(path "a b", path "a/.b/c") -> path "<cwd>/a b/a/.b/c"
+(path "a b", path "a/b") -> path "<cwd>/a b/a/b"
+(path "a", path "") -> path "<cwd>/a/"
+(path "a", path ".") -> path "<cwd>/a/"
+(path "a", path "..") -> path "<cwd>/"
+(path "a", path "../a") -> path "<cwd>/a"
+(path "a", path "./a") -> path "<cwd>/a/a"
+(path "a", path ".hidden") -> path "<cwd>/a/.hidden"
+(path "a", path "\xc3\xa9") -> path "<cwd>/a/\xc3\xa9"
+(path "a", path "a b") -> path "<cwd>/a/a b"
+(path "a", path "a") -> path "<cwd>/a/a"
+(path "a", path "a/") -> path "<cwd>/a/a/"
+(path "a", path "a/../b") -> path "<cwd>/a/b"
+(path "a", path "a/./b") -> path "<cwd>/a/a/b"
+(path "a", path "a/.b/c") -> path "<cwd>/a/a/.b/c"
+(path "a", path "a/b") -> path "<cwd>/a/a/b"
+(path "a/", path "") -> path "<cwd>/a/"
+(path "a/", path ".") -> path "<cwd>/a/"
+(path "a/", path "..") -> path "<cwd>/"
+(path "a/", path "../a") -> path "<cwd>/a"
+(path "a/", path "./a") -> path "<cwd>/a/a"
+(path "a/", path ".hidden") -> path "<cwd>/a/.hidden"
+(path "a/", path "\xc3\xa9") -> path "<cwd>/a/\xc3\xa9"
+(path "a/", path "a b") -> path "<cwd>/a/a b"
+(path "a/", path "a") -> path "<cwd>/a/a"
+(path "a/", path "a/") -> path "<cwd>/a/a/"
+(path "a/", path "a/../b") -> path "<cwd>/a/b"
+(path "a/", path "a/./b") -> path "<cwd>/a/a/b"
+(path "a/", path "a/.b/c") -> path "<cwd>/a/a/.b/c"
+(path "a/", path "a/b") -> path "<cwd>/a/a/b"
+(path "a/../b", path "") -> path "<cwd>/b/"
+(path "a/../b", path ".") -> path "<cwd>/b/"
+(path "a/../b", path "..") -> path "<cwd>/"
+(path "a/../b", path "../a") -> path "<cwd>/a"
+(path "a/../b", path "./a") -> path "<cwd>/b/a"
+(path "a/../b", path ".hidden") -> path "<cwd>/b/.hidden"
+(path "a/../b", path "\xc3\xa9") -> path "<cwd>/b/\xc3\xa9"
+(path "a/../b", path "a b") -> path "<cwd>/b/a b"
+(path "a/../b", path "a") -> path "<cwd>/b/a"
+(path "a/../b", path "a/") -> path "<cwd>/b/a/"
+(path "a/../b", path "a/../b") -> path "<cwd>/b/b"
+(path "a/../b", path "a/./b") -> path "<cwd>/b/a/b"
+(path "a/../b", path "a/.b/c") -> path "<cwd>/b/a/.b/c"
+(path "a/../b", path "a/b") -> path "<cwd>/b/a/b"
+(path "a/./b", path "") -> path "<cwd>/a/b/"
+(path "a/./b", path ".") -> path "<cwd>/a/b/"
+(path "a/./b", path "..") -> path "<cwd>/a/"
+(path "a/./b", path "../a") -> path "<cwd>/a/a"
+(path "a/./b", path "./a") -> path "<cwd>/a/b/a"
+(path "a/./b", path ".hidden") -> path "<cwd>/a/b/.hidden"
+(path "a/./b", path "\xc3\xa9") -> path "<cwd>/a/b/\xc3\xa9"
+(path "a/./b", path "a b") -> path "<cwd>/a/b/a b"
+(path "a/./b", path "a") -> path "<cwd>/a/b/a"
+(path "a/./b", path "a/") -> path "<cwd>/a/b/a/"
+(path "a/./b", path "a/../b") -> path "<cwd>/a/b/b"
+(path "a/./b", path "a/./b") -> path "<cwd>/a/b/a/b"
+(path "a/./b", path "a/.b/c") -> path "<cwd>/a/b/a/.b/c"
+(path "a/./b", path "a/b") -> path "<cwd>/a/b/a/b"
+(path "a/.b/c", path "") -> path "<cwd>/a/.b/c/"
+(path "a/.b/c", path ".") -> path "<cwd>/a/.b/c/"
+(path "a/.b/c", path "..") -> path "<cwd>/a/.b/"
+(path "a/.b/c", path "../a") -> path "<cwd>/a/.b/a"
+(path "a/.b/c", path "./a") -> path "<cwd>/a/.b/c/a"
+(path "a/.b/c", path ".hidden") -> path "<cwd>/a/.b/c/.hidden"
+(path "a/.b/c", path "\xc3\xa9") -> path "<cwd>/a/.b/c/\xc3\xa9"
+(path "a/.b/c", path "a b") -> path "<cwd>/a/.b/c/a b"
+(path "a/.b/c", path "a") -> path "<cwd>/a/.b/c/a"
+(path "a/.b/c", path "a/") -> path "<cwd>/a/.b/c/a/"
+(path "a/.b/c", path "a/../b") -> path "<cwd>/a/.b/c/b"
+(path "a/.b/c", path "a/./b") -> path "<cwd>/a/.b/c/a/b"
+(path "a/.b/c", path "a/.b/c") -> path "<cwd>/a/.b/c/a/.b/c"
+(path "a/.b/c", path "a/b") -> path "<cwd>/a/.b/c/a/b"
+(path "a/b", path "") -> path "<cwd>/a/b/"
+(path "a/b", path ".") -> path "<cwd>/a/b/"
+(path "a/b", path "..") -> path "<cwd>/a/"
+(path "a/b", path "../a") -> path "<cwd>/a/a"
+(path "a/b", path "./a") -> path "<cwd>/a/b/a"
+(path "a/b", path ".hidden") -> path "<cwd>/a/b/.hidden"
+(path "a/b", path "\xc3\xa9") -> path "<cwd>/a/b/\xc3\xa9"
+(path "a/b", path "a b") -> path "<cwd>/a/b/a b"
+(path "a/b", path "a") -> path "<cwd>/a/b/a"
+(path "a/b", path "a/") -> path "<cwd>/a/b/a/"
+(path "a/b", path "a/../b") -> path "<cwd>/a/b/b"
+(path "a/b", path "a/./b") -> path "<cwd>/a/b/a/b"
+(path "a/b", path "a/.b/c") -> path "<cwd>/a/b/a/.b/c"
+(path "a/b", path "a/b") -> path "<cwd>/a/b/a/b"
+~(path "", path ".././.") -> path "<sandbox>/"
+~(path "", path ".c") -> path "<cwd>/.c"
+~(path "", path ".c/..") -> path "<cwd>/"
+~(path "", path "a/d e") -> path "<cwd>/a/d e"
+~(path "", path "b/..") -> path "<cwd>/"
+~(path "", path "b/.c/..") -> path "<cwd>/b/"
+~(path "", path "b/d e") -> path "<cwd>/b/d e"
+~(path "", path "d e") -> path "<cwd>/d e"
+~(path "", path "d e/.") -> path "<cwd>/d e/"
+~(path ".", path "d e/a") -> path "<cwd>/d e/a"
+~(path "..", path "a/b/..") -> path "<sandbox>/a/"
+~(path "../.c", path "b/.") -> path "<sandbox>/.c/b/"
+~(path "../b", path "a") -> path "<sandbox>/b/a"
+~(path "../d e/d e", path "b") -> path "<sandbox>/d e/d e/b"
+~(path "./../.", path "./d e/d e") -> path "<sandbox>/d e/d e"
+~(path "./a/b", path "./b") -> path "<cwd>/a/b/b"
+~(path "./b", path "") -> path "<cwd>/b/"
+~(path "./b/a", path ".") -> path "<cwd>/b/a/"
+~(path "./d e", path "b/..") -> path "<cwd>/d e/"
+~(path "./d e/b", path "") -> path "<cwd>/d e/b/"
+~(path ".c/.", path "d e/.c") -> path "<cwd>/.c/d e/.c"
+~(path ".c/..", path "") -> path "<cwd>/"
+~(path ".c/a", path "a") -> path "<cwd>/.c/a/a"
+~(path ".c/a/.", path "b/../.c") -> path "<cwd>/.c/a/.c"
+~(path "a", path "./a/d e") -> path "<cwd>/a/a/d e"
+~(path "a/.", path "d e/a/.") -> path "<cwd>/a/d e/a/"
+~(path "a/a", path ".c/a/d e") -> path "<cwd>/a/a/.c/a/d e"
+~(path "a/b/.c", path "") -> path "<cwd>/a/b/.c/"
+~(path "a/d e", path "d e/d e/d e") -> path "<cwd>/a/d e/d e/d e/d e"
+~(path "a/d e/..", path "b/b/d e") -> path "<cwd>/a/b/b/d e"
+~(path "b", path ".") -> path "<cwd>/b/"
+~(path "b/../a", path "") -> path "<cwd>/a/"
+~(path "b/.c/b", path "d e/d e/b") -> path "<cwd>/b/.c/b/d e/d e/b"
+~(path "b/d e", path "..") -> path "<cwd>/b/"
+~(path "d e", path "") -> path "<cwd>/d e/"
+~(path "d e/..", path "b/b/.c") -> path "<cwd>/b/b/.c"
+~(path "d e/./b", path ".c/a/a") -> path "<cwd>/d e/b/.c/a/a"
+~(path "d e/.c", path "") -> path "<cwd>/d e/.c/"
+
+## Commands.cpp/view switch
+game closed; current ""
+shared x -> answers "ran\n"; handed ["x"]; asked nothing; log "shared x\n"; current ""
+view switch -> answers "lines go to the view vulpen started with now\n"; handed nothing; asked nothing; log ""; current ""
+view switch game -> answers "lines go to game now\n"; handed nothing; asked nothing; log ""; current "game"
+view switch game -> answers "lines go to game now\n"; handed nothing; asked nothing; log ""; current "game"
+view switch nogame -> throws "no view is named nogame; view list lists those a view hosts"; handed nothing; asked nothing; log ""; current ""
+
+## Commands.cpp/words_of
+("   ") -> []
+("  echo   hi  ") -> ["echo", "hi"]
+("") -> []
+(": echo hi") -> [":", "echo", "hi"]
+(":") -> [":"]
+("ECHO hi") -> ["ECHO", "hi"]
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)]
+("connect a.out b.in") -> ["connect", "a.out", "b.in"]
+("connect ab a.out b.in c.in") -> ["connect", "ab", "a.out", "b.in", "c.in"]
+("connect game: show.picture") -> ["connect", "game:", "show.picture"]
+("echo a b c") -> ["echo", "a", "b", "c"]
+("echo hi") -> ["echo", "hi"]
+("echo hi\r") -> ["echo", "hi"]
+("echo") -> ["echo"]
+("echo-x") -> ["echo-x"]
+("echo\thi") -> ["echo", "hi"]
+("file open ../x") -> ["file", "open", "../x"]
+("file open /abs/x") -> ["file", "open", "/abs/x"]
+("file open a b") -> ["file", "open", "a", "b"]
+("file open a/b.txt") -> ["file", "open", "a/b.txt"]
+("files copy a b/c") -> ["files", "copy", "a", "b/c"]
+("game: echo hi") -> ["game:", "echo", "hi"]
+("game: shared x") -> ["game:", "shared", "x"]
+("game:") -> ["game:"]
+("log save") -> ["log", "save"]
+("nest echo inner") -> ["nest", "echo", "inner"]
+("nest nope") -> ["nest", "nope"]
+("nest refuse") -> ["nest", "refuse"]
+("node add a lamp more") -> ["node", "add", "a", "lamp", "more"]
+("node add a lamp") -> ["node", "add", "a", "lamp"]
+("node add a.b lamp") -> ["node", "add", "a.b", "lamp"]
+("node add lamp") -> ["node", "add", "lamp"]
+("node set a x=1 y=2") -> ["node", "set", "a", "x=1", "y=2"]
+("node set a") -> ["node", "set", "a"]
+("node") -> ["node"]
+("nogame: echo hi") -> ["nogame:", "echo", "hi"]
+("nope") -> ["nope"]
+("refuse now") -> ["refuse", "now"]
+("shared x") -> ["shared", "x"]
+("source") -> ["source"]
+("view save p") -> ["view", "save", "p"]
+("view save p/q") -> ["view", "save", "p/q"]
+("view save") -> ["view", "save"]
+("view switch game") -> ["view", "switch", "game"]
+("view switch nogame") -> ["view", "switch", "nogame"]
+("view switch") -> ["view", "switch"]
+("x=1") -> ["x=1"]
+~("  echo   hi   echo\thi") -> ["echo", "hi", "echo", "hi"]
+~(" view save p") -> ["view", "save", "p"]
+~(": echo hi game: shared x") -> [":", "echo", "hi", "game:", "shared", "x"]
+~(": echo hi view save") -> [":", "echo", "hi", "view", "save"]
+~(": echo-x") -> [":", "echo-x"]
+~("connect a.out b.in source") -> ["connect", "a.out", "b.in", "source"]
+~("connect ab a.out b.in c.in aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (327 characters, hash 4862fd137cfef67e)) -> ["connect", "ab", "a.out", "b.in", "c.in", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)]
+~("connect game: show.picture file open a/b.txt") -> ["connect", "game:", "show.picture", "file", "open", "a/b.txt"]
+~("echo hi\r :") -> ["echo", "hi", ":"]
+~("echo-x game: echo hi") -> ["echo-x", "game:", "echo", "hi"]
+~("file open a b node add lamp") -> ["file", "open", "a", "b", "node", "add", "lamp"]
+~("log save :") -> ["log", "save", ":"]
+~("log save connect game: show.picture") -> ["log", "save", "connect", "game:", "show.picture"]
+~("log save view save") -> ["log", "save", "view", "save"]
+~("nest nope refuse now") -> ["nest", "nope", "refuse", "now"]
+~("node add lamp   echo   hi  ") -> ["node", "add", "lamp", "echo", "hi"]
+~("node add lamp echo") -> ["node", "add", "lamp", "echo"]
+~("node set a echo hi\r") -> ["node", "set", "a", "echo", "hi"]
+~("nogame: echo hi connect a.out b.in") -> ["nogame:", "echo", "hi", "connect", "a.out", "b.in"]
+~("nogame: echo hi node set a x=1 y=2") -> ["nogame:", "echo", "hi", "node", "set", "a", "x=1", "y=2"]
+~("nope nest refuse") -> ["nope", "nest", "refuse"]
+~("refuse now echo-x") -> ["refuse", "now", "echo-x"]
+~("shared x nope") -> ["shared", "x", "nope"]
+~("source view save p") -> ["source", "view", "save", "p"]
+~("view save echo hi\r") -> ["view", "save", "echo", "hi"]
+~("view switch game file open ../x") -> ["view", "switch", "game", "file", "open", "../x"]
+~("view switch nogame connect a.out b.in") -> ["view", "switch", "nogame", "connect", "a.out", "b.in"]
+~("view switch nogame nest nope") -> ["view", "switch", "nogame", "nest", "nope"]
+~("x=1 log save") -> ["x=1", "log", "save"]
+~("x=1 nest refuse") -> ["x=1", "nest", "refuse"]

@@ -1,0 +1,45 @@
+# The rows of src/baseclasses/Shader.h and src/baseclasses/Shader.cpp, a call each (src/tools/bench/bench.py).
+
+## Shader.cpp/Shader::Shader a damaged shader
+holds: a damaged shader is refused naming its file, or read
+
+## Shader.cpp/Shader::Shader a local size zeroed
+views/library/start/Name.comp.spv, its local size's x zeroed -> throws runtime_error: "<root>/zeroed.spv is damaged: its local size 0 by 1 by 1 holds no invocation"
+views/library/start/Name.comp.spv, its local size's y zeroed -> throws runtime_error: "<root>/zeroed.spv is damaged: its local size 64 by 0 by 1 holds no invocation"
+views/library/start/Name.comp.spv, its local size's z zeroed -> throws runtime_error: "<root>/zeroed.spv is damaged: its local size 64 by 1 by 0 holds no invocation"
+
+## Shader.cpp/Shader::Shader every shader of the build
+every shader of the build but the mistakes' reflects
+
+## Shader.cpp/Shader::Shader the mistakes' shaders
+views/mistakes/blot/Blot.frag.spv -> fields [float amount at 0] block 16 frame [] frame_size 0 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs [vec2 uv at 0, float shade at 1]
+views/mistakes/brush/Brush.vert.spv -> fields [] block 0 frame [] frame_size 0 workgroup [0, 0, 0] outputs [vec2 uv at 0, float shade at 1] inputs []
+views/mistakes/count/Count.comp.spv -> fields [DrawCount drawn at 0 stride 4 read_write members [uint instance_count at 0]] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [4, 1, 1] outputs [] inputs []
+views/mistakes/crowd/Crowd.frag.spv -> fields [DrawCount drawn at 0 stride 4 read members [uint instance_count at 0], DepthWrite depth at 16] block 32 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs []
+views/mistakes/crowd/Crowd.vert.spv -> fields [DrawCount drawn at 0 stride 4 read members [uint instance_count at 0], DepthWrite depth at 16] block 32 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [] inputs []
+views/mistakes/deep/Deep.comp.spv -> fields [DepthWrite depth at 0] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [64, 1, 1] outputs [] inputs []
+views/mistakes/draw/Draw.frag.spv -> fields [float values at 0 stride 4 read_write] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs []
+views/mistakes/draw/Draw.vert.spv -> fields [float values at 0 stride 4 read_write] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [] inputs []
+views/mistakes/fill/Fill.comp.spv -> fields [float amount at 0, float values at 8 stride 4 write] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [64, 1, 1] outputs [] inputs []
+views/mistakes/frame/Frame.comp.spv -> fields [float seen at 0 stride 4 write, vec3 tint at 16, float after at 28, vec2 at at 32] block 48 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [6, 1, 1] outputs [] inputs []
+views/mistakes/ink/Ink.frag.spv -> fields [] block 0 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs [vec2 uv at 0, float shade at 1]
+views/mistakes/levels/Levels.comp.spv -> fields [Texture picture at 0, vec4 texels at 16 stride 16 write] block 32 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [8, 1, 1] outputs [] inputs []
+views/mistakes/look/Look.comp.spv -> fields [Texture painted at 0, vec2 texels at 16 stride 8 write] block 32 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [64, 1, 1] outputs [] inputs []
+views/mistakes/paint/Paint.frag.spv -> fields [] block 0 frame [] frame_size 0 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs []
+views/mistakes/paint/Paint.vert.spv -> fields [] block 0 frame [] frame_size 0 workgroup [0, 0, 0] outputs [] inputs []
+views/mistakes/pairs/Pairs.comp.spv -> fields [vec2 pairs at 0 stride 8 write] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [64, 1, 1] outputs [] inputs []
+views/mistakes/picture/Picture.comp.spv -> fields [Texture picture at 0, float texels at 16 stride 4 write] block 32 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [8, 1, 1] outputs [] inputs []
+views/mistakes/rub/Rub.frag.spv -> fields [] block 0 frame [] frame_size 0 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs [vec2 uv at 0, vec3 tint at 1]
+views/mistakes/rub/Rub.vert.spv -> fields [] block 0 frame [] frame_size 0 workgroup [0, 0, 0] outputs [vec2 uv at 0] inputs []
+views/mistakes/scene/Scene.frag.spv -> fields [] block 0 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs []
+views/mistakes/scene/Scene.vert.spv -> fields [] block 0 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [] inputs []
+views/mistakes/seen/Seen.comp.spv -> fields [Texture depth at 0] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [64, 1, 1] outputs [] inputs []
+views/mistakes/shape/Shape.comp.spv -> fields [Shape shapes at 0 stride 16 read members [vec2 at at 0, float size at 8, uint sides at 12], float sums at 8 stride 4 write] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [4, 1, 1] outputs [] inputs []
+views/mistakes/smear/Smear.frag.spv -> fields [Image canvas at 0] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs []
+views/mistakes/smear/Smear.vert.spv -> fields [] block 0 frame [] frame_size 0 workgroup [0, 0, 0] outputs [] inputs []
+views/mistakes/smudge/Smudge.frag.spv -> fields [] block 0 frame [] frame_size 0 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs [vec3 uv at 0, float shade at 2]
+views/mistakes/stamp/Stamp.comp.spv -> fields [Image canvas at 0] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [64, 1, 1] outputs [] inputs []
+views/mistakes/sum/Sum.comp.spv -> fields [float values at 0 stride 4 read, float sums at 8 stride 4 write] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [64, 1, 1] outputs [] inputs []
+views/mistakes/tally/Tally.frag.spv -> fields [DrawCount drawn at 0 stride 4 read members [uint instance_count at 0]] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [vec4 color at 0] inputs []
+views/mistakes/tally/Tally.vert.spv -> fields [DrawCount drawn at 0 stride 4 read members [uint instance_count at 0]] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [0, 0, 0] outputs [] inputs []
+views/mistakes/wrong/Wrong.comp.spv -> fields [float amount at 0, float values at 8 stride 4 write] block 16 frame [uvec2 resolution at 0, vec2 cursor at 8, float time at 16, uint index at 20] frame_size 24 workgroup [64, 1, 1] outputs [] inputs []

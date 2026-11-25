@@ -1,9 +1,10 @@
 # Every push and pull request. A runner has no GPU and no display, so Linux runs the
 # tests on lavapipe, Mesa's Vulkan on the CPU, the windows' tests skipping (V07, RP00),
-# with the same packages the README names and the validation layer, which fails a test
-# at any message (RVK00). gpu-validation stays on a real GPU: its instrumented shaders
-# crash lavapipe. Windows runners have no Vulkan driver at all, so Windows builds
-# everything (RP01) and runs the one test that needs no GPU. A compiler's errors show as
+# with the same packages the README names, the validation layer, which fails a test at
+# any message (RVK00), and libclang's Python, which the port-layout gate reads the
+# ports with. gpu-validation stays on a real GPU: its instrumented shaders crash
+# lavapipe. Windows runners have no Vulkan driver at all, so Windows builds everything
+# (RP01) and runs the one test that needs no GPU. A compiler's errors show as
 # annotations on the run's page, which anyone can read without signing in.
 name: ci
 
@@ -30,7 +31,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake python3 libvulkan-dev \
             glslang-tools spirv-tools libwayland-dev libxkbcommon-dev xorg-dev \
-            mesa-vulkan-drivers vulkan-validationlayers
+            mesa-vulkan-drivers vulkan-validationlayers python3-clang-18
           # Ubuntu names lavapipe's manifest by its architecture.
           echo "LAVAPIPE=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -n 1)" >> "$GITHUB_ENV"
       - name: Compiler messages as annotations
@@ -79,3 +80,9 @@ jobs:
         run: cmake --build --preset debug --parallel
       - name: Test
         run: ctest --preset debug -R "^barriers$"
+      # The bench's records on another compiler and standard library (C10): a row that
+      # moves is a finding to read, so the step reports without failing the job until
+      # the first run's differences are read and approved or fixed.
+      - name: Bench records
+        continue-on-error: true
+        run: python src\tools\bench\bench.py compare

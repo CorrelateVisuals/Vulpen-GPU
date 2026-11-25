@@ -1,0 +1,359 @@
+# The rows of src/baseclasses/Mechanics.h and src/baseclasses/Mechanics.cpp, a call each (src/tools/bench/bench.py).
+
+## Mechanics.cpp/Mechanics::Mechanics
+(" cpu") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+("") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+("CPU") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+("cpu") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+("discrete") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+("gpu") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+("integrated") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+("other") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+("virtual") -> "cpu; takes cpu for none, cpu for discrete, cpu for cpu"
+the device goes -> done
+
+## Mechanics.cpp/a frame
+frame 0: record, submit, wait -> done
+frame 1: record, submit, wait -> done
+frame 2: record, submit, wait -> done
+record while the last frame is in flight -> done; printed "VUID-vkResetCommandBuffer-commandBuffer-00045(ERROR / SPEC): msg... 6, name: NULL\n" (1346 characters, hash 885b001c88a40fe1)
+submit again with nothing recorded -> done; printed "VUID-vkEndCommandBuffer-commandBuffer-00059(ERROR / SPEC): msgNu... 6, name: NULL\n" (1132 characters, hash d4d03e6b6d22bcd3)
+submit what is recorded, wait -> done; printed "VUID-vkResetFences-pFences-01123(ERROR / SPEC): msgNum: 17556457...    Objects: 0\n" (1246 characters, hash cba442499940878a)
+the device goes -> done
+wait with nothing in flight -> done
+wait_idle -> done
+
+## Mechanics.cpp/check
+(enum -1000001004, " ") -> throws runtime_error: "  failed: VkResult -1000001004"
+(enum -1000001004, " a") -> throws runtime_error: " a failed: VkResult -1000001004"
+(enum -1000001004, "") -> throws runtime_error: " failed: VkResult -1000001004"
+(enum -1000001004, "#") -> throws runtime_error: "# failed: VkResult -1000001004"
+(enum -1000001004, ",") -> throws runtime_error: ", failed: VkResult -1000001004"
+(enum -1000001004, "-1") -> throws runtime_error: "-1 failed: VkResult -1000001004"
+(enum -1000001004, ".") -> throws runtime_error: ". failed: VkResult -1000001004"
+(enum -1000001004, "..") -> throws runtime_error: ".. failed: VkResult -1000001004"
+(enum -1000001004, "/") -> throws runtime_error: "/ failed: VkResult -1000001004"
+(enum -1000001004, "1") -> throws runtime_error: "1 failed: VkResult -1000001004"
+(enum -1000001004, "\"") -> throws runtime_error: "\" failed: VkResult -1000001004"
+(enum -1000001004, "\\") -> throws runtime_error: "\\ failed: VkResult -1000001004"
+(enum -1000001004, "\n") -> throws runtime_error: "\n failed: VkResult -1000001004"
+(enum -1000001004, "\na") -> throws runtime_error: "\na failed: VkResult -1000001004"
+(enum -1000001004, "\r") -> throws runtime_error: "\r failed: VkResult -1000001004"
+(enum -1000001004, "\t") -> throws runtime_error: "\t failed: VkResult -1000001004"
+(enum -1000001004, "\x00") -> throws runtime_error: " failed: VkResult -1000001004"
+(enum -1000001004, "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 failed: VkResult -1000001004"
+(enum -1000001004, "\xff") -> throws runtime_error: "\xff failed: VkResult -1000001004"
+(enum -1000001004, "a ") -> throws runtime_error: "a  failed: VkResult -1000001004"
+(enum -1000001004, "a b") -> throws runtime_error: "a b failed: VkResult -1000001004"
+(enum -1000001004, "a") -> throws runtime_error: "a failed: VkResult -1000001004"
+(enum -1000001004, "a.b") -> throws runtime_error: "a.b failed: VkResult -1000001004"
+(enum -1000001004, "a=b") -> throws runtime_error: "a=b failed: VkResult -1000001004"
+(enum -1000001004, "a\n") -> throws runtime_error: "a\n failed: VkResult -1000001004"
+(enum -1000001004, "a\nb") -> throws runtime_error: "a\nb failed: VkResult -1000001004"
+(enum -1000001004, "a\r\n") -> throws runtime_error: "a\r\n failed: VkResult -1000001004"
+(enum -1000001004, "a\x00b") -> throws runtime_error: "a failed: VkResult -1000001004"
+(enum -1000001004, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...sult -1000001004" (329 characters, hash 2c924ccf6bc8e2c9)
+(enum -1000001004, "ab") -> throws runtime_error: "ab failed: VkResult -1000001004"
+(enum -2, " ") -> throws runtime_error: "  failed: VkResult -2"
+(enum -2, " a") -> throws runtime_error: " a failed: VkResult -2"
+(enum -2, "") -> throws runtime_error: " failed: VkResult -2"
+(enum -2, "#") -> throws runtime_error: "# failed: VkResult -2"
+(enum -2, ",") -> throws runtime_error: ", failed: VkResult -2"
+(enum -2, "-1") -> throws runtime_error: "-1 failed: VkResult -2"
+(enum -2, ".") -> throws runtime_error: ". failed: VkResult -2"
+(enum -2, "..") -> throws runtime_error: ".. failed: VkResult -2"
+(enum -2, "/") -> throws runtime_error: "/ failed: VkResult -2"
+(enum -2, "1") -> throws runtime_error: "1 failed: VkResult -2"
+(enum -2, "\"") -> throws runtime_error: "\" failed: VkResult -2"
+(enum -2, "\\") -> throws runtime_error: "\\ failed: VkResult -2"
+(enum -2, "\n") -> throws runtime_error: "\n failed: VkResult -2"
+(enum -2, "\na") -> throws runtime_error: "\na failed: VkResult -2"
+(enum -2, "\r") -> throws runtime_error: "\r failed: VkResult -2"
+(enum -2, "\t") -> throws runtime_error: "\t failed: VkResult -2"
+(enum -2, "\x00") -> throws runtime_error: " failed: VkResult -2"
+(enum -2, "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 failed: VkResult -2"
+(enum -2, "\xff") -> throws runtime_error: "\xff failed: VkResult -2"
+(enum -2, "a ") -> throws runtime_error: "a  failed: VkResult -2"
+(enum -2, "a b") -> throws runtime_error: "a b failed: VkResult -2"
+(enum -2, "a") -> throws runtime_error: "a failed: VkResult -2"
+(enum -2, "a.b") -> throws runtime_error: "a.b failed: VkResult -2"
+(enum -2, "a=b") -> throws runtime_error: "a=b failed: VkResult -2"
+(enum -2, "a\n") -> throws runtime_error: "a\n failed: VkResult -2"
+(enum -2, "a\nb") -> throws runtime_error: "a\nb failed: VkResult -2"
+(enum -2, "a\r\n") -> throws runtime_error: "a\r\n failed: VkResult -2"
+(enum -2, "a\x00b") -> throws runtime_error: "a failed: VkResult -2"
+(enum -2, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...led: VkResult -2" (320 characters, hash 6ddceef50593b2f5)
+(enum -2, "ab") -> throws runtime_error: "ab failed: VkResult -2"
+(enum -4, " ") -> throws runtime_error: "  failed: VkResult -4"
+(enum -4, " a") -> throws runtime_error: " a failed: VkResult -4"
+(enum -4, "") -> throws runtime_error: " failed: VkResult -4"
+(enum -4, "#") -> throws runtime_error: "# failed: VkResult -4"
+(enum -4, ",") -> throws runtime_error: ", failed: VkResult -4"
+(enum -4, "-1") -> throws runtime_error: "-1 failed: VkResult -4"
+(enum -4, ".") -> throws runtime_error: ". failed: VkResult -4"
+(enum -4, "..") -> throws runtime_error: ".. failed: VkResult -4"
+(enum -4, "/") -> throws runtime_error: "/ failed: VkResult -4"
+(enum -4, "1") -> throws runtime_error: "1 failed: VkResult -4"
+(enum -4, "\"") -> throws runtime_error: "\" failed: VkResult -4"
+(enum -4, "\\") -> throws runtime_error: "\\ failed: VkResult -4"
+(enum -4, "\n") -> throws runtime_error: "\n failed: VkResult -4"
+(enum -4, "\na") -> throws runtime_error: "\na failed: VkResult -4"
+(enum -4, "\r") -> throws runtime_error: "\r failed: VkResult -4"
+(enum -4, "\t") -> throws runtime_error: "\t failed: VkResult -4"
+(enum -4, "\x00") -> throws runtime_error: " failed: VkResult -4"
+(enum -4, "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 failed: VkResult -4"
+(enum -4, "\xff") -> throws runtime_error: "\xff failed: VkResult -4"
+(enum -4, "a ") -> throws runtime_error: "a  failed: VkResult -4"
+(enum -4, "a b") -> throws runtime_error: "a b failed: VkResult -4"
+(enum -4, "a") -> throws runtime_error: "a failed: VkResult -4"
+(enum -4, "a.b") -> throws runtime_error: "a.b failed: VkResult -4"
+(enum -4, "a=b") -> throws runtime_error: "a=b failed: VkResult -4"
+(enum -4, "a\n") -> throws runtime_error: "a\n failed: VkResult -4"
+(enum -4, "a\nb") -> throws runtime_error: "a\nb failed: VkResult -4"
+(enum -4, "a\r\n") -> throws runtime_error: "a\r\n failed: VkResult -4"
+(enum -4, "a\x00b") -> throws runtime_error: "a failed: VkResult -4"
+(enum -4, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...led: VkResult -4" (320 characters, hash 6ddce8f50593a8c3)
+(enum -4, "ab") -> throws runtime_error: "ab failed: VkResult -4"
+(enum 0, " ") -> done
+(enum 0, " a") -> done
+(enum 0, "") -> done
+(enum 0, "#") -> done
+(enum 0, ",") -> done
+(enum 0, "-1") -> done
+(enum 0, ".") -> done
+(enum 0, "..") -> done
+(enum 0, "/") -> done
+(enum 0, "1") -> done
+(enum 0, "\"") -> done
+(enum 0, "\\") -> done
+(enum 0, "\n") -> done
+(enum 0, "\na") -> done
+(enum 0, "\r") -> done
+(enum 0, "\t") -> done
+(enum 0, "\x00") -> done
+(enum 0, "\xc3\xa9") -> done
+(enum 0, "\xff") -> done
+(enum 0, "a ") -> done
+(enum 0, "a b") -> done
+(enum 0, "a") -> done
+(enum 0, "a.b") -> done
+(enum 0, "a=b") -> done
+(enum 0, "a\n") -> done
+(enum 0, "a\nb") -> done
+(enum 0, "a\r\n") -> done
+(enum 0, "a\x00b") -> done
+(enum 0, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> done
+(enum 0, "ab") -> done
+(enum 1, " ") -> throws runtime_error: "  failed: VkResult 1"
+(enum 1, " a") -> throws runtime_error: " a failed: VkResult 1"
+(enum 1, "") -> throws runtime_error: " failed: VkResult 1"
+(enum 1, "#") -> throws runtime_error: "# failed: VkResult 1"
+(enum 1, ",") -> throws runtime_error: ", failed: VkResult 1"
+(enum 1, "-1") -> throws runtime_error: "-1 failed: VkResult 1"
+(enum 1, ".") -> throws runtime_error: ". failed: VkResult 1"
+(enum 1, "..") -> throws runtime_error: ".. failed: VkResult 1"
+(enum 1, "/") -> throws runtime_error: "/ failed: VkResult 1"
+(enum 1, "1") -> throws runtime_error: "1 failed: VkResult 1"
+(enum 1, "\"") -> throws runtime_error: "\" failed: VkResult 1"
+(enum 1, "\\") -> throws runtime_error: "\\ failed: VkResult 1"
+(enum 1, "\n") -> throws runtime_error: "\n failed: VkResult 1"
+(enum 1, "\na") -> throws runtime_error: "\na failed: VkResult 1"
+(enum 1, "\r") -> throws runtime_error: "\r failed: VkResult 1"
+(enum 1, "\t") -> throws runtime_error: "\t failed: VkResult 1"
+(enum 1, "\x00") -> throws runtime_error: " failed: VkResult 1"
+(enum 1, "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 failed: VkResult 1"
+(enum 1, "\xff") -> throws runtime_error: "\xff failed: VkResult 1"
+(enum 1, "a ") -> throws runtime_error: "a  failed: VkResult 1"
+(enum 1, "a b") -> throws runtime_error: "a b failed: VkResult 1"
+(enum 1, "a") -> throws runtime_error: "a failed: VkResult 1"
+(enum 1, "a.b") -> throws runtime_error: "a.b failed: VkResult 1"
+(enum 1, "a=b") -> throws runtime_error: "a=b failed: VkResult 1"
+(enum 1, "a\n") -> throws runtime_error: "a\n failed: VkResult 1"
+(enum 1, "a\nb") -> throws runtime_error: "a\nb failed: VkResult 1"
+(enum 1, "a\r\n") -> throws runtime_error: "a\r\n failed: VkResult 1"
+(enum 1, "a\x00b") -> throws runtime_error: "a failed: VkResult 1"
+(enum 1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...iled: VkResult 1" (319 characters, hash 8d2b347f178db681)
+(enum 1, "ab") -> throws runtime_error: "ab failed: VkResult 1"
+(enum 1000001003, " ") -> throws runtime_error: "  failed: VkResult 1000001003"
+(enum 1000001003, " a") -> throws runtime_error: " a failed: VkResult 1000001003"
+(enum 1000001003, "") -> throws runtime_error: " failed: VkResult 1000001003"
+(enum 1000001003, "#") -> throws runtime_error: "# failed: VkResult 1000001003"
+(enum 1000001003, ",") -> throws runtime_error: ", failed: VkResult 1000001003"
+(enum 1000001003, "-1") -> throws runtime_error: "-1 failed: VkResult 1000001003"
+(enum 1000001003, ".") -> throws runtime_error: ". failed: VkResult 1000001003"
+(enum 1000001003, "..") -> throws runtime_error: ".. failed: VkResult 1000001003"
+(enum 1000001003, "/") -> throws runtime_error: "/ failed: VkResult 1000001003"
+(enum 1000001003, "1") -> throws runtime_error: "1 failed: VkResult 1000001003"
+(enum 1000001003, "\"") -> throws runtime_error: "\" failed: VkResult 1000001003"
+(enum 1000001003, "\\") -> throws runtime_error: "\\ failed: VkResult 1000001003"
+(enum 1000001003, "\n") -> throws runtime_error: "\n failed: VkResult 1000001003"
+(enum 1000001003, "\na") -> throws runtime_error: "\na failed: VkResult 1000001003"
+(enum 1000001003, "\r") -> throws runtime_error: "\r failed: VkResult 1000001003"
+(enum 1000001003, "\t") -> throws runtime_error: "\t failed: VkResult 1000001003"
+(enum 1000001003, "\x00") -> throws runtime_error: " failed: VkResult 1000001003"
+(enum 1000001003, "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 failed: VkResult 1000001003"
+(enum 1000001003, "\xff") -> throws runtime_error: "\xff failed: VkResult 1000001003"
+(enum 1000001003, "a ") -> throws runtime_error: "a  failed: VkResult 1000001003"
+(enum 1000001003, "a b") -> throws runtime_error: "a b failed: VkResult 1000001003"
+(enum 1000001003, "a") -> throws runtime_error: "a failed: VkResult 1000001003"
+(enum 1000001003, "a.b") -> throws runtime_error: "a.b failed: VkResult 1000001003"
+(enum 1000001003, "a=b") -> throws runtime_error: "a=b failed: VkResult 1000001003"
+(enum 1000001003, "a\n") -> throws runtime_error: "a\n failed: VkResult 1000001003"
+(enum 1000001003, "a\nb") -> throws runtime_error: "a\nb failed: VkResult 1000001003"
+(enum 1000001003, "a\r\n") -> throws runtime_error: "a\r\n failed: VkResult 1000001003"
+(enum 1000001003, "a\x00b") -> throws runtime_error: "a failed: VkResult 1000001003"
+(enum 1000001003, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...esult 1000001003" (328 characters, hash 843e8b2c2bfd24df)
+(enum 1000001003, "ab") -> throws runtime_error: "ab failed: VkResult 1000001003"
+(enum 2, " ") -> throws runtime_error: "  failed: VkResult 2"
+(enum 2, " a") -> throws runtime_error: " a failed: VkResult 2"
+(enum 2, "") -> throws runtime_error: " failed: VkResult 2"
+(enum 2, "#") -> throws runtime_error: "# failed: VkResult 2"
+(enum 2, ",") -> throws runtime_error: ", failed: VkResult 2"
+(enum 2, "-1") -> throws runtime_error: "-1 failed: VkResult 2"
+(enum 2, ".") -> throws runtime_error: ". failed: VkResult 2"
+(enum 2, "..") -> throws runtime_error: ".. failed: VkResult 2"
+(enum 2, "/") -> throws runtime_error: "/ failed: VkResult 2"
+(enum 2, "1") -> throws runtime_error: "1 failed: VkResult 2"
+(enum 2, "\"") -> throws runtime_error: "\" failed: VkResult 2"
+(enum 2, "\\") -> throws runtime_error: "\\ failed: VkResult 2"
+(enum 2, "\n") -> throws runtime_error: "\n failed: VkResult 2"
+(enum 2, "\na") -> throws runtime_error: "\na failed: VkResult 2"
+(enum 2, "\r") -> throws runtime_error: "\r failed: VkResult 2"
+(enum 2, "\t") -> throws runtime_error: "\t failed: VkResult 2"
+(enum 2, "\x00") -> throws runtime_error: " failed: VkResult 2"
+(enum 2, "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 failed: VkResult 2"
+(enum 2, "\xff") -> throws runtime_error: "\xff failed: VkResult 2"
+(enum 2, "a ") -> throws runtime_error: "a  failed: VkResult 2"
+(enum 2, "a b") -> throws runtime_error: "a b failed: VkResult 2"
+(enum 2, "a") -> throws runtime_error: "a failed: VkResult 2"
+(enum 2, "a.b") -> throws runtime_error: "a.b failed: VkResult 2"
+(enum 2, "a=b") -> throws runtime_error: "a=b failed: VkResult 2"
+(enum 2, "a\n") -> throws runtime_error: "a\n failed: VkResult 2"
+(enum 2, "a\nb") -> throws runtime_error: "a\nb failed: VkResult 2"
+(enum 2, "a\r\n") -> throws runtime_error: "a\r\n failed: VkResult 2"
+(enum 2, "a\x00b") -> throws runtime_error: "a failed: VkResult 2"
+(enum 2, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...iled: VkResult 2" (319 characters, hash 8d2b317f178db168)
+(enum 2, "ab") -> throws runtime_error: "ab failed: VkResult 2"
+(enum 5, " ") -> throws runtime_error: "  failed: VkResult 5"
+(enum 5, " a") -> throws runtime_error: " a failed: VkResult 5"
+(enum 5, "") -> throws runtime_error: " failed: VkResult 5"
+(enum 5, "#") -> throws runtime_error: "# failed: VkResult 5"
+(enum 5, ",") -> throws runtime_error: ", failed: VkResult 5"
+(enum 5, "-1") -> throws runtime_error: "-1 failed: VkResult 5"
+(enum 5, ".") -> throws runtime_error: ". failed: VkResult 5"
+(enum 5, "..") -> throws runtime_error: ".. failed: VkResult 5"
+(enum 5, "/") -> throws runtime_error: "/ failed: VkResult 5"
+(enum 5, "1") -> throws runtime_error: "1 failed: VkResult 5"
+(enum 5, "\"") -> throws runtime_error: "\" failed: VkResult 5"
+(enum 5, "\\") -> throws runtime_error: "\\ failed: VkResult 5"
+(enum 5, "\n") -> throws runtime_error: "\n failed: VkResult 5"
+(enum 5, "\na") -> throws runtime_error: "\na failed: VkResult 5"
+(enum 5, "\r") -> throws runtime_error: "\r failed: VkResult 5"
+(enum 5, "\t") -> throws runtime_error: "\t failed: VkResult 5"
+(enum 5, "\x00") -> throws runtime_error: " failed: VkResult 5"
+(enum 5, "\xc3\xa9") -> throws runtime_error: "\xc3\xa9 failed: VkResult 5"
+(enum 5, "\xff") -> throws runtime_error: "\xff failed: VkResult 5"
+(enum 5, "a ") -> throws runtime_error: "a  failed: VkResult 5"
+(enum 5, "a b") -> throws runtime_error: "a b failed: VkResult 5"
+(enum 5, "a") -> throws runtime_error: "a failed: VkResult 5"
+(enum 5, "a.b") -> throws runtime_error: "a.b failed: VkResult 5"
+(enum 5, "a=b") -> throws runtime_error: "a=b failed: VkResult 5"
+(enum 5, "a\n") -> throws runtime_error: "a\n failed: VkResult 5"
+(enum 5, "a\nb") -> throws runtime_error: "a\nb failed: VkResult 5"
+(enum 5, "a\r\n") -> throws runtime_error: "a\r\n failed: VkResult 5"
+(enum 5, "a\x00b") -> throws runtime_error: "a failed: VkResult 5"
+(enum 5, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> throws runtime_error: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...iled: VkResult 5" (319 characters, hash 8d2b387f178dbd4d)
+(enum 5, "ab") -> throws runtime_error: "ab failed: VkResult 5"
+~(enum -1000001004, "0 0") -> throws runtime_error: "0 0 failed: VkResult -1000001004"
+~(enum -1000001004, "\n\"9") -> throws runtime_error: "\n\"9 failed: VkResult -1000001004"
+~(enum -1000001004, "\r,/#a\xc3AzA \"") -> throws runtime_error: "\r,/#a\xc3AzA \" failed: VkResult -1000001004"
+~(enum -2, "#\\\t0.\x00a\\_#\t") -> throws runtime_error: "#\\\t0. failed: VkResult -2"
+~(enum -2, "--,-=\n\xff=#_") -> throws runtime_error: "--,-=\n\xff=#_ failed: VkResult -2"
+~(enum -2, "\\=\"") -> throws runtime_error: "\\=\" failed: VkResult -2"
+~(enum -2, "\n\\-A") -> throws runtime_error: "\n\\-A failed: VkResult -2"
+~(enum -2, "\t\xff-0\xff\xff_##\"0") -> throws runtime_error: "\t\xff-0\xff\xff_##\"0 failed: VkResult -2"
+~(enum -2, "\xa9._") -> throws runtime_error: "\xa9._ failed: VkResult -2"
+~(enum -4, "//\\_\\") -> throws runtime_error: "//\\_\\ failed: VkResult -4"
+~(enum -4, "0\"a#A\xc3\x00") -> throws runtime_error: "0\"a#A\xc3 failed: VkResult -4"
+~(enum -4, "==a#z\n\xc3\\") -> throws runtime_error: "==a#z\n\xc3\\ failed: VkResult -4"
+~(enum -4, "\"\t") -> throws runtime_error: "\"\t failed: VkResult -4"
+~(enum -4, "\n\x00=z0") -> throws runtime_error: "\n failed: VkResult -4"
+~(enum -4, "\xa9\xc3") -> throws runtime_error: "\xa9\xc3 failed: VkResult -4"
+~(enum 0, " \t,\\_\xff-\xc3z") -> done
+~(enum 0, "/. \x000\"\xff") -> done
+~(enum 0, "\"z#.z") -> done
+~(enum 1, ",\"_\xc3 =,") -> throws runtime_error: ",\"_\xc3 =, failed: VkResult 1"
+~(enum 1, ",\xc3z\xa9A") -> throws runtime_error: ",\xc3z\xa9A failed: VkResult 1"
+~(enum 1, "-\xff\x00.") -> throws runtime_error: "-\xff failed: VkResult 1"
+~(enum 1, "0\x00") -> throws runtime_error: "0 failed: VkResult 1"
+~(enum 1, "=9") -> throws runtime_error: "=9 failed: VkResult 1"
+~(enum 1, "=A\nz/\xff") -> throws runtime_error: "=A\nz/\xff failed: VkResult 1"
+~(enum 1, "=\xff#\t\r#a=\n\xc3") -> throws runtime_error: "=\xff#\t\r#a=\n\xc3 failed: VkResult 1"
+~(enum 1, "\ra") -> throws runtime_error: "\ra failed: VkResult 1"
+~(enum 1, "\xa9\r\x00A\r.") -> throws runtime_error: "\xa9\r failed: VkResult 1"
+~(enum 1, "z\x00._A/\xa9/") -> throws runtime_error: "z failed: VkResult 1"
+~(enum 1000001003, ".-_._0_\"9-") -> throws runtime_error: ".-_._0_\"9- failed: VkResult 1000001003"
+~(enum 1000001003, "Azz\x00z==\t#") -> throws runtime_error: "Azz failed: VkResult 1000001003"
+~(enum 1000001003, "\\\xa9z#\xa9=\r#\xff") -> throws runtime_error: "\\\xa9z#\xa9=\r#\xff failed: VkResult 1000001003"
+~(enum 1000001003, "\xa90\"#z.- ") -> throws runtime_error: "\xa90\"#z.-  failed: VkResult 1000001003"
+~(enum 1000001003, "\xc3/\r#") -> throws runtime_error: "\xc3/\r# failed: VkResult 1000001003"
+~(enum 1000001003, "\xff\r\x00\xc3/\xc30=") -> throws runtime_error: "\xff\r failed: VkResult 1000001003"
+~(enum 2, " \x00-/") -> throws runtime_error: "  failed: VkResult 2"
+~(enum 2, ".\xff9\x00,\\/=\x00#\xc3") -> throws runtime_error: ".\xff9 failed: VkResult 2"
+~(enum 2, "9__\"") -> throws runtime_error: "9__\" failed: VkResult 2"
+~(enum 2, "\"-z9\n-") -> throws runtime_error: "\"-z9\n- failed: VkResult 2"
+~(enum 2, "a\"\n\x009\xa9\n") -> throws runtime_error: "a\"\n failed: VkResult 2"
+~(enum 5, "-9.\".z=\xff\t\x00#") -> throws runtime_error: "-9.\".z=\xff\t failed: VkResult 5"
+~(enum 5, "A-=\t\t") -> throws runtime_error: "A-=\t\t failed: VkResult 5"
+~(enum 5, "\"z=\xc3\\A\r\r") -> throws runtime_error: "\"z=\xc3\\A\r\r failed: VkResult 5"
+~(enum 5, "\x00.9") -> throws runtime_error: " failed: VkResult 5"
+~(enum 5, "\x00\xff\x00=,#z") -> throws runtime_error: " failed: VkResult 5"
+
+## Mechanics.cpp/create_device
+create_device on family 0, then destroyed -> done
+the device goes -> done
+
+## Mechanics.cpp/fit_devices
+fit_devices, headless -> done; printed "<clock>            {gpu} llvmpipe (LLVM 20.1.2, 256 bits): cpu, Vulkan 1.4.318; meets the floor\n"
+the device goes -> done
+
+## Mechanics.cpp/has_extension
+("") -> false
+("VK_EXT_memory_budget") -> true
+("VK_KHR_SWAPCHAIN") -> false
+("VK_KHR_swapchain ") -> false
+("VK_KHR_swapchain") -> true
+("VK_LAYER_KHRONOS_validation") -> false
+the device goes -> done
+
+## Mechanics.cpp/layer_installed
+("") -> false
+("VK_EXT_memory_budget") -> false
+("VK_KHR_SWAPCHAIN") -> false
+("VK_KHR_swapchain ") -> false
+("VK_KHR_swapchain") -> false
+("VK_LAYER_KHRONOS_validation") -> true
+
+## Mechanics.cpp/rank and best_of
+(" cpu") -> "rank 4, best of it twice is it: true"
+("") -> "rank 4, best of it twice is it: true"
+("CPU") -> "rank 4, best of it twice is it: true"
+("cpu") -> "rank 0, best of it twice is it: true"
+("discrete") -> "rank 4, best of it twice is it: true"
+("gpu") -> "rank 4, best of it twice is it: true"
+("integrated") -> "rank 4, best of it twice is it: true"
+("other") -> "rank 4, best of it twice is it: true"
+("virtual") -> "rank 4, best of it twice is it: true"
+the device goes -> done
+
+## Mechanics.cpp/the GPU's facts
+GPUs seen -> 1
+Mechanics: describe "llvmpipe (LLVM 20.1.2, 256 bits): cpu, Vulkan 1.4.318", kind cpu, budget true, timestamp period 1 ns, 64 timestamp bits
+describe -> "llvmpipe (LLVM 20.1.2, 256 bits): cpu, Vulkan 1.4.318"
+families_of -> [flags 0xf, 1 queues, 64 timestamp bits]
+has_swapchain -> true
+kind_of -> cpu
+meets_floor -> true
+queue_family, headless -> 0
+the device goes -> done
+unfit, headless -> fit
