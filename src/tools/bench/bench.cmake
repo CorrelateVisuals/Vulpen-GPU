@@ -19,6 +19,10 @@ if(VULPEN_SANITIZERS)
   set(bench_counts 0)
 endif()
 target_compile_definitions(bench-core PRIVATE VP_BENCH_COUNTS=${bench_counts})
+# The bench reads the environment by std::getenv, as standard C++ has it (C11), which
+# MSVC calls unsafe, in favour of a call of its own.
+target_compile_definitions(bench-core PUBLIC
+                           $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>)
 add_dependencies(bench-core gates commit)
 
 # A build that links the nodes into vulpen, as release does, links them into each bench

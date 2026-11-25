@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -31,10 +32,13 @@ struct PipelinesPools {
   friend constexpr auto reach(PipelinesPools);
 };
 template struct Reached<PipelinesPools, &VP::Pipelines::_pools>;
+// Spelt out, though Reached could deduce it, as MSVC calls what a lambda reads through a
+// deduced one void.
 struct PipelinesFree {
-  friend constexpr auto reach(PipelinesFree);
+  using type = std::vector<std::uint32_t> VP::Pipelines::*;
+  friend constexpr type reach(PipelinesFree);
 };
-template struct Reached<PipelinesFree, &VP::Pipelines::_free>;
+template struct Reach<PipelinesFree, &VP::Pipelines::_free>;
 struct ShaderFrame {
   friend constexpr auto reach(ShaderFrame);
 };

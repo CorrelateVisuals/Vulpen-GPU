@@ -24,10 +24,10 @@ template <class T> struct ParamText {};
 template <class T> struct Gen<domain::ParamText<T>> {
   using type = std::string;
   static std::vector<std::string> shared() {
-    using namespace std::string_literals;
-    return {"1",   "",     " ",   "0",  "-0",  "-1",       "+1",     " 1",
-            "1 ",  "1\n",  "1\r", "01", "1_0", "0x10",     "1e3",    "nan",
-            "inf", "-inf", "1,2", ",",  "1.5", "\xd9\xa1", "1\0002"s};
+    const std::string nul{'1', '\0', '2'};
+    return {"1",   "",     " ",   "0",  "-0",  "-1",       "+1",  " 1",
+            "1 ",  "1\n",  "1\r", "01", "1_0", "0x10",     "1e3", "nan",
+            "inf", "-inf", "1,2", ",",  "1.5", "\xd9\xa1", nul};
   }
   static std::vector<std::string> own() {
     if constexpr (std::is_same_v<T, float>)
