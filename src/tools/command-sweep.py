@@ -116,6 +116,9 @@ NOTHING = re.compile(r"no node|no view is named|is no node|unknown|holds no|no c
                      r"|is no panel")
 
 
+# Lines that may work and answer nothing (RV10): those a front end sends at a high rate,
+# and those that hand on a line of their own, which answers itself.
+SILENT = ("input ", "log save", "focus", "panel move", "zoom ", "type ")
 # A warning a line asked for: the GPU the next launch takes, or keeps where no GPU of the
 # other kind meets the floor, as where lavapipe is the only one; and the modes part's
 # answer to perform mode with nothing presented, a frame on (Q4 of the first report:
@@ -938,6 +941,9 @@ def judge(copy: Copy, state: str, usage: Usage, variant: str, line: str,
                   else 'past'} its usage", line, answers(said))
     if variant == "valid" and fits:
         copy.find(state, f"`{usage.text}` refuses the line its help means", line, errors)
+    if variant == "valid" and not errors and not answers(said) and \
+            not usage.text.startswith(SILENT):
+        copy.find(state, f"`{usage.text}` works and answers nothing (RV10)", line, [])
     for error in errors:
         if BARE.search(error):
             copy.find(state, "a refusal only repeats what the standard library threw",

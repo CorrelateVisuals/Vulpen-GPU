@@ -432,6 +432,7 @@ void Graph::cook(VP::Cook &frame) {
 void Graph::command(VP::Call &call) {
   if (call.is(_arrange)) {
     arrange_anew(call.files());
+    call.reply("laid the boxes shown out anew, from the graph alone");
     return;
   }
   if (call.is(_find)) {
@@ -476,6 +477,10 @@ void Graph::command(VP::Call &call) {
       raise(name);
     _selection = std::move(chosen);
     _selected_in = shown;
+    std::string named;
+    for (const std::string &name : _selection)
+      named.append(named.empty() ? "" : ", ").append(name);
+    call.reply(named.empty() ? "let go of the selection" : "selected " + named);
   } else if (call.is(_selected)) {
     for (const std::string &name : _selection)
       if (const auto box = std::ranges::find(_boxes.boxes, name, &Box::name);
@@ -1484,11 +1489,17 @@ void Graph::cd(VP::Call &call) {
   } else if (to == "..") {
     leave(call);
     _left.clear();
+    call.reply("went up a level");
   } else if (to == "/" && !folder.empty()) {
     into_folder(call, _relations->top);
+    call.reply(std::format("went to {}, its repository's top",
+                           std::filesystem::path(_relations->top)
+                               .lexically_proximate(std::filesystem::current_path())
+                               .generic_string()));
   } else if (to == "/") {
     if (!_inside.empty())
       call.commands().send(std::format("{}: param unset {} inside", _view, _name));
+    call.reply("went to the view's top");
   } else if (const bool typed = std::filesystem::path(to).has_parent_path();
              typed || !folder.empty()) {
     std::filesystem::path path =
@@ -1507,6 +1518,7 @@ void Graph::cd(VP::Call &call) {
                 std::format("{}: param set {} inside {}", _view, _name, node.name));
           else if (!enter(call, static_cast<std::size_t>(box - _boxes.boxes.begin())))
             throw std::runtime_error(std::format("{} holds nothing to go into", to));
+          call.reply(std::format("went into {}", node.name));
           return;
         }
     // A root, as / or C:\, which no folder lists, is one while it lists anything.
@@ -1518,6 +1530,9 @@ void Graph::cd(VP::Call &call) {
           "{} is no folder",
           path.lexically_proximate(std::filesystem::current_path()).generic_string()));
     into_folder(call, path);
+    call.reply(std::format(
+        "went to {}",
+        path.lexically_proximate(std::filesystem::current_path()).generic_string()));
   } else {
     const auto named = std::ranges::find_if(_boxes.boxes, [&](const Box &box) {
       return box.role && (box.name == to || box.title == to);
@@ -1527,6 +1542,7 @@ void Graph::cd(VP::Call &call) {
           std::format("no box the graph shows is named {}; ls lists what is here", to));
     if (!enter(call, static_cast<std::size_t>(named - _boxes.boxes.begin())))
       throw std::runtime_error(std::format("{} holds nothing to go into", to));
+    call.reply(std::format("went into {}", to));
   }
 }
 

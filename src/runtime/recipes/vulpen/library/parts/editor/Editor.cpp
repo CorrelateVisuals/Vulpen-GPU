@@ -119,16 +119,25 @@ class Editor final : public VP::Operator {
     const auto folders = running(call, _folders);
     const auto images = running(call, _images);
     const auto window = running(call, _window);
-    if (folders && !path.empty() && folder(call.files(), path))
+    const std::string named =
+        shown(path.empty() ? call.view().file : std::filesystem::path(path));
+    if (folders && !path.empty() && folder(call.files(), path)) {
       call.commands().send(std::format(
           "{}: param set {} folder {}", folders->first, folders->second, path));
-    else if (images && !path.empty() && image(path))
+      call.reply(std::format("opened {} in the graph", named));
+    } else if (images && !path.empty() && image(path)) {
       call.commands().send(
           std::format("{}: param set {} file {}", images->first, images->second, path));
-    else if (window)
+      call.reply(std::format("opened {} as a preview", named));
+    } else if (window) {
       in_window(call, window->first, window->second, path);
-    else
+      call.reply(std::format("opened {} in the editor", named));
+    } else {
       in_program(call, path);
+      call.reply(std::format("opened {} with {}",
+                             path.empty() ? shown(call.view().file.parent_path()) : named,
+                             _program));
+    }
   }
 
   // The file or folder open names, or none.

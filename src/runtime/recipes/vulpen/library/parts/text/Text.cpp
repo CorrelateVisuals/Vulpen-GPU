@@ -948,6 +948,7 @@ void Text::command(VP::Call &call) {
                                            files[0],
                                            files[1]));
     editor->move(files[0], files[1]);
+    call.reply(std::format("moved the tab of {} to the place of {}", files[0], files[1]));
   }
 }
 
@@ -1309,7 +1310,12 @@ void Text::close(VP::Call &call, std::string_view path, bool force) {
         std::format("{} has changes: {}write saves them, and close force drops them",
                     label_of(_documents[at]),
                     at == _shown ? "" : "a press on its tab, then "));
+  const std::string closed =
+      std::format("closed {}{}",
+                  label_of(_documents[at]),
+                  _documents[at].changed ? ", its changes dropped" : "");
   drop(call.commands(), at);
+  call.reply(closed);
 }
 
 // The file at a place among the tabs goes. The param names it no longer, so open names
@@ -1380,9 +1386,11 @@ void Text::close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside b
     throw std::runtime_error(std::format("{} is not open in the editor", path));
   const auto at = static_cast<std::size_t>(named - _documents.begin());
   const std::string named_path = named->path;
+  const std::string named_label = label_of(*named);
   const std::string shown = _documents[_shown].path;
   std::vector<Document> staying;
   std::string kept;
+  std::size_t closed = 0;
   for (std::size_t index = 0; index < _documents.size(); ++index) {
     Document &document = _documents[index];
     const bool beyond = beside == VP_VIEW::Beside::all ||
@@ -1391,7 +1399,10 @@ void Text::close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside b
       if (beyond)
         kept.append(kept.empty() ? "" : ", ").append(label_of(document));
       staying.push_back(std::move(document));
-    } else if (document.path == _file) {
+      continue;
+    }
+    ++closed;
+    if (document.path == _file) {
       _file.clear();
       call.commands().send(std::format("{}: param unset {} file", _view, _name));
     }
@@ -1406,8 +1417,16 @@ void Text::close_beside(VP::Call &call, std::string_view path, VP_VIEW::Beside b
   _dragging = false;
   _follow = true;
   name_tabs();
-  if (!kept.empty())
-    call.reply(std::format("kept {}, as they have changes", kept));
+  const std::string_view where = beside == VP_VIEW::Beside::all    ? ""
+                                 : beside == VP_VIEW::Beside::left ? " left of "
+                                                                   : " right of ";
+  call.reply(std::format(
+      "closed {} file{}{}{}{}",
+      closed,
+      closed == 1 ? "" : "s",
+      where,
+      where.empty() ? "" : named_label,
+      kept.empty() ? "" : std::format("; kept {}, as they have changes", kept)));
 }
 
 // From the selection's end to the file's end, then from its start, so a find repeated
@@ -1429,6 +1448,8 @@ void Text::find(VP::Call &call) {
       document.anchor = {row, found};
       document.caret = {row, found + wanted.size()};
       _follow = true;
+      call.reply(
+          std::format("found {} in {}, row {}", wanted, label_of(document), row + 1));
       return;
     }
   }

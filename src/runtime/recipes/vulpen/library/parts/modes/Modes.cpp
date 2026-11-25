@@ -105,6 +105,8 @@ class Modes final : public VP::Operator {
     }
     commands.send(std::format(
         "{}: param set {} mode {}", _view, _name, perform ? "perform" : "edit"));
+    call.reply(perform ? "went to perform mode: the window shows what is presented"
+                       : "went to edit mode: the window shows the dock");
   }
 
   // Perform mode gives way to edit mode once nothing is presented nor about to be, as

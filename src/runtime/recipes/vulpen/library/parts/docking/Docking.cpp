@@ -999,19 +999,27 @@ class Docking final : public VP::Operator {
     return false;
   }
 
+  // Each answers here once it worked, as focus shows a panel on its way; panel move, a
+  // drag sends many times a second, answers nothing (RV10).
   void command(VP::Call &call) override {
-    if (call.is(_move))
+    const std::string panel =
+        call.arguments().empty() ? std::string() : std::string(call.arguments().front());
+    if (call.is(_move)) {
       move(call);
-    else if (call.is(_hide))
-      hide(call, std::string(call.arguments().front()));
-    else if (call.is(_show))
-      show(call, std::string(call.arguments().front()));
-    else if (call.is(_restore))
+    } else if (call.is(_hide)) {
+      hide(call, panel);
+      call.reply(std::format("hid {}", panel));
+    } else if (call.is(_show)) {
+      show(call, panel);
+      call.reply(std::format("showed {}", panel));
+    } else if (call.is(_restore)) {
       restore(call);
-    else if (call.is(_maximize))
-      maximize(call, std::string(call.arguments().front()));
-    else if (call.is(_focus))
-      focus(call, call.arguments().front());
+    } else if (call.is(_maximize)) {
+      maximize(call, panel);
+      call.reply(std::format("maximized {}, the other panels given no room", panel));
+    } else if (call.is(_focus)) {
+      focus(call, panel);
+    }
   }
 
   // The next panel of the kind after the one in focus, else its first, which shows if it

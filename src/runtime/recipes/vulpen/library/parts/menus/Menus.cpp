@@ -763,7 +763,7 @@ class Menus final : public VP::Operator {
     const std::span<const std::string_view> words = call.arguments();
     if (words.empty()) {
       _shutting = true;
-      return;
+      return call.reply("shut the menus");
     }
     if (const auto named_for = std::ranges::find(words, for_word);
         words.front() == press_word && named_for != words.end())
@@ -790,9 +790,12 @@ class Menus final : public VP::Operator {
                                              menu_file,
                                              section,
                                              this->sections()));
+    std::string opened = "opened the menu of";
+    for (const std::string &section : sections)
+      opened.append(" ").append(section);
     if (named_for == words.end()) {
       _next.emplace(Opening{.sections = std::move(sections)});
-      return;
+      return call.reply(opened);
     }
     if (sections.empty() || named_for + 1 == words.end())
       throw std::runtime_error("menu takes sections, then for and the names of what it "
@@ -800,6 +803,10 @@ class Menus final : public VP::Operator {
     _next.emplace(Opening{.sections = std::move(sections),
                           .corner = glm::ivec2(_pointer),
                           .subjects = {named_for + 1, words.end()}});
+    opened.append(" for");
+    for (const std::string_view name : _next->subjects)
+      opened.append(" ").append(name);
+    call.reply(opened);
   }
 
   std::string sections() const {
