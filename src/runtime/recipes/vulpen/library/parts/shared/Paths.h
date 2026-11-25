@@ -78,10 +78,11 @@ inline std::string resolved(Listed &listed,
 }
 
 // A recipe a manifest's node uses, by its name, in the library's parts or components,
-// from a folder holding the manifest; a drop's copy, named with an @, is the view's own.
+// from a folder holding the manifest; a drop's copy, named with an @, is the view's own,
+// and no name, as a recipe = row a person is typing, names none.
 inline std::string
 recipe(Listed &listed, const std::filesystem::path &folder, std::string_view name) {
-  if (name.find('@') != std::string_view::npos)
+  if (name.empty() || name.find('@') != std::string_view::npos)
     return {};
   for (const std::string_view kind :
        {"parts/", "components/", "library/parts/", "library/components/"})

@@ -30,7 +30,7 @@ projects/a/node -> ["Node.frag", "Node.glsl", "inner/"]
 projects/a/view.vlp -> []
 
 ## Paths.h/recipe
-"" from projects/a -> "<here>/projects/a/parts"
+"" from projects/a -> ""
 "gone" from projects/a -> ""
 "ide" from projects/a -> "<here>/library/components/ide"
 "image" from projects/a -> "<here>/library/parts/image"
