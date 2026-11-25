@@ -10,6 +10,7 @@
 #include <format>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 namespace VP {
 
@@ -171,16 +172,7 @@ Swapchain::Swapchain(const Log &log,
                            "look off; it takes VkFormat {}",
                            static_cast<int>(_format.format)));
   make();
-  _log.write(
-      Level::info,
-      Tag::swp,
-      std::format("presents {} images of {}x{} in {} mode, {} sample{} a pixel",
-                  _views.size(),
-                  _extent.width,
-                  _extent.height,
-                  _present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "FIFO",
-                  static_cast<std::uint32_t>(_samples),
-                  _samples == VK_SAMPLE_COUNT_1_BIT ? "" : "s"));
+  presents();
 }
 
 // Unchecked, as Mechanics' own: a lost device was said by the frame that lost it, and a
@@ -200,6 +192,7 @@ VkRenderPass Swapchain::render_pass() const {
 
 VkPresentModeKHR Swapchain::vsync(bool on) {
   const VkPresentModeKHR mode = pick_present_mode(_physical_device, _surface, on);
+  _untold = _untold || mode != _present_mode;
   _stale = _stale || mode != _present_mode;
   _present_mode = mode;
   return mode;
@@ -214,6 +207,7 @@ void Swapchain::samples(VkSampleCountFlagBits samples) {
       make_render_pass(_device, _format.format, _resources.depth_format(), samples);
   _samples = samples;
   make_images();
+  _untold = true;
 }
 
 std::optional<Target> Swapchain::acquire() {
@@ -228,6 +222,8 @@ std::optional<Target> Swapchain::acquire() {
                Tag::swp,
                std::format("remade for {}x{}", _extent.width, _extent.height));
   }
+  if (std::exchange(_untold, false))
+    presents();
   std::uint32_t image = 0;
   const VkResult result = vkAcquireNextImageKHR(
       _device, _swapchain, no_timeout, _acquired, VK_NULL_HANDLE, &image);
@@ -272,6 +268,22 @@ void Swapchain::present(const Target &target) {
 }
 
 // The old swapchain, if any, hands its images over to the new one.
+// At the start, and at the first frame after the mode or the samples changed, once for
+// both: a resize is said at debug alone, as a drag resizes it every frame. So the log
+// says what the window does (C09).
+void Swapchain::presents() const {
+  _log.write(
+      Level::info,
+      Tag::swp,
+      std::format("presents {} images of {}x{} in {} mode, {} sample{} a pixel",
+                  _views.size(),
+                  _extent.width,
+                  _extent.height,
+                  _present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "FIFO",
+                  static_cast<std::uint32_t>(_samples),
+                  _samples == VK_SAMPLE_COUNT_1_BIT ? "" : "s"));
+}
+
 void Swapchain::make() {
   VkSurfaceCapabilitiesKHR capabilities{};
   check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(

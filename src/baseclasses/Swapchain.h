@@ -62,6 +62,7 @@ public:
   void present(const Target &target);
 
 private:
+  void presents() const;
   void make();
   void make_images();
   void release();
@@ -83,6 +84,7 @@ private:
   VkExtent2D _extent{};
   VkExtent2D _made_for{}; // the window's size then, which _extent may be clamped from
   bool _stale = false;
+  bool _untold = false; // a new mode or new samples, till the next frame says them
   std::vector<VkImageView> _views;
   std::unique_ptr<Image> _depth; // the window's size, as its images are
   std::unique_ptr<Image> _color; // with samples past one, what the draws go into
