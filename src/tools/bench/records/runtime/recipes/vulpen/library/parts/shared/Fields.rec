@@ -248,6 +248,7 @@ sum/Sum.comp -> [FloatsIn of float reads, FloatsOut of float writes, Floats of f
 
 ## Fields.h/cpp_contracts
 Top.cpp -> [Spin in contracts/Spin.h, Spins in contracts/Spin.h, Base in contracts/Spin.h, Derived in contracts/Spin.h]
+a file beside the view -> []
 contracts/Spin.h -> [Spin in contracts/Spin.h, Spins in contracts/Spin.h, Base in contracts/Spin.h, Derived in contracts/Spin.h]
 sum/Sum.cpp -> [Spin in contracts/Spin.h, Spins in contracts/Spin.h, Base in contracts/Spin.h, Derived in contracts/Spin.h]
 

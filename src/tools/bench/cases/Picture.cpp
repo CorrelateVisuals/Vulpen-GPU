@@ -9,6 +9,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
+#include <array>
 #include <cstdint>
 #include <format>
 #include <string>
@@ -36,12 +37,9 @@ constexpr int wide = 3;
 constexpr int high = 2;
 constexpr int rgba = 4;
 
-const std::vector<std::uint8_t> &picture() {
-  static const std::vector<std::uint8_t> pixels{255, 0,   0,   255, 0,   255, 0,   255,
-                                                0,   0,   255, 255, 255, 255, 255, 255,
-                                                128, 128, 128, 128, 0,   0,   0,   255};
-  return pixels;
-}
+constexpr std::array<std::uint8_t, wide * high * rgba> picture{
+    255, 0,   0,   255, 0,   255, 0,   255, 0, 0, 255, 255,
+    255, 255, 255, 255, 128, 128, 128, 128, 0, 0, 0,   255};
 
 void append(void *into, void *data, int size) {
   static_cast<std::string *>(into)->append(static_cast<const char *>(data),
@@ -56,7 +54,7 @@ std::vector<std::pair<std::string, std::string>> files() {
     writer(bytes);
     made.emplace_back(std::move(name), std::move(bytes));
   };
-  const void *const pixels = picture().data();
+  const void *const pixels = picture.data();
   write("a.png", [&](std::string &bytes) {
     stbi_write_png_to_func(append, &bytes, wide, high, rgba, pixels, wide * rgba);
   });

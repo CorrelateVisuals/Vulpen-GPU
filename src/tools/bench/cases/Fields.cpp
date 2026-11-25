@@ -377,6 +377,10 @@ void cases(Bench &bench) {
     for (const std::string_view file : {"sum/Sum.cpp", "Top.cpp", "contracts/Spin.h"})
       rows.row(std::format(
           "{} -> {}", file, show(cpp_contracts(files, top / file), rows.names())));
+    // Beside the view, where no folder up to the root holds contracts/.
+    rows.row(std::format(
+        "a file beside the view -> {}",
+        show(cpp_contracts(files, rows.root() / "beside/Beside.cpp"), rows.names())));
   });
 
   bench.check("Fields.h/field_types", [](Rows &rows) {
