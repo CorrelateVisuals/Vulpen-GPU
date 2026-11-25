@@ -45,9 +45,13 @@ file(GLOB bench_cases CONFIGURE_DEPENDS ${bench}/cases/*.cpp)
 foreach(case IN LISTS bench_cases)
   get_filename_component(name ${case} NAME_WE)
   set(engine "$<TARGET_OBJECTS:baseclasses>;$<TARGET_OBJECTS:runtime>")
+  # The engine's object of the file the case includes, as each generator names it:
+  # Makefiles and Ninja by the source's path, runtime/Live.cpp.o, and Visual Studio by
+  # its name in the target's folder, runtime.dir/Debug/Live.obj.
   foreach(folder baseclasses runtime)
     if(EXISTS ${PROJECT_SOURCE_DIR}/src/${folder}/${name}.cpp)
-      set(engine "$<FILTER:${engine},EXCLUDE,/${folder}/${name}\\.cpp\\.o(bj)?$>")
+      set(object "(/${folder}/${name}\\.cpp|/${folder}\\.dir/[^/]+/${name})\\.o(bj)?$")
+      set(engine "$<FILTER:${engine},EXCLUDE,${object}>")
     endif()
   endforeach()
   add_executable(bench-${name} EXCLUDE_FROM_ALL ${case} "${engine}" ${bench_nodes})
