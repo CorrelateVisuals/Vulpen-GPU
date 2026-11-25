@@ -272,13 +272,13 @@ void cases(Bench &bench) {
   // and its triggers let go, which GLFW reads as -1.
   bench.check("Platform.cpp/resting", [](Rows &rows) {
     const GLFWgamepadstate state = resting();
-    std::string buttons;
+    std::string pressed;
     for (const unsigned char button : state.buttons)
-      buttons += std::to_string(button);
+      pressed += std::to_string(button);
     std::string axes;
     for (const float axis : state.axes)
       axes += std::format(" {}", axis);
-    rows.row(std::format("buttons {}; axes{}", buttons, axes));
+    rows.row(std::format("buttons {}; axes{}", pressed, axes));
   });
   // The names a gamepad's sticks and triggers go by, and no other: a button's is a key's.
   bench.check("Platform.cpp/axis_named", [](Rows &rows) {

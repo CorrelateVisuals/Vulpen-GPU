@@ -521,10 +521,10 @@ void cases(Bench &bench) {
   // At its room exactly the file keeps every line; a byte past it, the older half of the
   // run's lines go, as in the rows above.
   bench.check("Log.cpp/Log::add_to_file at its room", [](Rows &rows) {
-    constexpr std::size_t header = 10;
-    constexpr std::size_t lines = (file_capacity - header) / big_line;
     for (const std::size_t past : {0, 1}) {
       const std::string said = rows.quiet([&] {
+        constexpr std::size_t header = 10;
+        constexpr std::size_t lines = (file_capacity - header) / big_line;
         Log log(Level::warn, title, fresh(rows).string());
         std::string &text = log.*reach(LogText{});
         text.assign(header, 'h');
