@@ -81,6 +81,11 @@ public:
   void listen(Commands &commands);
   // The window whose clipboard copy and paste use while it is open; null once it closes.
   void attach(const Window *window);
+  // The window fills its monitor, or goes back where and as it was: now, and as a window
+  // opened later opens, as the window command's other forms; throws, naming why, before
+  // the state changes. The window's presenting answers its lines, as it knows vsync's.
+  void fullscreen(bool fills);
+  bool fills() const;
   // Before a frame cooks: the frame before's sound becomes what played, and the frame's
   // starts silent, frames long. After it cooked: the frame's goes to the speakers, which
   // open as a node first adds to it while a window is open.
@@ -211,7 +216,7 @@ private:
   // The window command's forms, and what they set, which a window opened later takes
   // too, so a run with none takes them as one with a window does (V07).
   struct Windowing {
-    Command title, fullscreen_on, fullscreen_off, pointer_lock, pointer_free;
+    Command title, pointer_lock, pointer_free;
   } _windowing;
   std::vector<float> _sound;  // the frame's, as the nodes add to it
   std::vector<float> _played; // the frame before's

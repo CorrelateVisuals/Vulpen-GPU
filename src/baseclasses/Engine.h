@@ -51,6 +51,8 @@ public:
   // without as fast as the GPU draws where the window lets it. The present mode it got,
   // as the log names it, or empty while no window is open.
   std::string vsync(bool on);
+  // Whether it presents with vsync, as the last vsync(on) asked.
+  bool vsync() const;
   // The samples a pixel the window's draws go into, resolved as their render pass ends:
   // one of Resources::sample_counts. Between frames, as the window's render pass is made
   // again, and every pipeline that draws into it must be too.

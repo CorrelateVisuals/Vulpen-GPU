@@ -673,14 +673,15 @@ VALID = {
     "input wheel <value> <value>": "input wheel 0 1",
     "input axis <value> <value> <value>": "input axis gamepad_left 0.5 -0.5",
     "window title <value>...": "window title sweep",
-    "window fullscreen on": "window fullscreen on ;; window fullscreen off",
+    # The window fills its monitor only while vsync is on, which stays on meanwhile.
+    "window fullscreen on": "window vsync on ;; window fullscreen on",
     "window fullscreen off": "window fullscreen off",
     "window pointer lock": "window pointer lock ;; window pointer free",
     "window pointer free": "window pointer free",
     # 4 samples a pixel, which Vulkan promises every GPU draws.
     "window samples <value>": "window samples 4 ;; window samples 1",
     "window vsync on": "window vsync on ;; window vsync off",
-    "window vsync off": "window vsync off",
+    "window vsync off": "window fullscreen off ;; window vsync off",
     "log save <file>": "log save {tree}/../decoy/{fresh}.log",
     "ls": "ls",
     "node add [<name>] [<word=value>...]": "node add {fresh} log=info",

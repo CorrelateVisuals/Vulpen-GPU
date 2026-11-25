@@ -240,14 +240,17 @@ private:
 };
 
 // How the windows show what is drawn: the samples a pixel of every view's window, the
-// window or the image a host shows one in, and whether the window waits for the display.
-// Beside the window command's other forms, which the input port answers, as these reach
-// the GPU. A new count waits for the next frame's prepare, since no frame may record
-// with pipelines made for the render pass it replaces.
+// window or the image a host shows one in, whether the window waits for the display, and
+// whether it fills its monitor, which it does only while it waits: in mailbox mode a
+// compositor on another GPU than vulpen's ran out of memory copying the frames and took
+// the desktop down (a hybrid laptop, 11-24). Beside the window command's other forms,
+// which the input port answers, as these reach the GPU. A new count waits for the next
+// frame's prepare, since no frame may record with pipelines made for the render pass it
+// replaces.
 class Presenting final : public CommandHandler {
 public:
-  Presenting(Commands &commands, Engine &engine)
-      : _engine(engine),
+  Presenting(Commands &commands, Engine &engine, Ports &ports)
+      : _engine(engine), _ports(ports),
         _vsync_on(commands.add("window vsync on",
                                "presents a frame each refresh of the display, in FIFO "
                                "mode",
@@ -255,8 +258,14 @@ public:
         _vsync_off(
             commands.add("window vsync off",
                          "presents as fast as the GPU draws, in mailbox mode where "
-                         "the window offers it",
+                         "the window offers it; not while the window fills its monitor",
                          *this)),
+        _fullscreen_on(
+            commands.add("window fullscreen on",
+                         "makes the window fill its monitor, while vsync is on",
+                         *this)),
+        _fullscreen_off(commands.add(
+            "window fullscreen off", "puts the window back where and as it was", *this)),
         _samples(commands.add("window samples <value>",
                               "draws every window with that many samples a pixel, "
                               "resolved as its draws end, so their edges come out "
@@ -276,7 +285,13 @@ private:
   void command(Call &call) override {
     if (call.is(_samples))
       return call.reply(sample(call.arguments().front()));
+    if (call.is(_fullscreen_on) || call.is(_fullscreen_off))
+      return call.reply(fullscreen(call.is(_fullscreen_on)));
     const bool on = call.is(_vsync_on);
+    if (!on && _ports.fills())
+      throw std::runtime_error(
+          "vsync stays on while the window fills its monitor; window fullscreen off "
+          "first");
     const std::string mode = _engine.vsync(on);
     if (mode.empty())
       return call.reply(std::format(
@@ -286,6 +301,20 @@ private:
                                   "offers no mailbox mode"
                                 : "made the window present as fast as the GPU draws, in "
                                   "mailbox mode");
+  }
+
+  std::string fullscreen(bool fills) {
+    if (fills && !_engine.vsync())
+      throw std::runtime_error(
+          "the window fills its monitor only while vsync is on, as a compositor on "
+          "another GPU may run out of memory copying frames presented faster; window "
+          "vsync on first");
+    _ports.fullscreen(fills);
+    const std::string done =
+        fills ? "made the window fill its monitor" : "put the window back as it was";
+    return static_cast<const InputPort &>(_ports).windowed()
+               ? done
+               : done + "; no window is open, so it waits for one";
   }
 
   std::string sample(std::string_view word) {
@@ -307,9 +336,12 @@ private:
   }
 
   Engine &_engine;
+  Ports &_ports; // the window's, whose fullscreen it sets
   VkSampleCountFlagBits _wanted = VK_SAMPLE_COUNT_1_BIT;
   Command _vsync_on;
   Command _vsync_off;
+  Command _fullscreen_on;
+  Command _fullscreen_off;
   Command _samples;
 };
 
@@ -552,7 +584,7 @@ bool Runtime::start() {
   std::string prefer = Preference::read(choice);
   _engine.emplace(_log, _window ? &*_window : nullptr, prefer);
   _preference.emplace(_commands, _log, *_engine, choice, std::move(prefer));
-  _presenting.emplace(_commands, *_engine);
+  _presenting.emplace(_commands, *_engine, _ports);
   _restart = std::make_unique<Restart>(_commands, _log, build);
   _wiring.emplace(Wiring{.engine = *_engine,
                          .pipelines = _engine->pipelines(),

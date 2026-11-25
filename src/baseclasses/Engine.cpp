@@ -271,6 +271,10 @@ VkRenderPass Engine::render_pass() const {
   return _gpu->swapchain ? _gpu->swapchain->render_pass() : VK_NULL_HANDLE;
 }
 
+bool Engine::vsync() const {
+  return _gpu->vsync;
+}
+
 std::string Engine::vsync(bool on) {
   _gpu->vsync = on;
   if (!_gpu->swapchain)

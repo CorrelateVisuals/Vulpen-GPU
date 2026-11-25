@@ -601,9 +601,6 @@ void Ports::listen(Commands &commands) {
   _windowing = {
       .title = form("window title <value>...",
                     "names the window, the words joined by single blanks"),
-      .fullscreen_on = form("window fullscreen on", "makes the window fill its monitor"),
-      .fullscreen_off =
-          form("window fullscreen off", "puts the window back where and as it was"),
       .pointer_lock = form("window pointer lock",
                            "hides the pointer and holds it in the window, its moves "
                            "unbounded, as a camera that turns by it wants"),
@@ -693,6 +690,16 @@ void Ports::attach(const Window *window) {
     _fills = false;
     _log.write(Level::warn, Tag::run, std::format("the window: {}", failure.what()));
   }
+}
+
+void Ports::fullscreen(bool fills) {
+  if (_window)
+    _window->fullscreen(fills); // throws before the state changes, so none latches
+  _fills = fills;
+}
+
+bool Ports::fills() const {
+  return _fills;
 }
 
 bool Ports::windowed() const {
@@ -849,12 +856,6 @@ void Ports::window(Call &call) {
     if (_window)
       _window->title(_title);
     done = std::format("named the window {}", _title);
-  } else if (call.is(_windowing.fullscreen_on) || call.is(_windowing.fullscreen_off)) {
-    const bool fills = call.is(_windowing.fullscreen_on);
-    if (_window)
-      _window->fullscreen(fills); // throws before the state changes, so none latches
-    _fills = fills;
-    done = _fills ? "made the window fill its monitor" : "put the window back as it was";
   } else {
     _locked = call.is(_windowing.pointer_lock);
     if (_window)
