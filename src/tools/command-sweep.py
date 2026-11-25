@@ -742,8 +742,13 @@ VALID = {
     "select find <value>...": "select find {leaf}",
     "selected": "selected",
     "tab move <file> <file>": "open {file} ;; open {file2} ;; tab move {file2} {file}",
-    "write": "open {file} ;; focus ide.editor.text ;; input text // ;; write",
-    "write force": "open {file} ;; focus ide.editor.text ;; input text // ;; write force",
+    # A comment line of its own, as TYPING's: // alone, at the caret the file opens with,
+    # makes its first line a comment, whose build then fails on what the line declared,
+    # which a walk, putting nothing back, would take as the next line's finding.
+    "write": "open {file} ;; focus ide.editor.text ;; input text // typed ;; "
+             "input key down enter ;; input key up enter ;; write",
+    "write force": "open {file} ;; focus ide.editor.text ;; input text // typed ;; "
+                   "input key down enter ;; input key up enter ;; write force",
     "zoom in": "zoom in",
     "zoom out": "zoom out",
     "zoom reset": "zoom reset",
