@@ -337,6 +337,11 @@ public:
   // cook, or in a command that runs first, as a line runs between cooks. A part reads
   // each move twice, so following one again must change nothing.
   virtual std::span<const Moved> moved() const = 0;
+  // How many times a file the node opened was read anew or saved, compared with the disk
+  // as text is: a part compares it rather than what the file holds, which costs nothing
+  // a frame however large the file. A file touched on disk, its bytes the same, counts
+  // too.
+  virtual std::uint64_t version(File file) = 0;
 
 protected:
   ~FilePort() = default;

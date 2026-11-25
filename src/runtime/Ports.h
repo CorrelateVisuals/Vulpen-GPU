@@ -111,6 +111,7 @@ private:
     std::string text;
     std::filesystem::file_time_type written = std::filesystem::file_time_type::min();
     std::uint64_t checked = 0; // the frame it was last compared with the disk
+    std::uint64_t version = 0; // the times it was read anew or saved
     std::uint32_t nodes = 1;   // that hold it
   };
 
@@ -145,6 +146,7 @@ private:
   void rename(std::string_view from, std::string_view to) override;
   void make(std::string_view folder) override;
   std::span<const Moved> moved() const override;
+  std::uint64_t version(File file) override;
   void save(const View &view, std::string_view file) override;
   void start(std::string_view program, std::span<const std::string> arguments) override;
   View manifest(std::string_view file) override;

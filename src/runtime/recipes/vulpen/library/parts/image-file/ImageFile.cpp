@@ -3,9 +3,9 @@
 #include "shared/Picture.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <format>
-#include <functional>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -62,13 +62,12 @@ class ImageFile final : public VP::Operator {
     }
     if (_file.empty())
       return;
-    const std::string_view bytes = frame.files().text(_watched);
-    const std::size_t read = std::hash<std::string_view>{}(bytes);
+    const std::uint64_t read = frame.files().version(_watched);
     if (_decoded == read)
       return;
     _decoded = read; // decoded once, whether it decodes or not, until it changes
     try {
-      const Pixels pixels = decoded(bytes, _file);
+      const Pixels pixels = decoded(frame.files().text(_watched), _file);
       frame.upload(_picture, pixels.rgba, pixels.size);
     } catch (const std::runtime_error &failure) {
       frame.log(VP::Level::error, failure.what());
@@ -82,8 +81,8 @@ class ImageFile final : public VP::Operator {
   std::string _view; // the one it runs in, where its lines go
   VP::Texture<glm::u8vec4> _picture;
   VP::File _watched;
-  // The file's bytes the picture holds, by their hash; none until one decoded.
-  std::optional<std::size_t> _decoded;
+  // The file's version the picture holds; none until one decoded.
+  std::optional<std::uint64_t> _decoded;
   VP_VIEW::Items *_tabs = nullptr;
 };
 

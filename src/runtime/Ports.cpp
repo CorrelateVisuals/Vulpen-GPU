@@ -222,6 +222,7 @@ void Ports::refresh(Open &open) {
     return;
   open.text = gone ? std::string() : read(open.path.string());
   open.written = written;
+  ++open.version;
 }
 
 // Compared with the disk once a frame at most, so a node may ask every frame.
@@ -240,6 +241,12 @@ void Ports::save(File file, std::string_view text) {
   open.text = text;
   std::error_code gone;
   open.written = std::filesystem::last_write_time(open.path, gone);
+  ++open.version;
+}
+
+std::uint64_t Ports::version(File file) {
+  text(file);
+  return opened(file).version;
 }
 
 std::string Ports::read(std::string_view file) {

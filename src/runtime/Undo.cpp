@@ -148,6 +148,9 @@ private:
   std::span<const Moved> moved() const override {
     return _files.moved();
   }
+  std::uint64_t version(File file) override {
+    return _files.version(file);
+  }
 
   // The change, kept with the folders above its paths as they are now; null while no
   // step records, and for a hidden file. A folder made and a copy's or rename's new

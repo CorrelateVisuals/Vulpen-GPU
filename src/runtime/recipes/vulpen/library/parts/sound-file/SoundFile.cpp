@@ -2,8 +2,8 @@
 #include "shared/Wave.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <format>
-#include <functional>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -37,13 +37,12 @@ class SoundFile final : public VP::Operator {
   void cook(VP::Cook &frame) override {
     if (_file.empty())
       return;
-    const std::string_view bytes = frame.files().text(_watched);
-    const std::size_t read = std::hash<std::string_view>{}(bytes);
+    const std::uint64_t read = frame.files().version(_watched);
     if (_decoded != read) {
       _decoded = read; // decoded once, whether it decodes or not, until it changes
       _at = 0;
       try {
-        _samples = wave_read(bytes, _file);
+        _samples = wave_read(frame.files().text(_watched), _file);
       } catch (const std::runtime_error &failure) {
         _samples.clear();
         frame.log(VP::Level::error, failure.what());
@@ -65,8 +64,8 @@ class SoundFile final : public VP::Operator {
   bool _loop = false;
   float _volume = 1.0f;
   VP::File _watched;
-  // The file's bytes the samples are of, by their hash; none until one decoded.
-  std::optional<std::size_t> _decoded;
+  // The file's version the samples are of; none until one decoded.
+  std::optional<std::uint64_t> _decoded;
   std::vector<float> _samples; // two channels, interleaved
   std::size_t _at = 0;         // the next sample to play
   std::vector<float> _frame;   // kept, so a frame allocates nothing once grown (CPP10)

@@ -29,7 +29,6 @@ namespace {
 #include <algorithm>
 #include <cstdint>
 #include <format>
-#include <functional>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -116,12 +115,11 @@ class MeshFile final : public VP::Operator {
   void cook(VP::Cook &frame) override {
     if (_file.empty())
       return;
-    const std::string_view text = frame.files().text(_watched);
-    const std::size_t read = std::hash<std::string_view>{}(text);
+    const std::uint64_t read = frame.files().version(_watched);
     if (_parsed != read) {
       _parsed = read; // parsed once, whether it parses or not, until it changes
       try {
-        _mesh = triangles_of(text);
+        _mesh = triangles_of(frame.files().text(_watched));
         _written = false;
       } catch (const std::runtime_error &failure) {
         frame.log(VP::Level::error, std::format("{}: {}", _file, failure.what()));
@@ -151,8 +149,8 @@ class MeshFile final : public VP::Operator {
   std::string _view; // the one it runs in, as a line names it; empty for vulpen's own
   VP::Upload<VP_VIEW::Triangle> _triangles;
   VP::File _watched;
-  // The file's text the triangles hold, by its hash; none until one parsed.
-  std::optional<std::size_t> _parsed;
+  // The file's version the triangles hold; none until one parsed.
+  std::optional<std::uint64_t> _parsed;
   std::vector<VP_VIEW::Triangle> _mesh; // as last parsed, written again after a rebuild
   bool _written = false;
 };
