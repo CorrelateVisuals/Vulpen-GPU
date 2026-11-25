@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstddef>
 #include <optional>
 #include <span>
@@ -72,14 +73,15 @@ inline bool registered(std::string_view line, std::span<const VP::Usage> usages)
   });
 }
 
-// The numbers a value holds, between blanks; none when a word is no number.
+// The numbers a value holds, between blanks; none when a word is no number, or one no
+// .ini means, nan or an infinity, which from_chars reads and a caller would round or draw.
 inline std::vector<float> numbers_of(std::string_view text) {
   std::vector<float> numbers;
   for (text = trim(text); !text.empty(); text = trim(text)) {
     const std::size_t length = std::min(text.find_first_of(ini_blanks), text.size());
     float number = 0.0f;
     const auto [end, error] = std::from_chars(text.data(), text.data() + length, number);
-    if (error != std::errc{} || end != text.data() + length)
+    if (error != std::errc{} || end != text.data() + length || !std::isfinite(number))
       return {};
     numbers.push_back(number);
     text.remove_prefix(length);
