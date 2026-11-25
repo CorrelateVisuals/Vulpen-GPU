@@ -91,6 +91,19 @@ VmaAllocationCreateFlags placement(Memory memory) {
   return 0;
 }
 
+// A transient image takes lazily allocated memory where the GPU has it, as a tile-based
+// GPU does: it may then back the image with none, its samples staying on the chip until
+// the render pass drops them (C10). Any other image takes what VMA picks.
+VmaMemoryUsage memory_for(VmaAllocator allocator, const VkImageCreateInfo &info) {
+  if ((info.usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) == 0)
+    return VMA_MEMORY_USAGE_AUTO;
+  const VmaAllocationCreateInfo lazy{.usage = VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED};
+  std::uint32_t type = 0;
+  return vmaFindMemoryTypeIndexForImageInfo(allocator, &info, &lazy, &type) == VK_SUCCESS
+             ? VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED
+             : VMA_MEMORY_USAGE_AUTO;
+}
+
 } // namespace
 
 Buffer::Buffer(Buffer &&other) noexcept {
@@ -284,7 +297,8 @@ Image Resources::image(VkExtent2D extent,
                                .samples = samples,
                                .tiling = VK_IMAGE_TILING_OPTIMAL,
                                .usage = usage};
-  const VmaAllocationCreateInfo where{.flags = within, .usage = VMA_MEMORY_USAGE_AUTO};
+  const VmaAllocationCreateInfo where{.flags = within,
+                                      .usage = memory_for(_allocator, info)};
   Image image;
   if (const VkResult result = vmaCreateImage(
           _allocator, &info, &where, &image._image, &image._allocation, nullptr);

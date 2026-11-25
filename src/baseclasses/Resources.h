@@ -113,7 +113,8 @@ public:
   // cannot hold throws, naming its size and what is free, before any memory is taken.
   Buffer buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const;
   // With samples past one, a draw's color or depth that the render pass resolves or
-  // drops, which no shader samples; a tile-based GPU may keep it on the chip.
+  // drops, which no shader samples; in lazily allocated memory where the GPU has it, so
+  // a tile-based GPU may keep it on the chip and back it with none.
   Image image(VkExtent2D extent,
               VkFormat format,
               Fill fill = Fill::copy,
