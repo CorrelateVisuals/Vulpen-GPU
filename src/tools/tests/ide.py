@@ -145,7 +145,7 @@ EDITED = "first line!\nScond \n  x line\nthird\n"
 # What quit answers while the editor holds the note, named by its folder and name.
 REFUSED = "quit would lose what nodes hold"
 HELD = re.compile(r"ide\.editor\.text: \S+/note\.txt\* has changes")
-UNPERFORMED = "nothing is presented to perform"  # what modes warns, staying in edit mode
+UNPERFORMED = "nothing is presented to perform"  # what modes answers, staying in edit mode
 
 
 def clicks(x: int, y: int) -> list[str]:

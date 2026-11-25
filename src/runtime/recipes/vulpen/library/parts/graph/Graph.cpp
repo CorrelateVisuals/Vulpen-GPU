@@ -1455,6 +1455,7 @@ void Graph::find(VP::Call &call) {
           return mentions(row.text, wanted) || mentions(row.written, wanted);
         })) {
       select(call.commands(), std::span(&boxes[at].name, 1));
+      call.reply(std::format("found {} in {}", wanted, boxes[at].name));
       return;
     }
   }

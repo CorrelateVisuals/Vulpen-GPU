@@ -120,11 +120,9 @@ NOTHING = re.compile(r"no node|no view is named|is no node|unknown|holds no|no c
 # and those that hand on a line of their own, which answers itself.
 SILENT = ("input ", "log save", "focus", "panel move", "zoom ", "type ")
 # A warning a line asked for: the GPU the next launch takes, or keeps where no GPU of the
-# other kind meets the floor, as where lavapipe is the only one; and the modes part's
-# answer to perform mode with nothing presented, a frame on (Q4 of the first report:
-# keep). Each is a stuck button's answer, which warns rather than refuses.
-EXPECTED_WARNINGS = re.compile(r"the next launch (?:prefers|takes the \S+ GPU still)"
-                               r"|nothing is presented to perform")
+# other kind meets the floor, as where lavapipe is the only one, a stuck button's answer,
+# which warns rather than refuses.
+EXPECTED_WARNINGS = re.compile(r"the next launch (?:prefers|takes the \S+ GPU still)")
 # A node's warning as it binds, as a Texture a disconnect left unfilled or a value a param
 # unset left unset: what the line made of the node, as its errors are.
 BOUND_WARNING = re.compile(r"\{ ! \} \S+ node \S+: ")

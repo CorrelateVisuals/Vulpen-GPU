@@ -80,8 +80,8 @@ class Modes final : public VP::Operator {
 
   // Perform mode leaves the panels no room, so the part in focus lets it go, and takes
   // it back in edit mode. With nothing presented nor about to be it stays in edit mode,
-  // rather than give the window to nothing, and the next frame says so, as a warning,
-  // since a command writes no log line; with the current view's project about to be, as
+  // rather than give the window to nothing, and answers so, as a stuck button's answer,
+  // which warns rather than refuses; with the current view's project about to be, as
   // just after a view load, it goes on, as the panes part presents that project in the
   // frame.
   void switch_mode(VP::Call &call, bool perform) {
@@ -93,8 +93,8 @@ class Modes final : public VP::Operator {
                call.commands().current(),
                presented)
             .empty()) {
-      _unperformed = true;
-      return;
+      return call.reply("stayed in edit mode, as nothing is presented to perform; view "
+                        "load <project> or view switch <name> presents one");
     }
     VP::CommandPort &commands = call.commands();
     if (perform && !_perform) {
@@ -212,10 +212,6 @@ class Modes final : public VP::Operator {
   // with none, as one that takes the README's pictures, draws the same bytes every time
   // (C01). A mode line that found nothing to present says so here.
   void watch_buttons(VP::Cook &frame, bool nothing) {
-    if (std::exchange(_unperformed, false))
-      frame.log(VP::Level::warn,
-                "nothing is presented to perform, so the run stays in edit mode; view "
-                "load <project> or view switch <name> presents one");
     const auto now = std::chrono::steady_clock::now();
     if (_frames++ == 0)
       _since = now;
@@ -307,7 +303,6 @@ class Modes final : public VP::Operator {
   // frame.
   bool _gpu_stuck = false;
   bool _run_stuck = false;
-  bool _unperformed = false;
   // The frames a second, as the button beside gpu shows them while a window is open; the
   // frames cooked since the count began, that one included, and when it began.
   bool _windowed = false;
