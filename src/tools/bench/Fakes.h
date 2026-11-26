@@ -34,6 +34,14 @@ public:
   std::vector<std::string> files;
   // The node's folder, which a case sets to its sandbox where the node saves into it.
   std::string folder_path = "/node";
+  // Each upload the node asked for, by the index upload_index handed out: its port, its
+  // element's size and the room it asked, which the cook's upload bytes are sized by.
+  struct Room {
+    std::string port;
+    std::size_t stride = 0;
+    std::uint32_t count = 0;
+  };
+  std::vector<Room> rooms;
 
   // A C++ connection's object by port, made when the node or the case first names it, and
   // kept across binds, as the engine keeps it: the case sets an input before a cook and
@@ -86,7 +94,8 @@ private:
                              std::uint32_t count) override {
     asked.push_back(std::format(
         "upload {} of {} bytes {}, room {}", name, element.size, element.type, count));
-    return 0;
+    rooms.push_back({std::string(name), element.size, count});
+    return static_cast<std::uint32_t>(rooms.size() - 1);
   }
   std::uint32_t texture_index(std::string_view port, std::string_view pixel) override {
     asked.push_back(std::format("texture {} of {}", port, pixel));
@@ -146,8 +155,75 @@ public:
   }
 };
 
+// The command port, as a case sets it: each line sent is kept and answered as the case
+// sets; nothing else is answered.
+class FakeCommands final : public CommandPort {
+public:
+  std::vector<std::string> sent;
+  std::string answer;
+
+  std::string send(std::string_view line) override {
+    sent.emplace_back(line);
+    return answer;
+  }
+  std::vector<Usage> usages() const override {
+    refused("usages");
+  }
+  std::span<const Logged> log() const override {
+    refused("log");
+  }
+  void keep_log_to(std::span<const std::string>) override {
+    refused("keep_log_to");
+  }
+  std::string_view current() override {
+    refused("current");
+  }
+  std::string send_typed(std::string_view, std::string_view) override {
+    refused("send_typed");
+  }
+  std::size_t done() const override {
+    refused("done");
+  }
+
+private:
+  [[noreturn]] static void refused(std::string_view call) {
+    throw std::logic_error(std::format("the bench's commands answer no {}", call));
+  }
+};
+
+// The input port, as a case sets it: the frame's events; nothing else is answered.
+class FakeInput final : public InputPort {
+public:
+  std::vector<Event> given;
+
+  std::span<const Event> events() const override {
+    return given;
+  }
+  glm::vec2 pointer() const override {
+    refused("pointer");
+  }
+  bool names_key(std::string_view) const override {
+    refused("names_key");
+  }
+  std::string clipboard() const override {
+    refused("clipboard");
+  }
+  void copy(std::string_view) override {
+    refused("copy");
+  }
+  bool windowed() const override {
+    refused("windowed");
+  }
+
+private:
+  [[noreturn]] static void refused(std::string_view call) {
+    throw std::logic_error(std::format("the bench's input answers no {}", call));
+  }
+};
+
 // A node's cook: the frame's index, size and clock as the case sets them, every line the
-// node logs and image it uploads, and the file port and speakers the case hands it.
+// node logs and image it uploads, the file port, speakers, commands and input the case
+// hands it, and the bytes of each upload the bind sized.
 class FakeCook final : public Cook {
 public:
   std::uint64_t frame = 0;
@@ -155,6 +231,13 @@ public:
   double clock = 0;
   FilePort *file_port = nullptr;
   SoundPort *sound_port = nullptr;
+  CommandPort *command_port = nullptr;
+  InputPort *input_port = nullptr;
+  // Each upload's room, as the bind sized it, zeroed as the engine makes it; and how many
+  // elements the node wrote last, its used length.
+  std::vector<FakeBind::Room> rooms;
+  std::vector<std::vector<std::byte>> written;
+  std::vector<std::size_t> used;
   mutable std::vector<std::string> said;
   // An image's index, size and levels, and its bytes' count and hash, an upload each.
   std::vector<std::string> uploads;
@@ -180,10 +263,14 @@ public:
     refused("hold");
   }
   CommandPort &commands() override {
-    refused("commands");
+    if (!command_port)
+      refused("commands");
+    return *command_port;
   }
   InputPort &input() override {
-    refused("input");
+    if (!input_port)
+      refused("input");
+    return *input_port;
   }
   TerminalPort &terminal() override {
     refused("terminal");
@@ -228,8 +315,20 @@ private:
   std::span<const std::byte> readback_bytes(std::uint32_t) const override {
     refused("readback");
   }
-  std::span<std::byte> upload_bytes(std::uint32_t, std::optional<std::size_t>) override {
-    refused("upload");
+  // As the engine: refused past the room, which upload<T>(port, count) sized.
+  std::span<std::byte> upload_bytes(std::uint32_t index,
+                                    std::optional<std::size_t> count) override {
+    if (index >= rooms.size())
+      refused("upload of an index never handed out");
+    const FakeBind::Room &room = rooms[index];
+    if (count > room.count)
+      throw std::runtime_error(std::format("the operator writes {} elements of {}, which "
+                                           "holds {}; upload<T>(port, count) makes room",
+                                           *count,
+                                           room.port,
+                                           room.count));
+    used[index] = count.value_or(room.count);
+    return std::span(written[index]).first(used[index] * room.stride);
   }
   void upload_image(std::uint32_t index,
                     std::span<const std::byte> bytes,
@@ -434,6 +533,11 @@ public:
   void bound() {
     static_cast<Operator &>(_part).bind(bind);
     files.node_files = bind.files;
+    cook.rooms = bind.rooms;
+    cook.written.resize(bind.rooms.size());
+    cook.used.resize(bind.rooms.size());
+    for (std::size_t index = 0; index < bind.rooms.size(); ++index)
+      cook.written[index].resize(bind.rooms[index].stride * bind.rooms[index].count);
   }
   void cooked() {
     static_cast<Operator &>(_part).cook(cook);
