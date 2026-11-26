@@ -218,8 +218,8 @@ private:
 
 void Reader::fail(std::string_view message) const {
   if (_line == 0)
-    throw std::runtime_error(std::format("{}: {}", _file.string(), message));
-  throw std::runtime_error(std::format("{}:{}: {}", _file.string(), _line, message));
+    VP::fail("{}: {}", _file.string(), message);
+  VP::fail("{}:{}: {}", _file.string(), _line, message);
 }
 
 // With its folder, so a node's errors say which of the views running holds it.
@@ -533,11 +533,8 @@ void set_params(View &recipe, const Node &user) {
             : std::format("{}.{}", user.recipe, param.key.substr(0, dot));
     const auto node = std::ranges::find(recipe.nodes, name, &Node::name);
     if (node == recipe.nodes.end())
-      throw std::runtime_error(
-          std::format("it sets param {}, but recipe {} has no node {}",
-                      param.key,
-                      user.recipe,
-                      name));
+      fail(
+          "it sets param {}, but recipe {} has no node {}", param.key, user.recipe, name);
     const std::string key = param.key.substr(dot + 1);
     const auto found = std::ranges::find(node->params, key, &Param::key);
     if (found != node->params.end())
@@ -551,26 +548,23 @@ void set_params(View &recipe, const Node &user) {
 // A recipe is one node named like its folder and the nodes inside it, hosting no view.
 void check_recipe(const View &recipe, const std::string &name) {
   if (std::ranges::find(recipe.nodes, name, &Node::name) == recipe.nodes.end())
-    throw std::runtime_error(std::format(
-        "recipe {} has no node {}: a recipe is one node named like its folder, and the "
-        "nodes inside it",
-        name,
-        name));
+    fail("recipe {} has no node {}: a recipe is one node named like its folder, and the "
+         "nodes inside it",
+         name,
+         name);
   for (const Node &node : recipe.nodes)
     if (!within(node.name, name))
-      throw std::runtime_error(std::format(
-          "recipe {} holds node {}, which is not inside its node {}: a recipe is one "
-          "node, and the nodes inside it",
-          name,
-          node.name,
-          name));
+      fail("recipe {} holds node {}, which is not inside its node {}: a recipe is one "
+           "node, and the nodes inside it",
+           name,
+           node.name,
+           name);
   for (const Connection &connection : recipe.connections)
     if (connection.from.view())
-      throw std::runtime_error(
-          std::format("recipe {} takes the window of view {}, which a node that uses "
-                      "the recipe does not host",
-                      name,
-                      connection.from.node));
+      fail("recipe {} takes the window of view {}, which a node that uses "
+           "the recipe does not host",
+           name,
+           connection.from.node);
 }
 
 // A recipe as a node that uses it unfolds it, before its params and names: its manifest,
@@ -580,8 +574,7 @@ View read_recipe(const std::string &name,
                  Unfolding &unfolding,
                  std::vector<Recipes::Kept::Read> &reads) {
   if (std::ranges::find(unfolding.using_recipes, name) != unfolding.using_recipes.end())
-    throw std::runtime_error(
-        std::format("the recipes it uses form a cycle through {} (RV06)", name));
+    fail("the recipes it uses form a cycle through {} (RV06)", name);
   const std::filesystem::path file = recipe_folder(unfolding.root, name) / manifest_file;
   reads.push_back({file, written(file)});
   View recipe = Manifest::load(file);
@@ -664,8 +657,7 @@ View flattened(View view, Unfolding &unfolding) {
     try {
       unfold(view, node, unfolding);
     } catch (const std::runtime_error &failure) {
-      throw std::runtime_error(
-          std::format("{}node {}: {}", at(node), node.name, failure.what()));
+      fail("{}node {}: {}", at(node), node.name, failure.what());
     }
   }
   return view;
@@ -676,15 +668,14 @@ View flattened(View view, Unfolding &unfolding) {
 void check_copies(const View &view) {
   for (const Node &node : view.nodes)
     if (node.uses())
-      throw std::runtime_error(
-          std::format("{}node {} uses recipe {} as it is, as only the library's own "
-                      "recipes do (V11); a view holds its own copy (V03), which recipe "
-                      "drop {} {} makes",
-                      at(node),
-                      node.name,
-                      node.recipe,
-                      node.recipe,
-                      node.name));
+      fail("{}node {} uses recipe {} as it is, as only the library's own "
+           "recipes do (V11); a view holds its own copy (V03), which recipe "
+           "drop {} {} makes",
+           at(node),
+           node.name,
+           node.recipe,
+           node.recipe,
+           node.name);
 }
 
 // A node inside another is inside a node of the view, whose folder holds its own.
@@ -694,10 +685,10 @@ void check_inside(const View &flat) {
     if (dot != std::string::npos &&
         std::ranges::find(flat.nodes, node.name.substr(0, dot), &Node::name) ==
             flat.nodes.end())
-      throw std::runtime_error(std::format("{}node {} is inside {}, which is no node",
-                                           at(node),
-                                           node.name,
-                                           node.name.substr(0, dot)));
+      fail("{}node {} is inside {}, which is no node",
+           at(node),
+           node.name,
+           node.name.substr(0, dot));
   }
 }
 
@@ -778,8 +769,7 @@ View Manifest::flatten(const View &view, Recipes &recipes) {
     const auto check = [&](const Endpoint &end) {
       if (!end.view() &&
           std::ranges::find(flat.nodes, end.node, &Node::name) == flat.nodes.end())
-        throw std::runtime_error(std::format(
-            "connection {} joins {}, which is no node", connection.name, end.node));
+        fail("connection {} joins {}, which is no node", connection.name, end.node);
     };
     check(connection.from);
     std::ranges::for_each(connection.to, check);
