@@ -459,8 +459,7 @@ Command Commands::add(std::string_view usage,
                       bool by_node) {
   std::vector<std::string_view> words = words_of(usage);
   if (words.empty() || help.empty())
-    throw std::runtime_error(
-        std::format("command `{}` needs a usage and a help to register (RV04)", usage));
+    fail("command `{}` needs a usage and a help to register (RV04)", usage);
   const bool optional = words.size() > 1 && words.back().front() == optional_open &&
                         words.back().back() == optional_close;
   if (optional)
@@ -477,11 +476,10 @@ Command Commands::add(std::string_view usage,
     *arguments = arguments->substr(1, arguments->size() - 2);
   if (arguments == words.begin() || ((more || optional) && arguments == words.end()) ||
       !std::all_of(arguments, words.end(), placeholder))
-    throw std::runtime_error(std::format(
-        "command `{}`: a usage is words of a lowercase letter, then lowercase "
-        "letters, digits and -, then placeholders of the kinds {}",
-        usage,
-        joined(kinds)));
+    fail("command `{}`: a usage is words of a lowercase letter, then lowercase "
+         "letters, digits and -, then placeholders of the kinds {}",
+         usage,
+         joined(kinds));
   const std::span<const std::string_view> name(words.begin(), arguments);
   // Two projects' nodes may share a name, and a project's an app's node's, but never the
   // engine's, nor two of one view, nor two apps'.
@@ -490,7 +488,7 @@ Command Commands::add(std::string_view usage,
                (!spec.by_node || !by_node || (!spec.view && !view) ||
                 (spec.view && view && *spec.view == *view));
       }))
-    throw std::runtime_error(std::format("command `{}` registers twice", usage));
+    fail("command `{}` registers twice", usage);
   std::vector<std::string_view> placeholders;
   for (auto word = arguments; word != words.end(); ++word)
     placeholders.push_back(*std::ranges::find(kinds, word->substr(1, word->size() - 2)));
@@ -538,10 +536,10 @@ std::string Commands::run(std::string_view line, std::string_view typed_at) {
   const std::size_t expected = spec->placeholders.size();
   const std::size_t least = spec->optional ? expected - 1 : expected;
   if (arguments.size() < least || (arguments.size() > expected && !spec->more))
-    throw std::runtime_error(std::format("{} does not fit the usage `{}`{}",
-                                         typed,
-                                         spec->usage,
-                                         spec->too_many(arguments)));
+    fail("{} does not fit the usage `{}`{}",
+         typed,
+         spec->usage,
+         spec->too_many(arguments));
   _log.write(Level::debug, Tag::run, std::format("command: {}", typed));
   std::filesystem::path from = paths_from(typed_at);
   const std::vector<std::string> paths = resolve(*spec, arguments, from);
@@ -588,8 +586,7 @@ std::string Commands::view_named(std::vector<std::string_view> &words) const {
   std::string name(words.front().substr(0, words.front().size() - 1));
   words.erase(words.begin());
   if (!name.empty() && (!_views || !_views->find(name)))
-    throw std::runtime_error(
-        std::format("no view is named {}; view list lists those a view hosts", name));
+    fail("no view is named {}; view list lists those a view hosts", name);
   return name;
 }
 
@@ -644,8 +641,7 @@ std::string_view Commands::current() {
 // view (V08).
 void Commands::switch_to(std::string_view name) {
   if (!name.empty() && (!_views || !_views->find(name)))
-    throw std::runtime_error(
-        std::format("no view is named {}; view list lists those a view hosts", name));
+    fail("no view is named {}; view list lists those a view hosts", name);
   _current = name;
   _holding.clear();
   for (std::optional<std::string> host = _views ? _views->host_of(name) : std::nullopt;
@@ -776,14 +772,12 @@ void Commands::source(const std::filesystem::path &file, bool past_refusals) {
   const std::filesystem::path path =
       std::filesystem::weakly_canonical(resolved(file), unread);
   if (unread)
-    throw std::runtime_error(
-        std::format("{}: cannot be read: {}", resolved(file).string(), unread.message()));
+    fail("{}: cannot be read: {}", resolved(file).string(), unread.message());
   if (std::ranges::find(_sourcing, path, &Source::file) != _sourcing.end())
-    throw std::runtime_error(std::format(
-        "{} is running already, so sourcing it again would never end", path.string()));
+    fail("{} is running already, so sourcing it again would never end", path.string());
   std::ifstream in(path);
   if (!in || !std::filesystem::is_regular_file(path))
-    throw std::runtime_error(std::format("{}: cannot be read", path.string()));
+    fail("{}: cannot be read", path.string());
   _sourcing.push_back({path});
   // Each line stands alone, as a log's must (V08): a group of its own, addressing the
   // view it names.
@@ -826,7 +820,7 @@ void Commands::source(const std::filesystem::path &file, bool past_refusals) {
         continue;
       }
       _sourcing.pop_back();
-      throw std::runtime_error(std::format("{}:{}: {}", path.string(), number, message));
+      fail("{}:{}: {}", path.string(), number, message);
     }
   }
   _sourcing.pop_back();
@@ -910,15 +904,13 @@ void Commands::command(Call &call) {
     const std::string_view file = call.arguments().front();
     std::error_code unread;
     if (std::filesystem::is_directory(file, unread))
-      throw std::runtime_error(
-          std::format("{} is a folder; log save writes a file", file));
+      fail("{} is a folder; log save writes a file", file);
     // A slip of the name would write over any file, a binary as soon as a log.
     if (call.is(_log_save) && std::filesystem::exists(file, unread) &&
         std::filesystem::path(file).extension() != ".log")
-      throw std::runtime_error(
-          std::format("{} is there and its name does not end in .log, so log save leaves "
-                      "it; log save force writes over it",
-                      file));
+      fail("{} is there and its name does not end in .log, so log save leaves "
+           "it; log save force writes over it",
+           file);
     Files::save(file, _session.text(std::filesystem::path(file).parent_path()));
     _log.write(Level::info, Tag::run, std::format("log save: {}", file));
   }
@@ -944,13 +936,12 @@ void Commands::quit(bool force) {
         lost.push_back(std::format("{}: {}", named, joined(files)));
     }
   if (!force && !lost.empty())
-    throw std::runtime_error(
-        std::format("quit would lose what nodes hold, or what no view save kept, so the "
-                    "run goes on; view save keeps a project, quit force ends it anyway, "
-                    "a project's files put back as its last view save left them, which "
-                    "no undo brings back, as the run ends; the window's close button "
-                    "pressed again does that too:\n{}",
-                    joined(lost, "\n")));
+    fail("quit would lose what nodes hold, or what no view save kept, so the "
+         "run goes on; view save keeps a project, quit force ends it anyway, "
+         "a project's files put back as its last view save left them, which "
+         "no undo brings back, as the run ends; the window's close button "
+         "pressed again does that too:\n{}",
+         joined(lost, "\n"));
   for (const std::string &view : played ? std::vector<std::string>() : unkept)
     try {
       _views->put_back(view);
@@ -1001,12 +992,12 @@ const Commands::Spec *Commands::match(std::span<const std::string_view> words,
   for (const Spec *const spec : found)
     views.push_back(spec->view->empty() ? std::string_view("the view vulpen started with")
                                         : std::string_view(*spec->view));
-  throw std::runtime_error(std::format("{} is a command of {}: a line names its view, as "
-                                       "`{}: {}`",
-                                       joined(found.front()->name, " "),
-                                       joined(views),
-                                       *found.front()->view,
-                                       found.front()->usage));
+  fail("{} is a command of {}: a line names its view, as "
+       "`{}: {}`",
+       joined(found.front()->name, " "),
+       joined(views),
+       *found.front()->view,
+       found.front()->usage);
 }
 
 // A relative path names a file beside the one running (RP02), so a script and the files
