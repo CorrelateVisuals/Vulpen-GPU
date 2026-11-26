@@ -49,10 +49,7 @@ constexpr std::array device_types{std::string_view{"other"},
                                   std::string_view{"cpu"}};
 
 bool layer_installed(const char *name) {
-  std::uint32_t count = 0;
-  vkEnumerateInstanceLayerProperties(&count, nullptr);
-  std::vector<VkLayerProperties> layers(count);
-  vkEnumerateInstanceLayerProperties(&count, layers.data());
+  const auto layers = enumerated(vkEnumerateInstanceLayerProperties);
   return std::ranges::any_of(layers, [&](const VkLayerProperties &layer) {
     return std::strcmp(layer.layerName, name) == 0;
   });
@@ -65,10 +62,7 @@ VkInstance create_instance(const Log &log) {
                                       .pApplicationName = "vulpen",
                                       .apiVersion = VK_API_VERSION_1_2};
   const bool validated = validate && layer_installed(validation_layer);
-  std::uint32_t count = 0;
-  vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
-  std::vector<VkExtensionProperties> offered(count);
-  vkEnumerateInstanceExtensionProperties(nullptr, &count, offered.data());
+  const auto offered = enumerated(vkEnumerateInstanceExtensionProperties, nullptr);
   std::vector<const char *> extensions;
   for (const VkExtensionProperties &extension : offered)
     if (std::string_view(extension.extensionName).ends_with(surface_extension))
@@ -106,10 +100,8 @@ bool meets_floor(VkPhysicalDevice device) {
 }
 
 bool has_extension(VkPhysicalDevice device, const char *name) {
-  std::uint32_t count = 0;
-  vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
-  std::vector<VkExtensionProperties> extensions(count);
-  vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
+  const auto extensions =
+      enumerated(vkEnumerateDeviceExtensionProperties, device, nullptr);
   return std::ranges::any_of(extensions, [&](const VkExtensionProperties &extension) {
     return std::strcmp(extension.extensionName, name) == 0;
   });
@@ -120,11 +112,7 @@ bool has_swapchain(VkPhysicalDevice device) {
 }
 
 std::vector<VkQueueFamilyProperties> families_of(VkPhysicalDevice device) {
-  std::uint32_t count = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-  std::vector<VkQueueFamilyProperties> families(count);
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &count, families.data());
-  return families;
+  return enumerated(vkGetPhysicalDeviceQueueFamilyProperties, device);
 }
 
 // One queue runs everything: compute, and draws where the device can, so a window can
@@ -189,10 +177,7 @@ std::size_t rank(VkPhysicalDevice device, std::string_view prefer) {
 // The GPUs that meet the floor, and present to the window where there is one.
 std::vector<VkPhysicalDevice>
 fit_devices(VkInstance instance, VkSurfaceKHR surface, const Log &log) {
-  std::uint32_t count = 0;
-  vkEnumeratePhysicalDevices(instance, &count, nullptr);
-  std::vector<VkPhysicalDevice> devices(count);
-  vkEnumeratePhysicalDevices(instance, &count, devices.data());
+  auto devices = enumerated(vkEnumeratePhysicalDevices, instance);
   std::erase_if(devices, [&](VkPhysicalDevice device) {
     const char *const reason = unfit(device, surface);
     log.write(

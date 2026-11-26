@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace VP {
@@ -18,6 +19,18 @@ class Window;
 
 // Throws with the call's name, so a Vulkan error names its cause (A02).
 void check(VkResult result, const char *call);
+
+// A list Vulkan hands in two calls, how many and then the items, read in one: args are
+// the call's own, before the count, and the item's type is that of its last parameter.
+template <class Result, class... Parameters, class... Args>
+auto enumerated(Result (*call)(Parameters...), Args... args) {
+  using Item = std::remove_pointer_t<decltype((Parameters{}, ...))>; // the last one's
+  std::uint32_t count = 0;
+  call(args..., &count, nullptr);
+  std::vector<Item> items(count);
+  call(args..., &count, items.data());
+  return items;
+}
 
 // The GPU machine: instance, device and queues. It needs no window to start (V07), yet a
 // window can open at any time: the instance takes every surface extension the loader

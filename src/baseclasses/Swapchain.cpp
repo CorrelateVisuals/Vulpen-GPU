@@ -30,10 +30,7 @@ constexpr VkClearColorValue clear_color{.float32 = {0.0f, 0.0f, 0.0f, 1.0f}};
 constexpr std::uint32_t size_from_swapchain = std::numeric_limits<std::uint32_t>::max();
 
 VkSurfaceFormatKHR pick_format(VkPhysicalDevice device, VkSurfaceKHR surface) {
-  std::uint32_t count = 0;
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
-  std::vector<VkSurfaceFormatKHR> formats(count);
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
+  const auto formats = enumerated(vkGetPhysicalDeviceSurfaceFormatsKHR, device, surface);
   if (formats.empty())
     throw std::runtime_error("the window's surface offers no image format");
   const auto found = std::ranges::find_if(formats, [](const VkSurfaceFormatKHR &format) {
@@ -46,10 +43,8 @@ VkSurfaceFormatKHR pick_format(VkPhysicalDevice device, VkSurfaceKHR surface) {
 // offers, may, and does with vsync, a frame each refresh.
 VkPresentModeKHR
 pick_present_mode(VkPhysicalDevice device, VkSurfaceKHR surface, bool vsync) {
-  std::uint32_t count = 0;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
-  std::vector<VkPresentModeKHR> modes(count);
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, modes.data());
+  const auto modes =
+      enumerated(vkGetPhysicalDeviceSurfacePresentModesKHR, device, surface);
   return !vsync && std::ranges::find(modes, VK_PRESENT_MODE_MAILBOX_KHR) != modes.end()
              ? VK_PRESENT_MODE_MAILBOX_KHR
              : VK_PRESENT_MODE_FIFO_KHR;
@@ -331,10 +326,7 @@ void Swapchain::make() {
 }
 
 void Swapchain::make_images() {
-  std::uint32_t count = 0;
-  vkGetSwapchainImagesKHR(_device, _swapchain, &count, nullptr);
-  std::vector<VkImage> images(count);
-  vkGetSwapchainImagesKHR(_device, _swapchain, &count, images.data());
+  const auto images = enumerated(vkGetSwapchainImagesKHR, _device, _swapchain);
   _depth = std::make_unique<Image>(
       _resources.image(_extent, _resources.depth_format(), Fill::depth, 1, _samples));
   if (_samples != VK_SAMPLE_COUNT_1_BIT)
