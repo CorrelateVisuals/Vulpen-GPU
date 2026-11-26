@@ -6,6 +6,9 @@
 
 namespace VP {
 
+// "And I give unto them eternal life; and they shall never perish, neither shall any man
+// pluck them out of my hand." John 10:28
+
 // A Vulkan object, destroyed by destroy, Vulkan's function for its kind, as
 // vkDestroyQueryPool, with the parent that made it, a device or the instance; the
 // instance and a device have none. Its one owner holds it as a member (A01), so it goes
