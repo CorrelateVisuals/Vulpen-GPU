@@ -1,5 +1,7 @@
 #pragma once
 
+#include "baseclasses/Owned.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstddef>
@@ -39,13 +41,39 @@ void make_mip_levels(std::span<std::byte> chain,
                      VkFormat format,
                      std::uint32_t levels);
 
+// All a buffer is, which goes and moves as one: VMA's handle with the allocator and
+// memory it came from, and what the buffer is besides, so one moved from holds none of
+// it.
+struct BufferMade {
+  VmaAllocator_T *allocator = nullptr;
+  VkBuffer handle = VK_NULL_HANDLE;
+  VmaAllocation_T *allocation = nullptr;
+  VkDeviceAddress address = 0;
+  std::byte *mapped = nullptr;
+  VkDeviceSize size = 0;
+  Memory memory = Memory::device;
+  bool operator==(const BufferMade &) const = default;
+};
+// As BufferMade, for an image; its view is apart, as it goes before the image.
+struct ImageMade {
+  VmaAllocator_T *allocator = nullptr;
+  VkImage handle = VK_NULL_HANDLE;
+  VmaAllocation_T *allocation = nullptr;
+  std::uint32_t width = 0;
+  std::uint32_t height = 0;
+  VkFormat format = VK_FORMAT_UNDEFINED;
+  Fill fill = Fill::copy;
+  std::uint32_t mip_levels = 1;
+  bool operator==(const ImageMade &) const = default;
+};
+// VMA's destroys, as an Owned takes them: VMA's header stays in Resources.cpp.
+void destroy_buffer(BufferMade buffer);
+void destroy_image(ImageMade image);
+void destroy_allocator(VmaAllocator_T *allocator);
+
 // What the GPU holds: one owner for every buffer and image; the rest borrow handles.
 class Buffer {
 public:
-  Buffer(Buffer &&other) noexcept;
-  Buffer &operator=(Buffer &&other) noexcept;
-  ~Buffer();
-
   VkBuffer handle() const;
   VkDeviceAddress address() const;
   VkDeviceSize size() const;
@@ -59,22 +87,12 @@ private:
   friend class Resources;
   Buffer() = default;
 
-  VmaAllocator_T *_allocator = nullptr;
-  VkBuffer _buffer = VK_NULL_HANDLE;
-  VmaAllocation_T *_allocation = nullptr;
-  VkDeviceAddress _address = 0;
-  std::byte *_mapped = nullptr;
-  VkDeviceSize _size = 0;
-  Memory _memory = Memory::device;
+  Owned<BufferMade, destroy_buffer> _made;
 };
 
 // An image shaders sample, in device memory, which a copy or a draw fills.
 class Image {
 public:
-  Image(Image &&other) noexcept;
-  Image &operator=(Image &&other) noexcept;
-  ~Image();
-
   VkImage handle() const;
   VkImageView view() const;
   VkExtent2D extent() const;
@@ -86,15 +104,9 @@ private:
   friend class Resources;
   Image() = default;
 
-  VmaAllocator_T *_allocator = nullptr;
-  VkDevice _device = VK_NULL_HANDLE;
-  VkImage _image = VK_NULL_HANDLE;
-  VmaAllocation_T *_allocation = nullptr;
-  VkImageView _view = VK_NULL_HANDLE;
-  VkExtent2D _extent{};
-  VkFormat _format = VK_FORMAT_UNDEFINED;
-  Fill _fill = Fill::copy;
-  std::uint32_t _mip_levels = 1;
+  Owned<ImageMade, destroy_image> _made;
+  // Declared after, so it goes first.
+  Owned<VkImageView, vkDestroyImageView, VkDevice> _view;
 };
 
 class Resources {
@@ -104,7 +116,6 @@ public:
             VkPhysicalDevice physical_device,
             VkDevice device,
             bool budget);
-  ~Resources();
   Resources(const Resources &) = delete;
   Resources &operator=(const Resources &) = delete;
 
@@ -141,7 +152,7 @@ public:
 private:
   const VkPhysicalDevice _physical_device;
   const VkDevice _device;
-  VmaAllocator_T *_allocator = nullptr;
+  Owned<VmaAllocator_T *, destroy_allocator> _allocator;
   VkFormat _depth_format = VK_FORMAT_UNDEFINED;
 };
 

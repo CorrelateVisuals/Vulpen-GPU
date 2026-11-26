@@ -24,7 +24,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Platform.cpp` | `<GLFW/glfw3.h>` `<cxxabi.h>` `<dlfcn.h>` `<fcntl.h>` `<poll.h>` `<sokol_audio.h>` `<sys/file.h>` `<sys/ioctl.h>` `<termios.h>` `<time.h>` `<unistd.h>` `<windows.h>` `baseclasses/Fail.h` `baseclasses/Platform.h` |
 | `baseclasses/Platform.h` | `<vulkan/vulkan.h>` |
 | `baseclasses/Resources.cpp` | `<vk_mem_alloc.h>` `baseclasses/Fail.h` `baseclasses/Mechanics.h` `baseclasses/Resources.h` |
-| `baseclasses/Resources.h` | `<vulkan/vulkan.h>` |
+| `baseclasses/Resources.h` | `<vulkan/vulkan.h>` `baseclasses/Owned.h` |
 | `baseclasses/Shader.cpp` | `baseclasses/Fail.h` `baseclasses/Shader.h` |
 | `baseclasses/Shader.h` | — |
 | `baseclasses/Swapchain.cpp` | `baseclasses/Log.h` `baseclasses/Mechanics.h` `baseclasses/Platform.h` `baseclasses/Resources.h` `baseclasses/Swapchain.h` |

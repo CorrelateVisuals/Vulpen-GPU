@@ -103,113 +103,12 @@ VmaMemoryUsage memory_for(VmaAllocator allocator, const VkImageCreateInfo &info)
              : VMA_MEMORY_USAGE_AUTO;
 }
 
-} // namespace
-
-Buffer::Buffer(Buffer &&other) noexcept {
-  *this = std::move(other);
-}
-
-Buffer &Buffer::operator=(Buffer &&other) noexcept {
-  std::swap(_allocator, other._allocator);
-  std::swap(_buffer, other._buffer);
-  std::swap(_allocation, other._allocation);
-  std::swap(_address, other._address);
-  std::swap(_mapped, other._mapped);
-  std::swap(_size, other._size);
-  std::swap(_memory, other._memory);
-  return *this;
-}
-
-Buffer::~Buffer() {
-  if (_buffer)
-    vmaDestroyBuffer(_allocator, _buffer, _allocation);
-}
-
-VkBuffer Buffer::handle() const {
-  return _buffer;
-}
-
-VkDeviceAddress Buffer::address() const {
-  return _address;
-}
-
-VkDeviceSize Buffer::size() const {
-  return _size;
-}
-
-Memory Buffer::memory() const {
-  return _memory;
-}
-
-std::span<std::byte> Buffer::bytes() const {
-  if (!_mapped)
-    return {};
-  return {_mapped, _size};
-}
-
-void Buffer::flush() const {
-  check(vmaFlushAllocation(_allocator, _allocation, 0, VK_WHOLE_SIZE),
-        "vmaFlushAllocation");
-}
-
-void Buffer::invalidate() const {
-  check(vmaInvalidateAllocation(_allocator, _allocation, 0, VK_WHOLE_SIZE),
-        "vmaInvalidateAllocation");
-}
-
-Image::Image(Image &&other) noexcept {
-  *this = std::move(other);
-}
-
-Image &Image::operator=(Image &&other) noexcept {
-  std::swap(_allocator, other._allocator);
-  std::swap(_device, other._device);
-  std::swap(_image, other._image);
-  std::swap(_allocation, other._allocation);
-  std::swap(_view, other._view);
-  std::swap(_extent, other._extent);
-  std::swap(_format, other._format);
-  std::swap(_fill, other._fill);
-  std::swap(_mip_levels, other._mip_levels);
-  return *this;
-}
-
-Image::~Image() {
-  if (!_image)
-    return;
-  vkDestroyImageView(_device, _view, nullptr);
-  vmaDestroyImage(_allocator, _image, _allocation);
-}
-
-VkImage Image::handle() const {
-  return _image;
-}
-
-VkImageView Image::view() const {
-  return _view;
-}
-
-VkExtent2D Image::extent() const {
-  return _extent;
-}
-
-VkFormat Image::format() const {
-  return _format;
-}
-
-Fill Image::fill() const {
-  return _fill;
-}
-
-std::uint32_t Image::mip_levels() const {
-  return _mip_levels;
-}
-
-Resources::Resources(VkInstance instance,
-                     VkPhysicalDevice physical_device,
-                     VkDevice device,
-                     bool budget)
-    : _physical_device(physical_device), _device(device) {
+// Every buffer is reachable by its device address (RV02); with budget, VMA keeps to what
+// the device says it has free.
+VmaAllocator made_allocator(VkInstance instance,
+                            VkPhysicalDevice physical_device,
+                            VkDevice device,
+                            bool budget) {
   const VmaAllocatorCreateFlags told =
       budget ? VmaAllocatorCreateFlags{VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT} : 0;
   const VmaAllocatorCreateInfo info{
@@ -218,7 +117,87 @@ Resources::Resources(VkInstance instance,
       .device = device,
       .instance = instance,
       .vulkanApiVersion = VK_API_VERSION_1_2};
-  check(vmaCreateAllocator(&info, &_allocator), "vmaCreateAllocator");
+  VmaAllocator allocator = nullptr;
+  check(vmaCreateAllocator(&info, &allocator), "vmaCreateAllocator");
+  return allocator;
+}
+
+} // namespace
+
+void destroy_buffer(BufferMade buffer) {
+  vmaDestroyBuffer(buffer.allocator, buffer.handle, buffer.allocation);
+}
+
+void destroy_image(ImageMade image) {
+  vmaDestroyImage(image.allocator, image.handle, image.allocation);
+}
+
+void destroy_allocator(VmaAllocator_T *allocator) {
+  vmaDestroyAllocator(allocator);
+}
+
+VkBuffer Buffer::handle() const {
+  return _made->handle;
+}
+
+VkDeviceAddress Buffer::address() const {
+  return _made->address;
+}
+
+VkDeviceSize Buffer::size() const {
+  return _made->size;
+}
+
+Memory Buffer::memory() const {
+  return _made->memory;
+}
+
+std::span<std::byte> Buffer::bytes() const {
+  if (!_made->mapped)
+    return {};
+  return {_made->mapped, _made->size};
+}
+
+void Buffer::flush() const {
+  check(vmaFlushAllocation(_made->allocator, _made->allocation, 0, VK_WHOLE_SIZE),
+        "vmaFlushAllocation");
+}
+
+void Buffer::invalidate() const {
+  check(vmaInvalidateAllocation(_made->allocator, _made->allocation, 0, VK_WHOLE_SIZE),
+        "vmaInvalidateAllocation");
+}
+
+VkImage Image::handle() const {
+  return _made->handle;
+}
+
+VkImageView Image::view() const {
+  return _view;
+}
+
+VkExtent2D Image::extent() const {
+  return {_made->width, _made->height};
+}
+
+VkFormat Image::format() const {
+  return _made->format;
+}
+
+Fill Image::fill() const {
+  return _made->fill;
+}
+
+std::uint32_t Image::mip_levels() const {
+  return _made->mip_levels;
+}
+
+Resources::Resources(VkInstance instance,
+                     VkPhysicalDevice physical_device,
+                     VkDevice device,
+                     bool budget)
+    : _physical_device(physical_device), _device(device),
+      _allocator(made_allocator(instance, physical_device, device, budget)) {
   constexpr std::array depths{
       VK_FORMAT_D32_SFLOAT, VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D16_UNORM};
   constexpr VkFormatFeatureFlags tested = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
@@ -233,10 +212,6 @@ Resources::Resources(VkInstance instance,
   }
 }
 
-Resources::~Resources() {
-  vmaDestroyAllocator(_allocator);
-}
-
 Buffer
 Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) const {
   const VkBufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -245,10 +220,11 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
                                     usage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT};
   const VmaAllocationCreateInfo where{.flags = placement(memory) | within,
                                       .usage = VMA_MEMORY_USAGE_AUTO};
-  Buffer buffer;
+  VkBuffer made_buffer = VK_NULL_HANDLE;
+  VmaAllocation allocation = nullptr;
   VmaAllocationInfo made{};
-  if (const VkResult result = vmaCreateBuffer(
-          _allocator, &info, &where, &buffer._buffer, &buffer._allocation, &made);
+  if (const VkResult result =
+          vmaCreateBuffer(_allocator, &info, &where, &made_buffer, &allocation, &made);
       result != VK_SUCCESS) {
     // The type such a buffer takes, found for one of a byte, as one of the size that
     // failed would fail again.
@@ -262,13 +238,17 @@ Resources::buffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) co
               gigabytes(size),
               typed ? free_of(_allocator, type) : 0);
   }
-  buffer._allocator = _allocator;
-  buffer._mapped = static_cast<std::byte *>(made.pMappedData);
-  buffer._size = size;
-  buffer._memory = memory;
   const VkBufferDeviceAddressInfo address{
-      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = buffer._buffer};
-  buffer._address = vkGetBufferDeviceAddress(_device, &address);
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = made_buffer};
+  Buffer buffer;
+  buffer._made = Owned<BufferMade, destroy_buffer>(
+      BufferMade{.allocator = _allocator,
+                 .handle = made_buffer,
+                 .allocation = allocation,
+                 .address = vkGetBufferDeviceAddress(_device, &address),
+                 .mapped = static_cast<std::byte *>(made.pMappedData),
+                 .size = size,
+                 .memory = memory});
   return buffer;
 }
 
@@ -298,9 +278,10 @@ Image Resources::image(VkExtent2D extent,
                                .usage = usage};
   const VmaAllocationCreateInfo where{.flags = within,
                                       .usage = memory_for(_allocator, info)};
-  Image image;
-  if (const VkResult result = vmaCreateImage(
-          _allocator, &info, &where, &image._image, &image._allocation, nullptr);
+  VkImage made_image = VK_NULL_HANDLE;
+  VmaAllocation allocation = nullptr;
+  if (const VkResult result =
+          vmaCreateImage(_allocator, &info, &where, &made_image, &allocation, nullptr);
       result != VK_SUCCESS) {
     VkImageCreateInfo least = info; // as a buffer's, for a pixel
     least.extent = {1, 1, 1};
@@ -312,24 +293,29 @@ Image Resources::image(VkExtent2D extent,
               std::format("an image of {} by {} pixels", extent.width, extent.height),
               typed ? free_of(_allocator, type) : 0);
   }
-  image._allocator = _allocator;
-  image._device = _device;
-  image._extent = extent;
-  image._format = format;
-  image._fill = fill;
-  image._mip_levels = mip_levels;
+  Image image;
+  image._made = Owned<ImageMade, destroy_image>(ImageMade{.allocator = _allocator,
+                                                          .handle = made_image,
+                                                          .allocation = allocation,
+                                                          .width = extent.width,
+                                                          .height = extent.height,
+                                                          .format = format,
+                                                          .fill = fill,
+                                                          .mip_levels = mip_levels});
   // Chosen outside the braces: MSVC gives the enum an int type, and a choice made at run
   // time inside braces narrows into the unsigned mask, which MSVC refuses to compile.
   const VkImageAspectFlags aspect =
       fill == Fill::depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
   const VkImageViewCreateInfo view{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                                   .image = image._image,
+                                   .image = made_image,
                                    .viewType = VK_IMAGE_VIEW_TYPE_2D,
                                    .format = format,
                                    .subresourceRange = {.aspectMask = aspect,
                                                         .levelCount = mip_levels,
                                                         .layerCount = 1}};
-  check(vkCreateImageView(_device, &view, nullptr, &image._view), "vkCreateImageView");
+  VkImageView made_view = VK_NULL_HANDLE;
+  check(vkCreateImageView(_device, &view, nullptr, &made_view), "vkCreateImageView");
+  image._view = {_device, made_view};
   return image;
 }
 
