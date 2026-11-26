@@ -3,6 +3,8 @@
 // loads differ by system, and each system's branch reads best beside the other's.
 #include "baseclasses/Platform.h"
 
+#include "baseclasses/Fail.h"
+
 #include <GLFW/glfw3.h>
 #define SOKOL_AUDIO_IMPL
 #include <sokol_audio.h>
@@ -58,8 +60,7 @@ constexpr const char *app_id = "vulpen";
 [[noreturn]] void glfw_failed(const char *call) {
   const char *description = nullptr;
   glfwGetError(&description);
-  throw std::runtime_error(
-      std::format("{} failed: {}", call, description ? description : "no reason given"));
+  fail("{} failed: {}", call, description ? description : "no reason given");
 }
 
 // The keys a layout prints no character for, by GLFW's code; F1 to F12 follow on.
@@ -275,13 +276,11 @@ Speakers::Speakers(std::uint32_t rate, std::uint32_t channels, std::uint32_t buf
   if (!saudio_isvalid()) {
     const std::string why = trouble();
     saudio_shutdown();
-    throw std::runtime_error(std::format(
-        "the system's sound output did not open{}{}", why.empty() ? "" : ": ", why));
+    fail("the system's sound output did not open{}{}", why.empty() ? "" : ": ", why);
   }
   if (const int plays = saudio_sample_rate(); plays != static_cast<int>(rate)) {
     saudio_shutdown();
-    throw std::runtime_error(std::format(
-        "the sound output plays {} Hz, not the {} Hz frames make", plays, rate));
+    fail("the sound output plays {} Hz, not the {} Hz frames make", plays, rate);
   }
 }
 
@@ -559,7 +558,7 @@ void Shell::start(const std::string &program, std::span<const std::string> argum
   for (const std::string &argument : arguments)
     line.append(std::format(" \"{}\"", argument));
   if (run(std::format("where /q \"{}\" && start \"\" {}", program, line)) != 0)
-    throw std::runtime_error(std::format("{} is not on the PATH", program));
+    fail("{} is not on the PATH", program);
 }
 
 namespace {
@@ -805,7 +804,7 @@ void Shell::start(const std::string &program, std::span<const std::string> argum
                               single_quoted(program),
                               line)
                       .c_str()) != 0)
-    throw std::runtime_error(std::format("{} is not on the PATH", program));
+    fail("{} is not on the PATH", program);
 }
 
 // The streams flush first, as nothing else ends this process to flush them.
@@ -893,8 +892,7 @@ void Files::save(const std::filesystem::path &file, std::string_view text) {
   if (!out || failed) {
     std::error_code gone; // the temp file may never have been made
     std::filesystem::remove(temp, gone);
-    throw std::runtime_error(std::format(
-        "{}: cannot be written{}", file.string(), failed ? ": " + failed.message() : ""));
+    fail("{}: cannot be written{}", file.string(), failed ? ": " + failed.message() : "");
   }
 }
 
@@ -902,9 +900,9 @@ void Files::save(const std::filesystem::path &file, std::string_view text) {
 void Files::remove(const std::filesystem::path &file) {
   std::error_code failed;
   if (!std::filesystem::remove(file, failed))
-    throw std::runtime_error(std::format("{}: cannot be deleted: {}",
-                                         file.string(),
-                                         failed ? failed.message() : "it is not there"));
+    fail("{}: cannot be deleted: {}",
+         file.string(),
+         failed ? failed.message() : "it is not there");
   if (std::filesystem::is_empty(file.parent_path(), failed) && !failed)
     std::filesystem::remove(file.parent_path(), failed);
 }
@@ -920,8 +918,7 @@ void Files::clear(const std::filesystem::path &folder) {
       files.push_back(entry->path());
   for (const std::filesystem::path &file : files)
     if (!std::filesystem::remove(file, failed) && failed)
-      throw std::runtime_error(
-          std::format("{}: cannot be deleted: {}", file.string(), failed.message()));
+      fail("{}: cannot be deleted: {}", file.string(), failed.message());
 }
 
 // A temp a killed run of the same process id left goes first, so it never blocks the
@@ -929,12 +926,11 @@ void Files::clear(const std::filesystem::path &folder) {
 void Files::copy(const std::filesystem::path &from, const std::filesystem::path &to) {
   std::error_code failed;
   if (std::filesystem::exists(to, failed))
-    throw std::runtime_error(std::format("{} exists already", to.string()));
+    fail("{} exists already", to.string());
   const std::filesystem::path inside =
       to.lexically_normal().lexically_relative(from.lexically_normal());
   if (!inside.empty() && *inside.begin() != "..")
-    throw std::runtime_error(std::format(
-        "{} is inside {}, so it cannot hold a copy of it", to.string(), from.string()));
+    fail("{} is inside {}, so it cannot hold a copy of it", to.string(), from.string());
   const std::filesystem::path temp = temp_beside(to);
   std::filesystem::remove_all(temp, failed);
   if (!failed && to.has_parent_path())
@@ -946,22 +942,20 @@ void Files::copy(const std::filesystem::path &from, const std::filesystem::path 
   if (failed) {
     std::error_code gone; // the temp may never have been made
     std::filesystem::remove_all(temp, gone);
-    throw std::runtime_error(std::format(
-        "{}: cannot be copied to {}: {}", from.string(), to.string(), failed.message()));
+    fail("{}: cannot be copied to {}: {}", from.string(), to.string(), failed.message());
   }
 }
 
 void Files::rename(const std::filesystem::path &from, const std::filesystem::path &to) {
   std::error_code failed;
   if (std::filesystem::exists(to, failed))
-    throw std::runtime_error(std::format("{} exists already", to.string()));
+    fail("{} exists already", to.string());
   if (to.has_parent_path())
     std::filesystem::create_directories(to.parent_path(), failed);
   if (!failed)
     std::filesystem::rename(from, to, failed);
   if (failed)
-    throw std::runtime_error(std::format(
-        "{}: cannot be renamed to {}: {}", from.string(), to.string(), failed.message()));
+    fail("{}: cannot be renamed to {}: {}", from.string(), to.string(), failed.message());
 }
 
 // A folder there already is refused as a file there is, so a folder made is always a new
@@ -969,11 +963,10 @@ void Files::rename(const std::filesystem::path &from, const std::filesystem::pat
 void Files::make(const std::filesystem::path &folder) {
   std::error_code failed;
   if (std::filesystem::exists(folder, failed))
-    throw std::runtime_error(std::format("{} exists already", folder.string()));
+    fail("{} exists already", folder.string());
   std::filesystem::create_directories(folder, failed);
   if (failed)
-    throw std::runtime_error(
-        std::format("{}: cannot be made: {}", folder.string(), failed.message()));
+    fail("{}: cannot be made: {}", folder.string(), failed.message());
 }
 
 Library::Library(Library &&other) noexcept
