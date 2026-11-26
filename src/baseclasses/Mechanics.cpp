@@ -1,5 +1,6 @@
 #include "baseclasses/Mechanics.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Log.h"
 #include "baseclasses/Platform.h"
 
@@ -187,10 +188,9 @@ fit_devices(VkInstance instance, VkSurfaceKHR surface, const Log &log) {
     return reason != nullptr;
   });
   if (devices.empty())
-    throw std::runtime_error(
-        std::format("no GPU meets the Vulkan floor: 1.2 with buffer device address and "
-                    "descriptor indexing (RV01){}; --log debug says why for each GPU",
-                    surface ? ", and presents to the window" : ""));
+    fail("no GPU meets the Vulkan floor: 1.2 with buffer device address and "
+         "descriptor indexing (RV01){}; --log debug says why for each GPU",
+         surface ? ", and presents to the window" : "");
   return devices;
 }
 
@@ -250,7 +250,7 @@ VkDevice create_device(VkPhysicalDevice physical_device, std::uint32_t family) {
 
 void check(VkResult result, const char *call) {
   if (result != VK_SUCCESS)
-    throw std::runtime_error(std::format("{} failed: VkResult {}", call, int{result}));
+    fail("{} failed: VkResult {}", call, int{result});
 }
 
 // A drawn image starts each frame cleared, so what it held before is dropped. Once
