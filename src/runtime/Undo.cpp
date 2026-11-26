@@ -1,5 +1,6 @@
 #include "runtime/Undo.h"
 
+#include "baseclasses/Fail.h"
 #include "runtime/Commands.h"
 #include "runtime/View.h"
 
@@ -337,12 +338,11 @@ void Undo::take_back(Call &call, bool again) {
               : "nothing to undo: undo takes back a line typed, picked from a menu or "
                 "sent by the graph's keys, that changed a project or its files");
   if (!from.back().too_large.empty())
-    throw std::runtime_error(std::format(
-        "{} is past the {} MB a step keeps of a file, so {} cannot bring it back; "
-        "nothing changed",
-        from.back().too_large.string(),
-        kept_most >> 20,
-        again ? "redo" : "undo"));
+    fail("{} is past the {} MB a step keeps of a file, so {} cannot bring it back; "
+         "nothing changed",
+         from.back().too_large.string(),
+         kept_most >> 20,
+         again ? "redo" : "undo");
   check(from.back(), again);
   if (!again)
     check_made(from.back());
@@ -400,13 +400,12 @@ void Undo::check_renames(const Step &step, bool again) {
         now_at(step, index, again ? change.to : change.path, again);
     const bool taken = to && there(*to);
     if (taken || (from && !there(*from)))
-      throw std::runtime_error(
-          std::format("{} {} since the line {}, which {} would {}; nothing changed",
-                      taken ? to->string() : from->string(),
-                      taken ? "is there again" : "is gone",
-                      line_of(step.line, step.hosted),
-                      again ? "redo" : "undo",
-                      taken ? "write over" : "need"));
+      fail("{} {} since the line {}, which {} would {}; nothing changed",
+           taken ? to->string() : from->string(),
+           taken ? "is there again" : "is gone",
+           line_of(step.line, step.hosted),
+           again ? "redo" : "undo",
+           taken ? "write over" : "need");
   }
 }
 
@@ -425,11 +424,11 @@ void Undo::check_kept(const Step &step, std::size_t index, bool again) {
   const bool as_left = saved ? holds(*at, change.after) : !there(*at);
   const bool as_found = change.before ? holds(*at, *change.before) : there(*at) != saved;
   if (again ? !as_found : !as_left)
-    throw std::runtime_error(std::format("{} changed since the line {}, which {} would "
-                                         "lose; nothing changed",
-                                         at->string(),
-                                         line_of(step.line, step.hosted),
-                                         again ? "redo" : "undo"));
+    fail("{} changed since the line {}, which {} would "
+         "lose; nothing changed",
+         at->string(),
+         line_of(step.line, step.hosted),
+         again ? "redo" : "undo");
 }
 
 // Where the path of the change at the index is now, past the step's renames between
@@ -497,12 +496,11 @@ void Undo::check_made(const Step &step) {
             first_not(root, [&](const std::filesystem::directory_entry &entry) {
               return made_by(step, made, entry);
             }))
-      throw std::runtime_error(
-          std::format("{} is new or changed since the line {}, and undo would delete it "
-                      "with {}; nothing changed",
-                      since->string(),
-                      line_of(step.line, step.hosted),
-                      root.string()));
+      fail("{} is new or changed since the line {}, and undo would delete it "
+           "with {}; nothing changed",
+           since->string(),
+           line_of(step.line, step.hosted),
+           root.string());
   }
 }
 

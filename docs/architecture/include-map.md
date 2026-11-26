@@ -54,7 +54,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `runtime/Schedule.cpp` | `baseclasses/Fail.h` `baseclasses/Passes.h` `runtime/Bound.h` `runtime/Schedule.h` `runtime/Text.h` |
 | `runtime/Schedule.h` | `<vulkan/vulkan.h>` `baseclasses/Log.h` `baseclasses/Resources.h` |
 | `runtime/Text.h` | — |
-| `runtime/Undo.cpp` | `runtime/Commands.h` `runtime/Undo.h` `runtime/View.h` |
+| `runtime/Undo.cpp` | `baseclasses/Fail.h` `runtime/Commands.h` `runtime/Undo.h` `runtime/View.h` |
 | `runtime/Undo.h` | — |
 | `runtime/View.h` | — |
 | `runtime/Views.cpp` | `baseclasses/Fail.h` `runtime/Commands.h` `runtime/Manifest.h` `runtime/Schedule.h` `runtime/Undo.h` `runtime/View.h` `runtime/Views.h` |
