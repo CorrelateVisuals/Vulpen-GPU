@@ -259,6 +259,8 @@ private:
   struct Holds {
     std::vector<std::string> lines;
     std::size_t count = 0;
+    // The frame's next line, two words and what is between them.
+    void add(std::string_view first, std::string_view between, std::string_view second);
   };
 
   void command(Call &call) override;

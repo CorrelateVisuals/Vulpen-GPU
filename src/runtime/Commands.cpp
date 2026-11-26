@@ -659,10 +659,16 @@ void Commands::frame() {
   _reading.count = 0;
 }
 
+void Commands::Holds::add(std::string_view first,
+                          std::string_view between,
+                          std::string_view second) {
+  if (count == lines.size())
+    lines.emplace_back();
+  lines[count++].assign(first).append(between).append(second);
+}
+
 void Commands::hold(std::string_view node, std::string_view what) {
-  if (_holds.count == _holds.lines.size())
-    _holds.lines.emplace_back();
-  _holds.lines[_holds.count++].assign(node).append(": ").append(what);
+  _holds.add(node, ": ", what);
 }
 
 // This frame's holds, then those of the frame before it has not repeated yet, as a
@@ -672,9 +678,7 @@ std::vector<std::string_view> Commands::holding() const {
 }
 
 void Commands::reads_terminal(std::string_view view, std::string_view node) {
-  if (_reading.count == _reading.lines.size())
-    _reading.lines.emplace_back();
-  _reading.lines[_reading.count++].assign(view).append(":").append(node);
+  _reading.add(view, ":", node);
 }
 
 // The frame before's too, as a line runs before the reader cooks in its frame.
