@@ -9,7 +9,7 @@ baseclasses/Mechanics.cpp	248	11
 baseclasses/Mechanics.h	7	1
 baseclasses/Owned.h	20	0
 baseclasses/Passes.cpp	23	0
-baseclasses/Pipelines.cpp	318	2
+baseclasses/Pipelines.cpp	318	1
 baseclasses/Pipelines.h	5	0
 baseclasses/Platform.cpp	452	119
 baseclasses/Resources.cpp	277	2
@@ -30,7 +30,7 @@ runtime/Ports.cpp	559	69
 runtime/Runtime.cpp	465	81
 runtime/Schedule.cpp	718	57
 runtime/Text.h	30	2
-runtime/Undo.cpp	379	17
+runtime/Undo.cpp	379	16
 runtime/View.h	95	1
 runtime/Views.cpp	706	81
 runtime/recipes/vulpen/library/parts/bar/Bar.cpp	27	0
