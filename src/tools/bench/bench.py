@@ -210,12 +210,20 @@ def build(preset: str, chosen: list[Bench] | None = None) -> None:
     if not (folder / "CMakeCache.txt").is_file():
         subprocess.run(["cmake", "--preset", preset], cwd=ROOT, check=True,
                        stdout=subprocess.DEVNULL)
-    targets = [f"bench-{bench.name}" for bench in chosen] if chosen else ["bench"]
-    done = subprocess.run(["cmake", "--build", str(folder), "--target", *targets,
-                           "--parallel", JOBS], cwd=ROOT, capture_output=True, text=True)
-    if done.returncode != 0:
-        sys.exit(f"the {preset} benches did not build:\n{done.stdout[-4000:]}"
-                 f"{done.stderr[-4000:]}")
+    def built(targets: list[str]) -> subprocess.CompletedProcess:
+        return subprocess.run(["cmake", "--build", str(folder), "--target", *targets,
+                               "--parallel", JOBS], cwd=ROOT, capture_output=True, text=True)
+
+    done = built([f"bench-{bench.name}" for bench in chosen] if chosen else ["bench"])
+    if done.returncode == 0:
+        return
+    # A build stops at the first bench that fails, so each then builds alone, and one run
+    # names every bench that fails: CI's Windows build is the only MSVC compile.
+    failed = [f"bench-{bench.name}:\n{alone.stdout[-4000:]}{alone.stderr[-4000:]}"
+              for bench in chosen or benches([])
+              if (alone := built([f"bench-{bench.name}"])).returncode != 0]
+    sys.exit(f"the {preset} benches did not build:\n" + "\n".join(
+        failed or [f"{done.stdout[-4000:]}{done.stderr[-4000:]}"]))
 
 
 def ids_of(bench: Bench, preset: str) -> list[str]:
