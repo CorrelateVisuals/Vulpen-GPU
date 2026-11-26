@@ -1,0 +1,15 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/image-file/ImageFile.cpp, a call each (src/tools/bench/bench.py).
+
+## ImageFile.cpp/ImageFile::bind
+[("file", "/p/a.png"), ("switch", "pane")] -> ["texture picture of u8vec4", "file /p/a.png", "output tabs"]; tabs [a.png (preview)]
+[("switch", "pane")] -> ["texture picture of u8vec4", "output tabs"]; tabs []
+
+## ImageFile.cpp/ImageFile::cook
+a file not there -> sent [": param set pane shown second", ": image clear n.picture"]; uploads []; logged ["error: <here>/gone.png is empty, or not there"]
+a.png opened -> sent [": param set pane shown second"]; uploads ["image 0 2x1, 1 levels, 8 bytes #8869e677"]; logged []
+a.png opened -> sent [": param set pane shown second"]; uploads ["image 0 2x1, 1 levels, 8 bytes #8869e677"]; logged []
+and the frame after -> sent []; uploads []; logged []
+bound again with no file -> sent [": image clear n.picture", ": param set pane shown first"]; uploads []; logged []
+its version as before -> sent []; uploads []; logged []
+its version moved -> sent []; uploads ["image 0 2x1, 1 levels, 8 bytes #8869e677"]; logged []
+then a file not there opened in its place -> sent [": param set pane shown second", ": image clear n.picture"]; uploads []; logged ["error: <here>/gone.png is empty, or not there"]
