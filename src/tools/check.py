@@ -27,11 +27,14 @@ release: before main moves to this commit, run in a tree that holds the commit a
 git worktree add makes one, with main behind it, so main fast-forwards to exactly what
 ran: nightly, then LOC.md as the builds count it and the README's pictures as the release
 build takes them (both committed), the commit built as GitHub's source download holds it,
-and main's own lines run on main's build and this one (compare-main.py). Its report adds
-what they found and what to try by hand, and goes to docs/reports/ under the commit's
-name. Some hours. Before it, run the sweep's tab, walks and seen at the commit
-(command-sweep.py --only tab,walk,seen), about eight minutes: no other tier runs them, and
-a tool bug they find moves the commit, so the whole release would run again.
+and main's own lines run on main's build and this one (compare-main.py). Once the builds
+are made, the review's verdict on every engine function at the commit comes first
+(reviewed): with one waiting, the rest stays skipped. Its report adds what they found and
+what to try by hand, and goes to docs/reports/ under the commit's name. Some hours.
+Before it, at the commit, give each engine function new or changed since its verdict the
+review's round (bench.py inventory, then unjudged.md's list), and run the sweep's tab,
+walks and seen (command-sweep.py --only tab,walk,seen), about eight minutes: no other
+tier runs them. A fix either finds moves the commit, so the whole release would run again.
 install-hook: a git pre-push hook running quick, which stops a push it fails (opt-in).
 
 Each step runs unless the step it needs did not pass, once that step ended, and the run
@@ -193,11 +196,32 @@ def unjudged(log, out: Path) -> bool:
                      if each.startswith("commit ")), "no commit found")
         new = "new" if row["status"] == "-" else "changed"
         lines.append(f"- `{row['function']}` ({new}), last by {last}")
-    if len(lines) == 2:
+    waits = len(lines) - 2
+    if not waits:
         lines.append("None: every engine function has its verdict.")
     (out / "unjudged.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    log.write(f"{len(lines) - 2} engine functions wait for a verdict: unjudged.md\n")
+    log.write(f"{waits} engine functions wait for a verdict: unjudged.md\n")
     return True
+
+
+def reviewed(log, out: Path) -> bool:
+    """unjudged, failing while one function waits, as main takes no engine code the review
+    has not read. A worktree has no notes, ledger or pages.py, which git ignores, so they
+    are copied from the repository's own tree; with none there either, nothing shows the
+    review read this commit."""
+    if not (PRIVATE / "pages.py").is_file():
+        said = subprocess.run(["git", "rev-parse", "--path-format=absolute",
+                               "--git-common-dir"], cwd=ROOT, capture_output=True,
+                              text=True).stdout.strip()
+        own = Path(said).parent / PRIVATE.relative_to(ROOT)
+        if not (own / "pages.py").is_file():
+            log.write(f"no review notes in {PRIVATE} or {own}\n")
+            return False
+        shutil.copytree(own, PRIVATE, dirs_exist_ok=True)
+    if not unjudged(log, out):
+        return False
+    log.write((out / "unjudged.md").read_text(encoding="utf-8"))
+    return not waiting()
 
 
 def mutate(log, out: Path) -> bool:
@@ -357,13 +381,19 @@ def steps(tier: str, out: Path, window: dict[str, str] | None) -> list[Step]:
                 Step("bench", [python, TOOLS / "bench" / "bench.py", "compare"],
                      "build debug", chain="tree")]
     if tier == "release":
-        return beside_sweep([*steps("nightly", out, window),
-                             Step("lines counted", counted, "build debug"),
-                             Step("pictures taken", pictured, "build release"),
-                             Step("download", lambda log: download(log, out)),
-                             Step("compare main", [python, TOOLS / "compare-main.py",
-                                                   "--base", MAIN, "--out",
-                                                   out / "compare-main"], "build debug")])
+        listed = beside_sweep([*(step for step in steps("nightly", out, window)
+                                 if step.name != "unjudged"),
+                               Step("lines counted", counted, "build debug"),
+                               Step("pictures taken", pictured, "build release"),
+                               Step("download", lambda log: download(log, out)),
+                               Step("compare main", [python, TOOLS / "compare-main.py",
+                                                     "--base", MAIN, "--out",
+                                                     out / "compare-main"], "build debug")])
+        # After the builds, as the inventory reads the debug build's compile commands and
+        # generated headers, and before the rest, which takes an hour.
+        built = sum(1 for step in listed if step.chain is None)
+        return [*listed[:built], Step("reviewed", lambda log: reviewed(log, out),
+                                      "build debug"), *listed[built:]]
     presets = ("debug", "release", "asan", "tsan")
     nightly = [*quick, *(step for name in presets[1:] for step in preset(name, window))]
     nightly += [Step("test gpu-validation", ["ctest", "--preset", "gpu-validation"],
@@ -508,6 +538,9 @@ def check(tier: str) -> int:
                 chains.setdefault(step.chain, []).append(step)
             else:
                 take(step, out, by_name, alone=True)
+        # The rest would check a commit main cannot take: skipped, which fails the run.
+        if "reviewed" in by_name and by_name["reviewed"].result != "passed":
+            chains = {}
         beside = [threading.Thread(target=chained, args=(chain, out, by_name), daemon=True)
                   for chain in chains.values()]
         for thread in beside:
