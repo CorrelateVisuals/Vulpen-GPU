@@ -68,13 +68,12 @@ VkRenderPass window_pass(VkDevice device,
 }
 
 // The window's surface, which only a device whose queue presents to it can show.
-VkSurfaceKHR make_surface(const Mechanics &mechanics, const Window &window) {
-  const VkSurfaceKHR surface = window.surface(mechanics.instance());
-  if (!mechanics.presents(surface)) {
-    vkDestroySurfaceKHR(mechanics.instance(), surface, nullptr);
+auto make_surface(const Mechanics &mechanics, const Window &window) {
+  Owned<VkSurfaceKHR, vkDestroySurfaceKHR, VkInstance> surface{
+      mechanics.instance(), window.surface(mechanics.instance())};
+  if (!mechanics.presents(surface))
     throw std::runtime_error("the GPU vulpen runs on cannot present to the window; a "
                              "view that draws at start runs on one that can");
-  }
   return surface;
 }
 
@@ -93,14 +92,14 @@ Swapchain::Swapchain(const Log &log,
                      const Window &window,
                      VkSampleCountFlagBits samples,
                      bool vsync)
-    : _log(log), _resources(resources), _window(window), _instance(mechanics.instance()),
+    : _log(log), _resources(resources), _window(window),
       _physical_device(mechanics.physical_device()), _device(mechanics.device()),
       _queue(mechanics.queue()), _surface(make_surface(mechanics, window)),
       _format(pick_format(_physical_device, _surface)),
       _present_mode(pick_present_mode(_physical_device, _surface, vsync)),
       _samples(samples),
-      _render_pass(window_pass(_device, _format.format, resources, samples)),
-      _acquired(make_semaphore(_device)) {
+      _render_pass(_device, window_pass(_device, _format.format, resources, samples)),
+      _acquired(_device, make_semaphore(_device)) {
   if (_format.format != srgb.format || _format.colorSpace != srgb.colorSpace)
     _log.write(Level::warn,
                Tag::swp,
@@ -116,10 +115,6 @@ Swapchain::Swapchain(const Log &log,
 Swapchain::~Swapchain() {
   vkDeviceWaitIdle(_device);
   release();
-  vkDestroySwapchainKHR(_device, _swapchain, nullptr);
-  vkDestroySemaphore(_device, _acquired, nullptr);
-  vkDestroyRenderPass(_device, _render_pass, nullptr);
-  vkDestroySurfaceKHR(_instance, _surface, nullptr);
 }
 
 VkRenderPass Swapchain::render_pass() const {
@@ -137,9 +132,8 @@ VkPresentModeKHR Swapchain::vsync(bool on) {
 void Swapchain::samples(VkSampleCountFlagBits samples) {
   check(vkDeviceWaitIdle(_device), "vkDeviceWaitIdle");
   release();
-  vkDestroyRenderPass(_device, _render_pass, nullptr);
-  _render_pass = VK_NULL_HANDLE; // so a throw below leaves none to destroy twice
-  _render_pass = window_pass(_device, _format.format, _resources, samples);
+  _render_pass = {}; // the old one goes first, as before
+  _render_pass = {_device, window_pass(_device, _format.format, _resources, samples)};
   _samples = samples;
   make_images();
   _untold = true;
@@ -189,11 +183,12 @@ void Swapchain::begin(VkCommandBuffer commands, const Target &target) const {
 }
 
 void Swapchain::present(const Target &target) {
+  const VkSwapchainKHR swapchain = _swapchain;
   const VkPresentInfoKHR info{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                               .waitSemaphoreCount = 1,
                               .pWaitSemaphores = &target.rendered,
                               .swapchainCount = 1,
-                              .pSwapchains = &_swapchain,
+                              .pSwapchains = &swapchain,
                               .pImageIndices = &target.image};
   const VkResult result = vkQueuePresentKHR(_queue, &info);
   if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -238,7 +233,6 @@ void Swapchain::make() {
                                    ? wanted
                                    : std::min(wanted, capabilities.maxImageCount);
   const VkCompositeAlphaFlagsKHR alphas = capabilities.supportedCompositeAlpha;
-  const VkSwapchainKHR old = _swapchain;
   const VkSwapchainCreateInfoKHR info{
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
       .surface = _surface,
@@ -257,10 +251,10 @@ void Swapchain::make() {
               : static_cast<VkCompositeAlphaFlagBitsKHR>(alphas & (~alphas + 1)),
       .presentMode = _present_mode,
       .clipped = VK_TRUE,
-      .oldSwapchain = old};
-  check(vkCreateSwapchainKHR(_device, &info, nullptr, &_swapchain),
-        "vkCreateSwapchainKHR");
-  vkDestroySwapchainKHR(_device, old, nullptr);
+      .oldSwapchain = _swapchain};
+  VkSwapchainKHR made = VK_NULL_HANDLE;
+  check(vkCreateSwapchainKHR(_device, &info, nullptr, &made), "vkCreateSwapchainKHR");
+  _swapchain = {_device, made}; // the old one goes after the new one took its images
   _stale = false;
   make_images();
 }
@@ -280,11 +274,12 @@ void Swapchain::make_images() {
         .format = _format.format,
         .subresourceRange = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
-    check(vkCreateImageView(_device, &view, nullptr, &_views.emplace_back()),
-          "vkCreateImageView");
+    VkImageView made_view = VK_NULL_HANDLE;
+    check(vkCreateImageView(_device, &view, nullptr, &made_view), "vkCreateImageView");
+    _views.emplace_back(_device, made_view);
     // In the render pass's order: what the draws color, the depth, and the resolve.
-    const std::array attachments{
-        _color ? _color->view() : _views.back(), _depth->view(), _views.back()};
+    const std::array<VkImageView, 3> attachments{
+        _color ? _color->view() : made_view, _depth->view(), made_view};
     const VkFramebufferCreateInfo framebuffer{
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = _render_pass,
@@ -293,21 +288,16 @@ void Swapchain::make_images() {
         .width = _extent.width,
         .height = _extent.height,
         .layers = 1};
-    check(vkCreateFramebuffer(
-              _device, &framebuffer, nullptr, &_framebuffers.emplace_back()),
+    VkFramebuffer made_framebuffer = VK_NULL_HANDLE;
+    check(vkCreateFramebuffer(_device, &framebuffer, nullptr, &made_framebuffer),
           "vkCreateFramebuffer");
-    _rendered.push_back(make_semaphore(_device));
+    _framebuffers.emplace_back(_device, made_framebuffer);
+    _rendered.emplace_back(_device, make_semaphore(_device));
   }
 }
 
 // Everything sized by the swapchain but the swapchain, which the next make() retires.
 void Swapchain::release() {
-  for (const VkSemaphore semaphore : _rendered)
-    vkDestroySemaphore(_device, semaphore, nullptr);
-  for (const VkFramebuffer framebuffer : _framebuffers)
-    vkDestroyFramebuffer(_device, framebuffer, nullptr);
-  for (const VkImageView view : _views)
-    vkDestroyImageView(_device, view, nullptr);
   _rendered.clear();
   _framebuffers.clear();
   _views.clear();

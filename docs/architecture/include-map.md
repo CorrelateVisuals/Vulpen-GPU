@@ -27,7 +27,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Shader.cpp` | `baseclasses/Shader.h` |
 | `baseclasses/Shader.h` | — |
 | `baseclasses/Swapchain.cpp` | `baseclasses/Log.h` `baseclasses/Mechanics.h` `baseclasses/Platform.h` `baseclasses/Resources.h` `baseclasses/Swapchain.h` |
-| `baseclasses/Swapchain.h` | `<vulkan/vulkan.h>` |
+| `baseclasses/Swapchain.h` | `<vulkan/vulkan.h>` `baseclasses/Owned.h` |
 | `baseclasses/examples/triangle/Triangle.frag` | — |
 | `baseclasses/examples/triangle/Triangle.vert` | — |
 | `baseclasses/examples/triangle/main.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Passes.h` `baseclasses/Pipelines.h` `baseclasses/Platform.h` `baseclasses/Shader.h` `commit.h` |

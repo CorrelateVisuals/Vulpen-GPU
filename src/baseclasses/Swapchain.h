@@ -1,5 +1,7 @@
 #pragma once
 
+#include "baseclasses/Owned.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -70,28 +72,28 @@ private:
   const Log &_log;
   const Resources &_resources;
   const Window &_window;
-  const VkInstance _instance;
   const VkPhysicalDevice _physical_device;
   const VkDevice _device;
   const VkQueue _queue;
-  const VkSurfaceKHR _surface;
+  const Owned<VkSurfaceKHR, vkDestroySurfaceKHR, VkInstance> _surface;
   const VkSurfaceFormatKHR _format;
   VkPresentModeKHR _present_mode;
   VkSampleCountFlagBits _samples;
-  VkRenderPass _render_pass;
-  const VkSemaphore _acquired; // one frame in flight, so one is enough
-  VkSwapchainKHR _swapchain = VK_NULL_HANDLE;
+  Owned<VkRenderPass, vkDestroyRenderPass, VkDevice> _render_pass;
+  // One frame in flight, so one is enough.
+  const Owned<VkSemaphore, vkDestroySemaphore, VkDevice> _acquired;
+  Owned<VkSwapchainKHR, vkDestroySwapchainKHR, VkDevice> _swapchain;
   VkExtent2D _extent{};
   VkExtent2D _made_for{}; // the window's size then, which _extent may be clamped from
   bool _stale = false;
   bool _untold = false; // a new mode or new samples, till the next frame says them
-  std::vector<VkImageView> _views;
+  std::vector<Owned<VkImageView, vkDestroyImageView, VkDevice>> _views;
   std::unique_ptr<Image> _depth; // the window's size, as its images are
   std::unique_ptr<Image> _color; // with samples past one, what the draws go into
-  std::vector<VkFramebuffer> _framebuffers;
+  std::vector<Owned<VkFramebuffer, vkDestroyFramebuffer, VkDevice>> _framebuffers;
   // One per image: presenting holds its semaphore until that image shows, which no
   // fence tells the CPU.
-  std::vector<VkSemaphore> _rendered;
+  std::vector<Owned<VkSemaphore, vkDestroySemaphore, VkDevice>> _rendered;
 };
 
 } // namespace VP

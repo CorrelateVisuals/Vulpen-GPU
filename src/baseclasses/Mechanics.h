@@ -25,7 +25,7 @@ void check(VkResult result, const char *call);
 // A list Vulkan hands in two calls, how many and then the items, read in one: args are
 // the call's own, before the count, and the item's type is that of its last parameter.
 template <class Result, class... Parameters, class... Args>
-auto enumerated(Result (*call)(Parameters...), Args... args) {
+auto enumerated(Result (*call)(Parameters...), const Args &...args) {
   using Item = std::remove_pointer_t<decltype((Parameters{}, ...))>; // the last one's
   std::uint32_t count = 0;
   call(args..., &count, nullptr);
