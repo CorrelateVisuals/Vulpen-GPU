@@ -32,6 +32,17 @@ auto enumerated(Result (*call)(Parameters...), Args... args) {
   return items;
 }
 
+// A render pass of one subpass: a color of the format, and a depth of depth_format, none
+// where undefined, which the passes after it sample where kept. With samples past one,
+// the pass resolves into a color of one. ends: the layout the drawn image ends in, as the
+// passes after it sample it, or presented.
+VkRenderPass make_render_pass(VkDevice device,
+                              VkFormat format,
+                              VkFormat depth_format,
+                              bool depth_kept,
+                              VkSampleCountFlagBits samples,
+                              VkImageLayout ends);
+
 // The GPU machine: instance, device and queues. It needs no window to start (V07), yet a
 // window can open at any time: the instance takes every surface extension the loader
 // offers, and the device its swapchain where it has one. A window at start steers the

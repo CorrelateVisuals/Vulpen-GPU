@@ -50,80 +50,21 @@ pick_present_mode(VkPhysicalDevice device, VkSurfaceKHR surface, bool vsync) {
              : VK_PRESENT_MODE_FIFO_KHR;
 }
 
-// The depth is dropped once the pass ends, so a tile-based GPU never writes it out; the
-// last frame's tests on it finish before this frame's start. With samples past one, the
-// draws go into a color of that many samples, which the pass resolves into the window's
-// image as it ends, and drops.
-VkRenderPass make_render_pass(VkDevice device,
-                              VkFormat format,
-                              VkFormat depth_format,
-                              VkSampleCountFlagBits samples) {
-  if (depth_format == VK_FORMAT_UNDEFINED)
+// The window's pass, which ends in the image presented. Its draws test depth, so a GPU
+// that tests it in no format draws no window.
+VkRenderPass window_pass(VkDevice device,
+                         VkFormat format,
+                         const Resources &resources,
+                         VkSampleCountFlagBits samples) {
+  if (resources.depth_format() == VK_FORMAT_UNDEFINED)
     throw std::runtime_error("this GPU tests depth in none of D32_SFLOAT, "
                              "X8_D24_UNORM_PACK32 and D16_UNORM");
-  const bool resolves = samples != VK_SAMPLE_COUNT_1_BIT;
-  const std::array attachments{
-      VkAttachmentDescription{.format = format,
-                              .samples = samples,
-                              .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                              .storeOp = resolves ? VK_ATTACHMENT_STORE_OP_DONT_CARE
-                                                  : VK_ATTACHMENT_STORE_OP_STORE,
-                              .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                              .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                              .finalLayout =
-                                  resolves ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                           : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR},
-      VkAttachmentDescription{.format = depth_format,
-                              .samples = samples,
-                              .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                              .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                              .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                              .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                              .finalLayout =
-                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL},
-      VkAttachmentDescription{.format = format,
-                              .samples = VK_SAMPLE_COUNT_1_BIT,
-                              .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                              .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                              .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                              .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                              .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}};
-  const VkAttachmentReference target{.attachment = 0,
-                                     .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-  const VkAttachmentReference tested{
-      .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-  const VkAttachmentReference shown{.attachment = 2,
-                                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-  const VkSubpassDescription subpass{.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                     .colorAttachmentCount = 1,
-                                     .pColorAttachments = &target,
-                                     .pResolveAttachments = resolves ? &shown : nullptr,
-                                     .pDepthStencilAttachment = &tested};
-  // The image's layout changes only once it is acquired, which the submit waits for at
-  // this stage.
-  constexpr VkPipelineStageFlags tests = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-  const VkSubpassDependency acquired{
-      .srcSubpass = VK_SUBPASS_EXTERNAL,
-      .dstSubpass = 0,
-      .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
-      .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
-      .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT};
-  const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                    .attachmentCount = resolves ? 3U : 2U,
-                                    .pAttachments = attachments.data(),
-                                    .subpassCount = 1,
-                                    .pSubpasses = &subpass,
-                                    .dependencyCount = 1,
-                                    .pDependencies = &acquired};
-  VkRenderPass render_pass = VK_NULL_HANDLE;
-  check(vkCreateRenderPass(device, &info, nullptr, &render_pass), "vkCreateRenderPass");
-  return render_pass;
+  return make_render_pass(device,
+                          format,
+                          resources.depth_format(),
+                          false,
+                          samples,
+                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 
 // The window's surface, which only a device whose queue presents to it can show.
@@ -157,8 +98,8 @@ Swapchain::Swapchain(const Log &log,
       _queue(mechanics.queue()), _surface(make_surface(mechanics, window)),
       _format(pick_format(_physical_device, _surface)),
       _present_mode(pick_present_mode(_physical_device, _surface, vsync)),
-      _samples(samples), _render_pass(make_render_pass(
-                             _device, _format.format, resources.depth_format(), samples)),
+      _samples(samples),
+      _render_pass(window_pass(_device, _format.format, resources, samples)),
       _acquired(make_semaphore(_device)) {
   if (_format.format != srgb.format || _format.colorSpace != srgb.colorSpace)
     _log.write(Level::warn,
@@ -198,8 +139,7 @@ void Swapchain::samples(VkSampleCountFlagBits samples) {
   release();
   vkDestroyRenderPass(_device, _render_pass, nullptr);
   _render_pass = VK_NULL_HANDLE; // so a throw below leaves none to destroy twice
-  _render_pass =
-      make_render_pass(_device, _format.format, _resources.depth_format(), samples);
+  _render_pass = window_pass(_device, _format.format, _resources, samples);
   _samples = samples;
   make_images();
   _untold = true;

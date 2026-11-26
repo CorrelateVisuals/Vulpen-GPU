@@ -144,110 +144,6 @@ VkDescriptorPool image_pool(VkDevice device) {
   return pool;
 }
 
-// A draw's image starts each frame cleared, so what it held before is dropped. Once
-// drawn, every shader stage that samples it after its render pass sees its pixels, in
-// the layout sampling takes; earlier frames are behind the fence already. A depth image
-// clears to the far plane; dropped once the pass ends, a tile-based GPU never writes it
-// out, and kept, the passes after it sample it as they sample the colors. The last
-// frame's tests on it finish before this frame's start. With samples past one, the
-// draws go into a color of that many samples, which the pass resolves into the image as
-// it ends and then drops, as it drops the depth: a kept depth would need resolving too.
-VkRenderPass make_render_pass(VkDevice device,
-                              VkFormat format,
-                              VkFormat depth_format,
-                              Depth use,
-                              VkSampleCountFlagBits samples) {
-  const bool depth = use != Depth::none;
-  const bool kept = use == Depth::kept;
-  const bool resolves = samples != VK_SAMPLE_COUNT_1_BIT;
-  if (kept && resolves)
-    throw std::runtime_error("a depth that later passes sample is drawn with one sample "
-                             "a pixel");
-  const VkAttachmentDescription resolved{
-      .format = format,
-      .samples = VK_SAMPLE_COUNT_1_BIT,
-      .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-  std::array attachments{
-      VkAttachmentDescription{.format = format,
-                              .samples = samples,
-                              .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                              .storeOp = resolves ? VK_ATTACHMENT_STORE_OP_DONT_CARE
-                                                  : VK_ATTACHMENT_STORE_OP_STORE,
-                              .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                              .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                              .finalLayout =
-                                  resolves ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                           : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-      VkAttachmentDescription{
-          .format = depth_format,
-          .samples = samples,
-          .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp =
-              kept ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout = kept ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                              : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL},
-      resolved};
-  // The color, then the depth and the resolve where there are: no gap between them.
-  const std::uint32_t at_resolve = depth ? 2U : 1U;
-  attachments[at_resolve] = resolved;
-  const VkAttachmentReference target{.attachment = 0,
-                                     .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-  const VkAttachmentReference tested{
-      .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-  const VkAttachmentReference into{.attachment = at_resolve,
-                                   .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-  const VkSubpassDescription subpass{.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                     .colorAttachmentCount = 1,
-                                     .pColorAttachments = &target,
-                                     .pResolveAttachments = resolves ? &into : nullptr,
-                                     .pDepthStencilAttachment =
-                                         depth ? &tested : nullptr};
-  const VkPipelineStageFlags tests = depth ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-                                           : 0;
-  const VkAccessFlags written = depth ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0;
-  const VkPipelineStageFlags kept_tests =
-      kept ? VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT : 0;
-  const VkAccessFlags kept_written = kept ? written : 0;
-  const std::array dependencies{
-      VkSubpassDependency{
-          .srcSubpass = VK_SUBPASS_EXTERNAL,
-          .dstSubpass = 0,
-          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
-          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | tests,
-          .srcAccessMask = written,
-          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | written},
-      VkSubpassDependency{
-          .srcSubpass = 0,
-          .dstSubpass = VK_SUBPASS_EXTERNAL,
-          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | kept_tests,
-          .dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | kept_written,
-          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT}};
-  const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                    .attachmentCount = at_resolve + (resolves ? 1U : 0U),
-                                    .pAttachments = attachments.data(),
-                                    .subpassCount = 1,
-                                    .pSubpasses = &subpass,
-                                    .dependencyCount =
-                                        static_cast<std::uint32_t>(dependencies.size()),
-                                    .pDependencies = dependencies.data()};
-  VkRenderPass render_pass = VK_NULL_HANDLE;
-  check(vkCreateRenderPass(device, &info, nullptr, &render_pass), "vkCreateRenderPass");
-  return render_pass;
-}
-
 } // namespace
 
 Pipelines::Pipelines(VkDevice device, const Resources &resources)
@@ -341,11 +237,16 @@ VkRenderPass Pipelines::render_pass(VkFormat format,
     throw std::runtime_error("this GPU tests depth in none of D32_SFLOAT, "
                              "X8_D24_UNORM_PACK32 and D16_UNORM");
   return _render_passes
-      .emplace_back(Made{
-          .format = format,
-          .depth = depth,
-          .samples = samples,
-          .render_pass = make_render_pass(_device, format, depth_format, depth, samples)})
+      .emplace_back(Made{.format = format,
+                         .depth = depth,
+                         .samples = samples,
+                         .render_pass = make_render_pass(
+                             _device,
+                             format,
+                             depth == Depth::none ? VK_FORMAT_UNDEFINED : depth_format,
+                             depth == Depth::kept,
+                             samples,
+                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)})
       .render_pass;
 }
 
