@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.24)
 project(vulpen LANGUAGES CXX)
+# A branch switch, a clean rebuild or a mutant put back compiles sources the tree compiled
+# before, so ccache, where installed, hands those objects back. A person's own launcher
+# wins, and a machine without ccache builds as before.
+find_program(VULPEN_CCACHE ccache)
+if(VULPEN_CCACHE AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${VULPEN_CCACHE}")
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
