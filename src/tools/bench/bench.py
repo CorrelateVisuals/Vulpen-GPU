@@ -623,6 +623,17 @@ def command_run(arguments) -> int:
     return 1 if moved or missed else 0
 
 
+def annotated(texts: list[str]) -> None:
+    """Each text as an error annotation where GitHub runs this, which anyone may read
+    without the job's log: CI's Windows job is the only MSVC build, and its log is the
+    repository admin's alone. GitHub shows a step's first ten."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return
+    for text in texts:
+        line = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error::{line}", flush=True)
+
+
 def command_compare(arguments) -> int:
     chosen = benches(arguments.benches)
     build(arguments.preset, chosen if arguments.benches else None)
@@ -652,6 +663,7 @@ def command_compare(arguments) -> int:
                 problems.append(f"{ident}: rows moved\n    {shown}{more}")
     for problem in problems + unrun:
         print(problem)
+    annotated(problems)
     functions = sum(len(found[bench.name]["baseline"]) for bench in chosen) - len(unrun)
     print(f"{functions} functions compared with records/: "
           f"{'all the same' if not problems else f'{len(problems)} differ'}"
@@ -833,4 +845,12 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except SystemExit as ended:
+        if isinstance(ended.code, str):
+            annotated([ended.code])
+        raise
+    except Exception as error:
+        annotated([f"bench.py stopped: {type(error).__name__}: {error}"])
+        raise
