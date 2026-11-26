@@ -15,6 +15,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 // baseclasses/Pipelines.cpp: the one pipeline layout, set 0's slots, the frame block, the
@@ -37,6 +38,11 @@ struct PipelinesFree {
   friend constexpr type reach(PipelinesFree);
 };
 template struct Reach<PipelinesFree, &VP::Pipelines::_free>;
+struct ResourcesDepthFormat {
+  using type = VkFormat VP::Resources::*;
+  friend constexpr type reach(ResourcesDepthFormat);
+};
+template struct Reach<ResourcesDepthFormat, &VP::Resources::_depth_format>;
 struct ShaderFrame {
   using type = std::vector<VP::Field> VP::Shader::*;
   friend constexpr type reach(ShaderFrame);
@@ -142,6 +148,27 @@ std::string frame_text(const auto &frame) {
                      number_text(cursor[1]),
                      number_text(at(FrameMember::time, 0.0f)),
                      at(FrameMember::frame_index, std::uint32_t{}));
+}
+
+// How many slots the frame block has room for, and the size a slot holds, as a pass
+// whose target that slot is reads it; none before a shader declares the block.
+std::string slots_text(const Pipelines &pipelines) {
+  std::string text = "no frame block";
+  reach(PipelinesFrame{}, [&](auto member) {
+    const auto &frame = pipelines.*member;
+    if (!frame)
+      return;
+    text = std::format("room for {}", frame->slots);
+    for (std::uint32_t slot = 0; slot < frame->slots; ++slot) {
+      std::array<std::uint32_t, 2> size{};
+      std::memcpy(size.data(),
+                  frame->buffer.bytes().data() + slot * frame->stride +
+                      frame->fields[FrameMember::resolution].offset,
+                  sizeof size);
+      text += std::format(", slot {} ({},{})", slot, size[0], size[1]);
+    }
+  });
+  return text;
 }
 
 std::string frame_bytes(const Pipelines &pipelines) {
@@ -271,6 +298,71 @@ void cases(Bench &bench) {
           domain::Type{},
           domain::Type{},
           domain::Cursor{});
+    });
+  });
+
+  // Room for a frame block per draw target: none before a shader declares the block; it
+  // grows when asked for more slots, never shrinks, and asked for as many as it has keeps
+  // what was written.
+  bench.check("Pipelines.cpp/Pipelines::frame_slots", [](Rows &rows) {
+    on_gpu(rows, [&](Gpu &gpu) {
+      const Pipelines pipelines(gpu.mechanics.device(), gpu.resources);
+      pipelines.frame_slots(3);
+      rows.row("no block declared, 3 asked -> " + slots_text(pipelines));
+      const std::optional<std::filesystem::path> file = frame_shader(rows);
+      if (!file) {
+        rows.row("no shader of the build declares the frame block");
+        return;
+      }
+      const Shader shader(*file);
+      const Pipeline pipeline(pipelines, shader);
+      rows.row("declared -> " + slots_text(pipelines));
+      for (const std::uint32_t asked : {3U, 2U}) {
+        pipelines.frame_slots(asked);
+        rows.row(std::format("{} asked -> {}", asked, slots_text(pipelines)));
+      }
+      const std::array sizes{VkExtent2D{10, 20}, VkExtent2D{30, 40}};
+      pipelines.write_frame(1, 1, {100, 50}, {0, 0}, sizes);
+      pipelines.frame_slots(3);
+      rows.row("written, then 3 asked again -> " + slots_text(pipelines));
+    });
+  });
+
+  // A slot's size is its target's: the first the window's or the dispatch's resolution,
+  // each after it the size of the image drawn into, in order; as many as there is room
+  // for.
+  bench.check("Pipelines.cpp/Pipelines::write_frame, a slot per target", [](Rows &rows) {
+    on_gpu(rows, [&](Gpu &gpu) {
+      const Pipelines pipelines(gpu.mechanics.device(), gpu.resources);
+      const std::optional<std::filesystem::path> file = frame_shader(rows);
+      if (!file) {
+        rows.row("no shader of the build declares the frame block");
+        return;
+      }
+      const Shader shader(*file);
+      const Pipeline pipeline(pipelines, shader);
+      pipelines.frame_slots(2);
+      const std::array sizes{VkExtent2D{10, 20}, VkExtent2D{30, 40}, VkExtent2D{50, 60}};
+      pipelines.write_frame(1, 1, {100, 50}, {0, 0}, sizes);
+      rows.row("room for 2, the resolution 100x50 and three sizes -> " +
+               slots_text(pipelines));
+    });
+  });
+
+  // A GPU that tests depth in no format: a pass with a depth, dropped or kept, is refused
+  // naming the formats, and one without is made.
+  bench.check("Pipelines.cpp/Pipelines::render_pass, no depth format", [](Rows &rows) {
+    on_gpu(rows, [&](Gpu &gpu) {
+      VkFormat &tested = gpu.resources.*reach(ResourcesDepthFormat{});
+      const VkFormat before = std::exchange(tested, VK_FORMAT_UNDEFINED);
+      const Pipelines pipelines(gpu.mechanics.device(), gpu.resources);
+      constexpr std::array<std::string_view, 3> words{"none", "dropped", "kept"};
+      for (const Depth depth : {Depth::none, Depth::dropped, Depth::kept})
+        rows.row(std::format(
+            "depth {} -> {}", words[static_cast<std::size_t>(depth)], said([&] {
+              pipelines.render_pass(VK_FORMAT_R8G8B8A8_UNORM, depth);
+            })));
+      tested = before;
     });
   });
 

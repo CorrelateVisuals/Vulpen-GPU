@@ -1,5 +1,19 @@
 # The rows of src/runtime/Views.h and src/runtime/Views.cpp, a call each (src/tools/bench/bench.py).
 
+## Views.cpp/a line that moved where lines go, undone
+00 started: start [wave probe] (ok)
+01 view add tri ../triangle/view.vlp -> "hosts view tri, from <here>/triangle/view.vlp\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+02 view switch tri -> "lines go to tri now\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+03 view close -> "closed view tri, its files kept; lines go to the view vulpen started with now\n"; views start [wave probe] (ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (455 characters, hash da34b46f9cb3f090)
+04 view list -> ": <here>/wave/view.vlp, current\n"; views start [wave probe] (ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (455 characters, hash da34b46f9cb3f090)
+05 undo -> "undid view close\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+06 view list -> ": <here>/wave/view.vlp\ntri <here>/triangle/view.vlp, current\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+07 redo -> "redid view close\n"; views start [wave probe] (ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (455 characters, hash da34b46f9cb3f090)
+08 view list -> ": <here>/wave/view.vlp, current\n"; views start [wave probe] (ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (455 characters, hash da34b46f9cb3f090)
+09 undo -> "undid view close\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+10 view list -> ": <here>/wave/view.vlp\ntri <here>/triangle/view.vlp, current\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+the device goes -> done
+
 ## Views.cpp/a view hosted beside
 00 started: start [wave probe] (ok)
 01 view add tri ../triangle/view.vlp -> "hosts view tri, from <here>/triangle/view.vlp\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
@@ -112,6 +126,16 @@ put back: [.vulpen/, .vulpen/c=rewritten, a=1, gone=4, large=small now, n/, n/b=
 kept: files [a, view.vlp]; folders []; left []
 outside: x changed, made made: differences []
 put back, the folder the link leads to: [made=made outside, x=changed outside]
+
+## Views.cpp/undo of a line that moved no lines
+00 started: start [wave probe] (ok)
+01 view add tri ../triangle/view.vlp -> "hosts view tri, from <here>/triangle/view.vlp\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+02 view switch tri -> "lines go to tri now\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+03 tri: node add b -> "added node b\n"; views start [wave probe]; tri [triangle b] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+04 view switch -> "lines go to the view vulpen started with now\n"; views start [wave probe]; tri [triangle b] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+05 undo -> "undid tri: node add b\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+06 view list -> ": <here>/wave/view.vlp, current\ntri <here>/triangle/view.vlp\n"; views start [wave probe]; tri [triangle] (ok,ok); manifest "# Headless compute: wave fills a buffer, probe samples it back t...= probe.values\n" (502 characters, hash f4ca7563331a8bea)
+the device goes -> done
 
 ## Views.cpp/view save
 00 started: start [wave probe] (ok)

@@ -316,6 +316,36 @@ void cases(Bench &bench) {
              "undo",
              "view list"});
   });
+  // A line that moved where lines go, as view close of the current view does, and the
+  // projects part's view new: undo puts them back to the view they went to before it,
+  // redo where the line left them, so a replay without the line goes on in the same
+  // view (V08). view list marks where they go; a terminal puts that view before each
+  // line typed, which the session's lines are not.
+  bench.check("Views.cpp/a line that moved where lines go, undone", [](Rows &rows) {
+    session(rows,
+            {"view add tri ../triangle/view.vlp",
+             "view switch tri",
+             "view close",
+             "view list",
+             "undo",
+             "view list",
+             "redo",
+             "view list",
+             "undo",
+             "view list"});
+  });
+  // Undo of a line that moved no lines leaves them where they go now: a line typed in
+  // tri, lines switched back to the view vulpen started with, then undo, and they stay
+  // there.
+  bench.check("Views.cpp/undo of a line that moved no lines", [](Rows &rows) {
+    session(rows,
+            {"view add tri ../triangle/view.vlp",
+             "view switch tri",
+             "tri: node add b",
+             "view switch",
+             "undo",
+             "view list"});
+  });
   bench.check("Views.cpp/view save", [](Rows &rows) {
     session(rows,
             {"node add a",

@@ -101,6 +101,14 @@ views/triangle/triangle/Triangle draw -> made
 views/wave/probe/Probe comp -> made
 views/wave/wave/Wave comp -> made
 
+## Pipelines.cpp/Pipelines::frame_slots
+2 asked -> room for 3, slot 0 (0,0), slot 1 (0,0), slot 2 (0,0)
+3 asked -> room for 3, slot 0 (0,0), slot 1 (0,0), slot 2 (0,0)
+declared -> room for 1, slot 0 (0,0)
+no block declared, 3 asked -> no frame block
+the device goes -> done
+written, then 3 asked again -> room for 3, slot 0 (100,50), slot 1 (10,20), slot 2 (30,40)
+
 ## Pipelines.cpp/Pipelines::pool
 1,000 more -> pools [1024,1]
 1,000 of them gone -> pools [24,1]
@@ -123,6 +131,12 @@ the device goes -> done
 (R8G8_UNORM) -> "#1; asked again, the same: true"
 (R8_UNORM) -> "#1; asked again, the same: true"
 (UNDEFINED) -> "#1; asked again, the same: true"; printed "VUID-VkAttachmentDescription-format-06698(ERROR / SPEC): msgNum:...    Objects: 0\n" (454 characters, hash 5cb0c55790e747e3)
+the device goes -> done
+
+## Pipelines.cpp/Pipelines::render_pass, no depth format
+depth dropped -> throws runtime_error: "this GPU tests depth in none of D32_SFLOAT, X8_D24_UNORM_PACK32 and D16_UNORM"
+depth kept -> throws runtime_error: "this GPU tests depth in none of D32_SFLOAT, X8_D24_UNORM_PACK32 and D16_UNORM"
+depth none -> made
 the device goes -> done
 
 ## Pipelines.cpp/Pipelines::take_frame, a block declared otherwise
@@ -394,6 +408,10 @@ the device goes -> done
 ~(8996258764493551011, -9.68, 136x226, (612.25,685.25)) -> "resolution (136,226) cursor (612.25,685.25) time -9.68 index 2636248483"
 ~(9450558231053704005, -5.55484949502585e-70, 103x211, (243.5,211.5)) -> "resolution (103,211) cursor (243.5,211.5) time -0 index 3541670725"
 ~(9979131906667470985, -3.5229993004897426e+97, 223x177, (536.25,151.5)) -> "resolution (223,177) cursor (536.25,151.5) time -inf index 4021182601"
+
+## Pipelines.cpp/Pipelines::write_frame, a slot per target
+room for 2, the resolution 100x50 and three sizes -> room for 2, slot 0 (100,50), slot 1 (10,20)
+the device goes -> done
 
 ## Pipelines.cpp/moves
 Drawn all gone: free slots as before: true
