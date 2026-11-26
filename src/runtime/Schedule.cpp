@@ -88,18 +88,18 @@ levels_of(const Bound::Filled &filled, VkExtent2D extent, std::uint32_t asked) {
   const std::uint32_t most = mip_level_count(extent);
   const std::uint32_t levels = asked == all_mip_levels ? most : asked;
   if (levels == 0 || levels > most)
-    throw std::runtime_error(std::format("the operator asks {} mip levels of {}, which "
-                                         "at {} by {} holds 1 to {}",
-                                         levels,
-                                         filled.port,
-                                         extent.width,
-                                         extent.height,
-                                         most));
+    fail("the operator asks {} mip levels of {}, which "
+         "at {} by {} holds 1 to {}",
+         levels,
+         filled.port,
+         extent.width,
+         extent.height,
+         most);
   if (levels > 1 && !makes_mip_levels(filled.format->format))
-    throw std::runtime_error(std::format("the operator asks mip levels of {}, which is "
-                                         "{}: only an 8-bit format takes them",
-                                         filled.port,
-                                         filled.format->name));
+    fail("the operator asks mip levels of {}, which is "
+         "{}: only an 8-bit format takes them",
+         filled.port,
+         filled.format->name);
   return levels;
 }
 
@@ -170,9 +170,9 @@ std::vector<const Node *> Schedule::order(const View &view) {
   if (placed.size() < view.nodes.size()) {
     const auto left =
         std::ranges::find_if(waits, [](std::size_t count) { return count != 0; });
-    throw std::runtime_error(std::format("{}: the connections form a cycle through {}",
-                                         view.file.string(),
-                                         view.nodes[left - waits.begin()].name));
+    fail("{}: the connections form a cycle through {}",
+         view.file.string(),
+         view.nodes[left - waits.begin()].name);
   }
   return placed;
 }
@@ -334,15 +334,14 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
   Bound &colors = bound.fragment ? *bound.fragment : bound;
   const std::vector<Varying> &written = colors.stage(fragment_stage).outputs();
   if (written.size() != 1)
-    throw std::runtime_error(
-        std::format("its .frag writes {} colors, but a draw writes one", written.size()));
+    fail("its .frag writes {} colors, but a draw writes one", written.size());
   colors.output = written.front().name;
   if (!connection_of(colors.node->name, colors.output)) {
     if (!_window && _into != Into::none)
-      throw std::runtime_error(std::format("it draws {} into the window, but none is "
-                                           "open; a connection to a Texture draws it "
-                                           "into an image",
-                                           colors.output));
+      fail("it draws {} into the window, but none is "
+           "open; a connection to a Texture draws it "
+           "into an image",
+           colors.output);
     return _window;
   }
   const std::vector<ImagePort> &words = colors.node->images;
@@ -351,8 +350,7 @@ VkRenderPass Schedule::target_of(Bound &bound) const {
   if (!colors.drawn)
     return VK_NULL_HANDLE;
   if (!_wiring.resources.samples(colors.drawn->format, Fill::draw))
-    throw std::runtime_error(std::format(
-        "{}: this GPU cannot draw into {} images", colors.output, colors.drawn->name));
+    fail("{}: this GPU cannot draw into {} images", colors.output, colors.drawn->name);
   return _wiring.pipelines.render_pass(colors.drawn->format, depth_of(bound));
 }
 
@@ -595,12 +593,11 @@ void Schedule::upload(const Bound &writer,
   const std::size_t count = pixels.size() / format.bytes;
   if (extent.width == 0 || extent.height == 0 ||
       count != std::size_t{extent.width} * extent.height)
-    throw std::runtime_error(
-        std::format("the operator uploads {} pixels to {}, which is {} by {}",
-                    count,
-                    filled.port,
-                    extent.width,
-                    extent.height));
+    fail("the operator uploads {} pixels to {}, which is {} by {}",
+         count,
+         filled.port,
+         extent.width,
+         extent.height);
   const std::uint32_t levels = levels_of(filled, extent, mip_levels);
   const Image &image = image_for(writer, filled.name, extent, format, levels);
   std::vector<std::byte> chain(mip_level_offset(extent, format.bytes, levels));
@@ -895,8 +892,7 @@ void Schedule::clear_image(std::string_view node, std::string_view port) {
       connection ? connection->from : Endpoint{std::string(node), std::string(port)};
   const Bound *const filler = find(writer.node);
   if (!filler || !filler->fills(writer.port))
-    throw std::runtime_error(
-        std::format("{}.{} is no image a node's C++ fills", node, port));
+    fail("{}.{} is no image a node's C++ fills", node, port);
   const std::string name = std::format("{}.{}", writer.node, writer.port);
   const auto picture = std::ranges::find(_images, name, &Picture::name);
   if (picture == _images.end())
