@@ -335,7 +335,7 @@ void cases(Bench &bench) {
   // A connection named again from its own port takes the readers given beside its own;
   // these lines name the chain's ab, from a.out, with readers it may and may not take.
   bench.check("Edits.cpp/connect_ports again", [](Rows &rows) {
-    const View chain = worlds::small()[2];
+    const View chain = worlds::first_hour()[2];
     const std::vector<std::string> others = beside();
     for (const std::string_view reader : {"b.in", "a.in", "c.in", "game:", "zz.in"}) {
       View copy = chain;

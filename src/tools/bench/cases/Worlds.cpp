@@ -61,7 +61,7 @@ void cases(Bench &bench) {
               });
 
   bench.check("Worlds.h/changes", [](Rows &rows) {
-    const std::vector<View> views = worlds::small();
+    const std::vector<View> views = worlds::first_hour();
     const View &chain = views[2];
     View after = chain;
     after.nodes.push_back(worlds::node("d"));

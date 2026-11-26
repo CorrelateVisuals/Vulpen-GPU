@@ -144,7 +144,7 @@ connection(std::string name, std::string from, std::vector<std::string> to) {
 // Views a person makes in a first hour: none, one node, a chain, nodes inside a node, a
 // node that uses a recipe of the library as it is, a hosted view whose window a node
 // takes.
-inline std::vector<View> small() {
+inline std::vector<View> first_hour() {
   View empty{.name = "empty"};
   View one{.name = "one", .nodes = {node("a", {{"x", "1"}})}};
   View chain{.name = "chain",
@@ -206,7 +206,7 @@ inline std::vector<std::filesystem::path> manifests(const std::filesystem::path 
 template <> struct Gen<View> {
   using type = View;
   static std::vector<View> edges() {
-    return worlds::small();
+    return worlds::first_hour();
   }
   // A few nodes, some inside others, and connections between their ports.
   static View random(Random &random) {
