@@ -66,24 +66,24 @@ void reads(const Shader &writer,
   for (const Varying &input : reader.inputs()) {
     const auto output = std::ranges::find(outputs, input.location, &Varying::location);
     if (output == outputs.end())
-      throw std::runtime_error(std::format("{}: its {} reads a {} at location {}, which "
-                                           "its {} writes nothing to",
-                                           input.name,
-                                           reading,
-                                           input.type,
-                                           input.location,
-                                           written));
+      fail("{}: its {} reads a {} at location {}, which "
+           "its {} writes nothing to",
+           input.name,
+           reading,
+           input.type,
+           input.location,
+           written);
     if (per_corner(*output, written, false) != per_corner(input, reading, true))
-      throw std::runtime_error(std::format("{}: its {} reads a {} at location {}, but "
-                                           "its {} writes {} there as a {}; a varying's "
-                                           "ends share both",
-                                           input.name,
-                                           reading,
-                                           input.type,
-                                           input.location,
-                                           written,
-                                           output->name,
-                                           output->type));
+      fail("{}: its {} reads a {} at location {}, but "
+           "its {} writes {} there as a {}; a varying's "
+           "ends share both",
+           input.name,
+           reading,
+           input.type,
+           input.location,
+           written,
+           output->name,
+           output->type);
   }
 }
 
@@ -358,10 +358,10 @@ void Schedule::check_shaders(const Bound &bound) const {
       if (!holds_stage(*bound.node, stage.extension))
         continue;
       if (!_wiring.resources.runs(stage.stage))
-        throw std::runtime_error(std::format("its {} runs only on a GPU with the feature "
-                                             "{}, which this one lacks",
-                                             stage.extension,
-                                             stage.feature));
+        fail("its {} runs only on a GPU with the feature "
+             "{}, which this one lacks",
+             stage.extension,
+             stage.feature);
       if (!writer.empty())
         reads(bound.stage(writer), writer, bound.stage(stage.extension), stage.extension);
       writer = stage.extension;
@@ -371,19 +371,17 @@ void Schedule::check_shaders(const Bound &bound) const {
   if (image == bound.fields.end())
     return;
   if (!holds_stage(*bound.node, compute_stage))
-    throw std::runtime_error(
-        std::format("{}: a draw's shaders store into no image, as that needs features "
-                    "past the Vulkan floor; a dispatch stores into one",
-                    image->name));
+    fail("{}: a draw's shaders store into no image, as that needs features "
+         "past the Vulkan floor; a dispatch stores into one",
+         image->name);
   for (const Field &field : bound.fields)
     if (const PixelFormat *const format =
             field.image() ? port_format(*bound.node, field.name, stored_format) : nullptr;
         format && !_wiring.resources.samples(format->format, Fill::store))
-      throw std::runtime_error(
-          std::format("{}: this GPU cannot store into, or filter, {} images, or cannot "
-                      "index images[] (shaderStorageImageArrayDynamicIndexing)",
-                      field.name,
-                      format->name));
+      fail("{}: this GPU cannot store into, or filter, {} images, or cannot "
+           "index images[] (shaderStorageImageArrayDynamicIndexing)",
+           field.name,
+           format->name);
 }
 
 namespace {
