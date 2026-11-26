@@ -1,5 +1,6 @@
 #include "baseclasses/Resources.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Mechanics.h"
 
 #define VMA_IMPLEMENTATION
@@ -49,8 +50,7 @@ void allocated(VkResult result,
                std::string_view asked,
                VkDeviceSize free) {
   if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY || result == VK_ERROR_OUT_OF_HOST_MEMORY)
-    throw std::runtime_error(std::format(
-        "{} is more than the GPU can give, with {} free", asked, gigabytes(free)));
+    fail("{} is more than the GPU can give, with {} free", asked, gigabytes(free));
   check(result, call);
 }
 
@@ -69,12 +69,11 @@ void fits(VkPhysicalDevice device, VkExtent2D extent, Fill fill) {
       drawn ? std::min(limits.maxImageDimension2D, limits.maxFramebufferHeight)
             : limits.maxImageDimension2D;
   if (extent.width > widest || extent.height > tallest)
-    throw std::runtime_error(
-        std::format("an image of {} by {} pixels is past the {} by {} this GPU makes",
-                    extent.width,
-                    extent.height,
-                    widest,
-                    tallest));
+    fail("an image of {} by {} pixels is past the {} by {} this GPU makes",
+         extent.width,
+         extent.height,
+         widest,
+         tallest);
 }
 
 VmaAllocationCreateFlags placement(Memory memory) {
