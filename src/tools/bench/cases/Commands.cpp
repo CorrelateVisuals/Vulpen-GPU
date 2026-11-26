@@ -21,6 +21,17 @@
 
 namespace VP::bench {
 
+struct CommandLogText {
+  using type = std::string (CommandLog::*)(const std::filesystem::path &) const;
+  friend constexpr type reach(CommandLogText);
+};
+template struct Reach<CommandLogText, &CommandLog::text>;
+struct CommandLogViewsSince {
+  using type = std::vector<std::string> (CommandLog::*)(std::size_t) const;
+  friend constexpr type reach(CommandLogViewsSince);
+};
+template struct Reach<CommandLogViewsSince, &CommandLog::views_since>;
+
 namespace domain {
 // A usage a command registers with.
 struct UsageText {};
@@ -284,7 +295,7 @@ struct Port {
                             handed.empty() ? "nothing" : handed,
                             asked.empty() ? "nothing" : asked,
                             logged.empty() ? "" : " logged " + logged + ";",
-                            escaped(port.session().text(
+                            escaped((port.session().*reach(CommandLogText{}))(
                                 logged_from.empty() ? folder : logged_from))),
                 folder);
   }
@@ -446,7 +457,10 @@ void cases(Bench &bench) {
       Port port;
       std::string text;
       const auto step = [&](std::string_view what) {
-        text += std::format("{}: {}\n", what, escaped(port.port.session().text(folder)));
+        text +=
+            std::format("{}: {}\n",
+                        what,
+                        escaped((port.port.session().*reach(CommandLogText{}))(folder)));
       };
       port.port.send_typed("node add a lamp", folder.string());
       step("a line typed");
@@ -466,8 +480,9 @@ void cases(Bench &bench) {
       text += std::format("after the first kept, for the start view: {}\n",
                           escaped(port.port.session().after(marks, folder)));
       Names names;
-      text += std::format("views changed since 0: {}\n",
-                          show(port.port.session().views_since(0), names));
+      text += std::format(
+          "views changed since 0: {}\n",
+          show((port.port.session().*reach(CommandLogViewsSince{}))(0), names));
       return text;
     });
     for (const std::string_view line :
@@ -494,10 +509,11 @@ void cases(Bench &bench) {
         port.port.send("node set a x=1");
         port.port.send("node set a y=2");
         port.port.take_back(1, true);
-        text += std::format("a line typed that changed nothing four frames after the "
-                            "last change, then two parts' lines, the second group taken "
-                            "back: {}\n",
-                            escaped(port.port.session().text(folder)));
+        text +=
+            std::format("a line typed that changed nothing four frames after the "
+                        "last change, then two parts' lines, the second group taken "
+                        "back: {}\n",
+                        escaped((port.port.session().*reach(CommandLogText{}))(folder)));
       }
       {
         Port port;
@@ -507,9 +523,10 @@ void cases(Bench &bench) {
         port.port.send("node set a x=1");
         port.port.send("node set a y=2");
         port.port.take_back(1, true);
-        text += std::format("two parts' lines in one frame, four after the last typed, "
-                            "the second group taken back: {}\n",
-                            escaped(port.port.session().text(folder)));
+        text +=
+            std::format("two parts' lines in one frame, four after the last typed, "
+                        "the second group taken back: {}\n",
+                        escaped((port.port.session().*reach(CommandLogText{}))(folder)));
       }
       return text;
     });

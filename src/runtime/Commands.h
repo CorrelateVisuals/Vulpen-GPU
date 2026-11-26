@@ -89,6 +89,19 @@ public:
     std::size_t kept = 0;
   };
 
+  // How many primitives it kept so far, those of groups undo took back too, so a mark
+  // stays where it was.
+  std::size_t size() const;
+  // What the views' files do not hold yet: the edits of each view marked, kept since its
+  // mark, in order, as text names them; a view not marked holds none, as one no longer
+  // hosted. What a restart replays (V08).
+  std::string after(std::span<const Mark> marks,
+                    const std::filesystem::path &folder) const;
+
+private:
+  // The port that owns it (A01), the only one to write it or read it whole.
+  friend class Commands;
+
   // A line from outside the port, typed or read from a file: the primitives it runs
   // join one group.
   void open();
@@ -105,9 +118,6 @@ public:
   // from the folder the log is saved in, where source resolves it, so a log moves with
   // the files it names (V08).
   std::string text(const std::filesystem::path &folder) const;
-  // How many primitives it kept so far, those of groups undo took back too, so a mark
-  // stays where it was.
-  std::size_t size() const;
   // The group the primitives of the line running join.
   std::size_t group() const;
   // A group undo took back, or redo brought back: what the log hands on passes over a
@@ -115,13 +125,7 @@ public:
   void take_back(std::size_t group, bool taken);
   // The views the primitives kept since the first so many changed, each once.
   std::vector<std::string> views_since(std::size_t from) const;
-  // What the views' files do not hold yet: the edits of each view marked, kept since its
-  // mark, in order, as text names them; a view not marked holds none, as one no longer
-  // hosted. What a restart replays (V08).
-  std::string after(std::span<const Mark> marks,
-                    const std::filesystem::path &folder) const;
 
-private:
   struct Kept {
     std::vector<std::string> words;
     std::vector<std::size_t> files;
