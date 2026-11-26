@@ -1,5 +1,6 @@
 #include "runtime/Modules.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Platform.h"
 #include "linked-modules.h"
 
@@ -52,11 +53,10 @@ std::unique_ptr<Operator> Modules::make(const std::string &module,
   const auto found = registered.find(name);
   if (found != registered.end())
     return found->second();
-  throw std::runtime_error(
-      std::format("the C++ of {} registers no operator {}; it registers:{}",
-                  module,
-                  name,
-                  registered.empty() ? " nothing" : names(registered)));
+  fail("the C++ of {} registers no operator {}; it registers:{}",
+       module,
+       name,
+       registered.empty() ? " nothing" : names(registered));
 }
 
 std::string Modules::sole(const std::string &module,
@@ -64,11 +64,10 @@ std::string Modules::sole(const std::string &module,
   const auto &registered = entered(module, folder);
   if (registered.size() == 1)
     return registered.begin()->first;
-  throw std::runtime_error(
-      std::format("the C++ of {} registers{}, so its node names the one it runs, as "
-                  "operator = <name>; VP_OPERATOR(<class>) registers one",
-                  module,
-                  registered.empty() ? " no operator" : names(registered)));
+  fail("the C++ of {} registers{}, so its node names the one it runs, as "
+       "operator = <name>; VP_OPERATOR(<class>) registers one",
+       module,
+       registered.empty() ? " no operator" : names(registered));
 }
 
 const Modules::Registered &Modules::entered(const std::string &module,
@@ -142,8 +141,7 @@ void Modules::unload(const std::string &module) {
 
 void Modules::add(std::string_view name, Make maker) {
   if (!_operators.at(_entering).emplace(std::string(name), maker).second)
-    throw std::runtime_error(
-        std::format("the C++ of {} registers {} twice", _entering, name));
+    fail("the C++ of {} registers {} twice", _entering, name);
 }
 
 void Modules::enter(const std::string &module, const std::filesystem::path &folder) {
@@ -160,14 +158,12 @@ void Modules::load(Loaded &loaded) {
   std::error_code missing;
   loaded.built = std::filesystem::last_write_time(loaded.file, missing);
   if (missing)
-    throw std::runtime_error(std::format(
-        "{} has no C++ built: {} is missing", loaded.module, loaded.file.string()));
+    fail("{} has no C++ built: {} is missing", loaded.module, loaded.file.string());
   // A module the OS still maps would come back from dlopen with its old code.
   if (Library::mapped(loaded.file))
-    throw std::runtime_error(
-        std::format("{}: its old module stayed loaded, so loading it "
-                    "again would run the old code; restart vulpen",
-                    loaded.module));
+    fail("{}: its old module stayed loaded, so loading it "
+         "again would run the old code; restart vulpen",
+         loaded.module);
   loaded.library.emplace(loaded.file);
   void *const symbol = loaded.library->symbol(module_entry);
   if (!symbol) {
@@ -178,9 +174,9 @@ void Modules::load(Loaded &loaded) {
       throw Outdated(std::format("the C++ of {} was built against older engine headers "
                                  "than this vulpen's: a build makes it again",
                                  loaded.module));
-    throw std::runtime_error(std::format("the C++ of {} was built against other engine "
-                                         "headers than this vulpen; restart vulpen",
-                                         loaded.module));
+    fail("the C++ of {} was built against other engine "
+         "headers than this vulpen; restart vulpen",
+         loaded.module);
   }
   Entry entry = nullptr;
   std::memcpy(&entry, &symbol, sizeof entry); // how POSIX turns a symbol into a function
