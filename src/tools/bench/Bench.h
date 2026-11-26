@@ -469,7 +469,9 @@ template <class Tag, typename Tag::type Member> struct Reach {
 
 // As Reach, for a member whose type names a private type, as Pipelines' _frame does,
 // which the tag cannot spell: the tag only declares the friend, and its type is deduced
-// here.
+// here. MSVC deduces it only where a function reads it into a local: inside a lambda it
+// calls the type void, and as a range-for's range a syntax error. So a case reads it
+// into a local outside both, and a type it can spell takes Reach.
 //
 //   struct PipelinesFrame {
 //     friend constexpr auto reach(PipelinesFrame);

@@ -32,17 +32,17 @@ struct PipelinesPools {
   friend constexpr auto reach(PipelinesPools);
 };
 template struct Reached<PipelinesPools, &VP::Pipelines::_pools>;
-// Spelt out, though Reached could deduce it, as MSVC calls what a lambda reads through a
-// deduced one void.
+// Spelt out, though Reached could deduce them, as lambdas read them (see Reached).
 struct PipelinesFree {
   using type = std::vector<std::uint32_t> VP::Pipelines::*;
   friend constexpr type reach(PipelinesFree);
 };
 template struct Reach<PipelinesFree, &VP::Pipelines::_free>;
 struct ShaderFrame {
-  friend constexpr auto reach(ShaderFrame);
+  using type = std::vector<VP::Field> VP::Shader::*;
+  friend constexpr type reach(ShaderFrame);
 };
-template struct Reached<ShaderFrame, &VP::Shader::_frame>;
+template struct Reach<ShaderFrame, &VP::Shader::_frame>;
 
 namespace domain {
 // Where the pointer is, in pixels from the top left.
@@ -158,8 +158,9 @@ std::optional<std::filesystem::path> frame_shader(const Rows &rows) {
 }
 
 std::string pools_text(const Pipelines &pipelines) {
+  const auto &pools = pipelines.*reach(PipelinesPools{});
   std::string text;
-  for (const auto &pool : pipelines.*reach(PipelinesPools{}))
+  for (const auto &pool : pools)
     text += std::format("{}{}", text.empty() ? "" : ",", pool.blocks);
   return "[" + text + "]";
 }

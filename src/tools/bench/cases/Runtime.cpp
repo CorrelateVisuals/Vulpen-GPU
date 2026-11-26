@@ -212,16 +212,17 @@ std::vector<std::string> ran(const Rows &rows,
 } // namespace
 
 void cases(Bench &bench) {
+  const auto parse_arguments = reach(RuntimeParse{});
   bench.sweep(
       "Runtime.cpp/Runtime::parse",
-      [](const std::vector<std::string> &words) {
+      [parse_arguments](const std::vector<std::string> &words) {
         std::vector<std::string> held{"vulpen"};
         held.insert(held.end(), words.begin(), words.end());
         std::vector<char *> argv;
         for (std::string &word : held)
           argv.push_back(word.data());
         try {
-          const auto options = reach(RuntimeParse{})(argv);
+          const auto options = parse_arguments(argv);
           std::string hosted;
           for (const std::filesystem::path &file : options.hosted)
             hosted.append(hosted.empty() ? "" : " ").append(file.generic_string());
