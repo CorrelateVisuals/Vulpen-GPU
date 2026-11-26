@@ -142,19 +142,25 @@ private:
 class PassBlock {
 public:
   PassBlock(const Pipelines &pipelines, std::uint32_t size);
-  PassBlock(PassBlock &&other) noexcept;
-  PassBlock &operator=(PassBlock &&other) noexcept;
-  ~PassBlock();
 
   VkDescriptorSet set() const;
   std::span<std::byte> bytes() const;
   void flush() const;
 
+  // A set, and the one of the pipelines' pools it came from.
+  struct Block {
+    const Pipelines *pipelines = nullptr;
+    std::size_t pool = 0;
+    VkDescriptorSet set = VK_NULL_HANDLE;
+    bool operator==(const Block &) const = default;
+  };
+
 private:
-  const Pipelines *_pipelines;
+  // The set goes back to its pool, which counts it out.
+  static void given_back(Block block);
+
   Buffer _buffer;
-  std::size_t _pool = 0; // of the pipelines' pools, the one the set came from
-  VkDescriptorSet _set = VK_NULL_HANDLE;
+  Owned<Block, &PassBlock::given_back> _block; // declared after, so it goes first
 };
 
 // An image the passes sample, and its slot in textures[], which a pass block's Texture

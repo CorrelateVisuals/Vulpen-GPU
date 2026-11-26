@@ -454,51 +454,38 @@ VkPipeline Pipeline::handle() const {
 }
 
 PassBlock::PassBlock(const Pipelines &pipelines, std::uint32_t size)
-    : _pipelines(&pipelines),
-      _buffer(pipelines._resources.buffer(
-          size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, Memory::upload)),
-      _pool(pipelines.pool()) {
+    : _buffer(pipelines._resources.buffer(
+          size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, Memory::upload)) {
+  const std::size_t pool = pipelines.pool();
   const VkDescriptorSetLayout layout = pipelines._pass;
   const VkDescriptorSetAllocateInfo allocate{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = pipelines._pools[_pool].handle,
+      .descriptorPool = pipelines._pools[pool].handle,
       .descriptorSetCount = 1,
       .pSetLayouts = &layout};
-  check(vkAllocateDescriptorSets(pipelines._device, &allocate, &_set),
+  VkDescriptorSet set = VK_NULL_HANDLE;
+  check(vkAllocateDescriptorSets(pipelines._device, &allocate, &set),
         "vkAllocateDescriptorSets");
+  ++pipelines._pools[pool].blocks;
+  _block = Owned<Block, &PassBlock::given_back>(Block{&pipelines, pool, set});
   const VkDescriptorBufferInfo buffer{.buffer = _buffer.handle(), .range = VK_WHOLE_SIZE};
   const VkWriteDescriptorSet write{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                   .dstSet = _set,
+                                   .dstSet = set,
                                    .dstBinding = pass_binding,
                                    .descriptorCount = 1,
                                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                    .pBufferInfo = &buffer};
   vkUpdateDescriptorSets(pipelines._device, 1, &write, 0, nullptr);
-  ++pipelines._pools[_pool].blocks;
 }
 
-PassBlock::PassBlock(PassBlock &&other) noexcept
-    : _pipelines(other._pipelines), _buffer(std::move(other._buffer)), _pool(other._pool),
-      _set(std::exchange(other._set, VK_NULL_HANDLE)) {}
-
-PassBlock &PassBlock::operator=(PassBlock &&other) noexcept {
-  std::swap(_pipelines, other._pipelines);
-  std::swap(_buffer, other._buffer);
-  std::swap(_pool, other._pool);
-  std::swap(_set, other._set);
-  return *this;
-}
-
-PassBlock::~PassBlock() {
-  if (!_set)
-    return;
-  Pipelines::Pool &pool = _pipelines->_pools[_pool];
-  vkFreeDescriptorSets(_pipelines->_device, pool.handle, 1, &_set);
+void PassBlock::given_back(Block block) {
+  Pipelines::Pool &pool = block.pipelines->_pools[block.pool];
+  vkFreeDescriptorSets(block.pipelines->_device, pool.handle, 1, &block.set);
   --pool.blocks;
 }
 
 VkDescriptorSet PassBlock::set() const {
-  return _set;
+  return _block->set;
 }
 
 std::span<std::byte> PassBlock::bytes() const {
