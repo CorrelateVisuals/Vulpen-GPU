@@ -218,12 +218,20 @@ def build(preset: str, chosen: list[Bench] | None = None) -> None:
     if done.returncode == 0:
         return
     # A build stops at the first bench that fails, so each then builds alone, and one run
-    # names every bench that fails: CI's Windows build is the only MSVC compile.
-    failed = [f"bench-{bench.name}:\n{alone.stdout[-4000:]}{alone.stderr[-4000:]}"
+    # names every bench that fails, by its first error or warning (warnings are errors
+    # here): CI's Windows build is the only MSVC compile, and GitHub annotates only a
+    # step's first ten.
+    failed = [f"bench-{bench.name}:\n{first_problem(alone)}"
               for bench in chosen or benches([])
               if (alone := built([f"bench-{bench.name}"])).returncode != 0]
     sys.exit(f"the {preset} benches did not build:\n" + "\n".join(
         failed or [f"{done.stdout[-4000:]}{done.stderr[-4000:]}"]))
+
+
+def first_problem(done: subprocess.CompletedProcess) -> str:
+    said = done.stdout + done.stderr
+    return next((line.strip() for line in said.splitlines()
+                 if re.search(r":\s*(fatal )?(error|warning)\b", line)), said[-4000:])
 
 
 def ids_of(bench: Bench, preset: str) -> list[str]:
