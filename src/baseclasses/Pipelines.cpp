@@ -1,5 +1,6 @@
 #include "baseclasses/Pipelines.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Mechanics.h"
 
 #include <algorithm>
@@ -310,8 +311,7 @@ std::size_t Pipelines::pool() const {
 // no pass moves it between the two.
 std::uint32_t Pipelines::take_slot(const Image &image) const {
   if (_free.empty())
-    throw std::runtime_error(
-        std::format("textures[] holds {} images, all taken", image_slots - 1));
+    fail("textures[] holds {} images, all taken", image_slots - 1);
   const std::uint32_t slot = _free.back();
   _free.pop_back();
   const bool stored = image.fill() == Fill::store;
