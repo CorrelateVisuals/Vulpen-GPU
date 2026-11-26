@@ -35,10 +35,9 @@ namespace {
 // A relative path would resolve against the working directory (RP02).
 std::filesystem::path absolute(std::string_view path) {
   if (!std::filesystem::path(path).is_absolute())
-    throw std::runtime_error(std::format(
-        "{} is relative; a node names a file from its folder, and a command's <file> "
-        "comes resolved",
-        path));
+    fail("{} is relative; a node names a file from its folder, and a command's <file> "
+         "comes resolved",
+         path);
   return path;
 }
 
@@ -62,18 +61,17 @@ std::filesystem::path view_of(const std::filesystem::path &path) {
 float number(std::string_view word) {
   const std::optional<float> value = number_in<float>(word);
   if (!value)
-    throw std::runtime_error(std::format("{} is not a finite number", word));
+    fail("{} is not a finite number", word);
   return *value;
 }
 
 std::string checked_key(std::string_view name) {
   if (!key_named(name))
-    throw std::runtime_error(std::format(
-        "{} is no key: a key is named by the character it prints without shift, as a, "
-        "or as space, enter, escape, tab, backspace, insert, delete, left, right, up, "
-        "down, page_up, page_down, home, end, shift, control, alt, super, f1 to f12, or "
-        "a gamepad's button, as gamepad_a or gamepad_dpad_up",
-        name));
+    fail("{} is no key: a key is named by the character it prints without shift, as a, "
+         "or as space, enter, escape, tab, backspace, insert, delete, left, right, up, "
+         "down, page_up, page_down, home, end, shift, control, alt, super, f1 to f12, or "
+         "a gamepad's button, as gamepad_a or gamepad_dpad_up",
+         name);
   return std::string(name);
 }
 
@@ -83,32 +81,29 @@ glm::vec2 checked_axis(std::string_view name, glm::vec2 at) {
   constexpr float most = 1.0f;
   const bool trigger = name.ends_with("_trigger");
   if (!axis_named(name))
-    throw std::runtime_error(std::format(
-        "{} is no axis: an axis is gamepad_left or gamepad_right, a stick, or "
-        "gamepad_left_trigger or gamepad_right_trigger",
-        name));
+    fail("{} is no axis: an axis is gamepad_left or gamepad_right, a stick, or "
+         "gamepad_left_trigger or gamepad_right_trigger",
+         name);
   if (trigger ? at.x < 0.0f || at.x > most || at.y != 0.0f
               : std::abs(at.x) > most || std::abs(at.y) > most)
-    throw std::runtime_error(std::format(
+    fail(
         "{} {} {}: a stick's x and y go from -1 to 1, a trigger's x from 0 to 1, its y 0",
         name,
         at.x,
-        at.y));
+        at.y);
   return at;
 }
 
 std::string checked_button(std::string_view name) {
   if (name != "left" && name != "right" && name != "middle")
-    throw std::runtime_error(
-        std::format("{} is no button: a button is left, right or middle", name));
+    fail("{} is no button: a button is left, right or middle", name);
   return std::string(name);
 }
 
 std::uint32_t presses_of(std::string_view word) {
   const std::uint32_t presses = number_in<std::uint32_t>(word).value_or(0);
   if (presses == 0)
-    throw std::runtime_error(std::format(
-        "{} is no count of presses: 1 for one, 2 for a double click's second", word));
+    fail("{} is no count of presses: 1 for one, 2 for a double click's second", word);
   return presses;
 }
 
@@ -258,7 +253,7 @@ std::string Ports::read(std::string_view file) {
   std::error_code gone;
   const std::uintmax_t size = std::filesystem::file_size(path, gone);
   if (!in || gone)
-    throw std::runtime_error(std::format("{}: cannot be read", file));
+    fail("{}: cannot be read", file);
   std::string text(size, '\0');
   in.read(text.data(), static_cast<std::streamsize>(text.size()));
   text.resize(static_cast<std::size_t>(in.gcount()));
@@ -299,8 +294,7 @@ std::vector<std::string> Ports::list(std::string_view folder) {
   std::error_code failed;
   const std::filesystem::directory_iterator entries(absolute(folder), failed);
   if (failed && failed != std::errc::no_such_file_or_directory)
-    throw std::runtime_error(
-        std::format("{}: cannot be listed: {}", folder, failed.message()));
+    fail("{}: cannot be listed: {}", folder, failed.message());
   std::vector<std::string> names;
   for (const std::filesystem::directory_entry &entry : entries) {
     std::error_code gone; // a file an editor is replacing may vanish mid-listing
