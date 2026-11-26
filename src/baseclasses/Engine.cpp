@@ -1,6 +1,7 @@
 #include "baseclasses/Engine.h"
 
 #include "baseclasses/Mechanics.h"
+#include "baseclasses/Owned.h"
 #include "baseclasses/Pipelines.h"
 #include "baseclasses/Resources.h"
 #include "baseclasses/Swapchain.h"
@@ -189,9 +190,6 @@ struct Engine::Gpu {
     if (window)
       swapchain.emplace(engine_log, mechanics, resources, *window, samples, vsync);
   }
-  ~Gpu() {
-    vkDestroyQueryPool(mechanics.device(), queries, nullptr);
-  }
   Gpu(const Gpu &) = delete;
   Gpu &operator=(const Gpu &) = delete;
 
@@ -217,7 +215,7 @@ struct Engine::Gpu {
   // the queue keeps no time.
   const double tick;         // milliseconds a timestamp's tick is
   const std::uint64_t valid; // the bits of a timestamp that count
-  VkQueryPool queries = VK_NULL_HANDLE;
+  Owned<VkQueryPool, vkDestroyQueryPool, VkDevice> queries;
   std::uint32_t query_room = 0; // timestamps the pool holds
   std::uint32_t queried = 0;    // passes the last run timed, until they are read
   // Kept between frames, so a frame allocates nothing for them (CPP10).
@@ -424,13 +422,14 @@ void Engine::Gpu::begin_timing(VkCommandBuffer commands, std::size_t passes) {
   if (needed == 0)
     return;
   if (needed > query_room) {
-    vkDestroyQueryPool(mechanics.device(), queries, nullptr);
-    queries = VK_NULL_HANDLE;
+    queries = {};
     const VkQueryPoolCreateInfo info{.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
                                      .queryType = VK_QUERY_TYPE_TIMESTAMP,
                                      .queryCount = needed};
-    check(vkCreateQueryPool(mechanics.device(), &info, nullptr, &queries),
+    VkQueryPool made = VK_NULL_HANDLE;
+    check(vkCreateQueryPool(mechanics.device(), &info, nullptr, &made),
           "vkCreateQueryPool");
+    queries = {mechanics.device(), made};
     query_room = needed;
   }
   vkCmdResetQueryPool(commands, queries, 0, needed);
