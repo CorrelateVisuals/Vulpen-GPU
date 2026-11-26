@@ -4,6 +4,7 @@
 #include "runtime/Commands.h"
 #include "runtime/Operator.h"
 #include "runtime/View.h"
+#include "tools/bench/Shown.h"
 
 #include <algorithm>
 #include <format>
@@ -29,6 +30,10 @@ class FakeBind final : public Bind {
 public:
   std::vector<std::pair<std::string, std::string>> params;
   std::vector<std::string> asked;
+  // A node's own files, by the index file handed out, which the cook's file port reads.
+  std::vector<std::string> files;
+  // The node's folder, which a case sets to its sandbox where the node saves into it.
+  std::string folder_path = "/node";
 
   // A C++ connection's object by port, made when the node or the case first names it, and
   // kept across binds, as the engine keeps it: the case sets an input before a cook and
@@ -43,10 +48,11 @@ public:
   }
   File file(std::string_view path) override {
     asked.push_back(std::format("file {}", path));
-    return {};
+    files.emplace_back(path);
+    return {static_cast<std::uint32_t>(files.size() - 1)};
   }
   std::string folder() const override {
-    return "/node";
+    return folder_path;
   }
   bool sets(std::string_view name) override {
     return std::ranges::any_of(params,
@@ -121,15 +127,37 @@ private:
   std::map<std::string, std::pair<const char *, Object>, std::less<>> _objects;
 };
 
+// The speakers, as a case sets them: the sample frames this frame takes, and what the
+// frame before played; what a node adds is kept, in order.
+class FakeSound final : public SoundPort {
+public:
+  std::size_t taken = 0;
+  std::vector<float> heard;
+  std::vector<float> added;
+
+  std::size_t frames() const override {
+    return taken;
+  }
+  void add(std::span<const float> samples) override {
+    added.insert(added.end(), samples.begin(), samples.end());
+  }
+  std::span<const float> played() const override {
+    return heard;
+  }
+};
+
 // A node's cook: the frame's index, size and clock as the case sets them, every line the
-// node logs, and the file port the case hands it.
+// node logs and image it uploads, and the file port and speakers the case hands it.
 class FakeCook final : public Cook {
 public:
   std::uint64_t frame = 0;
   glm::uvec2 size{};
   double clock = 0;
   FilePort *file_port = nullptr;
+  SoundPort *sound_port = nullptr;
   mutable std::vector<std::string> said;
+  // An image's index, size and levels, and its bytes' count and hash, an upload each.
+  std::vector<std::string> uploads;
 
   std::uint64_t index() const override {
     return frame;
@@ -161,7 +189,9 @@ public:
     refused("terminal");
   }
   SoundPort &sound() override {
-    refused("sound");
+    if (!sound_port)
+      refused("sound");
+    return *sound_port;
   }
   const View &view() const override {
     refused("view");
@@ -201,26 +231,42 @@ private:
   std::span<std::byte> upload_bytes(std::uint32_t, std::optional<std::size_t>) override {
     refused("upload");
   }
-  void upload_image(std::uint32_t, std::span<const std::byte>, glm::uvec2) override {
-    refused("image upload");
+  void upload_image(std::uint32_t index,
+                    std::span<const std::byte> bytes,
+                    glm::uvec2 extent) override {
+    upload_levels(index, bytes, extent, 1);
   }
   bool image_empty(std::uint32_t) const override {
     refused("image");
   }
-  void upload_levels(std::uint32_t,
-                     std::span<const std::byte>,
-                     glm::uvec2,
-                     std::uint32_t) override {
-    refused("image upload");
+  void upload_levels(std::uint32_t index,
+                     std::span<const std::byte> bytes,
+                     glm::uvec2 extent,
+                     std::uint32_t levels) override {
+    const std::string_view text(reinterpret_cast<const char *>(bytes.data()),
+                                bytes.size());
+    uploads.push_back(std::format("image {} {}x{}, {} levels, {} bytes #{:08x}",
+                                  index,
+                                  extent.x,
+                                  extent.y,
+                                  levels,
+                                  bytes.size(),
+                                  hash_of(text) >> 32));
   }
 };
 
 // The file port over the files themselves, by absolute path, as Ports gives a line them:
-// each call through the engine's own Files, so what a step changes is on disk.
+// each call through the engine's own Files, so what a step changes is on disk. A node's
+// own files are those its bind named, by the index it handed out; the version of each is
+// the case's, moved on as an edit on disk would.
 class SandboxFiles final : public FilePort {
 public:
-  std::string_view text(File) override {
-    throw std::logic_error("the bench's files open no node's file");
+  std::vector<std::string> node_files;
+  std::vector<std::uint64_t> versions;
+
+  std::string_view text(File file) override {
+    _text = Files::text(node_file(file));
+    return _text;
   }
   void save(File, std::string_view) override {
     throw std::logic_error("the bench's files open no node's file");
@@ -261,9 +307,19 @@ public:
   std::span<const Moved> moved() const override {
     return {};
   }
-  std::uint64_t version(File) override {
-    throw std::logic_error("the bench's files open no node's file");
+  std::uint64_t version(File file) override {
+    node_file(file);
+    return file.index < versions.size() ? versions[file.index] : 0;
   }
+
+private:
+  const std::string &node_file(File file) const {
+    if (file.index >= node_files.size())
+      throw std::logic_error("the bench's files open no node's file of that index");
+    return node_files[file.index];
+  }
+
+  std::string _text; // what text handed out last, which the view it returned reads
 };
 
 class NoProcesses final : public ProcessPort {
@@ -369,12 +425,15 @@ template <class Part> class Running {
 public:
   FakeBind bind;
   FakeCook cook;
+  // The node's own files, as its bind named them; the case hands the cook them.
+  SandboxFiles files;
 
   explicit Running(std::vector<std::pair<std::string, std::string>> params = {}) {
     bind.params = std::move(params);
   }
   void bound() {
     static_cast<Operator &>(_part).bind(bind);
+    files.node_files = bind.files;
   }
   void cooked() {
     static_cast<Operator &>(_part).cook(cook);
