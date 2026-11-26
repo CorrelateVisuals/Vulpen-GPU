@@ -25,14 +25,13 @@
 namespace VP::bench {
 
 struct PipelinesFrame {
-  friend constexpr auto reach(PipelinesFrame);
+  template <class F> friend void reach(PipelinesFrame, F &&);
 };
 template struct Reached<PipelinesFrame, &VP::Pipelines::_frame>;
 struct PipelinesPools {
-  friend constexpr auto reach(PipelinesPools);
+  template <class F> friend void reach(PipelinesPools, F &&);
 };
 template struct Reached<PipelinesPools, &VP::Pipelines::_pools>;
-// Spelt out, though Reached could deduce them, as lambdas read them (see Reached).
 struct PipelinesFree {
   using type = std::vector<std::uint32_t> VP::Pipelines::*;
   friend constexpr type reach(PipelinesFree);
@@ -126,8 +125,7 @@ template <class F> std::string said(F &&call) {
 }
 
 // The frame block as the GPU reads it, each member at the offset reflection gave.
-std::string frame_bytes(const Pipelines &pipelines) {
-  const auto &frame = pipelines.*reach(PipelinesFrame{});
+std::string frame_text(const auto &frame) {
   if (!frame)
     return "no frame block";
   const std::byte *const bytes = frame->buffer.bytes().data();
@@ -146,6 +144,12 @@ std::string frame_bytes(const Pipelines &pipelines) {
                      at(FrameMember::frame_index, std::uint32_t{}));
 }
 
+std::string frame_bytes(const Pipelines &pipelines) {
+  std::string text;
+  reach(PipelinesFrame{}, [&](auto frame) { text = frame_text(pipelines.*frame); });
+  return text;
+}
+
 // A compute shader of the build that declares the frame block, for a pipeline that makes
 // it.
 std::optional<std::filesystem::path> frame_shader(const Rows &rows) {
@@ -158,10 +162,11 @@ std::optional<std::filesystem::path> frame_shader(const Rows &rows) {
 }
 
 std::string pools_text(const Pipelines &pipelines) {
-  const auto &pools = pipelines.*reach(PipelinesPools{});
   std::string text;
-  for (const auto &pool : pools)
-    text += std::format("{}{}", text.empty() ? "" : ",", pool.blocks);
+  reach(PipelinesPools{}, [&](auto pools) {
+    for (const auto &pool : pipelines.*pools)
+      text += std::format("{}{}", text.empty() ? "" : ",", pool.blocks);
+  });
   return "[" + text + "]";
 }
 

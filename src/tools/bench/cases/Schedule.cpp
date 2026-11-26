@@ -79,7 +79,7 @@ std::vector<std::string> scheduled(Stage &stage,
   std::optional<Views> &views = session.views;
   try {
     session.start(stage, manifest);
-  } catch (const std::exception &failure) {
+  } catch (const std::exception &) {
     said.push_back("not built: " + thrown());
     return said;
   }

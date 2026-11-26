@@ -468,18 +468,19 @@ template <class Tag, typename Tag::type Member> struct Reach {
 };
 
 // As Reach, for a member whose type names a private type, as Pipelines' _frame does,
-// which the tag cannot spell: the tag only declares the friend, and its type is deduced
-// here. MSVC deduces it only where a function reads it into a local: inside a lambda it
-// calls the type void, and as a range-for's range a syntax error. So a case reads it
-// into a local outside both, and a type it can spell takes Reach.
+// which the tag cannot spell: reach hands the member to a function, whose auto parameter
+// takes its type. A friend returning auto would do on GCC and Clang, but MSVC deduces no
+// return type of a friend defined in an explicit instantiation.
 //
 //   struct PipelinesFrame {
-//     friend constexpr auto reach(PipelinesFrame);
+//     template <class F> friend void reach(PipelinesFrame, F &&);
 //   };
 //   template struct Reached<PipelinesFrame, &VP::Pipelines::_frame>;
+//
+// and calls reach(PipelinesFrame{}, [&](auto frame) { ... pipelines.*frame ... }).
 template <class Tag, auto Member> struct Reached {
-  friend constexpr auto reach(Tag) {
-    return Member;
+  template <class F> friend void reach(Tag, F &&with) {
+    std::forward<F>(with)(Member);
   }
 };
 

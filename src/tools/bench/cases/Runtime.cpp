@@ -20,7 +20,7 @@
 namespace VP::bench {
 
 struct RuntimeParse {
-  friend constexpr auto reach(RuntimeParse);
+  template <class F> friend void reach(RuntimeParse, F &&);
 };
 template struct Reached<RuntimeParse, &VP::Runtime::parse>;
 
@@ -209,37 +209,42 @@ std::vector<std::string> ran(const Rows &rows,
   return lines;
 }
 
+// The options parse gives, as a row shows them.
+std::string options_text(const auto &options) {
+  std::string hosted;
+  for (const std::filesystem::path &file : options.hosted)
+    hosted.append(hosted.empty() ? "" : " ").append(file.generic_string());
+  return std::format(
+      "manifest {} hosted [{}] frames {} first {} fps {} size {}x{} log {} "
+      "log-file {} source {} restart {}",
+      escaped(options.manifest.generic_string()),
+      hosted,
+      options.frames,
+      options.first_frame,
+      options.fps,
+      options.size.width,
+      options.size.height,
+      static_cast<int>(options.log),
+      escaped(options.log_file.generic_string()),
+      escaped(options.source.generic_string()),
+      escaped(options.restart.generic_string()));
+}
+
 } // namespace
 
 void cases(Bench &bench) {
-  const auto parse_arguments = reach(RuntimeParse{});
   bench.sweep(
       "Runtime.cpp/Runtime::parse",
-      [parse_arguments](const std::vector<std::string> &words) {
+      [](const std::vector<std::string> &words) {
         std::vector<std::string> held{"vulpen"};
         held.insert(held.end(), words.begin(), words.end());
         std::vector<char *> argv;
         for (std::string &word : held)
           argv.push_back(word.data());
         try {
-          const auto options = parse_arguments(argv);
-          std::string hosted;
-          for (const std::filesystem::path &file : options.hosted)
-            hosted.append(hosted.empty() ? "" : " ").append(file.generic_string());
-          return std::format(
-              "manifest {} hosted [{}] frames {} first {} fps {} size {}x{} log {} "
-              "log-file {} source {} restart {}",
-              escaped(options.manifest.generic_string()),
-              hosted,
-              options.frames,
-              options.first_frame,
-              options.fps,
-              options.size.width,
-              options.size.height,
-              static_cast<int>(options.log),
-              escaped(options.log_file.generic_string()),
-              escaped(options.source.generic_string()),
-              escaped(options.restart.generic_string()));
+          std::string text;
+          reach(RuntimeParse{}, [&](auto parse) { text = options_text(parse(argv)); });
+          return text;
         } catch (const std::exception &failure) {
           // The first line of the refusal; the usage it shows after is the same for all.
           const std::string said = failure.what();
