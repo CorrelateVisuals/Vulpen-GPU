@@ -72,6 +72,25 @@ jobs:
         run: |
           'VULKAN_SDK=C:\VulkanSDK' >> $env:GITHUB_ENV
           'C:\VulkanSDK\Bin' >> $env:GITHUB_PATH
+      # Every binary but barriers links Vulkan's loader, which the SDK's installer puts in
+      # System32 and its cache does not hold, so a bench cannot start where the cache hit:
+      # the SDK's own runtime installer puts it there. It reports without failing the job,
+      # as the bench step does, until a run shows it works.
+      - name: Vulkan loader
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          if (Test-Path "$env:SystemRoot\System32\vulkan-1.dll") { exit 0 }
+          $runtime = Get-ChildItem 'C:\VulkanSDK' -Recurse -Filter 'VulkanRT*.exe' | Select-Object -First 1
+          if (-not $runtime) {
+            "::error::no Vulkan runtime installer under C:\VulkanSDK: $((Get-ChildItem 'C:\VulkanSDK').Name -join ', ')"
+            exit 1
+          }
+          Start-Process -FilePath $runtime.FullName -Wait -ArgumentList '/S'
+          if (-not (Test-Path "$env:SystemRoot\System32\vulkan-1.dll")) {
+            "::error::$($runtime.Name) put no vulkan-1.dll in System32"
+            exit 1
+          }
       - name: Compiler messages as annotations
         run: echo "::add-matcher::.github/compilers.json"
       - name: Configure
