@@ -1,0 +1,56 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/picture/Picture.cpp, a call each (src/tools/bench/bench.py).
+
+## Picture.cpp/Picture::bind
+[("file", "/p/a.png"), ("mip_levels", "all")] -> ["texture picture of u8vec4", "file /p/a.png"]
+[("file", "/p/a.png"), ("mip_levels", "none")] -> throws runtime_error: "mip_levels = none is no count of levels, nor all"; asked []
+[("mip_levels", "1")] -> ["texture picture of u8vec4"]
+
+## Picture.cpp/Picture::cook
+a file not there -> uploads []; logged ["error: <here>/gone.png is empty, or not there"]
+a.png's version as before -> uploads []; logged []
+a.png's version moved -> uploads ["image 0 2x1, 4294967295 levels, 8 bytes #8869e677"]; logged []
+a.png, every level -> uploads ["image 0 2x1, 4294967295 levels, 8 bytes #8869e677"]; logged []
+b.png, no picture -> uploads []; logged ["error: <here>/b.png is no image stb_image reads: unknown image type"]
+no file -> uploads []; logged []
+
+## Picture.cpp/mip_levels
+("") -> throws runtime_error: "mip_levels =  is no count of levels, nor all"
+("-1") -> throws runtime_error: "mip_levels = -1 is no count of levels, nor all"
+("0") -> throws runtime_error: "mip_levels = 0 is no count of levels, nor all"
+("1") -> 1
+("12") -> 12
+("1x") -> throws runtime_error: "mip_levels = 1x is no count of levels, nor all"
+("4294967295") -> 4294967295
+("4294967296") -> throws runtime_error: "mip_levels = 4294967296 is no count of levels, nor all"
+("All") -> throws runtime_error: "mip_levels = All is no count of levels, nor all"
+("all") -> 4294967295
+("x") -> throws runtime_error: "mip_levels = x is no count of levels, nor all"
+~("14") -> 14
+~("16") -> 16
+~("20") -> 20
+~("21") -> 21
+~("23") -> 23
+~("24") -> 24
+~("26") -> 26
+~("27") -> 27
+~("3") -> 3
+~("30") -> 30
+~("31") -> 31
+~("33") -> 33
+~("38") -> 38
+~("4") -> 4
+~("40") -> 40
+~("45") -> 45
+~("47") -> 47
+~("48") -> 48
+~("5") -> 5
+~("50") -> 50
+~("51") -> 51
+~("53") -> 53
+~("56") -> 56
+~("57") -> 57
+~("59") -> 59
+~("6") -> 6
+~("60") -> 60
+~("63") -> 63
+~("7") -> 7

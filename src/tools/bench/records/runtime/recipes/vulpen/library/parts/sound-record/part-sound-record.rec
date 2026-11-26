@@ -1,0 +1,23 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/sound-record/SoundRecord.cpp, a call each (src/tools/bench/bench.py).
+
+## SoundRecord.cpp/SoundRecord::bind
+seconds -1 -> throws runtime_error: "seconds = -1: above 0, and at most 11184, as a WAV file holds no more"; asked ["param seconds read as float"]
+seconds 0 -> throws runtime_error: "seconds = 0: above 0, and at most 11184, as a WAV file holds no more"; asked ["param seconds read as float"]
+seconds 0.0001 -> ["param seconds read as float"]
+seconds 1 -> ["param seconds read as float"]
+seconds 11184 -> ["param seconds read as float"]
+seconds 11185 -> throws runtime_error: "seconds = 11185: above 0, and at most 11184, as a WAV file holds no more"; asked ["param seconds read as float"]
+seconds inf -> throws runtime_error: "seconds = 0: above 0, and at most 11184, as a WAV file holds no more"; asked ["param seconds read as float, refused"]
+seconds nan -> throws runtime_error: "seconds = 0: above 0, and at most 11184, as a WAV file holds no more"; asked ["param seconds read as float, refused"]
+
+## SoundRecord.cpp/SoundRecord::cook
+a frame after it saved -> logged []
+a.wav -> [0.1, -0.1, 0.2, -0.2, 0.3, -0.3, 0.4, -0.4, 0.5, -0.5]
+b.wav -> [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+bound again, a.wav still named -> logged []
+bound with b.wav, its first frame -> logged []
+five frames played -> logged ["info: saved <here>/b.wav"]
+no file -> logged []
+the frame a.wav was named -> logged []
+three frames played -> logged []
+three more, two of them wanted -> logged ["info: saved <here>/a.wav"]
