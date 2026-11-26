@@ -30,7 +30,8 @@ constexpr std::string_view preview_label = "{} (preview)";
 // switch whose second half shows the picture, set to it as a file opens and back as it
 // closes, so a preview takes the place of what the first half shows while it is open, and
 // the person is shown the file opened. A file it cannot read or decode is named in the
-// log.
+// log; one just opened in another's place clears the picture too, so no other file's
+// pixels show under its name.
 class ImageFile final : public VP::Operator {
   void bind(VP::Bind &node) override {
     const std::string file = node.sets("file") ? node.param<std::string>("file") : "";
@@ -51,7 +52,8 @@ class ImageFile final : public VP::Operator {
   }
 
   void cook(VP::Cook &frame) override {
-    if (std::exchange(_opened, false)) {
+    const bool opened = std::exchange(_opened, false);
+    if (opened) {
       _decoded.reset();
       if (_file.empty())
         frame.commands().send(std::format("{}: image clear {}.picture", _view, _name));
@@ -71,6 +73,8 @@ class ImageFile final : public VP::Operator {
       frame.upload(_picture, pixels.rgba, pixels.size);
     } catch (const std::runtime_error &failure) {
       frame.log(VP::Level::error, failure.what());
+      if (opened)
+        frame.commands().send(std::format("{}: image clear {}.picture", _view, _name));
     }
   }
 
