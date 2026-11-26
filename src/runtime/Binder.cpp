@@ -5,6 +5,7 @@
 
 #include "runtime/Bound.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
 #include "runtime/Modules.h"
@@ -558,11 +559,11 @@ private:
     const std::span<std::byte> bytes = upload.buffer->bytes();
     const std::size_t holds = bytes.size() / upload.stride;
     if (count > holds)
-      throw std::runtime_error(std::format("the operator writes {} elements of {}, which "
-                                           "holds {}; upload<T>(port, count) makes room",
-                                           *count,
-                                           upload.port,
-                                           holds));
+      fail("the operator writes {} elements of {}, which "
+           "holds {}; upload<T>(port, count) makes room",
+           *count,
+           upload.port,
+           holds);
     *upload.used = static_cast<std::uint32_t>(count.value_or(holds));
     // In 64 bits, as the buffer was sized: a buffer may hold past 4 GiB.
     return bytes.first(std::size_t{*upload.used} * upload.stride);
@@ -723,15 +724,14 @@ void Schedule::check_params(const Node &node) const {
     const auto value = std::ranges::find_if(
         values, [&](const NodePort *port) { return port->name == param.key; });
     if (value == values.end())
-      throw std::runtime_error(std::format("param {}: node {} reads no param of that "
-                                           "name; the params it reads are {}{}",
-                                           param.key,
-                                           node.name,
-                                           port_names(values),
-                                           as_word(node.name, param)));
+      fail("param {}: node {} reads no param of that "
+           "name; the params it reads are {}{}",
+           param.key,
+           node.name,
+           port_names(values),
+           as_word(node.name, param));
     if (!(*value)->holds.empty() && !write_value(param.value, (*value)->holds, nullptr))
-      throw std::runtime_error(std::format(
-          "param {} = {} is not a {}", param.key, param.value, (*value)->holds));
+      fail("param {} = {} is not a {}", param.key, param.value, (*value)->holds);
   }
 }
 
@@ -755,13 +755,13 @@ void Schedule::check_end(const View &view,
                                    ? "names no port of its node"
                                    : "is a port its node reads, not one it writes";
   std::erase_if(ports, [&](const NodePort *each) { return each->writes != writes; });
-  throw std::runtime_error(std::format("connection {}: {} {}; the ports {} {} are {}",
-                                       connection.name,
-                                       end.text(),
-                                       why,
-                                       end.node,
-                                       writes ? "writes" : "reads",
-                                       port_names(ports)));
+  fail("connection {}: {} {}; the ports {} {} are {}",
+       connection.name,
+       end.text(),
+       why,
+       end.node,
+       writes ? "writes" : "reads",
+       port_names(ports));
 }
 
 // A dispatch's threads, as its word gives them, or as the buffer at the port it names

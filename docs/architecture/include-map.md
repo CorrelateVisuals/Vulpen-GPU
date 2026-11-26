@@ -33,7 +33,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/examples/triangle/Triangle.vert` | — |
 | `baseclasses/examples/triangle/main.cpp` | `baseclasses/Engine.h` `baseclasses/Log.h` `baseclasses/Passes.h` `baseclasses/Pipelines.h` `baseclasses/Platform.h` `baseclasses/Shader.h` `commit.h` |
 | `main.cpp` | `commit.h` `runtime/Runtime.h` |
-| `runtime/Binder.cpp` | `baseclasses/Platform.h` `runtime/Bound.h` `runtime/Commands.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Schedule.h` |
+| `runtime/Binder.cpp` | `baseclasses/Fail.h` `baseclasses/Platform.h` `runtime/Bound.h` `runtime/Commands.h` `runtime/Modules.h` `runtime/Ports.h` `runtime/Schedule.h` |
 | `runtime/Bound.h` | `baseclasses/Pipelines.h` `runtime/Operator.h` `runtime/Text.h` `runtime/View.h` |
 | `runtime/Checks.cpp` | `baseclasses/Fail.h` `runtime/Bound.h` `runtime/Schedule.h` `runtime/Text.h` |
 | `runtime/Commands.cpp` | `baseclasses/Fail.h` `baseclasses/Platform.h` `runtime/Commands.h` `runtime/Text.h` |
