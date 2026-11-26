@@ -154,6 +154,99 @@ int usage() {
   return 2;
 }
 
+using Folder = std::filesystem::path;
+
+// Each sweep's rows once, as ever, and each row's call that many times more, which
+// alone are counted: a first call's allocations are its own (CPP10).
+int cost(const Bench::Body &pass,
+         const Folder &root,
+         const Folder &repo,
+         std::uint64_t repeat) {
+  Rows rows(Rows::Mode::drop, root, repo, false, repeat);
+  pass(rows);
+  const Spent &spent = rows.spent();
+  std::printf("%ccost rows=%zu calls=%llu nanoseconds=%llu allocations=%llu bytes=%llu\n",
+              cost_mark,
+              rows.count(),
+              static_cast<unsigned long long>(spent.calls),
+              static_cast<unsigned long long>(spent.nanoseconds),
+              static_cast<unsigned long long>(spent.allocations),
+              static_cast<unsigned long long>(spent.bytes));
+  return 0;
+}
+
+void baseline(const Bench::Body &pass, const Folder &root, const Folder &repo) {
+  Rows rows(Rows::Mode::print, root, repo);
+  pass(rows);
+}
+
+void again(const Bench::Body &pass, const Folder &root, const Folder &repo) {
+  Rows first(Rows::Mode::skip, root, repo);
+  pass(first);
+  Rows second(Rows::Mode::print, root, repo, true);
+  pass(second);
+}
+
+void thread(const Bench::Body &pass, const Folder &root, const Folder &repo) {
+  Rows rows(Rows::Mode::print, root, repo);
+  std::thread([&] { pass(rows); }).join();
+}
+
+// Each in a folder of its own, which bench.py makes, as the bench writes no file (RA04);
+// their rows then read as if they had run in the root.
+void threads(const Bench::Body &pass, const Folder &root, const Folder &repo) {
+  const Folder first_root = root.empty() ? root : root / "one";
+  const Folder second_root = root.empty() ? root : root / "two";
+  Rows one(Rows::Mode::keep, first_root, repo);
+  Rows two(Rows::Mode::keep, second_root, repo);
+  {
+    std::jthread first([&] { pass(one); });
+    std::jthread second([&] { pass(two); });
+  }
+  frame(skip_mark, {}); // what the threads printed belongs to no one row
+  for (std::size_t index = 0; index < std::max(one.kept().size(), two.kept().size());
+       ++index) {
+    const auto row = [&](Rows &rows, const Folder &folder) {
+      return index < rows.kept().size() ? as_in_root(rows.kept()[index], folder, root)
+                                        : std::string("no row");
+    };
+    const std::string mine = row(one, first_root);
+    const std::string other = row(two, second_root);
+    frame(row_mark, mine);
+    if (other != mine)
+      frame(row_mark, "!! beside it at once: " + other);
+  }
+}
+
+void heap(const Bench::Body &pass, const Folder &root, const Folder &repo) {
+  std::vector<std::unique_ptr<char[]>> shifted;
+  for (std::size_t index = 0; index < heap_blocks; ++index)
+    shifted.push_back(std::make_unique<char[]>(index * heap_stride % heap_span + 1));
+  for (std::size_t index = 0; index < shifted.size(); index += 2)
+    shifted[index].reset();
+  Rows rows(Rows::Mode::print, root, repo);
+  pass(rows);
+}
+
+// The contexts by the names bench.py gives them.
+constexpr std::array contexts{std::pair{std::string_view{"baseline"}, &baseline},
+                              std::pair{std::string_view{"again"}, &again},
+                              std::pair{std::string_view{"thread"}, &thread},
+                              std::pair{std::string_view{"threads"}, &threads},
+                              std::pair{std::string_view{"heap"}, &heap}};
+
+// Refused where this machine has no such locale.
+bool set_locale(const std::string &name) {
+  try {
+    std::locale::global(std::locale(name));
+  } catch (const std::runtime_error &) {
+    std::fprintf(stderr, "no locale %s on this machine\n", name.c_str());
+    return false;
+  }
+  std::setlocale(LC_ALL, name.c_str());
+  return true;
+}
+
 } // namespace
 
 std::size_t Names::number(const void *handle) {
@@ -386,85 +479,19 @@ int Bench::run(std::span<char *const> arguments) {
                  id.data());
     return 2;
   }
-  if (options->locale) {
-    const std::string name(*options->locale);
-    try {
-      std::locale::global(std::locale(name));
-    } catch (const std::runtime_error &) {
-      std::fprintf(stderr, "no locale %s on this machine\n", name.c_str());
-      return 2;
-    }
-    std::setlocale(LC_ALL, name.c_str());
-  }
-  const auto pass = [&](Rows &rows) {
+  if (options->locale && !set_locale(std::string(*options->locale)))
+    return 2;
+  const Body pass = [&](Rows &rows) {
     for (const Body &body : found->bodies)
       body(rows);
   };
-  const std::filesystem::path &root = options->root;
-  const std::filesystem::path &repo = options->repo;
-  // Each sweep's rows once, as ever, and each row's call that many times more, which
-  // alone are counted: a first call's allocations are its own (CPP10).
-  if (options->repeat) {
-    Rows rows(Rows::Mode::drop, root, repo, false, *options->repeat);
-    pass(rows);
-    const Spent &spent = rows.spent();
-    std::printf(
-        "%ccost rows=%zu calls=%llu nanoseconds=%llu allocations=%llu bytes=%llu\n",
-        cost_mark,
-        rows.count(),
-        static_cast<unsigned long long>(spent.calls),
-        static_cast<unsigned long long>(spent.nanoseconds),
-        static_cast<unsigned long long>(spent.allocations),
-        static_cast<unsigned long long>(spent.bytes));
-    return 0;
-  }
-  const std::string_view context = options->context;
-  if (context == "baseline") {
-    Rows rows(Rows::Mode::print, root, repo);
-    pass(rows);
-  } else if (context == "again") {
-    Rows first(Rows::Mode::skip, root, repo);
-    pass(first);
-    Rows second(Rows::Mode::print, root, repo, true);
-    pass(second);
-  } else if (context == "thread") {
-    Rows rows(Rows::Mode::print, root, repo);
-    std::thread([&] { pass(rows); }).join();
-  } else if (context == "threads") {
-    // Each in a folder of its own, which bench.py makes, as the bench writes no file
-    // (RA04); their rows then read as if they had run in the root.
-    const std::filesystem::path first_root = root.empty() ? root : root / "one";
-    const std::filesystem::path second_root = root.empty() ? root : root / "two";
-    Rows one(Rows::Mode::keep, first_root, repo);
-    Rows two(Rows::Mode::keep, second_root, repo);
-    {
-      std::jthread first([&] { pass(one); });
-      std::jthread second([&] { pass(two); });
-    }
-    frame(skip_mark, {}); // what the threads printed belongs to no one row
-    for (std::size_t index = 0; index < std::max(one.kept().size(), two.kept().size());
-         ++index) {
-      const auto row = [&](Rows &rows, const std::filesystem::path &folder) {
-        return index < rows.kept().size() ? as_in_root(rows.kept()[index], folder, root)
-                                          : std::string("no row");
-      };
-      const std::string mine = row(one, first_root);
-      const std::string other = row(two, second_root);
-      frame(row_mark, mine);
-      if (other != mine)
-        frame(row_mark, "!! beside it at once: " + other);
-    }
-  } else if (context == "heap") {
-    std::vector<std::unique_ptr<char[]>> shifted;
-    for (std::size_t index = 0; index < heap_blocks; ++index)
-      shifted.push_back(std::make_unique<char[]>(index * heap_stride % heap_span + 1));
-    for (std::size_t index = 0; index < shifted.size(); index += 2)
-      shifted[index].reset();
-    Rows rows(Rows::Mode::print, root, repo);
-    pass(rows);
-  } else {
+  if (options->repeat)
+    return cost(pass, options->root, options->repo, *options->repeat);
+  const auto context = std::ranges::find_if(
+      contexts, [&](const auto &each) { return each.first == options->context; });
+  if (context == contexts.end())
     return usage();
-  }
+  context->second(pass, options->root, options->repo);
   return 0;
 }
 
