@@ -123,6 +123,12 @@ void cases(Bench &bench) {
                 const std::uint32_t length = bar_length(rows, cell, whole);
                 return length <= whole && (rows != 0 || length == 0);
               });
+  bench.holds("Halves.h/bar_length",
+              "more rows never a shorter bar",
+              [](std::uint32_t rows, std::uint32_t cell, std::uint32_t whole) {
+                return rows == std::numeric_limits<std::uint32_t>::max() ||
+                       bar_length(rows + 1, cell, whole) >= bar_length(rows, cell, whole);
+              });
 }
 
 } // namespace VP::bench

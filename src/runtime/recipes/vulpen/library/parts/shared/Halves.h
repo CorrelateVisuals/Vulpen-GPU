@@ -70,10 +70,14 @@ ratio_at(const VP_VIEW::Rect &area, glm::length_t along, float ratio, float at) 
 }
 
 // How long a bar of rows text cells, each cell long, is in an area whole long; none for
-// no rows.
+// no rows. Counted in 64 bits, as a bar's size param past 2^32 pixels of cells would
+// wrap to a short bar.
 inline std::uint32_t
 bar_length(std::uint32_t rows, std::uint32_t cell, std::uint32_t whole) {
-  return rows == 0 ? 0 : std::min(rows * cell + 2 * bar_pad, whole);
+  if (rows == 0)
+    return 0;
+  const std::uint64_t length = std::uint64_t{rows} * cell + 2 * bar_pad;
+  return static_cast<std::uint32_t>(std::min<std::uint64_t>(length, whole));
 }
 
 } // namespace
