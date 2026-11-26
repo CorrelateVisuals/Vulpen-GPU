@@ -70,16 +70,14 @@ VkExtent2D size_of(std::string_view flag, std::string_view text) {
       by == std::string_view::npos ? std::nullopt
                                    : number_in<std::uint32_t>(text.substr(by + 1));
   if (!width || !height)
-    throw std::runtime_error(std::format(
-        "{} {} is no size: a width and a height, as 1280x720\n{}", flag, text, usage));
+    fail("{} {} is no size: a width and a height, as 1280x720\n{}", flag, text, usage);
   return {*width, *height};
 }
 
 template <class T> T number(std::string_view flag, std::string_view text) {
   const std::optional<T> value = number_in<T>(text);
   if (!value)
-    throw std::runtime_error(
-        std::format("{} {} is not a whole number\n{}", flag, text, usage));
+    fail("{} {} is not a whole number\n{}", flag, text, usage);
   return *value;
 }
 
@@ -176,12 +174,12 @@ public:
         continue;
       const std::string_view kind = trim(line.substr(equals + 1));
       if (kind != integrated && kind != discrete)
-        throw std::runtime_error(std::format("{}: {} = {} is no kind of GPU: {} or {}",
-                                             file.string(),
-                                             key,
-                                             kind,
-                                             integrated,
-                                             discrete));
+        fail("{}: {} = {} is no kind of GPU: {} or {}",
+             file.string(),
+             key,
+             kind,
+             integrated,
+             discrete);
       return std::string(kind);
     }
     return {};
@@ -327,8 +325,7 @@ private:
       for (std::uint32_t bit = least; bit <= most; bit <<= 1)
         if ((counts & bit) != 0)
           offered += std::format("{}{}", offered.empty() ? "" : ", ", bit);
-      throw std::runtime_error(std::format(
-          "{} is no count of samples this GPU draws a window with: {}", word, offered));
+      fail("{} is no count of samples this GPU draws a window with: {}", word, offered);
     }
     _wanted = static_cast<VkSampleCountFlagBits>(*count);
     return std::format(
@@ -469,11 +466,11 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
       continue;
     }
     if (std::ranges::find(given, argument) != given.end())
-      throw std::runtime_error(std::format("{} is given twice\n{}", argument, usage));
+      fail("{} is given twice\n{}", argument, usage);
     given.push_back(argument);
     const auto value = [&] {
       if (index + 1 == arguments.size())
-        throw std::runtime_error(std::format("{} needs a value\n{}", argument, usage));
+        fail("{} needs a value\n{}", argument, usage);
       return std::string_view(arguments[++index]);
     };
     if (argument == "--frames") {
@@ -494,16 +491,15 @@ Runtime::Options Runtime::parse(std::span<char *const> arguments) {
       const std::string_view named = value();
       const std::optional<Level> level = level_named(named);
       if (!level)
-        throw std::runtime_error(std::format("--log {} is no level\n{}", named, usage));
+        fail("--log {} is no level\n{}", named, usage);
       options.log = *level;
     } else {
-      throw std::runtime_error(
-          std::format("unknown argument {}{}\n{}",
-                      argument,
-                      argument.find('=') == std::string_view::npos
-                          ? ""
-                          : "; a value follows its flag after a blank, as --frames 2",
-                      usage));
+      fail("unknown argument {}{}\n{}",
+           argument,
+           argument.find('=') == std::string_view::npos
+               ? ""
+               : "; a value follows its flag after a blank, as --frames 2",
+           usage);
     }
   }
   return options;
