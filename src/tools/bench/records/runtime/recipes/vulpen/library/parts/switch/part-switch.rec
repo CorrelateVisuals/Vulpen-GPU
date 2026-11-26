@@ -1,0 +1,94 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/switch/Switch.cpp, a call each (src/tools/bench/bench.py).
+
+## Switch.cpp/Switch::bind
+["input area", "output first", "output second"]
+
+## Switch.cpp/Switch::cook
+("", (-50,-50)+(100,100)) -> ((0,0)+(0,0), (-50,-50)+(100,100))
+("", (0,0)+(0,0)) -> ((0,0)+(0,0), (0,0)+(0,0))
+("", (0,0)+(1,1)) -> ((0,0)+(0,0), (0,0)+(1,1))
+("", (0,0)+(3,3)) -> ((0,0)+(0,0), (0,0)+(3,3))
+("", (0,0)+(4,4)) -> ((0,0)+(0,0), (0,0)+(4,4))
+("", (0,0)+(4294967295,4294967295)) -> ((0,0)+(0,0), (0,0)+(4294967295,4294967295))
+("", (0,0)+(5,5)) -> ((0,0)+(0,0), (0,0)+(5,5))
+("", (10,20)+(200,100)) -> ((0,0)+(0,0), (10,20)+(200,100))
+("First", (-50,-50)+(100,100)) -> throws runtime_error: "param shown = First: first or second"
+("First", (0,0)+(0,0)) -> throws runtime_error: "param shown = First: first or second"
+("First", (0,0)+(1,1)) -> throws runtime_error: "param shown = First: first or second"
+("First", (0,0)+(3,3)) -> throws runtime_error: "param shown = First: first or second"
+("First", (0,0)+(4,4)) -> throws runtime_error: "param shown = First: first or second"
+("First", (0,0)+(4294967295,4294967295)) -> throws runtime_error: "param shown = First: first or second"
+("First", (0,0)+(5,5)) -> throws runtime_error: "param shown = First: first or second"
+("First", (10,20)+(200,100)) -> throws runtime_error: "param shown = First: first or second"
+("both", (-50,-50)+(100,100)) -> throws runtime_error: "param shown = both: first or second"
+("both", (0,0)+(0,0)) -> throws runtime_error: "param shown = both: first or second"
+("both", (0,0)+(1,1)) -> throws runtime_error: "param shown = both: first or second"
+("both", (0,0)+(3,3)) -> throws runtime_error: "param shown = both: first or second"
+("both", (0,0)+(4,4)) -> throws runtime_error: "param shown = both: first or second"
+("both", (0,0)+(4294967295,4294967295)) -> throws runtime_error: "param shown = both: first or second"
+("both", (0,0)+(5,5)) -> throws runtime_error: "param shown = both: first or second"
+("both", (10,20)+(200,100)) -> throws runtime_error: "param shown = both: first or second"
+("first", (-50,-50)+(100,100)) -> ((-50,-50)+(100,100), (0,0)+(0,0))
+("first", (0,0)+(0,0)) -> ((0,0)+(0,0), (0,0)+(0,0))
+("first", (0,0)+(1,1)) -> ((0,0)+(1,1), (0,0)+(0,0))
+("first", (0,0)+(3,3)) -> ((0,0)+(3,3), (0,0)+(0,0))
+("first", (0,0)+(4,4)) -> ((0,0)+(4,4), (0,0)+(0,0))
+("first", (0,0)+(4294967295,4294967295)) -> ((0,0)+(4294967295,4294967295), (0,0)+(0,0))
+("first", (0,0)+(5,5)) -> ((0,0)+(5,5), (0,0)+(0,0))
+("first", (10,20)+(200,100)) -> ((10,20)+(200,100), (0,0)+(0,0))
+("second", (-50,-50)+(100,100)) -> ((0,0)+(0,0), (-50,-50)+(100,100))
+("second", (0,0)+(0,0)) -> ((0,0)+(0,0), (0,0)+(0,0))
+("second", (0,0)+(1,1)) -> ((0,0)+(0,0), (0,0)+(1,1))
+("second", (0,0)+(3,3)) -> ((0,0)+(0,0), (0,0)+(3,3))
+("second", (0,0)+(4,4)) -> ((0,0)+(0,0), (0,0)+(4,4))
+("second", (0,0)+(4294967295,4294967295)) -> ((0,0)+(0,0), (0,0)+(4294967295,4294967295))
+("second", (0,0)+(5,5)) -> ((0,0)+(0,0), (0,0)+(5,5))
+("second", (10,20)+(200,100)) -> ((0,0)+(0,0), (10,20)+(200,100))
+~("", (-467,-861)+(1466,1707)) -> ((0,0)+(0,0), (-467,-861)+(1466,1707))
+~("", (-81,610)+(2436,2490)) -> ((0,0)+(0,0), (-81,610)+(2436,2490))
+~("", (-912,-327)+(2766,2201)) -> ((0,0)+(0,0), (-912,-327)+(2766,2201))
+~("", (-943,294)+(3110,1940)) -> ((0,0)+(0,0), (-943,294)+(3110,1940))
+~("", (688,-89)+(2718,1304)) -> ((0,0)+(0,0), (688,-89)+(2718,1304))
+~("", (967,941)+(3324,2838)) -> ((0,0)+(0,0), (967,941)+(3324,2838))
+~("First", (-100,690)+(1342,531)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (-185,-64)+(2716,1294)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (-216,745)+(2004,938)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (-624,-129)+(3229,2298)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (-657,-713)+(1709,2937)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (-708,587)+(1746,3559)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (-739,340)+(910,161)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (-793,-819)+(3018,1807)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (207,565)+(3377,2044)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (305,-262)+(600,496)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (39,-855)+(2516,1164)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (540,912)+(2964,2129)) -> throws runtime_error: "param shown = First: first or second"
+~("First", (641,724)+(2744,2006)) -> throws runtime_error: "param shown = First: first or second"
+~("both", (-230,64)+(2371,3319)) -> throws runtime_error: "param shown = both: first or second"
+~("both", (-358,781)+(74,1760)) -> throws runtime_error: "param shown = both: first or second"
+~("both", (23,682)+(2324,1472)) -> throws runtime_error: "param shown = both: first or second"
+~("both", (380,-254)+(1072,1097)) -> throws runtime_error: "param shown = both: first or second"
+~("both", (60,-690)+(2632,1562)) -> throws runtime_error: "param shown = both: first or second"
+~("both", (639,-902)+(1045,1680)) -> throws runtime_error: "param shown = both: first or second"
+~("both", (831,333)+(477,581)) -> throws runtime_error: "param shown = both: first or second"
+~("first", (-204,398)+(3343,1480)) -> ((-204,398)+(3343,1480), (0,0)+(0,0))
+~("first", (-253,281)+(3736,1837)) -> ((-253,281)+(3736,1837), (0,0)+(0,0))
+~("first", (-604,429)+(3490,601)) -> ((-604,429)+(3490,601), (0,0)+(0,0))
+~("first", (-79,991)+(2243,2122)) -> ((-79,991)+(2243,2122), (0,0)+(0,0))
+~("first", (-900,-69)+(1483,1825)) -> ((-900,-69)+(1483,1825), (0,0)+(0,0))
+~("first", (330,-266)+(3884,2691)) -> ((330,-266)+(3884,2691), (0,0)+(0,0))
+~("first", (803,935)+(2597,941)) -> ((803,935)+(2597,941), (0,0)+(0,0))
+~("second", (-155,534)+(2170,3937)) -> ((0,0)+(0,0), (-155,534)+(2170,3937))
+~("second", (-185,246)+(1415,39)) -> ((0,0)+(0,0), (-185,246)+(1415,39))
+~("second", (-395,-757)+(3101,991)) -> ((0,0)+(0,0), (-395,-757)+(3101,991))
+~("second", (-515,-206)+(3610,3709)) -> ((0,0)+(0,0), (-515,-206)+(3610,3709))
+~("second", (-576,762)+(2148,2060)) -> ((0,0)+(0,0), (-576,762)+(2148,2060))
+~("second", (-594,-122)+(3423,126)) -> ((0,0)+(0,0), (-594,-122)+(3423,126))
+~("second", (107,-577)+(619,1781)) -> ((0,0)+(0,0), (107,-577)+(619,1781))
+~("second", (223,489)+(2620,444)) -> ((0,0)+(0,0), (223,489)+(2620,444))
+~("second", (273,-459)+(1305,266)) -> ((0,0)+(0,0), (273,-459)+(1305,266))
+~("second", (441,-426)+(2531,558)) -> ((0,0)+(0,0), (441,-426)+(2531,558))
+~("second", (608,-150)+(2164,1776)) -> ((0,0)+(0,0), (608,-150)+(2164,1776))
+~("second", (640,267)+(1289,3942)) -> ((0,0)+(0,0), (640,267)+(1289,3942))
+~("second", (882,611)+(516,3921)) -> ((0,0)+(0,0), (882,611)+(516,3921))
+~("second", (954,357)+(3566,8)) -> ((0,0)+(0,0), (954,357)+(3566,8))
+~("second", (991,965)+(1842,2810)) -> ((0,0)+(0,0), (991,965)+(1842,2810))
