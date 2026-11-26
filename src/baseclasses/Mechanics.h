@@ -1,5 +1,7 @@
 #pragma once
 
+#include "baseclasses/Owned.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -101,13 +103,15 @@ private:
                        const Log &log,
                        std::string_view prefer);
 
-  const VkInstance _instance;
+  // In the order they are made, so they go the other way round: the fence and the
+  // command pool before the device, and the device before the instance.
+  const Owned<VkInstance, vkDestroyInstance> _instance;
   const Choice _choice;
-  const VkDevice _device;
+  const Owned<VkDevice, vkDestroyDevice> _device;
   VkQueue _queue = VK_NULL_HANDLE;
-  VkCommandPool _command_pool = VK_NULL_HANDLE;
+  Owned<VkCommandPool, vkDestroyCommandPool, VkDevice> _command_pool;
   VkCommandBuffer _commands = VK_NULL_HANDLE;
-  VkFence _fence = VK_NULL_HANDLE;
+  Owned<VkFence, vkDestroyFence, VkDevice> _fence;
 };
 
 } // namespace VP

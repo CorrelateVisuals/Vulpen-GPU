@@ -14,7 +14,7 @@ Paths are from `src/`. The standard library is left out, since every file may us
 | `baseclasses/Log.cpp` | `baseclasses/Log.h` `baseclasses/Platform.h` |
 | `baseclasses/Log.h` | — |
 | `baseclasses/Mechanics.cpp` | `baseclasses/Log.h` `baseclasses/Mechanics.h` `baseclasses/Platform.h` |
-| `baseclasses/Mechanics.h` | `<vulkan/vulkan.h>` |
+| `baseclasses/Mechanics.h` | `<vulkan/vulkan.h>` `baseclasses/Owned.h` |
 | `baseclasses/Owned.h` | — |
 | `baseclasses/Passes.cpp` | `baseclasses/Passes.h` |
 | `baseclasses/Passes.h` | `<vulkan/vulkan.h>` |

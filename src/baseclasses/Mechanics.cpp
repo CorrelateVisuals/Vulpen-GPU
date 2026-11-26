@@ -367,8 +367,9 @@ Mechanics::Mechanics(const Log &log, const Window *window, std::string_view pref
                                      .flags =
                                          VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                                      .queueFamilyIndex = _choice.family};
-  check(vkCreateCommandPool(_device, &pool, nullptr, &_command_pool),
-        "vkCreateCommandPool");
+  VkCommandPool made_pool = VK_NULL_HANDLE;
+  check(vkCreateCommandPool(_device, &pool, nullptr, &made_pool), "vkCreateCommandPool");
+  _command_pool = {_device, made_pool};
   const VkCommandBufferAllocateInfo commands{
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
       .commandPool = _command_pool,
@@ -379,15 +380,14 @@ Mechanics::Mechanics(const Log &log, const Window *window, std::string_view pref
   // Signalled, so the first frame's wait returns at once.
   const VkFenceCreateInfo fence{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
                                 .flags = VK_FENCE_CREATE_SIGNALED_BIT};
-  check(vkCreateFence(_device, &fence, nullptr, &_fence), "vkCreateFence");
+  VkFence made_fence = VK_NULL_HANDLE;
+  check(vkCreateFence(_device, &fence, nullptr, &made_fence), "vkCreateFence");
+  _fence = {_device, made_fence};
 }
 
+// The GPU is done with everything before the members go.
 Mechanics::~Mechanics() {
   vkDeviceWaitIdle(_device);
-  vkDestroyFence(_device, _fence, nullptr);
-  vkDestroyCommandPool(_device, _command_pool, nullptr);
-  vkDestroyDevice(_device, nullptr);
-  vkDestroyInstance(_instance, nullptr);
 }
 
 VkInstance Mechanics::instance() const {
@@ -434,14 +434,13 @@ Mechanics::Choice Mechanics::choose(VkInstance instance,
                                     const Window *window,
                                     const Log &log,
                                     std::string_view prefer) {
-  const VkSurfaceKHR surface = window ? window->surface(instance) : VK_NULL_HANDLE;
+  const Owned<VkSurfaceKHR, vkDestroySurfaceKHR, VkInstance> surface{
+      instance, window ? window->surface(instance) : VK_NULL_HANDLE};
   std::vector<VkPhysicalDevice> fit = fit_devices(instance, surface, log);
   const VkPhysicalDevice device = best_of(fit, prefer);
   log.write(Level::info, Tag::gpu, "runs on " + VP::describe(device));
   Choice choice{
       .device = device, .family = *queue_family(device, surface), .fit = std::move(fit)};
-  if (surface)
-    vkDestroySurfaceKHR(instance, surface, nullptr);
   return choice;
 }
 
@@ -458,7 +457,8 @@ std::string_view Mechanics::takes(std::string_view prefer) const {
 }
 
 void Mechanics::wait() const {
-  check(vkWaitForFences(_device, 1, &_fence, VK_TRUE, no_timeout), "vkWaitForFences");
+  const VkFence fence = _fence;
+  check(vkWaitForFences(_device, 1, &fence, VK_TRUE, no_timeout), "vkWaitForFences");
 }
 
 void Mechanics::wait_idle() const {
@@ -476,7 +476,8 @@ VkCommandBuffer Mechanics::record() const {
 
 void Mechanics::submit(VkSemaphore acquired, VkSemaphore rendered) const {
   check(vkEndCommandBuffer(_commands), "vkEndCommandBuffer");
-  check(vkResetFences(_device, 1, &_fence), "vkResetFences");
+  const VkFence fence = _fence;
+  check(vkResetFences(_device, 1, &fence), "vkResetFences");
   const VkPipelineStageFlags written = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   const VkSubmitInfo submit{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                             .waitSemaphoreCount = acquired ? 1u : 0u,
