@@ -147,38 +147,42 @@ bool is_recipe(std::string_view text) {
   });
 }
 
+// A key=value word given once per key, as a node's param and image words are: its key
+// as check takes it, a value, and no key given before.
+template <class Entry>
+void add_once(std::vector<Entry> &entries,
+              std::string Entry::*key,
+              std::string_view what,
+              std::string_view of,
+              std::string_view word,
+              void (*check)(std::string_view, std::string_view)) {
+  const std::size_t equals = word.find('=');
+  const std::string_view name = trim(word.substr(0, equals));
+  const std::string_view value = trim(word.substr(equals + 1));
+  check(what, name);
+  if (value.empty())
+    fail("{} {} has no {}", what, name, of);
+  if (std::ranges::find(entries, name, key) != entries.end())
+    fail("{} {} is set twice", what, name);
+  entries.push_back({std::string(name), std::string(value)});
+}
+
 // `name=value`, whose name is a path when it sets a node inside a recipe the node uses.
 void add_param(Node &node, std::string_view value) {
-  const std::size_t equals = value.find('=');
-  if (equals == std::string_view::npos)
+  if (value.find('=') == std::string_view::npos)
     fail("param {} names no param: a param is name=value, so a line gives it as "
          "param=tint=1,1,1, or alone as param set <node> tint 1,1,1, and a manifest as "
          "param = tint=1,1,1",
          value);
-  const std::string_view name = trim(value.substr(0, equals));
-  const std::string_view setting = trim(value.substr(equals + 1));
-  check_path("param", name);
-  if (setting.empty())
-    fail("param {} has no value", name);
-  if (std::ranges::find(node.params, name, &Param::key) != node.params.end())
-    fail("param {} is set twice", name);
-  node.params.push_back({std::string(name), std::string(setting)});
+  add_once(node.params, &Param::key, "param", "value", value, check_path);
 }
 
 // `port=FORMAT`. Which formats there are, the loader knows, as it knows the log levels.
 void add_image(Node &node, std::string_view value) {
-  const std::size_t equals = value.find('=');
-  if (equals == std::string_view::npos)
+  if (value.find('=') == std::string_view::npos)
     throw std::runtime_error(
         "an image is written `image = port=FORMAT`, as image = atlas=R8_UNORM");
-  const std::string_view port = trim(value.substr(0, equals));
-  const std::string_view format = trim(value.substr(equals + 1));
-  check_name("image", port);
-  if (format.empty())
-    fail("image {} has no format", port);
-  if (std::ranges::find(node.images, port, &ImagePort::port) != node.images.end())
-    fail("image {} is set twice", port);
-  node.images.push_back({std::string(port), std::string(format)});
+  add_once(node.images, &ImagePort::port, "image", "format", value, check_name);
 }
 
 // What no single word can show.
