@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cstring>
-#include <deque>
 #include <format>
 #include <stdexcept>
 #include <utility>
@@ -41,31 +40,18 @@ constexpr std::array<std::pair<VkFilter, VkSamplerAddressMode>, static_samplers>
      {VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT}}};
 
 // A shader module lives only until the pipeline made from it exists.
-class ShaderModule {
-public:
-  ShaderModule(VkDevice device, const Shader &shader) : _device(device) {
-    const std::span<const std::uint32_t> words = shader.words();
-    const VkShaderModuleCreateInfo code{.sType =
-                                            VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                                        .codeSize = words.size_bytes(),
-                                        .pCode = words.data()};
-    check(vkCreateShaderModule(_device, &code, nullptr, &_module),
-          "vkCreateShaderModule");
-  }
-  ~ShaderModule() {
-    vkDestroyShaderModule(_device, _module, nullptr);
-  }
-  ShaderModule(const ShaderModule &) = delete;
-  ShaderModule &operator=(const ShaderModule &) = delete;
+using Module = Owned<VkShaderModule, vkDestroyShaderModule, VkDevice>;
 
-  VkShaderModule handle() const {
-    return _module;
-  }
-
-private:
-  const VkDevice _device;
-  VkShaderModule _module = VK_NULL_HANDLE;
-};
+Module shader_module(VkDevice device, const Shader &shader) {
+  const std::span<const std::uint32_t> words = shader.words();
+  const VkShaderModuleCreateInfo code{.sType =
+                                          VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                      .codeSize = words.size_bytes(),
+                                      .pCode = words.data()};
+  VkShaderModule module = VK_NULL_HANDLE;
+  check(vkCreateShaderModule(device, &code, nullptr, &module), "vkCreateShaderModule");
+  return {device, module};
+}
 
 // Between mip levels as between texels, so a linear sampler reads an image's levels
 // trilinear; as many levels as the image holds, so one of one level samples as ever.
@@ -148,16 +134,20 @@ VkDescriptorPool image_pool(VkDevice device) {
 
 Pipelines::Pipelines(VkDevice device, const Resources &resources)
     : _device(device), _resources(resources) {
-  for (std::size_t index = 0; index < _samplers.size(); ++index)
-    _samplers[index] =
-        make_sampler(_device, samplers[index].first, samplers[index].second);
-  _images = image_layout(_device, _samplers);
-  _image_pool = image_pool(_device);
+  // Set 0's layout holds the samplers, as Vulkan's handles side by side.
+  std::array<VkSampler, static_samplers> made{};
+  for (std::size_t index = 0; index < made.size(); ++index) {
+    made[index] = make_sampler(_device, samplers[index].first, samplers[index].second);
+    _samplers[index] = {_device, made[index]};
+  }
+  _images = {_device, image_layout(_device, made)};
+  _image_pool = {_device, image_pool(_device)};
+  const VkDescriptorSetLayout set_0 = _images;
   const VkDescriptorSetAllocateInfo images{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool = _image_pool,
       .descriptorSetCount = 1,
-      .pSetLayouts = &_images};
+      .pSetLayouts = &set_0};
   check(vkAllocateDescriptorSets(_device, &images, &_image_set),
         "vkAllocateDescriptorSets");
   for (std::uint32_t slot = image_slots - 1; slot > 0; --slot)
@@ -171,9 +161,11 @@ Pipelines::Pipelines(VkDevice device, const Resources &resources)
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
       .bindingCount = 1,
       .pBindings = &block};
-  check(vkCreateDescriptorSetLayout(_device, &pass, nullptr, &_pass),
+  VkDescriptorSetLayout made_pass = VK_NULL_HANDLE;
+  check(vkCreateDescriptorSetLayout(_device, &pass, nullptr, &made_pass),
         "vkCreateDescriptorSetLayout");
-  const std::array sets{_images, _pass}; // in set order
+  _pass = {_device, made_pass};
+  const std::array<VkDescriptorSetLayout, 2> sets{_images, _pass}; // in set order
   // The frame block's address, which every pass pushes (RV02).
   const VkPushConstantRange frame{.stageFlags = VK_SHADER_STAGE_ALL,
                                   .size = sizeof(VkDeviceAddress)};
@@ -183,21 +175,10 @@ Pipelines::Pipelines(VkDevice device, const Resources &resources)
       .pSetLayouts = sets.data(),
       .pushConstantRangeCount = 1,
       .pPushConstantRanges = &frame};
-  check(vkCreatePipelineLayout(_device, &layout, nullptr, &_layout),
+  VkPipelineLayout made_layout = VK_NULL_HANDLE;
+  check(vkCreatePipelineLayout(_device, &layout, nullptr, &made_layout),
         "vkCreatePipelineLayout");
-}
-
-Pipelines::~Pipelines() {
-  for (const Made &made : _render_passes)
-    vkDestroyRenderPass(_device, made.render_pass, nullptr);
-  for (const Pool &pool : _pools)
-    vkDestroyDescriptorPool(_device, pool.handle, nullptr);
-  vkDestroyPipelineLayout(_device, _layout, nullptr);
-  vkDestroyDescriptorSetLayout(_device, _pass, nullptr);
-  vkDestroyDescriptorPool(_device, _image_pool, nullptr);
-  vkDestroyDescriptorSetLayout(_device, _images, nullptr);
-  for (const VkSampler sampler : _samplers)
-    vkDestroySampler(_device, sampler, nullptr);
+  _layout = {_device, made_layout};
 }
 
 VkPipelineLayout Pipelines::layout() const {
@@ -237,16 +218,18 @@ VkRenderPass Pipelines::render_pass(VkFormat format,
     throw std::runtime_error("this GPU tests depth in none of D32_SFLOAT, "
                              "X8_D24_UNORM_PACK32 and D16_UNORM");
   return _render_passes
-      .emplace_back(Made{.format = format,
-                         .depth = depth,
-                         .samples = samples,
-                         .render_pass = make_render_pass(
-                             _device,
-                             format,
-                             depth == Depth::none ? VK_FORMAT_UNDEFINED : depth_format,
-                             depth == Depth::kept,
-                             samples,
-                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)})
+      .emplace_back(Made{
+          .format = format,
+          .depth = depth,
+          .samples = samples,
+          .render_pass = {_device,
+                          make_render_pass(_device,
+                                           format,
+                                           depth == Depth::none ? VK_FORMAT_UNDEFINED
+                                                                : depth_format,
+                                           depth == Depth::kept,
+                                           samples,
+                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)}})
       .render_pass;
 }
 
@@ -319,7 +302,7 @@ std::size_t Pipelines::pool() const {
       .pPoolSizes = &blocks};
   VkDescriptorPool made = VK_NULL_HANDLE;
   check(vkCreateDescriptorPool(_device, &info, nullptr, &made), "vkCreateDescriptorPool");
-  _pools.push_back({.handle = made});
+  _pools.push_back({.handle = {_device, made}});
   return _pools.size() - 1;
 }
 
@@ -351,39 +334,41 @@ std::uint32_t Pipelines::take_slot(const Image &image) const {
   return slot;
 }
 
-Pipeline::Pipeline(const Pipelines &pipelines, const Shader &compute)
-    : _device(pipelines._device) {
+Pipeline::Pipeline(const Pipelines &pipelines, const Shader &compute) {
   pipelines.take_frame(compute);
-  const ShaderModule module(_device, compute);
+  const Module module = shader_module(pipelines._device, compute);
   const VkComputePipelineCreateInfo info{
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
       .stage = {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-                .module = module.handle(),
+                .module = module,
                 .pName = "main"},
       .layout = pipelines.layout()};
-  check(vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline),
+  VkPipeline made = VK_NULL_HANDLE;
+  check(vkCreateComputePipelines(
+            pipelines._device, VK_NULL_HANDLE, 1, &info, nullptr, &made),
         "vkCreateComputePipelines");
+  _pipeline = {pipelines._device, made};
 }
 
 // The vertex shader pulls its vertices from buffers by address (RV02), so the pipeline
 // takes no vertex input; the viewport follows the window, so it is set per frame. With
 // tessellation stages it draws patches of a triangle's corners, as it draws triangles
-// without them. A deque, as a shader module does not move.
+// without them.
 Pipeline::Pipeline(const Pipelines &pipelines,
                    std::span<const ShaderStage> stages,
                    VkRenderPass render_pass,
-                   VkSampleCountFlagBits samples)
-    : _device(pipelines._device) {
-  std::deque<ShaderModule> modules;
+                   VkSampleCountFlagBits samples) {
+  std::vector<Module> modules;
   std::vector<VkPipelineShaderStageCreateInfo> infos;
   bool tessellates = false;
   for (const ShaderStage &stage : stages) {
     pipelines.take_frame(*stage.shader);
-    infos.push_back({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                     .stage = stage.stage,
-                     .module = modules.emplace_back(_device, *stage.shader).handle(),
-                     .pName = "main"});
+    infos.push_back(
+        {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         .stage = stage.stage,
+         .module = modules.emplace_back(shader_module(pipelines._device, *stage.shader)),
+         .pName = "main"});
     tessellates = tessellates || stage.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
   }
   const VkPipelineVertexInputStateCreateInfo input{
@@ -457,22 +442,11 @@ Pipeline::Pipeline(const Pipelines &pipelines,
       .pDynamicState = &dynamic_state,
       .layout = pipelines.layout(),
       .renderPass = render_pass};
-  check(vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &info, nullptr, &_pipeline),
+  VkPipeline made = VK_NULL_HANDLE;
+  check(vkCreateGraphicsPipelines(
+            pipelines._device, VK_NULL_HANDLE, 1, &info, nullptr, &made),
         "vkCreateGraphicsPipelines");
-}
-
-Pipeline::Pipeline(Pipeline &&other) noexcept
-    : _device(other._device), _pipeline(std::exchange(other._pipeline, VK_NULL_HANDLE)) {}
-
-Pipeline &Pipeline::operator=(Pipeline &&other) noexcept {
-  std::swap(_device, other._device);
-  std::swap(_pipeline, other._pipeline);
-  return *this;
-}
-
-Pipeline::~Pipeline() {
-  if (_pipeline)
-    vkDestroyPipeline(_device, _pipeline, nullptr);
+  _pipeline = {pipelines._device, made};
 }
 
 VkPipeline Pipeline::handle() const {
@@ -484,11 +458,12 @@ PassBlock::PassBlock(const Pipelines &pipelines, std::uint32_t size)
       _buffer(pipelines._resources.buffer(
           size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, Memory::upload)),
       _pool(pipelines.pool()) {
+  const VkDescriptorSetLayout layout = pipelines._pass;
   const VkDescriptorSetAllocateInfo allocate{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool = pipelines._pools[_pool].handle,
       .descriptorSetCount = 1,
-      .pSetLayouts = &pipelines._pass};
+      .pSetLayouts = &layout};
   check(vkAllocateDescriptorSets(pipelines._device, &allocate, &_set),
         "vkAllocateDescriptorSets");
   const VkDescriptorBufferInfo buffer{.buffer = _buffer.handle(), .range = VK_WHOLE_SIZE};
@@ -568,7 +543,7 @@ Drawn::Drawn(const Pipelines &pipelines,
              Image image,
              Depth depth,
              VkSampleCountFlagBits samples)
-    : _sampled(pipelines, std::move(image)), _device(pipelines._device) {
+    : _sampled(pipelines, std::move(image)) {
   const Image &drawn = _sampled.image();
   // First, as it refuses a kept depth of many samples before any image is made.
   const VkRenderPass render_pass = pipelines.render_pass(drawn.format(), depth, samples);
@@ -599,30 +574,24 @@ Drawn::Drawn(const Pipelines &pipelines,
                                      .width = drawn.extent().width,
                                      .height = drawn.extent().height,
                                      .layers = 1};
-  check(vkCreateFramebuffer(_device, &info, nullptr, &_framebuffer),
+  VkFramebuffer made_framebuffer = VK_NULL_HANDLE;
+  check(vkCreateFramebuffer(pipelines._device, &info, nullptr, &made_framebuffer),
         "vkCreateFramebuffer");
+  _framebuffer = {pipelines._device, made_framebuffer};
 }
 
 Drawn::Drawn(Drawn &&other) noexcept
     : _sampled(std::move(other._sampled)), _samples(std::move(other._samples)),
       _dropped(std::move(other._dropped)), _kept(std::move(other._kept)),
-      _device(other._device),
-      _framebuffer(std::exchange(other._framebuffer, VK_NULL_HANDLE)) {}
+      _framebuffer(std::move(other._framebuffer)) {}
 
 Drawn &Drawn::operator=(Drawn &&other) noexcept {
   std::swap(_sampled, other._sampled);
   std::swap(_samples, other._samples);
   std::swap(_dropped, other._dropped);
   std::swap(_kept, other._kept);
-  std::swap(_device, other._device);
   std::swap(_framebuffer, other._framebuffer);
   return *this;
-}
-
-// Between frames, as its image goes, so no draw through it is still running.
-Drawn::~Drawn() {
-  if (_framebuffer)
-    vkDestroyFramebuffer(_device, _framebuffer, nullptr);
 }
 
 const Sampled &Drawn::sampled() const {

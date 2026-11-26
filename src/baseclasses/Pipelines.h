@@ -1,5 +1,6 @@
 #pragma once
 
+#include "baseclasses/Owned.h"
 #include "baseclasses/Resources.h"
 #include "baseclasses/Shader.h"
 
@@ -30,7 +31,6 @@ enum class Depth { none, dropped, kept };
 class Pipelines {
 public:
   Pipelines(VkDevice device, const Resources &resources);
-  ~Pipelines();
   Pipelines(const Pipelines &) = delete;
   Pipelines &operator=(const Pipelines &) = delete;
 
@@ -81,7 +81,7 @@ private:
 
   // Pass blocks come from these; each block counts itself in and out of its pool.
   struct Pool {
-    VkDescriptorPool handle = VK_NULL_HANDLE;
+    Owned<VkDescriptorPool, vkDestroyDescriptorPool, VkDevice> handle;
     std::uint32_t blocks = 0;
   };
 
@@ -95,22 +95,22 @@ private:
   const VkDevice _device;
   const Resources &_resources;
   // In the order baseclasses/GpuLayout.glsl names them; set 0's layout holds them.
-  std::array<VkSampler, static_samplers> _samplers{};
-  VkDescriptorSetLayout _images = VK_NULL_HANDLE;
-  VkDescriptorPool _image_pool = VK_NULL_HANDLE;
+  std::array<Owned<VkSampler, vkDestroySampler, VkDevice>, static_samplers> _samplers;
+  Owned<VkDescriptorSetLayout, vkDestroyDescriptorSetLayout, VkDevice> _images;
+  Owned<VkDescriptorPool, vkDestroyDescriptorPool, VkDevice> _image_pool;
   VkDescriptorSet _image_set = VK_NULL_HANDLE;
   // textures[]'s free slots, and images[]'s, the lowest last; slot 0, unbound, is never
   // one.
   mutable std::vector<std::uint32_t> _free;
-  VkDescriptorSetLayout _pass = VK_NULL_HANDLE;
-  VkPipelineLayout _layout = VK_NULL_HANDLE;
+  Owned<VkDescriptorSetLayout, vkDestroyDescriptorSetLayout, VkDevice> _pass;
+  Owned<VkPipelineLayout, vkDestroyPipelineLayout, VkDevice> _layout;
   mutable std::vector<Pool> _pools;
   mutable std::optional<Frame> _frame;
   struct Made {
     VkFormat format = VK_FORMAT_UNDEFINED;
     Depth depth = Depth::none;
     VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
-    VkRenderPass render_pass = VK_NULL_HANDLE;
+    Owned<VkRenderPass, vkDestroyRenderPass, VkDevice> render_pass;
   };
   mutable std::vector<Made> _render_passes;
 };
@@ -131,15 +131,11 @@ public:
            std::span<const ShaderStage> stages,
            VkRenderPass render_pass,
            VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
-  Pipeline(Pipeline &&other) noexcept;
-  Pipeline &operator=(Pipeline &&other) noexcept;
-  ~Pipeline();
 
   VkPipeline handle() const;
 
 private:
-  VkDevice _device = VK_NULL_HANDLE;
-  VkPipeline _pipeline = VK_NULL_HANDLE;
+  Owned<VkPipeline, vkDestroyPipeline, VkDevice> _pipeline;
 };
 
 // One pass's block: the CPU writes it, the pass's shader reads it.
@@ -193,7 +189,6 @@ public:
         VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
   Drawn(Drawn &&other) noexcept;
   Drawn &operator=(Drawn &&other) noexcept;
-  ~Drawn();
 
   const Sampled &sampled() const;
   // The depth, while it is kept; null otherwise.
@@ -205,8 +200,9 @@ private:
   std::optional<Image> _samples; // drawn into, then resolved into _sampled's image
   std::optional<Image> _dropped;
   std::optional<Sampled> _kept;
-  VkDevice _device = VK_NULL_HANDLE;
-  VkFramebuffer _framebuffer = VK_NULL_HANDLE;
+  // Between frames, as its image goes, so no draw through it is still running; first, as
+  // it is declared last.
+  Owned<VkFramebuffer, vkDestroyFramebuffer, VkDevice> _framebuffer;
 };
 
 } // namespace VP
