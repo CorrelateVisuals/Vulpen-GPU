@@ -11,10 +11,12 @@ namespace VP {
 
 // A Vulkan object, destroyed by destroy, Vulkan's function for its kind, as
 // vkDestroyQueryPool, with the parent that made it, a device or the instance; the
-// instance and a device have none. Its one owner holds it as a member (A01), so it goes
-// when the owner does, after the members declared after it, and a constructor that
-// throws partway destroys what it made (CPP09). Moving hands it on: the one moved from
-// then holds what the other held, and destroys that.
+// instance and a device have none. A handle that is more than Vulkan's, as VMA's buffer
+// with its memory, is destroyed by a function its owner gives, of the handle alone. Its
+// one owner holds it as a member (A01), so it goes when the owner does, after the members
+// declared after it, and a constructor that throws partway destroys what it made (CPP09).
+// Moving hands it on: the one moved from then holds what the other held, and destroys
+// that.
 template <class Handle, auto destroy, class Parent = std::nullptr_t> class Owned {
 public:
   Owned() = default;
@@ -32,14 +34,19 @@ public:
   ~Owned() {
     if (_handle == Handle{})
       return;
-    if constexpr (std::is_same_v<Parent, std::nullptr_t>)
+    if constexpr (!std::is_same_v<Parent, std::nullptr_t>)
+      destroy(_parent, _handle, nullptr);
+    else if constexpr (std::is_invocable_v<decltype(destroy), Handle, std::nullptr_t>)
       destroy(_handle, nullptr);
     else
-      destroy(_parent, _handle, nullptr);
+      destroy(_handle);
   }
 
   operator Handle() const {
     return _handle;
+  }
+  const Handle *operator->() const {
+    return &_handle;
   }
 
 private:
