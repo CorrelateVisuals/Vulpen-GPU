@@ -49,8 +49,11 @@ struct Pixels {
 };
 
 // The bytes of a PNG, a JPEG, a BMP, a TGA or a GIF's first frame, decoded; throws
-// naming the file and why stb_image read none.
+// naming the file and why stb_image read none. A node's file port reads a file not there
+// as no bytes, so those are named as either, not as no image.
 inline Pixels decoded(std::string_view bytes, std::string_view file) {
+  if (bytes.empty())
+    throw std::runtime_error(std::format("{} is empty, or not there", file));
   constexpr int rgba = 4; // channels a pixel takes
   glm::ivec2 size{};
   int channels = 0;

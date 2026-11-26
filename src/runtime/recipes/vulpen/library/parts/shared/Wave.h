@@ -70,8 +70,11 @@ inline float wave_sample(std::string_view bytes,
 
 // The samples of a WAV file's bytes, two channels, a mono file's in both. Throws naming
 // the file and what of it this reads not: 16-bit or 24-bit integers or 32-bit floats,
-// one or two channels, at the port's rate.
+// one or two channels, at the port's rate. A node's file port reads a file not there as
+// no bytes, so those are named as either, not as no WAV file.
 inline std::vector<float> wave_read(std::string_view bytes, std::string_view file) {
+  if (bytes.empty())
+    throw std::runtime_error(std::format("{} is empty, or not there", file));
   const auto refuse = [&](std::string_view why) {
     return std::runtime_error(std::format("{} is no WAV file this reads: {}", file, why));
   };
