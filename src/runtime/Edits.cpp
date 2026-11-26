@@ -461,11 +461,24 @@ void connect_ports(View &view, Arguments arguments, const Around &around) {
   }
 }
 
+// Erases what is named so, refusing in the words given where nothing was.
+template <class Entry, class... Words>
+void erase_named(std::vector<Entry> &entries,
+                 std::string Entry::*name_of,
+                 std::string_view name,
+                 std::format_string<Words...> none,
+                 Words &&...words) {
+  if (std::erase_if(entries,
+                    [&](const Entry &entry) { return entry.*name_of == name; }) == 0)
+    fail(none, std::forward<Words>(words)...);
+}
+
 void disconnect(View &view, Arguments arguments, const Around &) {
-  if (std::erase_if(view.connections, [&](const Connection &connection) {
-        return connection.name == arguments.front();
-      }) == 0)
-    fail("no connection is named {}", arguments.front());
+  erase_named(view.connections,
+              &Connection::name,
+              arguments.front(),
+              "no connection is named {}",
+              arguments.front());
 }
 
 // A node inside a recipe a node uses keeps its params in that node, as the manifest
@@ -488,8 +501,8 @@ void param_unset(View &view, Arguments arguments, const Around &around) {
   const auto unset = [&](std::vector<Param> &params,
                          std::string_view key,
                          std::string &by) {
-    if (std::erase_if(params, [&](const Param &param) { return param.key == key; }) == 0)
-      fail("node {} sets no param {}", arguments[0], arguments[1]);
+    erase_named(
+        params, &Param::key, key, "node {} sets no param {}", arguments[0], arguments[1]);
     by = around.where;
   };
   if (!node_named(view, arguments[0]) && user_of(view, arguments[0])) {
@@ -512,10 +525,11 @@ void view_add(View &view, Arguments arguments, const Around &around) {
 // nothing, so a view presented is no longer; nothing takes its place. A view beside it
 // that takes it lets go too, as the views follow the host's edit.
 void view_close(View &view, Arguments arguments, const Around &) {
-  if (std::erase_if(view.children, [&](const Child &child) {
-        return child.name == arguments.front();
-      }) == 0)
-    fail("this view hosts no view named {}; view list lists them", arguments.front());
+  erase_named(view.children,
+              &Child::name,
+              arguments.front(),
+              "this view hosts no view named {}; view list lists them",
+              arguments.front());
   std::erase_if(view.connections, [&](const Connection &connection) {
     return connection.from.view() && connection.from.node == arguments.front();
   });
