@@ -1,6 +1,7 @@
 #include "shared/Scroll.h"
 
 #include "tools/bench/Bench.h"
+#include "tools/bench/Contracts.h"
 
 #include <cmath>
 #include <cstddef>
@@ -15,12 +16,6 @@
 // rows, ten shown, or another size; the track is down a 200 pixel high area.
 
 namespace VP::bench {
-
-template <> struct Shown<VP_VIEW::Rect> {
-  static std::string text(const VP_VIEW::Rect &rect, Names &names) {
-    return std::format("{}+{}", show(rect.offset, names), show(rect.extent, names));
-  }
-};
 
 struct ScrollLength {
   using type = float (::Scroll::*)(const VP_VIEW::Rect &) const;

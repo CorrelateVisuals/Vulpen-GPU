@@ -116,11 +116,13 @@ def mutants(arguments, runner) -> int:
     benches = sorted(runner.benches(named), key=lambda each: named.index(each.name))
     bench = benches[0]
     # Its own .cpp, else its own header; or another file named: an engine file every bench
-    # links, as Binder.cpp, which Schedule's bench runs through every project's bind, or a
-    # header the benches named include.
-    own = runner.SOURCE / bench.folder / f"{bench.name}.cpp"
-    source = (runner.SOURCE / arguments.source if arguments.source
-              else own if own.is_file() else own.with_suffix(".h"))
+    # links, as Binder.cpp, which Schedule's bench runs through every project's bind, a
+    # header the benches named include, or one of a part's several .cpp.
+    own = ([source for source in bench.sources if source.endswith(".cpp")] or
+           list(bench.sources))
+    if not arguments.source and len(own) != 1:
+        sys.exit(f"{bench.name}: name one of {', '.join(own)} with --source")
+    source = runner.SOURCE / (arguments.source or f"{bench.folder}/{own[0]}")
     if not source.is_file():
         sys.exit(f"{bench.name}: no {source.name}")
     status = subprocess.run(["git", "status", "--porcelain", "--", str(source)],

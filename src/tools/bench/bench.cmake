@@ -3,8 +3,9 @@
 # like an engine .cpp includes that file, so it reaches the file's unnamed namespace,
 # compiled as the engine compiles it; the engine's own objects stay as the engine builds
 # them. A case named like a header of the library's shared code includes it, as a part
-# does. Outside ALL, so a build of vulpen never waits for it; bench.py builds the review
-# target. Included by the top-level CMakeLists.txt once every target is defined.
+# does, and a case in cases/parts/ includes a part's C++. Outside ALL, so a build of
+# vulpen never waits for it; bench.py builds the review target. Included by the
+# top-level CMakeLists.txt once every target is defined.
 set(bench ${PROJECT_SOURCE_DIR}/src/tools/bench)
 set(library ${PROJECT_SOURCE_DIR}/src/runtime/recipes/vulpen/library)
 add_library(bench-core OBJECT EXCLUDE_FROM_ALL ${bench}/Bench.cpp
@@ -42,8 +43,16 @@ add_custom_target(bench)
 file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/bench/${module_stamp_file}
      CONTENT "${module_stamp}\n")
 file(GLOB bench_cases CONFIGURE_DEPENDS ${bench}/cases/*.cpp)
-foreach(case IN LISTS bench_cases)
+file(GLOB part_cases CONFIGURE_DEPENDS ${bench}/cases/parts/*.cpp)
+foreach(case IN LISTS bench_cases part_cases)
   get_filename_component(name ${case} NAME_WE)
+  # A part's case is named for the part's folder, a module of its own (RV08), and its
+  # bench for the part, as a part's folder may share a name with an engine file.
+  set(part OFF)
+  if(case IN_LIST part_cases)
+    set(part ON)
+    set(name part-${name})
+  endif()
   set(engine "$<TARGET_OBJECTS:baseclasses>;$<TARGET_OBJECTS:runtime>")
   # The engine's object of the file the case includes, as each generator names it:
   # Makefiles and Ninja by the source's path, runtime/Live.cpp.o, and Visual Studio by
@@ -73,9 +82,15 @@ foreach(case IN LISTS bench_cases)
   # contracts/ and shared/ resolve from the library, as for its parts (nodes.cmake), and
   # the contracts' types go in a namespace of the bench's own, as each view's go in its
   # own, so a release build's linked parts keep theirs.
-  if(EXISTS ${library}/parts/shared/${name}.h)
+  if(part OR EXISTS ${library}/parts/shared/${name}.h)
     target_include_directories(bench-${name} PRIVATE ${library} ${library}/parts)
     target_compile_definitions(bench-${name} PRIVATE VP_VIEW=vp_bench)
+  endif()
+  # A part's one exported symbol registers its operators, named here as a release build
+  # names a linked part's, so it meets none of theirs.
+  if(part)
+    target_compile_definitions(bench-${name} PRIVATE VP_MODULE_ENTRY=vp_bench_part
+                                                     VP_MODULE_EXPORT=)
   endif()
   # As vulpen exports its symbols to the node modules a live build loads, which some
   # call, a bench that loads them does.

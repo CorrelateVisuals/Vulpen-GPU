@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <format>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -28,6 +29,13 @@ class FakeBind final : public Bind {
 public:
   std::vector<std::pair<std::string, std::string>> params;
   std::vector<std::string> asked;
+
+  // A C++ connection's object by port, made when the node or the case first names it, and
+  // kept across binds, as the engine keeps it: the case sets an input before a cook and
+  // reads an output after.
+  template <class T> T &object(std::string_view port) {
+    return *static_cast<T *>(made(port, kind_of<T>()));
+  }
 
   Command command(std::string_view usage, std::string_view help) override {
     asked.push_back(std::format("command {}: {}", usage, help));
@@ -90,14 +98,121 @@ private:
                                 type.empty() ? "a word" : type,
                                 valid ? "" : ", refused"));
   }
-  void *output_object(std::string_view port, const Kind &) override {
-    throw std::logic_error(std::format("the bench's bind holds no output {}", port));
+  void *output_object(std::string_view port, const Kind &kind) override {
+    asked.push_back(std::format("output {}", port));
+    return made(port, kind);
   }
-  const void *input_object(std::string_view port, const Kind &) override {
-    throw std::logic_error(std::format("the bench's bind holds no input {}", port));
+  const void *input_object(std::string_view port, const Kind &kind) override {
+    asked.push_back(std::format("input {}", port));
+    return made(port, kind);
+  }
+  // The type is compared by its name, as typeid gives it, which only the message would
+  // show, and differs by compiler.
+  void *made(std::string_view port, const Kind &kind) {
+    auto found = _objects.find(port);
+    if (found == _objects.end())
+      found = _objects.emplace(std::string(port), std::pair{kind.type, kind.make()}).first;
+    else if (std::string_view(found->second.first) != kind.type)
+      throw std::logic_error(std::format("port {} holds an object of another type", port));
+    return found->second.second.get();
   }
 
   View _view;
+  std::map<std::string, std::pair<const char *, Object>, std::less<>> _objects;
+};
+
+// A node's cook: the frame's index, size and clock as the case sets them, every line the
+// node logs, and the file port the case hands it.
+class FakeCook final : public Cook {
+public:
+  std::uint64_t frame = 0;
+  glm::uvec2 size{};
+  double clock = 0;
+  FilePort *file_port = nullptr;
+  mutable std::vector<std::string> said;
+
+  std::uint64_t index() const override {
+    return frame;
+  }
+  glm::uvec2 resolution() const override {
+    return size;
+  }
+  void log(Level level, std::string_view text) const override {
+    said.push_back(std::format("{}: {}", level_names[static_cast<std::size_t>(level)], text));
+  }
+  double seconds() const override {
+    return clock;
+  }
+  FilePort &files() override {
+    if (!file_port)
+      throw std::logic_error("the bench's cook hands no file port");
+    return *file_port;
+  }
+  void hold(std::string_view) override {
+    refused("hold");
+  }
+  CommandPort &commands() override {
+    refused("commands");
+  }
+  InputPort &input() override {
+    refused("input");
+  }
+  TerminalPort &terminal() override {
+    refused("terminal");
+  }
+  SoundPort &sound() override {
+    refused("sound");
+  }
+  const View &view() const override {
+    refused("view");
+  }
+  const View *view(std::string_view) const override {
+    refused("view of a name");
+  }
+  const View *unfolded(std::string_view) const override {
+    refused("unfolded");
+  }
+  std::span<const Cost> costs(std::string_view) const override {
+    refused("costs");
+  }
+  void hold_pointer() override {
+    refused("hold_pointer");
+  }
+  std::span<const NodePort> ports(std::string_view) const override {
+    refused("ports");
+  }
+  void hand_pointer(std::string_view, glm::vec2, glm::vec2) override {
+    refused("hand_pointer");
+  }
+  void unread(std::string_view) override {
+    refused("unread");
+  }
+
+private:
+  [[noreturn]] static void refused(std::string_view call) {
+    throw std::logic_error(std::format("the bench's cook answers no {}", call));
+  }
+  std::span<std::byte> block() override {
+    refused("pass block");
+  }
+  std::span<const std::byte> readback_bytes(std::uint32_t) const override {
+    refused("readback");
+  }
+  std::span<std::byte> upload_bytes(std::uint32_t, std::optional<std::size_t>) override {
+    refused("upload");
+  }
+  void upload_image(std::uint32_t, std::span<const std::byte>, glm::uvec2) override {
+    refused("image upload");
+  }
+  bool image_empty(std::uint32_t) const override {
+    refused("image");
+  }
+  void upload_levels(std::uint32_t,
+                     std::span<const std::byte>,
+                     glm::uvec2,
+                     std::uint32_t) override {
+    refused("image upload");
+  }
 };
 
 // The file port over the files themselves, by absolute path, as Ports gives a line them:
@@ -245,6 +360,31 @@ public:
     return {};
   }
   void keep_name(std::size_t, std::string_view) override {}
+};
+
+// A part's operator as its node runs it: bound by the fake bind with the params given,
+// then cooked by the fake cook; between, a case sets its inputs and frame, and after,
+// reads its outputs.
+template <class Part> class Running {
+public:
+  FakeBind bind;
+  FakeCook cook;
+
+  explicit Running(std::vector<std::pair<std::string, std::string>> params = {}) {
+    bind.params = std::move(params);
+  }
+  void bound() {
+    static_cast<Operator &>(_part).bind(bind);
+  }
+  void cooked() {
+    static_cast<Operator &>(_part).cook(cook);
+  }
+  template <class T> T &port(std::string_view name) {
+    return bind.object<T>(name);
+  }
+
+private:
+  Part _part;
 };
 
 } // namespace VP::bench

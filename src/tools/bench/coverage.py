@@ -57,10 +57,10 @@ def guarded(now: dict[str, tuple[int, int]], runner) -> list[str]:
 
 
 def entries(build: Path, runner):
-    """gcov's entry for each engine or bench file in each object of the build that
+    """gcov's entry for each engine, part or bench file in each object of the build that
     compiled it: the engine's own, a case's including its .cpp, and each includer of a
     header's inline code; with the file as runtime/Text.h or tools/bench/Bench.h."""
-    cased = {runner.SOURCE / folder for folder in runner.CASED}
+    cased = {runner.SOURCE / folder for folder in runner.RECORDED}
     data = sorted(str(path) for path in build.rglob("*.gcda"))
     for start in range(0, len(data), BATCH):
         done = subprocess.run(["gcov", "--json-format", "--stdout",

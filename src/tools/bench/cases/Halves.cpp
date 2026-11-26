@@ -1,6 +1,7 @@
 #include "shared/Halves.h"
 
 #include "tools/bench/Bench.h"
+#include "tools/bench/Contracts.h"
 
 #include <algorithm>
 #include <cmath>
@@ -39,33 +40,6 @@ template <> struct Gen<domain::Share> {
   }
   static float random(Random &random) {
     return static_cast<float>(random.below(1001)) / 1000.0f;
-  }
-};
-
-template <> struct Gen<VP_VIEW::Rect> {
-  using type = VP_VIEW::Rect;
-  static std::vector<VP_VIEW::Rect> edges() {
-    constexpr std::uint32_t most = std::numeric_limits<std::uint32_t>::max();
-    return {{.offset = {10, 20}, .extent = {200, 100}},
-            {},
-            {.offset = {0, 0}, .extent = {1, 1}},
-            {.offset = {0, 0}, .extent = {3, 3}},
-            {.offset = {0, 0}, .extent = {4, 4}},
-            {.offset = {0, 0}, .extent = {5, 5}},
-            {.offset = {-50, -50}, .extent = {100, 100}},
-            {.offset = {0, 0}, .extent = {most, most}}};
-  }
-  static VP_VIEW::Rect random(Random &random) {
-    return {.offset = {static_cast<std::int32_t>(random.below(2001)) - 1000,
-                       static_cast<std::int32_t>(random.below(2001)) - 1000},
-            .extent = {static_cast<std::uint32_t>(random.below(4000)),
-                       static_cast<std::uint32_t>(random.below(4000))}};
-  }
-};
-
-template <> struct Shown<VP_VIEW::Rect> {
-  static std::string text(const VP_VIEW::Rect &rect, Names &names) {
-    return std::format("{}+{}", show(rect.offset, names), show(rect.extent, names));
   }
 };
 

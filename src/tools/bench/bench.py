@@ -71,13 +71,20 @@ CASES = HERE / "cases"
 RECORDS = HERE / "records"
 OUT = ROOT / "out" / "bench"
 ENGINE = ("runtime", "baseclasses")
+# The library's parts (RV06), each copied into every view it is dropped into (V03). A
+# part's folder builds as one module (RV08), so its case is named for the folder,
+# cases/parts/<folder>.cpp, and includes the folder's C++.
+PARTS = "runtime/recipes/vulpen/library/parts"
 # The library's shared code (RV09): each part that includes a header holds its own copy,
 # so a fault there is in every one of them, and in every view a part was dropped into.
-SHARED = "runtime/recipes/vulpen/library/parts/shared"
+SHARED = f"{PARTS}/shared"
 # The folders a case may name a file of: the engine's, the shared code's, and the bench's
 # own core, whose Shown.h every row goes through, so a fault there, which would hide a
 # change in every record, shows in a record of its own.
 CASED = (*ENGINE, SHARED, "tools/bench")
+PART_CASES = CASES / "parts"
+# Every folder whose files rows are recorded for: those, and each part with a case.
+RECORDED = (*CASED, *(f"{PARTS}/{case.stem}" for case in sorted(PART_CASES.glob("*.cpp"))))
 TIMEOUT = 300  # seconds a function's rows may take in one process
 # A build's count of jobs, as check.py's JOBS: with none, Unix Makefiles start every
 # compile at once.
@@ -171,9 +178,11 @@ CANARY = "canary/"
 
 @dataclass
 class Bench:
-    """A case file's bench, and the engine file its rows are recorded under."""
+    """A case file's bench, and the files its rows are recorded under: an engine file's
+    header and .cpp, or every file of a part's folder."""
     name: str
     folder: str
+    sources: tuple[str, ...]
 
     @property
     def record(self) -> Path:
@@ -196,7 +205,16 @@ def benches(names: list[str]) -> list[Bench]:
         if len(folders) != 1:
             sys.exit(f"{case.name}: names no one file in src/runtime, src/baseclasses, "
                      f"src/{SHARED} or src/tools/bench")
-        found.append(Bench(case.stem, folders[0]))
+        found.append(Bench(case.stem, folders[0], tuple(
+            f"{case.stem}{suffix}" for suffix in (".h", ".cpp")
+            if (SOURCE / folders[0] / f"{case.stem}{suffix}").is_file())))
+    for case in sorted(PART_CASES.glob("*.cpp")):
+        folder = f"{PARTS}/{case.stem}"
+        sources = tuple(sorted(path.name for path in (SOURCE / folder).glob("*")
+                               if path.suffix in (".h", ".cpp")))
+        if folder == SHARED or not sources:
+            sys.exit(f"parts/{case.name}: names no part's C++ in src/{PARTS}")
+        found.append(Bench(f"part-{case.stem}", folder, sources))
     unknown = set(names) - {bench.name for bench in found}
     if unknown:
         sys.exit(f"no case for {', '.join(sorted(unknown))} in {CASES}")
@@ -464,9 +482,7 @@ def run_one(bench: Bench, ident: str, context: Context, preset: str,
 
 
 def record_text(bench: Bench, sections: dict[str, list[str]]) -> str:
-    files = " and ".join(f"src/{bench.folder}/{bench.name}{suffix}"
-                         for suffix in (".h", ".cpp")
-                         if (SOURCE / bench.folder / f"{bench.name}{suffix}").is_file())
+    files = " and ".join(f"src/{bench.folder}/{source}" for source in bench.sources)
     lines = [f"# The rows of {files}, a call each (src/tools/bench/bench.py)."]
     for ident in sorted(sections):
         lines += ["", f"## {ident}", *sorted(sections[ident])]
