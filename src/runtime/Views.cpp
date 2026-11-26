@@ -3,6 +3,7 @@
 // owner holds (A01); the steps undo takes back of them are Undo.cpp's.
 #include "runtime/Views.h"
 
+#include "baseclasses/Fail.h"
 #include "runtime/Commands.h"
 #include "runtime/Manifest.h"
 #include "runtime/Schedule.h"
@@ -507,11 +508,10 @@ void Views::show_image(Call &call) {
     std::string names;
     for (const std::string &name : found->schedule->images())
       names.append(names.empty() ? "" : ", ").append(name);
-    throw std::runtime_error(std::format(
-        "{} has no image {}; {}",
-        found->name,
-        image,
-        names.empty() ? "it has none" : std::format("its images are {}", names)));
+    fail("{} has no image {}; {}",
+         found->name,
+         image,
+         names.empty() ? "it has none" : std::format("its images are {}", names));
   }
   found->shows = image;
   call.reply(std::format("{} shows {} in its window's place, running only what it needs",
@@ -784,7 +784,7 @@ void Views::check(std::string_view name, const View &view) {
 void Views::replace(std::string_view name, View view) {
   Hosted *const found = hosted(name);
   if (!found)
-    throw std::runtime_error(std::format("no view is named {}", name));
+    fail("no view is named {}", name);
   const std::vector<std::string> notes = Manifest::refresh(view);
   auto flat = flat_of(view, _recipes);
   _steps->note(found->name, project(found->current()), found->current());
@@ -812,12 +812,11 @@ void Views::command(Call &call) {
     // An app's view holds the session it runs, as the ide the panes of the projects open,
     // which every later run of the app would start with.
     if (call.is(_save) && !project(found->current()))
-      throw std::runtime_error(std::format(
-          "{} is an app's view, which every run of the app starts from, so view save "
-          "leaves it; view save force writes it",
-          found->current()
-              .file.lexically_proximate(std::filesystem::current_path())
-              .generic_string()));
+      fail("{} is an app's view, which every run of the app starts from, so view save "
+           "leaves it; view save force writes it",
+           found->current()
+               .file.lexically_proximate(std::filesystem::current_path())
+               .generic_string());
     save(*found);
     call.reply(
         std::format("saved {}{}",
@@ -844,7 +843,7 @@ void Views::command(Call &call) {
     if (!found || !found->schedule)
       throw std::runtime_error("no view runs to clear an image in");
     if (dot == std::string_view::npos)
-      throw std::runtime_error(std::format("{} is no port: node.port", port));
+      fail("{} is no port: node.port", port);
     found->schedule->clear_image(port_node(port), port.substr(dot + 1));
   }
 }
@@ -863,8 +862,7 @@ Views::Hosted *Views::hosted(std::string_view name) const {
 // they build from one folder, as the apps do from the recipes'.
 void Views::host(const Child &child, const std::string &parent) {
   if (hosted(child.name))
-    throw std::runtime_error(
-        std::format("a hosted view is named {} already", child.name));
+    fail("a hosted view is named {} already", child.name);
   std::error_code missing;
   const bool exists = std::filesystem::exists(child.file, missing);
   auto view = std::make_unique<View>(exists ? read(_wiring.log, child.file)
@@ -872,13 +870,12 @@ void Views::host(const Child &child, const std::string &parent) {
   for (const std::unique_ptr<Hosted> &hosted : _hosted)
     if (!hosted->removed && hosted->current().name == view->name &&
         Manifest::root(hosted->current()) != Manifest::root(*view))
-      throw std::runtime_error(std::format(
-          "child {}: {} builds as the view {}, as {} does from another folder; the "
-          "build tree holds one view of each name",
-          child.name,
-          child.file.string(),
-          view->name,
-          hosted->current().file.string()));
+      fail("child {}: {} builds as the view {}, as {} does from another folder; the "
+           "build tree holds one view of each name",
+           child.name,
+           child.file.string(),
+           view->name,
+           hosted->current().file.string());
   auto flat = flat_of(*view, _recipes);
   if (!exists)
     _wiring.log.write(
@@ -913,14 +910,12 @@ void Views::follow(const std::string &host, const View &view) {
         continue;
       }
       if (found->parent != host)
-        throw std::runtime_error(
-            std::format("a hosted view is named {} already", child.name));
+        fail("a hosted view is named {} already", child.name);
       if (found->current().file != child.file)
-        throw std::runtime_error(
-            std::format("child {} is hosted from {}; view close {} first",
-                        child.name,
-                        found->current().file.string(),
-                        child.name));
+        fail("child {} is hosted from {}; view close {} first",
+             child.name,
+             found->current().file.string(),
+             child.name);
     }
   } catch (const std::exception &) {
     // None of them has a schedule yet, so they go at once.
@@ -1003,10 +998,9 @@ void Views::write(Hosted &hosted) {
   const View &view = hosted.current();
   std::error_code missing;
   if (std::filesystem::exists(view.file, missing) && stamp(view.file) != hosted.read)
-    throw std::runtime_error(
-        std::format("{} changed since vulpen read it, and a save would lose that change; "
-                    "move the file aside to save over it",
-                    view.file.string()));
+    fail("{} changed since vulpen read it, and a save would lose that change; "
+         "move the file aside to save over it",
+         view.file.string());
   // Through the port, so the step of the line writing it keeps what it held (undo).
   _port.files().save(view, view.file.string());
   hosted.read = stamp(view.file);
