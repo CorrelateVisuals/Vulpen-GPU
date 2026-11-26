@@ -1,5 +1,7 @@
 #include "baseclasses/Shader.h"
 
+#include "baseclasses/Fail.h"
+
 #include <algorithm>
 #include <climits>
 #include <format>
@@ -84,10 +86,9 @@ struct Module {
   // gigabytes, or past index + 1 wrapping to 0, write beyond the list.
   Member &member(std::uint32_t type, std::uint32_t index) {
     if (index >= spirv::struct_members_most)
-      throw std::runtime_error(
-          std::format("a struct's member {} is past the {} SPIR-V allows",
-                      index,
-                      spirv::struct_members_most));
+      fail("a struct's member {} is past the {} SPIR-V allows",
+           index,
+           spirv::struct_members_most);
     std::vector<Member> &list = members[type];
     if (list.size() <= index)
       list.resize(index + 1);
@@ -165,11 +166,11 @@ void read(Module &module, std::uint32_t opcode, std::span<const std::uint32_t> o
         // A dispatch's workgroups are its invocations divided by this size, so a damaged
         // file's zero would end the process there.
         if (std::ranges::find(module.workgroup_size, 0u) != module.workgroup_size.end())
-          throw std::runtime_error(std::format("its local size {} by {} by {} holds no "
-                                               "invocation",
-                                               module.workgroup_size[0],
-                                               module.workgroup_size[1],
-                                               module.workgroup_size[2]));
+          fail("its local size {} by {} by {} holds no "
+               "invocation",
+               module.workgroup_size[0],
+               module.workgroup_size[1],
+               module.workgroup_size[2]);
       }
       break;
     case spirv::op_type_int:
@@ -257,8 +258,7 @@ std::vector<Field> members_of(const Module &module, std::uint32_t type_id) {
 Field describe_buffer(const Module &module, Field field, std::uint32_t block) {
   const std::vector<std::uint32_t> &array = module.types.at(module.types.at(block).at(1));
   if (array.at(0) != spirv::op_type_runtime_array)
-    throw std::runtime_error(std::format(
-        "buffer {} must hold one runtime array, such as float at[]", field.name));
+    fail("buffer {} must hold one runtime array, such as float at[]", field.name);
   const Member &data = module.members.at(block).at(0);
   field.type = glsl_name(module, array.at(1));
   field.members = members_of(module, array.at(1));
@@ -280,11 +280,10 @@ Field describe(const Module &module, const Member &member, std::uint32_t type_id
       name == depth_write_type)
     return {.name = member.name, .type = name, .offset = member.offset};
   if (value_bytes(module, type_id) == 0)
-    throw std::runtime_error(
-        std::format("pass block field {} has a type this build cannot set yet: use "
-                    "float, int, uint, a vector of them, a buffer, a Texture, an Image, "
-                    "a DepthTest or a DepthWrite",
-                    member.name));
+    fail("pass block field {} has a type this build cannot set yet: use "
+         "float, int, uint, a vector of them, a buffer, a Texture, an Image, "
+         "a DepthTest or a DepthWrite",
+         member.name);
   return {
       .name = member.name, .type = glsl_name(module, type_id), .offset = member.offset};
 }
@@ -378,7 +377,7 @@ varyings_of(const Module &module,
 std::vector<std::uint32_t> read_words(const std::filesystem::path &spirv) {
   std::ifstream file(spirv, std::ios::binary | std::ios::ate);
   if (!file)
-    throw std::runtime_error(std::format("{} cannot be read", spirv.string()));
+    fail("{} cannot be read", spirv.string());
   std::vector<std::uint32_t> words(static_cast<std::size_t>(file.tellg()) /
                                    sizeof(std::uint32_t));
   file.seekg(0);
@@ -394,8 +393,7 @@ void naming(const std::filesystem::path &spirv, const Reflect &reflect) {
   try {
     reflect();
   } catch (const std::exception &refused) {
-    throw std::runtime_error(
-        std::format("{} is damaged: {}", spirv.string(), refused.what()));
+    fail("{} is damaged: {}", spirv.string(), refused.what());
   }
 }
 
@@ -403,12 +401,12 @@ void naming(const std::filesystem::path &spirv, const Reflect &reflect) {
 
 Shader::Shader(const std::filesystem::path &spirv) : _words(read_words(spirv)) {
   if (_words.size() < spirv::header_words || _words[0] != spirv::magic)
-    throw std::runtime_error(std::format("{} is not SPIR-V", spirv.string()));
+    fail("{} is not SPIR-V", spirv.string());
   Module module;
   for (std::size_t word = spirv::header_words; word < _words.size();) {
     const std::uint32_t count = _words[word] >> spirv::word_count_shift;
     if (count == 0 || word + count > _words.size())
-      throw std::runtime_error(std::format("{} is truncated", spirv.string()));
+      fail("{} is truncated", spirv.string());
     naming(spirv, [&] {
       read(module,
            _words[word] & spirv::opcode_mask,
