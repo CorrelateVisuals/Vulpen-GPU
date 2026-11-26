@@ -4,6 +4,7 @@
 // does the list of ports a part reads.
 #include "runtime/Schedule.h"
 
+#include "baseclasses/Fail.h"
 #include "runtime/Bound.h"
 #include "runtime/Text.h"
 

@@ -3,6 +3,7 @@
 // refuses and answers alike, as one usage and help each (RV04).
 #include "runtime/Edits.h"
 
+#include "baseclasses/Fail.h"
 #include "runtime/Commands.h"
 #include "runtime/Text.h"
 #include "runtime/View.h"

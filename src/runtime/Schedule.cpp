@@ -3,6 +3,7 @@
 // barriers between them are worked out together, from one view, by one owner (A01).
 #include "runtime/Schedule.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Passes.h"
 #include "runtime/Bound.h"
 #include "runtime/Text.h"

@@ -3,6 +3,7 @@
 // events reach them all alike (A01).
 #include "runtime/Ports.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Log.h"
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"

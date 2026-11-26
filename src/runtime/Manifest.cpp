@@ -4,6 +4,7 @@
 // language changes them side by side.
 #include "runtime/Manifest.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Platform.h"
 #include "runtime/Edits.h"
 #include "runtime/Text.h"

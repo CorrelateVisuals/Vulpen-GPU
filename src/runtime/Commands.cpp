@@ -3,6 +3,7 @@
 // specs it holds, which one owner holds (A01).
 #include "runtime/Commands.h"
 
+#include "baseclasses/Fail.h"
 #include "baseclasses/Platform.h"
 #include "runtime/Text.h"
 

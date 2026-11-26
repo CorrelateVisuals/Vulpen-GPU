@@ -5,6 +5,7 @@
 #include "runtime/Runtime.h"
 
 #include "baseclasses/Engine.h"
+#include "baseclasses/Fail.h"
 #include "baseclasses/Log.h"
 #include "baseclasses/Platform.h"
 #include "runtime/Commands.h"
