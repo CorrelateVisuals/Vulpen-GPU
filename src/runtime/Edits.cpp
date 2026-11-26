@@ -42,17 +42,15 @@ struct Around {
 
 void check_name(std::string_view what, std::string_view name) {
   if (!is_name(name))
-    throw std::runtime_error(std::format(
-        "{} {} is not a name: a name holds letters, digits, _ and -", what, name));
+    fail("{} {} is not a name: a name holds letters, digits, _ and -", what, name);
 }
 
 void check_path(std::string_view what, std::string_view path) {
   if (!is_path(path))
-    throw std::runtime_error(
-        std::format("{} {} is not a name, or names joined by dots: a name holds letters, "
-                    "digits, _ and -",
-                    what,
-                    path));
+    fail("{} {} is not a name, or names joined by dots: a name holds letters, "
+         "digits, _ and -",
+         what,
+         path);
 }
 
 // A manifest reads # as the start of a comment and a line break as the end of a line, so
@@ -60,11 +58,10 @@ void check_path(std::string_view what, std::string_view path) {
 // split the words of a command, and a manifest trims them.
 void check_value(std::string_view key, std::string_view value) {
   if (value.find_first_of("#\n") != std::string_view::npos)
-    throw std::runtime_error(std::format(
-        "{} {}: a value holds no # and no line break, which a manifest reads as a "
-        "comment and a new line",
-        key,
-        value));
+    fail("{} {}: a value holds no # and no line break, which a manifest reads as a "
+         "comment and a new line",
+         key,
+         value);
 }
 
 [[noreturn]] void unknown_word(std::string_view key) {
@@ -74,20 +71,19 @@ void check_value(std::string_view key, std::string_view value) {
                  : word == node_words.back() ? " and "
                                              : ", ")
         .append(word);
-  throw std::runtime_error(
-      std::format("unknown word {} in a node; its words are {}", key, words));
+  fail("unknown word {} in a node; its words are {}", key, words);
 }
 
 // A node's files are what its folder holds (RV08), so no command or manifest names one.
 [[noreturn]] void no_file(std::string_view node) {
-  throw std::runtime_error(std::format("a node's files are what its folder holds: put a "
-                                       "file in the folder of node {} to add it",
-                                       node));
+  fail("a node's files are what its folder holds: put a "
+       "file in the folder of node {} to add it",
+       node);
 }
 
 void set_once(std::string &slot, std::string_view key, std::string_view value) {
   if (!slot.empty())
-    throw std::runtime_error(std::format("{} is set twice", key));
+    fail("{} is set twice", key);
   slot = value;
 }
 
@@ -96,11 +92,11 @@ std::uint32_t whole_number(std::string_view text) {
   const auto [end, error] =
       std::from_chars(text.data(), text.data() + text.size(), value);
   if (end == text.data() + text.size() && error == std::errc::result_out_of_range)
-    throw std::runtime_error(std::format("{} is more than the largest count, {}",
-                                         text,
-                                         std::numeric_limits<std::uint32_t>::max()));
+    fail("{} is more than the largest count, {}",
+         text,
+         std::numeric_limits<std::uint32_t>::max());
   if (error != std::errc{} || end != text.data() + text.size())
-    throw std::runtime_error(std::format("{} is not a whole number", text));
+    fail("{} is not a whole number", text);
   return value;
 }
 
@@ -110,10 +106,10 @@ void set_count(std::uint32_t &slot,
                std::string_view value,
                std::string_view none) {
   if (slot != 0)
-    throw std::runtime_error(std::format("{} is set twice", key));
+    fail("{} is set twice", key);
   slot = whole_number(value);
   if (slot == 0)
-    throw std::runtime_error(std::format("{} is at least 1; leave it out {}", key, none));
+    fail("{} is at least 1; leave it out {}", key, none);
 }
 
 // A dispatch's threads: a number of at least 1, or the port of a buffer its shaders read,
@@ -124,9 +120,8 @@ void set_invocations(Node &node, std::string_view value) {
   if (value.front() >= '0' && value.front() <= '9')
     return set_count(node.invocations, "invocations", value, "on a node with no .comp");
   if (!is_name(value))
-    throw std::runtime_error(std::format(
-        "invocations {}: a number, or the port of a buffer whose length counts them",
-        value));
+    fail("invocations {}: a number, or the port of a buffer whose length counts them",
+         value);
   node.invocations_port = value;
 }
 
@@ -137,8 +132,7 @@ void set_instances(std::string &slot, std::string_view value) {
   if (number && whole_number(value) == 0)
     throw std::runtime_error("instance_count is at least 1; leave it out for one");
   if (!number && !is_name(value))
-    throw std::runtime_error(std::format(
-        "instance_count {}: a number, or the port of a buffer that counts them", value));
+    fail("instance_count {}: a number, or the port of a buffer that counts them", value);
   set_once(slot, "instance_count", value);
 }
 
@@ -160,18 +154,17 @@ bool is_recipe(std::string_view text) {
 void add_param(Node &node, std::string_view value) {
   const std::size_t equals = value.find('=');
   if (equals == std::string_view::npos)
-    throw std::runtime_error(std::format(
-        "param {} names no param: a param is name=value, so a line gives it as "
-        "param=tint=1,1,1, or alone as param set <node> tint 1,1,1, and a manifest as "
-        "param = tint=1,1,1",
-        value));
+    fail("param {} names no param: a param is name=value, so a line gives it as "
+         "param=tint=1,1,1, or alone as param set <node> tint 1,1,1, and a manifest as "
+         "param = tint=1,1,1",
+         value);
   const std::string_view name = trim(value.substr(0, equals));
   const std::string_view setting = trim(value.substr(equals + 1));
   check_path("param", name);
   if (setting.empty())
-    throw std::runtime_error(std::format("param {} has no value", name));
+    fail("param {} has no value", name);
   if (std::ranges::find(node.params, name, &Param::key) != node.params.end())
-    throw std::runtime_error(std::format("param {} is set twice", name));
+    fail("param {} is set twice", name);
   node.params.push_back({std::string(name), std::string(setting)});
 }
 
@@ -185,9 +178,9 @@ void add_image(Node &node, std::string_view value) {
   const std::string_view format = trim(value.substr(equals + 1));
   check_name("image", port);
   if (format.empty())
-    throw std::runtime_error(std::format("image {} has no format", port));
+    fail("image {} has no format", port);
   if (std::ranges::find(node.images, port, &ImagePort::port) != node.images.end())
-    throw std::runtime_error(std::format("image {} is set twice", port));
+    fail("image {} is set twice", port);
   node.images.push_back({std::string(port), std::string(format)});
 }
 
@@ -196,25 +189,22 @@ void check_whole(const Node &node) {
   if (node.uses()) {
     if (!node.operator_name.empty() || node.counts_invocations() ||
         node.vertex_count != 0 || !node.instance_count.empty() || !node.images.empty())
-      throw std::runtime_error(
-          std::format("node {} uses recipe {} as it is, whose node gives it those words: "
-                      "only param and log go with it",
-                      node.name,
-                      node.recipe));
+      fail("node {} uses recipe {} as it is, whose node gives it those words: "
+           "only param and log go with it",
+           node.name,
+           node.recipe);
     return;
   }
   for (const Param &param : node.params)
     if (!is_name(param.key))
-      throw std::runtime_error(std::format(
-          "param {}: a dotted key sets a node inside a recipe a node uses, and "
-          "node {} uses none",
-          param.key,
-          node.name));
+      fail("param {}: a dotted key sets a node inside a recipe a node uses, and "
+           "node {} uses none",
+           param.key,
+           node.name);
   if (node.counts_invocations() && node.vertex_count != 0)
-    throw std::runtime_error(
-        std::format("node {} counts invocations and vertex_count: a dispatch counts its "
-                    "invocations, and a draw its vertex_count",
-                    node.name));
+    fail("node {} counts invocations and vertex_count: a dispatch counts its "
+         "invocations, and a draw its vertex_count",
+         node.name);
   if (node.counts_invocations() && !node.instance_count.empty())
     throw std::runtime_error(
         "instance_count counts a draw's instances; a dispatch has none");
@@ -239,19 +229,17 @@ Node &existing(View &view, std::string_view name) {
   if (Node *const node = node_named(view, name))
     return *node;
   if (const Node *const user = user_of(view, name))
-    throw std::runtime_error(
-        std::format("node {} is inside recipe {}, which node {} uses as it is: param set "
-                    "and unset change its params, and the recipe's own view.vlp the rest",
-                    name,
-                    user->recipe,
-                    user->name));
+    fail("node {} is inside recipe {}, which node {} uses as it is: param set "
+         "and unset change its params, and the recipe's own view.vlp the rest",
+         name,
+         user->recipe,
+         user->name);
   if (name == view.name)
-    throw std::runtime_error(std::format(
-        "no node is named {}: the view's top folder is node {}, as {} names its view",
-        name,
-        top_node,
-        name));
-  throw std::runtime_error(std::format("no node is named {}", name));
+    fail("no node is named {}: the view's top folder is node {}, as {} names its view",
+         name,
+         top_node,
+         name);
+  fail("no node is named {}", name);
 }
 
 // A node of the view, or one inside a recipe a node uses, which the view as it runs
@@ -265,7 +253,7 @@ std::pair<Node &, std::string>
 user_param(View &view, std::string_view node, std::string_view key) {
   Node *const user = user_of(view, node);
   if (!user)
-    throw std::runtime_error(std::format("no node is named {}", node));
+    fail("no node is named {}", node);
   return {*user, std::format("{}.{}", node.substr(user->name.size() + 1), key)};
 }
 
@@ -292,8 +280,7 @@ void check_ports(const View &view, const Connection &connection) {
           return at(other.from) || std::ranges::any_of(other.to, at);
         });
     if (joined)
-      throw std::runtime_error(
-          std::format("{} joins two connections, or one twice", end.text()));
+      fail("{} joins two connections, or one twice", end.text());
     checked.push_back(&end);
   };
   check(connection.from);
@@ -335,19 +322,18 @@ bool reaches(const View &view, std::string_view writer, std::string_view reader)
 void check_spaced(Arguments words) {
   for (std::size_t at = 0; at + 1 < words.size(); ++at)
     if (words[at].find('=') == std::string_view::npos && words[at + 1].starts_with('='))
-      throw std::runtime_error(std::format("{} is not word=value: {}={}",
-                                           words[at],
-                                           words[at],
-                                           words[at + 1] == "=" && at + 2 < words.size()
-                                               ? words[at + 2]
-                                               : words[at + 1].substr(1)));
+      fail("{} is not word=value: {}={}",
+           words[at],
+           words[at],
+           words[at + 1] == "=" && at + 2 < words.size() ? words[at + 2]
+                                                         : words[at + 1].substr(1));
 }
 
 // A word=value argument, split at its first =.
 std::pair<std::string_view, std::string_view> key_and_value(std::string_view word) {
   const std::size_t equals = word.find('=');
   if (equals == std::string_view::npos)
-    throw std::runtime_error(std::format("{} is not word=value", word));
+    fail("{} is not word=value", word);
   return {word.substr(0, equals), word.substr(equals + 1)};
 }
 
@@ -416,8 +402,7 @@ void node_move(View &view, Arguments arguments, const Around &) {
   existing(view, name);
   existing(view, before);
   if (within(before, name))
-    throw std::runtime_error(
-        std::format("{} is {} or inside it, so it cannot go before it", before, name));
+    fail("{} is {} or inside it, so it cannot go before it", before, name);
   const auto moving = std::ranges::stable_partition(
       view.nodes, [&](const Node &node) { return !within(node.name, name); });
   std::vector<Node> moved(std::make_move_iterator(moving.begin()),
@@ -479,7 +464,7 @@ void disconnect(View &view, Arguments arguments, const Around &) {
   if (std::erase_if(view.connections, [&](const Connection &connection) {
         return connection.name == arguments.front();
       }) == 0)
-    throw std::runtime_error(std::format("no connection is named {}", arguments.front()));
+    fail("no connection is named {}", arguments.front());
 }
 
 // A node inside a recipe a node uses keeps its params in that node, as the manifest
@@ -503,8 +488,7 @@ void param_unset(View &view, Arguments arguments, const Around &around) {
                          std::string_view key,
                          std::string &by) {
     if (std::erase_if(params, [&](const Param &param) { return param.key == key; }) == 0)
-      throw std::runtime_error(
-          std::format("node {} sets no param {}", arguments[0], arguments[1]));
+      fail("node {} sets no param {}", arguments[0], arguments[1]);
     by = around.where;
   };
   if (!node_named(view, arguments[0]) && user_of(view, arguments[0])) {
@@ -530,8 +514,7 @@ void view_close(View &view, Arguments arguments, const Around &) {
   if (std::erase_if(view.children, [&](const Child &child) {
         return child.name == arguments.front();
       }) == 0)
-    throw std::runtime_error(std::format(
-        "this view hosts no view named {}; view list lists them", arguments.front()));
+    fail("this view hosts no view named {}; view list lists them", arguments.front());
   std::erase_if(view.connections, [&](const Connection &connection) {
     return connection.from.view() && connection.from.node == arguments.front();
   });
@@ -733,12 +716,11 @@ void host_once(ViewLookup &views, Arguments arguments) {
     if (!view || name == arguments[0] ||
         std::filesystem::weakly_canonical(view->file, unread) != file)
       continue;
-    throw std::runtime_error(
-        std::format("{} is hosted already, as {}, and two views of one manifest would "
-                    "save over each other; {} goes to it",
-                    file.string(),
-                    name.empty() ? "the view vulpen started with" : name,
-                    name.empty() ? "view switch" : "view switch " + name));
+    fail("{} is hosted already, as {}, and two views of one manifest would "
+         "save over each other; {} goes to it",
+         file.string(),
+         name.empty() ? "the view vulpen started with" : name,
+         name.empty() ? "view switch" : "view switch " + name);
   }
 }
 
@@ -754,10 +736,9 @@ void keep_terminal(const Commands &port, std::string_view view, std::string_view
         return reader.substr(0, reader.find(':')) == view &&
                within(node_of(reader), node);
       }))
-    throw std::runtime_error(
-        std::format("{} reads the terminal, as no other node does, so it stays: without "
-                    "it the terminal takes no line, quit neither",
-                    node_of(readers.front())));
+    fail("{} reads the terminal, as no other node does, so it stays: without "
+         "it the terminal takes no line, quit neither",
+         node_of(readers.front()));
 }
 
 // The param a param set line sets, or the connection a connect line makes, alone: what
@@ -850,21 +831,19 @@ void Edits::word(Node &node, std::string_view key, std::string_view value) {
   if (key == "file")
     no_file(node.name);
   if (value.empty())
-    throw std::runtime_error(std::format("{} has no value", key));
+    fail("{} has no value", key);
   check_value(key, value);
   if (key == "recipe") {
     if (!is_recipe(value))
-      throw std::runtime_error(
-          std::format("recipe {}: a recipe's name, and on a drop's copy an @ and its "
-                      "fingerprint, as probe@3f2a9c1e",
-                      value));
+      fail("recipe {}: a recipe's name, and on a drop's copy an @ and its "
+           "fingerprint, as probe@3f2a9c1e",
+           value);
     set_once(node.recipe, key, value);
   } else if (key == "operator") {
     set_once(node.operator_name, key, value);
   } else if (key == "log") {
     if (!level_named(value))
-      throw std::runtime_error(
-          std::format("log = {} is not error, warn, info or debug", value));
+      fail("log = {} is not error, warn, info or debug", value);
     set_once(node.log, key, value);
   } else if (key == "invocations") {
     set_invocations(node, value);
@@ -891,8 +870,7 @@ Endpoint Edits::endpoint(std::string_view text) {
   const std::string_view port =
       dot == std::string_view::npos ? std::string_view{} : text.substr(dot + 1);
   if (!is_path(node) || !is_name(port))
-    throw std::runtime_error(
-        std::format("{} is not node.port, or view: for a hosted view's window", text));
+    fail("{} is not node.port, or view: for a hosted view's window", text);
   return {std::string(node), std::string(port)};
 }
 
@@ -901,18 +879,17 @@ Endpoint Edits::endpoint(std::string_view text) {
 void Edits::add(View &view, Node node) {
   check_path("node", node.name);
   if (is_top(view, node.name) && !node.recipe.empty())
-    throw std::runtime_error(
-        std::format("node {} is the project's top folder, which holds the files beside "
-                    "its manifest, so it is no recipe's: a drop takes another name",
-                    top_node));
+    fail("node {} is the project's top folder, which holds the files beside "
+         "its manifest, so it is no recipe's: a drop takes another name",
+         top_node);
   if (node.name == contracts_folder || node.name == shared_folder)
-    throw std::runtime_error(std::format("{}/ holds what the view's nodes share (RV05, "
-                                         "RV09), so no node is named {}",
-                                         node.name,
-                                         node.name));
+    fail("{}/ holds what the view's nodes share (RV05, "
+         "RV09), so no node is named {}",
+         node.name,
+         node.name);
   if (node_named(view, node.name) ||
       std::ranges::find(view.children, node.name, &Child::name) != view.children.end())
-    throw std::runtime_error(std::format("two nodes or views are named {}", node.name));
+    fail("two nodes or views are named {}", node.name);
   check_whole(node);
   view.nodes.push_back(std::move(node));
 }
@@ -921,7 +898,7 @@ void Edits::child(View &view, Child child) {
   check_name("view", child.name);
   if (node_named(view, child.name) ||
       std::ranges::find(view.children, child.name, &Child::name) != view.children.end())
-    throw std::runtime_error(std::format("two nodes or views are named {}", child.name));
+    fail("two nodes or views are named {}", child.name);
   view.children.push_back(std::move(child));
 }
 
@@ -931,38 +908,31 @@ void Edits::connect(View &view,
   check_path("connection", connection.name);
   if (std::ranges::find(view.connections, connection.name, &Connection::name) !=
       view.connections.end())
-    throw std::runtime_error(
-        std::format("two connections are named {}", connection.name));
+    fail("two connections are named {}", connection.name);
   if (connection.from.node.empty() || connection.to.empty())
-    throw std::runtime_error(
-        std::format("connection {} needs a from and at least one to", connection.name));
+    fail("connection {} needs a from and at least one to", connection.name);
   const Endpoint &from = connection.from;
   if (from.view() &&
       std::ranges::find(view.children, from.node, &Child::name) == view.children.end() &&
       std::ranges::find(beside, from.node) == beside.end())
-    throw std::runtime_error(std::format(
-        "connection {} is from {}, but this view hosts no view {}, nor is one beside it",
-        connection.name,
-        from.text(),
-        from.node));
+    fail("connection {} is from {}, but this view hosts no view {}, nor is one beside it",
+         connection.name,
+         from.text(),
+         from.node);
   if (!from.view() && !has_node(view, from.node))
-    throw std::runtime_error(std::format(
-        "connection {} is from {}, which is no node", connection.name, from.node));
+    fail("connection {} is from {}, which is no node", connection.name, from.node);
   for (const Endpoint &to : connection.to)
     if (to.view())
-      throw std::runtime_error(
-          std::format("connection {} is to {}, but a view's window only leaves it, for "
-                      "the view that hosts it",
-                      connection.name,
-                      to.text()));
+      fail("connection {} is to {}, but a view's window only leaves it, for "
+           "the view that hosts it",
+           connection.name,
+           to.text());
     else if (!has_node(view, to.node))
-      throw std::runtime_error(std::format(
-          "connection {} is to {}, which is no node", connection.name, to.node));
+      fail("connection {} is to {}, which is no node", connection.name, to.node);
   check_ports(view, connection);
   for (const Endpoint &to : connection.to)
     if (to.node != connection.from.node && reaches(view, to.node, connection.from.node))
-      throw std::runtime_error(std::format(
-          "connection {} would close a cycle through {}", connection.name, to.node));
+      fail("connection {} would close a cycle through {}", connection.name, to.node);
   view.connections.push_back(std::move(connection));
 }
 
@@ -985,7 +955,7 @@ void Edits::command(Call &call) {
     }
   const View *const found = _views.find(address);
   if (!found)
-    throw std::runtime_error(std::format("no view is named {}", address));
+    fail("no view is named {}", address);
   // Ports alone past two, as connect lamp.light a.light b.light, the grammar takes as
   // named for the first, as a drop names its connections with dots: a first word the
   // running view lists as a port its node writes is that port, and the name left out.
@@ -1055,12 +1025,12 @@ void Edits::let_go(std::string_view view, bool force) {
     named.append(named.empty() ? "" : ", ").append(file);
   if (changed.size() > named_most)
     named += std::format(" and {} more", changed.size() - named_most);
-  throw std::runtime_error(std::format("view close {} would lose what no view save kept: "
-                                       "{}; view save keeps it, view close force puts "
-                                       "the files back as last saved, which undo takes "
-                                       "back",
-                                       view,
-                                       named));
+  fail("view close {} would lose what no view save kept: "
+       "{}; view save keeps it, view close force puts "
+       "the files back as last saved, which undo takes "
+       "back",
+       view,
+       named);
 }
 
 } // namespace VP

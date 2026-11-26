@@ -4,7 +4,9 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -13,8 +15,8 @@
 #include <vector>
 
 // The small text helpers the engine's files share, each written once (C02, C06): what
-// manifests, kept files and lines are read with, and what an error lists names with. At
-// the bottom of the include map, it includes nothing of ours.
+// manifests, kept files and lines are read with, and what an error lists names with and
+// is thrown with. At the bottom of the include map, it includes nothing of ours.
 namespace VP {
 
 // "And he was clothed with a vesture dipped in blood: and his name is called The Word of
@@ -70,6 +72,13 @@ inline std::vector<std::string_view> lines_in(std::string_view text) {
     at = end + 1;
   }
   return lines;
+}
+
+// A worded error in one call: the words as std::format makes them, checked as it
+// compiles, thrown as std::runtime_error (A02).
+template <class... Args>
+[[noreturn]] void fail(std::format_string<Args...> words, Args &&...args) {
+  throw std::runtime_error(std::format(words, std::forward<Args>(args)...));
 }
 
 } // namespace VP
