@@ -45,6 +45,11 @@ struct LogUnsaved {
   friend constexpr type reach(LogUnsaved);
 };
 template struct Reach<LogUnsaved, &Log::_unsaved>;
+struct LogPrinted {
+  using type = void (Log::*)(std::string_view, bool) const;
+  friend constexpr type reach(LogPrinted);
+};
+template struct Reach<LogPrinted, &Log::printed>;
 
 namespace domain {
 // What a line of the log says: one line or several, ends of lines, bytes a terminal
@@ -417,7 +422,7 @@ void cases(Bench &bench) {
                   const auto speaker = [&] {
                     std::vector<Logged> lines;
                     log.apart();
-                    log.printed("x", false);
+                    (log.*reach(LogPrinted{}))("x", false);
                     lines.resize(log.take(lines));
                     return lines.empty() ? std::string("none") : lines.back().text;
                   };

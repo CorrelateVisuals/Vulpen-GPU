@@ -106,10 +106,6 @@ public:
 
   Level level() const;
   void write(Level level, Tag tag, std::string_view text) const;
-  // A line node code printed, about the speaker: to std::cout shown at the warn level,
-  // so it shows unless the node's level is error, and marked as a node's output, not as
-  // a warning; to std::cerr as an error.
-  void printed(std::string_view text, bool error) const;
   // A line about a node: its own level wins over the process level (V09), and its name
   // leads the text. view: the one the node runs in, by the name a line addresses it
   // with, empty for the start view.
@@ -137,6 +133,10 @@ public:
   std::size_t take(std::vector<Logged> &lines) const;
 
 private:
+  // A line node code printed, as Printed hands it on, about the speaker: to std::cout
+  // shown at the warn level, so it shows unless the node's level is error, and marked as
+  // a node's output, not as a warning; to std::cerr as an error.
+  void printed(std::string_view text, bool error) const;
   bool kept(Level level, std::string_view view) const;
   void print(Level level,
              Tag tag,
@@ -171,8 +171,8 @@ private:
   mutable std::size_t _count = 0;
   mutable bool _clears_row = false;
   mutable Speaker _speaker; // none, at the process level, outside a node's call
-  // The one holding std::cout and std::cerr while it lives, which the log borrows to end
-  // a speaker's lines as the speaker changes.
+  // The one holding std::cout and std::cerr while it lives, which hands the log each line
+  // printed, and which the log borrows to end a speaker's lines as the speaker changes.
   friend class Printed;
   mutable const Printed *_printed = nullptr;
 };
@@ -189,10 +189,11 @@ public:
   Printed(const Printed &) = delete;
   Printed &operator=(const Printed &) = delete;
 
+private:
   // A line not ended, printed as if it were, as the log's speaker changes.
+  friend class Log::Speaking;
   void end_lines() const;
 
-private:
   class Lines; // a stream buffer, in Log.cpp
   const Log &_log;
   std::unique_ptr<Lines> _out;
