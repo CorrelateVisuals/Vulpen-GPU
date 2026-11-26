@@ -9,7 +9,6 @@
 
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <filesystem>
 #include <format>
 #include <iterator>
@@ -88,16 +87,14 @@ void set_once(std::string &slot, std::string_view key, std::string_view value) {
 }
 
 std::uint32_t whole_number(std::string_view text) {
-  std::uint32_t value = 0;
-  const auto [end, error] =
-      std::from_chars(text.data(), text.data() + text.size(), value);
-  if (end == text.data() + text.size() && error == std::errc::result_out_of_range)
+  if (const std::optional<std::uint32_t> value = number_in<std::uint32_t>(text))
+    return *value;
+  // Digits alone, which number_in refuses only past what the type holds.
+  if (!text.empty() && text.find_first_not_of("0123456789") == std::string_view::npos)
     fail("{} is more than the largest count, {}",
          text,
          std::numeric_limits<std::uint32_t>::max());
-  if (error != std::errc{} || end != text.data() + text.size())
-    fail("{} is not a whole number", text);
-  return value;
+  fail("{} is not a whole number", text);
 }
 
 // A count left out is none, so a count given is at least 1.

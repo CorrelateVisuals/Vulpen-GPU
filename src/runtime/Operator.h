@@ -1,6 +1,7 @@
 #pragma once
 
 #include "baseclasses/Log.h"
+#include "runtime/Text.h"
 
 #include <glm/ext/vector_uint2_sized.hpp>
 #include <glm/ext/vector_uint4_sized.hpp>
@@ -8,7 +9,6 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
-#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -84,10 +84,11 @@ template <> inline constexpr std::string_view pixel_type<glm::vec4> = "vec4";
 // false, value keeps what it held, since a bind may still read it.
 template <class T> bool parse_param(std::string_view text, T &value) {
   const auto number = [](std::string_view part, auto &into) {
-    const auto [end, error] =
-        std::from_chars(part.data(), part.data() + part.size(), into);
-    return error == std::errc{} && end == part.data() + part.size() &&
-           (into == 0 || std::isnormal(into));
+    const auto read = number_in<std::remove_cvref_t<decltype(into)>>(part);
+    if (!read || (*read != 0 && !std::isnormal(*read)))
+      return false;
+    into = *read;
+    return true;
   };
   T read{};
   if constexpr (requires { T::length(); }) {
