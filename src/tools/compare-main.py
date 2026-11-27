@@ -15,9 +15,10 @@ main names, or a regression.
   a person's project made on main would be; the live build builds it there. What each met
   as it loaded, built and ran.
 
-main builds in a worktree of its own in --out, removed after, unless --main-tree names a
-built one. Fails where a project or a scene ran clean on main and meets a problem here,
-or a run ends; differences alone are listed, in compare-main.md in --out.
+main builds in a worktree of its own, main-tree in --out, removed after, unless
+--main-tree names a built one; what each build's runs take stays in main/ and here/.
+Fails where a project or a scene ran clean on main and meets a problem here, or a run
+ends; differences alone are listed, in compare-main.md in --out.
 
 Usage: python3 src/tools/compare-main.py --out DIR [--base REF] [--main-tree DIR]
                                          [--only usages,scenes,projects]
@@ -80,9 +81,10 @@ def build_of(name: str, tree: Path) -> Build:
                  module(tools / "update-readme-images.py", f"{name}_images"))
 
 
-def built_main(base: str, out: Path, driver: str) -> Path:
-    """main in a worktree of its own, configured on the driver this tree's tests take."""
-    tree, said = out / "main", out / "main-build.log"
+def built_main(base: str, tree: Path, driver: str) -> Path:
+    """main in a worktree of its own, configured on the driver this tree's tests take, its
+    build's log beside it."""
+    said = tree.parent / "main-build.log"
     commands = [(ROOT, ["git", "worktree", "add", "--detach", tree, base]),
                 (tree, ["cmake", "--preset", "debug", f"-DVULPEN_TEST_DRIVER={driver}"]),
                 (tree, ["cmake", "--build", "--preset", "debug", "--parallel", JOBS])]
@@ -304,10 +306,12 @@ def main() -> None:
         sys.exit("out/build/debug names no VULPEN_TEST_DRIVER: both builds run on it")
     os.environ["VK_DRIVER_FILES"] = driver  # every run inherits it
     out.mkdir(parents=True)
-    built = None if arguments.main_tree else out / "main"  # removed after, as made here
+    # Removed after, as made here: apart from out/main, so what main's runs take outlives
+    # it, as the report links it.
+    built = None if arguments.main_tree else out / "main-tree"
     try:
         tree = arguments.main_tree.resolve() if arguments.main_tree else built_main(
-            arguments.base, out, driver)
+            arguments.base, built, driver)
         compared = [build_of("main", tree), build_of("here", ROOT)]
         if others := [found for build in compared for found in build.replay.running()]:
             sys.exit("another vulpen of a tree compared runs:\n" + "\n".join(others))
