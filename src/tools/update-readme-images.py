@@ -209,7 +209,7 @@ def level(folder: str, steps: int) -> list[str]:
 DIVE = {
     "level-0": [*panels("maximize", "graph"), *level("./", 4)],
     "level-1": ["ide: zoom reset", *level("src/", 0)],
-    "level-2": ["ide: zoom reset", *level("src/runtime/", 1)],
+    "level-2": ["ide: zoom reset", *level("src/runtime/", 2)],
     "level-3": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/", 0)],
     "level-4": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/library/", 0)],
     "level-5": ["ide: zoom reset", *level("src/runtime/recipes/vulpen/library/parts/", 4)],
