@@ -225,9 +225,14 @@ def build(preset: str, chosen: list[Bench] | None = None) -> None:
     """The benches chosen, or all of them: a bench named alone builds alone, as each case
     file is a compile of its own, half a gigabyte for the larger ones."""
     folder = ROOT / "out" / "build" / preset
-    if not (folder / "CMakeCache.txt").is_file():
-        subprocess.run(["cmake", "--preset", preset], cwd=ROOT, check=True,
-                       stdout=subprocess.DEVNULL)
+    # Each build's rows are held to the debug build's, so each runs on its driver: a bare
+    # preset finds the pinned lavapipe beside the repository only, not beside a worktree,
+    # and the system's says another Vulkan version.
+    held = driver("debug") if preset != "debug" else None
+    if not (folder / "CMakeCache.txt").is_file() or (held and driver(preset) != held):
+        subprocess.run(["cmake", "--preset", preset,
+                        *([f"-DVULPEN_TEST_DRIVER={held}"] if held else [])],
+                       cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     def built(targets: list[str]) -> subprocess.CompletedProcess:
         return subprocess.run(["cmake", "--build", str(folder), "--target", *targets,
                                "--parallel", JOBS], cwd=ROOT, capture_output=True, text=True)
