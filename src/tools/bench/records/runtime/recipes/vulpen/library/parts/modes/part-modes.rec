@@ -33,6 +33,14 @@ p1 presented, no longer hosted -> sent []; edit (0,0)+(0,0), perform (10,20)+(20
 perform, p1 presented -> sent ["gpu"]; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (43.33333 20) size (133.33334 100)"]
 the device goes -> done
 
+## Modes.cpp/Modes::cook, its view edited in the frame
+1 the first frame -> sent ["gpu"]; pointer []
+2 p1 hosted, the view edited before -> sent [": param set ide.preview shown first"]; pointer []
+3 p2 hosted, drawing and presented, the view edited before -> sent [": param set ide.preview shown first", ": panel show ide.perform"]; pointer []
+4 in perform mode, the view edited before -> sent []; pointer ["p2 at (43.33333 20) size (133.33334 100)"]
+5 an error logged, the view edited before -> sent ["mode edit"]; pointer ["p2 at (43.33333 20) size (133.33334 100)"]
+the device goes -> done
+
 ## Modes.cpp/Modes::hold
 edit, p1 presented -> sent ["gpu"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
 no window size -> sent []; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (10 20) size (0 0)"]

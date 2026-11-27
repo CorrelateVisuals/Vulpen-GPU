@@ -112,7 +112,8 @@ class Modes final : public VP::Operator {
   // Perform mode gives way to edit mode once nothing is presented nor about to be, as
   // after view close of the view presented, and once the log printed an error since the
   // frame before, which perform mode would hide.
-  // The projects are read before a line goes, as one may replace the view they are in.
+  // The views are read, and what of them it keeps copied, before a line goes, as each
+  // line may replace them.
   void cook(VP::Cook &frame) override {
     read_gpu(frame);
     const std::string_view presented = shown_by(frame.view());
@@ -124,24 +125,25 @@ class Modes final : public VP::Operator {
                frame.commands().current(),
                presented);
     const bool none = next.empty();
-    watch_buttons(frame, presented.empty() && none);
+    const bool presents = !presented.empty();
+    watch_buttons(frame, !presents && none);
     const bool loaded =
         _started && std::ranges::any_of(hosted, [&](const VP::Child &child) {
           return std::ranges::find(_known, child.name) == _known.end();
         });
-    const bool anew = presented != _presented && !presented.empty();
+    const bool anew = presents && presented != _presented;
     if (anew)
       _presented = presented;
     const bool begun = begins_to_perform(frame, next);
-    if (_started && (loaded || anew))
-      show_presented(frame.commands(), frame.view());
-    if (begun && !_shows.empty())
-      frame.commands().send(std::format("{}: panel show {}", _view, _shows));
     if (!std::ranges::equal(_known, hosted, {}, {}, &VP::Child::name)) {
       _known.clear();
       for (const VP::Child &child : hosted)
         _known.push_back(child.name);
     }
+    if (_started && (loaded || anew))
+      show_presented(frame.commands(), frame.view());
+    if (begun && !_shows.empty())
+      frame.commands().send(std::format("{}: panel show {}", _view, _shows));
     _started = true;
     // It reads the keys no part in focus takes, so escape comes here only once the part
     // in focus let go of its selection and of the focus. In edit mode escape runs quit in
@@ -155,12 +157,15 @@ class Modes final : public VP::Operator {
     const auto erred = [](const VP::Logged &line) {
       return line.level == VP::Level::error;
     };
-    if (_perform && ((presented.empty() && none) ||
-                     std::ranges::any_of(frame.commands().log(), erred)))
+    if (_perform &&
+        ((!presents && none) || std::ranges::any_of(frame.commands().log(), erred)))
       frame.commands().send("mode edit");
     *_edit = _perform ? VP_VIEW::Rect{} : *_area;
     *_shown = _perform ? *_area : VP_VIEW::Rect{};
-    hold(frame, presented, _perform, *_area);
+    hold(frame,
+         presents ? std::string_view(_presented) : std::string_view(),
+         _perform,
+         *_area);
   }
 
   // The pointer's presses go where the mode gives the window: in edit mode to the GUI's

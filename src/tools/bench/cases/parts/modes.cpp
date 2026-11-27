@@ -171,6 +171,66 @@ Params ide(std::string mode = "edit") {
   return {{"mode", std::move(mode)}, {"shows", "ide.perform"}, {"switch", "ide.preview"}};
 }
 
+// The node in the start view, as the ide runs it, its own view the top one; each line to
+// it a copy in its place, as Views edits a view: the copy before it gone, the view the
+// frame began with kept till the frame's end.
+struct Started {
+  Running<Modes> node;
+  FakeCommands commands;
+  FakeInput input;
+  std::optional<decltype(node.cook.views)::node_type> began;
+
+  explicit Started(const Engine &engine) : node(ide()) {
+    node.bind.node_name = "ide.modes";
+    node.bind.engine_made = &engine;
+    node.bound();
+    node.cook.command_port = &commands;
+    node.cook.input_port = &input;
+    node.cook.size = {400, 300};
+    node.cook.unfolded_views = {{"none", View{}}};
+    node.port<VP_VIEW::Rect>("area") = {.offset = {10, 20}, .extent = {200, 100}};
+    commands.now = "";
+    commands.logged.emplace();
+    commands.answer = "the next launch takes the integrated GPU";
+    // mode edit runs the node's own command, whose param set edits the view.
+    commands.answers = [this](std::string_view line) {
+      if (line.starts_with(": ") || line == "mode edit")
+        edited();
+      return commands.answer;
+    };
+    input.window = false;
+  }
+  // The start view as a frame begins with it: hosting these, presenting that.
+  void views(const std::vector<std::string> &hosted, std::string_view presented) {
+    View top = own_view(presented);
+    top.name = "";
+    top.children = top_view(hosted).children;
+    node.cook.views.clear();
+    node.cook.views.emplace("", std::move(top));
+    node.cook.in_view = &node.cook.views.at("");
+  }
+  void edited() {
+    View copy = node.cook.views.at("");
+    auto was = node.cook.views.extract("");
+    node.cook.views.emplace("", std::move(copy));
+    node.cook.in_view = &node.cook.views.at("");
+    if (!began)
+      began = std::move(was);
+  }
+  // A frame, another node's line editing the view before this one cooks where asked.
+  std::string cooked(Rows &rows, bool edited_before) {
+    began.reset();
+    if (edited_before)
+      edited();
+    commands.sent.clear();
+    node.cook.handed.clear();
+    node.cooked();
+    return std::format("sent {}; pointer {}",
+                       show(commands.sent, rows.names()),
+                       show(node.cook.handed, rows.names()));
+  }
+};
+
 Event key(std::string name) {
   return {.kind = Event::Kind::key, .down = true, .name = std::move(name)};
 }
@@ -319,6 +379,31 @@ void cases(Bench &bench) {
       bare.cooked(rows);
       bare.views({"p1"}, "p1");
       rows.row("no shows nor switch, p1 hosted later -> " + bare.cooked(rows));
+    });
+  });
+
+  // In the start view, as in the ide, after another node's line edited the view this
+  // frame, as keys' F1 runs mode toggle: a project hosted or presented sends a line that
+  // replaces the view again, and what it read of the view before stays its own.
+  bench.check("Modes.cpp/Modes::cook, its view edited in the frame", [](Rows &rows) {
+    with_engine(rows, [&](const Engine &engine) {
+      Started frame(engine);
+      frame.views({}, "");
+      rows.row("1 the first frame -> " + frame.cooked(rows, false));
+      frame.views({"p1"}, "");
+      rows.row("2 p1 hosted, the view edited before -> " + frame.cooked(rows, true));
+      frame.views({"p1", "p2"}, "p2");
+      frame.node.cook.unfolded_views.insert_or_assign("p2", project(true));
+      rows.row("3 p2 hosted, drawing and presented, the view edited before -> " +
+               frame.cooked(rows, true));
+      frame.node.bind.params = ide("perform");
+      frame.node.bound();
+      frame.node.cook.in_view = &frame.node.cook.views.at("");
+      rows.row("4 in perform mode, the view edited before -> " +
+               frame.cooked(rows, true));
+      frame.commands.logged = {{.level = Level::error, .text = "e"}};
+      rows.row("5 an error logged, the view edited before -> " +
+               frame.cooked(rows, true));
     });
   });
 
