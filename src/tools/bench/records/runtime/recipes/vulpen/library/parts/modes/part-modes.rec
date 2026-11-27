@@ -1,0 +1,64 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/modes/Modes.cpp, a call each (src/tools/bench/bench.py).
+
+## Modes.cpp/Modes::begins_to_perform
+1 p1 hosted and presented at the first frame -> sent ["gpu"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+2 p2, which draws nothing, hosted -> sent ["ide: param set ide.preview shown first"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+3 p2 presented -> sent ["ide: param set ide.preview shown first"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+4 p2 draws at last -> sent ["ide: panel show ide.perform"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+5 p3, which draws, hosted -> sent ["ide: param set ide.preview shown first"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+6 the same again -> sent []; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+6b p4, which draws, hosted and switched to, as view load does -> sent ["ide: param set ide.preview shown first", "ide: panel show ide.perform"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+7 p3 presented, the switch on its first half -> sent []; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+8 p1 presented, the switch's shown unset -> sent []; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+no shows nor switch, p1 hosted later -> sent []; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+the device goes -> done
+
+## Modes.cpp/Modes::bind
+[("mode", "edit"), ("shows", "ide.perform"), ("switch", "ide.preview")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, stuck
+[("mode", "edit")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, stuck
+[("mode", "perform"), ("shows", "ide.perform"), ("switch", "ide.preview")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit; run > mode perform, lit; |; gpu > gpu toggle, lit, stuck
+[("mode", "run"), ("shows", "ide.perform"), ("switch", "ide.preview")] -> throws runtime_error: "param mode = run: edit or perform"
+the device goes -> done
+
+## Modes.cpp/Modes::cook
+a warning logged -> sent ["gpu"]; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (43.33333 20) size (133.33334 100)"]
+an error logged -> sent ["mode edit"]; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (43.33333 20) size (133.33334 100)"]
+edit, another key -> sent []; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+edit, escape -> sent ["gpu", "type quit"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+edit, escape let go -> sent []; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+edit, escape to the editor in focus -> sent []; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+escape, p1 presented -> sent []; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (43.33333 20) size (133.33334 100)"]
+nothing presented, none hosted -> sent ["mode edit"]; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer none
+p1 presented, no longer hosted -> sent []; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (43.33333 20) size (133.33334 100)"]
+perform, p1 presented -> sent ["gpu"]; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (43.33333 20) size (133.33334 100)"]
+the device goes -> done
+
+## Modes.cpp/Modes::hold
+edit, p1 presented -> sent ["gpu"]; edit (10,20)+(200,100), perform (0,0)+(0,0); pointer held 1
+no window size -> sent []; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (10 20) size (0 0)"]
+p1 hosted, none presented -> sent []; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer none
+perform, p1 presented, the window 400x300 -> sent ["gpu"]; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (43.33333 20) size (133.33334 100)"]
+the device goes -> done
+the window 100x400 -> sent []; edit (0,0)+(0,0), perform (10,20)+(200,100); pointer ["p1 at (97.5 20) size (25 100)"]
+
+## Modes.cpp/Modes::switch_mode
+edit -> sent ["ide: focus ide.editor", "ide: param set ide.modes mode edit"]; answered ["went to edit mode: the window shows the dock"]
+edit again, in edit mode -> sent ["ide: param set ide.modes mode edit"]; answered ["went to edit mode: the window shows the dock"]
+perform again, in perform mode -> sent ["ide: param set ide.modes mode perform"]; answered ["went to perform mode: the window shows what is presented"]
+perform, nothing hosted -> sent []; answered ["stayed in edit mode, as nothing is presented to perform; view load <project> or view switch <name> presents one"]
+perform, p1 hosted, none presented yet -> sent ["ide: focus", "ide: param set ide.modes mode perform"]; answered ["went to perform mode: the window shows what is presented"]
+perform, p1 presented, the editor in focus -> sent ["ide: focus", "ide: param set ide.modes mode perform"]; answered ["went to perform mode: the window shows what is presented"]
+the device goes -> done
+toggle in perform mode, nothing hosted -> sent ["ide: param set ide.modes mode edit"]; answered ["went to edit mode: the window shows the dock"]
+toggle, in edit mode -> sent ["ide: focus", "ide: param set ide.modes mode perform"]; answered ["went to perform mode: the window shows what is presented"]
+toggle, in perform mode -> sent ["ide: param set ide.modes mode edit"]; answered ["went to edit mode: the window shows the dock"]
+
+## Modes.cpp/Modes::watch_buttons
+1 nothing hosted -> sent ["gpu"]; buttons edit > mode edit, lit; run > mode perform, stuck; |; gpu > gpu toggle, lit, stuck
+2 again -> sent []; buttons edit > mode edit, lit; run > mode perform, stuck; |; gpu > gpu toggle, lit, stuck
+3 the answer now discrete, unasked -> sent []; buttons edit > mode edit, lit; run > mode perform, stuck; |; gpu > gpu toggle, lit, stuck
+4 a warning logged -> sent ["gpu"]; buttons edit > mode edit, lit; run > mode perform, stuck; |; gpu > gpu toggle, lit, number, stuck
+5 p1 hosted -> sent ["ide: param set ide.preview shown first"]; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, number, stuck
+6 a window open -> sent []; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, number, stuck; fps, muted
+7 a warning, the answer naming none -> sent ["gpu"]; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, stuck; fps, muted
+the device goes -> done

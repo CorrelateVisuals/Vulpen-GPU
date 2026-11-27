@@ -1,0 +1,280 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/panes/Panes.cpp, a call each (src/tools/bench/bench.py).
+
+## Panes.cpp/Panes::bind
+interact maybe -> throws runtime_error: "param interact = maybe: yes or no"
+interact, to and keys unset -> asked ["input typed", "output buttons"]; buttons interact > ide: param set ide.panes interact yes
+no keys connected -> asked ["output buttons"]; buttons interact > ide: param set ide.panes interact yes
+pane empty -> throws runtime_error: "ide.panes needs a pane, the rooms and the pictures of it, as image.area"
+pictures empty -> throws runtime_error: "ide.panes needs a pane, the rooms and the pictures of it, as image.area"
+rooms empty -> throws runtime_error: "ide.panes needs a pane, the rooms and the pictures of it, as image.area"
+the ide's, interact no -> asked ["input typed", "output buttons"]; buttons interact > ide: param set ide.panes interact yes
+the ide's, interact yes -> asked ["input typed", "output buttons"]; buttons interact > ide: param unset ide.panes interact, current
+
+## Panes.cpp/Panes::connect
+no to param -> 1 ["ide: node add ide.p1-pane recipe=still-image", "ide: node move ide.p1-pane ide.panes", "ide: connect p1-pane-room ide.deck.p1 ide.p1-pane.image.area ide.p1-pane.still.area", "ide: node add ide.p2-pane recipe=still-image", "ide: node move ide.p2-pane ide.panes", "ide: connect p2-pane-room ide.deck.p2 ide.p2-pane.image.area ide.p2-pane.still.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed", "ide: connect present p2:  ide.p2-pane.image.picture ide.p2-pane.still.picture"]; 2 []
+p2 presented to the screen alone -> 1 ["ide: disconnect present", "ide: connect present p2: ide.screen.picture ide.p2-pane.image.picture ide.p2-pane.still.picture"]; 2 []
+to a.b,c.d -> 1 ["ide: node add ide.p1-pane recipe=still-image", "ide: node move ide.p1-pane ide.panes", "ide: connect p1-pane-room ide.deck.p1 ide.p1-pane.image.area", "ide: node add ide.p2-pane recipe=still-image", "ide: node move ide.p2-pane ide.panes", "ide: connect p2-pane-room ide.deck.p2 ide.p2-pane.image.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed", "ide: connect present p2: a.b c.d ide.p2-pane.image.picture"]; 2 []
+two decks, a window to p2's pane while p2 is presented -> 1 ["ide: disconnect window-p2-pane"]; 2 []
+two decks, p1's window not connected -> 1 ["ide: connect window-p1-pane p1:  ide.p1-pane.image.picture ide.p1-pane.still.picture"]; 2 []
+
+## Panes.cpp/Panes::cook, a run's first frames
+none hosted -> 1 []
+p1 and p2 hosted, the deck holding none -> 1 ["ide: param set ide.deck holds p1,p2", "ide: node add ide.p1-pane recipe=still-image", "ide: node move ide.p1-pane ide.panes", "ide: connect p1-pane-room ide.deck.p1 ide.p1-pane.image.area ide.p1-pane.still.area", "ide: node add ide.p2-pane recipe=still-image", "ide: node move ide.p2-pane ide.panes", "ide: connect p2-pane-room ide.deck.p2 ide.p2-pane.image.area ide.p2-pane.still.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed ide.p1-pane.image.typed ide.p1-pane.still.typed ide.p2-pane.image.typed ide.p2-pane.still.typed", "ide: connect present p2: ide.screen.picture ide.p2-pane.image.picture ide.p2-pane.still.picture"]; 2 []
+two decks holding none -> 1 ["ide: param set ide.deck holds p1,p2", "ide: node add ide.p1-pane recipe=still-image", "ide: node move ide.p1-pane ide.panes", "ide: connect p1-pane-room ide.deck.p1 ide.p1-pane.image.area ide.p1-pane.still.area", "ide: node add ide.p2-pane recipe=still-image", "ide: node move ide.p2-pane ide.panes", "ide: connect p2-pane-room ide.deck.p2 ide.p2-pane.image.area ide.p2-pane.still.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed ide.p1-pane.image.typed ide.p1-pane.still.typed ide.p2-pane.image.typed ide.p2-pane.still.typed", "ide: connect present p2: ide.screen.picture ide.p2-pane.image.picture ide.p2-pane.still.picture"]; 2 []
+
+## Panes.cpp/Panes::cook, as views come and go
+both closed -> 1 ["ide: param unset ide.deck holds", "ide: node remove keep ide.p1-pane", "ide: node remove keep ide.p2-pane", "ide: disconnect present"]; 2 []
+lines go to p1 -> 1 ["ide: disconnect present", "ide: connect present p1: ide.screen.picture ide.p1-pane.image.picture ide.p1-pane.still.picture"]; 2 []
+lines go to the ide, its own -> 1 []
+nothing changed -> 1 []
+p1 closed -> 1 ["ide: param set ide.deck holds p2", "ide: node remove keep ide.p1-pane"]; 2 []
+p2 moved to a new deck, as docking moves it -> 1 []
+p2's pane removed by hand -> 1 []
+p2, presented, closed -> 1 ["ide: param set ide.deck holds p1", "ide: node remove keep ide.p2-pane", "ide: disconnect present", "ide: connect window-p1-pane p1:  ide.p1-pane.image.picture ide.p1-pane.still.picture"]; 2 ["ide: disconnect window-p1-pane", "ide: connect present p1: ide.screen.picture ide.p1-pane.image.picture ide.p1-pane.still.picture"]; 3 []
+p3 hosted -> 1 ["ide: param set ide.deck holds p1,p2,p3", "ide: node add ide.p3-pane recipe=still-image", "ide: node move ide.p3-pane ide.panes", "ide: connect p3-pane-room ide.deck.p3 ide.p3-pane.image.area ide.p3-pane.still.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed ide.p1-pane.im...pane.still.typed" (193 characters, hash 296493b44d369e6b)]; 2 []
+p3 hosted and switched to, as view load does -> 1 ["ide: param set ide.deck holds p1,p2,p3", "ide: node add ide.p3-pane recipe=still-image", "ide: node move ide.p3-pane ide.panes", "ide: connect p3-pane-room ide.deck.p3 ide.p3-pane.image.area ide.p3-pane.still.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed ide.p1-pane.im...pane.still.typed" (193 characters, hash 296493b44d369e6b), "ide: disconnect present", "ide: connect present p3: ide.screen.picture ide.p3-pane.image.picture ide.p3-pane.still.picture"]; 2 []
+the deck lets go of both -> 1 []
+the deck lets go of p1 -> 1 []
+the deck lets go of p2, presented -> 1 []
+the present connection dropped by hand -> 1 []
+
+## Panes.cpp/Panes::cook, its view edited in place
+the deck lets go of p1, the view where it was -> 1 []
+
+## Panes.cpp/Panes::cook, the frame after the first
+1 the deck holds p1 and gone, another lost, p1 hosted -> 1 []
+2 -> 1 ["ide: param set ide.deck holds p1", "ide: param unset ide.empty holds"]; 2 []
+3 the other holding lost again -> 1 []
+
+## Panes.cpp/Panes::interact
+no, the pictures interacting -> 1 ["ide: param unset ide.p1-pane.image interact", "ide: param unset ide.p2-pane.image interact"]; 2 []
+yes, panes to add -> 1 ["ide: param set ide.deck holds p1,p2", "ide: node add ide.p1-pane recipe=still-image param=image.interact=yes", "ide: node move ide.p1-pane ide.panes", "ide: connect p1-pane-room ide.deck.p1 ide.p1-pane.image.area ide.p1-pane.still.area", "ide: node add ide.p2-pane recipe=still-image param=image.interact=yes", "ide: node move ide.p2-pane ide.panes", "ide: connect p2-pane-room ide.deck.p2 ide.p2-pane.image.area ide.p2-pane.still.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed ide.p1-pane.image.typed ide.p1-pane.still.typed ide.p2-pane.image.typed ide.p2-pane.still.typed", "ide: connect present p2: ide.screen.picture ide.p2-pane.image.picture ide.p2-pane.still.picture"]; 2 []
+yes, the pictures interacting -> 1 []
+yes, the pictures not interacting -> 1 ["ide: param set ide.p1-pane.image interact yes", "ide: param set ide.p2-pane.image interact yes"]; 2 []
+
+## Panes.cpp/Panes::place
+a pane of a view no line hosts -> 1 ["ide: node remove keep ide.p2-pane"]; 2 []
+a pane whose room comes from no deck -> 1 ["ide: node remove keep ide.p2-pane", "ide: node add ide.p2-pane2 recipe=still-image", "ide: node move ide.p2-pane2 ide.panes", "ide: connect p2-pane2-room ide.deck.p2 ide.p2-pane2.image.area ide.p2-pane2.still.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed ide.p1-pane.image.typed ide.p1-pane.still.typed ide.p2-pane2.image.typed ide.p2-pane2.still.typed"]; 2 []
+no keys connected -> 1 ["ide: node add ide.p1-pane recipe=still-image", "ide: node move ide.p1-pane ide.panes", "ide: connect p1-pane-room ide.deck.p1 ide.p1-pane.image.area ide.p1-pane.still.area", "ide: node add ide.p2-pane recipe=still-image", "ide: node move ide.p2-pane ide.panes", "ide: connect p2-pane-room ide.deck.p2 ide.p2-pane.image.area ide.p2-pane.still.area", "ide: disconnect present", "ide: connect present p1: ide.screen.picture ide.p1-pane.image.picture ide.p1-pane.still.picture"]; 2 []
+nodes named as p2's pane would be, of another recipe -> 1 ["ide: node add ide.p2-pane3 recipe=still-image", "ide: node move ide.p2-pane3 ide.panes", "ide: connect p2-pane3-room ide.deck.p2 ide.p2-pane3.image.area ide.p2-pane3.still.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed ide.p1-pane.image.typed ide.p1-pane.still.typed ide.p2-pane3.image.typed ide.p2-pane3.still.typed"]; 2 []
+one room and one picture -> 1 ["ide: node add ide.p1-pane recipe=still-image", "ide: node move ide.p1-pane ide.panes", "ide: connect p1-pane-room ide.deck.p1 ide.p1-pane.image.area", "ide: node add ide.p2-pane recipe=still-image", "ide: node move ide.p2-pane ide.panes", "ide: connect p2-pane-room ide.deck.p2 ide.p2-pane.image.area", "ide: disconnect typed", "ide: connect typed ide.keys.typed ide.panes.typed", "ide: connect present p2: ide.screen.picture ide.p2-pane.image.picture"]; 2 []
+two panes for p1 -> 1 ["ide: connect present p1: ide.screen.picture ide.extra.image.picture ide.extra.still.picture"]; 2 []
+
+## Panes.cpp/Panes::present_next
+both decks let go -> 1 []
+both decks removed -> 1 []
+the first deck lets go of p1 -> 1 []
+the other deck lets go of p2, presented -> 1 []
+two decks settled, nothing changed -> 1 []
+
+## Panes.cpp/Panes::words
+(" ") -> ""
+(" a") -> "a"
+("") -> ""
+("#") -> "#"
+(",") -> ","
+("-1") -> "-1"
+(".") -> "."
+("..") -> ".."
+("/") -> "/"
+("1") -> "1"
+("\"") -> "\""
+("\\") -> "\\"
+("\n") -> "\n"
+("\na") -> "\na"
+("\r") -> "\r"
+("\t") -> "\t"
+("\x00") -> "\x00"
+("\xc3\xa9") -> "\xc3\xa9"
+("\xff") -> "\xff"
+("a ") -> "a "
+("a b") -> "a b"
+("a") -> "a"
+("a.b") -> "a.b"
+("a=b") -> "a=b"
+("a\n") -> "a\n"
+("a\nb") -> "a\nb"
+("a\r\n") -> "a\r\n"
+("a\x00b") -> "a\x00b"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)
+("ab") -> "ab"
+~("#-\xa90\xc3") -> "#-\xa90\xc3"
+~("#=,0\ra#\"\xff\xc3/") -> "#=,0\ra#\"\xff\xc3/"
+~("#_A9\"\t") -> "#_A9\"\t"
+~("#a\r\xffA-") -> "#a\r\xffA-"
+~(",0") -> ",0"
+~(",\xa90\"\x00\"") -> ",\xa90\"\x00\""
+~("-,\xff,\xc3/\xa9. ") -> "-,\xff,\xc3/\xa9. "
+~("-\"") -> "-\""
+~(".z\xff") -> ".z\xff"
+~("0,") -> "0,"
+~("9") -> "9"
+~("9,,,\"0") -> "9,,,\"0"
+~("9=a__") -> "9=a__"
+~("9\"\"a//") -> "9\"\"a//"
+~("==") -> "=="
+~("A9\xff ") -> "A9\xff "
+~("\"\"\xa9 \\\n,\"") -> "\"\"\xa9 \\\n,\""
+~("\\#-0\xc3/\xa9=_a") -> "\\#-0\xc3/\xa9=_a"
+~("\n .\"\xc39") -> "\n .\"\xc39"
+~("\n\"\xff\r") -> "\n\"\xff\r"
+~("\na/") -> "\na/"
+~("\r\xff/\"\xff-\xff\xa90") -> "\r\xff/\"\xff-\xff\xa90"
+~("\t-9\n\r0\xff/\n") -> "\t-9\n\r0\xff/\n"
+~("\x00\"") -> "\x00\""
+~("\x00_/") -> "\x00_/"
+~("\x00z\\\\\ta=/\x00\" ") -> "\x00z\\\\\ta=/\x00\" "
+~("\xa9,\xa9\"") -> "\xa9,\xa9\""
+~("\xa9-#\xff0z\"Aa\xa9") -> "\xa9-#\xff0z\"Aa\xa9"
+~("\xff \x00\xff\t=\\") -> "\xff \x00\xff\t=\\"
+~("\xff-\xa9\r#") -> "\xff-\xa9\r#"
+~("\xff./.\xc3") -> "\xff./.\xc3"
+~("_") -> "_"
+~("a-\x009\xff.a\xff/") -> "a-\x009\xff.a\xff/"
+~("a.\\") -> "a.\\"
+~("z#\xff_") -> "z#\xff_"
+
+## Panes.cpp/short_name
+(" ") -> " "
+(" a") -> " a"
+("") -> ""
+("#") -> "#"
+(",") -> ","
+("-1") -> "-1"
+(".") -> ""
+("..") -> ""
+("/") -> "/"
+("1") -> "1"
+("\"") -> "\""
+("\\") -> "\\"
+("\n") -> "\n"
+("\na") -> "\na"
+("\r") -> "\r"
+("\t") -> "\t"
+("\x00") -> "\x00"
+("\xc3\xa9") -> "\xc3\xa9"
+("\xff") -> "\xff"
+("a ") -> "a "
+("a b") -> "a b"
+("a") -> "a"
+("a.b") -> "b"
+("a=b") -> "a=b"
+("a\n") -> "a\n"
+("a\nb") -> "a\nb"
+("a\r\n") -> "a\r\n"
+("a\x00b") -> "a\x00b"
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)
+("ab") -> "ab"
+~(" \r\"_\x00A\xff,") -> " \r\"_\x00A\xff,"
+~(" a\xff\xc3") -> " a\xff\xc3"
+~(",/\x00\".") -> ""
+~(",a\r\\-") -> ",a\r\\-"
+~("-") -> "-"
+~("-AA-A\xc3\xff\"\xa9\n/") -> "-AA-A\xc3\xff\"\xa9\n/"
+~("-\x00#\n\xc3") -> "-\x00#\n\xc3"
+~(".A\x00z,_\r\xa9#a") -> "A\x00z,_\r\xa9#a"
+~(".\\=0\xa9\\\xff0.") -> ""
+~("/\\##a\\#") -> "/\\##a\\#"
+~("/\\\\A\xff") -> "/\\\\A\xff"
+~("/\r\x00#z\xff/\xc3") -> "/\r\x00#z\xff/\xc3"
+~("/\xa9\xff=a\xff=A__") -> "/\xa9\xff=a\xff=A__"
+~("0") -> "0"
+~("9\n\t") -> "9\n\t"
+~("=_") -> "=_"
+~("=z\xc3\xff\xa9\xff#\xa9\r\"\n") -> "=z\xc3\xff\xa9\xff#\xa9\r\"\n"
+~("A,,\xa9#") -> "A,,\xa9#"
+~("A\t9") -> "A\t9"
+~("A\ta\t0") -> "A\ta\t0"
+~("\"\x00\t\xc3 \t\\\xc3\x00\n") -> "\"\x00\t\xc3 \t\\\xc3\x00\n"
+~("\\\r\t-A\t\x00\xc3") -> "\\\r\t-A\t\x00\xc3"
+~("\\\xff-\xa9a0A-\n9_") -> "\\\xff-\xa9a0A-\n9_"
+~("\n/\xff\xff\\/90\\") -> "\n/\xff\xff\\/90\\"
+~("\n_ ") -> "\n_ "
+~("\r,9") -> "\r,9"
+~("\r/\x00a=\t") -> "\r/\x00a=\t"
+~("\r=\\\xa9#\xc3\"0") -> "\r=\\\xa9#\xc3\"0"
+~("\r=\x00#\"\xff_0") -> "\r=\x00#\"\xff_0"
+~("\t=\x000.\x00\n\xff\\") -> "\x00\n\xff\\"
+~("\t=\xa9\xff\x00\x00") -> "\t=\xa9\xff\x00\x00"
+~("\x00z,a/#0\"\n9") -> "\x00z,a/#0\"\n9"
+~("\xa9-#/ ") -> "\xa9-#/ "
+~("\xc3=.A\nz_") -> "A\nz_"
+~("\xff #\xc3az\r\"\xff\xffa") -> "\xff #\xc3az\r\"\xff\xffa"
+~("\xff-a") -> "\xff-a"
+~("\xffA.,9z a") -> ",9z a"
+~("a#-z-\x00.#A") -> "#A"
+~("z-_/0\t\n") -> "z-_/0\t\n"
+
+## Panes.cpp/split_port
+(" ") -> (" ", " ")
+(" a") -> (" a", " a")
+("") -> ("", "")
+("#") -> ("#", "#")
+(",") -> (",", ",")
+("-1") -> ("-1", "-1")
+(".") -> ("", "")
+("..") -> (".", "")
+("/") -> ("/", "/")
+("1") -> ("1", "1")
+("\"") -> ("\"", "\"")
+("\\") -> ("\\", "\\")
+("\n") -> ("\n", "\n")
+("\na") -> ("\na", "\na")
+("\r") -> ("\r", "\r")
+("\t") -> ("\t", "\t")
+("\x00") -> ("\x00", "\x00")
+("\xc3\xa9") -> ("\xc3\xa9", "\xc3\xa9")
+("\xff") -> ("\xff", "\xff")
+("a ") -> ("a ", "a ")
+("a b") -> ("a b", "a b")
+("a") -> ("a", "a")
+("a.b") -> ("a", "b")
+("a=b") -> ("a=b", "a=b")
+("a\n") -> ("a\n", "a\n")
+("a\nb") -> ("a\nb", "a\nb")
+("a\r\n") -> ("a\r\n", "a\r\n")
+("a\x00b") -> ("a\x00b", "a\x00b")
+("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21)) -> ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaa" (300 characters, hash ee7717eba7a17e21))
+("ab") -> ("ab", "ab")
+~("# \n z") -> ("# \n z", "# \n z")
+~("#,/# \r\n") -> ("#,/# \r\n", "#,/# \r\n")
+~("#90\xff9") -> ("#90\xff9", "#90\xff9")
+~("#\xa9/ \xc3\xc3\xa9_z00") -> ("#\xa9/ \xc3\xc3\xa9_z00", "#\xa9/ \xc3\xc3\xa9_z00")
+~(", ") -> (", ", ", ")
+~(",-_ #\xc3\r\\Aa") -> (",-_ #\xc3\r\\Aa", ",-_ #\xc3\r\\Aa")
+~(",.9") -> (",", "9")
+~(",\xa9\" \xc3\n\t") -> (",\xa9\" \xc3\n\t", ",\xa9\" \xc3\n\t")
+~("-") -> ("-", "-")
+~("-\t\xff") -> ("-\t\xff", "-\t\xff")
+~(".\r9z-09") -> ("", "\r9z-09")
+~(".\xc3\xffa\n\xff\xc3-") -> ("", "\xc3\xffa\n\xff\xc3-")
+~("/\xa9\xff#/") -> ("/\xa9\xff#/", "/\xa9\xff#/")
+~("/_\r0A\xffz_\" ") -> ("/_\r0A\xffz_\" ", "/_\r0A\xffz_\" ")
+~("0\x00") -> ("0\x00", "0\x00")
+~("9A\xc3\xa9 9 ") -> ("9A\xc3\xa9 9 ", "9A\xc3\xa9 9 ")
+~("9\n\r\xa9\xc3") -> ("9\n\r\xa9\xc3", "9\n\r\xa9\xc3")
+~("9\x00") -> ("9\x00", "9\x00")
+~("9\xa9.\\=#AzA9A") -> ("9\xa9", "\\=#AzA9A")
+~("==") -> ("==", "==")
+~("=\xa9") -> ("=\xa9", "=\xa9")
+~("\"#\xff\"\r\xff\t\n\xa9\xc3_") -> ("\"#\xff\"\r\xff\t\n\xa9\xc3_", "\"#\xff\"\r\xff\t\n\xa9\xc3_")
+~("\"9a#") -> ("\"9a#", "\"9a#")
+~("\"\"/") -> ("\"\"/", "\"\"/")
+~("\"\t/,\xff#\t\xff") -> ("\"\t/,\xff#\t\xff", "\"\t/,\xff#\t\xff")
+~("\"\xc3\xc3-9/A\t/\xa9") -> ("\"\xc3\xc3-9/A\t/\xa9", "\"\xc3\xc3-9/A\t/\xa9")
+~("\\,\xc3") -> ("\\,\xc3", "\\,\xc3")
+~("\\\\\xff\xc3,\r\"..\xc3") -> ("\\\\\xff\xc3,\r\".", "\xc3")
+~("\\_\"\xc3\r.-\n=") -> ("\\_\"\xc3\r", "-\n=")
+~("\n9z\\\xff") -> ("\n9z\\\xff", "\n9z\\\xff")
+~("\n\x009\xff\xc3") -> ("\n\x009\xff\xc3", "\n\x009\xff\xc3")
+~("\rA") -> ("\rA", "\rA")
+~("\t/") -> ("\t/", "\t/")
+~("\t\xa9\xc3A,a") -> ("\t\xa9\xc3A,a", "\t\xa9\xc3A,a")
+~("\ta\r") -> ("\ta\r", "\ta\r")
+~("\x00_\nz_-") -> ("\x00_\nz_-", "\x00_\nz_-")
+~("\xff/\xc3\xff/a") -> ("\xff/\xc3\xff/a", "\xff/\xc3\xff/a")
+~("\xff\"#\"") -> ("\xff\"#\"", "\xff\"#\"")
+~("\xffa\n ") -> ("\xffa\n ", "\xffa\n ")
+~("_ ,.-a") -> ("_ ,", "-a")
+~("_\"9\xa9\xa9_") -> ("_\"9\xa9\xa9_", "_\"9\xa9\xa9_")
+~("a\n\x00a\xa9aa\xff,=") -> ("a\n\x00a\xa9aa\xff,=", "a\n\x00a\xa9aa\xff,=")
