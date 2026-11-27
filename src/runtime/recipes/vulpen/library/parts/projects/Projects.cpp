@@ -328,6 +328,13 @@ class Projects final : public VP::Operator {
     // save left it, before its folder moves, so the close finds the files it kept.
     const std::filesystem::path file = call.view().file;
     const std::filesystem::path to = file.parent_path().parent_path() / name;
+    // Refused before the view is saved and closed, so it stays hosted: the move refuses a
+    // name taken where it is, as a folder that holds no view.
+    const std::vector<std::string> beside = call.files().list(to.parent_path().string());
+    if (std::ranges::find(beside, name) != beside.end() ||
+        std::ranges::find(beside, name + '/') != beside.end())
+      throw std::runtime_error(std::format(
+          "{} exists already; view rename takes a name free there", to.string()));
     call.commands().send(std::format("{}: view save", hosted));
     call.commands().send(std::format(": view close {}", hosted));
     call.files().rename(file.parent_path().string(), to.string());
