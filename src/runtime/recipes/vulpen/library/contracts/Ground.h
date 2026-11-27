@@ -12,7 +12,8 @@ namespace VP_VIEW {
 // A ground a camera keeps over, as a terrain hands it on: heights on a grid, row by row,
 // size.x points a row. The point at column i of row j lies at origin + i * across +
 // j * along, raised by its height along the up of the camera that reads it; across and
-// along lie square to that up. Between the points a reader samples bilinearly.
+// along lie square to that up. Between the points a reader samples bilinearly, and past
+// the edge it reads the edge's.
 struct Ground {
   std::vector<float> heights;
   glm::uvec2 size{}; // points a row, and rows

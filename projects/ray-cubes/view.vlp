@@ -18,7 +18,7 @@ version = 1
 # every frames_per_turn frames, and 0 holds it still; in perform mode a drag turns it
 # too. lens, how far the picture is from the eye, so the longer, the narrower the view.
 [node "camera"]
-recipe = camera@0758d487
+recipe = camera@9e8ed772
 param  = target=0,0.6,0
 param  = eye=14,6.6,0
 param  = up=0,1,0

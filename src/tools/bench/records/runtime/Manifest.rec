@@ -15,7 +15,7 @@
 
 ## Manifest.cpp/Manifest::flatten
 projects/life/view.vlp: 3 nodes, 2 connections, words #acebc4a8167cde85; kept [], read from 0 files; 0 folders no node's
-projects/ray-cubes/view.vlp: 28 nodes, 25 connections, words #a47b8de7e4fb3242; kept [], read from 0 files; 0 folders no node's
+projects/ray-cubes/view.vlp: 28 nodes, 25 connections, words #ba7fa61f98f9eab6; kept [], read from 0 files; 0 folders no node's
 projects/triangles/triangle-compute/view.vlp: 2 nodes, 1 connections, words #c170a623a100ef55; kept [], read from 0 files; 0 folders no node's
 projects/triangles/triangle-cpp-raster/view.vlp: 2 nodes, 1 connections, words #dbf30d814391ef53; kept [], read from 0 files; 0 folders no node's
 projects/triangles/triangle-files/view.vlp: 4 nodes, 3 connections, words #dadb6843b4ec2e90; kept [], read from 0 files; 0 folders no node's

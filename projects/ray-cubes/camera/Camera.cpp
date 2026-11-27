@@ -7,7 +7,6 @@
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <glm/vector_relational.hpp>
 
 #include <algorithm>
 #include <array>
@@ -70,8 +69,10 @@ constexpr float least_move = 1e-4f;
 
 // A ground as a camera reads it, its axes laid flat on the plane square to up: where a
 // point lies on its grid, as a column and a row, and the ground's height there along up,
-// bilinear between its points; none off the grid. One whose heights do not fill its grid,
-// or whose axes span no plane, is refused naming why (A02).
+// bilinear between its points. Past its edge the height is the edge's, so an eye looking
+// in from beyond it, as an oblique view's may while the target stays on the ground,
+// passes over the edge with no drop. One whose heights do not fill its grid, or whose
+// axes span no plane, is refused naming why (A02).
 class Grid {
 public:
   Grid(const VP_VIEW::Ground &ground, const glm::vec3 &up)
@@ -106,11 +107,8 @@ public:
   glm::vec2 last() const {
     return glm::vec2(_ground.size) - 1.0f;
   }
-  std::optional<float> height(const glm::vec3 &point) const {
-    const glm::vec2 cell = at(point);
-    if (glm::any(glm::lessThan(cell, glm::vec2(0.0f))) ||
-        glm::any(glm::greaterThan(cell, last())))
-      return std::nullopt;
+  float height(const glm::vec3 &point) const {
+    const glm::vec2 cell = glm::clamp(at(point), glm::vec2(0.0f), last());
     const glm::uvec2 low(glm::floor(cell));
     const glm::uvec2 high = glm::min(low + 1u, _ground.size - 1u);
     const glm::vec2 share = cell - glm::vec2(low);
@@ -335,8 +333,7 @@ class Camera final : public VP::Operator {
       _lifted = 0.0f;
     const float now = glm::dot(eye, _up);
     const float own = now - _lifted;
-    const std::optional<float> ground = grid.height(eye + step);
-    const float over = ground ? std::max(own, *ground + _ground_margin) : own;
+    const float over = std::max(own, grid.height(eye + step) + _ground_margin);
     _lifted = over - own;
     return step + (over - now) * _up;
   }
