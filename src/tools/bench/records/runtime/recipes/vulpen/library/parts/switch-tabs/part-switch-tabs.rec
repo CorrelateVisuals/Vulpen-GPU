@@ -1,0 +1,18 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/switch-tabs/SwitchTabs.cpp, a call each (src/tools/bench/bench.py).
+
+## SwitchTabs.cpp/SwitchTabs::bind
+["input first-tabs", "input second-tabs", "input first", "output tabs"]
+
+## SwitchTabs.cpp/SwitchTabs::cook
+its first from a node the view holds none of -> a1, current, role 3; a2 > open a2; b1 > v: param set sw shown second; b2 > open b2
+no switch hands it its first -> a1, current, role 3; a2 > open a2; b1 > v: param set  shown second; b2 > open b2
+shown first -> a1, current, role 3; a2 > open a2; b1 > v: param set sw shown second; b2 > open b2
+shown second -> a1 > v: param set sw shown first; a2 > open a2; b1, current, role 3; b2 > open b2
+shown unset -> a1, current, role 3; a2 > open a2; b1 > v: param set sw shown second; b2 > open b2
+shown x -> a1, current, role 3; a2 > open a2; b1 > v: param set sw shown second; b2 > open b2
+
+## SwitchTabs.cpp/SwitchTabs::cook, frame after frame
+a tab more in the second half -> a1, current, role 3; a2 > open a2; b1 > v: param set sw shown second; b2 > open b2; b3 > v: param set sw shown second
+first shown -> a1, current, role 3; a2 > open a2; b1 > v: param set sw shown second; b2 > open b2
+the same again, the tabs written to since -> a1, current, role 3; a2 > open a2; b1 > v: param set sw shown second; b2 > open b2; kept
+the switch's param set to second -> a1 > v: param set sw shown first; a2 > open a2; b1, current, role 3; b2 > open b2; b3

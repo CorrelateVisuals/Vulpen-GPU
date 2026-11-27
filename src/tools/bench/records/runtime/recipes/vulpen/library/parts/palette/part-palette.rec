@@ -1,0 +1,25 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/palette/Palette.cpp, a call each (src/tools/bench/bench.py).
+
+## Palette.cpp/Palette::bind
+["file theme.ini", "upload palette of 16 bytes vec4, room 40"]
+
+## Palette.cpp/Palette::cook
+its background edited to blue -> 40 colors, background (0 0 1 1)
+the library's theme -> 40 colors, background (0.005 0.005 0.005 1)
+then blue again -> 40 colors, background (0 0 1 1)
+then broken -> throws runtime_error: "theme.ini:9: 2 0 0 is no color: red, green and blue from 0 to 1, with alpha after when it is not opaque"
+
+## Palette.cpp/colors_of
+-0 a channel -> 40 colors, background (-0 0 0 1)
+a channel nan -> throws runtime_error: "theme.ini:9: nan 0 0 is no color: red, green and blue from 0 to 1, with alpha after when it is not opaque"
+a channel past 1 -> throws runtime_error: "theme.ini:9: 1.5 0 0 is no color: red, green and blue from 0 to 1, with alpha after when it is not opaque"
+a role that is none -> throws runtime_error: "theme.ini:9: sky is no role; the roles are background, panel, bo...fest, shell, ini" (332 characters, hash 63f6e809d3b7c630)
+alpha after -> 40 colors, background (0 0 0 0.5)
+background twice -> throws runtime_error: "theme.ini:60: background is given twice"
+empty -> throws runtime_error: "theme.ini gives background no color"
+five channels -> throws runtime_error: "theme.ini:9: 0 0 0 1 1 is no color: red, green and blue from 0 to 1, with alpha after when it is not opaque"
+no = -> throws runtime_error: "theme.ini:9: a line is a role, = and its color"
+no color -> throws runtime_error: "theme.ini:9:  is no color: red, green and blue from 0 to 1, with alpha after when it is not opaque"
+the library's theme -> 40 colors, background (0.005 0.005 0.005 1), panel (0.0175 0.0175 0.0175 1), border (0.1 0.1 0.1 1), text (0.8 0.82 0.85 1), accent (0.2 0.45 0.9 1), error (0.8 0.15 0.12 1), warning (0.85 0.6 0.1 1), muted (0.25 0.265 0.29 1), keyword (0.5 0.3 0.85 1), type (0.15 0.6 0.65 1), string (0.4 0.65 0.2 1), number (0.85 0.45 0.18 1), comment (0.18 0.2 0.23 1), directive (0.8 0.3 0.5 1), highlight (0.45 0.65 1 1), cold (0.02 0.045 0.028 1), cool (0.03 0.12 0.04 1), mild (0.2 0.16 0.02 1), warm (0.3 0.09 0.012 1), hot (0.4 0.028 0.02 1), node (0.2 0.45 0.9 1), view (0.45 0.65 1 1), folder (0.7 0.56 0.28 1), file (0.55 0.57 0.6 1), hidden (0.25 0.265 0.29 1), markdown (0.4 0.65 0.2 1), python (0.8 0.7 0.2 1), cpp (0.5 0.3 0.85 1), header (0.65 0.45 0.9 1), cmake (0.85 0.45 0.18 1), glsl (0.15 0.6 0.65 1), vert (0.12 0.62 0.45 1), frag (0.2 0.52 0.75 1), comp (0.1 0.4 0.62 1), tesc (0.25 0.65 0.55 1), tese (0.3 0.6 0.7 1), geom (0.35 0.55 0.6 1), manifest (0.05 0.25 1 1), shell (0.55 0.7 0.35 1), ini (0.6 0.5 0.4 1)
+two channels -> throws runtime_error: "theme.ini:9: 0 0 is no color: red, green and blue from 0 to 1, with alpha after when it is not opaque"
+words -> throws runtime_error: "theme.ini:9: x y z is no color: red, green and blue from 0 to 1, with alpha after when it is not opaque"

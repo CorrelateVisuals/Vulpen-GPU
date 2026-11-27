@@ -1,0 +1,35 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/hit/Hit.cpp, a call each (src/tools/bench/bench.py).
+
+## Hit.cpp/Hit::bind
+typed  -> ["input items", "input rects", "input marks"]
+typed maybe -> throws runtime_error: "param typed = maybe: yes or no"
+typed no -> ["input items", "input rects", "input marks"]
+typed yes -> ["input items", "input rects", "input marks"]
+
+## Hit.cpp/Hit::cook
+a dragged onto b -> sent ["type open a", "tab move a b"]
+a dragged onto c, another kind of move -> sent ["peek a", "type open a"]
+a pressed and let go -> sent ["type open a"]
+a pressed and moved 5 pixels -> sent ["peek a", "type open a"]
+a pressed right -> sent ["menu a"]
+a's close mark pressed -> sent ["type close a"]
+b pressed right, no menu -> sent []
+c, with no command -> sent []
+let go with nothing pressed -> sent []
+nothing pressed -> sent []
+on a still -> sent []
+onto a -> sent ["peek a"]
+onto a again -> sent ["peek a"]
+onto b, current -> sent []
+onto nothing -> sent []
+where d is drawn over c -> sent ["type open d"]
+
+## Hit.cpp/Hit::release, the Items changed under a press
+c pressed -> sent []; c gone, dragged onto a and let go -> sent ["tab move d a"]
+c's close mark pressed -> sent ["close c"]; c gone, dragged onto a and let go -> sent ["tab move d a"]
+
+## Hit.cpp/Hit::send
+typed no, no usages listed -> sent ["peek a", "open a"]
+typed yes, usages ["type <line>"] -> sent ["peek a", "type open a"]
+typed yes, usages ["types <line>"] -> sent ["peek a", "open a"]
+typed yes, usages [] -> sent ["peek a", "open a"]

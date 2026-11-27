@@ -1,0 +1,29 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/still/Still.cpp, a call each (src/tools/bench/bench.py).
+
+## Still.cpp/Still::bind
+[("host", "pane")], held reaches img -> ["input area", "input typed", "output still", "value shoot as uint"]; space in pane: holds true, shoots 1, unread none; space in img: holds false, shoots 0, unread picture
+[("host", "pane")], held reaches nothing -> ["input area", "input typed", "output still", "value shoot as uint"]; space in pane: holds true, shoots 1, unread none; space in img: holds false, shoots 0, unread picture
+[], held reaches img -> ["input area", "input typed", "output still", "value shoot as uint"]; space in pane: holds false, shoots 0, unread picture; space in img: holds true, shoots 1, unread none
+[], held reaches nothing -> throws runtime_error: "still names no host param, nor does its held reach a node"
+
+## Still.cpp/Still::cook
+a click in its area -> holds true, shoots 0, unread picture
+a double click in its area -> holds false, shoots 0, unread picture
+a double click out of it -> holds false, shoots 0, unread picture
+another key -> holds true, shoots 0, unread picture
+another node writes the picture -> holds false, shoots 0, unread picture
+no events -> holds false, shoots 0, unread picture
+nothing writes it -> holds false, shoots 0, unread picture
+nothing writes it, space -> holds false, shoots 0, unread picture
+space after -> holds true, shoots 1, unread none
+space again -> holds true, shoots 1, unread none
+space down -> holds true, shoots 1, unread none
+space down, repeated, up -> holds false, shoots 0, unread picture
+space repeated, the frame after -> holds true, shoots 0, unread picture
+space up -> holds true, shoots 0, unread picture
+space while other has the focus -> holds true, shoots 0, unread picture
+space, before a resize -> holds true, shoots 1, unread none
+the window resized while held -> holds false, shoots 0, unread picture
+two double clicks in a frame -> holds false, shoots 0, unread picture
+win writes it again -> holds true, shoots 0, unread picture
+win writes it once more -> holds true, shoots 0, unread picture
