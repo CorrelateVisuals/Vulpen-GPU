@@ -167,6 +167,8 @@ BASELINE = CONTEXTS[0]
 # sanitizers', and the odd build's, which fills every uninitialized variable with a
 # pattern, makes char unsigned, as ARM's is, and checks every iterator.
 PRESETS = ("release", "asan", "odd")
+# What make and ninja say of a target their build files do not hold.
+UNKNOWN_TARGET = re.compile(r"No rule to make target|unknown target")
 # Files a function reading paths against the working folder finds in the cwd context.
 CANARIES = ("a", "view.vlp", "README.md", ".vulpen/kept.ini", "projects/a/view.vlp")
 # An id under canary/ names the context or build its rows must move in, before any comma,
@@ -229,15 +231,26 @@ def build(preset: str, chosen: list[Bench] | None = None) -> None:
     # preset finds the pinned lavapipe beside the repository only, not beside a worktree,
     # and the system's says another Vulkan version.
     held = driver("debug") if preset != "debug" else None
-    if not (folder / "CMakeCache.txt").is_file() or (held and driver(preset) != held):
+
+    def configure() -> None:
         subprocess.run(["cmake", "--preset", preset,
                         *([f"-DVULPEN_TEST_DRIVER={held}"] if held else [])],
                        cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
+
+    if not (folder / "CMakeCache.txt").is_file() or (held and driver(preset) != held):
+        configure()
     def built(targets: list[str]) -> subprocess.CompletedProcess:
         return subprocess.run(["cmake", "--build", str(folder), "--target", *targets,
                                "--parallel", JOBS], cwd=ROOT, capture_output=True, text=True)
 
-    done = built([f"bench-{bench.name}" for bench in chosen] if chosen else ["bench"])
+    targets = [f"bench-{bench.name}" for bench in chosen] if chosen else ["bench"]
+    done = built(targets)
+    # The case files are found as a build is configured, and building all of them looks
+    # again, but a bench named alone that is new since is a target the build files do not
+    # know yet: configure again, once.
+    if done.returncode and UNKNOWN_TARGET.search(done.stdout + done.stderr):
+        configure()
+        done = built(targets)
     if done.returncode == 0:
         return
     # A build stops at the first bench that fails, so each then builds alone, and one run
