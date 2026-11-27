@@ -122,12 +122,12 @@ void cases(Bench &bench) {
       rows.row(std::format("{} -> {}", escaped(name), said));
     }
   });
-  bench.check("Projects.cpp/check_buildable", [](Rows &rows) {
+  bench.check("Projects.cpp/check_hostable", [](Rows &rows) {
     for (const std::string_view name :
          {"wave", "a.b+c-d_e", "", "a b", "a/b", "é", "a:b"}) {
       std::string said = "passes";
       try {
-        check_buildable(name);
+        check_hostable(name);
       } catch (...) {
         said = thrown();
       }
@@ -190,7 +190,7 @@ void cases(Bench &bench) {
 
   // A new view: with no name the first free project1 on; a name or a path a folder takes;
   // refused where a view is there already, the name is a project's in a group, or the
-  // folder's name cannot be built.
+  // folder's name is no name, which no view can take.
   bench.check("Projects.cpp/Projects::free_project", [](Rows &rows) {
     Framed frame(rows);
     rows.row("none -> " + frame.ran(made, {}, rows));
