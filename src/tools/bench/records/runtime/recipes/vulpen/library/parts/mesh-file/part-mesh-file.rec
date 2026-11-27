@@ -17,9 +17,9 @@ saved naming vertex 9 of 3 -> wrote none; logged ["error: <here>/one.obj: a face
 square.obj, most 1 -> wrote none; logged ["error: <here>/square.obj holds 2 triangles, more than most = 1: v: param set n most 2 makes room"]
 
 ## MeshFile.cpp/MeshFile::cook, another file named
-broken.obj named in its place -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/broken.obj: 1 triangles"]
+broken.obj named in its place -> wrote 0 triangles; logged ["error: <here>/broken.obj: a face names vertex 9 of the 3 the file lists", "info: <here>/broken.obj: 0 triangles"]
 one.obj named -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/one.obj: 1 triangles"]
-square.obj named in its place -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/square.obj: 1 triangles"]
+square.obj named in its place -> wrote 2 triangles; (0 0 0)(2 0 0)(0 2 0) normals (0 0 -1)(0 0 -1)(0 0 -1) color (1 1 1); (2 0 0)(2 2 0)(0 2 0) normals (0 0 -1)(0 0 -1)(0 0 -1) color (1 1 1); logged ["info: <here>/square.obj: 2 triangles"]
 
 ## MeshFile.cpp/row
 -1 -> throws runtime_error: "a face names vertex 0 of the 2 the file lists"

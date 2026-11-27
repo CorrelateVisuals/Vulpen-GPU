@@ -100,10 +100,16 @@ std::vector<VP_VIEW::Triangle> triangles_of(std::string_view text) {
 // for the node a connection takes them to: read again once it changes on disk, so a
 // model saved elsewhere shows at once. Materials and textures stay out: the mesh part
 // tints. A file it cannot parse, or of more triangles than most holds, is named in the
-// log, and the triangles keep what they held.
+// log, and the triangles keep what they held; one named in another's place holds none
+// until it parses, so no other file's triangles show under its name.
 class MeshFile final : public VP::Operator {
   void bind(VP::Bind &node) override {
-    _file = node.sets("file") ? node.param<std::string>("file") : "";
+    const std::string file = node.sets("file") ? node.param<std::string>("file") : "";
+    // Each file counts its own versions, so the last parsed says nothing of another's.
+    if (std::exchange(_file, file) != file) {
+      _parsed.reset();
+      _mesh.clear();
+    }
     _most = node.param<std::uint32_t>("most");
     _name = node.name();
     _view = node.view_name();
