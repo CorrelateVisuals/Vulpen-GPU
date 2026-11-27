@@ -4,7 +4,9 @@
 #include "tools/bench/Contracts.h"
 #include "tools/bench/Fakes.h"
 
+#include <cstddef>
 #include <format>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -122,34 +124,42 @@ void cases(Bench &bench) {
 
   // The tabs changed while the button is down, as a press on a close mark closes its
   // tab the frame after: c's close mark pressed, the strip then without c, the pointer
-  // dragged onto a and let go; and c itself pressed, then the same.
+  // dragged onto a and let go; c itself pressed, then the same; and both of d, the last
+  // tab, which leaves none where it was.
   bench.check("Hit.cpp/Hit::release, the Items changed under a press", [](Rows &rows) {
-    for (const bool on_mark : {true, false}) {
-      Framed frame({{"typed", "no"}});
-      VP_VIEW::Items &items = frame.node.port<VP_VIEW::Items>("items");
-      VP_VIEW::Rects &rects = frame.node.port<VP_VIEW::Rects>("rects");
-      items = {{.label = "a", .move = "tab move a"},
-               {.label = "b", .move = "tab move b"},
-               {.label = "c", .close = "close c", .move = "tab move c"},
-               {.label = "d", .move = "tab move d"}};
-      rects = {{.offset = {0, 0}, .extent = {50, 20}},
-               {.offset = {50, 0}, .extent = {50, 20}},
-               {.offset = {100, 0}, .extent = {50, 20}},
-               {.offset = {150, 0}, .extent = {50, 20}}};
-      frame.node.port<VP_VIEW::Rects>("marks") = {
-          {}, {}, {.offset = {135, 5}, .extent = {10, 10}}};
-      const std::string pressed =
-          frame.cooked({pointer(on_mark ? glm::vec2(140, 10) : glm::vec2(110, 10)),
-                        button("left", true)},
-                       rows);
-      items.erase(items.begin() + 2);
-      rects.pop_back();
-      rows.row(
-          std::format("{} pressed -> {}; c gone, dragged onto a and let go -> {}",
-                      on_mark ? "c's close mark" : "c",
-                      pressed,
-                      frame.cooked({pointer({10, 10}), button("left", false)}, rows)));
-    }
+    for (const std::size_t gone : {std::size_t{2}, std::size_t{3}})
+      for (const bool on_mark : {true, false}) {
+        Framed frame({{"typed", "no"}});
+        VP_VIEW::Items &items = frame.node.port<VP_VIEW::Items>("items");
+        VP_VIEW::Rects &rects = frame.node.port<VP_VIEW::Rects>("rects");
+        items = {{.label = "a", .move = "tab move a"},
+                 {.label = "b", .move = "tab move b"},
+                 {.label = "c", .close = "close c", .move = "tab move c"},
+                 {.label = "d", .close = "close d", .move = "tab move d"}};
+        rects = {{.offset = {0, 0}, .extent = {50, 20}},
+                 {.offset = {50, 0}, .extent = {50, 20}},
+                 {.offset = {100, 0}, .extent = {50, 20}},
+                 {.offset = {150, 0}, .extent = {50, 20}}};
+        frame.node.port<VP_VIEW::Rects>("marks") = {
+            {},
+            {},
+            {.offset = {135, 5}, .extent = {10, 10}},
+            {.offset = {185, 5}, .extent = {10, 10}}};
+        const float left = 50.0f * static_cast<float>(gone);
+        const std::string pressed = frame.cooked(
+            {pointer({left + (on_mark ? 40.0f : 10.0f), 10.0f}), button("left", true)},
+            rows);
+        const std::string label = items[gone].label;
+        items.erase(std::next(items.begin(), static_cast<std::ptrdiff_t>(gone)));
+        rects.pop_back();
+        rows.row(
+            std::format("{}{} pressed -> {}; {} gone, dragged onto a and let go -> {}",
+                        label,
+                        on_mark ? "'s close mark" : "",
+                        pressed,
+                        label,
+                        frame.cooked({pointer({10, 10}), button("left", false)}, rows)));
+      }
   });
 
   // Where a press goes: through type with a terminal's registered; as it is with none,

@@ -69,18 +69,19 @@ class Hit final : public VP::Operator {
       frame.commands().send(std::string((*_items)[*at].menu));
   }
 
-  // Onto another Item that moves as this one does, past a few pixels from the press.
+  // Onto another Item that moves as the one pressed does, past a few pixels from the
+  // press. The move is the one the press found, as the Items may have changed since, as
+  // a press on a close mark closes its tab the frame after.
   void release(VP::Cook &frame) {
-    const std::optional<std::size_t> from = std::exchange(_pressed, std::nullopt);
+    const std::string moving = std::exchange(_moving, {});
     const std::optional<std::size_t> onto = under();
-    if (!from || !onto || *from == *onto || glm::distance(_pointer, _from) <= drag_from)
+    if (moving.empty() || !onto || glm::distance(_pointer, _from) <= drag_from)
       return;
-    const std::string_view moving = (*_items)[*from].move;
     const std::string_view there = (*_items)[*onto].move;
     const std::size_t word = moving.rfind(' ');
     const std::size_t other = there.rfind(' ');
-    if (word == std::string_view::npos || other == std::string_view::npos ||
-        moving.substr(0, word) != there.substr(0, other))
+    if (there == moving || word == std::string::npos || other == std::string_view::npos ||
+        std::string_view(moving).substr(0, word) != there.substr(0, other))
       return;
     frame.commands().send(std::format("{} {}", moving, there.substr(other + 1)));
   }
@@ -94,16 +95,19 @@ class Hit final : public VP::Operator {
     return std::nullopt;
   }
 
-  // The command is copied first, since what it runs may change the Items.
+  // The command and the move are copied first, since what it runs may change the Items.
+  // A press on a close mark drags nothing.
   void press(VP::Cook &frame) {
     const std::optional<std::size_t> at = under();
-    _pressed = at;
+    _moving.clear();
     _from = _pointer;
     if (!at)
       return;
     const VP_VIEW::Item &item = (*_items)[*at];
     const bool marked =
         *at < _marks->size() && VP_VIEW::contains((*_marks)[*at], _pointer);
+    if (!marked)
+      _moving = item.move;
     if (const std::string command = marked ? item.close : item.command; !command.empty())
       send(frame.commands(), command);
   }
@@ -132,7 +136,7 @@ class Hit final : public VP::Operator {
   bool _typed = true;                  // a press goes through the terminal's type
   glm::vec2 _pointer{};                // as the events so far left it
   std::optional<std::size_t> _hovered; // the Item the pointer is on, as last seen
-  std::optional<std::size_t> _pressed; // the Item a press is on, until it is let go
+  std::string _moving;                 // the move of the Item pressed, until let go
   glm::vec2 _from{};                   // where that press was
 };
 

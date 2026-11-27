@@ -25,8 +25,10 @@ onto nothing -> sent []
 where d is drawn over c -> sent ["type open d"]
 
 ## Hit.cpp/Hit::release, the Items changed under a press
-c pressed -> sent []; c gone, dragged onto a and let go -> sent ["tab move d a"]
-c's close mark pressed -> sent ["close c"]; c gone, dragged onto a and let go -> sent ["tab move d a"]
+c pressed -> sent []; c gone, dragged onto a and let go -> sent ["tab move c a"]
+c's close mark pressed -> sent ["close c"]; c gone, dragged onto a and let go -> sent []
+d pressed -> sent []; d gone, dragged onto a and let go -> sent ["tab move d a"]
+d's close mark pressed -> sent ["close d"]; d gone, dragged onto a and let go -> sent []
 
 ## Hit.cpp/Hit::send
 typed no, no usages listed -> sent ["peek a", "open a"]
