@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <format>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -42,6 +43,10 @@ public:
     std::uint32_t count = 0;
   };
   std::vector<Room> rooms;
+  // The node's name, its view's, and the view it runs in, which the cook hands too.
+  std::string node_name = "n";
+  std::string view_named;
+  View in_view;
 
   // A C++ connection's object by port, made when the node or the case first names it, and
   // kept across binds, as the engine keeps it: the case sets an input before a cook and
@@ -67,16 +72,16 @@ public:
                                [&](const auto &param) { return param.first == name; });
   }
   std::string name() const override {
-    return "n";
+    return node_name;
   }
   std::string view_name() const override {
-    return {};
+    return view_named;
   }
   const Engine &engine() const override {
     throw std::logic_error("the bench's bind holds no engine");
   }
   const View &view() const override {
-    return _view;
+    return in_view;
   }
 
 private:
@@ -132,7 +137,6 @@ private:
     return found->second.second.get();
   }
 
-  View _view;
   std::map<std::string, std::pair<const char *, Object>, std::less<>> _objects;
 };
 
@@ -161,13 +165,20 @@ class FakeCommands final : public CommandPort {
 public:
   std::vector<std::string> sent;
   std::string answer;
+  // The usages the port lists, as a case sets them; none set, it answers none.
+  std::optional<std::vector<std::string>> listed;
 
   std::string send(std::string_view line) override {
     sent.emplace_back(line);
     return answer;
   }
   std::vector<Usage> usages() const override {
-    refused("usages");
+    if (!listed)
+      refused("usages");
+    std::vector<Usage> usages;
+    for (const std::string &usage : *listed)
+      usages.push_back({.usage = usage, .help = {}});
+    return usages;
   }
   std::span<const Logged> log() const override {
     refused("log");
@@ -223,7 +234,8 @@ private:
 
 // A node's cook: the frame's index, size and clock as the case sets them, every line the
 // node logs and image it uploads, the file port, speakers, commands and input the case
-// hands it, and the bytes of each upload the bind sized.
+// hands it, the bytes of each upload the bind sized, the view its bind runs in, the ports
+// it leaves unread, and its pass block.
 class FakeCook final : public Cook {
 public:
   std::uint64_t frame = 0;
@@ -241,6 +253,11 @@ public:
   mutable std::vector<std::string> said;
   // An image's index, size and levels, and its bytes' count and hash, an upload each.
   std::vector<std::string> uploads;
+  // The view the node runs in, its bind's; each port it said it reads none of this
+  // frame; and its pass block's bytes, as large as a case makes them.
+  const View *in_view = nullptr;
+  std::vector<std::string> unread_ports;
+  std::vector<std::byte> pass;
 
   std::uint64_t index() const override {
     return frame;
@@ -281,7 +298,9 @@ public:
     return *sound_port;
   }
   const View &view() const override {
-    refused("view");
+    if (!in_view)
+      refused("view");
+    return *in_view;
   }
   const View *view(std::string_view) const override {
     refused("view of a name");
@@ -301,8 +320,8 @@ public:
   void hand_pointer(std::string_view, glm::vec2, glm::vec2) override {
     refused("hand_pointer");
   }
-  void unread(std::string_view) override {
-    refused("unread");
+  void unread(std::string_view port) override {
+    unread_ports.emplace_back(port);
   }
 
 private:
@@ -310,7 +329,9 @@ private:
     throw std::logic_error(std::format("the bench's cook answers no {}", call));
   }
   std::span<std::byte> block() override {
-    refused("pass block");
+    if (pass.empty())
+      refused("pass block");
+    return pass;
   }
   std::span<const std::byte> readback_bytes(std::uint32_t) const override {
     refused("readback");
@@ -533,6 +554,7 @@ public:
   void bound() {
     static_cast<Operator &>(_part).bind(bind);
     files.node_files = bind.files;
+    cook.in_view = &bind.in_view;
     cook.rooms = bind.rooms;
     cook.written.resize(bind.rooms.size());
     cook.used.resize(bind.rooms.size());
