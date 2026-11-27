@@ -40,7 +40,8 @@ Event press() {
   return {.kind = Event::Kind::button, .down = true, .name = "left", .presses = 1};
 }
 
-// The view v, where keys hands typed to editor and terminal.
+// The view v, where keys hands typed to editor and terminal, and console another typed to
+// shell.
 View view_of() {
   View view;
   view.name = "v";
@@ -48,6 +49,13 @@ View view_of() {
                               .from = {.node = "keys", .port = "typed"},
                               .to = {{.node = "editor", .port = "typed"},
                                      {.node = "terminal", .port = "typed"}}});
+  // Another node's typed, and keys' own other port, which hand no keys of this node's.
+  view.connections.push_back({.name = "console",
+                              .from = {.node = "console", .port = "typed"},
+                              .to = {{.node = "shell", .port = "typed"}}});
+  view.connections.push_back({.name = "keys-state",
+                              .from = {.node = "keys", .port = "state"},
+                              .to = {{.node = "status", .port = "state"}}});
   return view;
 }
 
@@ -183,6 +191,9 @@ void cases(Bench &bench) {
     step({}, "focus terminal, control still held");
     step({{.kind = Event::Kind::focus, .down = false}, key("s")},
          "the window's focus gone, then s");
+    step({key("s", false), key("control"), key("a"), key("a", false), key("s")},
+         "control held, a typed, then s");
+    step({}, "the frame after, control still held");
   });
 
   // The focus command: a node that reads its keys takes the focus the next frame; a
@@ -193,6 +204,8 @@ void cases(Bench &bench) {
     frame.cooked({}, rows);
     for (const std::vector<std::string> &words : {std::vector<std::string>{"terminal"},
                                                   std::vector<std::string>{"graph"},
+                                                  std::vector<std::string>{"shell"},
+                                                  std::vector<std::string>{"status"},
                                                   std::vector<std::string>{}}) {
       const std::string took = frame.focused(words);
       rows.row(std::format("focus {} -> {}; the frame after -> {}",

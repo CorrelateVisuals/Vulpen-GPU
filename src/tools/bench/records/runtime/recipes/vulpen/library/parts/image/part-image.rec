@@ -9,11 +9,15 @@
 
 ## Image.cpp/Image::cook
 a still holding -> place 10,20 100x50; pan (0 0) zoom 1; holds 1 loading 0; sent []; handed []; unread []
+an area 0 by 50 -> place none; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread ["picture"]
+an area 100 by 0 -> place none; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread ["picture"]
+back, its view not run since -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 1; sent []; handed []; unread []
 its view waiting for its build -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 1; sent []; handed []; unread []
 its writer a view not hosted -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
 its writer a view of no nodes -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
 no room -> place none; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread ["picture"]
 seated -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
+shown, then its picture's connection gone -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
 then built and run -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
 then rebuilding, shown once -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
 
@@ -29,12 +33,16 @@ dragged past its area, still held -> place 10,20 100x50; pan (0 0) zoom 1; holds
 in focus, the press held -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed ["p at (10 20) size (100 50)"]; unread []
 its picture a node's, over its area -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
 let go past its area -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
+let go there -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
 over its area again -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed ["p at (10 20) size (100 50)"]; unread []
+pressed in focus, dragged past its area -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed ["p at (10 20) size (100 50)"]; unread []
 
 ## Image.cpp/Image::move
 a left drag in its area, another node in focus -> place 10,20 100x50; pan (20 5) zoom 1; holds 0 loading 0; sent ["focus image"]; handed []; unread []
 a middle drag 40 pixels right -> place 10,20 100x50; pan (10.069996 -1.6200027) zoom 1.3310001; holds 0 loading 0; sent []; handed []; unread []
 a press and the wheel past its area -> place 10,20 100x50; pan (10.069996 -1.6200027) zoom 1.3310001; holds 0 loading 0; sent []; handed []; unread []
+a right drag 40 pixels right -> place 10,20 100x50; pan (10.069996 -1.6200027) zoom 1.3310001; holds 0 loading 0; sent []; handed []; unread []
 escape -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent ["focus"]; handed []; unread []
 h -> place 10,20 100x50; pan (0 0) zoom 1; holds 0 loading 0; sent []; handed []; unread []
+h let go, after a key down elsewhere -> place 10,20 100x50; pan (10.069996 -1.6200027) zoom 1.3310001; holds 0 loading 0; sent []; handed []; unread []
 the wheel a step in, at its middle -> place 10,20 100x50; pan (17 3) zoom 1.1; holds 0 loading 0; sent []; handed []; unread []

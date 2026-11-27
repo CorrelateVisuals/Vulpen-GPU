@@ -46,11 +46,15 @@ struct Framed {
     if (!kept.empty())
       tree.push_back(".vulpen/font.ini=" + std::string(kept));
     place = planted(record, tree);
+    bound();
+    node.cook.file_port = &node.files;
+  }
+  // Bound, as a schedule build binds it, its files where its folder holds them.
+  void bound() {
     node.bound();
     node.files.node_files.clear();
     for (const std::string &file : node.bind.files)
       node.files.node_files.push_back((place / file).string());
-    node.cook.file_port = &node.files;
   }
   // A frame: the font it wrote, its atlas when it baked one, and what it logged.
   std::string cooked(Rows &record) {
@@ -145,13 +149,25 @@ void cases(Bench &bench) {
     }
   });
 
-  // Baked once, and not again a frame later; again as the zoom the .ini keeps changes the
-  // height, and as the atlas is emptied, as image clear empties it; an .ini that holds a
-  // mistake named in the log, the font at its height.
+  // Baked once, and not again a frame later, nor at a bind of the same face; again at a
+  // bind once the face's bytes differ, another face's or its own saved over, which a save
+  // under the view's folder brings as its build ends; again as the zoom the .ini keeps
+  // changes the height, and as the atlas is emptied, as image clear empties it; an .ini
+  // that holds a mistake named in the log, the font at its height.
   bench.check("Font.cpp/Font::cook", [](Rows &record) {
     Framed frame(record, dropped());
     record.row("the first frame -> " + frame.cooked(record));
     record.row("the frame after -> " + frame.cooked(record));
+    frame.bound();
+    record.row("bound again, the same face -> " + frame.cooked(record));
+    Files::save((frame.place / "Other.ttf").string(), face_bytes(record) + "\n");
+    frame.node.bind.params = {{"face", "Other.ttf"}, {"height", "18"}};
+    frame.bound();
+    record.row("bound again, a face of other bytes -> " + frame.cooked(record));
+    Files::save((frame.place / "Other.ttf").string(), face_bytes(record));
+    record.row("its file saved over, not bound since -> " + frame.cooked(record));
+    frame.bound();
+    record.row("then bound again -> " + frame.cooked(record));
     Files::save((frame.place / ".vulpen" / "font.ini").string(), "zoom = 2\n");
     record.row("the .ini saved, zoom 2 -> " + frame.cooked(record));
     frame.node.cook.filled.clear();
@@ -170,6 +186,13 @@ void cases(Bench &bench) {
     record.row("an empty face -> " + empty.cooked(record));
     Framed flat(record, {{"face", std::string(face)}, {"height", "0"}});
     record.row("height 0 -> " + flat.cooked(record));
+    // A collection whose one font lies past its 16 bytes.
+    std::string collection = "ttcf";
+    collection += std::string{
+        '\0', '\1', '\0', '\0', '\0', '\0', '\0', '\1', '\0', '\0', '\3', '\xe8'};
+    Framed ttc(record, {{"face", "Many.ttc"}, {"height", "18"}});
+    Files::save((ttc.place / "Many.ttc").string(), collection);
+    record.row("a collection whose font lies past its end -> " + ttc.cooked(record));
     // What stb_truetype would read past: a file of no font, too few bytes for one, and
     // the face cut short, its tables past its end.
     const std::string bytes = face_bytes(record);

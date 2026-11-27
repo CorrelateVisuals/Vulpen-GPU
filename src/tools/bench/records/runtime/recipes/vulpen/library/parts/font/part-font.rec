@@ -1,6 +1,7 @@
 # The rows of src/runtime/recipes/vulpen/library/parts/font/Font.cpp, a call each (src/tools/bench/bench.py).
 
 ## Font.cpp/Font::bake
+a collection whose font lies past its end -> throws runtime_error: "face Many.ttc is no font stb_truetype reads"
 a face not there -> throws runtime_error: "face Gone.ttf is no file of the node's folder, or an empty one"
 a file of no font -> throws runtime_error: "face Broken.ttf is no font stb_truetype reads"
 an empty face -> throws runtime_error: "face Empty.ttf is no file of the node's folder, or an empty one"
@@ -25,11 +26,15 @@ zoom out at 0.52 -> "# How much larger than its height param the font draws the 
 zoom reset -> "# How much larger than its height param the font draws the text,...\nzoom = 1.000\n" (207 characters, hash 84c0422b8675bb2c)
 
 ## Font.cpp/Font::cook
+bound again, a face of other bytes -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads ["image 0 128x108, 1 levels, 13824 bytes #1099b222"]; logged []
+bound again, the same face -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads []; logged []
+its file saved over, not bound since -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads []; logged []
 the .ini saved, zoom 2 -> cell 16x36 base 8x18 atlas 256x216 columns 16 first 32 count 95; advance of A 16, of i 16; uploads ["image 0 256x216, 1 levels, 55296 bytes #7eb38454"]; logged []
 the .ini saved, zoom 9 -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads ["image 0 128x108, 1 levels, 13824 bytes #1099b222"]; logged ["error: .vulpen/font.ini:1: zoom = 9 is no zoom = z from 0.5 to 4; the font draws at its height"]
 the atlas emptied -> cell 16x36 base 8x18 atlas 256x216 columns 16 first 32 count 95; advance of A 16, of i 16; uploads ["image 0 256x216, 1 levels, 55296 bytes #7eb38454"]; logged []
 the first frame -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads ["image 0 128x108, 1 levels, 13824 bytes #1099b222"]; logged []
 the frame after -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads []; logged []
+then bound again -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads ["image 0 128x108, 1 levels, 13824 bytes #1099b222"]; logged []
 
 ## Font.cpp/zoom_of
 "" -> 1

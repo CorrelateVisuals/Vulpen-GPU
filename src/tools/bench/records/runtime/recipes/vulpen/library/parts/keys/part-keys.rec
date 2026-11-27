@@ -6,6 +6,8 @@
 ## Keys.cpp/Keys::command
 focus (none) -> taken; the frame after -> sent []; focus none; handed []
 focus graph -> throws runtime_error: "graph reads no keys from keys; these do: editor, terminal"; the frame after -> sent []; focus terminal; handed []
+focus shell -> throws runtime_error: "shell reads no keys from keys; these do: editor, terminal"; the frame after -> sent []; focus terminal; handed []
+focus status -> throws runtime_error: "status reads no keys from keys; these do: editor, terminal"; the frame after -> sent []; focus terminal; handed []
 focus terminal -> taken; the frame after -> sent []; focus terminal; handed []
 
 ## Keys.cpp/Keys::cook
@@ -13,6 +15,7 @@ a press, then a -> sent []; focus editor; handed [key up "control", key up "s", 
 a typed -> sent []; focus editor; handed [key down "a", text "a", key up "a"]
 a, then control+s -> sent ["type write"]; focus editor; handed []
 control held -> sent []; focus editor; handed [key down "control"]
+control held, a typed, then s -> sent []; focus terminal; handed [key up "s", key down "control", key down "a", key up "a"]
 control+s -> sent []; focus editor; handed [key down "control"]
 escape, then f -> sent []; focus editor; handed [key down "escape"]
 focus editor, the frame after -> sent []; focus editor; handed []
@@ -22,6 +25,7 @@ the first frame -> sent ["focus editor"]; focus none; handed []
 the frame after -> sent []; focus editor; handed [key down "a"]
 the frame after -> sent []; focus editor; handed [key down "f"]
 the frame after -> sent []; focus editor; handed [key up "s", key up "control", key down "a", key down "control"]
+the frame after, control still held -> sent ["type write"]; focus terminal; handed []
 the window's focus gone, then s -> sent []; focus terminal; handed [key down "s"]
 
 ## Keys.cpp/Keys::cook, the keymap edited

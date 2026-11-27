@@ -50,6 +50,14 @@ View view_of(bool held = false, std::string_view writer = "p") {
     view.connections.push_back({.name = "held",
                                 .from = {.node = "still", .port = "still"},
                                 .to = {{.node = "image", .port = "still"}}});
+  // After its own: its area from a layout, and another node's picture, which are not its
+  // picture.
+  view.connections.push_back({.name = "seat",
+                              .from = {.node = "layout", .port = "image"},
+                              .to = {{.node = "image", .port = "area"}}});
+  view.connections.push_back({.name = "other",
+                              .from = {.node = "q"},
+                              .to = {{.node = "viewer", .port = "picture"}}});
   return view;
 }
 
@@ -142,6 +150,10 @@ void cases(Bench &bench) {
     rows.row("seated -> " + frame.cooked({}, rows));
     frame.node.port<VP_VIEW::Rect>("area") = {};
     rows.row("no room -> " + frame.cooked({}, rows));
+    frame.node.port<VP_VIEW::Rect>("area") = {.offset = {10, 20}, .extent = {100, 0}};
+    rows.row("an area 100 by 0 -> " + frame.cooked({}, rows));
+    frame.node.port<VP_VIEW::Rect>("area") = {.offset = {10, 20}, .extent = {0, 50}};
+    rows.row("an area 0 by 50 -> " + frame.cooked({}, rows));
     frame.node.port<VP_VIEW::Rect>("area") = {.offset = {10, 20}, .extent = {100, 50}};
     frame.node.port<VP_VIEW::Still>("still").holds = true;
     rows.row("a still holding -> " + frame.cooked({}, rows));
@@ -158,6 +170,14 @@ void cases(Bench &bench) {
     rows.row("then rebuilding, shown once -> " + waiting.cooked({}, rows));
     Framed unhosted({{"moves", "no"}, {"interact", "no"}}, view_of(false, "q"));
     rows.row("its writer a view not hosted -> " + unhosted.cooked({}, rows));
+    // A view that goes and comes back turns the loader again until it shows.
+    Framed back({{"moves", "no"}, {"interact", "no"}});
+    back.cooked({}, rows);
+    back.node.bind.in_view.connections.clear();
+    rows.row("shown, then its picture's connection gone -> " + back.cooked({}, rows));
+    back.node.bind.in_view = view_of();
+    back.node.cook.view_costs = {{"p", {}}};
+    rows.row("back, its view not run since -> " + back.cooked({}, rows));
     Framed empty({{"moves", "no"}, {"interact", "no"}});
     empty.node.cook.views = {{"p", View{}}};
     empty.node.cook.view_costs = {{"p", {}}};
@@ -188,7 +208,14 @@ void cases(Bench &bench) {
          "a middle drag 40 pixels right");
     step({pointer({300, 150}), button("left", true), pointer({320, 150}), wheel(1)},
          "a press and the wheel past its area");
-    step({button("left", false), key("h")}, "h");
+    step({button("left", false), {.kind = Event::Kind::key, .down = false, .name = "h"}},
+         "h let go, after a key down elsewhere");
+    step({pointer({60, 45}),
+          button("right", true),
+          pointer({100, 45}),
+          button("right", false)},
+         "a right drag 40 pixels right");
+    step({key("h")}, "h");
     step({key("escape")}, "escape");
   });
 
@@ -207,6 +234,9 @@ void cases(Bench &bench) {
     step({pointer({300, 150})}, "dragged past its area, still held");
     step({button("left", false)}, "let go past its area");
     step({pointer({30, 30})}, "over its area again");
+    step({button("left", true), pointer({300, 150})},
+         "pressed in focus, dragged past its area");
+    step({button("left", false)}, "let go there");
     Framed node_writer({{"moves", "yes"}, {"interact", "yes"}}, View{});
     node_writer.node.bind.in_view.connections.push_back(
         {.name = "drawn",
