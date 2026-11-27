@@ -5,7 +5,10 @@
 # tilts it short of straight down, so a landscape never tips over. frames_per_turn: it
 # also turns about up by itself, a whole turn every so many frames, and 0 holds it
 # still. near and far: what a draw's depth counts from and to. double_click: home brings
-# it home, none leaves a double click to the view. Camera.md says how to look through it.
+# it home, none leaves a double click to the view. glide_speed: W, A, S and D or the
+# arrows glide it over the plane square to up, so many units a second, and 0 leaves the
+# keys to the view. ground_margin: how far over a ground a connection hands it at ground
+# the eye rides as it glides. Camera.md says how to look through it.
 [manifest]
 version = 1
 
@@ -23,3 +26,5 @@ param = frames_per_turn=0
 param = near=0.01
 param = far=1000
 param = double_click=home
+param = glide_speed=0
+param = ground_margin=0.5

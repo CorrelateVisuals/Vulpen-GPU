@@ -354,6 +354,8 @@ projects/ray-cubes/view.vlp: port camera.double_click: value read -, joined
 projects/ray-cubes/view.vlp: port camera.eye: value read vec3, joined
 projects/ray-cubes/view.vlp: port camera.far: value read float, joined
 projects/ray-cubes/view.vlp: port camera.frames_per_turn: value read uint, joined
+projects/ray-cubes/view.vlp: port camera.glide_speed: value read float, joined
+projects/ray-cubes/view.vlp: port camera.ground_margin: value read float, joined
 projects/ray-cubes/view.vlp: port camera.lens: value read float, joined
 projects/ray-cubes/view.vlp: port camera.near: value read float, joined
 projects/ray-cubes/view.vlp: port camera.target: value read vec3, joined

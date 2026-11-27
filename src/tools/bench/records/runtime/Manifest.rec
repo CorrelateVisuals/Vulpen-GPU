@@ -15,7 +15,7 @@
 
 ## Manifest.cpp/Manifest::flatten
 projects/life/view.vlp: 3 nodes, 2 connections, words #acebc4a8167cde85; kept [], read from 0 files; 0 folders no node's
-projects/ray-cubes/view.vlp: 28 nodes, 25 connections, words #9c6d1cb84b06cf05; kept [], read from 0 files; 0 folders no node's
+projects/ray-cubes/view.vlp: 28 nodes, 25 connections, words #a47b8de7e4fb3242; kept [], read from 0 files; 0 folders no node's
 projects/triangles/triangle-compute/view.vlp: 2 nodes, 1 connections, words #c170a623a100ef55; kept [], read from 0 files; 0 folders no node's
 projects/triangles/triangle-cpp-raster/view.vlp: 2 nodes, 1 connections, words #dbf30d814391ef53; kept [], read from 0 files; 0 folders no node's
 projects/triangles/triangle-files/view.vlp: 4 nodes, 3 connections, words #dadb6843b4ec2e90; kept [], read from 0 files; 0 folders no node's
@@ -39,7 +39,7 @@ src/runtime/recipes/vulpen/library/components/terminal/view.vlp: 4 nodes, 3 conn
 src/runtime/recipes/vulpen/library/components/text-area/view.vlp: 4 nodes, 3 connections, words #b0d7820e70f0da55; kept [glyphs rects text], read from 6 files; 0 folders no node's
 src/runtime/recipes/vulpen/library/components/tooltip/view.vlp: 4 nodes, 3 connections, words #2f032717e3a2c83c; kept [glyphs list rects], read from 6 files; 0 folders no node's
 src/runtime/recipes/vulpen/library/parts/bar/view.vlp: 1 nodes, 0 connections, words #3cfe175cf25696a9; kept [], read from 0 files; 0 folders no node's
-src/runtime/recipes/vulpen/library/parts/camera/view.vlp: 1 nodes, 0 connections, words #5b05e663de3fcb9a; kept [], read from 0 files; 0 folders no node's
+src/runtime/recipes/vulpen/library/parts/camera/view.vlp: 1 nodes, 0 connections, words #6bc3aee59180fecc; kept [], read from 0 files; 0 folders no node's
 src/runtime/recipes/vulpen/library/parts/command-line/view.vlp: 1 nodes, 0 connections, words #9780261261ea9206; kept [], read from 0 files; 0 folders no node's
 src/runtime/recipes/vulpen/library/parts/curves/view.vlp: 1 nodes, 0 connections, words #d882385314d67370; kept [], read from 0 files; 0 folders no node's
 src/runtime/recipes/vulpen/library/parts/deck/view.vlp: 1 nodes, 0 connections, words #33d1c32bc3998e3f; kept [], read from 0 files; 0 folders no node's
