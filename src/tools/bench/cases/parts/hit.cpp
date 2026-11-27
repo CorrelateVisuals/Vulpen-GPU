@@ -93,7 +93,8 @@ void cases(Bench &bench) {
   });
 
   // The pointer over the tabs, presses, a close mark, drags, right presses and the tab
-  // drawn over another, with a terminal's type registered.
+  // drawn over another, with a terminal's type registered; a drag of 8 pixels, the most
+  // that is still a press, and the current tab, past the one close mark, pressed.
   bench.check("Hit.cpp/Hit::cook", [](Rows &rows) {
     Framed frame({{"typed", "yes"}});
     frame.commands.listed = {"type <line>", "node add <name>"};
@@ -120,6 +121,9 @@ void cases(Bench &bench) {
     step({pointer({145, 10}), left(true), left(false)}, "where d is drawn over c");
     step({pointer({110, 10}), left(true), left(false)}, "c, with no command");
     step({pointer({300, 300}), left(true), left(false)}, "nothing pressed");
+    step({pointer({46, 10}), left(true), pointer({54, 10}), left(false)},
+         "a pressed and moved 8 pixels onto b");
+    step({left(true), left(false)}, "b pressed, current");
   });
 
   // The tabs changed while the button is down, as a press on a close mark closes its
