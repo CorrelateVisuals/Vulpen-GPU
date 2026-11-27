@@ -1,0 +1,42 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/font/Font.cpp, a call each (src/tools/bench/bench.py).
+
+## Font.cpp/Font::bake
+a face not there -> throws runtime_error: "face Gone.ttf is no file of the node's folder, or an empty one"
+an empty face -> throws runtime_error: "face Empty.ttf is no file of the node's folder, or an empty one"
+height 0 -> throws runtime_error: "height = 0 makes a cell of no size"
+
+## Font.cpp/Font::bind
+[("face", ""), ("height", "18")] -> ["texture atlas of uint8", "upload font of 40 bytes , room 1", "output metrics", "command zoom in: draws the text a step larger, and with it every part that lays text out in cells", "command zoom out: draws the text a step smaller", "command zoom reset: draws the text at the font's height again", "file .vulpen/font.ini", "param height read as uint"]
+[("face", "C:\\Mono.ttf"), ("height", "18")] -> throws runtime_error: "param face = C:\\Mono.ttf: a file of the node's folder, named without a folder"
+[("face", "RobotoMono-Regular.ttf"), ("height", "18")] -> ["texture atlas of uint8", "upload font of 40 bytes , room 1", "output metrics", "command zoom in: draws the text a step larger, and with it every part that lays text out in cells", "command zoom out: draws the text a step smaller", "command zoom reset: draws the text at the font's height again", "file .vulpen/font.ini", "param height read as uint", "file RobotoMono-Regular.ttf"]
+[("face", "fonts/Mono.ttf"), ("height", "18")] -> throws runtime_error: "param face = fonts/Mono.ttf: a file of the node's folder, named without a folder"
+
+## Font.cpp/Font::command
+zoom in -> "# How much larger than its height param the font draws the text,...\nzoom = 1.100\n" (207 characters, hash 9225e660cba8aec7)
+zoom in again -> "# How much larger than its height param the font draws the text,...\nzoom = 1.210\n" (207 characters, hash 0e0c76d41d0c5def)
+zoom in at 3.9 -> "# How much larger than its height param the font draws the text,...\nzoom = 4.000\n" (207 characters, hash 9525f14d6ac21b87)
+zoom in, the .ini broken -> throws runtime_error: ".vulpen/font.ini:1: zoom = x is no zoom = z from 0.5 to 4"
+zoom out -> "# How much larger than its height param the font draws the text,...\nzoom = 1.100\n" (207 characters, hash 9225e660cba8aec7)
+zoom out at 0.52 -> "# How much larger than its height param the font draws the text,...\nzoom = 0.500\n" (207 characters, hash 23642fd8bc2cc18c)
+zoom reset -> "# How much larger than its height param the font draws the text,...\nzoom = 1.000\n" (207 characters, hash 84c0422b8675bb2c)
+
+## Font.cpp/Font::cook
+the .ini saved, zoom 2 -> cell 16x36 base 8x18 atlas 256x216 columns 16 first 32 count 95; advance of A 16, of i 16; uploads ["image 0 256x216, 1 levels, 55296 bytes #7eb38454"]; logged []
+the .ini saved, zoom 9 -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads ["image 0 128x108, 1 levels, 13824 bytes #1099b222"]; logged ["error: .vulpen/font.ini:1: zoom = 9 is no zoom = z from 0.5 to 4; the font draws at its height"]
+the atlas emptied -> cell 16x36 base 8x18 atlas 256x216 columns 16 first 32 count 95; advance of A 16, of i 16; uploads ["image 0 256x216, 1 levels, 55296 bytes #7eb38454"]; logged []
+the first frame -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads ["image 0 128x108, 1 levels, 13824 bytes #1099b222"]; logged []
+the frame after -> cell 8x18 base 8x18 atlas 128x108 columns 16 first 32 count 95; advance of A 8, of i 8; uploads []; logged []
+
+## Font.cpp/zoom_of
+"" -> 1
+"# a comment\nzoom = 2\n" -> 2
+"size = 2" -> throws runtime_error: ".vulpen/font.ini:1: size = 2 is no zoom = z from 0.5 to 4"
+"zoom = 0.25" -> throws runtime_error: ".vulpen/font.ini:1: zoom = 0.25 is no zoom = z from 0.5 to 4"
+"zoom = 0.5" -> 0.5
+"zoom = 1 2" -> throws runtime_error: ".vulpen/font.ini:1: zoom = 1 2 is no zoom = z from 0.5 to 4"
+"zoom = 1.5" -> 1.5
+"zoom = 1.5\nzoom = 3" -> 3
+"zoom = 4" -> 4
+"zoom = 4.5" -> throws runtime_error: ".vulpen/font.ini:1: zoom = 4.5 is no zoom = z from 0.5 to 4"
+"zoom = nan" -> throws runtime_error: ".vulpen/font.ini:1: zoom = nan is no zoom = z from 0.5 to 4"
+"zoom" -> throws runtime_error: ".vulpen/font.ini:1: zoom is no zoom = z from 0.5 to 4"

@@ -1,0 +1,43 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/editor/Editor.cpp, a call each (src/tools/bench/bench.py).
+
+## Editor.cpp/Editor::bind
+[("program", "code"), ("window", "ide:editor"), ("folders", "ide:graph"), ("images", "ide:viewer")] -> ["command open [<path>]: opens a file in the editor in a window wh... its folder here" (203 characters, hash da93825a63c3d40c)]
+[("program", "code")] -> ["command open [<path>]: opens a file in the editor in a window wh... its folder here" (203 characters, hash da93825a63c3d40c)]
+
+## Editor.cpp/Editor::command
+a file -> sent ["ide: param set editor file <here>/main/Main.cpp"]; started []; answered ["opened <here>/main/Main.cpp in the editor"]
+a folder -> sent ["ide: param set graph folder <here>/sub"]; started []; answered ["opened <here>/sub in the graph"]
+a path that names nothing -> throws runtime_error: "<here>/Gone.h names nothing, as a typed path counts from the folder the prompt shows"
+a path that names nothing, its name held elsewhere -> throws runtime_error: "<here>/main/Twice.h names nothing, as a typed path counts from the folder the prompt shows; the view holds <here>/one/Twice.h"
+a path through .. -> sent ["ide: param set editor file <here>/sub/../view.vlp"]; started []; answered ["opened <here>/sub/../view.vlp in the editor"]
+a word the view holds not -> throws runtime_error: "the view holds no file named Gone.h; a path names any, as ./Gone.h in the folder the prompt shows"
+a word the view holds once -> sent ["ide: param set editor file <here>/main/Main.cpp"]; started []; answered ["opened <here>/main/Main.cpp in the editor"]
+a word the view holds twice -> throws runtime_error: "the view holds 2 files named Twice.h: <here>/one/Twice.h, <here>/two/Twice.h; a path names one"
+an image, its ending in capitals -> sent ["ide: param set viewer file <here>/pic.PNG"]; started []; answered ["opened <here>/pic.PNG as a preview"]
+none -> sent ["ide: param set editor file <here>/view.vlp"]; started []; answered ["opened <here>/view.vlp in the editor"]
+
+## Editor.cpp/Editor::in_program
+a file -> sent []; started ["code <here>/main/Main.cpp"]; answered ["opened <here>/main/Main.cpp with code"]
+a folder -> sent []; started ["code <here>/sub"]; answered ["opened <here>/sub with code"]
+code not on the PATH -> throws runtime_error: "code is not on the PATH; `: param set edit program <name>` names another"
+none -> sent []; started ["code <here>"]; answered ["opened <here> with code"]
+the window alone running, a folder -> throws runtime_error: "<here>/sub: cannot be read; the editor in the window opens files, and `: param unset edit window` sends each to code"
+the window alone running, an image -> sent ["ide: param set editor file <here>/pic.PNG"]; started []; answered ["opened <here>/pic.PNG in the editor"]
+
+## Editor.cpp/image
+.png -> false
+a -> false
+a.JPG -> true
+a.PNG -> true
+a.jpeg -> true
+a.png -> true
+a.png/b -> false
+a.webp -> false
+
+## Editor.cpp/named, folder
+/ -> named true, folder true
+<here>/. -> named true, folder true
+<here>/d -> named true, folder true
+<here>/d/ -> named true, folder true
+<here>/f.txt -> named true, folder false
+<here>/gone -> named false, folder false

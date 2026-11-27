@@ -1,0 +1,44 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/keys/Keys.cpp, a call each (src/tools/bench/bench.py).
+
+## Keys.cpp/Keys::bind
+["command focus [<node>]: sends the keys and text no chord takes to a node that reads them from the keys part; with none, to no node in focus", "file keymap.ini", "output typed"]
+
+## Keys.cpp/Keys::command
+focus (none) -> taken; the frame after -> sent []; focus none; handed []
+focus graph -> throws runtime_error: "graph reads no keys from keys; these do: editor, terminal"; the frame after -> sent []; focus terminal; handed []
+focus terminal -> taken; the frame after -> sent []; focus terminal; handed []
+
+## Keys.cpp/Keys::cook
+a press, then a -> sent []; focus editor; handed [key up "control", key up "s", key up "a"]
+a typed -> sent []; focus editor; handed [key down "a", text "a", key up "a"]
+a, then control+s -> sent ["type write"]; focus editor; handed []
+control held -> sent []; focus editor; handed [key down "control"]
+control+s -> sent []; focus editor; handed [key down "control"]
+escape, then f -> sent []; focus editor; handed [key down "escape"]
+focus editor, the frame after -> sent []; focus editor; handed []
+focus terminal, control still held -> sent []; focus terminal; handed [key down "control"]
+let go -> sent ["type write"]; focus editor; handed []
+the first frame -> sent ["focus editor"]; focus none; handed []
+the frame after -> sent []; focus editor; handed [key down "a"]
+the frame after -> sent []; focus editor; handed [key down "f"]
+the frame after -> sent []; focus editor; handed [key up "s", key up "control", key down "a", key down "control"]
+the window's focus gone, then s -> sent []; focus terminal; handed [key down "s"]
+
+## Keys.cpp/Keys::cook, the keymap edited
+control+f added, then control+f -> sent []; focus none; handed [key down "control"]
+then a line with no = -> throws runtime_error: "keymap.ini:2: a line is a chord, = and the line it sends"
+
+## Keys.cpp/chords_of
++ pressed -> held 2 + = zoom in
+= pressed -> held 2 = = zoom in
+a chord -> held 2 s = write
+a chord twice -> throws runtime_error: "keymap.ini:2: control+s is given twice"
+a key held alone -> throws runtime_error: "keymap.ini:1: control only holds: a chord ends in the key it presses, as control+s"
+a key held that holds none -> throws runtime_error: "keymap.ini:1: hyper is no key a chord holds: shift, control, alt or super"
+a key the window does not name -> throws runtime_error: "keymap.ini:1: q is no key a chord presses: one named by the character it prints without shift, as l, or as enter, f1 and the like, as the input command names it"
+a line no command takes -> throws runtime_error: "keymap.ini:1: no command takes save all"
+comments and blanks -> held 2 s = write
+no = -> throws runtime_error: "keymap.ini:1: a line is a chord, = and the line it sends"
+no key held -> held 0 f = find
+no terminal registers type -> throws runtime_error: "keymap.ini:1: write runs in a terminal, through its type, which no terminal in a window registered"
+two held -> held 3 s = write
