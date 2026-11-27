@@ -1,0 +1,42 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/mesh-file/MeshFile.cpp, a call each (src/tools/bench/bench.py).
+
+## MeshFile.cpp/MeshFile::bind
+[("file", "/p/a.obj"), ("most", "4")] -> ["param most read as uint", "upload triangles of 112 bytes , room 4", "file /p/a.obj"]
+[("most", "65536")] -> ["param most read as uint", "upload triangles of 112 bytes , room 65536"]
+
+## MeshFile.cpp/MeshFile::cook
+a file not there -> wrote 0 triangles; logged ["info: <here>/gone.obj: 0 triangles"]
+and the frame after -> wrote none; logged []
+bound again, the same file -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/one.obj: 1 triangles"]
+its version as before -> wrote none; logged []
+its version moved -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/one.obj: 1 triangles"]
+most set to 2 -> wrote 2 triangles; (0 0 0)(2 0 0)(0 2 0) normals (0 0 -1)(0 0 -1)(0 0 -1) color (1 1 1); (2 0 0)(2 2 0)(0 2 0) normals (0 0 -1)(0 0 -1)(0 0 -1) color (1 1 1); logged ["info: <here>/square.obj: 2 triangles"]
+no file -> wrote none; logged []
+one.obj named -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/one.obj: 1 triangles"]
+saved naming vertex 9 of 3 -> wrote none; logged ["error: <here>/one.obj: a face names vertex 9 of the 3 the file lists"]
+square.obj, most 1 -> wrote none; logged ["error: <here>/square.obj holds 2 triangles, more than most = 1: v: param set n most 2 makes room"]
+
+## MeshFile.cpp/MeshFile::cook, another file named
+broken.obj named in its place -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/broken.obj: 1 triangles"]
+one.obj named -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/one.obj: 1 triangles"]
+square.obj named in its place -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/square.obj: 1 triangles"]
+
+## MeshFile.cpp/row
+-1 -> throws runtime_error: "a face names vertex 0 of the 2 the file lists"
+0 -> (0 1 2)
+1 -> (3 4 5)
+2 -> throws runtime_error: "a face names vertex 3 of the 2 the file lists"
+
+## MeshFile.cpp/triangles_of
+a color a corner -> 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (0.33333334 0.33333334 0.33333334)
+a color on one corner only -> 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 0.6666667 0.6666667)
+a face naming normal 2 of 1 -> throws runtime_error: "a face names normal 2 of the 1 the file lists"
+a face naming vertex 0 -> throws runtime_error: "no OBJ tinyobj reads: Failed to parse `f' line (e.g. a zero value for vertex index or invalid relative vertex index). Line 4).\n"
+a face naming vertex 9 of 3 -> throws runtime_error: "a face names vertex 9 of the 3 the file lists"
+a face of no area -> 1 triangles; (1 1 1)(1 1 1)(1 1 1) normals (0 0 0)(0 0 0)(0 0 0) color (1 1 1)
+a face of two corners -> 0 triangles
+a square, its normal given -> 2 triangles; (0 0 0)(2 0 0)(0 2 0) normals (0 0 -1)(0 0 -1)(0 0 -1) color (1 1 1); (2 0 0)(2 2 0)(0 2 0) normals (0 0 -1)(0 0 -1)(0 0 -1) color (1 1 1)
+a triangle -> 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1)
+empty -> 0 triangles
+lines and points only -> 0 triangles
+no OBJ -> 0 triangles

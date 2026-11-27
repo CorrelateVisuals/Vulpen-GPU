@@ -1,0 +1,49 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/camera/Camera.cpp, a call each (src/tools/bench/bench.py).
+
+## Camera.cpp/Camera::bind
+as dropped -> ["upload camera of 64 bytes , room 1", "param target read as vec3", "param eye read as vec3", "param up read as vec3", "param lens read as float", "param frames_per_turn read as uint", "param near read as float", "param far read as float"]
+double_click x -> throws runtime_error: "param double_click = x: home or none"
+eye on the target -> throws runtime_error: "eye, target and up leave no frame: eye must lie off the target, and up off the line between them"
+far below near -> throws runtime_error: "near must lie beyond 0, and far beyond near"
+lens -1 -> throws runtime_error: "param lens = -1: beyond 0"
+lens 0 -> throws runtime_error: "param lens = 0: beyond 0"
+lens nan -> throws runtime_error: "param lens = 0: beyond 0"
+near 0 -> throws runtime_error: "near must lie beyond 0, and far beyond near"
+turn x -> throws runtime_error: "param turn = x: ball or level"
+up along the line of sight -> throws runtime_error: "eye, target and up leave no frame: eye must lie off the target, and up off the line between them"
+
+## Camera.cpp/Camera::bind, bound again
+turned and nearer: eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; eye (-1.8182 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; bound again, eye 0,0,-2: eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+turned and nearer: eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; eye (-1.8182 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; bound again, eye 0,0,-4: eye (0 0 -4) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+
+## Camera.cpp/Camera::cook
+a double left press -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+a left drag 25 pixels down -> eye (0 -1.4142 -1.4142) ahead (0 0.7071 0.7071) right (1 0 0) up (0 -0.7071 0.7071); lens 2 near 0.01 far 1000
+a left drag 50 pixels right -> eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000
+a middle drag 50 pixels up -> eye (-1 1 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+a right drag 50 pixels right -> eye (-1 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+home -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+home again, after the pan -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+home again, after the turn -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+the pointer moved, no button down -> eye (0 0 -200) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+the wheel 100 steps in -> eye (0 0 -0.02) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+the wheel 200 steps out -> eye (0 0 -200) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+the wheel a step in -> eye (0 0 -1.8182) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+the wheel two steps out -> eye (0 0 -2.2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+
+## Camera.cpp/Camera::level
+a double left press dragged 50 pixels right -> eye (0 1.9999 0.02) ahead (0 -1 -0.01) right (-1 0 0) up (0 -0.01 1); lens 2 near 0.01 far 1000
+a left drag 200 pixels down -> eye (-0.02 -1.9999 0) ahead (0.01 1 0) right (0 0 -1) up (1 -0.01 0); lens 2 near 0.01 far 1000
+a left drag 25 pixels down -> eye (-1.4142 -1.4142 0) ahead (0.7071 0.7071 0) right (0 0 -1) up (0.7071 -0.7071 0); lens 2 near 0.01 far 1000
+a left drag 400 pixels up -> eye (-0.02 1.9999 0) ahead (0.01 -1 0) right (0 0 -1) up (-1 -0.01 0); lens 2 near 0.01 far 1000
+a left drag 50 pixels right -> eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000
+
+## Camera.cpp/Camera::spin_at
+frames_per_turn 0, frame 0 -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+frames_per_turn 0, frame 1 -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+frames_per_turn 0, frame 2 -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+frames_per_turn 0, frame 5 -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+frames_per_turn 4, frame 0 -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+frames_per_turn 4, frame 1 -> eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000
+frames_per_turn 4, frame 2 -> eye (0 0 2) ahead (0 0 -1) right (-1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+frames_per_turn 4, frame 5 -> eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000

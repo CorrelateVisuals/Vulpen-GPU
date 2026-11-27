@@ -1,0 +1,52 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/snapshot/Snapshot.cpp, a call each (src/tools/bench/bench.py).
+
+## Snapshot.cpp/Snapshot::bind
+[("frames", "0"), ("wait", "30")] -> throws runtime_error: "param frames = 0: from 1 to 3600"
+[("frames", "1"), ("wait", "30")] -> ["param frames read as uint", "param wait read as uint", "value shoot as uint", "readback pixels of 4 bytes uint"]
+[("frames", "3600"), ("wait", "30"), ("file", "a.png")] -> ["param frames read as uint", "param wait read as uint", "value shoot as uint", "readback pixels of 4 bytes uint"]
+[("frames", "3601"), ("wait", "30")] -> throws runtime_error: "param frames = 3601: from 1 to 3600"
+[("frames", "x"), ("wait", "30")] -> throws runtime_error: "param frames = 0: from 1 to 3600"
+
+## Snapshot.cpp/Snapshot::cook
+b.png named: frame 16: shoots 0; logged []; files a.png 2 by 1: (255 0 0 255) (0 0 255 255)
+b.png named: frame 17: shoots 0; logged []; files a.png 2 by 1: (255 0 0 255) (0 0 255 255)
+b.png named: frame 18: shoots 1; logged []; files a.png 2 by 1: (255 0 0 255) (0 0 255 255)
+b.png named: frame 19: shoots 0; logged ["info: saved <here>/b.png"]; files a.png 2 by 1: (255 0 0 255) (0 0 255 255); b.png 2 by 1: (255 0 0 255) (0 0 255 255)
+bound again, the same file: frame 15: shoots 0; logged []; files a.png 2 by 1: (255 0 0 255) (0 0 255 255)
+frame 10: shoots 0; logged []; files none
+frame 11: shoots 0; logged []; files none
+frame 12: shoots 1; logged []; files none
+frame 13: shoots 0; logged ["info: saved <here>/a.png"]; files a.png 2 by 1: (255 0 0 255) (0 0 255 255)
+frame 14: shoots 0; logged []; files a.png 2 by 1: (255 0 0 255) (0 0 255 255)
+no file named: frame 20: shoots 0; logged []; files a.png 2 by 1: (255 0 0 255) (0 0 255 255); b.png 2 by 1: (255 0 0 255) (0 0 255 255)
+
+## Snapshot.cpp/Snapshot::save, a picture it cannot save
+0 by 0, 2 read back -> frame 0: shoots 1; logged []; files none; frame 1: shoots 0; logged ["error: <here>/f.png not saved: a picture of 0 by 0 pixels, and it reads 2 at most"]; files none
+2 by 1, 0 read back -> frame 0: shoots 1; logged []; files none; frame 1: shoots 0; logged ["error: <here>/f.png not saved: a picture of 2 by 1 pixels, and it reads 0 at most"]; files none
+3 by 1, 2 read back -> frame 0: shoots 1; logged []; files none; frame 1: shoots 0; logged ["error: <here>/f.png not saved: a picture of 3 by 1 pixels, and it reads 2 at most"]; files none
+
+## Snapshot.cpp/Snapshot::shoot, a recording
+12 frames: frame 0: shoots 1; logged []; files none
+12 frames: frame 1: shoots 1; logged ["debug: saved <here>/d-01.png"]; files d-01.png 2 by 1: (255 0 0 255) (0 0 255 255)
+3 frames: frame 0: shoots 1; logged []; files none
+3 frames: frame 1: shoots 1; logged ["debug: saved <here>/c-1.png"]; files c-1.png 2 by 1: (255 0 0 255) (0 0 255 255)
+3 frames: frame 2: shoots 1; logged ["debug: saved <here>/c-2.png"]; files c-1.png 2 by 1: (255 0 0 255) (0 0 255 255); c-2.png 2 by 1: (255 0 0 255) (0 0 255 255)
+3 frames: frame 3: shoots 0; logged ["info: saved <here>/c-3.png"]; files c-1.png 2 by 1: (255 0 0 255) (0 0 255 255); c-2.png 2 by 1: (255 0 0 255) (0 0 255 255); c-3.png 2 by 1: (255 0 0 255) (0 0 255 255)
+3 frames: frame 4: shoots 0; logged []; files c-1.png 2 by 1: (255 0 0 255) (0 0 255 255); c-2.png 2 by 1: (255 0 0 255) (0 0 255 255); c-3.png 2 by 1: (255 0 0 255) (0 0 255 255)
+lowered to 1: frame 2: shoots 1; logged ["debug: saved <here>/d-02.png"]; files d-01.png 2 by 1: (255 0 0 255) (0 0 255 255); d-02.png 2 by 1: (255 0 0 255) (0 0 255 255)
+lowered to 1: frame 3: shoots 0; logged ["info: saved <here>/d.png"]; files d-01.png 2 by 1: (255 0 0 255) (0 0 255 255); d-02.png 2 by 1: (255 0 0 255) (0 0 255 255); d.png 2 by 1: (255 0 0 255) (0 0 255 255)
+lowered to 1: frame 4: shoots 0; logged []; files d-01.png 2 by 1: (255 0 0 255) (0 0 255 255); d-02.png 2 by 1: (255 0 0 255) (0 0 255 255); d.png 2 by 1: (255 0 0 255) (0 0 255 255)
+
+## Snapshot.cpp/Snapshot::shoot, an absolute path
+frame 0: shoots 0; logged []; files none; there: none
+frame 1: shoots 0; logged []; files none; there: none
+frame 2: shoots 1; logged []; files none; there: none
+frame 3: shoots 0; logged ["info: saved <there>/e.png"]; files none; there: e.png 2 by 1: (255 0 0 255) (0 0 255 255)
+
+## Snapshot.cpp/numbered
+.png 1 of 2 -> .png-1
+/abs/a.png 3 of 10 -> /abs/a-03.png
+a 2 of 10 -> a-02
+a.png 1 of 3 -> a-1.png
+a.png 7 of 3600 -> a-0007.png
+shots/a.png 12 of 100 -> shots/a-012.png

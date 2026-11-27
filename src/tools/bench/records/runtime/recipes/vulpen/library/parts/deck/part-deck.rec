@@ -1,0 +1,40 @@
+# The rows of src/runtime/recipes/vulpen/library/parts/deck/Deck.cpp, a call each (src/tools/bench/bench.py).
+
+## Deck.cpp/Deck::bind
+typed connected -> ["input area", "output tabs", "output p1", "output p2", "output p3", "input typed"]
+typed not -> ["input area", "output tabs", "output p1", "output p2", "output p3"]
+
+## Deck.cpp/Deck::cook
+holds with empty names -> sent []; tabs p2 > view switch p2, current, close v: param set d holds p1; p1 > view switch p1, close v: param set d holds p2; rects p1 0x0 p2 100x100 p3 0x0
+it holds none -> sent []; tabs perform, current; rects p1 0x0 p2 0x0 p3 0x0
+it holds p1 and p3, p3 not hosted -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p3; rects p1 100x100 p2 0x0 p3 0x0
+it holds p2 only -> sent []; tabs p2 > view switch p2, current, close v: param unset d holds; rects p1 0x0 p2 100x100 p3 0x0
+none presented, shown unset -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p2; p2 > view switch p2, close v: param set d holds p1; rects p1 100x100 p2 0x0 p3 0x0
+p1 and p2 held, none hosted -> sent []; tabs perform, current; rects p1 0x0 p2 0x0 p3 0x0
+p2 presented -> sent ["v: param set d shown p2"]; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, role 10, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+p2 presented, shown p2 -> sent []; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, role 10, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+p3 presented, which it does not hold -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p2; p2 > view switch p2, close v: param set d holds p1; rects p1 100x100 p2 0x0 p3 0x0
+shown p2 -> sent []; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+shown p3, which it does not hold -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p2; p2 > view switch p2, close v: param set d holds p1; rects p1 100x100 p2 0x0 p3 0x0
+
+## Deck.cpp/Deck::cook, frame after frame
+none presented -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p2; p2 > view switch p2, close v: param set d holds p1; rects p1 100x100 p2 0x0 p3 0x0
+p1 and p2 hosted -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p2; p2 > view switch p2, close v: param set d holds p1; rects p1 100x100 p2 0x0 p3 0x0
+p1 hosted again, after p2 -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p2; p2 > view switch p2, close v: param set d holds p1; rects p1 100x100 p2 0x0 p3 0x0
+p1 no longer hosted -> sent []; tabs p2 > view switch p2, current, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+p2 presented -> sent ["v: param set d shown p2"]; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, role 10, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+the same again, the tabs written to since -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p2; p2 > view switch p2, close v: param set d holds p1; kept; rects p1 100x100 p2 0x0 p3 0x0
+
+## Deck.cpp/Deck::refocus
+focus on a, p2 presented -> sent ["v: focus c", "v: param set d shown p2"]; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, role 10, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+focus on b, p2 presented -> sent ["v: param set d shown p2"]; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, role 10, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+focus on d, p2 presented -> sent ["v: focus c", "v: param set d shown p2"]; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, role 10, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+focus on x, p2 presented -> sent ["v: param set d shown p2"]; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, role 10, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+no keys connected, p2 presented -> sent ["v: param set d shown p2"]; tabs p1 > view switch p1, close v: param set d holds p2; p2 > view switch p2, current, role 10, close v: param set d holds p1; rects p1 0x0 p2 100x100 p3 0x0
+
+## Deck.cpp/Deck::take_focus
+a press past its area -> sent []; tabs perform, current; rects p1 0x0 p2 0x0 p3 0x0
+in focus, a press in its area -> sent []; tabs perform, current; rects p1 0x0 p2 0x0 p3 0x0
+in focus, escape -> sent ["v: focus"]; tabs perform, current; rects p1 0x0 p2 0x0 p3 0x0
+showing none, a press in its area -> sent ["v: focus d"]; tabs perform, current; rects p1 0x0 p2 0x0 p3 0x0
+showing p1, a press in its area -> sent []; tabs p1 > view switch p1, current, close v: param set d holds p2; p2 > view switch p2, close v: param set d holds p1; rects p1 100x100 p2 0x0 p3 0x0
