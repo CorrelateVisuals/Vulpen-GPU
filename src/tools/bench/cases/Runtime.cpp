@@ -151,8 +151,10 @@ void mirror_beside(const Rows &rows) {
 
 // vulpen <words> run here, its log at info written to a file of the folder: each line it
 // logged, the time of each, the banner and what differs by machine or build left out:
-// the device and its layers, and how long the frames took; then the exit code, and with
-// restarts, what quit restart would start in its place had it come after the first frame.
+// the device and its layers, how long the frames took, and whether a build a hosted view
+// began still runs as they end, which the machine's load decides; then the exit code, and
+// with restarts, what quit restart would start in its place had it come after the first
+// frame.
 std::vector<std::string> ran(const Rows &rows,
                              const std::filesystem::path &folder,
                              std::vector<std::string> words,
@@ -197,7 +199,8 @@ std::vector<std::string> ran(const Rows &rows,
     if (said.starts_with("+--") || holds("V U L P E N") ||
         holds("<< Correlate Visuals >>") || said.starts_with("{gpu} runs on ") ||
         said.starts_with("{gpu} Vulkan validation") || holds("meets the floor") ||
-        said == "{run} vulpen bench")
+        said == "{run} vulpen bench" ||
+        holds("a build runs: the window and the GPU go now"))
       continue;
     if (said.starts_with("{run} ran "))
       said = said.substr(0, said.find(" in "));
