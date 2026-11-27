@@ -234,8 +234,9 @@ private:
 
 // A node's cook: the frame's index, size and clock as the case sets them, every line the
 // node logs and image it uploads, the file port, speakers, commands and input the case
-// hands it, the bytes of each upload the bind sized, the view its bind runs in, the ports
-// it leaves unread, and its pass block.
+// hands it, the bytes of each upload the bind sized, the view its bind runs in and the
+// views by name the case sets, the ports it leaves unread, its pass block, and the bytes
+// its readback holds.
 class FakeCook final : public Cook {
 public:
   std::uint64_t frame = 0;
@@ -258,6 +259,12 @@ public:
   const View *in_view = nullptr;
   std::vector<std::string> unread_ports;
   std::vector<std::byte> pass;
+  // The views a name finds, "" the top one, as a case sets them: none set, refused; a
+  // name none holds finds none.
+  std::map<std::string, View, std::less<>> views;
+  // What the GPU wrote to the node's readback the frame before, as a case sets it; none
+  // set, refused.
+  std::optional<std::vector<std::byte>> readback;
 
   std::uint64_t index() const override {
     return frame;
@@ -302,8 +309,11 @@ public:
       refused("view");
     return *in_view;
   }
-  const View *view(std::string_view) const override {
-    refused("view of a name");
+  const View *view(std::string_view name) const override {
+    if (views.empty())
+      refused("view of a name");
+    const auto found = views.find(name);
+    return found == views.end() ? nullptr : &found->second;
   }
   const View *unfolded(std::string_view) const override {
     refused("unfolded");
@@ -334,7 +344,9 @@ private:
     return pass;
   }
   std::span<const std::byte> readback_bytes(std::uint32_t) const override {
-    refused("readback");
+    if (!readback)
+      refused("readback");
+    return *readback;
   }
   // As the engine: refused past the room, which upload<T>(port, count) sized.
   std::span<std::byte> upload_bytes(std::uint32_t index,
