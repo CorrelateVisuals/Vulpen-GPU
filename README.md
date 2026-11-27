@@ -205,6 +205,10 @@ The tests run headless on lavapipe, Mesa's Vulkan on the CPU, so a machine witho
 
 [Principles](docs/architecture/principles.md) and [requirements](docs/architecture/requirements.md) decide every design; the [include map](docs/architecture/include-map.md) is the engine on one page. [Statistics](docs/statistics) keep the line counts, start-up times and soak results.
 
+## Versions
+
+Vulpen's versions follow [Semantic Versioning](https://semver.org/). Its public API is the manifest language, the commands, the node API in C++ and GLSL, and the library parts' names, params and contracts. While the major version is 0, a minor release (0.2 to 0.3) may break a project, and its [release notes](https://github.com/CorrelateVisuals/Vulpen-GPU/releases) say what to change; a patch release (0.2.0 to 0.2.1) only fixes bugs.
+
 ## License
 
 Vulpen is licensed under the [Mozilla Public License 2.0](LICENSE): use it in any project, open or closed source, and when you distribute changes to Vulpen's own files, share those files under the same license. The libraries in [`src/external-libraries/`](src/external-libraries) keep their own licenses, listed in [`docs/licenses/`](docs/licenses/README.md). The Vulkan, C++ and CMake logos above are [Simple Icons](https://simpleicons.org/) drawings, CC0 1.0; the GLSL logo is [GLSL Logo (Unofficial)](https://commons.wikimedia.org/wiki/File:GLSL_Logo_(Unofficial).svg) by Jim McKeeth, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), unchanged. Vulkan and the Vulkan logo are registered trademarks of the Khronos Group Inc.
