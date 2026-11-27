@@ -101,11 +101,11 @@ Every other way data can take is already in the files, commented out and numbere
 
 On every system: CMake 3.24 or newer, Python 3, and the Vulkan headers and loader with `glslangValidator` and `spirv-val`, as the [LunarG Vulkan SDK](https://vulkan.lunarg.com/) installs them.
 
-**Linux:** GCC 13 or newer, or Clang with a standard library that has `std::format`, and the X11 and Wayland headers the bundled GLFW builds against. On Ubuntu 24.04 and Debian 13 or newer, the distribution's packages hold all of it:
+**Linux:** GCC 13 or newer, or Clang with a standard library that has `std::format`, the X11 and Wayland headers the bundled GLFW builds against, and PulseAudio's headers for sound, which PipeWire desktops play too; without those, Vulpen builds and runs silent. On Ubuntu 24.04 and Debian 13 or newer, the distribution's packages hold all of it:
 
 ```bash
 sudo apt install build-essential cmake python3 libvulkan-dev glslang-tools spirv-tools \
-                 libwayland-dev libxkbcommon-dev xorg-dev
+                 libwayland-dev libxkbcommon-dev xorg-dev libpulse-dev
 ```
 
 `sudo apt install vulkan-validationlayers` adds Vulkan's validation, which a debug build turns on when it finds it.
@@ -120,7 +120,7 @@ pip3 install --user cmake    # then cmake --version names 3.24 or newer
 
 **Windows:** Visual Studio 2022, or its Build Tools, with the C++ workload, and the LunarG Vulkan SDK; CMake and Python on the `PATH`. If PowerShell refuses to run `run.ps1`, allow local scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
-GLFW, GLM, stb, tinyobjloader and the Vulkan Memory Allocator come with the repository, pinned in [`src/external-libraries/`](src/external-libraries) ([licenses](docs/licenses/README.md)).
+GLFW, GLM, stb, tinyobjloader, sokol_audio and the Vulkan Memory Allocator come with the repository, pinned in [`src/external-libraries/`](src/external-libraries) ([licenses](docs/licenses/README.md)).
 
 </details>
 
