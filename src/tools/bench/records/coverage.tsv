@@ -34,9 +34,12 @@ runtime/Undo.cpp	379	16
 runtime/View.h	95	1
 runtime/Views.cpp	706	81
 runtime/recipes/vulpen/library/parts/bar/Bar.cpp	27	0
+runtime/recipes/vulpen/library/parts/camera/Camera.cpp	100	1
+runtime/recipes/vulpen/library/parts/deck/Deck.cpp	102	0
 runtime/recipes/vulpen/library/parts/hit/Hit.cpp	68	0
 runtime/recipes/vulpen/library/parts/image-file/ImageFile.cpp	39	0
 runtime/recipes/vulpen/library/parts/join/Join.cpp	15	0
+runtime/recipes/vulpen/library/parts/mesh-file/MeshFile.cpp	79	1
 runtime/recipes/vulpen/library/parts/palette/Palette.cpp	55	0
 runtime/recipes/vulpen/library/parts/picture/Picture.cpp	27	1
 runtime/recipes/vulpen/library/parts/shared/Caret.h	6	0
@@ -55,6 +58,7 @@ runtime/recipes/vulpen/library/parts/shared/Scroll.cpp	70	0
 runtime/recipes/vulpen/library/parts/shared/Scroll.h	2	0
 runtime/recipes/vulpen/library/parts/shared/Wave.h	87	1
 runtime/recipes/vulpen/library/parts/shared/Words.h	71	2
+runtime/recipes/vulpen/library/parts/snapshot/Snapshot.cpp	71	2
 runtime/recipes/vulpen/library/parts/sound-file/SoundFile.cpp	33	1
 runtime/recipes/vulpen/library/parts/sound-record/SoundRecord.cpp	32	1
 runtime/recipes/vulpen/library/parts/split/Split.cpp	41	0
@@ -66,7 +70,7 @@ tools/bench/Bench.cpp	314	38
 tools/bench/Bench.h	150	14
 tools/bench/Contracts.h	30	0
 tools/bench/Domains.h	101	4
-tools/bench/Fakes.h	300	135
+tools/bench/Fakes.h	305	127
 tools/bench/Gpu.h	103	16
 tools/bench/Shown.h	58	0
 tools/bench/Stage.h	24	0
