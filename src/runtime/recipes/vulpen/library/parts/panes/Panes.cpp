@@ -232,8 +232,8 @@ class Panes final : public VP::Operator {
 
   // Each deck lets go of the views closed since, and a view hosted or presented since
   // that no deck holds joins the deck holding the view presented before it, or else the
-  // first deck. Whether it sent a line.
-  bool hold(VP::CommandPort &commands, const VP::View &own) {
+  // first deck.
+  void hold(VP::CommandPort &commands, const VP::View &own) {
     struct Held {
       std::string deck;
       std::vector<std::string> views;
@@ -244,7 +244,7 @@ class Panes final : public VP::Operator {
       if (node.recipe == deck_recipe)
         decks.push_back({node.name, split_names(param_value(node, holds_param))});
     if (decks.empty())
-      return false;
+      return;
     for (Held &deck : decks)
       deck.changed = std::erase_if(deck.views, [&](const std::string &view) {
                        return std::ranges::find(_closed, view) != _closed.end();
@@ -262,9 +262,8 @@ class Panes final : public VP::Operator {
         active.views.push_back(view);
         active.changed = true;
       }
-    bool sent = false;
     for (const Held &deck : decks)
-      if (deck.changed) {
+      if (deck.changed)
         commands.send(
             deck.views.empty()
                 ? std::format("{}: param unset {} {}", _view, deck.deck, holds_param)
@@ -273,9 +272,6 @@ class Panes final : public VP::Operator {
                               deck.deck,
                               holds_param,
                               joined_names(deck.views)));
-        sent = true;
-      }
-    return sent;
   }
 
   // The panes there are: each a node of the pane recipe whose first room a deck's port
@@ -317,8 +313,8 @@ class Panes final : public VP::Operator {
   }
 
   // A pane a view hosted that a deck holds, its room from that deck; a pane whose view
-  // went, or no deck holds, goes. Whether it sent a line.
-  bool place(VP::CommandPort &commands, const VP::View &own) {
+  // went, or no deck holds, goes.
+  void place(VP::CommandPort &commands, const VP::View &own) {
     const std::vector<Pane> panes = panes_in(own);
     std::vector<std::string> going;
     // A pane, and the deck now holding its view; a view, and the deck holding it.
@@ -385,7 +381,6 @@ class Panes final : public VP::Operator {
       commands.send(std::format("{}: disconnect {}", _view, grown->name));
       send_connect(commands, grown->name, grown->from.text(), grown->to);
     }
-    return !going.empty() || !moving.empty() || !added.empty();
   }
 
   // The connection that brings the keys part's typed to it, which each pane joins.
