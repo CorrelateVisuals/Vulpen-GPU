@@ -160,8 +160,8 @@ void cases(Bench &bench) {
     record.row("the .ini saved, zoom 9 -> " + frame.cooked(record));
   });
 
-  // A face it cannot bake, named: one not there, or empty, and a height that makes a
-  // cell of no size.
+  // A face it cannot bake, named: one not there, or empty, a height that makes a cell of
+  // no size, and a file that is no font, or a font cut short.
   bench.check("Font.cpp/Font::bake", [](Rows &record) {
     Framed gone(record, {{"face", "Gone.ttf"}, {"height", "18"}});
     record.row("a face not there -> " + gone.cooked(record));
@@ -170,6 +170,18 @@ void cases(Bench &bench) {
     record.row("an empty face -> " + empty.cooked(record));
     Framed flat(record, {{"face", std::string(face)}, {"height", "0"}});
     record.row("height 0 -> " + flat.cooked(record));
+    // What stb_truetype would read past: a file of no font, too few bytes for one, and
+    // the face cut short, its tables past its end.
+    const std::string bytes = face_bytes(record);
+    for (const auto &[what, made] : std::vector<std::pair<std::string_view, std::string>>{
+             {"a file of no font", "this file holds text, not a font"},
+             {"three bytes", "abc"},
+             {"the face's first 16 bytes", bytes.substr(0, 16)},
+             {"the face's first 1000 bytes", bytes.substr(0, 1000)}}) {
+      Framed broken(record, {{"face", "Broken.ttf"}, {"height", "18"}});
+      Files::save((broken.place / "Broken.ttf").string(), made);
+      record.row(std::format("{} -> {}", what, broken.cooked(record)));
+    }
   });
 
   // zoom in, out and reset write the .ini whole, from what it holds now, a step of 1.1

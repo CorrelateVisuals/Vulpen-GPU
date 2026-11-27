@@ -2,8 +2,12 @@
 
 ## Font.cpp/Font::bake
 a face not there -> throws runtime_error: "face Gone.ttf is no file of the node's folder, or an empty one"
+a file of no font -> throws runtime_error: "face Broken.ttf is no font stb_truetype reads"
 an empty face -> throws runtime_error: "face Empty.ttf is no file of the node's folder, or an empty one"
 height 0 -> throws runtime_error: "height = 0 makes a cell of no size"
+the face's first 1000 bytes -> throws runtime_error: "face Broken.ttf is no font stb_truetype reads"
+the face's first 16 bytes -> throws runtime_error: "face Broken.ttf is no font stb_truetype reads"
+three bytes -> throws runtime_error: "face Broken.ttf is no font stb_truetype reads"
 
 ## Font.cpp/Font::bind
 [("face", ""), ("height", "18")] -> ["texture atlas of uint8", "upload font of 40 bytes , room 1", "output metrics", "command zoom in: draws the text a step larger, and with it every part that lays text out in cells", "command zoom out: draws the text a step smaller", "command zoom reset: draws the text at the font's height again", "file .vulpen/font.ini", "param height read as uint"]

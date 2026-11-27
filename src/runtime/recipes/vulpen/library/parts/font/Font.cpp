@@ -60,6 +60,38 @@ float zoom_of(std::string_view text) {
   return zoom;
 }
 
+// Whether stb_truetype reads inside a face's bytes as far as it trusts the file: the
+// font's tag, the table directory after it, and each table that lists, which a face cut
+// short or a file of no font sends past them. Past those it trusts the font, as its own
+// warning says, a face being a file a person chose.
+bool whole(std::string_view bytes) {
+  constexpr std::size_t directory = 12; // an offset table's bytes, before its records
+  constexpr std::size_t record = 16;    // a table's: its tag, sum, offset and length
+  // A collection's first font's offset follows its own 12 bytes.
+  if (bytes.size() < directory + 4)
+    return false;
+  const auto *const data = reinterpret_cast<const unsigned char *>(bytes.data());
+  const auto big_endian = [&](std::size_t at, std::size_t width) {
+    std::size_t value = 0;
+    for (std::size_t byte = 0; byte < width; ++byte)
+      value = value << 8 | data[at + byte];
+    return value;
+  };
+  const int start = stbtt_GetFontOffsetForIndex(data, 0);
+  if (start < 0 || static_cast<std::size_t>(start) + directory > bytes.size())
+    return false;
+  const std::size_t from = static_cast<std::size_t>(start) + directory;
+  const std::size_t tables = big_endian(static_cast<std::size_t>(start) + 4, 2);
+  if (from + tables * record > bytes.size())
+    return false;
+  for (std::size_t table = 0; table < tables; ++table) {
+    const std::size_t at = from + table * record;
+    if (big_endian(at + 8, 4) + big_endian(at + 12, 4) > bytes.size())
+      return false;
+  }
+  return true;
+}
+
 // Bakes the font file its face param names at the height its height param gives, times
 // its zoom, a cell a glyph, each as wide as the widest, into an atlas that glyphs samples
 // a texel a pixel; and how far each glyph moves the next on, its advance, for the parts
@@ -169,7 +201,7 @@ VP_VIEW::Metrics Font::bake(VP::Cook &frame) const {
         std::format("face {} is no file of the node's folder, or an empty one", _face));
   const auto *const data = reinterpret_cast<const unsigned char *>(bytes.data());
   stbtt_fontinfo font{};
-  if (!stbtt_InitFont(&font, data, stbtt_GetFontOffsetForIndex(data, 0)))
+  if (!whole(bytes) || !stbtt_InitFont(&font, data, stbtt_GetFontOffsetForIndex(data, 0)))
     throw std::runtime_error(std::format("face {} is no font stb_truetype reads", _face));
   const std::uint32_t tall = height();
   const float scale = stbtt_ScaleForPixelHeight(&font, static_cast<float>(tall));
