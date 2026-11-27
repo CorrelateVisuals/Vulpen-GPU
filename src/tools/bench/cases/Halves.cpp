@@ -54,6 +54,22 @@ template <> struct Shown<::Halves> {
 
 void cases(Bench &bench) {
   bench.sweep("Halves.h/part_of", part_of, domain::Type{}, domain::Axis{});
+  bench.holds(
+      "Halves.h/part_of",
+      "a start of 0 or more never puts the part before the area, and one below 0 never "
+      "after it",
+      [](const VP_VIEW::Rect &area,
+         glm::length_t along,
+         std::int32_t start,
+         std::int32_t length) {
+        const VP_VIEW::Rect part = part_of(area, along, start, length);
+        return start >= 0 ? part.offset[along] >= area.offset[along]
+                          : part.offset[along] <= area.offset[along];
+      },
+      domain::Type{},
+      domain::Axis{},
+      domain::Type{},
+      domain::Type{});
 
   bench.sweep("Halves.h/halves", halves, domain::Type{}, domain::Axis{});
   bench.holds(

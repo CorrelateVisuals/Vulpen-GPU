@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace {
 
@@ -30,13 +31,19 @@ struct Halves {
   VP_VIEW::Rect second;
 };
 
-// The area from start along the axis, length long, and whole across it.
+// The area from start along the axis, length long, and whole across it. Added in 64
+// bits, as a start past what an offset holds would wrap the part to the area's other
+// side: it stops at the offset's end.
 inline VP_VIEW::Rect part_of(const VP_VIEW::Rect &area,
                              glm::length_t along,
                              std::int32_t start,
                              std::int32_t length) {
+  using Offset = std::numeric_limits<std::int32_t>;
   VP_VIEW::Rect rect = area;
-  rect.offset[along] += start;
+  rect.offset[along] =
+      static_cast<std::int32_t>(std::clamp(std::int64_t{area.offset[along]} + start,
+                                           std::int64_t{Offset::min()},
+                                           std::int64_t{Offset::max()}));
   rect.extent[along] = static_cast<std::uint32_t>(length);
   return rect;
 }
