@@ -542,6 +542,8 @@ void cases(Bench &bench) {
             "m: view show"});
   });
   for (const char *const id : {"Views.cpp/edits, undo and redo",
+                               "Views.cpp/a line that moved where lines go, undone",
+                               "Views.cpp/undo of a line that moved no lines",
                                "Views.cpp/view save",
                                "Views.cpp/a view hosted beside",
                                "Views.cpp/view show and image clear",
