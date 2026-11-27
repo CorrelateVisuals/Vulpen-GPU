@@ -77,6 +77,8 @@ a left drag 50 pixels right -> eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -
 
 ## Camera.cpp/Camera::over_ground
 home -> eye (0 1 -3) ahead (0 -0.3162 0.9487) right (-1 0 0) up (0 0.9487 0.3162); lens 2 near 0.01 far 1000
+the eye behind a plateau, w held 30 frames -> eye (0 1 -0.2735) ahead (0 -0.3162 0.9487) right (-1 0 0) up (0 0.9487 0.3162); lens 2 near 0.01 far 1000
+the eye behind a plateau, w held 60 frames -> eye (0 2.5 0.7167) ahead (0 -0.3162 0.9487) right (-1 0 0) up (0 0.9487 0.3162); lens 2 near 0.01 far 1000
 then d held too, 120 frames, at the ground's edge -> eye (-2.6514 1 1) ahead (0 -0.3162 0.9487) right (-1 0 0) up (0 0.9487 0.3162); lens 2 near 0.01 far 1000
 w held 105 frames -> eye (0 1 0.2497) ahead (0 -0.3162 0.9487) right (-1 0 0) up (0 0.9487 0.3162); lens 2 near 0.01 far 1000
 w held 120 frames -> eye (0 1 0.7497) ahead (0 -0.3162 0.9487) right (-1 0 0) up (0 0.9487 0.3162); lens 2 near 0.01 far 1000

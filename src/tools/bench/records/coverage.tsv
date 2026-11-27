@@ -17,9 +17,9 @@ baseclasses/Resources.h	17	0
 baseclasses/Shader.cpp	274	4
 baseclasses/Shader.h	15	0
 baseclasses/Swapchain.cpp	184	15
-runtime/Binder.cpp	542	102
+runtime/Binder.cpp	542	98
 runtime/Bound.h	157	9
-runtime/Checks.cpp	629	96
+runtime/Checks.cpp	629	85
 runtime/Commands.cpp	591	37
 runtime/Edits.cpp	649	28
 runtime/Live.cpp	299	26
@@ -34,7 +34,7 @@ runtime/Undo.cpp	379	16
 runtime/View.h	95	1
 runtime/Views.cpp	706	81
 runtime/recipes/vulpen/library/parts/bar/Bar.cpp	27	0
-runtime/recipes/vulpen/library/parts/camera/Camera.cpp	100	1
+runtime/recipes/vulpen/library/parts/camera/Camera.cpp	210	1
 runtime/recipes/vulpen/library/parts/deck/Deck.cpp	102	0
 runtime/recipes/vulpen/library/parts/hit/Hit.cpp	68	0
 runtime/recipes/vulpen/library/parts/image-file/ImageFile.cpp	39	0
@@ -70,7 +70,7 @@ tools/bench/Bench.cpp	314	38
 tools/bench/Bench.h	150	14
 tools/bench/Contracts.h	30	0
 tools/bench/Domains.h	101	4
-tools/bench/Fakes.h	305	127
+tools/bench/Fakes.h	305	125
 tools/bench/Gpu.h	103	16
 tools/bench/Shown.h	58	0
 tools/bench/Stage.h	24	0

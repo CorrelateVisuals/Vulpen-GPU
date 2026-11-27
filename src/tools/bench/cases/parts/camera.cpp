@@ -317,6 +317,30 @@ void cases(Bench &bench) {
     for (int more = 0; more < 120; ++more)
       slid = frame.cooked({}, ++at);
     rows.row("then d held too, 120 frames, at the ground's edge -> " + slid);
+
+    // The eye behind a plateau 2 high that starts at z = 0: off the ground it keeps its
+    // own height, and on it rises over it.
+    Framed behind(dropped({{"target", "0,0,2"},
+                           {"eye", "0,1,-1"},
+                           {"up", "0,1,0"},
+                           {"glide_speed", "2"},
+                           {"ground_margin", "0.5"}}),
+                  true);
+    behind.node.port<VP_VIEW::Ground>("ground") = {.heights =
+                                                       std::vector<float>(81, 2.0f),
+                                                   .size = {9, 9},
+                                                   .origin = {-4.0f, 0.0f, 0.0f},
+                                                   .across = {1.0f, 0.0f, 0.0f},
+                                                   .along = {0.0f, 0.0f, 1.0f}};
+    std::uint64_t then = 0;
+    behind.cooked({key("w", true)}, then);
+    for (int half = 1; half <= 2; ++half) {
+      std::string said;
+      for (int more = 0; more < 30; ++more)
+        said = behind.cooked({}, ++then);
+      rows.row(std::format(
+          "the eye behind a plateau, w held {} frames -> {}", half * 30, said));
+    }
   });
 
   // A ground whose heights do not fill its grid, or whose axes span no plane square to
