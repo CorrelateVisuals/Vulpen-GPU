@@ -392,10 +392,11 @@ void cases(Bench &bench) {
     frame.frames(rows, {.decks = {{"ide.deck", ""}}});
     const View *const was = &frame.node.cook.views.at("ide");
     frame.edit("ide: param set ide.deck holds p2");
-    rows.row(
-        std::format("the deck lets go of p1, the view {} -> {}",
-                    was == &frame.node.cook.views.at("ide") ? "where it was" : "moved",
-                    frame.frames(rows)));
+    // Read before the frames, whose lines replace the view.
+    const bool kept = was == &frame.node.cook.views.at("ide");
+    rows.row(std::format("the deck lets go of p1, the view {} -> {}",
+                         kept ? "where it was" : "moved",
+                         frame.frames(rows)));
   });
 
   // At the frame after the first, a view a deck holds that no line hosts is let go of, as

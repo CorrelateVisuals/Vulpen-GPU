@@ -140,9 +140,13 @@ class Panes final : public VP::Operator {
               _closed.push_back(view);
               _dirty = true;
             }
-    // Any edit of its view, as a deck letting go of a view, which takes its pane.
-    if (const VP::View *const own = frame.view(_view); own != _seen) {
-      _seen = own;
+    // Any edit of what of its view it follows, as a deck letting go of a view, which
+    // takes its pane. Told by what the view holds, not where it is: an edit may hand a
+    // later one the place the view before it had, so its address would miss edits, in one
+    // build and not in another (C01).
+    follows(*frame.view(_view), _reading);
+    if (_reading != _seen) {
+      std::swap(_reading, _seen);
       _dirty = true;
     }
     if (!std::exchange(_dirty, false))
@@ -155,6 +159,27 @@ class Panes final : public VP::Operator {
     place(commands, *frame.view(_view));
     connect(commands, *frame.view(_view));
     interact(commands, *frame.view(_view));
+  }
+
+  // What of its view the panes, their rooms and the windows follow, as text: its decks'
+  // and its panes' params, and every connection. Into a string kept between frames, so a
+  // frame allocates nothing once it grew (CPP10).
+  void follows(const VP::View &own, std::string &into) const {
+    into.clear();
+    for (const VP::Node &node : own.nodes)
+      if (node.recipe == deck_recipe || node.recipe == _pane) {
+        into.append(node.name).append(":");
+        for (const VP::Param &param : node.params)
+          into.append(" ").append(param.key).append("=").append(param.value);
+        into.append("\n");
+      }
+    for (const VP::Connection &connection : own.connections) {
+      into.append(connection.name).append(" ").append(connection.from.node);
+      into.append(".").append(connection.from.port);
+      for (const VP::Endpoint &to : connection.to)
+        into.append(" ").append(to.node).append(".").append(to.port);
+      into.append("\n");
+    }
   }
 
   // Each pane's picture as its interact param says, which a pane added takes as it comes;
@@ -466,7 +491,8 @@ class Panes final : public VP::Operator {
   std::vector<std::string> _hosted;   // the views hosted, as the frame before found them
   std::vector<std::string> _closed;   // those closed since the frame before
   std::vector<std::string> _joining;  // those hosted or presented since, which may join
-  const VP::View *_seen = nullptr;    // its view, as the frame before found it
+  std::string _seen;                  // what of its view it follows, the frame before
+  std::string _reading;               // and this frame, kept so a frame allocates nothing
   std::string _selected;              // the view presented, or about to be
   std::string _previous;              // the one before it
   bool _cooked = false;   // once, so the frame after the first lets go of what none hosts
