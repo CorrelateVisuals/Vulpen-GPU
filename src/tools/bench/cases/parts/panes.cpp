@@ -77,10 +77,10 @@ std::vector<Endpoint> inside(const std::string &pane, std::string_view port) {
 View own_view(const Setup &setup) {
   View view;
   view.name = "ide";
-  for (const auto &[deck, holds] : setup.decks) {
+  for (const auto &[deck, held] : setup.decks) {
     Node node{.name = deck, .recipe = "deck"};
-    if (!holds.empty())
-      node.params.push_back({.key = "holds", .value = holds});
+    if (!held.empty())
+      node.params.push_back({.key = "holds", .value = held});
     view.nodes.push_back(std::move(node));
   }
   for (const std::string &other : setup.others)
@@ -93,11 +93,10 @@ View own_view(const Setup &setup) {
     if (setup.interacting)
       made.params.push_back({.key = "image.interact", .value = "yes"});
     view.nodes.push_back(std::move(made));
-    view.connections.push_back({.name = std::format("{}-room", short_name(node)),
-                                .from = pane.deck.empty()
-                                            ? Endpoint{"ide.dock", "a"}
-                                            : Endpoint{pane.deck, pane.view},
-                                .to = inside(node, "area")});
+    view.connections.push_back(
+        {.name = std::format("{}-room", short_name(node)),
+         .from = {pane.deck.empty() ? "ide.dock" : pane.deck, pane.view},
+         .to = inside(node, "area")});
     for (Endpoint &end : inside(node, "typed"))
       typed.to.push_back(std::move(end));
   }
@@ -281,11 +280,12 @@ struct Framed {
 std::string button_text(const VP_VIEW::Items &buttons) {
   std::string text;
   for (const VP_VIEW::Item &button : buttons)
-    text += std::format("{}{} > {}{}",
+    text += std::format("{}{} > {}{}{}",
                         text.empty() ? "" : "; ",
                         button.label,
                         button.command,
-                        button.current ? ", current" : "");
+                        button.current ? ", current" : "",
+                        button.toggles ? ", toggles" : "");
   return text;
 }
 
@@ -314,6 +314,19 @@ void cases(Bench &bench) {
     bound("the ide's, interact no", ide());
     bound("the ide's, interact yes", ide("yes"));
     bound("no keys connected", ide(), false);
+    {
+      Running<Panes> other(ide());
+      other.bind.node_name = "ide.panes";
+      other.bind.view_named = "ide";
+      other.bind.in_view.connections.push_back({.name = "typed",
+                                                .from = {"ide.keys", "typed"},
+                                                .to = {{"ide.deck", "typed"}}});
+      other.bind.in_view.connections.push_back(
+          {.name = "other", .from = {"ide.keys", "x"}, .to = {{"ide.panes", "area"}}});
+      other.bound();
+      rows.row("keys reaching the deck's typed, another port of the panes -> asked " +
+               show(other.bind.asked, rows.names()));
+    }
     Params unset = ide();
     std::erase_if(unset, [](const auto &param) {
       return param.first == "interact" || param.first == "to" || param.first == "keys";
@@ -471,6 +484,20 @@ void cases(Bench &bench) {
         {.decks = {{"ide.deck", "p1,p2"}},
          .panes = {{.view = "p1"}, {.view = "p1", .node = "ide.extra"}, {.view = "p2"}},
          .presented = "p1"});
+    {
+      Framed frame;
+      frame.set({.decks = {{"ide.deck", "p1,p2"}},
+                 .panes = {{.view = "p1"}},
+                 .presented = "p1"});
+      auto &connections = frame.node.cook.views.at("ide").connections;
+      connections.insert(connections.begin(),
+                         {.name = "first",
+                          .from = {"ide.keys", "x"},
+                          .to = {{"ide.panes", "area"}, {"ide.other", "typed"}}});
+      rows.row("a connection to another port of the panes, and to another node's typed, "
+               "ahead of the keys' -> " +
+               frame.frames(rows));
+    }
     run("one room and one picture",
         {.decks = {{"ide.deck", "p1,p2"}}},
         {{"to", "ide.screen.picture"},
@@ -526,6 +553,14 @@ void cases(Bench &bench) {
     rows.row("yes, the pictures interacting -> " + kept.frames(rows, interacting));
     Framed no(ide("no"));
     rows.row("no, the pictures interacting -> " + no.frames(rows, interacting));
+    Framed alone(ide("no"));
+    alone.frames(rows, interacting);
+    alone.node.bind.params = ide("yes");
+    alone.node.bound();
+    rows.row("turned on by a rebind alone, the pictures not interacting -> " +
+             alone.frames(rows));
+    alone.edit("ide: param unset ide.p1-pane.image interact");
+    rows.row("p1's picture's param unset in place -> " + alone.frames(rows));
     Framed adding(ide("yes"));
     rows.row("yes, panes to add -> " +
              adding.frames(rows, {.decks = {{"ide.deck", ""}}}));

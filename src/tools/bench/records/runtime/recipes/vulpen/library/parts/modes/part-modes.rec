@@ -14,9 +14,9 @@ no shows nor switch, p1 hosted later -> sent []; edit (10,20)+(200,100), perform
 the device goes -> done
 
 ## Modes.cpp/Modes::bind
-[("mode", "edit"), ("shows", "ide.perform"), ("switch", "ide.preview")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, stuck
-[("mode", "edit")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, stuck
-[("mode", "perform"), ("shows", "ide.perform"), ("switch", "ide.preview")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit; run > mode perform, lit; |; gpu > gpu toggle, lit, stuck
+[("mode", "edit"), ("shows", "ide.perform"), ("switch", "ide.preview")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit, lit, toggles; run > mode perform, toggles; |; gpu > gpu toggle, lit, toggles, stuck
+[("mode", "edit")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit, lit, toggles; run > mode perform, toggles; |; gpu > gpu toggle, lit, toggles, stuck
+[("mode", "perform"), ("shows", "ide.perform"), ("switch", "ide.preview")] -> asked ["input area", "input typed", "output edit", "output perform", "output buttons", "command mode edit: gives the window to the dock, which shows what is presented in its panel", "command mode perform: gives the window to what is presented, and the dock no room", "command mode toggle: switches to the other mode"]; buttons edit > mode edit, toggles; run > mode perform, lit, toggles; |; gpu > gpu toggle, lit, toggles, stuck
 [("mode", "run"), ("shows", "ide.perform"), ("switch", "ide.preview")] -> throws runtime_error: "param mode = run: edit or perform"
 the device goes -> done
 
@@ -62,11 +62,11 @@ toggle, in edit mode -> sent ["ide: focus", "ide: param set ide.modes mode perfo
 toggle, in perform mode -> sent ["ide: param set ide.modes mode edit"]; answered ["went to edit mode: the window shows the dock"]
 
 ## Modes.cpp/Modes::watch_buttons
-1 nothing hosted -> sent ["gpu"]; buttons edit > mode edit, lit; run > mode perform, stuck; |; gpu > gpu toggle, lit, stuck
-2 again -> sent []; buttons edit > mode edit, lit; run > mode perform, stuck; |; gpu > gpu toggle, lit, stuck
-3 the answer now discrete, unasked -> sent []; buttons edit > mode edit, lit; run > mode perform, stuck; |; gpu > gpu toggle, lit, stuck
-4 a warning logged -> sent ["gpu"]; buttons edit > mode edit, lit; run > mode perform, stuck; |; gpu > gpu toggle, lit, number, stuck
-5 p1 hosted -> sent ["ide: param set ide.preview shown first"]; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, number, stuck
-6 a window open -> sent []; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, number, stuck; fps, muted
-7 a warning, the answer naming none -> sent ["gpu"]; buttons edit > mode edit, lit; run > mode perform; |; gpu > gpu toggle, lit, stuck; fps, muted
+1 nothing hosted -> sent ["gpu"]; buttons edit > mode edit, lit, toggles; run > mode perform, toggles, stuck; |; gpu > gpu toggle, lit, toggles, stuck
+2 again -> sent []; buttons edit > mode edit, lit, toggles; run > mode perform, toggles, stuck; |; gpu > gpu toggle, lit, toggles, stuck
+3 the answer now discrete, unasked -> sent []; buttons edit > mode edit, lit, toggles; run > mode perform, toggles, stuck; |; gpu > gpu toggle, lit, toggles, stuck
+4 a warning logged -> sent ["gpu"]; buttons edit > mode edit, lit, toggles; run > mode perform, toggles, stuck; |; gpu > gpu toggle, lit, toggles, number, stuck
+5 p1 hosted -> sent ["ide: param set ide.preview shown first"]; buttons edit > mode edit, lit, toggles; run > mode perform, toggles; |; gpu > gpu toggle, lit, toggles, number, stuck
+6 a window open -> sent []; buttons edit > mode edit, lit, toggles; run > mode perform, toggles; |; gpu > gpu toggle, lit, toggles, number, stuck; fps, muted
+7 a warning, the answer naming none -> sent ["gpu"]; buttons edit > mode edit, lit, toggles; run > mode perform, toggles; |; gpu > gpu toggle, lit, toggles, stuck; fps, muted
 the device goes -> done

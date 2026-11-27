@@ -30,7 +30,7 @@ std::string role_text(std::uint32_t role) {
 
 std::string rect_text(const VP_VIEW::Rect &rect, Names &names) {
   std::string text = std::format("{} {}", show(rect, names), role_text(rect.role));
-  if (rect.blend != 0.0f)
+  if (rect.blend != 0.0f || rect.blend_role != 0)
     text += std::format(
         " blending {} {}", role_text(rect.blend_role), number_text(rect.blend));
   return text;
@@ -221,6 +221,11 @@ void cases(Bench &bench) {
     run("below", "no Items", {.offset = {20, 0}, .extent = {40, 20}}, {});
     run("right", "beside a row", {.offset = {20, 40}, .extent = {80, 16}}, items);
     run("right", "no room right", {.offset = {300, 40}, .extent = {80, 16}}, items);
+    run("right", "just room right", {.offset = {221, 40}, .extent = {80, 16}}, items);
+    run("right",
+        "a pixel short of room right",
+        {.offset = {222, 40}, .extent = {80, 16}},
+        items);
     run("right", "low in the window", {.offset = {20, 290}, .extent = {80, 16}}, items);
     run("right", "shut", {}, items);
     Framed tall(column("right"));
@@ -260,12 +265,17 @@ void cases(Bench &bench) {
         strip(),
         {item("view"), {.label = ".vlp", .joined = true}, item("next")},
         bar);
+    run("a tab with a mark another joins",
+        strip(),
+        {{.label = "view", .close = "close view"}, {.label = ".vlp", .joined = true}},
+        bar);
     run("a label of 30 letters", strip(), {item("abcdefghijklmnopqrstuvwxyz1234")}, bar);
     run("a path of 34 letters, the pointer past it",
         strip(),
         {item("projects/triangles/triangle-params")},
         {.offset = {0, 40}, .extent = {400, 20}});
     run("a strip lower than a cell", strip(), {item("one")}, {.extent = {400, 15}});
+    run("a strip a cell tall", strip(), {item("one")}, {.extent = {400, 16}});
     run("end 10, the second tab's mark past the strip",
         strip("10"),
         {item("abcdefghijklmnopqrstu"), {.label = "x", .close = "close x"}},
@@ -348,6 +358,11 @@ void cases(Bench &bench) {
         {.offset = {0, 0}, .extent = {250, 20}},
         {100, 10});
     run("past the strip", {.offset = {0, 0}, .extent = {400, 20}}, {100, 40});
+    Framed exact(strip());
+    exact.hand({item("abcdefghijklmnopqrstuvwx")},
+               {.offset = {0, 0}, .extent = {400, 20}});
+    rows.row("over a label of 24 letters, which shows whole -> " +
+             exact.cooked(rows, {pointer({10, 10})}));
   });
 
   // A stuck tab pressed flashes in the error's color, fading back over 30 frames; a tab
@@ -371,6 +386,12 @@ void cases(Bench &bench) {
              flash(40, {pointer({10, 30}), press()}));
     rows.row("frame 41, a press as the pointer moves onto it, then off -> run " +
              flash(41, {pointer({10, 10}), press(), pointer({10, 30})}));
+    frame.hand({item("gpu"), {.label = "run", .stuck = true}}, {.extent = {400, 20}});
+    frame.node.cook.frame = 50;
+    frame.cooked(rows, {pointer({60, 10}), press()});
+    frame.hand({item("gpu")}, {.extent = {400, 20}});
+    frame.node.cook.frame = 51;
+    rows.row("frame 51, the second tab pressed, stuck, gone -> " + frame.cooked(rows));
   });
 
   // A tab's label a cell in from its left, cut where the strip cuts its tab, a character
@@ -379,6 +400,9 @@ void cases(Bench &bench) {
     VP_VIEW::Items tabs;
     for (int at = 0; at < 6; ++at)
       tabs.push_back(item(std::format("label{}", at)));
+    Framed edge(strip());
+    edge.hand({item("one"), item("two")}, {.offset = {0, 0}, .extent = {50, 20}});
+    rows.row("the strip ending where the second label starts -> " + edge.cooked(rows));
     for (const float turn : {0.0f, -0.3f, -1.0f}) {
       Framed frame(strip());
       frame.hand(tabs, {.offset = {0, 0}, .extent = {150, 20}});

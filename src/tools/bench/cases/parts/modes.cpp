@@ -81,6 +81,8 @@ std::string buttons_text(const VP_VIEW::Items &buttons) {
       text += " > " + button.command;
     if (button.current)
       text += ", lit";
+    if (button.toggles)
+      text += ", toggles";
     if (button.role)
       text += ", " + std::string(VP_VIEW::role_names.at(*button.role));
     if (button.stuck)
@@ -144,7 +146,7 @@ struct Framed {
   // A mode line, at the views as the frame left them: what it sent and answered.
   std::string ran(Line line, Rows &rows) {
     FakeCall call;
-    call.running = {line};
+    call.running = {static_cast<std::uint32_t>(line)};
     call.views = node.cook.views;
     call.views.insert_or_assign("ide", node.bind.in_view);
     call.command_port = &commands;

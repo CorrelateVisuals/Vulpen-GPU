@@ -74,7 +74,7 @@ struct Framed {
   std::string
   ran(Line line, std::vector<std::string> words, const View &addressed, Rows &rows) {
     FakeCall call;
-    call.running = {line};
+    call.running = {static_cast<std::uint32_t>(line)};
     call.words = std::move(words);
     call.addressed = addressed;
     call.views = hosted;
@@ -85,12 +85,11 @@ struct Framed {
     std::string said;
     try {
       node.called(call);
-      said = std::format("sent {}; answered {}",
-                         show(commands.sent, rows.names()),
-                         show(call.replies, rows.names()));
+      said = "answered " + show(call.replies, rows.names());
     } catch (...) {
       said = thrown();
     }
+    said = std::format("sent {}; {}", show(commands.sent, rows.names()), said);
     // As a person reads a path, from where vulpen started, which the cwd context moves.
     const std::string from_start =
         place.lexically_proximate(std::filesystem::current_path()).generic_string();
@@ -259,6 +258,7 @@ void cases(Bench &bench) {
     copied("the cli, an app", {}, [](Framed &frame, View &) {
       return frame.host("cli", frame.place / "recipes" / "cli");
     });
+    copied("wave as empty, a folder holding no view", {"empty"}, same);
     copied("wave hosting a view from its folder", {}, [](Framed &frame, View &wave) {
       wave.children.push_back(
           {.name = "inside",
@@ -270,8 +270,13 @@ void cases(Bench &bench) {
   // The view addressed saved, closed, its folder renamed where it is, and hosted under
   // the new name; refused for the start view, an app and a name taken.
   bench.check("Projects.cpp/Projects::rename", [](Rows &rows) {
-    const auto renaming = [&](std::string_view what, std::string name, bool app = false) {
+    const auto renaming = [&](std::string_view what,
+                              std::string name,
+                              bool app = false,
+                              std::string_view there = "") {
       Framed frame(rows);
+      if (!there.empty())
+        Files::make(frame.place / "projects" / "triangles" / there);
       const View addressed =
           app ? frame.host("cli", frame.place / "recipes" / "cli")
               : frame.host("triangle",
@@ -284,6 +289,7 @@ void cases(Bench &bench) {
     renaming("triangle as wave, a project's name", "wave");
     renaming("triangle as a/b", "a/b");
     renaming("the cli as mine", "mine", true);
+    renaming("triangle as tri, a folder holding no view there", "tri", false, "tri");
     Framed top(rows);
     rows.row("the start view -> " + top.ran(renamed, {"mine"}, rows));
   });
