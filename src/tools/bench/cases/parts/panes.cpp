@@ -529,6 +529,13 @@ void cases(Bench &bench) {
     Framed adding(ide("yes"));
     rows.row("yes, panes to add -> " +
              adding.frames(rows, {.decks = {{"ide.deck", ""}}}));
+    // Turned on as p3 comes: the lines before have edited the view in the frame.
+    Framed turned(ide("no"));
+    turned.frames(rows, settled);
+    turned.node.bind.params = ide("yes");
+    turned.node.bound();
+    turned.host({"p1", "p2", "p3"});
+    rows.row("turned on as p3 is hosted -> " + turned.frames(rows));
   });
 }
 

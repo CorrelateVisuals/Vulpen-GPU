@@ -183,20 +183,24 @@ class Panes final : public VP::Operator {
   }
 
   // Each pane's picture as its interact param says, which a pane added takes as it comes;
-  // the param of the picture inside the pane, which the pane keeps, as a dotted key.
+  // the param of the picture inside the pane, which the pane keeps, as a dotted key. The
+  // lines go once every pane is read, as each line replaces the view read.
   void interact(VP::CommandPort &commands, const VP::View &own) const {
     const std::string key = picture_interact();
     const std::string_view picture = split_port(_pictures.front()).first;
+    std::vector<std::string> lines;
     for (const Pane &pane : panes_in(own))
       if (const auto node = std::ranges::find(own.nodes, pane.node, &VP::Node::name);
           node != own.nodes.end() && (param_value(*node, key) == "yes") != _interact)
-        commands.send(std::format("{}: param {} {}.{} {}{}",
-                                  _view,
-                                  _interact ? "set" : "unset",
-                                  pane.node,
-                                  picture,
-                                  interact_param,
-                                  _interact ? " yes" : ""));
+        lines.push_back(std::format("{}: param {} {}.{} {}{}",
+                                    _view,
+                                    _interact ? "set" : "unset",
+                                    pane.node,
+                                    picture,
+                                    interact_param,
+                                    _interact ? " yes" : ""));
+    for (const std::string &line : lines)
+      commands.send(line);
   }
 
   // The interact param of a pane's picture, as the pane's own param sets it, as
