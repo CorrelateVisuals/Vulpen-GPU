@@ -7,9 +7,12 @@
 #include "tools/bench/Shown.h"
 
 #include <algorithm>
+#include <array>
+#include <cstring>
 #include <format>
 #include <map>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -43,10 +46,18 @@ public:
     std::uint32_t count = 0;
   };
   std::vector<Room> rooms;
+  // The node's invocations, as its manifest counts them, the least room an upload gets.
+  std::uint32_t invocations = 1;
   // The node's name, its view's, and the view it runs in, which the cook hands too.
   std::string node_name = "n";
   std::string view_named;
   View in_view;
+  // Each command the node registered, its usage, by the index command handed out; and
+  // each value of its pass block, by the order the node first named it, a slot of
+  // value_slot bytes each, as the cook's pass block holds them.
+  std::vector<std::string> commands;
+  std::vector<std::string> values;
+  static constexpr std::size_t value_slot = 16; // a vec4's, the most a value takes
 
   // A C++ connection's object by port, made when the node or the case first names it, and
   // kept across binds, as the engine keeps it: the case sets an input before a cook and
@@ -55,9 +66,13 @@ public:
     return *static_cast<T *>(made(port, kind_of<T>()));
   }
 
+  // Each usage its own index, kept across binds, so a call tells the commands apart.
   Command command(std::string_view usage, std::string_view help) override {
     asked.push_back(std::format("command {}: {}", usage, help));
-    return {};
+    auto found = std::ranges::find(commands, usage);
+    if (found == commands.end())
+      found = commands.insert(commands.end(), std::string(usage));
+    return {static_cast<std::uint32_t>(found - commands.begin())};
   }
   File file(std::string_view path) override {
     asked.push_back(std::format("file {}", path));
@@ -87,7 +102,11 @@ public:
 private:
   std::uint32_t value_offset(std::string_view name, std::string_view type) override {
     asked.push_back(std::format("value {} as {}", name, type));
-    return 0;
+    auto found = std::ranges::find(values, name);
+    if (found == values.end())
+      found = values.insert(values.end(), std::string(name));
+    return static_cast<std::uint32_t>(static_cast<std::size_t>(found - values.begin()) *
+                                      value_slot);
   }
   std::uint32_t readback_index(std::string_view name, const Element &element) override {
     asked.push_back(
@@ -99,7 +118,7 @@ private:
                              std::uint32_t count) override {
     asked.push_back(std::format(
         "upload {} of {} bytes {}, room {}", name, element.size, element.type, count));
-    rooms.push_back({std::string(name), element.size, count});
+    rooms.push_back({std::string(name), element.size, std::max(count, invocations)});
     return static_cast<std::uint32_t>(rooms.size() - 1);
   }
   std::uint32_t texture_index(std::string_view port, std::string_view pixel) override {
@@ -206,6 +225,8 @@ private:
 class FakeInput final : public InputPort {
 public:
   std::vector<Event> given;
+  // The keys it names, as a case sets them: none set, refused.
+  std::vector<std::string> keys;
 
   std::span<const Event> events() const override {
     return given;
@@ -213,8 +234,10 @@ public:
   glm::vec2 pointer() const override {
     refused("pointer");
   }
-  bool names_key(std::string_view) const override {
-    refused("names_key");
+  bool names_key(std::string_view key) const override {
+    if (keys.empty())
+      refused("names_key");
+    return std::ranges::find(keys, key) != keys.end();
   }
   std::string clipboard() const override {
     refused("clipboard");
@@ -229,6 +252,34 @@ public:
 private:
   [[noreturn]] static void refused(std::string_view call) {
     throw std::logic_error(std::format("the bench's input answers no {}", call));
+  }
+};
+
+// An event as a row shows it: its kind, down or up, its name, and where it points or turns.
+template <> struct Shown<Event> {
+  static std::string text(const Event &event, Names &) {
+    constexpr std::array<std::string_view, 7> kinds{
+        "key", "text", "pointer", "button", "wheel", "focus", "axis"};
+    std::string text(kinds[static_cast<std::size_t>(event.kind)]);
+    switch (event.kind) {
+      case Event::Kind::key:
+      case Event::Kind::button:
+      case Event::Kind::focus:
+        text += event.down ? " down" : " up";
+        break;
+      default:
+        break;
+    }
+    if (!event.name.empty())
+      text += " " + escaped(event.name);
+    if (event.kind == Event::Kind::pointer || event.kind == Event::Kind::axis)
+      text += std::format(" ({},{})", number_text(event.at.x), number_text(event.at.y));
+    if (event.kind == Event::Kind::wheel)
+      text +=
+          std::format(" ({},{})", number_text(event.turn.x), number_text(event.turn.y));
+    if (event.presses != 0)
+      text += std::format(" x{}", event.presses);
+    return text;
   }
 };
 
@@ -265,6 +316,11 @@ public:
   // What the GPU wrote to the node's readback the frame before, as a case sets it; none
   // set, refused.
   std::optional<std::vector<std::byte>> readback;
+  // Each view's costs by its name, as a case sets them: none set, refused; each pointer
+  // handed to a view, as a line; and the images uploaded, which an empty one is none of.
+  std::map<std::string, std::vector<Cost>, std::less<>> view_costs;
+  std::vector<std::string> handed;
+  std::set<std::uint32_t> filled;
 
   std::uint64_t index() const override {
     return frame;
@@ -318,8 +374,11 @@ public:
   const View *unfolded(std::string_view) const override {
     refused("unfolded");
   }
-  std::span<const Cost> costs(std::string_view) const override {
-    refused("costs");
+  std::span<const Cost> costs(std::string_view name) const override {
+    if (view_costs.empty())
+      refused("costs");
+    const auto found = view_costs.find(name);
+    return found == view_costs.end() ? std::span<const Cost>() : found->second;
   }
   void hold_pointer() override {
     refused("hold_pointer");
@@ -327,8 +386,13 @@ public:
   std::span<const NodePort> ports(std::string_view) const override {
     refused("ports");
   }
-  void hand_pointer(std::string_view, glm::vec2, glm::vec2) override {
-    refused("hand_pointer");
+  void hand_pointer(std::string_view view, glm::vec2 at, glm::vec2 extent) override {
+    handed.push_back(std::format("{} at ({} {}) size ({} {})",
+                                 view,
+                                 number_text(at.x),
+                                 number_text(at.y),
+                                 number_text(extent.x),
+                                 number_text(extent.y)));
   }
   void unread(std::string_view port) override {
     unread_ports.emplace_back(port);
@@ -368,13 +432,14 @@ private:
                     glm::uvec2 extent) override {
     upload_levels(index, bytes, extent, 1);
   }
-  bool image_empty(std::uint32_t) const override {
-    refused("image");
+  bool image_empty(std::uint32_t index) const override {
+    return !filled.contains(index);
   }
   void upload_levels(std::uint32_t index,
                      std::span<const std::byte> bytes,
                      glm::uvec2 extent,
                      std::uint32_t levels) override {
+    filled.insert(index);
     const std::string_view text(reinterpret_cast<const char *>(bytes.data()),
                                 bytes.size());
     uploads.push_back(std::format("image {} {}x{}, {} levels, {} bytes #{:08x}",
@@ -400,10 +465,18 @@ public:
     _text = Files::text(node_file(file));
     return _text;
   }
-  void save(File, std::string_view) override {
-    throw std::logic_error("the bench's files open no node's file");
+  // A node's own file, written whole as Ports saves it: its version moves on.
+  void save(File file, std::string_view text) override {
+    Files::save(node_file(file), text);
+    if (versions.size() <= file.index)
+      versions.resize(file.index + 1);
+    ++versions[file.index];
   }
+  // As Ports reads one: a folder, or a file not there, has no size, and is refused.
   std::string read(std::string_view file) override {
+    std::error_code gone;
+    if (!std::filesystem::is_regular_file(file, gone))
+      throw std::runtime_error(std::format("{}: cannot be read", file));
     return Files::text(file);
   }
   void save(std::string_view file, std::string_view text) override {
@@ -452,6 +525,95 @@ private:
   }
 
   std::string _text; // what text handed out last, which the view it returned reads
+};
+
+// The programs a node starts, a line each, its words after it; the one a case names
+// missing refused, as the engine refuses a program the PATH lacks.
+class FakeProcesses final : public ProcessPort {
+public:
+  std::vector<std::string> started;
+  std::string missing;
+
+  void start(std::string_view program, std::span<const std::string> arguments) override {
+    if (program == missing)
+      throw std::runtime_error(std::format("{} is not on the PATH", program));
+    std::string line(program);
+    for (const std::string &argument : arguments)
+      line += " " + argument;
+    started.push_back(std::move(line));
+  }
+};
+
+// A command's call as a case makes it: the command a node registered and its words, the
+// view it addresses, the views by name, the view unfolded, and the ports a case hands it;
+// each reply kept, and each name kept for the log. A port a case hands none of refused.
+class FakeCall final : public Call {
+public:
+  Command running{};
+  std::vector<std::string> words;
+  std::vector<std::string> replies;
+  std::vector<std::string> kept;
+  View addressed;
+  View unfolded_view;
+  std::map<std::string, View, std::less<>> views;
+  CommandPort *command_port = nullptr;
+  FilePort *file_port = nullptr;
+  ProcessPort *process_port = nullptr;
+
+  bool is(Command command) const override {
+    return command.index == running.index;
+  }
+  std::span<const std::string_view> arguments() const override {
+    _arguments.assign(words.begin(), words.end());
+    return _arguments;
+  }
+  void reply(std::string_view text) override {
+    replies.emplace_back(text);
+  }
+  CommandPort &commands() override {
+    if (!command_port)
+      refused("commands");
+    return *command_port;
+  }
+  const View &view() const override {
+    return addressed;
+  }
+  const View *view(std::string_view name) const override {
+    const auto found = views.find(name);
+    return found == views.end() ? nullptr : &found->second;
+  }
+  std::span<const Cost> costs() const override {
+    return {};
+  }
+  FilePort &files() override {
+    if (!file_port)
+      refused("files");
+    return *file_port;
+  }
+  ProcessPort &processes() override {
+    if (!process_port)
+      refused("processes");
+    return *process_port;
+  }
+  const View &unfolded() const override {
+    return unfolded_view;
+  }
+  std::string resolved(std::string_view path) const override {
+    return std::string(path);
+  }
+  std::span<const NodePort> ports() const override {
+    return {};
+  }
+  void keep_name(std::size_t at, std::string_view name) override {
+    kept.push_back(std::format("{} at {}", name, at));
+  }
+
+private:
+  [[noreturn]] static void refused(std::string_view call) {
+    throw std::logic_error(std::format("the bench's call answers no {}", call));
+  }
+
+  mutable std::vector<std::string_view> _arguments; // what arguments handed out last
 };
 
 class NoProcesses final : public ProcessPort {
@@ -566,6 +728,7 @@ public:
   void bound() {
     static_cast<Operator &>(_part).bind(bind);
     files.node_files = bind.files;
+    cook.pass.resize(std::max(cook.pass.size(), bind.values.size() * FakeBind::value_slot));
     cook.in_view = &bind.in_view;
     cook.rooms = bind.rooms;
     cook.written.resize(bind.rooms.size());
@@ -575,6 +738,21 @@ public:
   }
   void cooked() {
     static_cast<Operator &>(_part).cook(cook);
+  }
+  void called(FakeCall &call) {
+    static_cast<Operator &>(_part).command(call);
+  }
+  // A value of its pass block, by name, as its cook set it last.
+  template <class T> T value(std::string_view name) const {
+    const auto found = std::ranges::find(bind.values, name);
+    if (found == bind.values.end())
+      throw std::logic_error(std::format("the node named no value {}", name));
+    T value{};
+    std::memcpy(&value,
+                cook.pass.data() +
+                    static_cast<std::size_t>(found - bind.values.begin()) * FakeBind::value_slot,
+                sizeof value);
+    return value;
   }
   template <class T> T &port(std::string_view name) {
     return bind.object<T>(name);

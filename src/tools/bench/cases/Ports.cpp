@@ -70,33 +70,6 @@ template <> struct Gen<domain::InputLine> {
   }
 };
 
-template <> struct Shown<Event> {
-  static std::string text(const Event &event, Names &) {
-    constexpr std::array<std::string_view, 7> kinds{
-        "key", "text", "pointer", "button", "wheel", "focus", "axis"};
-    std::string text(kinds[static_cast<std::size_t>(event.kind)]);
-    switch (event.kind) {
-      case Event::Kind::key:
-      case Event::Kind::button:
-      case Event::Kind::focus:
-        text += event.down ? " down" : " up";
-        break;
-      default:
-        break;
-    }
-    if (!event.name.empty())
-      text += " " + escaped(event.name);
-    if (event.kind == Event::Kind::pointer || event.kind == Event::Kind::axis)
-      text += std::format(" ({},{})", number_text(event.at.x), number_text(event.at.y));
-    if (event.kind == Event::Kind::wheel)
-      text +=
-          std::format(" ({},{})", number_text(event.turn.x), number_text(event.turn.y));
-    if (event.presses != 0)
-      text += std::format(" x{}", event.presses);
-    return text;
-  }
-};
-
 template <> struct Shown<Moved> {
   static std::string text(const Moved &moved, Names &) {
     return std::format("{} -> {}",
