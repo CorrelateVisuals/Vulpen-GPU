@@ -50,9 +50,9 @@ constexpr std::uint32_t double_press = 2;
 class Camera final : public VP::Operator {
   void bind(VP::Bind &node) override {
     _camera = node.upload<VP_VIEW::Camera>("camera", 1);
-    _home_target = node.param<glm::vec3>("target");
-    _home_eye = node.param<glm::vec3>("eye");
-    _home_up = node.param<glm::vec3>("up");
+    const glm::vec3 target = node.param<glm::vec3>("target");
+    const glm::vec3 eye = node.param<glm::vec3>("eye");
+    const glm::vec3 up = node.param<glm::vec3>("up");
     _lens = node.param<float>("lens");
     if (!(_lens > 0.0f)) // pan divides by it
       throw std::runtime_error(std::format("param lens = {}: beyond 0", _lens));
@@ -68,13 +68,22 @@ class Camera final : public VP::Operator {
     _far = node.param<float>("far");
     if (!(_near > 0.0f && _far > _near))
       throw std::runtime_error("near must lie beyond 0, and far beyond near");
-    const glm::vec3 ahead = _home_target - _home_eye;
+    const glm::vec3 ahead = target - eye;
     if (glm::length(ahead) < straight ||
-        glm::length(glm::cross(glm::normalize(ahead), _home_up)) < straight)
+        glm::length(glm::cross(glm::normalize(ahead), up)) < straight)
       throw std::runtime_error(
           "eye, target and up leave no frame: eye must lie off the target, and up off "
           "the line between them");
-    home();
+    // Every node binds again as its view's schedule is built anew, after any edit of the
+    // view and as its picture moves between the window and a pane, so a camera a person
+    // turned stays turned: it goes home only as its params move home.
+    if (!_placed || target != _home_target || eye != _home_eye || up != _home_up) {
+      _home_target = target;
+      _home_eye = eye;
+      _home_up = up;
+      _placed = true;
+      home();
+    }
   }
 
   void cook(VP::Cook &frame) override {
@@ -173,6 +182,7 @@ class Camera final : public VP::Operator {
   }
 
   VP::Upload<VP_VIEW::Camera> _camera;
+  bool _placed = false; // home set by a bind
   glm::vec3 _home_target{};
   glm::vec3 _home_eye{};
   glm::vec3 _home_up{};

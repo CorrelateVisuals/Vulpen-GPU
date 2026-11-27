@@ -13,8 +13,9 @@ turn x -> throws runtime_error: "param turn = x: ball or level"
 up along the line of sight -> throws runtime_error: "eye, target and up leave no frame: eye must lie off the target, and up off the line between them"
 
 ## Camera.cpp/Camera::bind, bound again
-turned and nearer: eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; eye (-1.8182 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; bound again, eye 0,0,-2: eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+turned and nearer: eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; eye (-1.8182 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; bound again, eye 0,0,-2: eye (-1.8182 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000
 turned and nearer: eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; eye (-1.8182 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; bound again, eye 0,0,-4: eye (0 0 -4) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
+turned and nearer: eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; eye (-1.8182 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000; bound again, lens 3: eye (-1.8182 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 3 near 0.01 far 1000
 
 ## Camera.cpp/Camera::cook
 a double left press -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000

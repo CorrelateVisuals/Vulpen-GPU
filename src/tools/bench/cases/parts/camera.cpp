@@ -192,15 +192,17 @@ void cases(Bench &bench) {
   // Bound again, as the engine binds every node of a view whose schedule it builds anew:
   // after any edit of the view, and as its picture moves between the window and a pane.
   bench.check("Camera.cpp/Camera::bind, bound again", [](Rows &rows) {
-    for (const std::string_view eye : {"0,0,-2", "0,0,-4"}) {
+    for (const auto &[key, value] :
+         Params{{"eye", "0,0,-2"}, {"lens", "3"}, {"eye", "0,0,-4"}}) {
       Framed frame(dropped());
       std::string turned = frame.cooked(drag("left", {100, 50}, {150, 50}));
       turned += "; " + frame.cooked({wheel(1)});
-      frame.node.bind.params = dropped({{"eye", std::string(eye)}});
+      frame.node.bind.params = dropped({{key, value}});
       frame.node.bound();
-      rows.row(std::format("turned and nearer: {}; bound again, eye {}: {}",
+      rows.row(std::format("turned and nearer: {}; bound again, {} {}: {}",
                            turned,
-                           eye,
+                           key,
+                           value,
                            frame.cooked({})));
     }
   });
