@@ -7,11 +7,24 @@
 # Headless runs take the driver VULPEN_TEST_DRIVER names: lavapipe where it is installed,
 # so a machine without a GPU runs them (V07), and the Mesa build pinned beside the repo
 # when it is there, so a driver update never moves the goldens (C01); else the system's,
-# which Debian and Ubuntu name by the machine's architecture.
+# which Debian and Ubuntu name by the machine's architecture. A worktree's sources sit
+# away from the repository, so git names it too; a download has no git, and looks beside
+# its own folder only.
 enable_testing()
+set(repository ${PROJECT_SOURCE_DIR})
+execute_process(COMMAND git rev-parse --git-common-dir
+                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                OUTPUT_VARIABLE git_folder
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+if(git_folder)
+  cmake_path(ABSOLUTE_PATH git_folder BASE_DIRECTORY ${PROJECT_SOURCE_DIR})
+  cmake_path(GET git_folder PARENT_PATH repository)
+endif()
 find_file(VULPEN_TEST_DRIVER
   NAMES lvp_icd.json lvp_icd.${CMAKE_SYSTEM_PROCESSOR}.json
   PATHS ${PROJECT_SOURCE_DIR}/../vulpen-lavapipe/usr/share/vulkan/icd.d
+        ${repository}/../vulpen-lavapipe/usr/share/vulkan/icd.d
         /usr/share/vulkan/icd.d
   NO_DEFAULT_PATH DOC "The Vulkan driver manifest headless tests run on")
 if(NOT VULPEN_TEST_DRIVER)
