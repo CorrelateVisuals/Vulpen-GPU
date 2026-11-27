@@ -20,6 +20,11 @@ frame 13: shoots 0; logged ["info: saved <here>/a.png"]; files a.png 2 by 1: (25
 frame 14: shoots 0; logged []; files a.png 2 by 1: (255 0 0 255) (0 0 255 255)
 no file named: frame 20: shoots 0; logged []; files a.png 2 by 1: (255 0 0 255) (0 0 255 255); b.png 2 by 1: (255 0 0 255) (0 0 255 255)
 
+## Snapshot.cpp/Snapshot::cook, no file named
+frame 0: shoots 0; logged []; files none
+frame 1: shoots 0; logged []; files none
+frame 2: shoots 0; logged []; files none
+
 ## Snapshot.cpp/Snapshot::save, a picture it cannot save
 0 by 0, 2 read back -> frame 0: shoots 1; logged []; files none; frame 1: shoots 0; logged ["error: <here>/f.png not saved: a picture of 0 by 0 pixels, and it reads 2 at most"]; files none
 2 by 1, 0 read back -> frame 0: shoots 1; logged []; files none; frame 1: shoots 0; logged ["error: <here>/f.png not saved: a picture of 2 by 1 pixels, and it reads 0 at most"]; files none

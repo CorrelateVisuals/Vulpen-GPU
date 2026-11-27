@@ -4,6 +4,7 @@
 as dropped -> ["upload camera of 64 bytes , room 1", "param target read as vec3", "param eye read as vec3", "param up read as vec3", "param lens read as float", "param frames_per_turn read as uint", "param near read as float", "param far read as float"]
 double_click x -> throws runtime_error: "param double_click = x: home or none"
 eye on the target -> throws runtime_error: "eye, target and up leave no frame: eye must lie off the target, and up off the line between them"
+far at near -> throws runtime_error: "near must lie beyond 0, and far beyond near"
 far below near -> throws runtime_error: "near must lie beyond 0, and far beyond near"
 lens -1 -> throws runtime_error: "param lens = -1: beyond 0"
 lens 0 -> throws runtime_error: "param lens = 0: beyond 0"
@@ -21,6 +22,7 @@ turned and nearer: eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2
 a double left press -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
 a left drag 25 pixels down -> eye (0 -1.4142 -1.4142) ahead (0 0.7071 0.7071) right (1 0 0) up (0 -0.7071 0.7071); lens 2 near 0.01 far 1000
 a left drag 50 pixels right -> eye (-2 0 0) ahead (1 0 0) right (0 0 -1) up (0 -1 0); lens 2 near 0.01 far 1000
+a left drag that moves nowhere -> eye (0 0 -200) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
 a middle drag 50 pixels up -> eye (-1 1 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
 a right drag 50 pixels right -> eye (-1 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000
 home -> eye (0 0 -2) ahead (0 0 1) right (1 0 0) up (0 -1 0); lens 2 near 0.01 far 1000

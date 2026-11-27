@@ -144,6 +144,13 @@ void cases(Bench &bench) {
     rows.row("no file named: " + frame.cooked(20, rows));
   });
 
+  // No file named, nothing shot, however many frames go by.
+  bench.check("Snapshot.cpp/Snapshot::cook, no file named", [](Rows &rows) {
+    Framed frame(rows, {{"frames", "1"}, {"wait", "1"}});
+    for (std::uint64_t index = 0; index < 3; ++index)
+      rows.row(frame.cooked(index, rows));
+  });
+
   // With frames above 1, a picture each frame, numbered as wide as the count, the last's
   // line at info and the others' at debug; frames lowered below those taken while it
   // records, it stops at the next.

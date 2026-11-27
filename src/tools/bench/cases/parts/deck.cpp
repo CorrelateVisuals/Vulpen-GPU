@@ -21,9 +21,9 @@ namespace VP::bench {
 
 namespace {
 
-// The deck d in view v: its holds and shown params as given, none for unset; a pane of
-// nodes a and b for p1, of c for p2, of e for p3; the keys' typed connected, or not; the
-// view presented, none for empty.
+// The deck d in view v: its holds and shown params as given, none for unset; its area
+// from the dock; a pane of nodes a and b for p1, of c for p2, of e for p3; the keys'
+// typed connected, or not; the view presented, none for empty.
 struct Setup {
   std::optional<std::string> holds = "p1,p2";
   std::optional<std::string> shown;
@@ -46,6 +46,7 @@ View own_view(const Setup &setup) {
     view.connections.push_back(
         {.name = std::move(name), .from = std::move(from), .to = std::move(to)});
   };
+  connect("area", {.node = "dock", .port = "d"}, {{.node = "d", .port = "area"}});
   connect("tabs", {.node = "d", .port = "tabs"}, {{.node = "strip", .port = "items"}});
   connect("p1",
           {.node = "d", .port = "p1"},

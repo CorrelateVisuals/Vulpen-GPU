@@ -118,6 +118,7 @@ void cases(Bench &bench) {
         {"double_click x", {{"double_click", "x"}}},
         {"near 0", {{"near", "0"}}},
         {"far below near", {{"far", "0.001"}}},
+        {"far at near", {{"far", "0.01"}}},
         {"eye on the target", {{"eye", "0,0,0"}}},
         {"up along the line of sight", {{"up", "0,0,1"}}}};
     for (const auto &[what, changed] : cases) {
@@ -156,6 +157,7 @@ void cases(Bench &bench) {
     step({wheel(100)}, "the wheel 100 steps in");
     step({wheel(-200)}, "the wheel 200 steps out");
     step({pointer({120, 60})}, "the pointer moved, no button down");
+    step(drag("left", {120, 60}, {120, 60}), "a left drag that moves nowhere");
   });
 
   // Level turning: a drag across turns about up, a drag down tilts the eye up over the
