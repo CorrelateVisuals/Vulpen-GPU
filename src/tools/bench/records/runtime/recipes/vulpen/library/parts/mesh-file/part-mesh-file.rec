@@ -5,7 +5,7 @@
 [("most", "65536")] -> ["param most read as uint", "upload triangles of 112 bytes , room 65536"]
 
 ## MeshFile.cpp/MeshFile::cook
-a file not there -> wrote 0 triangles; logged ["info: <here>/gone.obj: 0 triangles"]
+a file not there -> wrote 0 triangles; logged ["error: <here>/gone.obj: empty, or not there", "info: <here>/gone.obj: 0 triangles"]
 and the frame after -> wrote none; logged []
 bound again, the same file -> wrote 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1); logged ["info: <here>/one.obj: 1 triangles"]
 its version as before -> wrote none; logged []
@@ -37,6 +37,6 @@ a face of no area -> 1 triangles; (1 1 1)(1 1 1)(1 1 1) normals (0 0 0)(0 0 0)(0
 a face of two corners -> 0 triangles
 a square, its normal given -> 2 triangles; (0 0 0)(2 0 0)(0 2 0) normals (0 0 -1)(0 0 -1)(0 0 -1) color (1 1 1); (2 0 0)(2 2 0)(0 2 0) normals (0 0 -1)(0 0 -1)(0 0 -1) color (1 1 1)
 a triangle -> 1 triangles; (0 0 0)(1 0 0)(0 1 0) normals (0 0 1)(0 0 1)(0 0 1) color (1 1 1)
-empty -> 0 triangles
+empty -> throws runtime_error: "empty, or not there"
 lines and points only -> 0 triangles
 no OBJ -> 0 triangles

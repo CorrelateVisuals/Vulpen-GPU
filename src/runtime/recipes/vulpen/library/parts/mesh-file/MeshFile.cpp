@@ -82,8 +82,11 @@ VP_VIEW::Triangle triangle(const tinyobj::attrib_t &attrib,
 }
 
 // Every face of every object in the OBJ text, cut into triangles. Throws with tinyobj's
-// reason, or the face that names what the file lacks.
+// reason, or the face that names what the file lacks. A node's file port reads a file not
+// there as no text, so no text is named as either, not as a mesh of no faces.
 std::vector<VP_VIEW::Triangle> triangles_of(std::string_view text) {
+  if (text.empty())
+    throw std::runtime_error("empty, or not there");
   tinyobj::ObjReader reader;
   if (!reader.ParseFromString(std::string(text), ""))
     throw std::runtime_error(std::format("no OBJ tinyobj reads: {}", reader.Error()));
