@@ -259,6 +259,13 @@ void cases(Bench &bench) {
       return frame.host("cli", frame.place / "recipes" / "cli");
     });
     copied("wave as empty, a folder holding no view", {"empty"}, same);
+    copied(
+        "wave hosting a view from outside its folder", {}, [](Framed &frame, View &wave) {
+          wave.children.push_back(
+              {.name = "beside",
+               .file = frame.place / "projects" / "triangles" / "triangle" / "view.vlp"});
+          return wave;
+        });
     copied("wave hosting a view from its folder", {}, [](Framed &frame, View &wave) {
       wave.children.push_back(
           {.name = "inside",
